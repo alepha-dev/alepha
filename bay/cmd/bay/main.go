@@ -2242,6 +2242,17 @@ func controlSocketPath() string {
 // socketFlag holds --control-socket for client commands.
 var socketFlag string
 
+// controlTransport dials the socket instead of the network. The URL's host is
+// ignored by the transport but still has to parse, so callers keep composing
+// http://bay/path exactly as before.
+func controlTransport(sock string) *http.Transport {
+	return &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}
+}
+
 func call(method, url string, body io.Reader) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 
@@ -2253,14 +2264,7 @@ func call(method, url string, body io.Reader) (string, error) {
 				"(see --control-socket / $BAY_SOCKET). " +
 				"For remote deploys, ssh into the Bay host and run bay there.")
 	}
-	// Dial the socket instead of the network. The URL's host is ignored by the
-	// transport but still has to parse, so callers keep composing
-	// http://bay/path exactly as before.
-	client.Transport = &http.Transport{
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
-		},
-	}
+	client.Transport = controlTransport(sock)
 
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
