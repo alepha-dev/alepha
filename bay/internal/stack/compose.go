@@ -262,6 +262,9 @@ its own boundary, each with the service and the key.
   - privileged, network_mode/pid/ipc/userns_mode host: the host itself
   - the Docker socket mounted: root on the host
   - a bind mount outside the bundle, or of a path the bundle does not carry
+  - a named volume with driver_opts: they are mount(2) arguments, so
+    `{type: none, o: bind, device: /etc}` is that same bind mount under
+    another name, and overlay or a block device reach the host as well
   - build: Bay runs images and archives, it builds nothing on the host
 */
 func (l *Loaded) Validate() error {
@@ -309,6 +312,19 @@ func (l *Loaded) Validate() error {
 			if _, err := os.Stat(src); err != nil {
 				say("bind mount ./%s is not in the bundle: add it next to the compose file", rel)
 			}
+		}
+	}
+	volumes, _ := l.Model["volumes"].(map[string]any)
+	names := make([]string, 0, len(volumes))
+	for name := range volumes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		vol, _ := volumes[name].(map[string]any)
+		if _, ok := vol["driver_opts"]; ok {
+			problems = append(problems, fmt.Sprintf(
+				"volume %s: driver_opts is not allowed: they are mount options, and a bind through them reaches any host path", name))
 		}
 	}
 	if len(problems) > 0 {

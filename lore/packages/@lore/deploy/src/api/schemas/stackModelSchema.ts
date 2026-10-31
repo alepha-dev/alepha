@@ -19,6 +19,11 @@ export const stackModelSchema = z.object({
    */
   volumes: z.array(z.string()),
   /**
+   * The named volumes declaring `driver_opts`, which Bay refuses. Absent on a
+   * revision stored before Bay did.
+   */
+  volumesWithDriverOpts: z.array(z.string()).optional(),
+  /**
    * Every `${VAR}` the file interpolates. `required` when it has no default,
    * which is what a deploy refuses to dispatch while unset.
    */
