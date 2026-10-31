@@ -50,8 +50,8 @@ Every project command looks for the project in this order:
 
 ## Conventions
 
-- **Names follow the MCP tools.** The agent tool `quest_create` is
-  `lore quest create`. The CLI covers less: a command can take fewer flags than
+- **Names follow the [MCP tools](/lore/docs/guides-mcp).** The agent tool
+  `quest_create` is `lore quest create`. The CLI covers less: a command can take fewer flags than
   its tool (`quest_create` has `dueAt`, `lore quest create` does not), and some
   tools have no command (`quest_hold`, `quest_comment_add`, `folio_update`,
   every `epic_*`).
@@ -217,4 +217,5 @@ A stack is a group of apps and services deployed together from one
 | `lore stack restart <service>`      | Restart one service.                                                                                                             |
 
 `--name` picks the stack and defaults to the project slug. See
-[Stacks](/bay/docs/guides-stacks) in the Bay documentation.
+[Stacks](/lore/docs/guides-stacks) for Lore's side, and
+[Stacks](/bay/docs/guides-stacks) in the Bay documentation for the file's format.
