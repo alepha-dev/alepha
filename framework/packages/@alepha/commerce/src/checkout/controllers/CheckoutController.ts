@@ -3,8 +3,8 @@ import { $action, BadRequestError } from "alepha/server";
 import { safeRedirectPath } from "alepha/server/auth";
 
 import { CartController } from "../../cart/controllers/CartController.ts";
-import { orderItems } from "../../entities/orderItems.ts";
 import { orders } from "../../entities/orders.ts";
+import { publicOrderItemSchema } from "../../schemas/publicOrderItemSchema.ts";
 import { checkoutConfig } from "../checkoutConfigAtom.ts";
 import { addressInputSchema } from "../entities/addresses.ts";
 import { CheckoutService } from "../services/CheckoutService.ts";
@@ -160,7 +160,7 @@ export class CheckoutController {
       params: z.object({ id: z.uuid() }),
       response: z.object({
         order: orders.schema,
-        items: z.array(orderItems.schema),
+        items: z.array(publicOrderItemSchema),
         factures: z.array(z.text()),
       }),
     },

@@ -3,8 +3,8 @@ import { db } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ForbiddenError } from "alepha/server";
 
-import { orderItems } from "../entities/orderItems.ts";
 import { orders } from "../entities/orders.ts";
+import { publicOrderItemSchema } from "../schemas/publicOrderItemSchema.ts";
 import { OrderService } from "../services/OrderService.ts";
 
 /**
@@ -46,7 +46,7 @@ export class OrderController {
       params: z.object({ id: z.uuid() }),
       response: z.object({
         order: orders.schema,
-        items: z.array(orderItems.schema),
+        items: z.array(publicOrderItemSchema),
       }),
     },
     handler: async ({ params, user }) => {
