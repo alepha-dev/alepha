@@ -40,6 +40,17 @@ export class ServerCookiesProvider {
   protected readonly AUTH_TAG_LENGTH = 16;
   protected readonly SIGNATURE_LENGTH = 32; // For SHA256
 
+  // A browser silently drops a cookie past 4096 bytes of name and value. The
+  // difference with this budget leaves room for the prefixed chunk name.
+  protected readonly CHUNK_LENGTH = 3800;
+
+  // Every cookie goes back on every request, and request headers are capped:
+  // 16 KB in total on Node, 8 KB for the Cookie header on a default nginx. Past
+  // that a request fails with 431 or 400, so warn while there is still room.
+  protected readonly COOKIE_BUDGET = 6000;
+
+  protected readonly warnedCookies = new Set<string>();
+
   public readonly onRequest = $hook({
     on: "server:request:before",
     handler: ({ request }) => {
@@ -75,6 +86,7 @@ export class ServerCookiesProvider {
         if (setCookieHeaders.length > 0) {
           request.reply.headers["set-cookie"] = setCookieHeaders;
         }
+        this.warnOverBudget(request.cookies);
       }
     },
   });
@@ -127,12 +139,17 @@ export class ServerCookiesProvider {
     // personal (#E78). The seeding done at `server:request:before` runs before any
     // recorder exists and is not counted.
     this.alepha.store.recorder()?.personal({ kind: "cookie", key: name });
-    let rawValue = cookies.req[this.prefixName(name, prefixed)];
+    const cookieName = this.prefixName(name, prefixed);
+    const scope = { path: options.path, domain: options.domain };
+    const chunks = prefixed ? this.chunkNames(cookieName, cookies.req) : [];
+    let rawValue = cookies.req[cookieName];
 
-    if (!rawValue) return undefined;
+    if (!rawValue && chunks.length === 0) return undefined;
 
     try {
-      rawValue = decodeURIComponent(rawValue);
+      rawValue = decodeURIComponent(
+        rawValue || this.joinChunks(cookieName, chunks.length, cookies),
+      );
 
       if (options.sign) {
         const signature = rawValue.substring(0, this.SIGNATURE_LENGTH * 2);
@@ -146,6 +163,7 @@ export class ServerCookiesProvider {
           )
         ) {
           this.log.warn(`Invalid signature for cookie "${name}".`);
+          this.deleteCookie(name, cookies, prefixed, scope);
           return undefined;
         }
         rawValue = value;
@@ -156,7 +174,7 @@ export class ServerCookiesProvider {
       }
 
       if (options.compress) {
-        rawValue = inflateRawSync(Buffer.from(rawValue, "base64")).toString(
+        rawValue = inflateRawSync(Buffer.from(rawValue, "base64url")).toString(
           "utf8",
         );
       }
@@ -165,7 +183,7 @@ export class ServerCookiesProvider {
     } catch (error) {
       this.log.warn(`Failed to parse cookie "${name}"`, error);
       // corrupted or invalid cookie, instruct browser to delete it on next response
-      this.deleteCookie(name, cookies, prefixed);
+      this.deleteCookie(name, cookies, prefixed, scope);
       return undefined;
     }
   }
@@ -182,7 +200,7 @@ export class ServerCookiesProvider {
     let value = JSON.stringify(this.alepha.codec.decode(options.schema, data));
 
     if (options.compress) {
-      value = deflateRawSync(value).toString("base64");
+      value = deflateRawSync(value).toString("base64url");
     }
 
     if (options.encrypt) {
@@ -193,8 +211,18 @@ export class ServerCookiesProvider {
       value = this.sign(value) + value;
     }
 
+    const prefixed = options.prefix !== false;
+    const cookieName = this.prefixName(name, prefixed);
+    const encoded = encodeURIComponent(value);
+
+    if (!prefixed && encoded.length > this.CHUNK_LENGTH) {
+      throw new AlephaError(
+        `Cookie "${name}" encodes to ${encoded.length} bytes, over the ${this.CHUNK_LENGTH} one cookie can hold. It sets \`prefix: false\`, so the browser reads it and it cannot be chunked: store less in it.`,
+      );
+    }
+
     const cookie: Cookie = {
-      value: encodeURIComponent(value),
+      value: encoded,
       path: options.path ?? "/",
       // "lax" is correct here — "strict" would break OAuth flows because OAuth callbacks
       // are top-level redirects from the IdP, and strict cookies are not sent on cross-site
@@ -209,7 +237,38 @@ export class ServerCookiesProvider {
       cookie.maxAge = this.dateTimeProvider.duration(options.ttl).as("seconds");
     }
 
-    cookies.res[this.prefixName(name, options.prefix !== false)] = cookie;
+    const written = new Map<string, string>();
+    if (encoded.length > this.CHUNK_LENGTH) {
+      for (let i = 0; i * this.CHUNK_LENGTH < encoded.length; i++) {
+        const start = i * this.CHUNK_LENGTH;
+        written.set(
+          `${cookieName}.${i}`,
+          encoded.slice(start, start + this.CHUNK_LENGTH),
+        );
+      }
+    } else {
+      written.set(cookieName, encoded);
+    }
+
+    // Read before the write, so a chunk this response wrote earlier counts too.
+    if (prefixed) {
+      const held = this.chunkNames(cookieName, {
+        ...cookies.req,
+        ...cookies.res,
+      });
+      if (cookieName in cookies.req || cookieName in cookies.res) {
+        held.push(cookieName);
+      }
+      this.expire(
+        held.filter((stale) => !written.has(stale)),
+        cookies,
+        options,
+      );
+    }
+
+    for (const [writtenName, part] of written) {
+      cookies.res[writtenName] = { ...cookie, value: part };
+    }
   }
 
   /**
@@ -226,13 +285,100 @@ export class ServerCookiesProvider {
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
     this.alepha.store.recorder()?.personal({ kind: "set-cookie", key: name });
+    const cookieName = this.prefixName(name, prefix);
+    const chunks = prefix
+      ? this.chunkNames(cookieName, { ...cookies.req, ...cookies.res })
+      : [];
 
-    cookies.res[this.prefixName(name, prefix)] = {
-      value: "",
-      path: scope?.path ?? "/",
-      domain: scope?.domain,
-      maxAge: 0,
-    };
+    this.expire([cookieName, ...chunks], cookies, scope);
+  }
+
+  /**
+   * Warns once per cookie this response wrote when everything the client will
+   * send from now on passes the budget. Only written cookies are named and
+   * remembered: their names are the app's, whereas a request's cookie names are
+   * the client's to invent, without limit.
+   */
+  protected warnOverBudget(cookies: Cookies): void {
+    const sent: Record<string, string> = { ...cookies.req };
+    const written: Record<string, number> = {};
+
+    for (const [name, cookie] of Object.entries(cookies.res)) {
+      if (!cookie || cookie.maxAge === 0) {
+        delete sent[name];
+        continue;
+      }
+      sent[name] = cookie.value;
+      const cookieName = name.replace(/\.(0|[1-9]\d*)$/, "");
+      written[cookieName] = (written[cookieName] ?? 0) + cookie.value.length;
+    }
+
+    const total = Object.entries(sent).reduce(
+      (sum, [name, value]) => sum + name.length + value.length + 3,
+      0,
+    );
+    if (total <= this.COOKIE_BUDGET) return;
+
+    for (const [name, size] of Object.entries(written)) {
+      if (this.warnedCookies.has(name)) continue;
+      this.warnedCookies.add(name);
+      this.log.warn(
+        `Cookies for this client total ${total} bytes, near the 8 KB a default nginx accepts and the 16 KB Node does. "${name}" is ${size} bytes of that. A large value belongs in a server-side session, with only its ID in the cookie.`,
+      );
+    }
+  }
+
+  protected expire(
+    names: string[],
+    cookies: Cookies,
+    scope?: { path?: string; domain?: string },
+  ): void {
+    for (const name of names) {
+      cookies.res[name] = {
+        value: "",
+        path: scope?.path ?? "/",
+        domain: scope?.domain,
+        maxAge: 0,
+      };
+    }
+  }
+
+  /**
+   * The chunks of `cookieName` among `jar`, found by name rather than by
+   * walking from `.0`, so a chunk past a gap is still found. Only a canonical
+   * index counts: `<name>.01` and `<name>.0x` are someone else's cookies.
+   */
+  protected chunkNames(
+    cookieName: string,
+    jar: Record<string, unknown>,
+  ): string[] {
+    const prefix = `${cookieName}.`;
+    return Object.keys(jar).filter(
+      (key) =>
+        key.startsWith(prefix) &&
+        /^(0|[1-9]\d*)$/.test(key.slice(prefix.length)),
+    );
+  }
+
+  /**
+   * Joins `count` chunks back into the encoded value. A gap throws, since the
+   * value cannot be whole. A lost last chunk leaves no gap: the value comes out
+   * truncated, and decoding it fails instead.
+   */
+  protected joinChunks(
+    cookieName: string,
+    count: number,
+    cookies: Cookies,
+  ): string {
+    let value = "";
+    for (let i = 0; i < count; i++) {
+      const chunk = cookies.req[`${cookieName}.${i}`];
+      if (chunk === undefined) {
+        throw new AlephaError(`Cookie "${cookieName}" lost its chunk ${i}.`);
+      }
+      value += chunk;
+    }
+    return value;
   }
 
   // --- Crypto & Parsing ---
@@ -245,11 +391,11 @@ export class ServerCookiesProvider {
       cipher.final(),
     ]);
     const authTag = cipher.getAuthTag();
-    return Buffer.concat([iv, authTag, encrypted]).toString("base64");
+    return Buffer.concat([iv, authTag, encrypted]).toString("base64url");
   }
 
   protected decrypt(encryptedText: string): string {
-    const data = Buffer.from(encryptedText, "base64");
+    const data = Buffer.from(encryptedText, "base64url");
     const iv = data.subarray(0, this.IV_LENGTH);
     const authTag = data.subarray(
       this.IV_LENGTH,

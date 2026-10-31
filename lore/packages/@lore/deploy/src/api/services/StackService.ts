@@ -43,7 +43,7 @@ export interface StackRevisionInput {
  * The one write path for stacks, their environments, routes and revisions,
  * and for the link between an app instance and a stack environment.
  *
- * Authorization is the controller's (`deploy:manage` behind the `apps.deploy`
+ * Authorization is the controller's (`deploy:manage` behind the `apps.stacks`
  * capability). What is checked here is the integrity of the references, which
  * no caller may skip: an estate must be LENT to the project, an app instance
  * must be of the stack's project and of the environment's own env name, and

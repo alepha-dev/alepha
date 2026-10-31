@@ -50,10 +50,10 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * deployed copy stays; deleting the copy is the danger zone above this
  * section.
  *
- * Every mutation is owner-only server-side (`$secure` + `assertOwner`) - that
- * is the real gate and it does not move. The controls are disabled here for a
- * member with a tooltip, purely so nobody is walked through a destructive
- * confirmation only to be refused at the end. It is a UX hint over
+ * Every mutation needs `sigil:manage` server-side (`$ownsProject`) - that is
+ * the real gate and it does not move. The controls are disabled here for a
+ * rank without it, with a tooltip, purely so nobody is walked through a
+ * destructive confirmation only to be refused at the end. It is a UX hint over
  * the caller's effective permission set, the same server-authoritative answer the
  * viewer's membership row already carries, not a second authorization
  * boundary.
@@ -195,19 +195,19 @@ const AppSettingsSigil = () => {
 
   const collectsFeedback = hasCapability(project, "support");
 
-  const isOwner = can("sigil:manage");
+  const canManage = can("sigil:manage");
   const sigil = instance.sigil;
 
   /**
    * Wrapped in a span rather than handed to `render`: a disabled control
    * swallows the pointer events the tooltip listens for.
    */
-  const ownerOnly = (control: React.ReactElement) => (
+  const notAllowed = (control: React.ReactElement) => (
     <Tooltip>
       <TooltipTrigger render={<span className="inline-flex" />}>
         {control}
       </TooltipTrigger>
-      <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+      <TooltipContent>{tr("app.settings.notAllowed")}</TooltipContent>
     </Tooltip>
   );
 
@@ -270,7 +270,7 @@ const AppSettingsSigil = () => {
               label={tr("app.settings.rotate.title")}
               description={`${sigil.tokenPrefix}…`}
             >
-              {isOwner ? (
+              {canManage ? (
                 <Button
                   variant="outlined"
                   disabled={busy}
@@ -281,7 +281,7 @@ const AppSettingsSigil = () => {
                   {tr("sigils.action.rotate")}
                 </Button>
               ) : (
-                ownerOnly(
+                notAllowed(
                   <Button
                     variant="outlined"
                     disabled
@@ -298,7 +298,7 @@ const AppSettingsSigil = () => {
               label={tr("app.settings.sigil.remove.title")}
               description={tr("app.settings.sigil.remove.description")}
             >
-              {isOwner ? (
+              {canManage ? (
                 <Button
                   variant="outlined"
                   disabled={busy}
@@ -309,7 +309,7 @@ const AppSettingsSigil = () => {
                   {tr("sigils.action.delete")}
                 </Button>
               ) : (
-                ownerOnly(
+                notAllowed(
                   <Button
                     variant="outlined"
                     disabled
@@ -327,7 +327,7 @@ const AppSettingsSigil = () => {
             label={tr("app.settings.sigil.none")}
             description={tr("app.settings.sigil.noneDescription")}
           >
-            {isOwner ? (
+            {canManage ? (
               <Button
                 disabled={busy}
                 aria-label={tr("app.settings.sigil.create")}
@@ -337,7 +337,7 @@ const AppSettingsSigil = () => {
                 {tr("app.settings.sigil.create")}
               </Button>
             ) : (
-              ownerOnly(
+              notAllowed(
                 <Button disabled aria-label={tr("app.settings.sigil.create")}>
                   <KeyRound />
                   {tr("app.settings.sigil.create")}

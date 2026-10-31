@@ -166,10 +166,13 @@ export interface ServerRequest<
   reply: ServerReply;
 
   /**
-   * Aborted when the client disconnects before the response is complete.
+   * Aborted when the client disconnects before the response is complete, and
+   * at the `timeout` of the `$action` handling the request.
    *
    * The same object as `alepha.context.signal` inside the request's context,
    * so code the handler calls inherits it without being handed it.
+   *
+   * A local `run()` has no client: it carries its caller's ambient signal.
    */
   signal: AbortSignal;
 

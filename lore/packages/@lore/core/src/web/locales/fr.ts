@@ -843,7 +843,7 @@ export default {
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
   "project.capability.support.description":
-    "Un formulaire public et une boîte de tri.",
+    "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
@@ -1473,8 +1473,8 @@ export default {
   "app.environment.import.cancel": "Annuler",
   "app.environment.import.submit": "Importer $1",
   "app.environment.import.done": "$1 importés",
-  "app.environment.ownerOnly":
-    "Seul le propriétaire du projet peut changer ce avec quoi cette copie s\u2019exécute.",
+  "app.environment.notAllowed":
+    "Votre rang ne permet pas de changer ce avec quoi cette copie s\u2019exécute.",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
   "app.dashboard.identity": "Identité",
@@ -1603,9 +1603,8 @@ export default {
   "app.settings.sigil.create": "Créer un sigil",
   "app.settings.sigil.remove.title": "Retirer le sigil",
   "app.settings.sigil.remove.description":
-    "Arrête les remontées de cette copie et efface ce qu’elle a remonté. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
-  "app.settings.ownerOnly":
-    "Seul le propriétaire du projet peut effectuer cette action.",
+    "Arrête les remontées de cette copie et retire du projet ce qu’elle a remonté. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+  "app.settings.notAllowed": "Votre rang ne permet pas cette action.",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
@@ -1760,7 +1759,7 @@ export default {
   "sigils.rotate.confirm": "Renouveler",
   "sigils.delete.confirmTitle": "Supprimer $1 ?",
   "sigils.delete.confirmDescription":
-    "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Cela retire du projet tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
   "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",
@@ -1773,8 +1772,8 @@ export default {
   "estates.project.empty":
     "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
-  "estates.project.ownerOnly":
-    "Seul le propriétaire du projet peut ajouter un domaine.",
+  "estates.project.notAllowed":
+    "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",

@@ -154,7 +154,7 @@ func (s *server) handleStackRestore(w http.ResponseWriter, r *http.Request) {
 		}
 		release := s.holdDuring(m.Key())
 		defer release()
-		if err := s.runner.Stop(m.Key(), stopGrace); err != nil {
+		if err := s.stopForMaintenance(m.Key()); err != nil {
 			writeError(w, http.StatusInternalServerError, "stop "+m.Service+": "+err.Error())
 			return
 		}

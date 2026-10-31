@@ -384,7 +384,7 @@ Two ways out, depending on what you need:
 
 ## Limitations
 
-- **Redis** does not run in a Worker: `$lock`, `$cache`, `$topic`, queues and actors use the Cloudflare providers. `REDIS_URL` set on a Worker selects nothing and logs one warning per isolate.
+- **Redis** does not run in a Worker: `$cache`, queues and actors use the Cloudflare providers. `$lock` and `$topic` are memory only, per isolate, so a lock excludes callers in its own isolate alone and a message reaches subscribers in its own isolate alone. `REDIS_URL` set on a Worker selects nothing and logs one warning per isolate.
 
 ## Configuration
 

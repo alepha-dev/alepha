@@ -110,7 +110,8 @@ claude mcp add --transport http lore https://lore.alepha.dev/mcp
 ```
 
 You can see and revoke every connection you granted on **Connected apps**
-(`/account/connections`).
+(`/account/connections`). [MCP tools](/lore/docs/guides-mcp) lists what an agent
+can call.
 
 A connection made this way reaches what a project member can do, and nothing
 else: no admin pages, no API keys, no account settings, even if you are an

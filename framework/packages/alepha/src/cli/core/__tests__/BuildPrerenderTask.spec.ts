@@ -1,4 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
+import { AlephaReactRouter } from "alepha/react/router";
+import { $sitemap, AlephaReactSitemap } from "alepha/react/sitemap";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
@@ -93,6 +95,43 @@ describe("BuildPrerenderTask", () => {
       expect(() => task.fileName("/docs/%2E%2E/%2E%2E/etc")).toThrow(
         AlephaError,
       );
+    });
+  });
+
+  describe("which $sitemap it writes", () => {
+    class App {
+      prerendered = $sitemap();
+      live = $sitemap({ path: "/live.xml", static: false });
+    }
+
+    const build = async () => {
+      const { task, fs } = setup();
+      const app = Alepha.create()
+        .with(AlephaReactRouter)
+        .with(AlephaReactSitemap);
+      app.inject(App);
+
+      await task.run({
+        alepha: app,
+        root: "/project",
+        hasClient: true,
+        options: {},
+        run: async (step: { handler: () => Promise<void> }) => step.handler(),
+      } as any);
+
+      return fs;
+    };
+
+    it("writes one by default", async ({ expect }) => {
+      const fs = await build();
+
+      expect(fs.wasWritten("/project/dist/public/sitemap.xml")).toBe(true);
+    });
+
+    it("leaves one with static: false to the server", async ({ expect }) => {
+      const fs = await build();
+
+      expect(fs.wasWritten("/project/dist/public/live.xml")).toBe(false);
     });
   });
 });

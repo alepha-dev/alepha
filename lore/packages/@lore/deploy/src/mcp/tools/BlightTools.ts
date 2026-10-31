@@ -68,7 +68,7 @@ export class BlightTools {
   blight_resolve = $tool({
     title: "Resolve a blight",
     description:
-      'Close a blight — it leaves the open inbox and the row stays for audit. Use once the underlying failure is fixed. The decision is PERMANENT: a later report of the same fingerprint keeps raising `count` and `lastSeenAt` but does NOT reopen the row, by design — a triage decision must not be undone by the next batch. So resolving a bug that is still happening hides it from the inbox for good; to check whether a failure is still live, call `insights_read` with segments=["errors"] first — its groups are per app and filtered on `lastSeenAt`, which is the question this inbox cannot answer. Project owner only.',
+      'Close a blight: it leaves the open inbox and the row stays for audit. Use once the underlying failure is fixed. The decision is PERMANENT: a later report of the same fingerprint keeps raising `count` and `lastSeenAt` but does NOT reopen the row, by design: a triage decision must not be undone by the next batch. So resolving a bug that is still happening hides it from the inbox for good; to check whether a failure is still live, call `insights_read` with segments=["errors"] first: its groups are per app and filtered on `lastSeenAt`, which is the question this inbox cannot answer. Needs `blight:triage`.',
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: blightResolveParamsSchema,
@@ -89,7 +89,7 @@ export class BlightTools {
   blight_forward = $tool({
     title: "Forward a blight to a quest",
     description:
-      "Turn a blight into a NEW quest and close it. The quest carries the failure's name and message as its title and the stack in its description, links back to the blight, and lands in a dedicated triage area. Fails if the blight was already forwarded — one blight, one quest. Project owner only.",
+      "Turn a blight into a NEW quest and close it. The quest carries the failure's name and message as its title and the stack in its description, links back to the blight, and lands in a dedicated triage area. Fails if the blight was already forwarded: one blight, one quest. Needs `blight:triage`.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: blightForwardParamsSchema,

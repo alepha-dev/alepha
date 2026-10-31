@@ -87,7 +87,7 @@ const AppSettingsUrl = () => {
     return null;
   }
 
-  const isOwner = can("app:manage");
+  const canManage = can("app:manage");
   const detected = instance.sigil?.lastSeenHost;
   const changed = draft.trim() !== (instance.url ?? "");
 
@@ -106,7 +106,7 @@ const AppSettingsUrl = () => {
           id="app-settings-url"
           className="min-w-0 flex-1 sm:w-72"
           value={draft}
-          disabled={!isOwner || busy}
+          disabled={!canManage || busy}
           placeholder={detected ? `https://${detected}` : "https://example.com"}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -115,7 +115,7 @@ const AppSettingsUrl = () => {
             }
           }}
         />
-        {isOwner ? (
+        {canManage ? (
           <Button
             variant="outlined"
             disabled={busy || !changed}
@@ -130,7 +130,7 @@ const AppSettingsUrl = () => {
                 {tr("app.settings.url.save")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+            <TooltipContent>{tr("app.settings.notAllowed")}</TooltipContent>
           </Tooltip>
         )}
       </div>

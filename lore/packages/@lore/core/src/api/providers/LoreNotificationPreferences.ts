@@ -21,6 +21,12 @@ import { users } from "../entities/users.ts";
  * The channel switch is checked first because it is the broader one; the
  * category switch then applies to whichever channel survived it.
  *
+ * ## ⚠️ A critical template answers to neither
+ *
+ * Sign-in codes and password resets are what the Email switch's own description
+ * promises it does not affect, so neither switch is even read for them. Only
+ * the framework's suppression list can stop one.
+ *
  * ## ⚠️ The lookup is a join, once per channel per message
  *
  * `NotificationPreferenceOptions` carries a **`contact`**, not a user id, so
@@ -50,6 +56,10 @@ export class LoreNotificationPreferences extends NotificationPreferenceProvider 
   public override async allows(
     options: NotificationPreferenceOptions,
   ): Promise<boolean> {
+    // Ahead of both axes: a password reset somebody opted out of is an account
+    // they cannot get back into.
+    if (options.critical) return true;
+
     const row = await this.rowFor(options.contact);
     // Nobody is backfilled: no row means nothing has been turned off.
     if (!row) return true;
@@ -60,13 +70,8 @@ export class LoreNotificationPreferences extends NotificationPreferenceProvider 
       return false;
     }
 
-    // Axis two: this one category. Never for a critical template: a password
-    // reset somebody opted out of is an account they cannot get back into.
-    if (
-      !options.critical &&
-      options.category &&
-      row.mutedCategories.includes(options.category)
-    ) {
+    // Axis two: this one category.
+    if (options.category && row.mutedCategories.includes(options.category)) {
       return false;
     }
 

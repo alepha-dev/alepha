@@ -279,10 +279,10 @@ export interface ActionPrimitiveOptions<
    *
    * The deadline covers the `use` middlewares and the handler (a `$lock`
    * wait or a `$secure` key fetch counts), not the request body's upload nor
-   * a streamed response body. When it passes, `alepha.context.signal` aborts
-   * with the `TimeoutError`, so the outbound calls and queries reading it stop
-   * too, and the caller is answered at once. The request's own `signal` fires
-   * on a disconnect only.
+   * a streamed response body. When it passes, the request's `signal`, the same
+   * object as `alepha.context.signal`, aborts with the `TimeoutError`, so the
+   * outbound calls and queries reading it stop too, and the caller is answered
+   * at once.
    *
    * None by default: the `serverApiOptions` atom's `timeout` sets one for
    * every action, and `false` opts this one out of it. A timeout passes
@@ -358,7 +358,7 @@ export class ActionPrimitive<
   public readonly handler = new PipelineHandler(
     this.filterDeclaredErrors(this.options.handler),
     this.options.use,
-    (run) => this.withDeadline(run),
+    (run, args) => this.withDeadline(run, args),
   );
 
   protected readonly settings = $store(serverApiOptions);
@@ -451,13 +451,21 @@ export class ActionPrimitive<
 
   /**
    * Run the composed pipeline under the action's deadline, when it has one.
+   *
+   * The deadline's signal goes on the request itself, not on a copy: a
+   * middleware writes `user` there, and the router reads it back afterwards.
+   * It stays there once the action settles, since it still follows the
+   * disconnect and work left running must keep seeing the abort.
    */
-  protected withDeadline(run: () => any): any {
+  protected withDeadline(run: (...args: any[]) => any, args: any[]): any {
     const timeout = this.timeout;
     if (timeout === undefined) {
-      return run();
+      return run(...args);
     }
-    return this.dateTime.deadline(run, timeout);
+    return this.dateTime.deadline((signal) => {
+      (args[0] as ServerRequest).signal = signal;
+      return run(...args);
+    }, timeout);
   }
 
   /**
@@ -602,6 +610,9 @@ export class ActionPrimitive<
       headers,
       reply,
       ip: parentIp,
+      // A local call is part of its caller's unit of work: the fork below
+      // adds no signal, so this stays the same object as the ambient one.
+      signal: this.alepha.context.signal,
       metadata: {
         routePath: this.route.path,
         routeMethod: this.route.method,

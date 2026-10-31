@@ -34,14 +34,14 @@ import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.t
  * An estate belongs to a user, not to the project, so this page never
  * creates or deletes one on its own account. It lends and withdraws: "add"
  * picks one of the caller's own estates (or mints a new one and lends it in
- * the same step), and "detach" withdraws the loan. Both are owner-only
- * server-side; the button is disabled here for a non-owner with a tooltip,
- * a UX hint rather than a second authorization boundary.
+ * the same step), and "detach" withdraws the loan. Both need `estate:lend`
+ * server-side; the button is disabled here for a rank without it, with a
+ * tooltip, a UX hint rather than a second authorization boundary.
  *
- * Detaching is offered to the project owner and to the estate's own owner,
- * because both are legitimate: one gives up a capability, the other withdraws
- * a loan. Neither undeploys anything, and the confirmation says so, since the
- * intuitive reading is the opposite.
+ * Detaching is offered to a rank with `estate:lend` and to the estate's own
+ * owner, because both are legitimate: one gives up a capability, the other
+ * withdraws a loan. Neither undeploys anything, and the confirmation says so,
+ * since the intuitive reading is the opposite.
  */
 const ProjectSettingsEstatesPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -50,7 +50,7 @@ const ProjectSettingsEstatesPage = () => {
   const dialog = useDialog();
   const api = useClient<ProjectEstateController>();
   const [project] = useStore(currentProjectAtom);
-  const isOwner = can("estate:lend");
+  const canLend = can("estate:lend");
 
   const [items, setItems] = useState<LentEstateResource[] | undefined>();
   const [adding, setAdding] = useState(false);
@@ -129,7 +129,7 @@ const ProjectSettingsEstatesPage = () => {
               </span>
             </div>
             <div className="flex justify-start sm:justify-end">
-              {isOwner ? (
+              {canLend ? (
                 <Button onClick={() => setAdding(true)}>
                   <Plus className="size-4" />
                   {tr("estates.project.add")}
@@ -145,7 +145,7 @@ const ProjectSettingsEstatesPage = () => {
                     {tr("estates.project.add")}
                   </TooltipTrigger>
                   <TooltipContent>
-                    {tr("estates.project.ownerOnly")}
+                    {tr("estates.project.notAllowed")}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -168,7 +168,7 @@ const ProjectSettingsEstatesPage = () => {
               // once, and the row's console link reads the same flag - so the
               // two cannot come to disagree about who owns a machine. It is
               // also what retired `useAuth` from this page.
-              canDetach={isOwner || estate.ownedByViewer}
+              canDetach={canLend || estate.ownedByViewer}
               onDetach={(item) => void detachAction.run(item)}
               busy={detachAction.loading}
             />

@@ -11,8 +11,8 @@ alepha build --runtime=static
 `static` anywhere in `build.runtime` makes the whole build static, whatever else the list names. The build process:
 
 1. Builds the client. No server bundle is built: the build analyzes the app in-process instead, to learn its pages.
-2. Prerenders every `static: true` page, every `$route({ static: true })` and every `$sitemap`, as an SSR build does.
-3. Writes `index.html`. A `/` page prerendered in step 2 keeps its HTML; otherwise the `$page` declaring `path: "/"` is rendered and stripped to an empty `<div id="root"></div>`, and an app with none fails here, even if its root page leaves `path` out.
+2. Prerenders every `static: true` page, every `$route({ static: true })` and every `$sitemap` not set to `static: false`, as an SSR build does.
+3. Writes `index.html`. A `/` page prerendered in step 2 keeps its HTML; otherwise the `$page` at `/` (one declaring `path: "/"` or leaving `path` out, and with no children) is rendered and stripped to an empty `<div id="root"></div>`, and an app with none fails here.
 4. Writes `404.html` and `200.html`, SPA shells of `index.html`, and a `CNAME` file for Surge. Each is written only if your `public/` did not already provide it.
 5. Removes everything but `public/` and the manifest.
 6. Writes [`_headers`](/docs/guides-deployment-headers) and a brotli `.br` copy of each compressible file.
@@ -119,5 +119,6 @@ class AppRouter {
 }
 ```
 
-The sitemap lists every static `$page` (and the static entries of
-parameterized pages), excluding layout, wildcard, and `404` routes.
+The sitemap lists every leaf `$page` with no parameter, `static` or not, and the
+`static.entries` of a page with parameters, excluding wildcard paths and `/404`. See
+[Sitemap](/docs/guides-frontend-sitemap#which-pages-it-lists).

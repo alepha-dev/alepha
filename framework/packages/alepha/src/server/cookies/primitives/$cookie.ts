@@ -14,6 +14,20 @@ import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
  * Declares a type-safe, configurable HTTP cookie.
  * This primitive provides methods to get, set, and delete the cookie
  * within the server request/response cycle.
+ *
+ * A browser silently drops a cookie past 4 KB, so a server cookie is chunked
+ * automatically: a value that encodes to more than 3,800 bytes is written as
+ * `<name>.0`, `<name>.1`, ... and joined back on read, with stale chunks expired
+ * on every set and delete. A name ending in `.<number>` is therefore reserved. A
+ * `prefix: false` cookie is read by the browser, so it is never chunked: writing
+ * one over that size throws.
+ *
+ * Chunking does not lift the limits on request headers, and every chunk goes back
+ * on every request. Node caps all of a request's headers at 16 KB and a default
+ * nginx its `Cookie` header at 8 KB, past which a request fails with 431 or 400.
+ * The server logs a warning when a client's cookies pass about 6 KB. A very large
+ * value, such as a big token set, belongs in a server-side session with only an
+ * ID in the cookie.
  */
 export const $cookie = <T extends ZType>(
   options: CookiePrimitiveOptions<T>,
