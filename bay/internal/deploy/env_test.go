@@ -212,30 +212,57 @@ func TestConsumeSecretsFileTakesTheFileWithIt(t *testing.T) {
 	}
 }
 
-func TestConsumeSecretsFileTakesItAwayEvenWhenItRefuses(t *testing.T) {
+func TestConsumeSecretsFileTakesASecretsFileItRefusesToApply(t *testing.T) {
 	/*
 		The requirement that is easy to satisfy on the happy path and easy to
 		miss everywhere else. A refused deploy is precisely the one somebody
-		comes back to look at, so it is precisely the one that must not have
-		left credentials lying in /tmp.
+		comes back to look at, so a file that held secrets must not be left
+		lying in /tmp because one of its keys was not ours to set.
+	*/
+	path := secretsFile(t, "APP_SECRET=attacker\n", 0o600)
+
+	if _, err := ConsumeSecretsFile(path); err == nil {
+		t.Fatal("expected a refusal")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("a refused secrets file was left on disk: %v", err)
+	}
+}
+
+func TestConsumeSecretsFileLeavesAFileThatIsNotASecretsFile(t *testing.T) {
+	/*
+		`bay serve` runs as root, so what it unlinks is limited only by what it
+		is told. `--secrets-file /etc/passwd` must end in a refusal, never in a
+		host with no /etc/passwd, and a 0600 file is no different: /etc/shadow
+		and an SSH key are 0600 too, and neither reads as KEY=VALUE lines.
 	*/
 	for _, tc := range []struct {
 		name string
 		body string
+		mode os.FileMode
 	}{
-		{"a key Bay owns", "APP_SECRET=attacker\n"},
-		{"a line that is not an assignment", "STRIPE_KEY=ok\nnonsense\n"},
-		{"nothing at all", "# just a comment\n"},
-		{"a key assigned twice", "A=1\nA=2\n"},
+		{"a mode somebody else can read", "root:x:0:0:root:/root:/bin/bash\n", 0o644},
+		{"a mode somebody else can read, holding assignments", "STRIPE_KEY=sk_live_1\n", 0o644},
+		{"a line that is not an assignment", "STRIPE_KEY=ok\nnonsense\n", 0o600},
+		{"nothing at all", "# just a comment\n", 0o600},
+		{"a key assigned twice", "A=1\nA=2\n", 0o600},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			path := secretsFile(t, tc.body, 0o600)
+			path := secretsFile(t, tc.body, tc.mode)
 
-			if _, err := ConsumeSecretsFile(path); err == nil {
+			_, err := ConsumeSecretsFile(path)
+			if err == nil {
 				t.Fatal("expected a refusal")
 			}
-			if _, err := os.Stat(path); !os.IsNotExist(err) {
-				t.Fatalf("a refused secrets file was left on disk: %v", err)
+			if !strings.Contains(err.Error(), "left in place") {
+				t.Fatalf("the refusal must say the file is still there, got: %v", err)
+			}
+			got, readErr := os.ReadFile(path)
+			if readErr != nil {
+				t.Fatalf("a file that was refused must not be removed: %v", readErr)
+			}
+			if string(got) != tc.body {
+				t.Fatalf("the file changed: %q", got)
 			}
 		})
 	}
@@ -252,10 +279,6 @@ func TestConsumeSecretsFileRefusesAModeSomebodyElseCanRead(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "0644") {
 		t.Fatalf("the refusal must name the mode it saw, got: %v", err)
-	}
-	// Removed anyway: it is a plaintext secrets file at a path we were handed.
-	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
-		t.Fatalf("a refused secrets file was left on disk: %v", statErr)
 	}
 }
 

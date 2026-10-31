@@ -250,8 +250,9 @@ func usageText() string {
               # BEFORE the release is swapped in, so the app boots with its
               # secrets — there is no window where it runs without them.
               # Bay CONSUMES it: the file is unlinked whether the deploy
-              # succeeds or fails. A symlink or a group/world-readable file is
-              # refused, as are keys Bay owns.
+              # succeeds or fails. Keys Bay owns are refused. A symlink, a
+              # group/world-readable file or a line that is not an assignment
+              # is refused too, and the file is left where it is.
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
               # --domain is repeatable and accepts a comma-separated list —
@@ -1285,9 +1286,9 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// — refusing it here costs the caller nothing, while refusing it after the
 	// stop would be an outage caused by a validation.
 	//
-	// The file is gone either way. `ConsumeSecretsFile` unlinks it on every
-	// path out, so a refusal does not leave plaintext credentials on the disk
-	// of the host somebody is about to go and debug.
+	// A file that reads as secrets is gone either way, so a refused key does not
+	// leave plaintext credentials on the disk of the host somebody is about to go
+	// and debug. One that does not is left alone: see `ConsumeSecretsFile`.
 	var secrets map[string]string
 	if opts.SecretsFile != "" {
 		parsed, err := deploy.ConsumeSecretsFile(opts.SecretsFile)

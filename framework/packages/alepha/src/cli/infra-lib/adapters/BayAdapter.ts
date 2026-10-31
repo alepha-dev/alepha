@@ -829,10 +829,11 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
             stdin: new Uint8Array(await this.fs.readFile(artifact)),
           });
         } catch (error) {
-          // Bay consumes the file itself, on success AND on every refusal, so
-          // the only way one survives is a deploy that never reached Bay: ssh
-          // refused, `bay` missing, the control socket down. Swept here rather
-          // than left, because that file is plaintext credentials.
+          // Bay consumes a file it can read as secrets, on success and on a
+          // refused key. One survives a deploy that never reached Bay (ssh
+          // refused, `bay` missing, the control socket down) or a file Bay
+          // refused unread, which it leaves where it is. Swept here rather than
+          // left, because that file is plaintext credentials.
           //
           // Best-effort and silent: whatever went wrong above is the error the
           // caller needs, and a failed cleanup must not replace it with a

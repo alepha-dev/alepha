@@ -418,6 +418,11 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	if err != nil {
 		return "failed", "deploying", err.Error()
 	}
+	if secretsFile != "" {
+		// Ours, and plaintext. The deploy consumes a file it can read as secrets;
+		// one it refuses unread is left for whoever wrote it.
+		defer os.Remove(secretsFile)
+	}
 	out, derr := a.s.deployArtifact(ctx, deployArtifactOptions{
 		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
 		SecretsFile: secretsFile,
@@ -438,8 +443,9 @@ const keepArtifacts = 5
 /*
 writeSecretsFile stages the pulled set the way the deploying user stages
 `--secrets-file`: a 0600 regular file under the Bay root, which
-`deploy.ConsumeSecretsFile` reads, validates and unlinks on every path out.
-Nothing else ever holds the values: not this function's error, not a log.
+`deploy.ConsumeSecretsFile` reads, validates and unlinks, and which the caller
+removes if that refused it unread. Nothing else ever holds the values: not this
+function's error, not a log.
 
 Values are written literally, one per line, which is what ParseAssignments
 reads; a value with a line break cannot be carried that way and is refused by

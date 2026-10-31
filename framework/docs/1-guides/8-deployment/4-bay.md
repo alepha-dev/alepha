@@ -207,7 +207,8 @@ The file never holds a value on a command line - an argument sits in the host's 
 user running `ps`, and in the local shell's history. `umask 077` before the redirect rather than a
 `chmod` after it, so the file is 0600 from the instant it exists; the name is 16 random bytes, so a
 predictable path cannot be pre-created by another user as a symlink. Bay consumes the file whether
-the deploy succeeds or is refused, so an aborted deploy strands no plaintext credentials on the host.
+the deploy succeeds or is refused, and the CLI sweeps one Bay never read, so an aborted deploy
+strands no plaintext credentials on the host.
 
 Two classes of key are dropped even when the app declares them, each with a line in the deploy log
 saying so:
