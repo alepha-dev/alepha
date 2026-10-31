@@ -266,10 +266,13 @@ export class SigilController {
   });
 
   /**
-   * Remove a sigil, and with it everything that app ever reported.
+   * Remove a sigil, and with it everything that app ever reported from the
+   * project.
    *
    * A hard delete — the entity carries no soft-delete column, and the four
-   * aggregate tables cascade. Blights survive, because `blights.sigilId` is
+   * aggregate tables cascade. Analytics Engine has no delete, so its raw rows
+   * stay until they expire, but every read filters on the project's sigils and
+   * none reaches them again. Blights survive, because `blights.sigilId` is
    * `ON DELETE SET NULL`: a triage decision outlives the credential that
    * surfaced it.
    */
@@ -292,8 +295,9 @@ export class SigilController {
 
       await this.sigils.deleteById(sigil.id);
 
-      // Deleting takes every analytics row with it (all four tables cascade
-      // on `sigilId`), which is why rotate exists and why this is a warning.
+      // Deleting takes the app's history out of the project (all four tables
+      // cascade on `sigilId`, and what Analytics Engine keeps is no longer
+      // read), which is why rotate exists and why this is a warning.
       await this.audits.sigil.logSuccess("delete", {
         ...this.audits.actor(user),
         ...this.audits.scope(params.projectId),

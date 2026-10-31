@@ -195,21 +195,27 @@ func refuseBayOwned(updates map[string]string) error {
 // and the failure that used to land after the code already had.
 //
 // **Consume, not read.** The file is plaintext secrets sitting on a disk, so
-// the unlink is deferred the moment the path is known to denote a regular file
-// we were handed: a refused mode, an unparseable line, a Bay-owned key, all
-// still take it with them. A cleanup step that runs "unless something went
-// wrong" strands exactly the file that matters, on exactly the deploy someone
-// will come back to look at.
+// the unlink is deferred the moment the path is known to denote a secrets
+// file: a Bay-owned key still takes it with it. A cleanup step that runs
+// "unless something went wrong" strands exactly the file that matters, on
+// exactly the deploy someone will come back to look at.
 //
-// Two refusals come first, because a file cannot be safely consumed until it is
-// known to be the right file:
+// Three refusals come first and leave the path alone, because this runs as root
+// on whatever path it is given, and a file cannot be safely consumed until it is
+// known to be the right file. `--secrets-file /etc/passwd` is a refusal, not a
+// host with no /etc/passwd:
 //
 //   - **A symlink is never followed.** Opened with O_NOFOLLOW rather than
-//     lstat-then-open, so there is no window to swap one in. Refused WITHOUT
-//     removing it: unlinking the link would not remove the plaintext, which is
-//     at its target, and the operator needs to be told to go look there.
+//     lstat-then-open, so there is no window to swap one in. Unlinking the link
+//     would not remove the plaintext anyway, which is at its target, and the
+//     operator needs to be told to go look there.
 //   - **Group or world bits are refused.** 0600 or nothing. The writer sets
 //     `umask 077`, so anything wider means somebody else made this file.
+//   - **Every line must be an assignment.** 0600 alone proves nothing:
+//     /etc/shadow and an SSH key are 0600 too.
+//
+// The writer stays answerable for a file refused this way: `alepha deploy`
+// sweeps its own on any failure, and the connector removes what it staged.
 func ConsumeSecretsFile(path string) (map[string]string, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
@@ -235,20 +241,20 @@ func ConsumeSecretsFile(path string) (map[string]string, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s is not a regular file, so it is not a secrets file", path)
 	}
-	// From here the path denotes a file we were handed, so it is ours to take
-	// away — on every path out of this function, including the refusals below.
-	defer os.Remove(path)
-
 	if perm := info.Mode().Perm(); perm&0o077 != 0 {
 		return nil, fmt.Errorf(
 			"%s is mode %04o: a secrets file must be readable by its owner and nobody else (0600). "+
-				"It has been removed", path, perm)
+				"It was left in place: remove it if it holds secrets", path, perm)
 	}
 
 	updates, err := ParseAssignments(f)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s is not a secrets file, so it was left in place: remove it if it holds secrets: %w", path, err)
 	}
+	// From here the path denotes a secrets file, so it is ours to take away, on
+	// every path out of this function.
+	defer os.Remove(path)
+
 	if err := refuseBayOwned(updates); err != nil {
 		return nil, err
 	}

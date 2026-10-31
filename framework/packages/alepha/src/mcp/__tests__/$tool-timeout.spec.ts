@@ -15,6 +15,7 @@ class Tools {
 
   started?: () => void;
   aborted?: unknown;
+  ambientMatched?: boolean;
 
   slow = $tool({
     description: "Takes an hour",
@@ -22,6 +23,25 @@ class Tools {
     handler: async () => {
       const signal = this.alepha.context.signal;
       signal.addEventListener("abort", () => {
+        this.aborted = signal.reason;
+      });
+      this.started?.();
+      await this.dateTime.wait([1, "hours"]);
+      return "done";
+    },
+  });
+
+  /**
+   * Reads the deadline off `context.signal` alone, as an API taking a signal
+   * explicitly does.
+   */
+  bareSignal = $tool({
+    description: "Takes an hour, watching its context's signal",
+    timeout: [30, "seconds"],
+    handler: async ({ context }) => {
+      const signal = context?.signal;
+      this.ambientMatched = signal === this.alepha.context.signal;
+      signal?.addEventListener("abort", () => {
         this.aborted = signal.reason;
       });
       this.started?.();
@@ -94,6 +114,18 @@ describe("$tool timeout", () => {
       isError: true,
     });
     expect(tools.aborted).toBeInstanceOf(TimeoutError);
+  });
+
+  it("aborts context.signal at the deadline, the same object as the ambient one", async ({
+    expect,
+  }) => {
+    const { tools, callPast } = await start();
+
+    const result = await callPast("bareSignal", 30_000);
+
+    expect(result.isError).toBe(true);
+    expect(tools.aborted).toBeInstanceOf(TimeoutError);
+    expect(tools.ambientMatched).toBe(true);
   });
 
   it("applies the mcpToolOptions default to a tool without its own", async ({

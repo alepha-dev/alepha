@@ -108,6 +108,11 @@ export class StackTargets {
             );
           }
         }
+        for (const name of model.volumesWithDriverOpts ?? []) {
+          out.push(
+            `volume ${name}: driver_opts is not allowed: they are mount options, and a bind through them reaches any host path`,
+          );
+        }
         return out;
       },
     },

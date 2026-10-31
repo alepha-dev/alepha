@@ -68,7 +68,8 @@ database.
 `bay status` shows each app's last backup and its age. It warns when the last
 one is older than **twice** the interval, when no backup was ever taken, and
 when the last attempt failed, with the reason. A once-late run does not warn;
-a stopped schedule does.
+a stopped schedule does. It also warns while scheduled backups are held after a
+[failed restore](#disaster-recovery).
 
 ## By hand
 
@@ -115,11 +116,13 @@ deploy carries and its uploads from the apps bucket. What does not come back:
   `bay connector set` again.
 
 A failed restore does not fail the deploy: the app starts on an empty database,
-and nothing retries, because a database now exists. `bay deploy` says so under
-`restore.database` (`empty (...)`), but `alepha deploy` prints only the URL, so
-check the data after a recovery. Within a minute the schedule snapshots that
-empty database and it becomes the latest, so find the last good snapshot with
-`bay backups` and restore it with `bay restore --key`.
+and nothing retries, because a database now exists. The deploy says so:
+`alepha deploy` prints a warning, and `bay deploy` answers `restore.warning`.
+Scheduled backups of that app are held, so the snapshot it missed stays the
+latest, and `bay status` flags the hold. Run `bay restore myapp/production` to
+bring it back, or `bay backup myapp/production` to keep the database the app has
+now. Either one ends the hold. Bay holds only when a snapshot may exist: an app
+with an empty bucket, or none configured, starts empty and backs up as usual.
 
 ## Moving uploads to a bucket
 

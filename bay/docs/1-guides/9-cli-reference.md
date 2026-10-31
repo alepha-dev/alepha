@@ -9,9 +9,7 @@ Every command below is a thin client of the control API, except `serve`,
 root or a member of `bay-control`, and finds the socket from `BAY_SOCKET`, else
 at `./bay-data/control.sock`. On a host installed with the guide's unit, run
 `export BAY_SOCKET=/run/bay/control.sock`. `--control-socket PATH` overrides it
-for one command, but `bay stack deploy`, `bay backup restore` and bare
-`bay runtimes` refuse that flag, so `BAY_SOCKET` is the form that works
-everywhere.
+for one command.
 
 An app instance is written `name/env`, a stack environment `stack/env`. A
 stack's service is the instance `stack.service/env`, as in

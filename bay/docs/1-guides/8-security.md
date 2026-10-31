@@ -62,8 +62,9 @@ nothing on the host. Artifacts are not signed: Bay checks their shape, and on a
 Lore deploy their digest, not who built them.
 
 Secrets travel in a file at mode `0600`, never on a command line, and Bay
-deletes it after the deploy. A symlink or a group- or world-readable secrets
-file is refused. Keys Bay owns, such as `APP_SECRET` and `DATABASE_URL`, cannot
+deletes it after the deploy. A symlink, a group- or world-readable file and a
+file that does not read as `KEY=VALUE` lines are refused and left where they
+are: Bay runs as root, so it removes only what it read as secrets. Keys Bay owns, such as `APP_SECRET` and `DATABASE_URL`, cannot
 be overwritten by a deploy or by `bay env set`.
 
 ## Isolating apps

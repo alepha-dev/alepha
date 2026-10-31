@@ -448,6 +448,10 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, msg)
 		return
 	}
+	// The database is back, whether or not the app follows it.
+	if err := s.store.ClearBackupHold(app.Key()); err != nil {
+		s.log.Error("could not give a restored app back to the schedule", "app", app.Key(), "err", err)
+	}
 	if err := s.start(app); err != nil {
 		writeError(w, http.StatusBadGateway,
 			"database restored but the app did not come back: "+err.Error(),
@@ -469,11 +473,14 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 //
 // It never runs against an existing database. That single condition is what
 // separates "recovery" from "a redeploy silently reverted my data".
+//
+// A failure does not fail the deploy: the app starts on the empty database. See
+// `autoRestoreFailed` for what keeps that from costing the snapshot it missed.
 func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string) map[string]any {
 	mgr, _, err := s.backupManager()
 	if err != nil {
 		s.log.Error("backup config unusable, skipping auto-restore", "err", err)
-		return map[string]any{"database": "empty (backup destination unusable)"}
+		return s.autoRestoreFailed(app, "backup destination unusable")
 	}
 	if mgr == nil {
 		return map[string]any{"database": "empty (no backup destination configured)"}
@@ -482,7 +489,7 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	latest, found, err := mgr.Latest(ctx, app.Name, app.Env)
 	if err != nil {
 		s.log.Error("could not list backups", "app", app.Key(), "err", err)
-		return map[string]any{"database": "empty (could not reach the bucket)"}
+		return s.autoRestoreFailed(app, "could not reach the bucket")
 	}
 	if !found {
 		s.log.Info("no backup to restore", "app", app.Key())
@@ -491,24 +498,49 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 
 	runtime, _, err := s.appPaths(app)
 	if err != nil {
-		return map[string]any{"database": "empty (" + err.Error() + ")"}
+		return s.autoRestoreFailed(app, err.Error())
 	}
 	restored, cleanup, err := mgr.Fetch(ctx, latest.Key, runtime)
 	if err != nil {
 		s.log.Error("auto-restore failed", "app", app.Key(), "key", latest.Key, "err", err)
-		return map[string]any{"database": "empty (restore failed: " + err.Error() + ")"}
+		return s.autoRestoreFailed(app, "restore failed: "+err.Error())
 	}
 	defer cleanup()
 
 	if err := backup.Install(restored, dbPath); err != nil {
 		s.log.Error("auto-restore install failed", "app", app.Key(), "err", err)
-		return map[string]any{"database": "empty (install failed: " + err.Error() + ")"}
+		return s.autoRestoreFailed(app, "install failed: "+err.Error())
 	}
 	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key)
 	return map[string]any{
 		"database":    "restored from " + latest.Key,
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
 		"notRestored": []string{"storage/ (uploaded files)"},
+	}
+}
+
+/*
+autoRestoreFailed answers a deploy left on an empty database when a backup may
+exist, and holds the schedule.
+
+Nothing retries, because a database now exists. And `LastBackupAt` is empty on
+a new host, so within a minute the schedule would snapshot that empty database
+and make it the latest, which is what the next plain `bay restore` installs.
+The hold keeps the real snapshot the latest until somebody decides.
+
+`warning` is what `alepha deploy` prints: it keeps nothing else of this answer.
+*/
+func (s *server) autoRestoreFailed(app state.App, why string) map[string]any {
+	if err := s.store.HoldBackups(app.Key(), why, time.Now()); err != nil {
+		s.log.Error("could not hold the backups of an unrestored app", "app", app.Key(), "err", err)
+	}
+	return map[string]any{
+		"database": "empty (" + why + ")",
+		"warning": fmt.Sprintf(
+			"%[1]s started on an EMPTY database: no backup was restored (%[2]s). Scheduled backups are held, "+
+				"so the last snapshot stays the latest: run `bay restore %[1]s` to bring it back, or "+
+				"`bay backup %[1]s` to keep this database and resume them",
+			app.Key(), why),
 	}
 }
 
@@ -676,6 +708,10 @@ func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
 		// no database Bay owns costs nothing per tick rather than a refusal
 		// per tick.
 		if !app.Backups {
+			continue
+		}
+		// `bay status` says so: see `autoRestoreFailed`.
+		if app.BackupHold != "" {
 			continue
 		}
 		if !schedule.Due(app.LastBackupAt, now, interval) {

@@ -366,6 +366,42 @@ describe("InsightsController", () => {
     expect(res.data.uniqueVisitors).toBe(3);
   });
 
+  it("stops reading a deleted sigil's raw rows, which the backend keeps", async ({
+    expect,
+  }) => {
+    // The memory provider behaves like Analytics Engine here: neither has a
+    // delete, and neither follows the `db.ref` cascade only a relational
+    // backend gets.
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 9),
+      path: "/",
+      country: "FR",
+      count: 10,
+    });
+
+    await ctx.sigilController.deleteSigil.fetch(
+      { params: { projectId, sigilId } },
+      { user: owner },
+    );
+
+    const raw = await ctx.alepha.inject(DeployAnalytics).views.query({
+      since: "2000-01-01",
+      where: { sigilId: { inArray: [sigilId] } },
+      groupBy: ["path"],
+      select: { count: "sum" },
+    });
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "7d" } },
+      { user: owner },
+    );
+    expect(raw.rows).toHaveLength(1);
+    expect(res.data.totalViews).toBe(0);
+  });
+
   it("excludes rows outside the window", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);

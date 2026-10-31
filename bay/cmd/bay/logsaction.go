@@ -20,14 +20,11 @@ different places: an app this Bay has never started, a static site that will
 never have a process, and a supervised app that is simply quiet. That is the
 distinction `logsResponse` already draws for the control API, kept here.
 
-`undated` is what `filterLogs` counts: lines with no timestamp, kept by a
-`--since` window they cannot be judged against. `truncated` is what was
-dropped to fit the sink's cap.
+`truncated` is what was dropped to fit the sink's cap.
 */
 type logsResult struct {
 	Supervised bool             `json:"supervised"`
 	Static     bool             `json:"static,omitempty"`
-	Undated    int              `json:"undated,omitempty"`
 	Truncated  int              `json:"truncated,omitempty"`
 	Lines      []runner.LogLine `json:"lines"`
 }
@@ -36,8 +33,8 @@ type logsResult struct {
 logs answers a bounded tail of one instance's journal.
 
 The filtering is `filterLogs`, the same function `bay logs` uses, called and
-not reimplemented: two filters eventually disagree about what `--since` means
-for an undated line, and the disagreement is invisible.
+not reimplemented: two filters eventually disagree, and the disagreement is
+invisible.
 
 ⚠️ The order is: ack `running` (done by the caller), upload, ack `done`. The
 sink accepts a result only while the command is `sent` or `running`, so an ack
@@ -76,12 +73,11 @@ func (a *actions) logs(ctx context.Context, cmd connector.Command) (status, step
 	if err != nil {
 		return "failed", "reading", err.Error()
 	}
-	kept, undated := filterLogs(entries, time.Duration(ask.SinceSeconds)*time.Second, pattern)
+	kept := filterLogs(entries, time.Duration(ask.SinceSeconds)*time.Second, pattern)
 
 	result := logsResult{
 		Supervised: supervised,
 		Static:     app.Static,
-		Undated:    undated,
 		Lines:      kept,
 	}
 	if result.Lines == nil {

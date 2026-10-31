@@ -232,6 +232,7 @@ cmdRuntimes is `bay runtimes`:
 	bay runtimes clear <name/env>        # back to the image Bay picks
 */
 func cmdRuntimes(args []string) error {
+	args = dropControlFlag(args)
 	sub := ""
 	if len(args) > 0 {
 		sub = args[0]

@@ -104,6 +104,9 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	if a.LastBackupError != "" {
 		line.Problems = append(line.Problems, "last backup attempt failed: "+a.LastBackupError)
 	}
+	if a.BackupHold != "" {
+		line.Problems = append(line.Problems, "scheduled backups are held after a failed restore: "+a.BackupHold)
+	}
 	return line
 }
 

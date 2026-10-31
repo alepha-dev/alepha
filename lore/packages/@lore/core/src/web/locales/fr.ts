@@ -843,7 +843,7 @@ export default {
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
   "project.capability.support.description":
-    "Un formulaire public et une boîte de tri.",
+    "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
@@ -1603,7 +1603,7 @@ export default {
   "app.settings.sigil.create": "Créer un sigil",
   "app.settings.sigil.remove.title": "Retirer le sigil",
   "app.settings.sigil.remove.description":
-    "Arrête les remontées de cette copie et efface ce qu’elle a remonté. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Arrête les remontées de cette copie et retire du projet ce qu’elle a remonté. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "app.settings.ownerOnly":
     "Seul le propriétaire du projet peut effectuer cette action.",
 
@@ -1760,7 +1760,7 @@ export default {
   "sigils.rotate.confirm": "Renouveler",
   "sigils.delete.confirmTitle": "Supprimer $1 ?",
   "sigils.delete.confirmDescription":
-    "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Cela retire du projet tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
   "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",
@@ -1902,8 +1902,6 @@ export default {
   "bay.logs.static":
     "Un site statique n'a pas de processus, donc pas de journal.",
   "bay.logs.truncated": "$1 ligne(s) plus ancienne(s) ont été écartées.",
-  "bay.logs.undated":
-    "$1 ligne(s) sans horodatage ont été conservées malgré la fenêtre demandée.",
   "bay.logs.empty": "Supervisée, et elle n'a rien dit.",
   "bay.commands.empty": "Rien n'a été demandé à cette machine",
   "bay.commands.empty.description":

@@ -121,8 +121,7 @@ As root that should print the hosted apps (none yet, on a fresh install).
 
 `bay` looks for the socket at `./bay-data/control.sock`, so every client command on this host has to
 be told. `export BAY_SOCKET=/run/bay/control.sock` does it for a session, and the samples further
-down assume it; `--control-socket` does it for one command, but `bay stack deploy`,
-`bay backup restore` and bare `bay runtimes` refuse that flag.
+down assume it; `--control-socket` does it for one command.
 
 ## 5. Grant a user the right to deploy — the step that bites
 

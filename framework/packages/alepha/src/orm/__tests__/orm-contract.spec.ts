@@ -135,6 +135,29 @@ describe("row locks and the query cache", () => {
       app.items.findMany({}, { for: "update", cache: { ttl: 1000 } }),
     ).rejects.toThrow(AlephaError);
   });
+
+  it("refuses `for` on SQLite with an error naming the option", async () => {
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    });
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const read = app.items.findMany({}, { for: "update" });
+
+    await expect(read).rejects.toThrow(AlephaError);
+    await expect(read).rejects.toThrow(/'for'.*PostgreSQL/);
+  });
+
+  it("takes the row lock on PostgreSQL", async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    await expect(
+      app.items.findMany({}, { for: "update" }),
+    ).resolves.toBeDefined();
+  });
 });
 
 describe("nested transactions", () => {
