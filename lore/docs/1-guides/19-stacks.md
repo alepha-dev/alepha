@@ -26,12 +26,12 @@ to the project, and that estate must have **Allow deploys** on.
 
 ## Stacks, environments and revisions
 
-| Word          | What it is                                                                                                |
-| ------------- | --------------------------------------------------------------------------------------------------------- |
-| Stack         | A name, unique in the project, and a default estate. Lowercase letters, digits and hyphens, up to 64.     |
-| Environment   | One running copy of the stack, such as `production`, addressed as `<stack>/<env>`.                        |
-| Revision      | One numbered upload of the Compose file, with the files it references. A stack has many.                  |
-| Member        | An app instance that belongs to an environment.                                                           |
+| Word        | What it is                                                                                            |
+| ----------- | ----------------------------------------------------------------------------------------------------- |
+| Stack       | A name, unique in the project, and a default estate. Lowercase letters, digits and hyphens, up to 64. |
+| Environment | One running copy of the stack, such as `production`, addressed as `<stack>/<env>`.                    |
+| Revision    | One numbered upload of the Compose file, with the files it references. A stack has many.              |
+| Member      | An app instance that belongs to an environment.                                                       |
 
 ```mermaid
 flowchart LR
@@ -209,12 +209,12 @@ that removes it from the machine, which `--purge` extends to its volumes.
 
 ## For agents
 
-| Tool             | What it does                                                                                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `stack_list`     | Every stack, with its environments, routes, member apps and the revision each runs.                                         |
-| `stack_get`      | One stack: each environment's services and newest deploys. Never a variable's value.                                        |
-| `stack_deploy`   | Deploy a revision to an environment, the newest by default. With `app`, deploy one app service alone from a stored build.   |
-| `stack_rollback` | Deploy an earlier revision again.                                                                                           |
+| Tool             | What it does                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `stack_list`     | Every stack, with its environments, routes, member apps and the revision each runs.                                          |
+| `stack_get`      | One stack: each environment's services and newest deploys. Never a variable's value.                                         |
+| `stack_deploy`   | Deploy a revision to an environment, the newest by default. With `app`, deploy one app service alone from a stored build.    |
+| `stack_rollback` | Deploy an earlier revision again.                                                                                            |
 | `stack_logs`     | Two calls: with `service` it asks for the tail and answers a `request`; with that `request` it answers the lines when ready. |
 
 No `stack_*` tool takes an estate. Creating a stack, uploading a revision and

@@ -22,25 +22,25 @@ but nothing is deleted.
 checking it, and is not ephemeral, the page offers it under **Apps without a
 monitor**, and **Add monitor** beside it fills in the name and the URL.
 
-| Kind            | Target                            | Up means                                                                             |
-| --------------- | --------------------------------- | ------------------------------------------------------------------------------------ |
-| HTTP(S)         | An `http` or `https` URL          | A `GET` answers a 2xx, or the expected status, and contains the keyword if one is set. A redirect is not followed. |
-| TCP port        | `host:port`                       | The connection opens.                                                                |
-| TLS certificate | `host:port` (the port defaults to 443) | The certificate is valid and further from expiry than the warning.                   |
-| Push receipt    | None: Lore gives you a URL        | The URL was called within the interval.                                              |
+| Kind            | Target                                 | Up means                                                                                                           |
+| --------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| HTTP(S)         | An `http` or `https` URL               | A `GET` answers a 2xx, or the expected status, and contains the keyword if one is set. A redirect is not followed. |
+| TCP port        | `host:port`                            | The connection opens.                                                                                              |
+| TLS certificate | `host:port` (the port defaults to 443) | The certificate is valid and further from expiry than the warning.                                                 |
+| Push receipt    | None: Lore gives you a URL             | The URL was called within the interval.                                                                            |
 
 A target cannot carry credentials. The kind cannot change after creation: create
 a new monitor instead.
 
-| Setting               | Default | Range                       | What it does                                                 |
-| --------------------- | ------- | --------------------------- | ------------------------------------------------------------ |
-| Interval              | 60 s    | From 60 s, in whole minutes | How often it is checked. On a push monitor, labelled **Stale after**, the silence allowed. |
-| Timeout               | 10 s    | 1 to 30 s                   | How long a check waits.                                      |
-| Failures before down  | 2       | 1 to 100                    | Consecutive failures that open an outage.                    |
-| Expected status       | 2xx     | 100 to 599                  | HTTP only.                                                   |
-| Body keyword          | none    | Up to 1,000 characters      | HTTP only. The response must contain it, and be under 2 MiB. |
-| Latency budget        | none    | In milliseconds             | HTTP only. Over budget is recorded, and the monitor stays up. |
-| Warn before expiry    | 14 days | 0 to 365 days               | Certificates only. Closer than this counts as a failure.     |
+| Setting              | Default | Range                       | What it does                                                                               |
+| -------------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------ |
+| Interval             | 60 s    | From 60 s, in whole minutes | How often it is checked. On a push monitor, labelled **Stale after**, the silence allowed. |
+| Timeout              | 10 s    | 1 to 30 s                   | How long a check waits.                                                                    |
+| Failures before down | 2       | 1 to 100                    | Consecutive failures that open an outage.                                                  |
+| Expected status      | 2xx     | 100 to 599                  | HTTP only.                                                                                 |
+| Body keyword         | none    | Up to 1,000 characters      | HTTP only. The response must contain it, and be under 2 MiB.                               |
+| Latency budget       | none    | In milliseconds             | HTTP only. Over budget is recorded, and the monitor stays up.                              |
+| Warn before expiry   | 14 days | 0 to 365 days               | Certificates only. Closer than this counts as a failure.                                   |
 
 ⚠️ **TCP and certificate monitors need a Node host.** They open a raw socket,
 which Cloudflare Workers cannot do, so on a Workers deployment such a monitor
@@ -73,12 +73,12 @@ Lore checks due monitors every minute. A failed check is not yet an outage: the
 monitor goes **Down** once **Failures before down** checks fail in a row, and a
 single success brings it back **Up**.
 
-| Status  | Meaning                                                         |
-| ------- | --------------------------------------------------------------- |
-| Pending | No check has passed yet, and failures are below the threshold.  |
+| Status  | Meaning                                                           |
+| ------- | ----------------------------------------------------------------- |
+| Pending | No check has passed yet, and failures are below the threshold.    |
 | Up      | The last check passed, or failures since are below the threshold. |
-| Down    | An outage is open.                                              |
-| Paused  | **Pause** stops the checks. **Resume** starts them again.       |
+| Down    | An outage is open.                                                |
+| Paused  | **Pause** stops the checks. **Resume** starts them again.         |
 
 Pausing a monitor keeps an outage that was already open, and resuming shows it
 **Down** again until a check passes.

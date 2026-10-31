@@ -32,13 +32,13 @@ of the text becomes the report's title, cut at 120 characters, and the whole
 text is its description, up to 10,000 characters. Files can be picked, dropped
 on the form, or pasted anywhere on the page.
 
-| Limit                                  | Value                                                 |
-| -------------------------------------- | ----------------------------------------------------- |
-| Attachments on one report              | 10                                                    |
-| Size of one attachment                 | 5 MB                                                  |
-| Attachment types                       | png, jpg, jpeg, webp, gif, csv, txt, json, xlsx, xls, pdf |
-| Reports per account, per 24 hours      | 5, across all projects                                |
-| Attachment uploads per account, per 24 hours | 50, across all reports                          |
+| Limit                                        | Value                                                     |
+| -------------------------------------------- | --------------------------------------------------------- |
+| Attachments on one report                    | 10                                                        |
+| Size of one attachment                       | 5 MB                                                      |
+| Attachment types                             | png, jpg, jpeg, webp, gif, csv, txt, json, xlsx, xls, pdf |
+| Reports per account, per 24 hours            | 5, across all projects                                    |
+| Attachment uploads per account, per 24 hours | 50, across all reports                                    |
 
 Lore checks both the file's type and its extension. The two daily limits apply
 only to people who are not members of the project: a member submits without
@@ -50,12 +50,12 @@ A link to the form can carry context. Lore reads these parameters when the page
 opens, keeps them for that browser tab, and removes them from the address, so
 they survive the sign-in and stay out of the browser's history.
 
-| Parameter                                                | What it does                                                                   |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `tags` | A tag for the report. Repeat it for several. A report holds at most 20, `type` included. |
-| `type`                                                   | `bug` or `feature`, added to the tags.                                         |
-| `url`                                                    | The page the report is about. Without it, the parameters below are ignored.    |
-| `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz`  | That page's path and title, the referrer, and the reporter's browser settings. |
+| Parameter                                               | What it does                                                                             |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `tags`                                                  | A tag for the report. Repeat it for several. A report holds at most 20, `type` included. |
+| `type`                                                  | `bug` or `feature`, added to the tags.                                                   |
+| `url`                                                   | The page the report is about. Without it, the parameters below are ignored.              |
+| `path`, `title`, `ref`, `ua`, `lang`, `vp`, `scr`, `tz` | That page's path and title, the referrer, and the reporter's browser settings.           |
 
 A report with no tag gets the tag `feedback`.
 
@@ -103,12 +103,12 @@ included. Lore shows the context as plain text and never renders it as a link.
 
 Triage needs `feedback:triage`, which the owner holds and a rank can be given.
 
-| Action                | Offered on            | What happens                                                                                                           |
-| --------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Promote to Quest**  | Pending               | The report becomes accepted, then the quest form opens with its title and text. Close the form and it stays accepted. |
-| **New quest**         | Accepted              | Another quest from the same report. One report can spawn several.                                                      |
-| **Reject**            | Pending               | The report becomes rejected and stays in the project.                                                                  |
-| **Delete**            | Any status            | The report leaves the project, after a confirmation.                                                                   |
+| Action               | Offered on | What happens                                                                                                          |
+| -------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Promote to Quest** | Pending    | The report becomes accepted, then the quest form opens with its title and text. Close the form and it stays accepted. |
+| **New quest**        | Accepted   | Another quest from the same report. One report can spawn several.                                                     |
+| **Reject**           | Pending    | The report becomes rejected and stays in the project.                                                                 |
+| **Delete**           | Any status | The report leaves the project, after a confirmation.                                                                  |
 
 Accepting and rejecting both tell the reporter, unless they took the decision
 themselves.
@@ -150,14 +150,14 @@ report is rejected.
 
 ## For agents
 
-| Tool                      | What it does                                                                                                      |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `feedback_list`           | Pending reports by default; `status` takes `accepted`, `rejected` or `all`. At most 50 a page, with `hasMore`.    |
-| `feedback_get`            | One report by `id` or `shortId`: its text, tags, `context`, attachments, linked quests and the last 50 comments.  |
-| `feedback_attachment_get` | One attachment's content. Images come back inline, text decoded, and other types as a note.                       |
-| `feedback_comment_add`    | Comment on the thread, marked as written by an agent. Needs Support on.                                           |
-| `feedback_accept`         | Move a pending report to accepted. Refused on a report already triaged.                                           |
-| `feedback_reject`         | Move a report to rejected. Unlike `feedback_accept`, it does not check the current status.                        |
+| Tool                      | What it does                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `feedback_list`           | Pending reports by default; `status` takes `accepted`, `rejected` or `all`. At most 50 a page, with `hasMore`.   |
+| `feedback_get`            | One report by `id` or `shortId`: its text, tags, `context`, attachments, linked quests and the last 50 comments. |
+| `feedback_attachment_get` | One attachment's content. Images come back inline, text decoded, and other types as a note.                      |
+| `feedback_comment_add`    | Comment on the thread, marked as written by an agent. Needs Support on.                                          |
+| `feedback_accept`         | Move a pending report to accepted. Refused on a report already triaged.                                          |
+| `feedback_reject`         | Move a report to rejected. Unlike `feedback_accept`, it does not check the current status.                       |
 
 The two triage tools need `feedback:triage` and Support on. Accepting creates no
 quest: file one with `quest_create` and `feedback_shortId`. Deleting a report has

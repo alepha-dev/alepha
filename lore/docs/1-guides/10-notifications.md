@@ -6,17 +6,17 @@ clear the inbox, and which messages you can turn off.
 
 ## What reaches the inbox
 
-| Message                     | Sent to                                                       | Inbox | Email |
-| --------------------------- | ------------------------------------------------------------- | ----- | ----- |
-| A mention                   | A member named with `@name` in a quest or feedback comment    | Yes   | Yes   |
-| A release published         | Every member of the project                                   | Yes   | Yes   |
-| A report accepted, rejected | The person who [filed it](/lore/docs/guides-feedback)         | Yes   | Yes   |
-| A report answered           | The person who filed it                                       | Yes   | Yes   |
-| An automation's message     | The rule's recipient, on the channel the rule names           | Yes   | Yes   |
-| A quest reminder            | Whoever accepted the quest                                    | No    | Yes   |
-| A project invitation        | The person invited                                            | No    | Yes   |
-| A healthcheck alert         | The [monitor's recipients](/lore/docs/guides-healthchecks)    | No    | Yes   |
-| A Cloudflare token failing  | The estate's owner                                            | No    | Yes   |
+| Message                     | Sent to                                                    | Inbox | Email |
+| --------------------------- | ---------------------------------------------------------- | ----- | ----- |
+| A mention                   | A member named with `@name` in a quest or feedback comment | Yes   | Yes   |
+| A release published         | Every member of the project                                | Yes   | Yes   |
+| A report accepted, rejected | The person who [filed it](/lore/docs/guides-feedback)      | Yes   | Yes   |
+| A report answered           | The person who filed it                                    | Yes   | Yes   |
+| An automation's message     | The rule's recipient, on the channel the rule names        | Yes   | Yes   |
+| A quest reminder            | Whoever accepted the quest                                 | No    | Yes   |
+| A project invitation        | The person invited                                         | No    | Yes   |
+| A healthcheck alert         | The [monitor's recipients](/lore/docs/guides-healthchecks) | No    | Yes   |
+| A Cloudflare token failing  | The estate's owner                                         | No    | Yes   |
 
 Lore's own messages skip your own actions: a report you triage yourself sends you
 nothing. An automation has no such rule, so it can tell you about something you
@@ -60,15 +60,15 @@ every project.
 - **Kinds of message** are switches that apply to both channels at once. Sign-in
   codes and password resets are not listed, and stay on whatever you mute here.
 
-| Kind               | What it covers                                                        |
-| ------------------ | --------------------------------------------------------------------- |
-| Automations        | Messages from project automation rules.                               |
-| Deploy credentials | A deploy credential you own has stopped working.                      |
-| Your reports       | A project accepts, rejects or answers a report you submitted.         |
-| Healthchecks       | Confirmed outages and recoveries from your monitors.                  |
-| Mentions           | Somebody writes your name in a quest or feedback comment.             |
-| Releases           | A project you belong to publishes a release.                          |
-| Quest reminders    | Nudges about a quest you accepted, and project invitations.           |
+| Kind               | What it covers                                                |
+| ------------------ | ------------------------------------------------------------- |
+| Automations        | Messages from project automation rules.                       |
+| Deploy credentials | A deploy credential you own has stopped working.              |
+| Your reports       | A project accepts, rejects or answers a report you submitted. |
+| Healthchecks       | Confirmed outages and recoveries from your monitors.          |
+| Mentions           | Somebody writes your name in a quest or feedback comment.     |
+| Releases           | A project you belong to publishes a release.                  |
+| Quest reminders    | Nudges about a quest you accepted, and project invitations.   |
 
 Only a signed-in session can change them: an API key or a connected app cannot.
 
