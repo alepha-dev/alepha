@@ -11,6 +11,10 @@ import {
   NoShippingRateError,
   ResourceUnavailableError,
 } from "../../errors/CommerceError.ts";
+import {
+  type OrderDownload,
+  OrderDownloadsProvider,
+} from "../../providers/OrderDownloadsProvider.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import type { AddressInput } from "../entities/addresses.ts";
 import {
@@ -60,6 +64,7 @@ export class CheckoutService {
   protected readonly addresses = $inject(AddressService);
   protected readonly shipping = $inject(ShippingQuoteProvider);
   protected readonly documents = $inject(OrderDocumentsProvider);
+  protected readonly downloads = $inject(OrderDownloadsProvider);
 
   /**
    * Open a checkout for a cart, reusing an already-open one for the same cart.
@@ -538,6 +543,7 @@ export class CheckoutService {
     order: Awaited<ReturnType<OrderService["getById"]>>;
     items: Awaited<ReturnType<OrderService["itemsOf"]>>;
     factures: string[];
+    downloads: OrderDownload[];
   }> {
     const session = await this.repo.getById(sessionId);
     if (!session.orderId) {
@@ -550,6 +556,7 @@ export class CheckoutService {
       order,
       items: await this.orders.itemsOf(order.id),
       factures: await this.documents.documentsFor(order.id),
+      downloads: await this.downloads.linksFor(order.id),
     };
   }
 

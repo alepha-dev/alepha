@@ -247,7 +247,7 @@ describe("stock reservation", () => {
       name: "Guide d'entretien",
       price: 500,
       published: true,
-      config: { downloadUrl: "https://example.invalid/guide.pdf" },
+      config: { fileId: randomUUID() },
     });
 
     const { session } = await reachPayment(ctx, download.id, 1);

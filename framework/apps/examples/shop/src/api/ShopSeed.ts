@@ -39,6 +39,11 @@ interface Piece {
   stock: number;
   config?: Record<string, any>;
   /**
+   * The file a digital piece delivers: stored at seed time, since its id is
+   * what goes in the config.
+   */
+  download?: { name: string; text: string };
+  /**
    * The choices a buyer makes, and one entry per combination. `stock` is then
    * not used: a product sold by variant holds its stock on them.
    */
@@ -220,7 +225,10 @@ export class ShopSeed {
         dimensions: "Envoi immédiat",
         drawing: this.drawings.giftCard(ShopDrawings.OR_JAUNE),
         stock: 0,
-        config: { downloadUrl: "https://atelier-aurore.test/cadeau/50" },
+        download: {
+          name: "carte-cadeau.txt",
+          text: "Carte cadeau de cinquante euros, valable deux ans.",
+        },
       },
     ];
   }
@@ -243,7 +251,14 @@ export class ShopSeed {
         images: [fileId],
         // The kind's payload. Anything not declared by its handler's schema is
         // stripped on write, which is why the spec plate lives in `attributes`.
-        config: piece.config,
+        config: piece.download
+          ? {
+              fileId: await this.media.storeDownload(
+                piece.download.name,
+                piece.download.text,
+              ),
+            }
+          : piece.config,
         optionGroups: piece.optionGroups,
         attributes: {
           titre: piece.titre,

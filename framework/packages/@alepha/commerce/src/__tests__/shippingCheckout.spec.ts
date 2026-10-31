@@ -367,7 +367,7 @@ describe("shipping in the checkout", () => {
       name: "Guide d'entretien",
       price: 500,
       published: true,
-      config: { downloadUrl: "https://example.invalid/guide.pdf" },
+      config: { fileId: randomUUID() },
     });
 
     const cart = await carts.resolve(carts.newToken());

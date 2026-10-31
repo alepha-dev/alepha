@@ -1,5 +1,6 @@
 import type { OrderItemEntity } from "../../entities/orderItems.ts";
 import type { OrderEntity } from "../../entities/orders.ts";
+import type { OrderDownload } from "../../providers/OrderDownloadsProvider.ts";
 
 /**
  * A rendered email, ready to send.
@@ -22,9 +23,14 @@ export interface RenderedMail {
  * ```
  */
 export abstract class OrderMailRenderer {
+  /**
+   * @param downloads what the buyer can collect now, for an order with digital
+   *   lines.
+   */
   abstract confirmation(
     order: OrderEntity,
     items: OrderItemEntity[],
+    downloads?: OrderDownload[],
   ): Promise<RenderedMail>;
 
   abstract shipped(order: OrderEntity): Promise<RenderedMail>;
@@ -41,6 +47,7 @@ export class DefaultOrderMailRenderer extends OrderMailRenderer {
   public async confirmation(
     order: OrderEntity,
     items: OrderItemEntity[],
+    downloads: OrderDownload[] = [],
   ): Promise<RenderedMail> {
     const lines = items
       .map(
@@ -69,6 +76,16 @@ ${
     : ""
 }
 <p><strong>Total réglé : ${this.money(order.total, order.currency)}</strong></p>
+${
+  downloads.length > 0
+    ? `<p>Vos téléchargements :</p><ul>${downloads
+        .map(
+          (it) =>
+            `<li><a href="${this.escape(it.url)}">${this.escape(it.name)}</a></li>`,
+        )
+        .join("")}</ul>`
+    : ""
+}
 <p>Vous recevrez un second message dès que votre colis partira.</p>
 <hr>
 <p style="font-size:12px;color:#555">

@@ -36,6 +36,7 @@
     "./checkout": "./src/checkout/index.ts",
     "./shipping": "./src/shipping/index.ts",
     "./promotions": "./src/promotions/index.ts",
+    "./downloads": "./src/downloads/index.ts",
     "./invoicing": "./src/invoicing/index.ts",
     "./notifications": "./src/notifications/index.ts",
     "./settlement": "./src/settlement/index.ts",

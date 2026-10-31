@@ -9,18 +9,19 @@ import { ProductKindHandler } from "../interfaces/ProductKindHandler.ts";
  */
 export const digitalConfigSchema = z.object({
   /**
-   * Where the buyer collects the goods.
+   * The file a buyer collects, in `alepha/api/files`. An id and not a URL: a
+   * URL in a config is one leak away from being free, and cannot be taken back
+   * from anybody who has seen it.
    */
-  downloadUrl: z.text({ minLength: 1 }),
+  fileId: z.uuid(),
 });
 
 /**
  * Something dematerialised — a file, a licence key, a link.
  *
- * Fulfilment touches no stock. Delivery itself is left to the consumer: this
- * handler only records that the line is ready to collect, because *how* the
- * link reaches the buyer (order email, account page, both) is an application
- * decision and not a property of the product.
+ * Fulfilment touches no stock. Delivery is `@alepha/commerce/downloads`: a link
+ * per paid line, in the confirmation email. Without that module this handler
+ * only records that the line is ready to collect, and the application delivers.
  */
 export class DigitalKindHandler extends ProductKindHandler {
   public readonly kind = "digital";

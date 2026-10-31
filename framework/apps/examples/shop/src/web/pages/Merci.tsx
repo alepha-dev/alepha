@@ -17,6 +17,10 @@ export interface MerciProps {
    */
   factures: string[];
   /**
+   * What the buyer can collect now. Empty for anybody but the buyer.
+   */
+  downloads: Array<{ name: string; url: string }>;
+  /**
    * The checkout session this page is showing - its own `:sessionId`.
    *
    * Passed down rather than read off the order: `orders` has no link back to
@@ -93,7 +97,7 @@ const Merci = (props: MerciProps) => {
     [props.sessionId],
   );
 
-  const { order, items, factures } = current;
+  const { order, items, factures, downloads } = current;
   const attente = order.status === "pending";
 
   return (
@@ -183,6 +187,21 @@ const Merci = (props: MerciProps) => {
           </dd>
         </div>
       </dl>
+
+      {downloads.length > 0 ? (
+        <ul className="mt-10 space-y-2">
+          {downloads.map((download) => (
+            <li key={download.url}>
+              <a
+                href={download.url}
+                className="estampe text-xs underline transition-colors"
+              >
+                {tr("thanks.download", { args: [download.name] })}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {factures.length > 0 ? (
         <div className="mt-10 flex flex-wrap gap-3">

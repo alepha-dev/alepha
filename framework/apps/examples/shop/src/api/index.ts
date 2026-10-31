@@ -1,5 +1,6 @@
 import { ProductKindRegistry } from "@alepha/commerce";
 import { AlephaCommerceAdmin } from "@alepha/commerce/admin";
+import { AlephaCommerceDownloads } from "@alepha/commerce/downloads";
 import { AlephaCommerceInvoicing } from "@alepha/commerce/invoicing";
 import { AlephaCommerceNotifications } from "@alepha/commerce/notifications";
 import { AlephaCommercePromotions } from "@alepha/commerce/promotions";
@@ -43,6 +44,7 @@ export const ShopApi = $module({
     // Shipping, invoicing and notifications each pull the checkout in themselves.
     AlephaCommerceShipping,
     AlephaCommercePromotions,
+    AlephaCommerceDownloads,
     AlephaCommerceInvoicing,
     AlephaCommerceNotifications,
     // The durable paid-path: invoice + confirmation as one keyed $job.

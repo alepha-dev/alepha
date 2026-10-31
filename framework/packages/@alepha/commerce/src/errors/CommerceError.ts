@@ -182,6 +182,25 @@ export const InvalidReturnError = CommerceError.extend({
 export type InvalidReturnError = InstanceType<typeof InvalidReturnError>;
 
 /**
+ * A download link that no longer opens.
+ */
+export const DownloadUnavailableError = CommerceError.extend({
+  name: "DOWNLOAD_UNAVAILABLE",
+  default: { status: 410 },
+  schema: z.object({ reason: z.enum(["expired", "spent", "refunded"]) }),
+  message: (data) =>
+    ({
+      expired: "This download link has expired.",
+      spent: "This download link has been used too many times.",
+      refunded: "This order was refunded: its download is closed.",
+    })[data.reason],
+});
+
+export type DownloadUnavailableError = InstanceType<
+  typeof DownloadUnavailableError
+>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

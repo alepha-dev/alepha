@@ -312,7 +312,7 @@ export class CatalogService {
    *
    * Not simply the first registered kind: kinds are ordered arbitrarily, and
    * the first one may declare a config schema with required fields. Core's
-   * `digital` requires a `downloadUrl`, so "first registered" made
+   * `digital` requires a `fileId`, so "first registered" made
    * {@link createDraft} fail outright on any application that registers it —
    * the button did nothing and answered 400.
    *

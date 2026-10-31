@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { checkoutSessions } from "../../checkout/entities/checkoutSessions.ts";
+import { OrderDownloadsProvider } from "../../providers/OrderDownloadsProvider.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import { OrderMailRenderer } from "../providers/OrderMailRenderer.ts";
 
@@ -29,6 +30,7 @@ export class OrderMailer {
   protected readonly orders = $inject(OrderService);
   protected readonly renderer = $inject(OrderMailRenderer);
   protected readonly sessions = $repository(checkoutSessions);
+  protected readonly downloads = $inject(OrderDownloadsProvider);
 
   protected readonly confirmation = $email({ name: "commerce-order-paid" });
   protected readonly shipped = $email({ name: "commerce-order-shipped" });
@@ -46,7 +48,11 @@ export class OrderMailer {
     }
     const order = await this.orders.getById(orderId);
     const items = await this.orders.itemsOf(orderId);
-    const mail = await this.renderer.confirmation(order, items);
+    const mail = await this.renderer.confirmation(
+      order,
+      items,
+      await this.downloads.linksFor(orderId),
+    );
     await this.confirmation.send({ to, ...mail });
     return true;
   }

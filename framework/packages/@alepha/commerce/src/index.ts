@@ -6,6 +6,7 @@ import { ProductController } from "./controllers/ProductController.ts";
 import { DigitalKindHandler } from "./kinds/DigitalKindHandler.ts";
 import { GoodKindHandler } from "./kinds/GoodKindHandler.ts";
 import { orderConfig } from "./orderConfigAtom.ts";
+import { OrderDownloadsProvider } from "./providers/OrderDownloadsProvider.ts";
 import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
 import { CategoryService } from "./services/CategoryService.ts";
@@ -45,6 +46,7 @@ export * from "./kinds/DigitalKindHandler.ts";
 export * from "./kinds/GoodKindHandler.ts";
 export * from "./kinds/ResourceKindHandler.ts";
 export * from "./orderConfigAtom.ts";
+export * from "./providers/OrderDownloadsProvider.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
 export * from "./services/CategoryService.ts";
@@ -174,6 +176,7 @@ export const AlephaCommerce = $module({
   atoms: [orderConfig],
   services: [
     ProductKindRegistry,
+    OrderDownloadsProvider,
     CategoryService,
     CatalogService,
     LineConfigService,

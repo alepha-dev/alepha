@@ -180,6 +180,13 @@ export class CheckoutController {
         order: publicOrderSchema,
         items: z.array(publicOrderItemSchema),
         factures: z.array(z.text()),
+        downloads: z.array(
+          z.object({
+            name: z.text(),
+            url: z.text({ maxLength: 500 }),
+            expiresAt: z.text(),
+          }),
+        ),
       }),
     },
     handler: async ({ params }) => {
@@ -194,6 +201,7 @@ export class CheckoutController {
             ? confirmation.order.shippingAddress
             : undefined,
         },
+        downloads: owned ? confirmation.downloads : [],
       } as any;
     },
   });

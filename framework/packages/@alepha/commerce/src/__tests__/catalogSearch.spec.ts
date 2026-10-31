@@ -157,7 +157,7 @@ describe("the public catalogue", () => {
           categoryId,
           stock: 0,
           kind: "digital",
-          config: { downloadUrl: "https://cdn.example/file" },
+          config: { fileId: randomUUID() },
         });
 
         expect(
