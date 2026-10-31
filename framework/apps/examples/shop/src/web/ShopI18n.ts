@@ -159,6 +159,8 @@ export class ShopI18n {
         "field.postalCode": "Code postal",
         "field.locality": "Ville",
         "field.country": "Pays",
+        "field.recoveryConsent":
+          "Me rappeler ce panier par courriel si je ne termine pas ma commande",
 
         // Confirmation
         "thanks.pending": "Paiement en cours",
@@ -327,6 +329,8 @@ export class ShopI18n {
         "field.postalCode": "Postcode",
         "field.locality": "Town",
         "field.country": "Country",
+        "field.recoveryConsent":
+          "Remind me of this basket by email if I do not finish my order",
 
         "thanks.pending": "Payment in progress",
         "thanks.title": "Thank you",

@@ -9,9 +9,14 @@ import type { RenderedMail } from "../../notifications/providers/OrderMailRender
  * want its own voice.
  */
 export abstract class CartRecoveryMailRenderer {
+  /**
+   * @param unsubscribeUrl where the buyer leaves. A renderer MUST put it in the
+   *   message: the headers carry it too, but not every mail client shows them.
+   */
   abstract reminder(
     stage: 1 | 2,
     lines: PricedCartLine[],
+    unsubscribeUrl: string,
   ): Promise<RenderedMail>;
 }
 
@@ -23,6 +28,7 @@ export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
   public async reminder(
     stage: 1 | 2,
     lines: PricedCartLine[],
+    unsubscribeUrl: string,
   ): Promise<RenderedMail> {
     const items = lines
       .map(
@@ -30,17 +36,18 @@ export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
           `- ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} × ${l.quantity}`,
       )
       .join("\n");
+    const footer = `\n\nPour ne plus recevoir ces rappels : ${unsubscribeUrl}`;
 
     if (stage === 1) {
       return {
         subject: "Votre panier vous attend",
-        body: `Vous avez laissé ces articles dans votre panier :\n\n${items}\n\nIls sont toujours disponibles — finalisez votre commande quand vous voulez.`,
+        body: `Vous avez laissé ces articles dans votre panier :\n\n${items}\n\nIls sont toujours disponibles — finalisez votre commande quand vous voulez.${footer}`,
       };
     }
 
     return {
       subject: "Dernier rappel — votre panier expire bientôt",
-      body: `Votre panier contient encore :\n\n${items}\n\nIl expirera prochainement. C'est le moment de finaliser votre commande.`,
+      body: `Votre panier contient encore :\n\n${items}\n\nIl expirera prochainement. C'est le moment de finaliser votre commande.${footer}`,
     };
   }
 }

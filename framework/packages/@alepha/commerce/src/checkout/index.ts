@@ -48,6 +48,11 @@ declare module "alepha" {
       sessionId: string;
       cartId: string;
       email: string;
+      /**
+       * Whether the buyer agreed to reminders. Capturing an address for the
+       * order is not that.
+       */
+      recoveryConsent: boolean;
     };
 
     /**

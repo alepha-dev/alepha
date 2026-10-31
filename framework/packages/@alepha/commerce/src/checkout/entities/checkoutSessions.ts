@@ -51,6 +51,18 @@ export const checkoutSessions = $entity({
     email: z.text({ maxLength: 320 }).optional(),
 
     /**
+     * When the buyer agreed to be reminded about this cart. A reminder to
+     * somebody who has not bought is commercial prospecting, and needs this on
+     * the record.
+     */
+    recoveryConsentAt: z.text().optional(),
+
+    /**
+     * What a reminder's unsubscribe link carries. Set with the consent.
+     */
+    recoveryToken: z.text({ maxLength: 64 }).optional(),
+
+    /**
      * Opaque while in flux — the shape is region-specific.
      */
     shippingAddress: z.json().optional(),

@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
@@ -55,6 +56,7 @@ export class CheckoutService {
   protected readonly alepha = $inject(Alepha);
   protected readonly db = $inject(DatabaseProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly repo = $repository(checkoutSessions);
   protected readonly carts = $inject(CartService);
   protected readonly discounts = $inject(CartDiscountProvider);
@@ -74,7 +76,11 @@ export class CheckoutService {
    */
   public async start(
     cartId: string,
-    options: { userId?: string; email?: string } = {},
+    options: {
+      userId?: string;
+      email?: string;
+      recoveryConsent?: boolean;
+    } = {},
   ): Promise<CheckoutSessionEntity> {
     const existing = await this.repo.findOne({
       where: { cartId: { eq: cartId }, status: { eq: "open" } },
@@ -91,11 +97,12 @@ export class CheckoutService {
       userId: options.userId,
       email: options.email,
       status: "open",
+      ...(options.recoveryConsent ? this.consent() : {}),
       ...totals,
     });
 
     if (session.email) {
-      await this.emitEmailCaptured(session.id, cartId, session.email);
+      await this.emitEmailCaptured(session);
     }
 
     return session;
@@ -103,17 +110,37 @@ export class CheckoutService {
 
   /**
    * Record the buyer's email. Kept separate from the address so a shop can ask
-   * for it first and use it for abandoned-cart follow-up.
+   * for it first.
+   *
+   * `recoveryConsent` is the buyer's own answer to being reminded about this
+   * cart, recorded with its date. Omitted, whatever they said before stands, so
+   * correcting a typo neither gives nor withdraws it.
    */
   public async setEmail(
     sessionId: string,
     email: string,
+    options: { recoveryConsent?: boolean } = {},
   ): Promise<CheckoutSessionEntity> {
     const session = await this.repo.getById(sessionId);
     this.assertOpen(session);
-    const updated = await this.repo.updateById(sessionId, { email });
-    await this.emitEmailCaptured(updated.id, updated.cartId, email);
+    const updated = await this.repo.updateById(sessionId, {
+      email,
+      ...(options.recoveryConsent ? this.consent(session) : {}),
+      ...(options.recoveryConsent === false ? { recoveryConsentAt: null } : {}),
+    });
+    await this.emitEmailCaptured(updated);
     return updated;
+  }
+
+  /**
+   * What a buyer's yes writes on the session. A token that already exists is
+   * kept: a reminder may be out carrying it.
+   */
+  protected consent(session?: CheckoutSessionEntity) {
+    return {
+      recoveryConsentAt: this.dateTime.nowISOString(),
+      recoveryToken: session?.recoveryToken ?? this.crypto.randomText(32),
+    };
   }
 
   /**
@@ -123,14 +150,17 @@ export class CheckoutService {
    * read committed rows.
    */
   protected async emitEmailCaptured(
-    sessionId: string,
-    cartId: string,
-    email: string,
+    session: CheckoutSessionEntity,
   ): Promise<void> {
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
         "commerce:checkout:emailCaptured",
-        { sessionId, cartId, email },
+        {
+          sessionId: session.id,
+          cartId: session.cartId,
+          email: session.email!,
+          recoveryConsent: Boolean(session.recoveryConsentAt),
+        },
         { catch: true },
       ),
     );

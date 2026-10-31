@@ -67,7 +67,10 @@ export class CheckoutController {
     group: this.group,
     description: "Open a checkout for the current cart",
     schema: {
-      body: z.object({ email: z.email().optional() }),
+      body: z.object({
+        email: z.email().optional(),
+        recoveryConsent: z.boolean().optional(),
+      }),
       response: sessionSchema,
     },
     handler: async ({ body }) => {
@@ -78,6 +81,7 @@ export class CheckoutController {
       return this.checkout.start(cart.id, {
         userId: cart.userId,
         email: body.email,
+        recoveryConsent: body.recoveryConsent,
       });
     },
   });
@@ -89,12 +93,21 @@ export class CheckoutController {
     description: "Record the buyer's email",
     schema: {
       params: z.object({ id: z.uuid() }),
-      body: z.object({ email: z.email() }),
+      body: z.object({
+        email: z.email(),
+        /**
+         * The buyer's answer to being reminded about this cart. Never
+         * pre-ticked: an unticked box is the only consent that means anything.
+         */
+        recoveryConsent: z.boolean().optional(),
+      }),
       response: sessionSchema,
     },
     handler: async ({ params, body }) => {
       await this.assertOwned(params.id);
-      return this.checkout.setEmail(params.id, body.email);
+      return this.checkout.setEmail(params.id, body.email, {
+        recoveryConsent: body.recoveryConsent,
+      });
     },
   });
 

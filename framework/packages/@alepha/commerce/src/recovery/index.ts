@@ -4,6 +4,7 @@ import { AlephaEmail } from "alepha/email";
 
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import { cartRecoveryConfig } from "./cartRecoveryConfigAtom.ts";
+import { CartRecoveryController } from "./controllers/CartRecoveryController.ts";
 import {
   CartRecoveryMailRenderer,
   DefaultCartRecoveryMailRenderer,
@@ -13,6 +14,8 @@ import { CartRecoveryListener } from "./services/CartRecoveryListener.ts";
 import { CartRecoveryService } from "./services/CartRecoveryService.ts";
 
 export * from "./cartRecoveryConfigAtom.ts";
+export * from "./controllers/CartRecoveryController.ts";
+export * from "./entities/recoveryOptOuts.ts";
 export * from "./providers/CartRecoveryMailRenderer.ts";
 export * from "./services/CartRecoveryJobs.ts";
 export * from "./services/CartRecoveryListener.ts";
@@ -22,8 +25,11 @@ export * from "./services/CartRecoveryService.ts";
  * Abandoned-cart follow-up: two reminder emails and an abandoned mark, as
  * one durable job per cart.
  *
- * Starts when a checkout captures an email (`commerce:checkout:emailCaptured`),
- * waits out its delays on the job's own execution row (restarts lose
+ * Starts when a checkout captures an email AND the buyer agreed to be reminded
+ * (`commerce:checkout:emailCaptured`, `recoveryConsent`): in the EU a reminder to
+ * somebody who has not bought is prospecting, and needs a lawful basis and an
+ * easy way out. Every reminder carries a one-click unsubscribe, and the opt-out
+ * list outlives the cart. It waits out its delays on the job's own execution row (restarts lose
  * nothing) and stands down the moment the checkout converts. Timings come
  * from `cartRecoveryConfig`; the wording from `CartRecoveryMailRenderer`,
  * substitutable like the order mails:
@@ -43,6 +49,7 @@ export const AlephaCommerceRecovery = $module({
     CartRecoveryJobs,
     CartRecoveryListener,
     CartRecoveryMailRenderer,
+    CartRecoveryController,
   ],
   variants: [DefaultCartRecoveryMailRenderer],
   register: (alepha) => {
