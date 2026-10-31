@@ -310,6 +310,54 @@ describe("shipping in the checkout", () => {
     ).rejects.toThrow(/no delivery address yet/);
   });
 
+  it("refuses an address in a country no zone covers", async ({ expect }) => {
+    const { catalog, carts, checkout, shipping, stock } = await withShipping();
+    await seedZones(shipping);
+    const ring = await aRing(catalog);
+    await stock.recordIntake(ring.id, 3);
+    const cart = await carts.resolve(carts.newToken());
+    await carts.add(cart.id, ring.id, 1);
+    const session = await checkout.start(cart.id);
+
+    // A real EU country, valid for the address rules, that nobody ships to.
+    await expect(
+      checkout.setAddress(session.id, {
+        ...address,
+        postalCode: "00-001",
+        country: "PL",
+      }),
+    ).rejects.toThrow(/No shipping rate is configured for 'PL'/);
+
+    expect(
+      (await checkout.getById(session.id)).shippingAddress,
+    ).toBeUndefined();
+  });
+
+  it("refuses to pay for a country a zone stopped covering", async ({
+    expect,
+  }) => {
+    const { catalog, carts, checkout, shipping, stock, orders } =
+      await withShipping();
+    const { france } = await seedZones(shipping);
+    const ring = await aRing(catalog);
+    await stock.recordIntake(ring.id, 3);
+    const cart = await carts.resolve(carts.newToken());
+    await carts.add(cart.id, ring.id, 1);
+    const session = await checkout.start(cart.id);
+    await checkout.setAddress(session.id, address);
+
+    // The merchant withdraws every French rate between the address and pay().
+    for (const rate of await shipping.listRates(france.id)) {
+      await shipping.deactivateRate(rate.id);
+    }
+
+    await expect(
+      checkout.pay(session.id, { returnUrl: "https://bijoux.example/merci" }),
+    ).rejects.toThrow(/No shipping rate is configured for 'FR'/);
+
+    expect((await orders.list()).content).toHaveLength(0);
+  });
+
   it("works with no shipping module at all", async ({ expect }) => {
     const { catalog, carts, checkout } = await withoutShipping();
 

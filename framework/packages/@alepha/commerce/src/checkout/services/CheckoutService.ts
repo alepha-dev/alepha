@@ -7,6 +7,7 @@ import { CartService } from "../../cart/services/CartService.ts";
 import {
   CommerceError,
   InsufficientStockError,
+  NoShippingRateError,
   ResourceUnavailableError,
 } from "../../errors/CommerceError.ts";
 import { OrderService } from "../../services/OrderService.ts";
@@ -136,6 +137,8 @@ export class CheckoutService {
    * how a parcel gets charged at the wrong rate.
    *
    * @throws InvalidAddressError
+   * @throws NoShippingRateError when the shop delivers and nothing covers the
+   *   country
    */
   public async setAddress(
     sessionId: string,
@@ -246,12 +249,16 @@ export class CheckoutService {
         );
       }
       if (!session.shippingMethod) {
+        // Nothing offered is not "nothing to charge": a country no zone covers
+        // used to carry on with no quote, and a France-only shop took an order
+        // to Germany with free delivery.
         const offered = await this.shipping.quote(country, priced.subtotal);
-        if (offered.length > 0) {
-          throw new CommerceError(
-            `Checkout ${sessionId} has no delivery option chosen for ${country}. Call setShippingMethod() before paying.`,
-          );
+        if (offered.length === 0) {
+          throw new NoShippingRateError({ country });
         }
+        throw new CommerceError(
+          `Checkout ${sessionId} has no delivery option chosen for ${country}. Call setShippingMethod() before paying.`,
+        );
       }
     }
 
@@ -613,7 +620,8 @@ export class CheckoutService {
    *
    * Cheapest rather than none: the figure shown before the buyer has picked a
    * method should be the one they will most likely pay, not an optimistic zero
-   * that jumps when they choose.
+   * that jumps when they choose. A shop that delivers and has no option for
+   * the destination refuses here, at the address, rather than at the card.
    */
   protected async computeTotals(
     cartId: string,
@@ -624,6 +632,9 @@ export class CheckoutService {
       return this.totalsOf(priced);
     }
     const quotes = await this.shipping.quote(country, priced.subtotal);
+    if (this.shipping.delivers && quotes.length === 0) {
+      throw new NoShippingRateError({ country });
+    }
     return this.totalsOf(priced, quotes[0]);
   }
 
