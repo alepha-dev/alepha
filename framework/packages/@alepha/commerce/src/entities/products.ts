@@ -104,6 +104,14 @@ export const products = $entity({
     attributes: z.json().optional(),
 
     /**
+     * Whether the ledger counts this product. Asked of the kind's handler on
+     * every write, and a real column for the reason the note above gives: "in
+     * stock only" has to be answered in SQL, and a download or a made-to-order
+     * piece has no ledger to answer with.
+     */
+    tracksStock: db.default(z.boolean(), true),
+
+    /**
      * Draft rows are invisible to the public catalog.
      */
     published: db.default(z.boolean(), false),
@@ -112,6 +120,7 @@ export const products = $entity({
     { columns: ["slug"], unique: true },
     { columns: ["kind"] },
     { columns: ["published"] },
+    { columns: ["categoryId"] },
   ],
 });
 

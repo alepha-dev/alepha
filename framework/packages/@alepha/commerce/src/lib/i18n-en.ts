@@ -30,6 +30,19 @@
  * copied across verbatim.
  */
 export const commerceEn: Record<string, string> = {
+  "commerce.admin.categories.delete": "Delete",
+  "commerce.admin.categories.deleteConfirm":
+    "Permanently delete “$1”? A category that still holds products cannot be deleted.",
+  "commerce.admin.categories.deleteTitle": "Delete this category",
+  "commerce.admin.categories.empty": "No category yet.",
+  "commerce.admin.categories.fDescription": "Description",
+  "commerce.admin.categories.fName": "Name",
+  "commerce.admin.categories.fParent": "Under",
+  "commerce.admin.categories.fPosition": "Position",
+  "commerce.admin.categories.fPublished": "Visible in the shop",
+  "commerce.admin.categories.fSlug": "Reference",
+  "commerce.admin.categories.new": "New category",
+  "commerce.admin.fCategory": "Category",
   "commerce.admin.discountLine": "Discount",
   "commerce.admin.promotions.automatic": "Automatic",
   "commerce.admin.promotions.colName": "Promotion",

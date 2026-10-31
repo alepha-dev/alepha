@@ -1,11 +1,19 @@
 import { $inject, AlephaError, SchemaValidator } from "alepha";
-import { $repository, type Page } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  type Page,
+  type SQL,
+  sql,
+} from "alepha/orm";
 
 import { orderItems } from "../entities/orderItems.ts";
 import { type ProductEntity, products } from "../entities/products.ts";
 import { ProductHasOrdersError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import type { OptionGroup } from "../schemas/optionGroupSchema.ts";
+import { CategoryService } from "./CategoryService.ts";
+import { StockService } from "./StockService.ts";
 
 export interface CreateProduct {
   kind?: string;
@@ -41,14 +49,25 @@ export interface CatalogQuery {
   sort?: string;
   kind?: string;
   /**
-   * Narrow to one category.
-   *
-   * `products.categoryId` was writable through {@link CreateProduct} and read
-   * by nothing, so a shop could file its catalogue and then not browse it.
-   * Categories are a plain id here on purpose - there is no category entity,
-   * and the application owns whatever it points at.
+   * Narrow to one category and everything under it.
    */
   categoryId?: string;
+}
+
+/**
+ * What a buyer can ask of the public list, on top of {@link CatalogQuery}.
+ */
+export interface PublicCatalogQuery extends CatalogQuery {
+  /**
+   * Words looked for in the name and the description.
+   */
+  q?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  /**
+   * Only what can be bought now: stock left, or a product no ledger counts.
+   */
+  available?: boolean;
 }
 
 /**
@@ -68,13 +87,18 @@ export class CatalogService {
   protected readonly orderItemRepo = $repository(orderItems);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly validator = $inject(SchemaValidator);
+  protected readonly db = $inject(DatabaseProvider);
+  protected readonly categories = $inject(CategoryService);
+  protected readonly stock = $inject(StockService);
 
   public async create(data: CreateProduct): Promise<ProductEntity> {
     const kind = data.kind ?? "good";
+    const config = this.validateConfig(kind, data.config);
     return this.repo.create({
       ...data,
       kind,
-      config: this.validateConfig(kind, data.config),
+      config,
+      tracksStock: this.kinds.get(kind).tracksStock(config),
     });
   }
 
@@ -95,13 +119,18 @@ export class CatalogService {
       ...data,
       kind,
       ...(config !== undefined ? { config } : {}),
+      tracksStock: this.kinds
+        .get(kind)
+        .tracksStock((config ?? current.config) as Record<string, any>),
     });
   }
 
   /**
    * Public catalog listing — published rows only.
    */
-  public async list(query: CatalogQuery = {}): Promise<Page<ProductEntity>> {
+  public async list(
+    query: PublicCatalogQuery = {},
+  ): Promise<Page<ProductEntity>> {
     const where = this.repo.createQueryWhere();
     where.published = { eq: true };
     // Omit the key entirely when absent: a `where` value of `undefined` throws.
@@ -109,9 +138,69 @@ export class CatalogService {
       where.kind = { eq: query.kind };
     }
     if (query.categoryId) {
-      where.categoryId = { eq: query.categoryId };
+      where.categoryId = {
+        inArray: await this.categories.subtreeOf(query.categoryId),
+      };
     }
-    return this.repo.paginate({ sort: "name", ...query }, { where });
+    if (query.minPrice !== undefined || query.maxPrice !== undefined) {
+      where.price = {
+        ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
+        ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}),
+      };
+    }
+
+    const and = [
+      ...(query.available
+        ? [
+            {
+              or: [
+                { tracksStock: { eq: false } },
+                { id: { inArray: this.stock.availableProducts() } },
+              ],
+            },
+          ]
+        : []),
+      ...(query.q?.trim() ? [{ or: this.textSearch(query.q.trim()) }] : []),
+    ];
+    if (and.length > 0) {
+      where.and = and;
+    }
+
+    // The id as a tie-break, in the same direction: uuids here increase with
+    // time, and without one two rows at the same price swap places between
+    // two pages.
+    const sort = query.sort ?? "name";
+    return this.repo.paginate(
+      {
+        size: query.size,
+        page: query.page,
+        sort: `${sort},${sort.startsWith("-") ? "-id" : "id"}`,
+      },
+      { where },
+    );
+  }
+
+  /**
+   * Words in the name or the description.
+   *
+   * Full text on Postgres, for the word order and the several words a search
+   * box gets, with the `simple` configuration: a catalogue is not in one
+   * language and no stemmer is right for all of it. A substring as well, so a
+   * buyer still typing "gren" finds "grenat", and the only thing a SQLite or D1
+   * has: `contains` escapes what the buyer typed.
+   */
+  protected textSearch(q: string): Array<SQL | Record<string, any>> {
+    const { name, description } = this.repo.table;
+    return [
+      { name: { contains: q } },
+      { description: { contains: q } },
+      ...(this.db.dialect === "postgresql"
+        ? [
+            sql`to_tsvector('simple', ${name} || ' ' || coalesce(${description}, ''))
+              @@ websearch_to_tsquery('simple', ${q})`,
+          ]
+        : []),
+    ];
   }
 
   /**

@@ -179,6 +179,22 @@ test.describe("catalogue management", () => {
     await expect(page.getByText("Vingt euros")).toBeVisible();
   });
 
+  test("a category created in the admin is offered on the product", async ({
+    page,
+  }) => {
+    await page.goto("/admin/categories");
+    await page.getByRole("button", { name: "Nouvelle catégorie" }).click();
+    await page.locator('input[name="name"]').fill("Bagues");
+    await page.locator('input[name="slug"]').fill("bagues");
+    await page.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(page.getByText("bagues", { exact: true })).toBeVisible();
+
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Bague Nadir" }).click();
+    await page.getByRole("combobox", { name: "Catégorie" }).click();
+    await expect(page.getByRole("option", { name: "Bagues" })).toBeVisible();
+  });
+
   test("a price edited in the admin shows on the storefront", async ({
     page,
   }) => {
@@ -516,6 +532,7 @@ test.describe("the admin sidebar", () => {
       "/admin/commandes Commandes",
       "/admin/livraison Livraison",
       "/admin/promotions Promotions",
+      "/admin/categories Catégories",
       "/admin/users Utilisateurs",
       "/admin/sessions Sessions",
       "/admin/audits Journal d'audit",

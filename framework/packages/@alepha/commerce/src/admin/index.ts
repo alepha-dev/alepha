@@ -1,9 +1,11 @@
 import { $module } from "alepha";
 
 import { AlephaCommerce } from "../index.ts";
+import { AdminCategoryController } from "./controllers/AdminCategoryController.ts";
 import { AdminOrderController } from "./controllers/AdminOrderController.ts";
 import { AdminProductController } from "./controllers/AdminProductController.ts";
 
+export * from "./controllers/AdminCategoryController.ts";
 export * from "./controllers/AdminOrderController.ts";
 export * from "./controllers/AdminProductController.ts";
 
@@ -32,5 +34,9 @@ export * from "./controllers/AdminProductController.ts";
 export const AlephaCommerceAdmin = $module({
   name: "alepha.commerce.admin",
   imports: [AlephaCommerce],
-  services: [AdminProductController, AdminOrderController],
+  services: [
+    AdminProductController,
+    AdminOrderController,
+    AdminCategoryController,
+  ],
 });

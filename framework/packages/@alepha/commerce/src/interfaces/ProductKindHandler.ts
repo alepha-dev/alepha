@@ -93,6 +93,16 @@ export abstract class ProductKindHandler {
   lockKeys?(item: OrderItemEntity): ClaimLockKey[];
 
   /**
+   * Whether a product of this kind, with this config, sells from the stock
+   * ledger. Written onto `products.tracksStock` when the product is saved, and
+   * what keeps a download out of "sold out". Defaults to whether the kind holds
+   * anything.
+   */
+  public tracksStock(_config: Record<string, any> | undefined): boolean {
+    return this.reserve !== undefined;
+  }
+
+  /**
    * Optionally hold whatever this line consumes, while its payment is in flight.
    *
    * Symmetric with {@link fulfil}: `good` holds stock so two buyers cannot both

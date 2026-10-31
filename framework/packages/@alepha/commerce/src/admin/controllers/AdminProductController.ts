@@ -59,6 +59,7 @@ const productInputSchema = z.object({
   slug: z.text({ minLength: 1, maxLength: 200 }),
   name: z.text({ minLength: 1, maxLength: 200 }),
   description: z.text({ maxLength: 4000 }).optional(),
+  categoryId: z.uuid().optional(),
   price: z.integer().min(0),
   currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
   /*

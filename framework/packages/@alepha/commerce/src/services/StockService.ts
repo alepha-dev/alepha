@@ -1,7 +1,7 @@
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, type Page } from "alepha/orm";
+import { $repository, type Page, type SQL, sql } from "alepha/orm";
 
 import {
   type StockMovementEntity,
@@ -180,6 +180,25 @@ export class StockService {
       this.reserved(productId, variantId),
     ]);
     return onHand - reserved;
+  }
+
+  /**
+   * The ids of the products with something to sell, as a subquery: on-hand
+   * above live holds, summed by the database. What a catalogue filter puts in
+   * its `where`, since availability cannot be a column.
+   */
+  public availableProducts(): SQL {
+    const movements = this.movements.table;
+    const holds = this.reservations.table;
+    const now = this.dateTime.nowISOString();
+    return sql`(SELECT ${movements.productId} FROM ${movements}
+      GROUP BY ${movements.productId}
+      HAVING SUM(${movements.delta}) > COALESCE((
+        SELECT SUM(${holds.quantity}) FROM ${holds}
+        WHERE ${holds.productId} = ${movements.productId}
+          AND ${holds.status} = 'held'
+          AND ${holds.expiresAt} >= ${now}
+      ), 0))`;
   }
 
   // -------------------------------------------------------------------------

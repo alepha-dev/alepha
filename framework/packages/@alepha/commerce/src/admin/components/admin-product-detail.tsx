@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { AdminCategoryController } from "../controllers/AdminCategoryController.ts";
 import type { AdminProductController } from "../controllers/AdminProductController.ts";
 import { AdminProductDetailAside } from "./admin-product-detail-aside.tsx";
 import { AdminProductDetailDetailsTab } from "./admin-product-detail-details-tab.tsx";
@@ -136,10 +137,29 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
    * as a dependency would rebuild the schema — and, through the form's `deps`
    * below, the form — on every single render.
    */
+  const categoryClient = useClient<AdminCategoryController>();
+  const categoriesQuery = useQuery(
+    {
+      key: ["commerce", "categories"],
+      handler: () => categoryClient.commerceAdminCategoryList({}),
+      // The picker only: a failure must not block the page.
+      onError: () => {},
+    },
+    [categoryClient],
+  );
+  const categories = categoriesQuery.data ?? [];
+  const categoriesKey = categories.map((it) => it.id).join(",");
+
   const kindsKey = kinds.join(",");
   const schema = useMemo(
-    () => productFormSchema(tr, kinds, product?.currency),
-    [tr, kindsKey, product?.currency],
+    () =>
+      productFormSchema(
+        tr,
+        kinds,
+        product?.currency,
+        categories.map((it) => ({ value: it.id, label: it.name })),
+      ),
+    [tr, kindsKey, product?.currency, categoriesKey],
   );
 
   const form = useForm(
@@ -149,6 +169,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         name: product?.name ?? "",
         slug: product?.slug ?? "",
         kind: product?.kind ?? kinds[0] ?? "good",
+        categoryId: product?.categoryId,
         price: product?.price ?? 0,
         currency: product?.currency ?? "EUR",
         vatRateBps: product?.vatRateBps,

@@ -1,5 +1,6 @@
 import type { ProductController } from "@alepha/commerce";
 import type {
+  AdminCategoryController,
   AdminOrderController,
   AdminProductController,
 } from "@alepha/commerce/admin";
@@ -11,7 +12,7 @@ import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import { BadgePercent, Gem, Package, Truck } from "lucide-react";
+import { BadgePercent, FolderTree, Gem, Package, Truck } from "lucide-react";
 
 import { Layout } from "./Layout.tsx";
 
@@ -66,6 +67,7 @@ export class AppRouter {
   protected readonly orderApi = $client<AdminOrderController>();
   protected readonly shippingApi = $client<AdminShippingController>();
   protected readonly promotionApi = $client<AdminPromotionController>();
+  protected readonly categoryApi = $client<AdminCategoryController>();
 
   // ── Storefront ───────────────────────────────────────────────────────
 
@@ -365,5 +367,18 @@ export class AppRouter {
     },
     can: () => this.promotionApi.commerceAdminPromotionList.can(),
     lazy: () => import("./pages/admin/AdminPromotionsPage.tsx"),
+  });
+
+  adminCategories = $pageAdmin({
+    path: "/categories",
+    head: { title: "Catégories" },
+    nav: {
+      label: <Tr k="admin.categories" />,
+      icon: <FolderTree />,
+      group: "Commerce",
+      order: 104,
+    },
+    can: () => this.categoryApi.commerceAdminCategoryList.can(),
+    lazy: () => import("./pages/admin/AdminCategoriesPage.tsx"),
   });
 }

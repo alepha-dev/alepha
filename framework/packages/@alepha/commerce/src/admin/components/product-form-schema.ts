@@ -46,6 +46,7 @@ export const productFormSchema = (
   tr: TrFunction,
   kinds: string[],
   currentCurrency?: string,
+  categories: Array<{ value: string; label: string }> = [],
 ) => {
   const currencies = [
     ...new Set([
@@ -87,6 +88,13 @@ export const productFormSchema = (
         items: kinds.map((kind) => ({ value: kind, label: kind })),
       },
     }),
+    categoryId: z
+      .text()
+      .meta({
+        title: tr("commerce.admin.fCategory", { default: "Category" }),
+        $control: { width: 50, items: categories },
+      })
+      .optional(),
     /*
      * Cents, and labelled as cents. An operator who types 8900 and sees
      * 89,00 € in the list learns the unit once; a euro field needs a

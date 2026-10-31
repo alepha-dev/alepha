@@ -7,6 +7,7 @@ import type { ProductVariantEntity } from "../entities/productVariants.ts";
 import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
 import { publicVariantSchema } from "../schemas/publicVariantSchema.ts";
 import { CatalogService } from "../services/CatalogService.ts";
+import { CategoryService } from "../services/CategoryService.ts";
 import { StockService } from "../services/StockService.ts";
 import { VariantService } from "../services/VariantService.ts";
 
@@ -56,6 +57,7 @@ export class ProductController {
   protected readonly catalog = $inject(CatalogService);
   protected readonly stock = $inject(StockService);
   protected readonly variants = $inject(VariantService);
+  protected readonly categories = $inject(CategoryService);
 
   public readonly commerceProductList = $action({
     method: "GET",
@@ -67,11 +69,32 @@ export class ProductController {
         size: z.integer().min(1).max(100).optional(),
         page: z.integer().min(0).optional(),
         kind: z.text({ maxLength: 64 }).optional(),
+        /**
+         * A category's slug: it and everything under it.
+         */
+        category: z.text({ maxLength: 200 }).optional(),
+        /**
+         * Words in the name or the description.
+         */
+        q: z.text({ maxLength: 200 }).optional(),
+        minPrice: z.integer().min(0).optional(),
+        maxPrice: z.integer().min(0).optional(),
+        /**
+         * Only what can be bought now.
+         */
+        available: z.boolean().optional(),
+        sort: z
+          .enum(["name", "-name", "price", "-price", "createdAt", "-createdAt"])
+          .optional(),
       }),
       response: db.page(publicProductSchema),
     },
     handler: async ({ query }) => {
-      const page = await this.catalog.list(query);
+      const { category, ...filters } = query;
+      const page = await this.catalog.list({
+        ...filters,
+        ...(category ? { categoryId: await this.categoryId(category) } : {}),
+      });
       const variants = await this.variants.listForProducts(
         page.content.map((product) => product.id),
       );
@@ -118,6 +141,17 @@ export class ProductController {
       };
     },
   });
+
+  /**
+   * The published category behind a slug. A draft shelf reads as no shelf.
+   */
+  protected async categoryId(slug: string): Promise<string> {
+    const category = await this.categories.findBySlug(slug);
+    if (!category?.published) {
+      throw new NotFoundError(`No such category: ${slug}`);
+    }
+    return category.id;
+  }
 
   /**
    * The variants of a product a buyer can pick.

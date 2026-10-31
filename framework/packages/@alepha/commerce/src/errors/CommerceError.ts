@@ -147,6 +147,19 @@ export const PromotionInUseError = CommerceError.extend({
 export type PromotionInUseError = InstanceType<typeof PromotionInUseError>;
 
 /**
+ * A category that still holds products or other categories cannot be deleted.
+ */
+export const CategoryInUseError = CommerceError.extend({
+  name: "CATEGORY_IN_USE",
+  default: { status: 409 },
+  schema: z.object({ categoryId: z.text(), held: z.number() }),
+  message: (data) =>
+    `Category ${data.categoryId} still holds ${data.held} product(s) or categories. Move them first.`,
+});
+
+export type CategoryInUseError = InstanceType<typeof CategoryInUseError>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

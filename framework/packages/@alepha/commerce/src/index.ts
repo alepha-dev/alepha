@@ -1,11 +1,13 @@
 import { $module } from "alepha";
 
+import { CategoryController } from "./controllers/CategoryController.ts";
 import { OrderController } from "./controllers/OrderController.ts";
 import { ProductController } from "./controllers/ProductController.ts";
 import { DigitalKindHandler } from "./kinds/DigitalKindHandler.ts";
 import { GoodKindHandler } from "./kinds/GoodKindHandler.ts";
 import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
+import { CategoryService } from "./services/CategoryService.ts";
 import { ClaimLock } from "./services/ClaimLock.ts";
 import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
@@ -14,12 +16,15 @@ import { StockService } from "./services/StockService.ts";
 import { VariantService } from "./services/VariantService.ts";
 import { VatCalculator } from "./services/VatCalculator.ts";
 
+export * from "./controllers/CategoryController.ts";
 export * from "./controllers/OrderController.ts";
 export * from "./controllers/ProductController.ts";
+export * from "./entities/categories.ts";
 export * from "./entities/orderItems.ts";
 export * from "./entities/orders.ts";
 export * from "./schemas/optionGroupSchema.ts";
 export * from "./schemas/orderStatusSchema.ts";
+export * from "./schemas/publicCategorySchema.ts";
 export * from "./schemas/publicOrderItemSchema.ts";
 export * from "./schemas/publicVariantSchema.ts";
 export * from "./entities/products.ts";
@@ -34,6 +39,7 @@ export * from "./kinds/GoodKindHandler.ts";
 export * from "./kinds/ResourceKindHandler.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
+export * from "./services/CategoryService.ts";
 export * from "./services/ClaimLock.ts";
 export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
@@ -145,6 +151,7 @@ export const AlephaCommerce = $module({
   name: "alepha.commerce",
   services: [
     ProductKindRegistry,
+    CategoryService,
     CatalogService,
     LineConfigService,
     OrderService,
@@ -156,6 +163,7 @@ export const AlephaCommerce = $module({
     // invoice. See the note on the class.
     VatCalculator,
     ProductController,
+    CategoryController,
     OrderController,
   ],
   // Handlers are not auto-injected: `register` below resolves them explicitly
