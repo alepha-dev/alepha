@@ -305,10 +305,13 @@ export class StockService {
   /**
    * Record a sale, and consume the order's hold if it had one.
    *
-   * The availability check here is against **on-hand**, not available: the order
-   * being settled is precisely the one whose hold made those units unavailable
-   * to others, so counting its own hold against it would refuse every reserved
-   * sale.
+   * The check is on-hand minus what OTHER orders hold, not `available`: the
+   * order being settled is precisely the one whose hold made those units
+   * unavailable to others, so counting its own hold against it would refuse
+   * every reserved sale. Counting nothing but on-hand was the opposite
+   * mistake: a capture landing after its own hold expired took units still
+   * held by another buyer's live checkout, and THEIR settlement then failed
+   * with their money taken.
    *
    * Idempotent on the order line: `ProductKindHandler.fulfil` is re-delivered,
    * and a line the ledger already counts as sold is not sold twice. By the
@@ -330,12 +333,14 @@ export class StockService {
 
       // The decision under the lock, a fast pre-check without it: same as
       // `reserve`.
-      const onHand = await this.onHand(productId);
-      if (onHand < quantity) {
+      const sellable =
+        (await this.onHand(productId)) -
+        (await this.heldByOthers(productId, context.orderId));
+      if (sellable < quantity) {
         throw new InsufficientStockError({
           productId,
           requested: quantity,
-          onHand,
+          onHand: sellable,
         });
       }
 
@@ -362,6 +367,26 @@ export class StockService {
         await this.consumeHold(context.orderId, productId, quantity);
       }
     });
+  }
+
+  /**
+   * What live holds of other orders speak for: all of them, for a sale with
+   * no order.
+   */
+  protected async heldByOthers(
+    productId: string,
+    orderId?: string,
+  ): Promise<number> {
+    const holds = await this.reservations.findMany({
+      where: {
+        productId: { eq: productId },
+        status: { eq: "held" },
+        expiresAt: { gte: this.dateTime.nowISOString() },
+        ...(orderId ? { orderId: { ne: orderId } } : {}),
+      },
+      columns: ["quantity"],
+    });
+    return holds.reduce((sum, hold) => sum + hold.quantity, 0);
   }
 
   /**

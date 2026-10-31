@@ -6,6 +6,7 @@ import { $repository, DatabaseProvider } from "alepha/orm";
 import { CartService } from "../../cart/services/CartService.ts";
 import {
   CommerceError,
+  InsufficientStockError,
   ResourceUnavailableError,
 } from "../../errors/CommerceError.ts";
 import { OrderService } from "../../services/OrderService.ts";
@@ -358,13 +359,14 @@ export class CheckoutService {
    * and returns it untouched. Fulfilment itself is idempotent one level down,
    * in {@link OrderService.markPaid}.
    *
-   * ### A capture that lands after its slot was lost
+   * ### A capture that lands after what it paid for was lost
    *
    * A hold lives 30 minutes, and nothing guarantees the capture lands inside
    * them: the sweep releases the hold but leaves the order `pending`, so the
-   * capture reaches `markPaid`, and the slot may have been sold to somebody
-   * else meanwhile. Fulfilment then refuses (`ResourceUnavailableError`)
-   * rather than double-book, and throwing that out of here would make the
+   * capture reaches `markPaid`, and the slot or the last units may have been
+   * sold to somebody else meanwhile. Fulfilment then refuses
+   * (`ResourceUnavailableError`, `InsufficientStockError`) rather than
+   * double-book or oversell, and throwing that out of here would make the
    * webhook re-deliver and throw again forever, with the money taken and
    * nothing recorded. So the failed settlement is rolled back first (no line
    * of it stays fulfilled), and then, in a transaction of its own, the order
@@ -380,7 +382,10 @@ export class CheckoutService {
     try {
       return await this.settleOnce(sessionId, options);
     } catch (error) {
-      if (!(error instanceof ResourceUnavailableError)) {
+      if (
+        !(error instanceof ResourceUnavailableError) &&
+        !(error instanceof InsufficientStockError)
+      ) {
         throw error;
       }
       return this.db.transactional(async () => {
