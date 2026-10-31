@@ -365,4 +365,26 @@ func TestRollbackWatchDaemon(t *testing.T) {
 			t.Fatalf("rolled back, but the proxy gets: %s", got)
 		}
 	})
+
+	t.Run("a stop inside the window is not undone", func(t *testing.T) {
+		out := deployVersion("v5")
+		if err := s.stopInstance(key); err != nil {
+			t.Fatal(err)
+		}
+		waitForWatch(t, s, key)
+
+		if d.Running(key) {
+			t.Fatal("the watch started an app somebody stopped")
+		}
+		after, _ := store.Get(key)
+		if after.Release != out.Result.Release {
+			t.Fatalf("reverted to %s while stopped", after.Release)
+		}
+		if err := s.startInstance(key); err != nil {
+			t.Fatal(err)
+		}
+		if got := answer(t, front, host); !strings.Contains(got, `"version":"v5"`) {
+			t.Fatalf("started again, but the proxy gets: %s", got)
+		}
+	})
 }

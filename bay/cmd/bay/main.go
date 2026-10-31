@@ -1640,6 +1640,14 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 			"app", app.Key(), "watched", app.Release, "reason", verdict.Reason)
 		return
 	}
+	// Down on purpose: `bay stop` and `bay stack stop` close the port the watch
+	// is probing, and a rollback ends in a start, which would undo the stop on
+	// a release nobody asked for.
+	if current.Stopped {
+		s.log.Info("app stopped during its watch, not rolling back",
+			"app", app.Key(), "release", app.Release)
+		return
+	}
 
 	s.log.Error("release failed its health window, rolling back",
 		"app", app.Key(), "bad", app.Release, "to", previous,
