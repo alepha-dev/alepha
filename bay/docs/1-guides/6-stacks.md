@@ -73,36 +73,42 @@ so a typo is never silently ignored. Full domains never appear in the file,
 since production and staging need different ones: they are
 [routes](#routes-and-domains).
 
-Bay reads the file through `docker compose config`, then refuses, naming the
-service:
+Bay reads the file through `docker compose config`, then refuses, naming what
+it refuses:
 
 - `build`, `container_name` and `privileged`;
 - `host` as `network_mode`, `pid`, `ipc` or `userns_mode`;
+- `container:` as `network_mode`, `pid`, `ipc` or `volumes_from`, which would
+  reach any container on the host. `service:<name>`, or a plain service name
+  under `volumes_from`, names one of the stack's own;
 - a service with neither `image` nor `x-lore.app`;
-- the Docker socket as a mount, a bind mount outside the bundle, or one of a
-  path the bundle does not carry;
+- the Docker socket as a mount;
+- a bind mount, an `env_file`, or a `file:` under `secrets` or `configs`, outside
+  the bundle or of a path the bundle does not carry. A stack's variables are a
+  plain file on the host, so an `env_file` could otherwise read another
+  environment's passwords;
+- `include`: a stack is one compose file;
 - a named volume with `driver_opts`, which are mount options: a bind through
   them would reach any host path;
-- a named volume marked `external`, or with a `name` of its own: Bay names
-  volumes after the environment, and either one would mount whatever already
-  carries that name, another environment's data included;
+- a named volume or a network marked `external`, or with a `name` of its own:
+  Bay names both after the environment, and either one would reach whatever
+  already carries that name, another environment's included;
 - a Compose service that `depends_on` an app service;
 - a `${VAR}` with no value and no default.
 
 `ports` are rewritten to a loopback port Bay allocates, so the host port in the
 file is ignored. Nothing else is checked: `devices`, `cap_add`, `security_opt`,
-`cgroup`, `uts`, a `file:` under `secrets` or `configs`, `volumes_from`, an
-external network, and `container:` as `network_mode` or `pid` reach Docker as
-written, so whoever deploys a stack can reach the host and other environments.
+`cgroup` and `uts` reach Docker as written, so whoever deploys a stack can reach
+the host.
 
 ## Environments
 
 A stack is deployed per environment, addressed as `<stack>/<env>`. Each one is
 its own Compose project (`mcs-production`, `mcs-staging`), with its own network,
-volumes, variables and containers: staging does not see production's Postgres,
-and destroying staging leaves production alone. This keeps environments from
-colliding by mistake. It does not contain a file written to reach past it,
-through what the list above leaves unchecked.
+volumes, variables and containers: a file cannot name production's Postgres, its
+volumes or its variables from staging, and destroying staging leaves production
+alone. That stops a mistake, not a hostile file: what the list above leaves
+unchecked still reaches the host.
 
 ## Deploying
 
