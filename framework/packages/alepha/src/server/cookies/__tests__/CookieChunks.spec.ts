@@ -134,6 +134,17 @@ const boot = async () => {
 
   const write = (name: string, data: string) => post("write", { name, data });
 
+  // A request from another tab: it carries the jar as it stands now, and its
+  // Set-Cookie lands whenever its response does.
+  const send = async (name: string, data: string) => {
+    const response = await fetch(`${hostname}/api/write`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: jar.header },
+      body: JSON.stringify({ name, data }),
+    });
+    return response.headers.getSetCookie();
+  };
+
   const read = async (name: string) => {
     const response = await fetch(`${hostname}/api/read?name=${name}`, {
       headers: { cookie: jar.header },
@@ -142,7 +153,7 @@ const boot = async () => {
     return ((await response.json()) as { data?: string }).data;
   };
 
-  return { alepha, jar, post, read, write };
+  return { alepha, jar, post, read, send, write };
 };
 
 /**
@@ -193,8 +204,8 @@ describe("server cookie chunking", () => {
         "app.sealed.2",
         "app.sealed.3",
       ]);
-      for (const value of jar.cookies.values()) {
-        expect(value.length).toBeLessThanOrEqual(CHUNK_LENGTH);
+      for (const [name, value] of jar.cookies) {
+        expect(name.length + value.length).toBeLessThanOrEqual(4096);
       }
     });
 
@@ -506,6 +517,110 @@ describe("server cookie chunking", () => {
         "app.plainer.0",
       ]);
     });
+  });
+
+  /**
+   * Two requests carry the same chunks, so neither response can expire what the
+   * other one writes. Whichever lands last has to win, as it would for one
+   * cookie, whatever the other left behind.
+   */
+  describe("concurrent writes", () => {
+    const LONGER = 9000; // four chunks once encrypted
+    const SHORTER = 5000; // two chunks once encrypted
+
+    it("reads a shorter write that lands last, past the longer one's tail", async ({
+      expect,
+    }) => {
+      const { jar, read, send, write } = await boot();
+      await write("sealed", text(SHORTER));
+      const data = text(SHORTER);
+
+      const [longer, shorter] = await Promise.all([
+        send("sealed", text(LONGER)),
+        send("sealed", data),
+      ]);
+      jar.apply(longer);
+      jar.apply(shorter);
+
+      expect(jar.names).toHaveLength(4);
+      expect(await read("sealed")).toBe(data);
+    });
+
+    it("reads a longer write that lands last", async ({ expect }) => {
+      const { jar, read, send, write } = await boot();
+      await write("sealed", text(SHORTER));
+      const data = text(LONGER);
+
+      const [longer, shorter] = await Promise.all([
+        send("sealed", data),
+        send("sealed", text(SHORTER)),
+      ]);
+      jar.apply(shorter);
+      jar.apply(longer);
+
+      expect(jar.names).toHaveLength(4);
+      expect(await read("sealed")).toBe(data);
+    });
+
+    it("leaves the tail for the next write to expire, not for a read", async ({
+      expect,
+    }) => {
+      const { jar, read, send, write } = await boot();
+      await write("sealed", text(SHORTER));
+      const [longer, shorter] = await Promise.all([
+        send("sealed", text(LONGER)),
+        send("sealed", text(SHORTER)),
+      ]);
+      jar.apply(longer);
+      jar.apply(shorter);
+
+      await read("sealed");
+      expect(jar.names).toHaveLength(4);
+
+      const data = text(SHORTER);
+      await write("sealed", data);
+
+      expect(jar.names).toEqual(["app.sealed.0", "app.sealed.1"]);
+      expect(await read("sealed")).toBe(data);
+    });
+  });
+
+  describe("the chunk count", () => {
+    const countOf = (jar: BrowserJar) =>
+      jar.cookies.get("app.sealed.0")!.split("~")[0];
+
+    const withFirstChunk = (jar: BrowserJar, rewrite: (v: string) => string) =>
+      jar.cookies.set(
+        "app.sealed.0",
+        rewrite(jar.cookies.get("app.sealed.0")!),
+      );
+
+    it("opens the first chunk and only the first", async ({ expect }) => {
+      const { jar, write } = await boot();
+
+      await write("sealed", text(5000));
+
+      expect(countOf(jar)).toBe("2");
+      expect(jar.cookies.get("app.sealed.1")).not.toContain("~");
+    });
+
+    it.for([
+      ["is missing", (value: string) => value.slice(value.indexOf("~") + 1)],
+      ["is past the chunks", (value: string) => value.replace(/^\d+/, "3")],
+      ["is below the chunks", (value: string) => value.replace(/^\d+/, "1")],
+      ["is not a number", (value: string) => value.replace(/^\d+/, "x")],
+    ] as const)(
+      "rejects and clears a cookie whose count %s",
+      async ([, rewrite], { expect }) => {
+        const { jar, read, write } = await boot();
+
+        await write("sealed", text(5000));
+        withFirstChunk(jar, rewrite);
+
+        expect(await read("sealed")).toBeUndefined();
+        expect(jar.names).toEqual([]);
+      },
+    );
   });
 
   describe("deleteCookie", () => {
