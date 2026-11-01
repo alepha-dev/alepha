@@ -10,7 +10,6 @@ import { $repository } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { deployments } from "../entities/deployments.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
@@ -20,6 +19,11 @@ import {
   appInstanceResourceSchema,
 } from "../schemas/appInstanceResourceSchema.ts";
 import { AppService } from "../services/AppService.ts";
+import { ArtifactService } from "../services/ArtifactService.ts";
+import {
+  type DeployedBuild,
+  DeployedBuildService,
+} from "../services/DeployedBuildService.ts";
 import { TeardownService } from "../services/TeardownService.ts";
 
 export type { AppInstanceResource };
@@ -51,9 +55,10 @@ export class AppController {
   protected estates = $repository(estates);
   protected stackEnvironments = $repository(stackEnvironments);
   protected stacks = $repository(stacks);
-  protected deployments = $repository(deployments);
   protected security = $inject(ProjectSecurityService);
   protected service = $inject(AppService);
+  protected builds = $inject(DeployedBuildService);
+  protected artifacts = $inject(ArtifactService);
   protected readonly teardown = $inject(TeardownService);
   protected readonly log = $logger();
   protected audits = $inject(LoreAudits);
@@ -125,7 +130,17 @@ export class AppController {
         params.app,
         params.env,
       );
-      return this.toResource(instance);
+      const resource = await this.toResource(instance);
+      return resource.deployed
+        ? {
+            ...resource,
+            deployed: await this.located(
+              params.projectId,
+              instance.app,
+              resource.deployed,
+            ),
+          }
+        : resource;
     },
   });
 
@@ -553,7 +568,7 @@ export class AppController {
       ),
     ];
 
-    const [sigilRows, estateRows, deployedTags, stackSummaries] =
+    const [sigilRows, estateRows, deployedBuilds, stackSummaries] =
       await Promise.all([
         sigilIds.length
           ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
@@ -561,7 +576,7 @@ export class AppController {
         estateIds.length
           ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
           : Promise.resolve([]),
-        this.deployedTags(rows.map((row) => row.id)),
+        this.builds.latest(rows.map((row) => row.id)),
         this.stackSummaries(environmentIds),
       ]);
 
@@ -573,7 +588,7 @@ export class AppController {
         row,
         row.sigilId ? bySigil.get(row.sigilId) : undefined,
         row.estateId ? byEstate.get(row.estateId) : undefined,
-        deployedTags.get(row.id),
+        deployedBuilds.get(row.id),
         row.stackEnvironmentId
           ? stackSummaries.get(row.stackEnvironmentId)
           : undefined,
@@ -626,54 +641,31 @@ export class AppController {
   }
 
   /**
-   * The tag each instance last deployed successfully, keyed by instance id.
+   * Where the build a copy runs stands in the registry now.
    *
-   * ⚠️ Batched, not one query per row: the Apps list renders every copy in the
-   * project from `currentInstancesAtom`, so a per-row read here is a query per
-   * row of that table.
-   *
-   * ⚠️ **Two narrow reads, never the whole history** (#Q2682). The first finds
-   * each instance's newest succeeded run, the second reads only `instanceId`,
-   * `tag` and `createdAt` of those runs. A plain `findMany` here loaded every
-   * succeeded deployment of every listed instance, `log` included, on each
-   * Apps list render, and timed out on D1 once those logs grew.
+   * On `getApp` alone: the list shows a tag and has no use for this, and an
+   * artifact read per row is what `toResources` exists to avoid.
    */
-  protected async deployedTags(
-    instanceIds: string[],
-  ): Promise<Map<string, string>> {
-    const newest = await this.deployments.aggregate({
-      select: { instanceId: true, createdAt: { max: true } },
-      where: {
-        instanceId: { inArray: instanceIds },
-        status: { eq: "succeeded" },
-      },
-      groupBy: ["instanceId"],
+  protected async located(
+    projectId: number,
+    app: string,
+    deployed: NonNullable<AppInstanceResource["deployed"]>,
+  ): Promise<NonNullable<AppInstanceResource["deployed"]>> {
+    const variants = await this.artifacts.list({
+      projectId,
+      app,
+      tag: deployed.tag,
     });
-    const latest = new Map<string, string>();
-    for (const row of newest) {
-      if (row.createdAt.max) {
-        latest.set(row.instanceId, row.createdAt.max);
-      }
+    const match = variants.find((it) => it.sha256 === deployed.sha256);
+    if (match) {
+      return {
+        ...deployed,
+        state: "current",
+        runtime: match.runtime,
+        format: match.format,
+      };
     }
-    if (latest.size === 0) {
-      return new Map();
-    }
-
-    const runs = await this.deployments.findMany({
-      columns: ["instanceId", "tag", "createdAt"],
-      where: {
-        instanceId: { inArray: [...latest.keys()] },
-        status: { eq: "succeeded" },
-        createdAt: { inArray: [...new Set(latest.values())] },
-      },
-    });
-    const tags = new Map<string, string>();
-    for (const run of runs) {
-      if (latest.get(run.instanceId) === run.createdAt) {
-        tags.set(run.instanceId, run.tag);
-      }
-    }
-    return tags;
+    return { ...deployed, state: variants.length ? "moved" : "gone" };
   }
 
   protected async toResource(
@@ -694,7 +686,7 @@ export class AppController {
     instance: AppInstance,
     sigil?: Sigil,
     estate?: Estate,
-    version?: string,
+    build?: DeployedBuild,
     stack?: { id: string; name: string; environmentId: string; env: string },
   ): AppInstanceResource {
     return {
@@ -742,7 +734,12 @@ export class AppController {
       // Omitted rather than nulled for a copy that has never deployed: the
       // column is blank because there is no version, not because one is
       // unknown.
-      ...(version ? { version } : {}),
+      ...(build
+        ? {
+            version: build.tag,
+            deployed: { tag: build.tag, sha256: build.sha256, at: build.at },
+          }
+        : {}),
     };
   }
 }

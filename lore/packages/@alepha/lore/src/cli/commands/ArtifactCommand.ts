@@ -317,6 +317,10 @@ export class ArtifactCommand {
         .enum(["archive", "image"])
         .describe("Only this format.")
         .optional(),
+      manifest: z
+        .boolean()
+        .describe("Include each build's manifest.")
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
@@ -328,7 +332,15 @@ export class ArtifactCommand {
           params: { projectId },
           query: { app: flags.app, tag: flags.tag },
         });
-        const [group] = groups;
+        const [listed] = groups;
+        // The listing answers a missing tag with no group and the action below
+        // with a 404, so it is read second, and only when it was asked for.
+        const group =
+          listed && flags.manifest
+            ? await this.api.getArtifact({
+                params: { projectId, app: flags.app, tag: flags.tag },
+              })
+            : listed;
         if (!group) {
           throw new UsageError(
             `No artifact tagged "${flags.tag}" for app "${flags.app}" in this project.`,
@@ -374,6 +386,14 @@ export class ArtifactCommand {
                   .join("  "),
               ),
             },
+            ...(flags.manifest
+              ? variants.map((v) => ({
+                  title: `Manifest (${v.runtimes.join("+")} ${v.format})`,
+                  lines: JSON.stringify(v.manifest ?? null, null, 2).split(
+                    "\n",
+                  ),
+                }))
+              : []),
           ],
         });
       });

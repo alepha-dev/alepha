@@ -408,4 +408,20 @@ describe("Lore MCP — artifacts", () => {
 
     expect(registered.sort()).toEqual(["artifact_get", "artifact_list"]);
   });
+
+  it("leaves the manifest out of artifact_get until it is asked for", async ({
+    expect,
+  }) => {
+    const { tools, project, call, push } = await setup();
+    await push({ tag: "1.2.3" });
+    const key = { project: project.id, app: "my-app", tag: "1.2.3" };
+
+    const plain = await call(tools.artifact_get, key);
+    const full = await call(tools.artifact_get, { ...key, manifest: true });
+
+    expect(plain.artifact.variants[0].manifest).toBeUndefined();
+    expect(full.artifact.variants[0].manifest.runtimes).toEqual([
+      { runtime: "node" },
+    ]);
+  });
 });

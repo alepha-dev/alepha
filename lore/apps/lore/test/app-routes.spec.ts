@@ -64,6 +64,7 @@ const NAV_ROUTE_NAMES = [
   "appVitals",
   "appExplore",
   "appArtifacts",
+  "projectArtifact",
   "appSettings",
   // Settings sections and tabs — projectSettingsSections.ts, read by the
   // sidebar group and the tab bar. The heir of the nav array that broke.
@@ -277,6 +278,7 @@ describe("the route table", () => {
       shortId: "3",
       epicNumber: "7",
       releaseTag: "0.28.0",
+      artifactTag: "0.28.0",
       areaId: 1,
       analyticsDimension: "path",
       monitorId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",

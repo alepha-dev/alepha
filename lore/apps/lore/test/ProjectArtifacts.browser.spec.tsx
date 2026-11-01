@@ -533,33 +533,20 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
-   * Tag equality is the whole join - no join table, no foreign key - and an
-   * artifact whose tag names no release is a normal state, so the cell has to
-   * read as text rather than as a link that goes nowhere.
+   * The tag opens the build's own page, with this row's variant selected. The
+   * release link moved there: a table row flattens a tag into its variants,
+   * and the page is where they are one thing again.
    */
-  it("links a tag to its release only when one exists", async ({ expect }) => {
-    const withRelease = await show(listing([group()]), [
-      {
-        id: 1,
-        projectId: 1,
-        number: 1,
-        tag: "1.0.0",
-        title: "1.0.0",
-        description: "",
-        createdAt: "2026-08-26T10:00:00.000Z",
-        updatedAt: "2026-08-26T10:00:00.000Z",
-        progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
-      },
-    ]);
-    const tagged = await withRelease.findByText("1.0.0");
-    expect(tagged.closest("a")?.getAttribute("href")).toBe(
-      "/alepha/releases/1.0.0",
-    );
+  it("links a tag to its build, on this row's variant", async ({ expect }) => {
+    const view = await show(listing([group()]));
 
-    const withoutRelease = await show(listing([group()]), []);
-    const plain = await withoutRelease.findByText("1.0.0");
-    expect(plain.closest("a")).toBeNull();
+    const tagged = await view.findByText("1.0.0");
+
+    expect(tagged.closest("a")?.getAttribute("href")).toMatch(
+      /^\/alepha\/artifacts\/docs\/1\.0\.0\?variant=[a-z]+-[a-z]+$/,
+    );
   });
+
   /**
    * ⚠️ The App cell is TEXT, and the point is what it stopped doing.
    *
@@ -571,7 +558,7 @@ describe("ProjectArtifacts", () => {
    * running something else entirely (#P2162).
    *
    * Pinned beside the Tag case above because the two look alike and are not:
-   * a tag link is a real relationship, an app link was a resolved guess.
+   * a tag names one build, an app link was a resolved guess.
    */
   it("does not link the app to a copy the artifact says nothing about", async ({
     expect,

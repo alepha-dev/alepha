@@ -19,6 +19,7 @@ import { useState } from "react";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
+import { artifactHref } from "../artifacts/artifactView.ts";
 import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
@@ -428,7 +429,13 @@ const ProjectApps = () => {
             sortable: true,
             cell: (instance) =>
               instance.version ? (
-                <span
+                <Link
+                  href={artifactHref(project.slug, {
+                    app: instance.app,
+                    tag: String(instance.version),
+                  })}
+                  // The row opens the copy; this cell opens the build.
+                  onClick={(event) => event.stopPropagation()}
                   className={
                     // ⚠️ `latest` is a pointer, not a version. Muted so it does
                     // not read as a release, and never sorted as a semver -
@@ -439,7 +446,7 @@ const ProjectApps = () => {
                   }
                 >
                   {instance.version}
-                </span>
+                </Link>
               ) : (
                 // Nothing, not a dash: this copy has no version, rather than
                 // one nobody could read.
