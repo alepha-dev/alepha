@@ -1,6 +1,8 @@
 import type { EpicController } from "@lore/work/api";
+import type { FeedbackController } from "@lore/work/api";
 import type { QuestCommentController } from "@lore/work/api";
 import type { QuestController } from "@lore/work/api";
+import type { ReleaseController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -71,6 +73,12 @@ export class QuestCommand {
     this.client.scope(),
   );
   protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly feedbackApi = $client<FeedbackController>(
+    this.client.scope(),
+  );
+  protected readonly releaseApi = $client<ReleaseController>(
+    this.client.scope(),
+  );
 
   /**
    * The statuses `getQuests` filters on. Validated here because the action
@@ -126,6 +134,15 @@ export class QuestCommand {
       epic: z
         .text({ description: "Only the quests of this epic: 45 or E45." })
         .optional(),
+      search: z
+        .text({ description: "Only titles containing this." })
+        .optional(),
+      "include-drafts": z
+        .boolean()
+        .describe(
+          "Also list quests filed under draft epics, hidden as they are in the backlog.",
+        )
+        .optional(),
       limit: z
         .integer()
         .min(1)
@@ -160,6 +177,8 @@ export class QuestCommand {
             ...(flags.status?.length ? { status: flags.status.join(",") } : {}),
             ...(flags.tag?.length ? { tag: flags.tag.join(",") } : {}),
             ...(epic ? { epic: epic.id } : {}),
+            ...(flags.search ? { search: flags.search } : {}),
+            ...(flags["include-drafts"] ? { includeDrafts: true } : {}),
           },
         });
 
@@ -343,6 +362,21 @@ export class QuestCommand {
           description: "The quest that has to complete first: 12 or Q12.",
         })
         .optional(),
+      "due-at": z
+        .datetime()
+        .describe("Its deadline, as an ISO 8601 datetime.")
+        .optional(),
+      feedback: z
+        .text({
+          description: "The feedback item it was promoted from: 120 or P120.",
+        })
+        .optional(),
+      release: z
+        .text({
+          description:
+            "The tag of the release it ships in. A published one is refused.",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
@@ -360,11 +394,16 @@ export class QuestCommand {
           this.assertEpicTakes(epic, !!flags.accept);
         }
         const dependsOn = await this.dependsOn(projectId, flags["depends-on"]);
+        const feedbackId = await this.feedbackId(projectId, flags.feedback);
+        const releaseId = await this.releaseId(projectId, flags.release);
 
         const created = await this.questApi.createQuest({
           body: {
             projectId,
             ...(dependsOn != null ? { dependsOn } : {}),
+            ...(feedbackId != null ? { feedbackId } : {}),
+            ...(releaseId != null ? { releaseId } : {}),
+            ...(flags["due-at"] ? { dueAt: flags["due-at"] } : {}),
             title: flags.title,
             area: flags.area,
             priority: flags.priority,
@@ -471,6 +510,44 @@ export class QuestCommand {
             "The quest that has to complete first, 12 or Q12; 0 clears it.",
         })
         .optional(),
+      "due-at": z
+        .text({
+          description: "A new deadline, ISO 8601. An empty string clears it.",
+        })
+        .optional(),
+      objectives: z
+        .text({
+          atFile: true,
+          description:
+            "The whole list as JSON, for rewording or reordering: it REPLACES the old one, so carry each surviving item's id. To tick one: lore quest objective set.",
+        })
+        .optional(),
+      "completion-message": z
+        .text({
+          size: "rich",
+          atFile: true,
+          description:
+            "Rewrite the summary left at completion. An empty string clears it.",
+        })
+        .optional(),
+      feedback: z
+        .text({
+          description:
+            "The feedback item it answers, 120 or P120; 0 unlinks it.",
+        })
+        .optional(),
+      release: z
+        .text({
+          description:
+            "Move it into the release with this tag. An empty string takes it out.",
+        })
+        .optional(),
+      "expected-updated-at": z
+        .text({
+          description:
+            "The updatedAt of your last read: an edit landed since is refused rather than overwritten.",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -486,15 +563,26 @@ export class QuestCommand {
           ...(flags.priority !== undefined ? { priority: flags.priority } : {}),
           ...(flags.size !== undefined ? { size: flags.size } : {}),
           ...(flags.tag !== undefined ? { tags: flags.tag } : {}),
+          ...(flags["due-at"] !== undefined
+            ? { dueAt: flags["due-at"] || null }
+            : {}),
+          ...(flags.objectives !== undefined
+            ? { objectives: this.objectiveList(flags.objectives) }
+            : {}),
+          ...(flags["completion-message"] !== undefined
+            ? { completionMessage: flags["completion-message"] }
+            : {}),
         };
         const changed = [
           ...Object.keys(fields),
           ...(flags["depends-on"] !== undefined ? ["depends-on"] : []),
           ...(flags.epic !== undefined ? ["epic"] : []),
+          ...(flags.feedback !== undefined ? ["feedback"] : []),
+          ...(flags.release !== undefined ? ["release"] : []),
         ];
         if (changed.length === 0) {
           throw new UsageError(
-            "Nothing to update: pass at least one of --title, --description, --area, --priority, --size, --tag, --epic or --depends-on.",
+            "Nothing to update: pass at least one field to change, as lore quest update --help lists them.",
           );
         }
 
@@ -504,35 +592,58 @@ export class QuestCommand {
           params: { projectId, shortId },
         });
         const dependsOn = await this.dependsOn(projectId, flags["depends-on"]);
+        const feedbackId = await this.feedbackId(projectId, flags.feedback);
+        const releaseId = await this.releaseId(projectId, flags.release);
+
+        const moveEpic = async () => {
+          if (flags.epic === "0") {
+            if (quest.epicId != null) {
+              await this.epicApi.detachQuest({
+                params: { id: quest.epicId, questId: quest.id },
+              });
+            }
+          } else if (flags.epic !== undefined) {
+            const epic = await this.epicApi.getEpicByNumber({
+              params: { projectId, number: this.refs.epic(flags.epic) },
+            });
+            await this.epicApi.attachQuest({
+              params: { id: epic.id },
+              body: { questId: quest.id },
+            });
+          }
+        };
 
         // The epic first, as `quest_update` does: it is a separate call that
         // can be refused on its own, and a refusal here writes nothing else.
-        if (flags.epic === "0") {
-          if (quest.epicId != null) {
-            await this.epicApi.detachQuest({
-              params: { id: quest.epicId, questId: quest.id },
-            });
-          }
-        } else if (flags.epic !== undefined) {
-          const epic = await this.epicApi.getEpicByNumber({
-            params: { projectId, number: this.refs.epic(flags.epic) },
-          });
-          await this.epicApi.attachQuest({
-            params: { id: epic.id },
-            body: { questId: quest.id },
-          });
+        // ⚠️ Except with --expected-updated-at: a stale write has to be
+        // refused before anything lands, and only the update checks it.
+        const token = flags["expected-updated-at"];
+        if (token === undefined) {
+          await moveEpic();
         }
 
         const body = {
           ...fields,
           ...(dependsOn !== undefined ? { dependsOn } : {}),
+          ...(feedbackId !== undefined ? { feedbackId } : {}),
+          ...(releaseId !== undefined ? { releaseId } : {}),
         };
-        const updated = Object.keys(body).length
+        let updated = Object.keys(body).length
           ? await this.questApi.updateQuestById({
               params: { id: quest.id },
-              body,
+              body: {
+                ...body,
+                ...(token !== undefined ? { expectedUpdatedAt: token } : {}),
+              },
             })
           : await this.questApi.getQuestById({ params: { id: quest.id } });
+
+        if (token !== undefined) {
+          await moveEpic();
+          updated = await this.questApi.getQuestById({
+            params: { id: quest.id },
+          });
+        }
 
         this.printWrite(
           print,
@@ -1067,6 +1178,65 @@ export class QuestCommand {
         `${verb} Q${quest.shortId} ${quest.title}`,
       );
     });
+  }
+
+  /**
+   * `--feedback` as `feedbackId` takes it: absent leaves it alone, `0` unlinks
+   * it, and a number is read first, so a wrong one writes nothing.
+   */
+  protected async feedbackId(
+    projectId: number,
+    ref: string | undefined,
+  ): Promise<number | null | undefined> {
+    if (ref === undefined) return undefined;
+    if (ref === "0") return null;
+    const { id } = await this.feedbackApi.getFeedbackByShortId({
+      params: { projectId, shortId: this.refs.feedback(ref) },
+    });
+    return id;
+  }
+
+  /**
+   * `--release` as `releaseId` takes it: absent leaves it alone, an empty
+   * string takes the quest out, and a tag no release carries is refused.
+   */
+  protected async releaseId(
+    projectId: number,
+    tag: string | undefined,
+  ): Promise<number | null | undefined> {
+    if (tag === undefined) return undefined;
+    if (tag === "") return null;
+    const releases = await this.releaseApi.getReleases({
+      params: { projectId },
+    });
+    const release = releases.find((it) => it.tag === tag);
+    if (!release) {
+      throw new UsageError(`Release '${tag}' not found in this project`);
+    }
+    return release.id;
+  }
+
+  /**
+   * `--objectives`, which replaces the list and so is refused when it is not
+   * one, before anything is read or written.
+   */
+  protected objectiveList(value: string): Array<{
+    id?: number;
+    title: string;
+    completed: boolean;
+  }> {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch (error) {
+      throw new UsageError(
+        `--objectives is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (!Array.isArray(parsed)) {
+      throw new UsageError("--objectives has to be a JSON array.");
+    }
+    return parsed;
   }
 
   /**

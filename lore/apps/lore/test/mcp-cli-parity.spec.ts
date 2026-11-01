@@ -24,6 +24,8 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * an entry that gains its command fails here until it is removed.
  */
 const SUBJECTS: Record<string, string> = {
+  app: "apps",
+  artifact: "artifacts",
   release: "releases",
 };
 
@@ -35,58 +37,51 @@ const ALIASES: Record<string, string> = {
   epic_set_status: "epic set status",
 };
 
-const GAPS = [
-  "app_instance_create",
-  "app_instance_delete",
-  "app_instance_get",
-  "app_instance_list",
-  "app_instance_update",
-  "artifact_get",
-  "artifact_list",
-  "automation_adopt",
-  "automation_adoption_preview",
-  "automation_catalog",
-  "automation_create",
-  "automation_delete",
-  "automation_get",
-  "automation_list",
-  "automation_runs",
-  "automation_test",
-  "automation_update",
-  "automation_variable_delete",
-  "automation_variable_dependents",
-  "automation_variable_list",
-  "automation_variable_set",
-  "blight_forward",
-  "blight_list",
-  "blight_resolve",
-  "deploy_rollback",
-  "deploy_status",
-  "feedback_accept",
-  "feedback_attachment_get",
-  "feedback_comment_add",
-  "feedback_get",
-  "feedback_list",
-  "feedback_reject",
-  "insights_read",
-  "project_merge",
-  "release_attach",
-  "release_create",
-  "release_delete",
-  "release_detach",
-  "release_get",
-  "release_list",
-  "release_reopen",
-  "release_set_default",
-  "release_update",
-  "sigil_create",
-  "sigil_delete",
-  "sigil_list",
-  "sigil_rotate",
-  "stack_get",
-];
+const GAPS: string[] = [];
 
-const toolNames = (): string[] => {
+/**
+ * The params a command takes as its positional argument: the reference it
+ * acts on.
+ */
+const POSITIONAL = new Set([
+  "id",
+  "shortId",
+  "number",
+  "blight_id",
+  "key",
+  "policy",
+  "query",
+  "name",
+  "folio_shortId",
+  "attachment_shortId",
+  "directory_shortId",
+  "service",
+  "section",
+]);
+
+/**
+ * The params that have no flag, each for a reason.
+ */
+const NOT_A_FLAG: Record<string, string[]> = {
+  // The tool drops the caller's own events by the session's user; nothing
+  // tells a CLI process who it is, so the command keeps them (#F1437).
+  project_activity: ["includeOwn"],
+  // A row's body, opt-in because a tool result is a token budget.
+  // `--output json` already prints the whole row.
+  quest_list: ["detail"],
+  // The deprecated alias of `app`.
+  sigil_create: ["name"],
+  // The command waits for the machine itself, so it has no second call.
+  stack_logs: ["stack", "request"],
+  // `--name`, the flag every stack command has; `--to` for the revision.
+  stack_get: ["stack"],
+  stack_deploy: ["stack"],
+  stack_rollback: ["stack", "revision"],
+  // `--parent`, as on `directory create`.
+  directory_move: ["new_parent_shortId"],
+};
+
+const tools = (): any[] => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
   });
@@ -96,12 +91,10 @@ const toolNames = (): string[] => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   bootLore(alepha, ["api", "mcp"]);
-  return alepha
-    .inject(McpServerProvider)
-    .getTools()
-    .map((tool) => tool.name)
-    .sort();
+  return alepha.inject(McpServerProvider).getTools();
 };
+
+const toolNames = (): string[] => tools().map((tool) => tool.name);
 
 const commands = () => {
   const cli = Alepha.create({ env: { LOG_LEVEL: "error" } })
@@ -114,7 +107,7 @@ const commands = () => {
  * The words of a tool's name, read against the command tree: an underscore
  * is a space, and a subject's name may differ from the tool's.
  */
-const hasCommand = (tool: string, all: any[]): boolean => {
+const commandOf = (tool: string, all: any[]): any => {
   const [subject, ...verbs] = (
     ALIASES[tool] ?? tool.replaceAll("_", " ")
   ).split(" ");
@@ -126,8 +119,25 @@ const hasCommand = (tool: string, all: any[]): boolean => {
   for (const verb of verbs) {
     found = found?.children.find((child: any) => child.name === verb);
   }
-  return !!found;
+  return found;
 };
+
+const hasCommand = (tool: string, all: any[]): boolean =>
+  !!commandOf(tool, all);
+
+/**
+ * A param and a flag are the same word once its case, separators, plural and
+ * the kind of id it names are gone: `dependsOn_shortId` is `--depends-on`,
+ * `release_tag` is `--release`, `tags` is `--tag`.
+ */
+const stem = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[-_]/g, "")
+    .replace(/(shortid|number|tag|id)$/, (kind, _name, _at, whole) =>
+      whole === kind ? kind : "",
+    )
+    .replace(/s$/, "");
 
 describe("MCP and the CLI", () => {
   it("gives every tool a command, the gaps named below aside", () => {
@@ -140,6 +150,29 @@ describe("MCP and the CLI", () => {
     const missing = tools.filter(
       (tool) => !GAPS.includes(tool) && !hasCommand(tool, all),
     );
+
+    expect(missing).toEqual([]);
+  });
+
+  it("gives every param of a tool a flag, or says why not", () => {
+    const all = commands();
+    const missing: string[] = [];
+
+    for (const tool of tools()) {
+      if (ALIASES[tool.name]?.startsWith("attachments")) continue;
+      const command = commandOf(tool.name, all);
+      const flags = new Set(Object.keys(command?.flags.shape ?? {}).map(stem));
+      const takesArg = !!command?.options.args;
+
+      const params = Object.keys(tool.options.schema?.params?.shape ?? {});
+      for (const param of params) {
+        if (param === "project_name") continue;
+        if (flags.has(stem(param))) continue;
+        if (takesArg && POSITIONAL.has(param)) continue;
+        if (NOT_A_FLAG[tool.name]?.includes(param)) continue;
+        missing.push(`${tool.name}.${param}`);
+      }
+    }
 
     expect(missing).toEqual([]);
   });

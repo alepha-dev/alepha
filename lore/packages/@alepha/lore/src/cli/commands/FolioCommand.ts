@@ -249,6 +249,12 @@ export class FolioCommand {
       epic: z
         .text({ description: "File it under this epic: 45 or E45." })
         .optional(),
+      pinned: z
+        .boolean()
+        .describe(
+          "Pin it: its whole content reaches every lore project context. Use sparingly.",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
@@ -276,6 +282,7 @@ export class FolioCommand {
             summary: flags.summary,
             content: flags.content,
             ...(directory ? { directoryId: directory.id } : {}),
+            ...(flags.pinned !== undefined ? { pinned: flags.pinned } : {}),
           },
         });
         const line = `Created F${created.shortId} ${created.title}`;

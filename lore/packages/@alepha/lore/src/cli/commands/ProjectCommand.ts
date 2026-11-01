@@ -1,5 +1,6 @@
 import type {
   ProjectController,
+  ProjectMergeController,
   ProjectReportController,
 } from "@lore/core/api";
 import type { FolioController } from "@lore/knowledge/api";
@@ -65,6 +66,9 @@ export class ProjectCommand {
     this.client.scope(),
   );
   protected readonly folioApi = $client<FolioController>(this.client.scope());
+  protected readonly mergeApi = $client<ProjectMergeController>(
+    this.client.scope(),
+  );
   protected readonly reportApi = $client<ProjectReportController>(
     this.client.scope(),
   );
@@ -509,10 +513,67 @@ export class ProjectCommand {
     },
   });
 
+  public readonly merge = $command({
+    name: "merge",
+    description:
+      "Merge one project into another. A dry run unless --no-dry-run: read the plan first",
+    flags: z.object({
+      source: z.text({
+        description:
+          "The project to merge FROM, by slug or id. It is left empty.",
+      }),
+      target: z.text({
+        description: "The project to merge INTO, by slug or id.",
+      }),
+      "dry-run": z
+        .boolean()
+        .describe(
+          "Answer the plan and write nothing, the default. --no-dry-run applies it, in one atomic batch.",
+        )
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        context.project = flags.source;
+        const source = await this.projects.resolve(flags.source);
+        const target = await this.projects.resolve(flags.target);
+        const dryRun = flags["dry-run"] !== false;
+
+        const result = await this.mergeApi.mergeProject({
+          params: { id: source },
+          body: { target, dryRun },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, result);
+          return;
+        }
+
+        print(
+          `${dryRun ? "Plan to merge" : "Merged"} ${flags.source} into ${flags.target}:`,
+        );
+        for (const step of result.steps) {
+          const moved = Object.entries(step.moved)
+            .map(([kind, count]) => `${count} ${kind}`)
+            .join(", ");
+          print(`  ${step.name}: ${moved || "nothing to move"}`);
+          for (const conflict of step.conflicts ?? []) {
+            print(`  CONFLICT ${conflict.kind} ${conflict.key}`);
+          }
+        }
+        if (dryRun) {
+          print("Nothing was written. --no-dry-run applies it.");
+        }
+      });
+    },
+  });
+
   public readonly project = $command({
     name: "project",
     description:
-      "The projects you belong to: list, look at one, orient yourself, read what moved, read its reports, create one, or link this directory to one",
+      "The projects you belong to: list, look at one, orient yourself, read what moved, read its reports, create one, merge one, or link this directory to one",
     children: [
       this.list,
       this.info,
@@ -521,6 +582,7 @@ export class ProjectCommand {
       this.report,
       this.create,
       this.linkProject,
+      this.merge,
     ],
     handler: async ({ help }) => {
       help();

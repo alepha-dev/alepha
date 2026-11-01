@@ -63,11 +63,15 @@ describe("the Lore CLI command surface", () => {
       "apps",
       "artifacts",
       "attachments",
+      "automation",
+      "blight",
       "deploy",
       "directory",
       "epic",
       "estate",
+      "feedback",
       "folio",
+      "insights",
       "login",
       "logout",
       "project",
@@ -76,6 +80,7 @@ describe("the Lore CLI command surface", () => {
       "registry",
       "releases",
       "secrets",
+      "sigil",
       "stack",
     ]);
   });
@@ -118,9 +123,24 @@ describe("the Lore CLI command surface", () => {
         ]),
       ),
     ).toEqual({
-      apps: ["build", "deploy", "redeploy", "destroy"],
-      artifacts: ["push", "push-image"],
+      apps: ["build", "deploy", "redeploy", "destroy", "instance"],
+      artifacts: ["push", "push-image", "list", "get"],
       attachments: ["push"],
+      automation: [
+        "list",
+        "get",
+        "create",
+        "update",
+        "delete",
+        "runs",
+        "catalog",
+        "test",
+        "adoption",
+        "adopt",
+        "variable",
+      ],
+      blight: ["list", "resolve", "forward"],
+      deploy: ["status", "rollback"],
       directory: ["list", "create", "rename", "move", "delete"],
       epic: [
         "list",
@@ -132,6 +152,7 @@ describe("the Lore CLI command surface", () => {
         "unshelve",
         "delete",
       ],
+      feedback: ["list", "get", "attachment", "comment", "accept", "reject"],
       folio: [
         "list",
         "search",
@@ -143,6 +164,7 @@ describe("the Lore CLI command surface", () => {
         "delete",
         "attachment",
       ],
+      insights: ["read"],
       project: [
         "list",
         "info",
@@ -151,6 +173,7 @@ describe("the Lore CLI command surface", () => {
         "report",
         "create",
         "link",
+        "merge",
       ],
       estate: ["add", "list"],
       registry: ["add", "list", "remove"],
@@ -160,6 +183,7 @@ describe("the Lore CLI command surface", () => {
         "rollback",
         "destroy",
         "list",
+        "get",
         "revisions",
         "secrets",
         "route",
@@ -187,8 +211,23 @@ describe("the Lore CLI command surface", () => {
         "tags",
         "attachment",
       ],
-      releases: ["check", "cut", "changelog", "publish"],
+      releases: [
+        "check",
+        "cut",
+        "changelog",
+        "publish",
+        "list",
+        "get",
+        "create",
+        "update",
+        "reopen",
+        "attach",
+        "detach",
+        "delete",
+        "set",
+      ],
       secrets: ["set", "list", "unset"],
+      sigil: ["list", "create", "rotate", "delete"],
     });
   });
 
@@ -232,13 +271,31 @@ describe("the Lore CLI command surface", () => {
     "init",
     "lint",
     "pack",
-    "test",
     "typecheck",
     "verify",
   ])("does not carry the Alepha CLI's `%s`", (leaked) => {
     const names = setup().commands.map((command) => command.name);
 
     expect(names).not.toContain(leaked);
+  });
+
+  /**
+   * By parent, for the reason `build` is below: `automation_test` is
+   * `lore automation test`, by the naming rule, and a leaked `alepha test` is
+   * top-level.
+   */
+  it("carries no top-level `test`, which is the framework's", () => {
+    const cli = setup();
+
+    expect(
+      cli.testGetTopLevelCommands().map((command) => command.name),
+    ).not.toContain("test");
+    expect(
+      cli
+        .testGetTopLevelCommands()
+        .find((command) => command.name === "automation")
+        ?.children.map((child) => child.name),
+    ).toContain("test");
   });
 
   it("carries no top-level `build`, which is the framework's", () => {
@@ -255,6 +312,6 @@ describe("the Lore CLI command surface", () => {
         .testGetTopLevelCommands()
         .find((command) => command.name === "apps")
         ?.children.map((child) => child.name),
-    ).toEqual(["build", "deploy", "redeploy", "destroy"]);
+    ).toEqual(["build", "deploy", "redeploy", "destroy", "instance"]);
   });
 });
