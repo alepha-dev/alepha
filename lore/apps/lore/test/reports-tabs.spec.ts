@@ -26,24 +26,18 @@ const registry = (() => {
  * Every tab available, except Quality unless a run exists: what
  * `ReportsTabRegistry.availability` answers.
  */
-const reportsTabs = (
-  project: ReturnType<typeof projectFixture>,
-  hasQualityRun = false,
-) =>
-  registry.tabs(
-    project,
-    [
-      "reportsSummary",
-      "reportsFlow",
-      "reportsBacklog",
-      "reportsPlanning",
-      "reportsSupport",
-      "reportsDelivery",
-      "reportsOverview",
-      "reportsQuests",
-      "reportsMembers",
-    ].concat(hasQualityRun ? ["reportsQuality"] : []),
-  );
+const reportsTabs = (project: ReturnType<typeof projectFixture>) =>
+  registry.tabs(project, [
+    "reportsSummary",
+    "reportsFlow",
+    "reportsBacklog",
+    "reportsPlanning",
+    "reportsSupport",
+    "reportsDelivery",
+    "reportsOverview",
+    "reportsQuests",
+    "reportsMembers",
+  ]);
 
 /**
  * Which Reports tabs a project has.
@@ -63,17 +57,13 @@ describe("reportsTabs", () => {
   it("declares the filters of each tab, and honours none on an unknown tab", () => {
     expect(registry.honours("reportsOverview")).toContain("area");
     expect(registry.honours("reportsQuests")).not.toContain("grain");
-    expect(registry.honours("reportsQuality")).toEqual([]);
+    expect(registry.honours("reportsDelivery")).toContain("branch");
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
   const names = (
     capabilities: Array<"work" | "knowledge" | "apps" | "support">,
-    hasQualityRun = false,
-  ) =>
-    reportsTabs(projectFixture({ capabilities }), hasQualityRun).map(
-      (tab) => tab.route,
-    );
+  ) => reportsTabs(projectFixture({ capabilities })).map((tab) => tab.route);
 
   it("gives a Work project the two derived quest tabs, plus Members", () => {
     expect(names(["work"])).toEqual([
@@ -94,30 +84,18 @@ describe("reportsTabs", () => {
     expect(names([])).toEqual(["reportsSummary", "reportsMembers"]);
   });
 
-  it("keeps Quality for an Apps-only project, once a run exists", () => {
+  it("keeps Delivery for an Apps-only project", () => {
     // The case that decided Reports is Core rather than Work: this project
-    // has no quests at all and still needs to reach what CI pushed.
-    expect(names(["apps"], true)).toEqual([
+    // has no quests at all and still needs to reach what CI pushed, which is
+    // a section of Delivery since #Q3010.
+    expect(names(["apps"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
       "reportsMembers",
-      "reportsQuality",
     ]);
   });
 
-  it("hides Quality until a run exists", () => {
-    // Most projects will never push one, and a permanently empty tab on
-    // everyone's Reports page is worse than no tab.
-    expect(names(["apps"], false)).not.toContain("reportsQuality");
-  });
-
-  it("hides Quality when Apps is off, run or no run", () => {
-    expect(names(["work"], true)).not.toContain("reportsQuality");
-  });
-
-  it("puts Quality after the tabs every project has", () => {
-    // The three derived tabs are the ones people navigate by; an ingested one
-    // appearing between them would move the others.
-    expect(names(["work", "apps"], true).at(-1)).toBe("reportsQuality");
+  it("hides Delivery when Apps is off", () => {
+    expect(names(["work"])).not.toContain("reportsDelivery");
   });
 });

@@ -17,7 +17,8 @@ export type ReportsFilterKey =
   | "releaseId"
   | "tag"
   | "priority"
-  | "memberId";
+  | "memberId"
+  | "branch";
 
 /**
  * Turns the bar's page query into the query of a report action (#Q2996).
@@ -72,6 +73,9 @@ export class ReportsUrlQuery {
     }
     if (honours("memberId") && url.memberId) {
       query.memberId = url.memberId;
+    }
+    if (honours("branch") && url.branch) {
+      query.branch = url.branch;
     }
     return query;
   }

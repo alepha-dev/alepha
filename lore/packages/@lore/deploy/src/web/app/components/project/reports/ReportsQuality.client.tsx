@@ -4,23 +4,40 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import { Control } from "@alepha/ui/form";
+import type { ReportsUrl } from "@lore/core/schemas";
 import {
   currentProjectAtom,
   type I18n,
   ReportsKpiRow,
   type ReportsKpi,
   ReportsSection,
+  ReportsUrlQuery,
 } from "@lore/core/web";
-import { useStore } from "alepha/react";
+import { z } from "alepha";
+import { useInject, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { useRouter } from "alepha/react/router";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-import type { QualityOverview } from "../../../../../api/schemas/qualityOverviewSchema.ts";
+import type { QualityReport } from "../../../../../api/schemas/qualityReportSchema.ts";
 import ReportsQualityEmpty from "./ReportsQualityEmpty.tsx";
 import ReportsQualityStaleness from "./ReportsQualityStaleness.tsx";
 
 export interface ReportsQualityProps {
-  quality: QualityOverview;
+  quality: QualityReport;
+  /**
+   * The bar's page query: picking a branch keeps it.
+   */
+  url: ReportsUrl;
 }
 
 /**
@@ -39,7 +56,28 @@ export interface ReportsQualityProps {
 const ReportsQuality = (props: ReportsQualityProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
-  const { latest, runs } = props.quality;
+  const { latest, runs, previous, target, branch, branches, coverageByTag } =
+    props.quality;
+  const router = useRouter();
+  const reportsUrl = useInject(ReportsUrlQuery);
+  const branchForm = useForm({
+    schema: z.object({ branch: z.text().optional() }),
+    initialValues: { branch },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, value) => {
+      void router.push(
+        "reportsDelivery" as never,
+        {
+          query: reportsUrl.patch(
+            props.url,
+            "branch",
+            value as string | undefined,
+          ),
+        } as never,
+      );
+    },
+  });
 
   if (!latest) {
     return <ReportsQualityEmpty projectSlug={project?.slug ?? ""} />;
@@ -69,26 +107,56 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     },
   } satisfies ChartConfig;
 
+  const durationChartConfig = {
+    seconds: {
+      label: tr("reports.quality.duration"),
+      color: "var(--chart-2)",
+    },
+  } satisfies ChartConfig;
+
+  const coverageDelta = (
+    current: number,
+    before: number | undefined,
+  ): ReportsKpi["delta"] =>
+    before === undefined
+      ? undefined
+      : {
+          current,
+          previous: before,
+          upIsGood: true,
+          format: (difference) => `${Math.round(difference * 10) / 10}%`,
+        };
+
   const coverageKpis: ReportsKpi[] = [
     {
       label: tr("reports.quality.lines"),
       definition: tr("reports.quality.lines.definition"),
       value: `${latest.coverageLines}%`,
+      delta: coverageDelta(latest.coverageLines, previous?.coverageLines),
     },
     {
       label: tr("reports.quality.statements"),
       definition: tr("reports.quality.statements.definition"),
       value: `${latest.coverageStatements}%`,
+      delta: coverageDelta(
+        latest.coverageStatements,
+        previous?.coverageStatements,
+      ),
     },
     {
       label: tr("reports.quality.functions"),
       definition: tr("reports.quality.functions.definition"),
       value: `${latest.coverageFunctions}%`,
+      delta: coverageDelta(
+        latest.coverageFunctions,
+        previous?.coverageFunctions,
+      ),
     },
     {
       label: tr("reports.quality.branches"),
       definition: tr("reports.quality.branches.definition"),
       value: `${latest.coverageBranches}%`,
+      delta: coverageDelta(latest.coverageBranches, previous?.coverageBranches),
     },
   ];
 
@@ -133,6 +201,7 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     branches: run.coverageBranches,
     passed: run.testsPassed,
     failed: run.testsFailed,
+    seconds: Math.round(run.durationMs / 1000),
   }));
 
   /**
@@ -176,7 +245,22 @@ const ReportsQuality = (props: ReportsQualityProps) => {
       <ReportsSection
         title={tr("reports.quality.section.coverage")}
         definition={tr("reports.quality.section.coverage.definition")}
-        action={<ReportsQualityStaleness latest={latest} />}
+        action={
+          <div className="flex items-center gap-3">
+            {branches.length > 1 ? (
+              <Control
+                input={branchForm.input.branch}
+                label=""
+                inputProps={{ "aria-label": tr("reports.quality.branch") }}
+                minimal
+                size="xs"
+                triggerClassName="w-auto"
+                items={branches.map((value) => ({ value, label: value }))}
+              />
+            ) : null}
+            <ReportsQualityStaleness latest={latest} />
+          </div>
+        }
       >
         <ReportsKpiRow kpis={coverageKpis} />
       </ReportsSection>
@@ -205,6 +289,18 @@ const ReportsQuality = (props: ReportsQualityProps) => {
             <ChartTooltip
               content={<ChartTooltipContent labelFormatter={tooltipLabel} />}
             />
+            {target === undefined ? null : (
+              <ReferenceLine
+                y={target}
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 4"
+                label={{
+                  value: tr("reports.quality.target"),
+                  position: "insideTopRight",
+                  fontSize: 11,
+                }}
+              />
+            )}
             <Line dataKey="lines" stroke="var(--color-lines)" dot={false} />
             <Line
               dataKey="statements"
@@ -246,6 +342,51 @@ const ReportsQuality = (props: ReportsQualityProps) => {
             <Line dataKey="failed" stroke="var(--color-failed)" dot={false} />
           </LineChart>
         </ChartContainer>
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.quality.section.duration")}
+        definition={tr("reports.quality.section.duration.definition")}
+      >
+        <ChartContainer config={durationChartConfig} className="h-48 w-full">
+          <LineChart data={series}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="day"
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={dayTick}
+            />
+            <YAxis tickLine={false} axisLine={false} />
+            <ChartTooltip
+              content={<ChartTooltipContent labelFormatter={tooltipLabel} />}
+            />
+            <Line dataKey="seconds" stroke="var(--color-seconds)" dot={false} />
+          </LineChart>
+        </ChartContainer>
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.quality.section.byTag")}
+        definition={tr("reports.quality.section.byTag.definition")}
+        csv={{ filename: "coverage-by-tag", rows: coverageByTag }}
+      >
+        {coverageByTag.length === 0 ? (
+          <p className="text-muted-foreground py-2 text-sm">
+            {tr("reports.quality.section.byTag.empty")}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {coverageByTag.map((row) => (
+              <li key={row.tag} className="flex items-center gap-3">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                  {row.tag}
+                </span>
+                <span className="tabular-nums">{row.coverage}%</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </ReportsSection>
     </>
   );

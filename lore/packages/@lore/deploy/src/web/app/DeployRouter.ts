@@ -20,7 +20,6 @@ import { createElement } from "react";
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
-import type { QualityController } from "../../api/controllers/QualityController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
@@ -57,7 +56,6 @@ export const ANALYTICS_DIMENSIONS = new Set([
 export class DeployRouter {
   core = $inject(CoreRouter);
   alepha = $inject(Alepha);
-  qualityApi = $client<QualityController>();
   deliveryApi = $client<DeliveryReportsController>();
   reportsUrl = $inject(ReportsUrlQuery);
   reportsTabs = $inject(ReportsTabRegistry);
@@ -763,6 +761,7 @@ export class DeployRouter {
     lazy: () =>
       import("./components/project/reports/ReportsDelivery.client.tsx"),
     loader: async ({ query }) => ({
+      url: query,
       delivery: await this.deliveryApi.getReportsDelivery({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
@@ -779,18 +778,15 @@ export class DeployRouter {
     parent: this.core.projectReports,
     name: "reportsQuality",
     path: "/quality",
-    lazy: () =>
-      import("./components/project/reports/ReportsQuality.client.tsx"),
-    schema: {
-      query: z.object({ branch: z.string().min(1).max(200).optional() }),
+    // Quality is a section of Delivery since #Q3010. The route stays for the
+    // links people hold and the dashboard tiles that name it.
+    component: RedirectPage,
+    // Annotated `Promise<void>` because it always throws, like
+    // `projectAppRedirect`.
+    loader: async (): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/reports/delivery`,
+      });
     },
-    loader: async ({ query }) => ({
-      quality: await this.qualityApi.getQualityRuns({
-        query,
-        params: {
-          projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-      }),
-    }),
   });
 }

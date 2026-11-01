@@ -901,7 +901,6 @@ export default {
   "project.reports.nav.overview": "Overview",
   "project.reports.nav.quests": "Quests",
   "project.reports.nav.members": "Members",
-  "project.reports.nav.quality": "Quality",
   "reports.quality.section.coverage": "Coverage",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Coverage over time",
@@ -1333,6 +1332,19 @@ export default {
   "reports.reliability.uptime.uptime": "Uptime",
   "reports.reliability.uptime.incidents": "Incidents",
   "reports.reliability.uptime.mttr": "MTTR",
+  "reports.quality.branch": "Branch",
+  "reports.quality.target": "Target",
+  "reports.quality.section.duration": "Test duration",
+  "reports.quality.section.duration.definition":
+    "Wall-clock time of the last run of each day, in seconds.",
+  "reports.quality.section.byTag": "Coverage by release tag",
+  "reports.quality.section.byTag.definition":
+    "Line coverage of the run whose commit an artifact of that tag was built from.",
+  "reports.quality.section.byTag.empty": "No run matches an artifact’s commit.",
+  "project.settings.coverageTarget": "Coverage target (%)",
+  "project.settings.coverageTarget.hint":
+    "Drawn as a line on the coverage chart in Reports. Leave empty for none.",
+  "project.settings.coverageTarget.save": "Save target",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

@@ -879,7 +879,6 @@ export default {
   "project.reports.nav.overview": "Vue d'ensemble",
   "project.reports.nav.quests": "Quêtes",
   "project.reports.nav.members": "Groupe",
-  "project.reports.nav.quality": "Qualité",
   "reports.quality.section.coverage": "Couverture",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Couverture dans le temps",
@@ -1314,6 +1313,20 @@ export default {
   "reports.reliability.uptime.uptime": "Disponibilité",
   "reports.reliability.uptime.incidents": "Incidents",
   "reports.reliability.uptime.mttr": "Temps de rétablissement",
+  "reports.quality.branch": "Branche",
+  "reports.quality.target": "Cible",
+  "reports.quality.section.duration": "Durée des tests",
+  "reports.quality.section.duration.definition":
+    "Durée réelle du dernier passage de chaque jour, en secondes.",
+  "reports.quality.section.byTag": "Couverture par tag de version",
+  "reports.quality.section.byTag.definition":
+    "Couverture de lignes du passage dont le commit a produit un artefact de ce tag.",
+  "reports.quality.section.byTag.empty":
+    "Aucun passage ne correspond au commit d’un artefact.",
+  "project.settings.coverageTarget": "Cible de couverture (%)",
+  "project.settings.coverageTarget.hint":
+    "Tracée en ligne sur le graphique de couverture des rapports. Laisser vide pour aucune.",
+  "project.settings.coverageTarget.save": "Enregistrer la cible",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

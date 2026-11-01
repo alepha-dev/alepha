@@ -113,7 +113,7 @@ export interface ReportsTab {
 }
 
 export interface ReportsFilter {
-  key: Exclude<ReportsFilterKey, "period" | "grain" | "compare">;
+  key: Exclude<ReportsFilterKey, "period" | "grain" | "compare" | "branch">;
   labelKey: string;
   needs?: CapabilityKey;
   /**

@@ -250,11 +250,11 @@ test.describe("Project capabilities", () => {
     await expect(page.locator(`a[href="/${slug}/reports/quests"]`)).toHaveCount(
       0,
     );
-    // Quality is Apps baseline and self-hides until a run exists, so it is
-    // absent right up to the push below.
+    // Delivery is Apps baseline. Its Quality section self-hides until a run
+    // exists, so nothing names it right up to the push below.
     await expect(
-      page.locator(`a[href="/${slug}/reports/quality"]`),
-    ).toHaveCount(0);
+      page.getByTestId("reports-tabs").getByRole("link", { name: "Delivery" }),
+    ).toBeVisible();
 
     // ⚠️ Quality has no switch, and this is why an Apps-only project needs
     // Reports to stay Core: pushed by CI under a CI credential, its tab is the
@@ -285,11 +285,12 @@ test.describe("Project capabilities", () => {
     );
     expect(pushed).toBe(true);
 
-    await page.goto(`/${slug}/reports`);
-    await page.waitForLoadState("networkidle");
-    await expect(
-      page.locator(`a[href="/${slug}/reports/quality"]`),
-    ).toBeVisible({ timeout: 15_000 });
+    // The old URL still lands, on the section that took it in (#Q3010).
+    await page.goto(`/${slug}/reports/quality`);
+    await expect(page).toHaveURL(/\/reports\/delivery/);
+    await expect(page.getByText("Coverage over time")).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("everything off leaves a project that still works, and gives it all back", async ({

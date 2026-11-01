@@ -36,6 +36,10 @@ export const reportsQuerySchema = z.object({
    */
   memberId: z.uuid().optional(),
   /**
+   * The branch a quality figure is for. `main` when absent.
+   */
+  branch: z.text().optional(),
+  /**
    * Days in progress after which a quest reads as stale. Default 14.
    */
   staleDays: z.integer().min(1).optional(),

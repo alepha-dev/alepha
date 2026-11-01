@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `coverage_target` integer;

@@ -25,6 +25,7 @@ export const reportsUrlSchema = z.object({
   tag: z.text().optional(),
   priority: z.text().optional(),
   memberId: z.text().optional(),
+  branch: z.text().optional(),
 });
 
 export type ReportsUrl = Infer<typeof reportsUrlSchema>;
