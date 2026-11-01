@@ -47,7 +47,9 @@ sequenceDiagram
    stops. For the next **two minutes**, Bay checks the release every 10
    seconds; three failures in a row put the previous release back. That
    catches the release that boots, answers once and dies on its first real
-   traffic, which no check at deploy time can see.
+   traffic, which no check at deploy time can see. A stop, a restore or a
+   storage migration ends the watch: after one of them, nothing puts the
+   previous release back on its own.
 6. **Prune.** As soon as the new release is up, without waiting for the watch,
    old releases are removed. Bay keeps **two** per app, the serving one and its
    predecessor (`--keep-releases` raises it): the rollback needs one, and the

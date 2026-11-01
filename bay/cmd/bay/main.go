@@ -450,7 +450,8 @@ type server struct {
 	connectorStatus *connector.Status
 	connectorReload chan struct{}
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
-	// deploy can supersede the previous one's. See beginWatch.
+	// deploy can supersede the previous one's and a stop can end it. See
+	// beginWatch and cancelWatch.
 	watchMu sync.Mutex
 	watches map[string]context.CancelFunc
 	// repoint rewrites an instance's `.env` for blob storage; nil means
@@ -867,6 +868,7 @@ func (s *server) stopInstance(key string) error {
 	if err := s.store.SetStopped(key, true); err != nil {
 		return err
 	}
+	s.cancelWatch(key)
 	return s.runner.Park(key, stopGrace)
 }
 
@@ -1598,7 +1600,7 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	}
 
 	ctx := s.beginWatch(app.Key())
-	defer s.endWatch(app.Key())
+	defer s.endWatch(ctx, app.Key())
 
 	window, every := rollbackWindow, rollbackInterval
 	if s.watchWindow > 0 {
@@ -1624,8 +1626,8 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 
 	if ctx.Err() != nil {
 		// Superseded by a newer deploy, whose watch owns this app now, or ended
-		// by a restore (see stopForMaintenance).
-		s.log.Info("watch cancelled by a newer deploy or a restore",
+		// by a stop or a restore (see cancelWatch).
+		s.log.Info("watch cancelled by a newer deploy, a stop or a restore",
 			"app", app.Key(), "release", app.Release)
 		return
 	}
@@ -1645,9 +1647,9 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 			"app", app.Key(), "watched", app.Release, "reason", verdict.Reason)
 		return
 	}
-	// Down on purpose: `bay stop` and `bay stack stop` close the port the watch
-	// is probing, and a rollback ends in a start, which would undo the stop on
-	// a release nobody asked for.
+	// Down on purpose. A stop ends the watch, but it can land just after this
+	// verdict was reached, and a rollback ends in a start, which would undo the
+	// stop on a release nobody asked for.
 	if current.Stopped {
 		s.log.Info("app stopped during its watch, not rolling back",
 			"app", app.Key(), "release", app.Release)
@@ -1695,27 +1697,45 @@ func (s *server) beginWatch(key string) context.Context {
 /*
 stopForMaintenance takes an app down for a job that brings it back itself: a
 restore, a storage migration.
-
-Its rollback watch ends here, first. From the outside such a stop is a release
-that died, and one that outlasts the threshold would have the rollback start
-the previous release in the middle of the job, on a database being swapped. Not
-armed again afterwards: what comes back is the job's result, not the release
-the watch was judging, and somebody is at the controls.
 */
 func (s *server) stopForMaintenance(key string) error {
-	s.watchMu.Lock()
-	if cancel, ok := s.watches[key]; ok {
-		cancel()
-	}
-	s.watchMu.Unlock()
+	s.cancelWatch(key)
 	return s.runner.Stop(key, stopGrace)
 }
 
-// endWatch drops this app's entry, unless a newer watch has already claimed it.
-func (s *server) endWatch(key string) {
+/*
+cancelWatch ends the app's rollback watch, if it has one, before somebody takes
+the app down on purpose: a stop, a restore, a storage migration.
+
+From the outside each of those is a release that died. Left running, the watch
+would start the previous release in the middle of a job, on a database being
+swapped, or after a `bay start` whose boot outlasts the threshold, when nothing
+says stopped any more. Not armed again afterwards: what comes back is not what
+the watch was judging, and somebody is at the controls, so a bad release
+restarted inside its window stays theirs to deal with.
+*/
+func (s *server) cancelWatch(key string) {
 	s.watchMu.Lock()
 	defer s.watchMu.Unlock()
-	delete(s.watches, key)
+	if cancel, ok := s.watches[key]; ok {
+		cancel()
+		delete(s.watches, key)
+	}
+}
+
+/*
+endWatch drops the entry of a watch that ran its course.
+
+⚠️ A cancelled watch has no entry left to drop: whoever cancelled it replaced or
+removed it. What is under the key now is a newer watch, and deleting it would
+leave that one running where no deploy and no stop can reach it.
+*/
+func (s *server) endWatch(ctx context.Context, key string) {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	if ctx.Err() == nil {
+		delete(s.watches, key)
+	}
 }
 
 // handleRemove stops an app and unregisters it.
