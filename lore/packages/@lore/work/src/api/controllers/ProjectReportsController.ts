@@ -8,6 +8,7 @@ import {
   reportsQuerySchema,
   reportsQuestsSchema,
   reportsSupportSchema,
+  reportsTeamSchema,
 } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
@@ -18,6 +19,7 @@ import { ProjectFlowReportService } from "../services/ProjectFlowReportService.t
 import { ProjectPlanningReportService } from "../services/ProjectPlanningReportService.ts";
 import { ProjectReportsService } from "../services/ProjectReportsService.ts";
 import { ProjectSupportReportService } from "../services/ProjectSupportReportService.ts";
+import { ProjectTeamReportService } from "../services/ProjectTeamReportService.ts";
 
 /**
  * The Reports tabs: gate on `stats:read`, cache privately, delegate.
@@ -32,6 +34,7 @@ export class ProjectReportsController {
   protected readonly backlog = $inject(ProjectBacklogReportService);
   protected readonly planning = $inject(ProjectPlanningReportService);
   protected readonly support = $inject(ProjectSupportReportService);
+  protected readonly team = $inject(ProjectTeamReportService);
 
   /**
    * Reports "Flow" tab: how work moved through the period (#Q3000).
@@ -121,6 +124,28 @@ export class ProjectReportsController {
       response: reportsSupportSchema,
     },
     handler: ({ params, query }) => this.support.report(params.id, query),
+  });
+
+  /**
+   * Reports "Team" tab: workload and contribution per member (#Q3013).
+   */
+  getReportsTeam = $action({
+    path: "/getReportsTeam/:id",
+    method: "GET",
+    use: [
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
+    ],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      query: reportsQuerySchema,
+      response: reportsTeamSchema,
+    },
+    handler: ({ params, query }) => this.team.report(params.id, query),
   });
 
   /**

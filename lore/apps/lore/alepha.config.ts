@@ -238,6 +238,9 @@ export default defineConfig({
         "reports.flow.size.",
         "reports.backlog.age.",
         "reports.summary.section.",
+        "reports.team.channel.",
+        "reports.team.column.",
+        "reports.team.sort.",
         // Catalogue-defined preset keys, slot names and channel choices (#E43).
         "automation.preset.",
         "automation.setup.",

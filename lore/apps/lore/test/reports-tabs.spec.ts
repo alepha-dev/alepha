@@ -34,6 +34,7 @@ const reportsTabs = (project: ReturnType<typeof projectFixture>) =>
     "reportsPlanning",
     "reportsSupport",
     "reportsDelivery",
+    "reportsTeam",
     "reportsOverview",
     "reportsQuests",
     "reportsMembers",
@@ -71,6 +72,7 @@ describe("reportsTabs", () => {
       "reportsFlow",
       "reportsBacklog",
       "reportsPlanning",
+      "reportsTeam",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",
@@ -81,7 +83,11 @@ describe("reportsTabs", () => {
     // Members comes from a core table, so it is the one tab that survives
     // everything being turned off - which is what makes Reports worth keeping
     // as a Core entry.
-    expect(names([])).toEqual(["reportsSummary", "reportsMembers"]);
+    expect(names([])).toEqual([
+      "reportsSummary",
+      "reportsTeam",
+      "reportsMembers",
+    ]);
   });
 
   it("keeps Delivery for an Apps-only project", () => {
@@ -91,6 +97,7 @@ describe("reportsTabs", () => {
     expect(names(["apps"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
+      "reportsTeam",
       "reportsMembers",
     ]);
   });

@@ -518,6 +518,14 @@ export class WorkShell {
       needs: "support",
       filters: ["period", "grain"],
     });
+    // No `needs`: the contribution is core's `project_activity`, so a project
+    // with Work off still has a team.
+    this.reports.register({
+      route: "reportsTeam",
+      labelKey: "project.reports.nav.team",
+      order: 9.9,
+      filters: ["period"],
+    });
     this.reports.register({
       route: "reportsOverview",
       labelKey: "project.reports.nav.overview",

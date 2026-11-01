@@ -92,6 +92,10 @@ export {
   reportsDeliverySchema,
 } from "../api/schemas/reportsDeliverySchema.ts";
 export {
+  type ReportsTeam,
+  reportsTeamSchema,
+} from "../api/schemas/reportsTeamSchema.ts";
+export {
   type ReportsSummaryLine,
   reportsSummaryLineSchema,
   reportsSummarySchema,

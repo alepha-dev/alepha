@@ -1,4 +1,4 @@
-import { ProjectController } from "@lore/core/api";
+import { ProjectAnalytics, ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -801,6 +801,56 @@ describe("ProjectReportsController", () => {
   /**
    * The Support tab's report (#Q3006).
    */
+  describe("getReportsTeam", () => {
+    it("reports load and contribution per member, by name, folding an empty channel", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+
+      const late = await createTestQuest(ctx, owner, project.id);
+      await ctx.questController.acceptQuest.fetch(
+        { params: { id: late.id } },
+        { user: owner },
+      );
+      await ctx.repos.quests.updateById(late.id, {
+        dueAt: "2000-01-01T00:00:00.000Z",
+      });
+
+      const activity = ctx.alepha.inject(ProjectAnalytics).activity;
+      const day = new Date(ctx.now()).toISOString().slice(0, 10);
+      const point = (over: { type: string; action: string; channel: string }) =>
+        activity.record({
+          project: String(project.id),
+          actor: owner.id,
+          count: 1,
+          ...over,
+        });
+      await point({ type: "folio", action: "update", channel: "mcp" });
+      await point({ type: "feedback", action: "accept", channel: "web" });
+      await point({ type: "app", action: "deploy", channel: "" });
+
+      const { data } = await ctx.reportsController.getReportsTeam.fetch(
+        { params: { id: project.id }, query: { from: `${day}T00:00:00.000Z` } },
+        { user: owner },
+      );
+
+      const member = data.members.find((row) => row.userId === owner.id)!;
+      expect(member).toMatchObject({
+        wip: 1,
+        held: 0,
+        overdue: 1,
+        folioRevisions: 1,
+        feedbackTriaged: 1,
+        deploys: 1,
+        agentWrites: 1,
+      });
+      // A channel nobody recorded never reads as a person at the keyboard.
+      expect(data.channels.map((row) => row.channel)).toContain("unknown");
+      expect(Object.keys(member)).not.toContain("rank");
+    });
+  });
+
   describe("getReportsSupport", () => {
     const hour = 3_600_000;
     const day = 24 * hour;

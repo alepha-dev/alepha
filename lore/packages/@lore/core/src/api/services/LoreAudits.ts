@@ -277,7 +277,9 @@ export class LoreAudits {
     // nothing in anybody's cloud account; `destroy` removes the Worker, the
     // queue and the cache namespace that copy's deploys created. Somebody
     // reading this log later needs those to be two different sentences.
-    actions: ["create", "update", "delete", "destroy"],
+    // `deploy` is somebody shipping to the copy: asked for, whatever came of
+    // it, which is what the Team tab counts (#Q3013).
+    actions: ["create", "update", "delete", "destroy", "deploy"],
     coalesce: { actions: ["update"], window: "5m" },
   });
 

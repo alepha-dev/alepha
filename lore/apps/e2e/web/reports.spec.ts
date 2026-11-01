@@ -291,6 +291,35 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Team tab (#Q3013): a row per member, sorted by name or load, and no
+   * rank anywhere.
+   */
+  test("Team lists the members and sorts them by load", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(
+      page,
+      `reportsteam${t}@example.com`,
+      "ReportsT123!",
+    );
+    const { slug } = await createProjectViaWizard(page, `RT${t}`.slice(0, 20));
+
+    await page.goto(`/${slug}/reports/team`);
+
+    const table = page.getByTestId("reports-team");
+    await expect(table.getByRole("row")).toHaveCount(2, { timeout: 20_000 });
+    await expect(page.getByText("How work arrives")).toBeVisible();
+
+    await page
+      .getByTestId("reports-team-sort")
+      .getByRole("button", { name: "By load" })
+      .click();
+    await expect(table.getByRole("row")).toHaveCount(2);
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+  });
+
+  /**
    * The Delivery tab (#Q3008).
    */
   test("Delivery reads DORA's keys on a project that has shipped nothing", async ({

@@ -859,29 +859,15 @@ export class ProjectReportsService {
   }
 
   /**
-   * Reports "Members" tab: a per-member leaderboard (completed quests), a
-   * weekly per-contributor contribution matrix for a stacked-area chart, and
-   * an "idle" list of members who have not completed a quest in the last 14
-   * days.
-   *
-   * Same access model as `getReportsOverview`: members-only. Date
-   * computations dialect-branch (SQLite epoch-ms integers on D1, Postgres
-   * timestamps on node).
+   * The project's members with what the report prints for them: "first last"
+   * trimmed, else the username, else a short fallback derived from the uuid.
    */
-  async membersReport(
+  async membersOf(
     projectId: number,
-    query: ReportsQuery,
-  ): Promise<Infer<typeof reportsMembersSchema>> {
-    const params = { id: projectId };
+  ): Promise<Array<{ userId: string; name: string; picture?: string }>> {
     const organizationId = (
-      await this.projects.getOne({ where: { id: { eq: params.id } } })
+      await this.projects.getOne({ where: { id: { eq: projectId } } })
     ).organizationId!;
-    const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
-    const scope = this.questScope(params.id, draftEpicIds, query);
-    const window: ReportWindow = { from: query.from, to: query.to };
-
-    // Compose a user's display name: "first last" trimmed, else username,
-    // else a short fallback derived from the uuid.
     const userName = sql`
 				COALESCE(
 					NULLIF(TRIM(
@@ -890,10 +876,7 @@ export class ProjectReportsService {
 					${this.users.table.username}
 				)
 			`;
-
-    // Leaderboard: one row per member in the project, with the users table
-    // for the name, and the completions in scope counted apart.
-    const memberRows = await this.database.run(
+    const rows = await this.database.run(
       sql`
 					SELECT
 						${this.members.table.userId} as user_id,
@@ -910,6 +893,35 @@ export class ProjectReportsService {
         picture: z.string().nullish(),
       }),
     );
+    return rows.map((row) => ({
+      userId: String(row.user_id),
+      name: row.name ?? String(row.user_id).slice(0, 8),
+      picture: row.picture ?? undefined,
+    }));
+  }
+
+  /**
+   * Reports "Members" tab: a per-member leaderboard (completed quests), a
+   * weekly per-contributor contribution matrix for a stacked-area chart, and
+   * an "idle" list of members who have not completed a quest in the last 14
+   * days.
+   *
+   * Same access model as `getReportsOverview`: members-only. Date
+   * computations dialect-branch (SQLite epoch-ms integers on D1, Postgres
+   * timestamps on node).
+   */
+  async membersReport(
+    projectId: number,
+    query: ReportsQuery,
+  ): Promise<Infer<typeof reportsMembersSchema>> {
+    const params = { id: projectId };
+    const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
+    const scope = this.questScope(params.id, draftEpicIds, query);
+    const window: ReportWindow = { from: query.from, to: query.to };
+
+    // Leaderboard: one row per member in the project, and the completions in
+    // scope counted apart.
+    const memberRows = await this.membersOf(params.id);
 
     const completedByUser = await this.quests.aggregate({
       select: { completedBy: true, quests: { count: { column: "id" } } },
@@ -922,10 +934,8 @@ export class ProjectReportsService {
 
     const leaderboard = memberRows
       .map((row) => ({
-        userId: String(row.user_id),
-        name: row.name ?? String(row.user_id).slice(0, 8),
-        picture: row.picture ?? undefined,
-        questsCompleted: completedOf.get(String(row.user_id)) ?? 0,
+        ...row,
+        questsCompleted: completedOf.get(row.userId) ?? 0,
       }))
       .sort((a, b) => b.questsCompleted - a.questsCompleted);
 

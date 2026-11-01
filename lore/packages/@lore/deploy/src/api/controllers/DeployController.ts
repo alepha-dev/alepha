@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, LoreAudits } from "@lore/core/api";
 import { releaseTagSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -28,6 +28,7 @@ export class DeployController {
   protected readonly deploys = $inject(DeployService);
   protected readonly jobs = $inject(DeployJobs);
   protected readonly rollbacks = $inject(RollbackService);
+  protected readonly audits = $inject(LoreAudits);
 
   /**
    * Declared above the actions: a `use: [...]` entry reading another field is
@@ -111,6 +112,14 @@ export class DeployController {
         { deploymentId: row.id, stage: "deploy" },
         { key: DeployJobs.key(row.id) },
       );
+
+      await this.audits.app.logSuccess("deploy", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
+        resourceType: "app",
+        resourceId: params.instanceId,
+        description: `${row.app} ${row.tag}`,
+      });
 
       return { id: row.id, status: row.status };
     },
