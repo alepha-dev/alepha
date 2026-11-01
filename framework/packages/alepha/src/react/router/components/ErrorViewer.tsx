@@ -355,7 +355,7 @@ const prod: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#fafafa",
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     padding: "24px",
@@ -367,18 +367,18 @@ const prod: Record<string, CSSProperties> = {
   heading: {
     fontSize: "28px",
     fontWeight: 700,
-    color: "#f1f5f9",
+    color: "#171717",
     marginBottom: "12px",
   },
   subtitle: {
     fontSize: "16px",
-    color: "#94a3b8",
+    color: "#525252",
     marginBottom: "24px",
     lineHeight: 1.5,
   },
   refText: {
     fontSize: "13px",
-    color: "#64748b",
+    color: "#737373",
     marginBottom: "24px",
     fontFamily: mono,
   },
@@ -390,7 +390,7 @@ const prod: Record<string, CSSProperties> = {
   },
   reloadBtn: {
     padding: "10px 24px",
-    backgroundColor: "#2563eb",
+    backgroundColor: "#171717",
     color: "#fff",
     border: "none",
     borderRadius: "8px",
@@ -400,7 +400,7 @@ const prod: Record<string, CSSProperties> = {
   },
   homeLink: {
     padding: "10px 24px",
-    color: "#94a3b8",
+    color: "#525252",
     textDecoration: "none",
     fontSize: "14px",
   },
