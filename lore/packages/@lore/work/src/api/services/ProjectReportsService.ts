@@ -1,3 +1,4 @@
+import { ReportStatistics } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import {
   reportsMembersSchema,
@@ -16,9 +17,12 @@ import {
   sql,
 } from "alepha/orm";
 
-import { quests } from "../entities/quests.ts";
+import { questComments } from "../entities/questComments.ts";
+import { type Quest, quests } from "../entities/quests.ts";
 import { byPriorityDesc } from "../schemas/questPriority.ts";
+import { DashboardFlowSeries } from "./DashboardFlowSeries.ts";
 import { EpicVisibilityService } from "./EpicVisibilityService.ts";
+import { QuestHoldTime } from "./QuestHoldTime.ts";
 import { QuestTagTallyService } from "./QuestTagTallyService.ts";
 
 /**
@@ -31,6 +35,7 @@ import { QuestTagTallyService } from "./QuestTagTallyService.ts";
  */
 export class ProjectReportsService {
   protected readonly quests = $repository(quests);
+  protected readonly comments = $repository(questComments);
   protected readonly members = $repository(organizationMembers);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
@@ -47,6 +52,9 @@ export class ProjectReportsService {
    */
   protected readonly tagTally = $inject(QuestTagTallyService);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly series = $inject(DashboardFlowSeries);
+  protected readonly stats = $inject(ReportStatistics);
+  protected readonly holdTime = $inject(QuestHoldTime);
 
   /**
    * The "this quest is in scope" predicate every stats aggregate filters
@@ -186,9 +194,114 @@ export class ProjectReportsService {
   }
 
   /**
+   * Hours from accepted to completed per completed quest in scope, hold time
+   * taken out: a quest waiting on somebody else is not being worked on.
+   *
+   * `history` is the heavy column of `quests`, so it is read only for the few
+   * quests whose serialized history holds a `held` event.
+   */
+  protected async cycleSamples(
+    scope: PgQueryWhere<typeof quests.schema>,
+  ): Promise<Array<{ priority: Quest["priority"]; hours: number }>> {
+    const where = {
+      ...scope,
+      acceptedAt: { isNotNull: true },
+      completedAt: { isNotNull: true },
+    };
+    const [rows, heldRows] = await Promise.all([
+      this.quests.findMany({
+        where,
+        columns: ["id", "priority", "acceptedAt", "completedAt"],
+      }),
+      this.quests.findMany({
+        where: { ...where, history: { like: '%"held"%' } } as typeof where,
+        columns: ["id", "history"],
+      }),
+    ]);
+    const historyOf = new Map(heldRows.map((row) => [row.id, row.history]));
+
+    return rows.map((row) => {
+      const from = this.dt.of(row.acceptedAt!).valueOf();
+      const until = this.dt.of(row.completedAt!).valueOf();
+      const held = this.holdTime.within(
+        historyOf.get(row.id) ?? [],
+        from,
+        until,
+      );
+      return {
+        priority: row.priority,
+        hours: Math.max(until - from - held, 0) / 3_600_000,
+      };
+    });
+  }
+
+  /**
+   * Members who created, accepted, completed or commented on a quest of this
+   * project since `since`. Every organization member is not an active one.
+   *
+   * Not through `questScope`: filing a quest in a draft epic is still activity.
+   * ⚠️ Intersected with the member list, so someone who left is not counted.
+   */
+  protected async countActiveMembers(
+    projectId: number,
+    organizationId: string,
+    since: string,
+  ): Promise<number> {
+    const [members, touched, commented] = await Promise.all([
+      this.members.findMany({
+        where: { organizationId: { eq: organizationId } },
+        columns: ["userId"],
+      }),
+      this.quests.findMany({
+        where: {
+          projectId: { eq: projectId },
+          or: [
+            { createdAt: { gte: since } },
+            { acceptedAt: { gte: since } },
+            { completedAt: { gte: since } },
+          ],
+        },
+        columns: [
+          "createdAt",
+          "createdBy",
+          "acceptedAt",
+          "acceptedBy",
+          "completedAt",
+          "completedBy",
+        ],
+      }),
+      this.comments.findMany({
+        where: {
+          createdAt: { gte: since },
+          exists: this.quests.subquery({
+            id: { eq: this.comments.table.questId },
+            projectId: { eq: projectId },
+          }),
+        },
+        columns: ["authorId"],
+      }),
+    ]);
+
+    const active = new Set<string>();
+    for (const quest of touched) {
+      if (quest.createdAt >= since) active.add(quest.createdBy);
+      if (quest.acceptedBy && (quest.acceptedAt ?? "") >= since) {
+        active.add(quest.acceptedBy);
+      }
+      if (quest.completedBy && (quest.completedAt ?? "") >= since) {
+        active.add(quest.completedBy);
+      }
+    }
+    for (const comment of commented) {
+      if (comment.authorId) active.add(comment.authorId);
+    }
+    return members.filter((member) => active.has(member.userId)).length;
+  }
+
+  /**
    * Reports "Overview" tab: KPI tiles, a cumulative created-vs-completed
    * burn-up chart, a weekly completion-rate trend, and counts of quests that
-   * need attention (stale, unassigned, blocked).
+   * need attention (stale, not started, blocked).
    *
    * Members-only. Every date computation
    * dialect-branches (SQLite epoch-ms ints in production, Postgres timestamps
@@ -211,11 +324,7 @@ export class ProjectReportsService {
     // dialects.
     const weekAgo = this.dt.now().subtract(7, "day").toISOString();
     const twoWeeksAgo = this.dt.now().subtract(14, "day").toISOString();
-    const cycleHours = this.sqlx.dateDiff(
-      this.quests.table.completedAt,
-      this.quests.table.acceptedAt,
-      "hours",
-    );
+    const activeSince = this.dt.now().subtract(30, "day").toISOString();
 
     // KPI aggregate: single pass over the project's live quests. `column:
     // "id"` because a conditioned COUNT skips NULLs of the column it counts,
@@ -232,6 +341,16 @@ export class ProjectReportsService {
             where: {
               acceptedAt: { isNotNull: true },
               completedAt: { isNull: true },
+              heldAt: { isNull: true },
+            },
+          },
+        },
+        heldQuests: {
+          count: {
+            column: "id",
+            where: {
+              completedAt: { isNull: true },
+              heldAt: { isNotNull: true },
             },
           },
         },
@@ -244,30 +363,26 @@ export class ProjectReportsService {
             where: { completedAt: { gte: twoWeeksAgo, lt: weekAgo } },
           },
         },
-        cycleTime: {
-          avg: {
-            expr: cycleHours,
-            where: {
-              acceptedAt: { isNotNull: true },
-              completedAt: { isNotNull: true },
-            },
-          },
-        },
       },
       where: scope,
     });
 
-    const activeMembers = await this.members.count({
-      organizationId: { eq: organizationId },
-    });
+    const cycleHours = (await this.cycleSamples(scope)).map((it) => it.hours);
+    const activeMembers = await this.countActiveMembers(
+      params.id,
+      organizationId,
+      activeSince,
+    );
 
     const kpis = {
       totalQuests: Number(kpiAgg?.totalQuests.count) || 0,
       completedQuests: Number(kpiAgg?.completedQuests.count) || 0,
       openQuests: Number(kpiAgg?.openQuests.count) || 0,
+      heldQuests: Number(kpiAgg?.heldQuests.count) || 0,
       completedThisWeek: Number(kpiAgg?.completedThisWeek.count) || 0,
       completedLastWeek: Number(kpiAgg?.completedLastWeek.count) || 0,
-      avgCycleTimeHours: Number(kpiAgg?.cycleTime.avg) || 0,
+      medianCycleTimeHours: this.stats.median(cycleHours),
+      p85CycleTimeHours: this.stats.percentile(cycleHours, 85),
       activeMembers,
     };
 
@@ -275,32 +390,19 @@ export class ProjectReportsService {
     const createdByDay = await this.createdByDay(params.id, scope);
     const completedByDay = await this.completedByDay(params.id, scope);
 
-    // Merge into a sorted date axis and accumulate running totals.
-    const createdMap = new Map(
-      createdByDay.map((r) => [r.date, Number(r.count)]),
-    );
-    const completedMap = new Map(
-      completedByDay.map((r) => [r.date, Number(r.count)]),
-    );
-    const axis = Array.from(
-      new Set([...createdMap.keys(), ...completedMap.keys()]),
-    ).sort();
-
-    let runningCreated = 0;
-    let runningCompleted = 0;
-    let burnup = axis.map((date) => {
-      runningCreated += createdMap.get(date) ?? 0;
-      runningCompleted += completedMap.get(date) ?? 0;
-      return {
-        date,
-        created: runningCreated,
-        completed: runningCompleted,
-      };
-    });
-    // Cap to the most recent 90 points.
-    if (burnup.length > 90) {
-      burnup = burnup.slice(burnup.length - 90);
-    }
+    // A continuous calendar axis, zero-filled: a quiet week is a flat stretch
+    // of the chart rather than a gap that collapses, and "90" is days, never
+    // points. The totals carry everything before the window.
+    const created = this.series.cumulative(createdByDay, 90);
+    const completed = this.series.cumulative(completedByDay, 90);
+    const burnup =
+      (created.at(-1)?.value ?? 0) + (completed.at(-1)?.value ?? 0) > 0
+        ? created.map((point, index) => ({
+            date: point.at,
+            created: point.value,
+            completed: completed[index]?.value ?? 0,
+          }))
+        : [];
 
     // Weekly completion-rate trend — sample every 7th burn-up point plus
     // the last so the latest cumulative figure is always represented.
@@ -336,15 +438,17 @@ export class ProjectReportsService {
             where: {
               acceptedAt: { isNotNull: true, lt: twoWeeksAgo },
               completedAt: { isNull: true },
+              heldAt: { isNull: true },
             },
           },
         },
-        unassignedQuests: {
+        notStartedQuests: {
           count: {
             column: "id",
             where: {
               acceptedAt: { isNull: true },
               completedAt: { isNull: true },
+              heldAt: { isNull: true },
             },
           },
         },
@@ -367,7 +471,7 @@ export class ProjectReportsService {
 
     const attention = {
       staleQuests: Number(attentionAgg?.staleQuests.count) || 0,
-      unassignedQuests: Number(attentionAgg?.unassignedQuests.count) || 0,
+      notStartedQuests: Number(attentionAgg?.notStartedQuests.count) || 0,
       blockedQuests: Number(attentionAgg?.blockedQuests.count) || 0,
     };
 
@@ -381,7 +485,7 @@ export class ProjectReportsService {
 
   /**
    * Reports "Quests" tab: a lifecycle funnel (to do → in progress → completed),
-   * completed-vs-remaining breakdowns by area and by priority, average cycle
+   * completed-vs-remaining breakdowns by area and by priority, median cycle
    * time per priority, and an actionable list of the oldest still-open quests.
    *
    * Same access model as `getReportsOverview`: members-only. Date
@@ -414,6 +518,7 @@ export class ProjectReportsService {
             where: {
               acceptedAt: { isNull: true },
               completedAt: { isNull: true },
+              heldAt: { isNull: true },
             },
           },
         },
@@ -423,6 +528,16 @@ export class ProjectReportsService {
             where: {
               acceptedAt: { isNotNull: true },
               completedAt: { isNull: true },
+              heldAt: { isNull: true },
+            },
+          },
+        },
+        held: {
+          count: {
+            column: "id",
+            where: {
+              completedAt: { isNull: true },
+              heldAt: { isNotNull: true },
             },
           },
         },
@@ -434,6 +549,7 @@ export class ProjectReportsService {
     const funnel = {
       todo: funnelAgg?.todo.count ?? 0,
       inProgress: funnelAgg?.inProgress.count ?? 0,
+      held: funnelAgg?.held.count ?? 0,
       completed: funnelAgg?.completed.count ?? 0,
     };
 
@@ -514,42 +630,30 @@ export class ProjectReportsService {
       )
       .slice(0, 8);
 
-    // Average cycle time per priority, only quests with both timestamps,
-    // most urgent first.
-    const cycleTimeQuery = await this.quests.aggregate({
-      select: {
-        priority: true,
-        cycleTime: {
-          avg: {
-            expr: this.sqlx.dateDiff(
-              this.quests.table.completedAt,
-              this.quests.table.acceptedAt,
-              "hours",
-            ),
-          },
-        },
-      },
-      where: {
-        ...scope,
-        acceptedAt: { isNotNull: true },
-        completedAt: { isNotNull: true },
-      },
-      groupBy: ["priority"],
-    });
+    // Median and p85 cycle time per priority, most urgent first.
+    const hoursByPriority = new Map<Quest["priority"], number[]>();
+    for (const sample of await this.cycleSamples(scope)) {
+      hoursByPriority.set(sample.priority, [
+        ...(hoursByPriority.get(sample.priority) ?? []),
+        sample.hours,
+      ]);
+    }
+    const cycleTimeByPriority = [...hoursByPriority.entries()]
+      .map(([priority, hours]) => ({
+        priority,
+        medianHours: this.stats.median(hours),
+        p85Hours: this.stats.percentile(hours, 85),
+      }))
+      .sort(byPriorityDesc);
 
-    const cycleTimeByPriority = cycleTimeQuery
-      .sort(byPriorityDesc)
-      .map((row) => ({
-        priority: String(row.priority),
-        avgHours: Number(row.cycleTime.avg) || 0,
-      }));
-
-    // Oldest still-open (accepted, not completed) quests.
+    // Oldest still-open (accepted, not completed) quests. A held quest is not
+    // aging: it is waiting, and it shows as held.
     const agingQuery = await this.quests.findMany({
       where: {
         ...scope,
         acceptedAt: { isNotNull: true },
         completedAt: { isNull: true },
+        heldAt: { isNull: true },
       },
       columns: ["shortId", "title", "area", "priority", "acceptedAt"],
       orderBy: { column: "acceptedAt", direction: "asc" },

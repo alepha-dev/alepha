@@ -13,7 +13,7 @@ import type { CycleTimeFilters } from "../schemas/cycleTimeFiltersSchema.ts";
 import { ProjectReportsService } from "./ProjectReportsService.ts";
 
 /**
- * Average hours from accepted to completed (#Q2653).
+ * Median hours from accepted to completed, hold time out (#Q2653, #Q2994).
  *
  * Every priority reads the Reports Overview KPI; one priority reads the
  * Quests tab's per-priority figure. Both are `ProjectReportsService` calls,
@@ -51,11 +51,11 @@ export class CycleTimeMetric implements DashboardMetricResolver {
       const { priority } = entry.filters as CycleTimeFilters;
       const hours =
         priority === "all"
-          ? (await this.reports.overview(project.id)).kpis.avgCycleTimeHours
+          ? (await this.reports.overview(project.id)).kpis.medianCycleTimeHours
           : ((
               await this.reports.questsReport(project.id)
             ).cycleTimeByPriority.find((row) => row.priority === priority)
-              ?.avgHours ?? 0);
+              ?.medianHours ?? 0);
       out.set(entry.card.id, {
         ...(hours > 0 ? {} : { empty: "noData" as const }),
         value: Math.round(hours),

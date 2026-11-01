@@ -23,7 +23,7 @@ export class ProjectReportsController {
   /**
    * Reports "Overview" tab: KPI tiles, a cumulative created-vs-completed
    * burn-up chart, a weekly completion-rate trend, and counts of quests that
-   * need attention (stale, unassigned, blocked).
+   * need attention (stale, not started, blocked).
    *
    * Members-only. Every date computation
    * dialect-branches (SQLite epoch-ms ints in production, Postgres timestamps
@@ -49,7 +49,7 @@ export class ProjectReportsController {
 
   /**
    * Reports "Quests" tab: a lifecycle funnel (to do → in progress → completed),
-   * completed-vs-remaining breakdowns by area and by priority, average cycle
+   * completed-vs-remaining breakdowns by area and by priority, median cycle
    * time per priority, and an actionable list of the oldest still-open quests.
    *
    * Same access model as `getReportsOverview`: members-only. Date

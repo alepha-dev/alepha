@@ -155,7 +155,7 @@ describe("dashboard flow tiles", () => {
       );
 
       expect(value.value).toBe(
-        Math.round(overview.data.kpis.avgCycleTimeHours),
+        Math.round(overview.data.kpis.medianCycleTimeHours),
       );
     });
 

@@ -63,10 +63,8 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     (kpis.completedQuests / Math.max(kpis.totalQuests, 1)) * 100,
   );
   const weekDelta = kpis.completedThisWeek - kpis.completedLastWeek;
-  const cycleTime =
-    kpis.avgCycleTimeHours >= 48
-      ? `${Math.round(kpis.avgCycleTimeHours / 24)}d`
-      : `${Math.round(kpis.avgCycleTimeHours)}h`;
+  const hours = (value: number) =>
+    value >= 48 ? `${Math.round(value / 24)}d` : `${Math.round(value)}h`;
 
   const kpiRow: ReportsKpi[] = [
     {
@@ -79,6 +77,9 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     {
       label: tr("reports.overview.kpi.open"),
       value: kpis.openQuests,
+      hint: tr("reports.overview.kpi.heldHint", {
+        args: [String(kpis.heldQuests)],
+      }),
     },
     {
       label: tr("reports.overview.kpi.completedThisWeek"),
@@ -89,11 +90,15 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     },
     {
       label: tr("reports.overview.kpi.cycleTime"),
-      value: cycleTime,
+      value: hours(kpis.medianCycleTimeHours),
+      hint: tr("reports.overview.kpi.cycleTimeHint", {
+        args: [hours(kpis.p85CycleTimeHours)],
+      }),
     },
     {
       label: tr("reports.overview.kpi.activeMembers"),
       value: kpis.activeMembers,
+      hint: tr("reports.overview.kpi.activeMembersHint"),
     },
   ];
 
@@ -103,8 +108,8 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
       label: tr("reports.overview.attention.stale"),
     },
     {
-      count: attention.unassignedQuests,
-      label: tr("reports.overview.attention.unassigned"),
+      count: attention.notStartedQuests,
+      label: tr("reports.overview.attention.notStarted"),
     },
     {
       count: attention.blockedQuests,

@@ -225,7 +225,7 @@ describe("QuestController — shelving", () => {
       { user },
     );
     expect(before.data.kpis.totalQuests).toBe(2);
-    expect(before.data.attention.unassignedQuests).toBe(2);
+    expect(before.data.attention.notStartedQuests).toBe(2);
 
     await ctx.quests.shelveQuest.fetch({ params: { id: shelf.id } }, { user });
 
@@ -234,6 +234,6 @@ describe("QuestController — shelving", () => {
       { user },
     );
     expect(after.data.kpis.totalQuests).toBe(1);
-    expect(after.data.attention.unassignedQuests).toBe(1);
+    expect(after.data.attention.notStartedQuests).toBe(1);
   });
 });

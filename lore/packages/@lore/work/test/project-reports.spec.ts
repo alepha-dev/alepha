@@ -1,6 +1,7 @@
 import { ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
@@ -27,6 +28,7 @@ interface TestContext {
   reportsController: ProjectReportsController;
   fakeProvider: FakeProvider;
   repos: WorkTestEntities;
+  now: () => number;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -60,6 +62,7 @@ const setup = async (): Promise<TestContext> => {
     reportsController: alepha.inject(ProjectReportsController),
     fakeProvider: alepha.inject(FakeProvider),
     repos,
+    now: () => alepha.inject(DateTimeProvider).nowMillis(),
   };
 };
 
@@ -281,6 +284,173 @@ describe("ProjectReportsController", () => {
       expect(Array.isArray(res.data.leaderboard)).toBe(true);
       expect(Array.isArray(res.data.contributors)).toBe(true);
       expect(Array.isArray(res.data.contribution)).toBe(true);
+    });
+  });
+
+  /**
+   * The figures #Q2994 corrected: each one counted something other than what
+   * its label said, and the dashboard showed the same numbers.
+   */
+  describe("what the figures count", () => {
+    const hour = 3_600_000;
+    const day = 24 * hour;
+
+    const finished = async (
+      owner: { id: string; roles: string[] },
+      projectId: number,
+      title: string,
+    ) => {
+      const quest = await createTestQuest(ctx, owner, projectId, { title });
+      await ctx.questController.acceptQuest.fetch(
+        { params: { id: quest.id } },
+        { user: owner },
+      );
+      await ctx.questController.completeQuest.fetch(
+        { params: { id: quest.id }, body: {} },
+        { user: owner },
+      );
+      return quest;
+    };
+
+    const overview = async (
+      owner: { id: string; roles: string[] },
+      projectId: number,
+    ) =>
+      (
+        await ctx.reportsController.getReportsOverview.fetch(
+          { params: { id: projectId } },
+          { user: owner },
+        )
+      ).data;
+
+    it("active members are the ones who touched a quest, not the organization", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const row = await ctx.repos.projects.getOne({
+        where: { id: { eq: project.id } },
+      });
+      const idle = await createTestUser(ctx);
+      await ctx.repos.organizationMembers.create({
+        organizationId: row.organizationId!,
+        userId: idle.id,
+        rank: "member",
+      });
+
+      await createTestQuest(ctx, owner, project.id);
+
+      expect((await overview(owner, project.id)).kpis.activeMembers).toBe(1);
+    });
+
+    it("a held quest is neither in progress, stale nor aging", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const held = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(held.id, {
+        acceptedAt: new Date(ctx.now() - 30 * day).toISOString(),
+        acceptedBy: owner.id,
+        heldAt: new Date(ctx.now() - day).toISOString(),
+        heldBy: owner.id,
+      });
+
+      const data = await overview(owner, project.id);
+      expect(data.kpis.openQuests).toBe(0);
+      expect(data.kpis.heldQuests).toBe(1);
+      expect(data.attention.staleQuests).toBe(0);
+
+      const quests = await ctx.reportsController.getReportsQuests.fetch(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+      expect(quests.data.funnel).toMatchObject({
+        todo: 0,
+        inProgress: 0,
+        held: 1,
+      });
+      expect(quests.data.aging).toEqual([]);
+    });
+
+    it("a held to-do quest is not counted as not started", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      await createTestQuest(ctx, owner, project.id);
+      const held = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(held.id, {
+        heldAt: new Date(ctx.now()).toISOString(),
+        heldBy: owner.id,
+      });
+
+      const data = await overview(owner, project.id);
+      expect(data.attention.notStartedQuests).toBe(1);
+    });
+
+    it("cycle time is a median with p85 beside it, one old quest moves only p85", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const now = ctx.now();
+      for (const hours of [10, 10, 10, 1000]) {
+        const quest = await finished(owner, project.id, `${hours}h`);
+        await ctx.repos.quests.updateById(quest.id, {
+          acceptedAt: new Date(now - hours * hour).toISOString(),
+          completedAt: new Date(now).toISOString(),
+        });
+      }
+
+      const { kpis } = await overview(owner, project.id);
+      expect(kpis.medianCycleTimeHours).toBeCloseTo(10);
+      expect(kpis.p85CycleTimeHours).toBeCloseTo(1000);
+    });
+
+    it("hold time is out of cycle time", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const now = ctx.now();
+      const quest = await finished(owner, project.id, "Waited");
+      const at = (ago: number) => new Date(now - ago * hour).toISOString();
+      await ctx.repos.quests.updateById(quest.id, {
+        acceptedAt: at(100),
+        completedAt: at(0),
+        history: [
+          { at: at(90), by: owner.id, action: "held" },
+          { at: at(30), by: owner.id, action: "unheld" },
+        ],
+      });
+
+      const { kpis } = await overview(owner, project.id);
+      expect(kpis.medianCycleTimeHours).toBeCloseTo(40);
+    });
+
+    it("the burn-up is 90 calendar days, zero-filled, carrying older totals", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const quest = await finished(owner, project.id, "Long ago");
+      const at = new Date(ctx.now() - 200 * day).toISOString();
+      await ctx.repos.quests.updateById(quest.id, { completedAt: at });
+
+      const { burnup } = await overview(owner, project.id);
+      expect(burnup).toHaveLength(90);
+      expect(burnup[0]?.completed).toBe(1);
+      expect(burnup.at(-1)?.completed).toBe(1);
+      const dates = burnup.map((point) => Date.parse(point.date));
+      for (let index = 1; index < dates.length; index++) {
+        expect(dates[index]! - dates[index - 1]!).toBe(day);
+      }
+    });
+
+    it("draws nothing for a project with no quest", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+
+      expect((await overview(owner, project.id)).burnup).toEqual([]);
     });
   });
 

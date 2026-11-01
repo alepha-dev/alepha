@@ -9,13 +9,19 @@ export const reportsOverviewSchema = z.object({
   kpis: z.object({
     totalQuests: z.integer(),
     completedQuests: z.integer(),
+    // Accepted and not completed. A held quest is its own state, not open.
     openQuests: z.integer(),
+    heldQuests: z.integer(),
     completedThisWeek: z.integer(),
     completedLastWeek: z.integer(),
-    avgCycleTimeHours: z.number(),
+    // Accepted to completed, hold time taken out.
+    medianCycleTimeHours: z.number(),
+    p85CycleTimeHours: z.number(),
+    // Members who created, accepted, completed or commented on a quest lately.
     activeMembers: z.integer(),
   }),
-  // Cumulative created vs completed, one point per day, oldest first.
+  // Cumulative created vs completed, one point per calendar day over the last
+  // 90 days, oldest first. The totals include everything before the window.
   burnup: z.array(
     z.object({
       date: z.string(),
@@ -27,7 +33,7 @@ export const reportsOverviewSchema = z.object({
   completionTrend: z.array(z.object({ date: z.string(), rate: z.number() })),
   attention: z.object({
     staleQuests: z.integer(),
-    unassignedQuests: z.integer(),
+    notStartedQuests: z.integer(),
     blockedQuests: z.integer(),
   }),
 });
@@ -36,6 +42,7 @@ export const reportsQuestsSchema = z.object({
   funnel: z.object({
     todo: z.integer(),
     inProgress: z.integer(),
+    held: z.integer(),
     completed: z.integer(),
   }),
   byArea: z.array(
@@ -70,7 +77,11 @@ export const reportsQuestsSchema = z.object({
     }),
   ),
   cycleTimeByPriority: z.array(
-    z.object({ priority: z.string(), avgHours: z.number() }),
+    z.object({
+      priority: z.string(),
+      medianHours: z.number(),
+      p85Hours: z.number(),
+    }),
   ),
   // Oldest still-open (accepted, not completed) quests — actionable list.
   aging: z.array(

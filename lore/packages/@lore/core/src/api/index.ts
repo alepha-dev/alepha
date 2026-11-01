@@ -105,6 +105,7 @@ import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 
 /**
@@ -254,6 +255,7 @@ export const LoreCoreApi = $module({
     LoreNotificationPreferences,
     NotificationPreferenceController,
     ProjectLimits,
+    ReportStatistics,
     // The dashboard: the membership gate every card scope goes through, and
     // card storage. The declarative registry (`DashboardMetricCatalog`) is
     // browser-safe and constructed by whatever injects it; each module
@@ -412,6 +414,7 @@ export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
+export { ReportStatistics } from "./services/ReportStatistics.ts";
 export { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 export {
   ProjectMergeNumbers,

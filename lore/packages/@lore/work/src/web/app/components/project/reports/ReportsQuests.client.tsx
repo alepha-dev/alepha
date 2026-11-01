@@ -44,13 +44,14 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
   } satisfies ChartConfig;
 
   const cycleTimeChartConfig = {
-    avgHours: {
-      label: tr("reports.quests.cycleTime.avgHours"),
+    medianHours: {
+      label: tr("reports.quests.cycleTime.medianHours"),
       color: "var(--chart-4)",
     },
   } satisfies ChartConfig;
 
-  const funnelTotal = funnel.todo + funnel.inProgress + funnel.completed;
+  const funnelTotal =
+    funnel.todo + funnel.inProgress + funnel.held + funnel.completed;
   const funnelItems = [
     {
       key: "todo",
@@ -63,6 +64,12 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
       value: funnel.inProgress,
       label: tr("reports.quests.status.inProgress"),
       segment: "bg-[var(--chart-4)]",
+    },
+    {
+      key: "held",
+      value: funnel.held,
+      label: tr("reports.quests.status.held"),
+      segment: "bg-[var(--chart-5)]",
     },
     {
       key: "completed",
@@ -244,7 +251,11 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
               />
               <YAxis tickLine={false} axisLine={false} width={32} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="avgHours" fill="var(--color-avgHours)" radius={4} />
+              <Bar
+                dataKey="medianHours"
+                fill="var(--color-medianHours)"
+                radius={4}
+              />
             </BarChart>
           </ChartContainer>
         ) : (

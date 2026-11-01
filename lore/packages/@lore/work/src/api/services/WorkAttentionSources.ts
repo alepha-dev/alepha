@@ -128,7 +128,7 @@ export class WorkAttentionSources {
       total:
         overdueOrHeld +
         overview.attention.staleQuests +
-        Math.min(unassigned.length, overview.attention.unassignedQuests),
+        Math.min(unassigned.length, overview.attention.notStartedQuests),
       link: { route: "projectQuests", params: { projectSlug: slug } },
     };
   }
