@@ -512,6 +512,13 @@ export class WorkShell {
       filters: ["period", "grain", "epicId", "releaseId"],
     });
     this.reports.register({
+      route: "reportsSupport",
+      labelKey: "project.reports.nav.support",
+      order: 9.6,
+      needs: "support",
+      filters: ["period", "grain"],
+    });
+    this.reports.register({
       route: "reportsOverview",
       labelKey: "project.reports.nav.overview",
       order: 10,

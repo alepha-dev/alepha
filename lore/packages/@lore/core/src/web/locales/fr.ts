@@ -1183,6 +1183,42 @@ export default {
   "reports.planning.published.size": "Taille",
   "reports.planning.published.cadence": "Cadence (jours)",
   "reports.planning.published.carried": "Reportées",
+  "project.reports.nav.support": "Support",
+  "reports.summary.line.feedbackTriaged": "Triés",
+  "reports.summary.line.feedbackTriaged.definition":
+    "Retours acceptés ou rejetés sur la période.",
+  "reports.support.reports": "Retours",
+  "reports.support.none": "Aucune",
+  "reports.support.kpi.triage": "Délai médian de tri",
+  "reports.support.kpi.triage.definition":
+    "Temps médian entre réception et décision, pour les retours reçus sur la période. Les retours triés avant cet enregistrement et sans audit restant sont exclus.",
+  "reports.support.kpi.accepted": "Acceptés",
+  "reports.support.kpi.accepted.definition":
+    "Acceptés sur acceptés et rejetés, pour les retours reçus sur la période.",
+  "reports.support.kpi.acceptedHint": "$1 acceptés, $2 rejetés, $3 en attente",
+  "reports.support.kpi.conversion": "Retours livrés",
+  "reports.support.kpi.conversion.definition":
+    "Retours acceptés dont toutes les quêtes sont terminées, sur les retours acceptés.",
+  "reports.support.kpi.conversionHint": "$1 avec une quête, $2 livrés",
+  "reports.support.kpi.resolution": "Délai médian de résolution",
+  "reports.support.kpi.resolution.definition":
+    "Temps médian entre réception et la fin de sa dernière quête.",
+  "reports.support.intake.title": "Arrivées",
+  "reports.support.intake.definition":
+    "Retours reçus par intervalle, selon leur tag de type. Sans tag de type, ils comptent dans Autre.",
+  "reports.support.type.bug": "Bug",
+  "reports.support.type.feature": "Fonctionnalité",
+  "reports.support.type.other": "Autre",
+  "reports.support.severity.title": "Par gravité",
+  "reports.support.severity.definition":
+    "Retours reçus sur la période, selon leur tag de gravité.",
+  "reports.support.pending.title": "En attente par ancienneté",
+  "reports.support.pending.definition":
+    "Retours à trier aujourd’hui, par temps depuis leur réception.",
+  "reports.support.sources.title": "D’où viennent les retours",
+  "reports.support.sources.definition":
+    "Les tags d’hôte et de chemin les plus fréquents sur la période. Un retour compte une fois par tag.",
+  "reports.support.sources.empty": "Aucun retour ne porte d’hôte ni de chemin.",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

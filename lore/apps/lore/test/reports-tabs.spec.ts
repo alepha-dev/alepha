@@ -37,6 +37,7 @@ const reportsTabs = (
       "reportsFlow",
       "reportsBacklog",
       "reportsPlanning",
+      "reportsSupport",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",

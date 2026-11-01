@@ -3,6 +3,7 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -240,6 +241,30 @@ test.describe("Reports", () => {
       timeout: 20_000,
     });
     await expect(page.getByText("0/1")).toBeVisible();
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+  });
+
+  /**
+   * The Support tab (#Q3006), which only a project with Support has.
+   */
+  test("Support reports on feedback, on a project that has it", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportssp${t}@example.com`, "ReportsS123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RU${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "support");
+
+    await page.goto(`/${slug}/reports/support`);
+
+    await expect(page.getByText("Pending by age")).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(page.getByText("Something went wrong")).toHaveCount(0);
   });
 

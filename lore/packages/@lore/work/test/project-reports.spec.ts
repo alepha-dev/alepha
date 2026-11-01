@@ -799,6 +799,119 @@ describe("ProjectReportsController", () => {
   });
 
   /**
+   * The Support tab's report (#Q3006).
+   */
+  describe("getReportsSupport", () => {
+    const hour = 3_600_000;
+    const day = 24 * hour;
+
+    const seed = async () => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const iso = (ago: number) => new Date(ctx.now() - ago).toISOString();
+      let shortId = 0;
+      const report = (patch: object) =>
+        ctx.repos.feedback.create({
+          projectId: project.id,
+          shortId: ++shortId,
+          title: "r",
+          description: "d",
+          status: "pending",
+          ...patch,
+        } as never);
+      return { owner, projectId: project.id, iso, report };
+    };
+
+    const support = async (
+      owner: { id: string; roles: string[] },
+      projectId: number,
+    ) =>
+      (
+        await ctx.reportsController.getReportsSupport.fetch(
+          { params: { id: projectId }, query: {} },
+          { user: owner },
+        )
+      ).data;
+
+    it("splits intake by type, an untagged report being other", async ({
+      expect,
+    }) => {
+      const { owner, projectId, report } = await seed();
+      await report({ tags: ["type=bug", "severity=high"] });
+      await report({ tags: ["type=feature"] });
+      await report({ tags: [] });
+
+      const data = await support(owner, projectId);
+
+      expect(data.intake.at(-1)).toMatchObject({
+        bug: 1,
+        feature: 1,
+        other: 1,
+      });
+      expect(data.severity).toContainEqual({ value: "high", count: 1 });
+    });
+
+    it("measures time to triage, and counts what it cannot", async ({
+      expect,
+    }) => {
+      const { owner, projectId, report, iso } = await seed();
+      await report({ status: "rejected" });
+      const measured = await report({ status: "accepted" });
+      await ctx.repos.feedback.updateById(measured.id, {
+        triagedAt: new Date(
+          Date.parse(measured.createdAt) + 4 * hour,
+        ).toISOString(),
+      });
+      await report({ status: "pending", createdAt: iso(day) });
+
+      const data = await support(owner, projectId);
+
+      expect(data.outcomes).toEqual({ accepted: 1, rejected: 1, pending: 1 });
+      expect(data.triage).toMatchObject({ measured: 1, unknown: 1 });
+      expect(data.triage.medianHours).toBeCloseTo(4);
+    });
+
+    it("ships a report once every quest it became is done", async ({
+      expect,
+    }) => {
+      const { owner, projectId, report, iso } = await seed();
+      const row = await report({ status: "accepted" });
+      const first = await createTestQuest(ctx, owner, projectId);
+      const second = await createTestQuest(ctx, owner, projectId);
+      await ctx.repos.quests.updateById(first.id, {
+        feedbackId: row.id,
+        completedAt: iso(0),
+      });
+      await ctx.repos.quests.updateById(second.id, { feedbackId: row.id });
+
+      expect((await support(owner, projectId)).conversion).toMatchObject({
+        accepted: 1,
+        withQuest: 1,
+        shipped: 0,
+      });
+
+      await ctx.repos.quests.updateById(second.id, { completedAt: iso(0) });
+
+      expect((await support(owner, projectId)).conversion.shipped).toBe(1);
+    });
+
+    it("ranks host and path tags, and ages what is pending", async ({
+      expect,
+    }) => {
+      const { owner, projectId, report } = await seed();
+      await report({ tags: ["host=a.dev", "path=/x"] });
+      await report({ tags: ["host=a.dev"] });
+
+      const data = await support(owner, projectId);
+
+      expect(data.sources[0]).toEqual({ value: "host=a.dev", count: 2 });
+      expect(data.pendingAge.find((row) => row.key === "under1w")?.count).toBe(
+        2,
+      );
+    });
+  });
+
+  /**
    * The Backlog tab's report (#Q3002).
    */
   describe("getReportsBacklog", () => {

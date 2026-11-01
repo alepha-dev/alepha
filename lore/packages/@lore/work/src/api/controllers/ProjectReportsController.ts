@@ -7,6 +7,7 @@ import {
   reportsPlanningSchema,
   reportsQuerySchema,
   reportsQuestsSchema,
+  reportsSupportSchema,
 } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
@@ -16,6 +17,7 @@ import { ProjectBacklogReportService } from "../services/ProjectBacklogReportSer
 import { ProjectFlowReportService } from "../services/ProjectFlowReportService.ts";
 import { ProjectPlanningReportService } from "../services/ProjectPlanningReportService.ts";
 import { ProjectReportsService } from "../services/ProjectReportsService.ts";
+import { ProjectSupportReportService } from "../services/ProjectSupportReportService.ts";
 
 /**
  * The Reports tabs: gate on `stats:read`, cache privately, delegate.
@@ -29,6 +31,7 @@ export class ProjectReportsController {
   protected readonly flow = $inject(ProjectFlowReportService);
   protected readonly backlog = $inject(ProjectBacklogReportService);
   protected readonly planning = $inject(ProjectPlanningReportService);
+  protected readonly support = $inject(ProjectSupportReportService);
 
   /**
    * Reports "Flow" tab: how work moved through the period (#Q3000).
@@ -94,6 +97,30 @@ export class ProjectReportsController {
       response: reportsPlanningSchema,
     },
     handler: ({ params, query }) => this.planning.report(params.id, query),
+  });
+
+  /**
+   * Reports "Support" tab: feedback from intake to shipped (#Q3006). Readable
+   * with Support off, like any existing data: the tab is what the capability
+   * gates.
+   */
+  getReportsSupport = $action({
+    path: "/getReportsSupport/:id",
+    method: "GET",
+    use: [
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
+    ],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      query: reportsQuerySchema,
+      response: reportsSupportSchema,
+    },
+    handler: ({ params, query }) => this.support.report(params.id, query),
   });
 
   /**

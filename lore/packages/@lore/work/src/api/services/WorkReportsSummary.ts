@@ -95,7 +95,7 @@ export class WorkReportsSummary {
   }
 
   protected async support(projectId: number, query: ReportsQuery) {
-    const [received, pending] = await Promise.all([
+    const [received, triaged, pending] = await Promise.all([
       this.feedback.count({
         projectId: { eq: projectId },
         ...(query.from || query.to
@@ -109,12 +109,23 @@ export class WorkReportsSummary {
       }),
       this.feedback.count({
         projectId: { eq: projectId },
+        triagedAt: this.within(query),
+      }),
+      this.feedback.count({
+        projectId: { eq: projectId },
         status: { eq: "pending" },
       }),
     ]);
     const tab = "reportsSupport";
     return [
       { key: "feedbackIn", value: received, format: "count" as const, tab },
+      {
+        key: "feedbackTriaged",
+        value: triaged,
+        format: "count" as const,
+        upIsGood: true,
+        tab,
+      },
       {
         key: "feedbackPending",
         value: pending,

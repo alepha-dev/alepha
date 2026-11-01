@@ -615,6 +615,23 @@ export class WorkRouter {
     }),
   });
 
+  reportsSupport = $page({
+    parent: this.core.projectReports,
+    name: "reportsSupport",
+    path: "/support",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsSupport.client.tsx"),
+    loader: async ({ query }) => ({
+      support: await this.projectReportsApi.getReportsSupport({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsQuery("reportsSupport", query),
+      }),
+    }),
+  });
+
   reportsOverview = $page({
     parent: this.core.projectReports,
     name: "reportsOverview",

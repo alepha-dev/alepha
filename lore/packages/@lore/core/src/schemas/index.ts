@@ -80,6 +80,10 @@ export {
   reportsPlanningSchema,
 } from "../api/schemas/reportsPlanningSchema.ts";
 export {
+  type ReportsSupport,
+  reportsSupportSchema,
+} from "../api/schemas/reportsSupportSchema.ts";
+export {
   type ReportsSummaryLine,
   reportsSummaryLineSchema,
   reportsSummarySchema,

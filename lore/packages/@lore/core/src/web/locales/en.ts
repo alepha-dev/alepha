@@ -1203,6 +1203,42 @@ export default {
   "reports.planning.published.size": "Size",
   "reports.planning.published.cadence": "Cadence (days)",
   "reports.planning.published.carried": "Carried over",
+  "project.reports.nav.support": "Support",
+  "reports.summary.line.feedbackTriaged": "Triaged",
+  "reports.summary.line.feedbackTriaged.definition":
+    "Reports accepted or rejected in the period.",
+  "reports.support.reports": "Reports",
+  "reports.support.none": "None",
+  "reports.support.kpi.triage": "Median time to triage",
+  "reports.support.kpi.triage.definition":
+    "Median time from received to accepted or rejected, for the reports received in the period. Reports triaged before this was recorded, with no audit left, are left out.",
+  "reports.support.kpi.accepted": "Accepted",
+  "reports.support.kpi.accepted.definition":
+    "Accepted over accepted and rejected, for the reports received in the period.",
+  "reports.support.kpi.acceptedHint": "$1 accepted, $2 rejected, $3 pending",
+  "reports.support.kpi.conversion": "Feedback shipped",
+  "reports.support.kpi.conversion.definition":
+    "Accepted reports whose quests are all completed, over accepted reports.",
+  "reports.support.kpi.conversionHint": "$1 with a quest, $2 shipped",
+  "reports.support.kpi.resolution": "Median time to resolution",
+  "reports.support.kpi.resolution.definition":
+    "Median time from received to the last of its quests completed.",
+  "reports.support.intake.title": "Intake",
+  "reports.support.intake.definition":
+    "Reports received per grain, by their type tag. One with no type tag is Other.",
+  "reports.support.type.bug": "Bug",
+  "reports.support.type.feature": "Feature",
+  "reports.support.type.other": "Other",
+  "reports.support.severity.title": "By severity",
+  "reports.support.severity.definition":
+    "Reports received in the period, by their severity tag.",
+  "reports.support.pending.title": "Pending by age",
+  "reports.support.pending.definition":
+    "Reports waiting for triage now, by time since received.",
+  "reports.support.sources.title": "Where reports come from",
+  "reports.support.sources.definition":
+    "The busiest host and path tags of the reports received in the period. A report counts once per tag.",
+  "reports.support.sources.empty": "No report carries a host or path.",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

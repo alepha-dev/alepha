@@ -44,6 +44,7 @@ import { ProjectBacklogReportService } from "./services/ProjectBacklogReportServ
 import { ProjectFlowReportService } from "./services/ProjectFlowReportService.ts";
 import { ProjectPlanningReportService } from "./services/ProjectPlanningReportService.ts";
 import { ProjectReportsService } from "./services/ProjectReportsService.ts";
+import { ProjectSupportReportService } from "./services/ProjectSupportReportService.ts";
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestEditAccess } from "./services/QuestEditAccess.ts";
@@ -210,6 +211,7 @@ export const LoreWorkApi = $module({
     ProjectBacklogReportService,
     ProjectFlowReportService,
     ProjectPlanningReportService,
+    ProjectSupportReportService,
     QuestFlowHistory,
     QuestFlowService,
     QuestHoldTime,
