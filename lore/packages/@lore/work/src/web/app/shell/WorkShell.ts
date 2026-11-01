@@ -491,6 +491,13 @@ export class WorkShell {
       "memberId",
     ] as const;
     this.reports.register({
+      route: "reportsFlow",
+      labelKey: "project.reports.nav.flow",
+      order: 8,
+      needs: "work",
+      filters: ["period", "grain", "compare", ...workFilters],
+    });
+    this.reports.register({
       route: "reportsOverview",
       labelKey: "project.reports.nav.overview",
       order: 10,

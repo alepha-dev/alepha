@@ -563,6 +563,23 @@ export class WorkRouter {
     return this.reportsUrl.toQuery(url, this.reportsTabs.honours(route));
   }
 
+  reportsFlow = $page({
+    parent: this.core.projectReports,
+    name: "reportsFlow",
+    path: "/flow",
+    schema: { query: reportsUrlSchema },
+    lazy: () => import("./components/project/reports/ReportsFlow.client.tsx"),
+    loader: async ({ query }) => ({
+      url: query,
+      flow: await this.projectReportsApi.getReportsFlow({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsQuery("reportsFlow", query),
+      }),
+    }),
+  });
+
   reportsOverview = $page({
     parent: this.core.projectReports,
     name: "reportsOverview",

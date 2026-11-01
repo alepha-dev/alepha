@@ -455,6 +455,111 @@ describe("ProjectReportsController", () => {
   });
 
   /**
+   * The Flow tab's report (#Q3000).
+   */
+  describe("getReportsFlow", () => {
+    const day = 86_400_000;
+    const hour = 3_600_000;
+
+    const seed = async () => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const now = ctx.now();
+      const iso = (ago: number) => new Date(now - ago).toISOString();
+      const done = async (title: string, leadHours: number, hours: number) => {
+        const quest = await createTestQuest(ctx, owner, project.id, { title });
+        await ctx.questController.acceptQuest.fetch(
+          { params: { id: quest.id } },
+          { user: owner },
+        );
+        await ctx.questController.completeQuest.fetch(
+          { params: { id: quest.id }, body: {} },
+          { user: owner },
+        );
+        await ctx.repos.quests.updateById(quest.id, {
+          acceptedAt: iso(hours * hour),
+          completedAt: iso(0),
+        });
+      };
+      await done("short", 1, 2);
+      await done("long", 1, 100);
+      const open = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(open.id, {
+        acceptedAt: iso(30 * day),
+        acceptedBy: owner.id,
+      });
+      return { owner, projectId: project.id, iso };
+    };
+
+    it("draws a dot per completed quest with its percentiles", async ({
+      expect,
+    }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const res = await ctx.reportsController.getReportsFlow.fetch(
+        { params: { id: projectId }, query: { from: iso(7 * day) } },
+        { user: owner },
+      );
+
+      expect(res.data.scatter).toHaveLength(2);
+      expect(res.data.cycleP50Hours).toBeCloseTo(51);
+      expect(res.data.cycleP85Hours).toBeCloseTo(100);
+      expect(res.data.period.completed).toBe(2);
+    });
+
+    it("buckets cycle time, each quest in one bucket", async ({ expect }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const { data } = await ctx.reportsController.getReportsFlow.fetch(
+        { params: { id: projectId }, query: { from: iso(7 * day) } },
+        { user: owner },
+      );
+
+      const counts = Object.fromEntries(
+        data.cycleHistogram.map((row) => [row.key, row.count]),
+      );
+      expect(counts.under4h).toBe(1);
+      expect(counts.under1w).toBe(1);
+      expect(data.cycleHistogram.reduce((n, row) => n + row.count, 0)).toBe(2);
+    });
+
+    it("places an open quest against the completed percentiles", async ({
+      expect,
+    }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const { data } = await ctx.reportsController.getReportsFlow.fetch(
+        { params: { id: projectId }, query: { from: iso(7 * day) } },
+        { user: owner },
+      );
+
+      expect(data.aging[0]?.band).toBe("over_p85");
+      expect(data.aging[0]?.ageDays).toBeCloseTo(30);
+    });
+
+    it("draws the cumulative flow at the grain, today's state last", async ({
+      expect,
+    }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const { data } = await ctx.reportsController.getReportsFlow.fetch(
+        {
+          params: { id: projectId },
+          query: { from: iso(7 * day), grain: "day" },
+        },
+        { user: owner },
+      );
+
+      expect(data.cumulative.at(-1)).toMatchObject({
+        done: 2,
+        inProgress: 1,
+        exact: false,
+      });
+      expect(data.throughput.at(-1)?.completed).toBe(2);
+    });
+  });
+
+  /**
    * The query every report takes (#Q2995).
    */
   describe("a period, filters and thresholds", () => {

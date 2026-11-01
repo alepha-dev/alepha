@@ -1024,6 +1024,71 @@ export default {
   "reports.summary.line.coverage": "Coverage",
   "reports.summary.line.coverage.definition":
     "Line coverage of the latest quality run in the period.",
+  "project.reports.nav.flow": "Flow",
+  "reports.flow.empty": "Nothing moved in this period.",
+  "reports.flow.kpi.throughput": "Throughput",
+  "reports.flow.kpi.throughput.definition": "Quests completed in the period.",
+  "reports.flow.kpi.cycle": "Median cycle time",
+  "reports.flow.kpi.cycle.definition":
+    "Median time from accepted to completed, hold time excluded.",
+  "reports.flow.kpi.lead": "Median lead time",
+  "reports.flow.kpi.lead.definition":
+    "Median time from created to completed. Hold time is included: it is what the requester waited.",
+  "reports.flow.kpi.net": "Net backlog growth",
+  "reports.flow.kpi.net.definition":
+    "Quests created minus quests completed over the period.",
+  "reports.flow.kpi.wip": "In progress",
+  "reports.flow.kpi.wip.definition":
+    "Quests accepted and not completed now. Held quests are left out.",
+  "reports.flow.series.completed": "Completed",
+  "reports.flow.series.created": "Created",
+  "reports.flow.series.rollingMedian": "Rolling median",
+  "reports.flow.series.hours": "Hours",
+  "reports.flow.series.quests": "Quests",
+  "reports.flow.throughput.title": "Throughput and arrivals",
+  "reports.flow.throughput.definition":
+    "Quests created and completed per grain, with the median of the last four points. Net growth is created minus completed.",
+  "reports.flow.cumulative.title": "Cumulative flow",
+  "reports.flow.cumulative.definition":
+    "Quests in each state at the end of each grain. Past days are rebuilt from timestamps and history; nightly snapshots are exact from when they started.",
+  "reports.flow.state.todo": "To do",
+  "reports.flow.state.inProgress": "In progress",
+  "reports.flow.state.onHold": "On hold",
+  "reports.flow.state.done": "Done",
+  "reports.flow.wip.title": "Work in progress over time",
+  "reports.flow.wip.definition":
+    "Quests in progress at the end of each grain, held quests left out.",
+  "reports.flow.scatter.title": "Cycle time",
+  "reports.flow.scatter.definition":
+    "One dot per quest completed in the period, hold time excluded, with the p50 and p85 lines. Click a dot to open its quest.",
+  "reports.flow.cycleHistogram.title": "Cycle time distribution",
+  "reports.flow.cycleHistogram.definition":
+    "Quests completed in the period, by time from accepted to completed.",
+  "reports.flow.leadHistogram.title": "Lead time distribution",
+  "reports.flow.leadHistogram.definition":
+    "Quests completed in the period, by time from created to completed.",
+  "reports.flow.bucket.under1h": "< 1h",
+  "reports.flow.bucket.under4h": "< 4h",
+  "reports.flow.bucket.under1d": "< 1d",
+  "reports.flow.bucket.under3d": "< 3d",
+  "reports.flow.bucket.under1w": "< 1w",
+  "reports.flow.bucket.under2w": "< 2w",
+  "reports.flow.bucket.under4w": "< 4w",
+  "reports.flow.bucket.over4w": "4w+",
+  "reports.flow.aging.title": "Aging work in progress",
+  "reports.flow.aging.definition":
+    "The oldest quests in progress, in days since accepted, against the p50 and p85 cycle time of completed quests. Held quests are left out.",
+  "reports.flow.band.under_p50": "under p50",
+  "reports.flow.band.under_p85": "under p85",
+  "reports.flow.band.over_p85": "over p85",
+  "reports.flow.time.title": "Time on hold and per board column",
+  "reports.flow.time.definition": "Where quests waited.",
+  "reports.flow.time.hold": "On hold",
+  "reports.flow.time.hold.definition":
+    "Median hold time of the quests completed in the period that were ever held.",
+  "reports.flow.time.holdHint": "$1 quests, p85 $2",
+  "reports.flow.time.column.definition":
+    "Median time a quest spent in this column, from its moved events.",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

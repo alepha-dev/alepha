@@ -1003,6 +1003,71 @@ export default {
   "reports.summary.line.coverage": "Couverture",
   "reports.summary.line.coverage.definition":
     "Couverture de lignes du dernier passage qualité de la période.",
+  "project.reports.nav.flow": "Flux",
+  "reports.flow.empty": "Rien n’a bougé sur cette période.",
+  "reports.flow.kpi.throughput": "Débit",
+  "reports.flow.kpi.throughput.definition": "Quêtes terminées sur la période.",
+  "reports.flow.kpi.cycle": "Temps de cycle médian",
+  "reports.flow.kpi.cycle.definition":
+    "Temps médian entre acceptation et fin, attente exclue.",
+  "reports.flow.kpi.lead": "Délai médian",
+  "reports.flow.kpi.lead.definition":
+    "Temps médian entre création et fin. L’attente est incluse : c’est ce qu’a attendu le demandeur.",
+  "reports.flow.kpi.net": "Croissance nette du backlog",
+  "reports.flow.kpi.net.definition":
+    "Quêtes créées moins quêtes terminées sur la période.",
+  "reports.flow.kpi.wip": "En cours",
+  "reports.flow.kpi.wip.definition":
+    "Quêtes acceptées et non terminées, hors quêtes en attente.",
+  "reports.flow.series.completed": "Terminées",
+  "reports.flow.series.created": "Créées",
+  "reports.flow.series.rollingMedian": "Médiane glissante",
+  "reports.flow.series.hours": "Heures",
+  "reports.flow.series.quests": "Quêtes",
+  "reports.flow.throughput.title": "Débit et arrivées",
+  "reports.flow.throughput.definition":
+    "Quêtes créées et terminées par intervalle, avec la médiane des quatre derniers points. La croissance nette est créées moins terminées.",
+  "reports.flow.cumulative.title": "Flux cumulé",
+  "reports.flow.cumulative.definition":
+    "Quêtes dans chaque état à la fin de chaque intervalle. Le passé est reconstruit depuis les horodatages et l’historique ; les relevés nocturnes sont exacts depuis leur début.",
+  "reports.flow.state.todo": "À faire",
+  "reports.flow.state.inProgress": "En cours",
+  "reports.flow.state.onHold": "En attente",
+  "reports.flow.state.done": "Terminées",
+  "reports.flow.wip.title": "Travail en cours dans le temps",
+  "reports.flow.wip.definition":
+    "Quêtes en cours à la fin de chaque intervalle, hors quêtes en attente.",
+  "reports.flow.scatter.title": "Temps de cycle",
+  "reports.flow.scatter.definition":
+    "Un point par quête terminée sur la période, attente exclue, avec les lignes p50 et p85. Cliquez un point pour ouvrir sa quête.",
+  "reports.flow.cycleHistogram.title": "Distribution du temps de cycle",
+  "reports.flow.cycleHistogram.definition":
+    "Quêtes terminées sur la période, par temps entre acceptation et fin.",
+  "reports.flow.leadHistogram.title": "Distribution du délai",
+  "reports.flow.leadHistogram.definition":
+    "Quêtes terminées sur la période, par temps entre création et fin.",
+  "reports.flow.bucket.under1h": "< 1 h",
+  "reports.flow.bucket.under4h": "< 4 h",
+  "reports.flow.bucket.under1d": "< 1 j",
+  "reports.flow.bucket.under3d": "< 3 j",
+  "reports.flow.bucket.under1w": "< 1 sem.",
+  "reports.flow.bucket.under2w": "< 2 sem.",
+  "reports.flow.bucket.under4w": "< 4 sem.",
+  "reports.flow.bucket.over4w": "4 sem. et plus",
+  "reports.flow.aging.title": "Ancienneté du travail en cours",
+  "reports.flow.aging.definition":
+    "Les plus anciennes quêtes en cours, en jours depuis l’acceptation, face aux p50 et p85 du temps de cycle des quêtes terminées, hors quêtes en attente.",
+  "reports.flow.band.under_p50": "sous p50",
+  "reports.flow.band.under_p85": "sous p85",
+  "reports.flow.band.over_p85": "au-delà de p85",
+  "reports.flow.time.title": "Temps en attente et par colonne",
+  "reports.flow.time.definition": "Là où les quêtes ont attendu.",
+  "reports.flow.time.hold": "En attente",
+  "reports.flow.time.hold.definition":
+    "Temps d’attente médian des quêtes terminées sur la période et mises en attente au moins une fois.",
+  "reports.flow.time.holdHint": "$1 quêtes, p85 $2",
+  "reports.flow.time.column.definition":
+    "Temps médian passé par une quête dans cette colonne, d’après ses déplacements.",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

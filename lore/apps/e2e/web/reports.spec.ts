@@ -101,6 +101,46 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Flow tab (#Q3000): the first page to draw the kit's charts, so this is
+   * what proves they mount.
+   */
+  test("Flow draws its charts from real quests", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(
+      page,
+      `reportsflow${t}@example.com`,
+      "ReportsF123!",
+    );
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RF${t}`.slice(0, 20),
+    );
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: `Flow${t}`,
+      description: "Seeded for the flow tab",
+      area: "core",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    await page.goto(`/${slug}/reports/flow?range=7d`);
+
+    await expect(page.getByText("Cumulative flow")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Aging work in progress")).toBeVisible();
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+    // The stacked area drew: a chart that throws takes the page with it, and
+    // one that silently renders nothing has no surface.
+    // Counted rather than `toBeVisible`: an empty band is a zero-height path.
+    await expect(page.locator(".recharts-area-area")).toHaveCount(4);
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */

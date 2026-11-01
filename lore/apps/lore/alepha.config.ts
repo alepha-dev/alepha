@@ -233,6 +233,8 @@ export default defineConfig({
         "reports.filter.range.",
         "reports.filter.grain.",
         "reports.summary.line.",
+        "reports.flow.bucket.",
+        "reports.flow.band.",
         "reports.summary.section.",
         // Catalogue-defined preset keys, slot names and channel choices (#E43).
         "automation.preset.",

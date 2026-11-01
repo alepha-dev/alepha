@@ -34,6 +34,7 @@ const reportsTabs = (
     project,
     [
       "reportsSummary",
+      "reportsFlow",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",
@@ -73,6 +74,7 @@ describe("reportsTabs", () => {
   it("gives a Work project the two derived quest tabs, plus Members", () => {
     expect(names(["work"])).toEqual([
       "reportsSummary",
+      "reportsFlow",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",

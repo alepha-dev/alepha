@@ -1,6 +1,7 @@
 import { $ownsProject } from "@lore/core/api";
 import {
   reportsMembersSchema,
+  reportsFlowSchema,
   reportsOverviewSchema,
   reportsQuerySchema,
   reportsQuestsSchema,
@@ -9,6 +10,7 @@ import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
+import { ProjectFlowReportService } from "../services/ProjectFlowReportService.ts";
 import { ProjectReportsService } from "../services/ProjectReportsService.ts";
 
 /**
@@ -20,6 +22,29 @@ import { ProjectReportsService } from "../services/ProjectReportsService.ts";
  */
 export class ProjectReportsController {
   protected readonly reports = $inject(ProjectReportsService);
+  protected readonly flow = $inject(ProjectFlowReportService);
+
+  /**
+   * Reports "Flow" tab: how work moved through the period (#Q3000).
+   */
+  getReportsFlow = $action({
+    path: "/getReportsFlow/:id",
+    method: "GET",
+    use: [
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
+    ],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      query: reportsQuerySchema,
+      response: reportsFlowSchema,
+    },
+    handler: ({ params, query }) => this.flow.report(params.id, query),
+  });
 
   /**
    * Reports "Overview" tab: KPI tiles, a cumulative created-vs-completed

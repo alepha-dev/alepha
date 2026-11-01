@@ -124,6 +124,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   // for whoever adds the sixth.
   "projectReports",
   "reportsSummary",
+  "reportsFlow",
   "reportsOverview",
   "reportsQuests",
   "reportsMembers",
@@ -255,6 +256,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectRelease: "project.menu.releases",
   projectReports: "project.menu.reports",
   reportsSummary: "project.menu.reports",
+  reportsFlow: "project.menu.reports",
   reportsOverview: "project.menu.reports",
   reportsQuests: "project.menu.reports",
   reportsMembers: "project.menu.reports",

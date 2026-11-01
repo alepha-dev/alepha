@@ -12,7 +12,7 @@ export interface ReportsStackedAreaProps {
   /**
    * One row per point: `date` and a value per series key.
    */
-  data: Array<{ date: string } & Record<string, string | number>>;
+  data: Array<{ date: string } & Record<string, string | number | boolean>>;
   /**
    * The bands, bottom first. Each keeps its colour whatever the others do.
    */
