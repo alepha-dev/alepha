@@ -194,7 +194,9 @@ export class ReactBrowserProvider {
       return "";
     }
 
-    return base;
+    // Vite hands the base over with a trailing slash, and every path this is
+    // joined to starts with one.
+    return base.replace(/\/$/, "");
   }
 
   public get url(): string {
@@ -1016,10 +1018,21 @@ export class ReactBrowserProvider {
   }
 
   protected stripBase(path: string): string {
-    if (this.base && path.startsWith(this.base)) {
-      return path.slice(this.base.length) || "/";
+    if (!this.base || !path.startsWith(this.base)) {
+      return path;
     }
-    return path;
+
+    const rest = path.slice(this.base.length);
+    if (rest === "") {
+      return "/";
+    }
+
+    // `/v10/about` only shares its first characters with the base `/v1`.
+    if (!/^[/?#]/.test(rest)) {
+      return path;
+    }
+
+    return rest.startsWith("/") ? rest : `/${rest}`;
   }
 }
 
