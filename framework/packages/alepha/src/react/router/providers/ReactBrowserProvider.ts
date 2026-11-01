@@ -20,6 +20,7 @@ import BootMarker from "../components/BootMarker.tsx";
 import OfflineScreen from "../components/OfflineScreen.tsx";
 import { ReactBootHealth } from "../services/ReactBootHealth.ts";
 import type { RouterPushOptions } from "../services/ReactRouter.ts";
+import { ReactViewTransition } from "../services/ReactViewTransition.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
   PreviousLayerData,
@@ -86,6 +87,7 @@ export class ReactBrowserProvider {
   protected readonly options = $store(reactBrowserOptions);
   protected readonly bootOptions = $store(reactBootOptions);
   protected readonly bootHealth = $inject(ReactBootHealth);
+  protected readonly viewTransition = $inject(ReactViewTransition);
 
   /**
    * Scroll offset of every history entry we have visited, keyed by the id
@@ -353,6 +355,7 @@ export class ReactBrowserProvider {
     // it is gone the moment the new view paints.
     this.saveScroll();
     this.navigationKind = options.replace ? "replace" : "push";
+    this.viewTransition.browserAnimated = false;
 
     const myTransitionId = ++this.transitionId;
 
@@ -625,33 +628,57 @@ export class ReactBrowserProvider {
     return { type: "top" };
   }
 
-  protected readonly onTransitionEnd = $hook({
+  /**
+   * Whether the views are mounted. Before that nothing can report a commit,
+   * so the first screen scrolls from `react:transition:end`.
+   */
+  protected viewsMounted = false;
+
+  protected readonly onFirstTransitionEnd = $hook({
     on: "react:transition:end",
     handler: ({ state }) => {
-      if (typeof window === "undefined" || this.alepha.isTest()) {
-        return;
-      }
-
-      const action = this.resolveScrollAction(state.url.hash?.slice(1));
-      this.log.trace("Scroll action", action);
-
-      switch (action.type) {
-        case "none":
-          return;
-        case "top":
-          // Synchronous: the top is reachable at any height, so it needs no
-          // wait for layout and avoids a visible jump.
-          this.setScroll(0);
-          return;
-        case "restore":
-          this.restoreScroll(action.top);
-          return;
-        case "hash":
-          this.restoreScroll(0, action.hash);
-          return;
+      if (!this.viewsMounted) {
+        this.applyScroll(state);
       }
     },
   });
+
+  /**
+   * After the commit, never at `react:transition:end`: views commit in a
+   * transition, later than that event, and a scroll applied to the page that
+   * is leaving is reported as landed and then lost.
+   */
+  protected readonly onTransitionCommitted = $hook({
+    on: "react:transition:committed",
+    handler: ({ state }) => {
+      this.applyScroll(state);
+    },
+  });
+
+  protected applyScroll(state: ReactRouterState): void {
+    if (typeof window === "undefined" || this.alepha.isTest()) {
+      return;
+    }
+
+    const action = this.resolveScrollAction(state.url.hash?.slice(1));
+    this.log.trace("Scroll action", action);
+
+    switch (action.type) {
+      case "none":
+        return;
+      case "top":
+        // Synchronous: the top is reachable at any height, so it needs no
+        // wait for layout and avoids a visible jump.
+        this.setScroll(0);
+        return;
+      case "restore":
+        this.restoreScroll(action.top);
+        return;
+      case "hash":
+        this.restoreScroll(0, action.hash);
+        return;
+    }
+  }
 
   /**
    * Apply a scroll offset once the new view is tall enough to hold it.
@@ -795,7 +822,14 @@ export class ReactBrowserProvider {
         committed === this.url ? this.location.href : this.base + committed,
       );
 
-      window.addEventListener("popstate", () => {
+      this.viewsMounted = true;
+
+      window.addEventListener("popstate", (event) => {
+        // A swipe back the browser already animated: animating it again would
+        // play the page twice.
+        this.viewTransition.browserAnimated =
+          event.hasUAVisualTransition === true;
+
         // `popstate` fires while the outgoing view is still on screen, so the
         // offset now on the page belongs to the entry we are leaving. Save it
         // under the id we were on, before adopting the one we arrived at.

@@ -19,7 +19,7 @@ This module enables:
 - Type-safe URL parameter and query string validation
 - Server-side data fetching with the `loader` function
 - Lazy loading and code splitting
-- Page animations and error handling
+- View transitions and error handling
 
 ## API Reference
 

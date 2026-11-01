@@ -452,48 +452,42 @@ export interface PagePrimitiveOptions<
   onLeave?: () => void;
 
   /**
-   * @experimental
+   * Animate this page's slot when a navigation commits, with a view
+   * transition. The rest of the document does not move, and a browser without
+   * the API swaps instantly.
    *
-   * Add a css animation when the page is loaded or unloaded.
-   * It uses CSS animations, so you need to define the keyframes in your CSS.
+   * Values are CSS class names, which your CSS targets through
+   * `::view-transition-old(.name)` for a page leaving and
+   * `::view-transition-new(.name)` for a page arriving. A string is `enter`
+   * and `exit`; `update` is a change inside a page that stays, a query change
+   * for example, and only runs when asked for.
    *
-   * @example Simple animation name
+   * `prefers-reduced-motion`, and a back gesture the browser already animated,
+   * turn it off.
+   *
+   * @example One class for both directions
    * ```ts
-   * animation: "fadeIn"
+   * viewTransition: "fade"
    * ```
    *
    * CSS example:
    * ```css
-   * @keyframes fadeIn {
-   *  from { opacity: 0; }
-   *  to { opacity: 1; }
-   * }
+   * ::view-transition-old(.fade) { animation: 200ms ease-in both fadeOut; }
+   * ::view-transition-new(.fade) { animation: 200ms ease-out both fadeIn; }
    * ```
    *
-   * @example Detailed animation
+   * @example Only the way in
    * ```ts
-   * animation: {
-   *   enter: { name: "fadeIn", duration: 300 },
-   *   exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
-   * }
+   * viewTransition: { enter: "fade" }
    * ```
    *
-   * @example Only exit animation
+   * @example From the target of the navigation
    * ```ts
-   * animation: {
-   *   exit: "fadeOut"
-   * }
-   * ```
-   *
-   * @example With custom timing function
-   * ```ts
-   * animation: {
-   *   enter: { name: "fadeIn", duration: 300, timing: "cubic-bezier(0.4, 0, 0.2, 1)" },
-   *   exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
-   * }
+   * viewTransition: ({ url }) =>
+   *   url.pathname === "/checkout" ? { exit: "slide-left" } : undefined
    * ```
    */
-  animation?: PageAnimation;
+  viewTransition?: PageViewTransition;
 
   /**
    * Head configuration for the page (title, meta tags, etc.).
@@ -842,21 +836,14 @@ export type PageLoader<
   TPropsParent &
   Omit<ReactRouterState, "layers" | "onError">;
 
-export type PageAnimation =
-  | PageAnimationObject
-  | ((state: ReactRouterState) => PageAnimationObject | undefined);
+export type PageViewTransition =
+  | PageViewTransitionObject
+  | ((state: ReactRouterState) => PageViewTransitionObject | undefined);
 
-type PageAnimationObject =
-  | CssAnimationName
+type PageViewTransitionObject =
+  | string
   | {
-      enter?: CssAnimation | CssAnimationName;
-      exit?: CssAnimation | CssAnimationName;
+      enter?: string;
+      exit?: string;
+      update?: string;
     };
-
-type CssAnimationName = string;
-
-type CssAnimation = {
-  name: string;
-  duration?: number;
-  timing?: string;
-};

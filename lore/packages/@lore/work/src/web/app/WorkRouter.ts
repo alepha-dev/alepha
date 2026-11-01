@@ -162,29 +162,6 @@ export class WorkRouter {
         title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
       };
     },
-    animation: ({ meta }) => {
-      if (meta.transition) {
-        return meta.transition;
-      }
-
-      if (meta.completed) {
-        return {
-          exit: {
-            name: "zoomOutUp",
-            duration: 800,
-          },
-        };
-      }
-
-      if (meta.deleted) {
-        return {
-          exit: {
-            name: "zoomOut",
-            duration: 400,
-          },
-        };
-      }
-    },
     lazy: () => import("./components/project/quest/QuestView.tsx"),
     loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);

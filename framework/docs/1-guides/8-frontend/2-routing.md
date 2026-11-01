@@ -528,39 +528,54 @@ A `$page` is also an object you can call from server code:
 - `page.fetch(options?)` requests the page from the running server over HTTP, at its full path with `options.params` and `options.query` filled in, and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`.
 - `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
 
-## Page Animations
+## View Transitions
 
-CSS-based enter/exit animations (experimental).
+`viewTransition` animates a page's slot when a navigation commits, through React's `<ViewTransition>`. The layouts above the slot do not move, and a browser without the API swaps instantly.
+
+Values are CSS class names:
 
 ```typescript
-// Simple animation name
-animation: "fadeIn"
+// One class, for the page arriving and the page leaving
+viewTransition: "fade"
 
-// Detailed enter/exit
-animation: {
-  enter: { name: "fadeIn", duration: 300 },
-  exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
+// Each direction apart. `update` is a change inside a page that stays, such as
+// a query change, and only runs when asked for.
+viewTransition: {
+  enter: "slide-in",
+  exit: "slide-out",
+  update: "pulse",
 }
 
-// Dynamic based on router state
-animation: (state) => ({
-  enter: "slideIn",
-  exit: "slideOut",
-})
+// From the target of the navigation
+viewTransition: ({ url, meta }) =>
+  url.pathname === "/checkout" ? { exit: "slide-left" } : undefined
 ```
 
-Define the keyframes in your CSS:
+The page leaving answers with `exit`, the page arriving with `enter`, and both play together. An exit no longer holds the navigation: it starts at the commit, with the new page ready. Style the classes with the view transition pseudo-elements:
 
 ```css
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+::view-transition-old(.fade) {
+  animation: 200ms ease-in both fadeOut;
+}
+
+::view-transition-new(.fade) {
+  animation: 200ms ease-out both fadeIn;
 }
 ```
+
+A page with no `viewTransition` never animates. `prefers-reduced-motion` turns the option off, and so does a back gesture the browser already animated, or an iOS swipe back would play twice.
+
+A navigation carries the target page's name as a transition type, and every view of it lands in one commit, so a shared element only needs a `name`, on the two pages it links:
+
+```tsx
+import { ViewTransition } from "react";
+
+<ViewTransition name={`card-${card.id}`} share="morph">
+  <h1>{card.title}</h1>
+</ViewTransition>;
+```
+
+Views commit in a React transition, after `react:transition:end`. Code that needs the new page in the DOM listens to `react:transition:committed`.
 
 ## Router Hooks
 

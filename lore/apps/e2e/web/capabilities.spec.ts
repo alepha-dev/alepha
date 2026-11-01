@@ -34,11 +34,13 @@ import {
  * must survive every case here.
  */
 const navHrefs = async (page: Page, slug: string): Promise<string[]> => {
-  const hrefs = await page
-    .locator(`[data-slot="sidebar"] a[href^="/${slug}"]`)
-    .evaluateAll((nodes) =>
-      nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")!),
-    );
+  const links = page.locator(`[data-slot="sidebar"] a[href^="/${slug}"]`);
+  // Views commit in a transition (#Q3029): on a project's first open the URL
+  // is already there a frame before the sidebar.
+  await expect(links.first()).toBeAttached({ timeout: 10_000 });
+  const hrefs = await links.evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")!),
+  );
   return [
     ...new Set(
       hrefs

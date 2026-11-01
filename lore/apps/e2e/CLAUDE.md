@@ -86,6 +86,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `settings-features.spec.ts` - the capability switches in General ▸ Capabilities and on the section pages
 - `capabilities.spec.ts` - a Knowledge-only project, an Apps-only one, and a project with everything turned off and Work turned back on
 - `theme-flicker.spec.ts` — theme no-flash boot
+- `view-transition.spec.ts` - `$page({ viewTransition })` in a real browser (the keyframes actually played, none under `prefers-reduced-motion`, none between pages that ask for nothing), and scroll and a superseded navigation now that views commit in a React transition
 - `login-hydration.spec.ts` - `/auth/login` hydrates with no React #418, anonymous (light, dark, French, with `redirect` and `error`) and signed in (#Q2642)
 - `invitation.spec.ts` — owner invites → user accepts → joins project as a member (drives the email-link round-trip)
 - `protected-folio.spec.ts` — end-to-end encrypted folios (passphrase round-trip, wrong-passphrase rejection, no plaintext on the wire)

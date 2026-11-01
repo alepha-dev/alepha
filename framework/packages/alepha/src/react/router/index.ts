@@ -9,7 +9,7 @@ import { AlephaServerEtag } from "alepha/server/etag";
 import { AlephaServerLinks } from "alepha/server/links";
 import type { ReactNode } from "react";
 
-import { $page, type PageAnimation } from "./primitives/$page.ts";
+import { $page } from "./primitives/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactDomServerProvider } from "./providers/ReactDomServerProvider.ts";
 import {
@@ -29,6 +29,7 @@ import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
 import { ReactPageServerService } from "./services/ReactPageServerService.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
+import { ReactViewTransition } from "./services/ReactViewTransition.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -144,7 +145,6 @@ declare module "alepha" {
     "react:transition:begin": {
       previous: ReactRouterState;
       state: ReactRouterState;
-      animation?: PageAnimation;
     };
     /**
      * Fires when a route transition has succeeded.
@@ -165,6 +165,14 @@ declare module "alepha" {
     "react:transition:end": {
       state: ReactRouterState;
     };
+    /**
+     * Fires once the views of a navigation are in the DOM. They commit in a
+     * transition, so this comes after `react:transition:end`, which only says
+     * the router has decided.
+     */
+    "react:transition:committed": {
+      state: ReactRouterState;
+    };
   }
 }
 
@@ -179,7 +187,7 @@ declare module "alepha" {
  * - Type-safe URL parameter and query string validation
  * - Server-side data fetching with the `loader` function
  * - Lazy loading and code splitting
- * - Page animations and error handling
+ * - View transitions and error handling
  *
  * @see {@link $page}
  * @module alepha.react.router
@@ -193,6 +201,7 @@ export const AlephaReactRouter = $module({
     ReactPageService,
     ReactPreloadProvider,
     ReactRouter,
+    ReactViewTransition,
     ReactServerErrorProvider,
     ReactServerProvider,
     ReactServerTemplateProvider,

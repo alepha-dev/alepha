@@ -296,13 +296,8 @@ export class CoreRouter {
 
   home = $page({
     path: "/",
-    animation: (state) => {
-      if (state.url.pathname === "/new-project") {
-        return {
-          exit: { name: "fadeScaleOut", duration: 700, timing: "ease-in" },
-        };
-      }
-    },
+    viewTransition: ({ url }) =>
+      url.pathname === "/new-project" ? { exit: "fade-scale-out" } : undefined,
     lazy: () => import("./components/home/Home.tsx"),
     /**
      * What the first paint needs: the realm's signup switch for an anonymous
@@ -345,9 +340,7 @@ export class CoreRouter {
     path: "/new-project",
     use: [$secure()],
     head: { title: "New project › Alepha Lore" },
-    animation: {
-      enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
-    },
+    viewTransition: { enter: "fade-in" },
     lazy: () => import("./components/project/ProjectCreate.tsx"),
   });
 
