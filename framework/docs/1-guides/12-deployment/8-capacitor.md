@@ -41,19 +41,20 @@ export default defineConfig({
 });
 ```
 
-| Key         | Meaning                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| `appId`     | Bundle identifier (iOS) and application id (Android), reverse-DNS                                    |
-| `appName`   | The name under the icon                                                                              |
-| `scheme`    | The custom URL scheme of deep links, without `://`                                                   |
-| `apiUrl`    | The origin of the API the app calls. Falls back to `PUBLIC_URL`; a path or query is refused          |
-| `icon`      | A square PNG of at least 1024 px, or an SVG, and the colour behind it                                |
-| `iosTeamId` | The Apple team that signs device builds                                                              |
-| `env`       | Values the browser code may read. They ship inside the app: names that look like secrets are refused |
-| `platforms` | The native projects the app has, both by default                                                     |
-| `config`    | Extra `capacitor.config.ts` settings, typically plugin options. It cannot set `server.url`           |
-| `variants`  | Other installable apps from the same code, see [Variants](#variants)                                 |
-| `ota`       | Over-the-air updates: `publicKey` and the server `url`, see [Live updates](#live-updates)            |
+| Key                  | Meaning                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| `appId`              | Bundle identifier (iOS) and application id (Android), reverse-DNS                                    |
+| `appName`            | The name under the icon                                                                              |
+| `scheme`             | The custom URL scheme of deep links, without `://`                                                   |
+| `apiUrl`             | The origin of the API the app calls. Falls back to `PUBLIC_URL`; a path or query is refused          |
+| `icon`               | A square PNG of at least 1024 px, or an SVG, and the colour behind it                                |
+| `iosTeamId`          | The Apple team that signs device builds                                                              |
+| `env`                | Values the browser code may read. They ship inside the app: names that look like secrets are refused |
+| `platforms`          | The native projects the app has, both by default                                                     |
+| `iosLocalNetworking` | The iOS app ships `NSAllowsLocalNetworking` on purpose, see [Build a binary](#build-a-binary)        |
+| `config`             | Extra `capacitor.config.ts` settings, typically plugin options. It cannot set `server.url`           |
+| `variants`           | Other installable apps from the same code, see [Variants](#variants)                                 |
+| `ota`                | Over-the-air updates: `publicKey` and the server `url`, see [Live updates](#live-updates)            |
 
 Register the native module in the browser entry, before the module that imports `AlephaReactAuth`:
 
@@ -251,8 +252,8 @@ kept alive while the run lasts), the single LAN IPv4 for a phone. With several p
 (a VPN, a second network) it refuses with the list; `--host` settles it. `--api` names the API
 instead of `apiUrl`; with neither, the dev server is the API.
 
-Loading plain HTTP from the dev server needs development exceptions that a release must never
-carry, and `dev` sets them for the run:
+Loading plain HTTP from the dev server needs development exceptions that a release must not
+inherit, and `dev` sets them for the run:
 
 - on an iOS phone, `NSAllowsLocalNetworking` in `Info.plist`;
 - on Android, when the app declares a network security config, a `domain-config` allowing cleartext
@@ -263,9 +264,9 @@ carry, and `dev` sets them for the run:
 the launch fails. A crash cannot restore anything: the next `sync` or `build` refuses while the
 journal exists, and `alepha capacitor dev --restore` puts the files back.
 
-⚠️ The journal is what keeps those exceptions out of a binary, so never delete it by hand: a build
-does not look for `NSAllowsLocalNetworking`, and it reads an Android network security config only
-under the name `network_security_config.xml`.
+A build also refuses the exceptions themselves, with or without the journal. The journal is
+gitignored and the native projects are checked in, so this is what stops a run's edit that gets
+committed from shipping out of CI.
 
 In dev the page is server-rendered, and the server never sees the native session: a signed-in app
 logs a hydration mismatch on its account menu, which React repairs. A bundled build has no server
@@ -294,10 +295,14 @@ variant, the build number read from the native project (`CURRENT_PROJECT_VERSION
 `versionCode`), a fingerprint of the native inputs, the signing and the artifact's digest. A build
 number already recorded from other native inputs is refused before anything compiles: bump it.
 
-Before syncing, a build also refuses development residue: a `server.url`, `NSAllowsArbitraryLoads`
-or `NSExceptionDomains` in `Info.plist`, `usesCleartextTraffic="true"` in the manifest, and
-cleartext or user certificate authorities outside the `debug-overrides` of
-`res/xml/network_security_config.xml`.
+Before syncing, a build also refuses development residue: a `server.url`, `NSAllowsArbitraryLoads`,
+`NSExceptionDomains` or `NSAllowsLocalNetworking` in `Info.plist`, `usesCleartextTraffic="true"` in
+the manifest, and cleartext or user certificate authorities outside the `debug-overrides` of the
+network security config the manifest names with `android:networkSecurityConfig`.
+
+An app that talks to devices on the local network ships `NSAllowsLocalNetworking` on purpose, and in
+`Info.plist` that reads the same as what a dev run leaves. Add the key yourself and set
+`capacitor({ iosLocalNetworking: true })`: a build then lets that key through, and no other.
 
 ## Variants
 

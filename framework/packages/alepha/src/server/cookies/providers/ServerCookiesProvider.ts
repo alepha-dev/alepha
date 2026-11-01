@@ -148,7 +148,7 @@ export class ServerCookiesProvider {
 
     try {
       rawValue = decodeURIComponent(
-        rawValue || this.joinChunks(cookieName, chunks.length, cookies),
+        rawValue || this.joinChunks(cookieName, cookies),
       );
 
       if (options.sign) {
@@ -239,11 +239,13 @@ export class ServerCookiesProvider {
 
     const written = new Map<string, string>();
     if (encoded.length > this.CHUNK_LENGTH) {
-      for (let i = 0; i * this.CHUNK_LENGTH < encoded.length; i++) {
+      const count = Math.ceil(encoded.length / this.CHUNK_LENGTH);
+      for (let i = 0; i < count; i++) {
         const start = i * this.CHUNK_LENGTH;
+        const chunk = encoded.slice(start, start + this.CHUNK_LENGTH);
         written.set(
           `${cookieName}.${i}`,
-          encoded.slice(start, start + this.CHUNK_LENGTH),
+          i === 0 ? `${count}~${chunk}` : chunk,
         );
       }
     } else {
@@ -361,17 +363,25 @@ export class ServerCookiesProvider {
   }
 
   /**
-   * Joins `count` chunks back into the encoded value. A gap throws, since the
-   * value cannot be whole. A lost last chunk leaves no gap: the value comes out
-   * truncated, and decoding it fails instead.
+   * Joins a chunked cookie back into its encoded value. The first chunk opens
+   * with the chunk count, `<count>~<chunk>`: two requests racing cannot expire
+   * what each other's response writes, so a shorter write can land on top of a
+   * longer one and leave its last chunks behind. Those are ignored here, and the
+   * next write expires them. A read must not: an expiry is only safe beside the
+   * rewrite it belongs to, and alone it could take a chunk a concurrent response
+   * has just written.
+   *
+   * A missing chunk or count throws, since the value cannot be whole.
    */
-  protected joinChunks(
-    cookieName: string,
-    count: number,
-    cookies: Cookies,
-  ): string {
-    let value = "";
-    for (let i = 0; i < count; i++) {
+  protected joinChunks(cookieName: string, cookies: Cookies): string {
+    const [, count, first] =
+      /^(\d+)~(.*)$/.exec(cookies.req[`${cookieName}.0`] ?? "") ?? [];
+    if (!count) {
+      throw new AlephaError(`Cookie "${cookieName}" has no chunk count.`);
+    }
+
+    let value = first;
+    for (let i = 1; i < Number(count); i++) {
       const chunk = cookies.req[`${cookieName}.${i}`];
       if (chunk === undefined) {
         throw new AlephaError(`Cookie "${cookieName}" lost its chunk ${i}.`);

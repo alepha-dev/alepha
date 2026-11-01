@@ -13,14 +13,22 @@ import { CapacitorProject } from "./CapacitorProject.ts";
  * exceptions, Android cleartext). Both are restored when the run ends; a run
  * that crashed leaves them behind, and a build that shipped them would load
  * its pages from a laptop that no longer exists, or accept cleartext from
- * anyone. The guard reads every place they live:
+ * anyone. The journal alone would not stop them: `.capacitor-dev.json` is
+ * gitignored while the native projects are checked in, so a run's edit that
+ * gets committed reaches CI with no journal beside it. The guard reads every
+ * place a run writes them:
  *
  * - `server.url` in the generated `capacitor.config.ts` and in each native
  *   project's copied `capacitor.config.json`;
- * - `NSAllowsArbitraryLoads` or `NSExceptionDomains` in `Info.plist`;
+ * - `NSAllowsArbitraryLoads`, `NSExceptionDomains` or
+ *   `NSAllowsLocalNetworking` in `Info.plist`;
  * - `usesCleartextTraffic="true"` in the Android manifest, and cleartext or
  *   user-installed certificate authorities in the `base-config` or a
- *   `domain-config` of `network_security_config.xml`.
+ *   `domain-config` of the network security config the manifest names.
+ *
+ * `NSAllowsLocalNetworking` is also how an app reaches devices on the LAN, and
+ * in `Info.plist` residue and intent read the same. The app declares its intent
+ * with `capacitor({ iosLocalNetworking: true })`, in a file no run writes.
  *
  * A `debug-overrides` block is allowed: Android applies it to debuggable
  * builds only, which is how a phone trusts a local development certificate
@@ -164,6 +172,14 @@ export class NativeGuard {
         "ios/App/App/Info.plist has NSExceptionDomains: remove them from NSAppTransportSecurity.",
       );
     }
+    if (
+      !this.project.declaresLocalNetworking() &&
+      /<key>NSAllowsLocalNetworking<\/key>\s*<true\s*\/>/.test(plist)
+    ) {
+      findings.push(
+        "ios/App/App/Info.plist sets NSAllowsLocalNetworking: remove it from NSAppTransportSecurity, or set capacitor({ iosLocalNetworking: true }) if the app talks to devices on the local network.",
+      );
+    }
   }
 
   protected async inspectAndroid(
@@ -180,10 +196,11 @@ export class NativeGuard {
       }
     }
 
-    const nscPath = this.fs.join(
-      root,
-      "android/app/src/main/res/xml/network_security_config.xml",
-    );
+    const file = await this.project.androidNetworkSecurityConfig(root);
+    if (!file) {
+      return;
+    }
+    const nscPath = this.fs.join(root, file);
     if (!(await this.fs.exists(nscPath))) {
       return;
     }
@@ -193,7 +210,6 @@ export class NativeGuard {
       /<debug-overrides[\s\S]*?<\/debug-overrides>/g,
       "",
     );
-    const file = "android/app/src/main/res/xml/network_security_config.xml";
 
     if (
       /<(base|domain)-config[^>]*cleartextTrafficPermitted\s*=\s*"true"/.test(
