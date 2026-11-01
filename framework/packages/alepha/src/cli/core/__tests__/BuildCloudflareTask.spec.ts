@@ -755,6 +755,33 @@ describe("BuildCloudflareTask", () => {
           d1AnchorFor(new Request("https://x.test/api/quests")),
         ).toBeUndefined();
       });
+
+      it("opens a GET with a credential and no bookmark on the primary", async () => {
+        const d1AnchorFor = await loadAnchor();
+        // The CLI keeps no cookie: the GET following its own POST must not
+        // reach a replica that missed the row it just created.
+        for (const method of ["GET", "HEAD"]) {
+          expect(
+            d1AnchorFor(
+              new Request("https://x.test/api/deployments/1", {
+                method,
+                headers: { authorization: "Bearer key" },
+              }),
+            ),
+          ).toBe("first-primary");
+        }
+      });
+
+      it("prefers the bookmark over the primary for a GET with a credential", async () => {
+        const d1AnchorFor = await loadAnchor();
+        expect(
+          d1AnchorFor(
+            new Request("https://x.test/api/quests", {
+              headers: { ...COOKIE, authorization: "Bearer key" },
+            }),
+          ),
+        ).toBe("bm-42");
+      });
     });
 
     describe("edge cache", () => {
