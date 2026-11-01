@@ -93,7 +93,7 @@ export class QuestTools {
   protected authorKindOf(comment: {
     source?: { kind?: string };
   }): "human" | "agent" {
-    return comment.source?.kind === "mcp" ? "agent" : "human";
+    return comment.source ? "agent" : "human";
   }
 
   /**

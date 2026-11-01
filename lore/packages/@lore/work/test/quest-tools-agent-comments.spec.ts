@@ -98,6 +98,25 @@ describe("Lore MCP: agent-authored comments", () => {
     expect(res.discussion[0].client).toBe("claude-code");
   });
 
+  it("reads a comment left by lore quest comment add --as as an agent's", async () => {
+    const { questTools, commentApi, quest, call, asUser, OWNER } =
+      await setup();
+
+    await asUser(OWNER, () =>
+      commentApi.createQuestComment({
+        params: { id: quest.id },
+        body: {
+          body: "Posted from a shell.",
+          source: { kind: "cli", client: "claude-code" },
+        },
+      }),
+    );
+
+    const res = await call(questTools.quest_get, { id: quest.id });
+
+    expect(res.discussion[0].authorKind).toBe("agent");
+  });
+
   it("leaves a comment written through the web path unmarked", async () => {
     const { questTools, commentApi, quest, call, asUser, OWNER } =
       await setup();

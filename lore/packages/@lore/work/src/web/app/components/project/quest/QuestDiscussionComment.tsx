@@ -44,7 +44,7 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
   // Written by a machine over MCP. `authorId` is still an account, and over
   // MCP that account is the project owner's, so without this marker half of
   // a thread reads as the owner talking to themselves.
-  const byAgent = entry.comment.source?.kind === "mcp";
+  const byAgent = !!entry.comment.source;
 
   return (
     <li className="flex gap-3 py-3">

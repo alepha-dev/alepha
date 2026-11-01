@@ -61,10 +61,7 @@ export class FeedbackTools {
       discussion: kept.map((comment) => ({
         id: comment.id,
         author: comment.authorName,
-        authorKind:
-          comment.source?.kind === "mcp"
-            ? ("agent" as const)
-            : ("human" as const),
+        authorKind: comment.source ? ("agent" as const) : ("human" as const),
         body: comment.body,
         createdAt: comment.createdAt,
         editedAt: comment.editedAt,
