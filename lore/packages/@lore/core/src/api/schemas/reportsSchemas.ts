@@ -5,6 +5,18 @@ import { z } from "alepha";
  * `ProjectReportsController`, its tests, and the frontend page loaders.
  */
 
+/**
+ * What one period adds up to: returned for the period asked for, and for the
+ * one before it when the query says `compare` (#Q2995).
+ */
+export const reportsPeriodFiguresSchema = z.object({
+  created: z.integer(),
+  completed: z.integer(),
+  medianCycleTimeHours: z.number(),
+  p85CycleTimeHours: z.number(),
+  activeMembers: z.integer(),
+});
+
 export const reportsOverviewSchema = z.object({
   kpis: z.object({
     totalQuests: z.integer(),
@@ -20,8 +32,12 @@ export const reportsOverviewSchema = z.object({
     // Members who created, accepted, completed or commented on a quest lately.
     activeMembers: z.integer(),
   }),
-  // Cumulative created vs completed, one point per calendar day over the last
-  // 90 days, oldest first. The totals include everything before the window.
+  period: reportsPeriodFiguresSchema,
+  // Absent without `compare`, or when the period has no start.
+  previous: reportsPeriodFiguresSchema.optional(),
+  // Cumulative created vs completed, one point per grain over the period (the
+  // last 90 days without a `from`), oldest first. The totals include everything
+  // before it.
   burnup: z.array(
     z.object({
       date: z.string(),
@@ -29,7 +45,7 @@ export const reportsOverviewSchema = z.object({
       completed: z.integer(),
     }),
   ),
-  // Weekly completion rate (cumulative completed / cumulative created * 100).
+  // Sampled completion rate (cumulative completed / cumulative created * 100).
   completionTrend: z.array(z.object({ date: z.string(), rate: z.number() })),
   attention: z.object({
     staleQuests: z.integer(),
@@ -83,6 +99,14 @@ export const reportsQuestsSchema = z.object({
       p85Hours: z.number(),
     }),
   ),
+  // Absent without `compare`, or when the period has no start.
+  previous: z
+    .object({
+      completed: z.integer(),
+      medianCycleTimeHours: z.number(),
+      p85CycleTimeHours: z.number(),
+    })
+    .optional(),
   // Oldest still-open (accepted, not completed) quests — actionable list.
   aging: z.array(
     z.object({

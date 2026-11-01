@@ -455,11 +455,203 @@ describe("ProjectReportsController", () => {
   });
 
   /**
-   * The Reports gate is hand-written SQL (`questInScope`), not the
-   * repository where-object every other surface uses, so it re-implements
-   * both traps by hand and gets neither for free. Every other spec in this
-   * file runs with zero epics, which exercises only the branch that emits
-   * no clause at all — these two cover the branch that does.
+   * The query every report takes (#Q2995).
+   */
+  describe("a period, filters and thresholds", () => {
+    const day = 24 * 3_600_000;
+
+    const seed = async () => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const now = ctx.now();
+      const iso = (ago: number) => new Date(now - ago * day).toISOString();
+      const done = async (
+        title: string,
+        ago: number,
+        hours: number,
+        overrides: Parameters<typeof createTestQuest>[3] = {},
+      ) => {
+        const quest = await createTestQuest(ctx, owner, project.id, {
+          title,
+          ...overrides,
+        });
+        await ctx.questController.acceptQuest.fetch(
+          { params: { id: quest.id } },
+          { user: owner },
+        );
+        await ctx.questController.completeQuest.fetch(
+          { params: { id: quest.id }, body: {} },
+          { user: owner },
+        );
+        await ctx.repos.quests.updateById(quest.id, {
+          acceptedAt: new Date(
+            now - ago * day - hours * 3_600_000,
+          ).toISOString(),
+          completedAt: iso(ago),
+        });
+        return quest;
+      };
+      await done("recent", 2, 10, { area: "api", tags: ["bug"] });
+      await done("recent too", 3, 20, { area: "ui", priority: "high" });
+      await done("before", 12, 100, { area: "api" });
+      await done("long ago", 200, 500, { area: "api" });
+      return { owner, projectId: project.id, iso };
+    };
+
+    it("narrows every period figure to the period", async ({ expect }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const res = await ctx.reportsController.getReportsOverview.fetch(
+        { params: { id: projectId }, query: { from: iso(7), to: iso(0) } },
+        { user: owner },
+      );
+
+      expect(res.data.period.completed).toBe(2);
+      expect(res.data.period.medianCycleTimeHours).toBeCloseTo(15);
+      // A snapshot, not a period figure.
+      expect(res.data.kpis.completedQuests).toBe(4);
+      expect(res.data.previous).toBeUndefined();
+    });
+
+    it("compare returns the period of the same length before it", async ({
+      expect,
+    }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const res = await ctx.reportsController.getReportsOverview.fetch(
+        {
+          params: { id: projectId },
+          query: { from: iso(7), to: iso(0), compare: true },
+        },
+        { user: owner },
+      );
+
+      expect(res.data.previous?.completed).toBe(1);
+
+      const wider = await ctx.reportsController.getReportsOverview.fetch(
+        {
+          params: { id: projectId },
+          query: { from: iso(10), to: iso(0), compare: true },
+        },
+        { user: owner },
+      );
+      expect(wider.data.previous?.completed).toBe(1);
+      expect(wider.data.previous?.medianCycleTimeHours).toBeCloseTo(100);
+
+      const quests = await ctx.reportsController.getReportsQuests.fetch(
+        {
+          params: { id: projectId },
+          query: { from: iso(10), to: iso(0), compare: true },
+        },
+        { user: owner },
+      );
+      expect(quests.data.previous?.completed).toBe(1);
+    });
+
+    it("has nothing to compare with when the period has no start", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await seed();
+
+      const res = await ctx.reportsController.getReportsOverview.fetch(
+        { params: { id: projectId }, query: { compare: true } },
+        { user: owner },
+      );
+
+      expect(res.data.previous).toBeUndefined();
+    });
+
+    it("applies the Work filters, a tag included", async ({ expect }) => {
+      const { owner, projectId } = await seed();
+      const fetch = async (query: Record<string, unknown>) =>
+        (
+          await ctx.reportsController.getReportsOverview.fetch(
+            { params: { id: projectId }, query },
+            { user: owner },
+          )
+        ).data.kpis.completedQuests;
+
+      expect(await fetch({ area: "api" })).toBe(3);
+      expect(await fetch({ tag: "bug" })).toBe(1);
+      expect(await fetch({ priority: "high" })).toBe(1);
+      expect(await fetch({ memberId: owner.id })).toBe(4);
+      expect(await fetch({ memberId: crypto.randomUUID() })).toBe(0);
+    });
+
+    it("keeps the filters beside the backlog gate", async ({ expect }) => {
+      const { owner, projectId } = await seed();
+      const parked = await createTestQuest(ctx, owner, projectId);
+      const draft = await ctx.repos.epics.create({
+        projectId,
+        number: 1,
+        title: "Draft",
+        description: "",
+        status: "draft",
+      });
+      await ctx.repos.quests.updateById(parked.id, {
+        epicId: draft.id,
+        acceptedBy: owner.id,
+      });
+
+      const res = await ctx.reportsController.getReportsOverview.fetch(
+        { params: { id: projectId }, query: { memberId: owner.id } },
+        { user: owner },
+      );
+
+      expect(res.data.kpis.totalQuests).toBe(4);
+    });
+
+    it("draws the burn-up at the grain asked for", async ({ expect }) => {
+      const { owner, projectId, iso } = await seed();
+
+      const res = await ctx.reportsController.getReportsOverview.fetch(
+        {
+          params: { id: projectId },
+          query: { from: iso(70), to: iso(0), grain: "week" },
+        },
+        { user: owner },
+      );
+
+      expect(res.data.burnup.length).toBeLessThanOrEqual(12);
+      expect(res.data.burnup.at(-1)?.completed).toBe(4);
+    });
+
+    it("reads thresholds from the query", async ({ expect }) => {
+      const { owner, projectId, iso } = await seed();
+      const open = await createTestQuest(ctx, owner, projectId);
+      await ctx.repos.quests.updateById(open.id, {
+        acceptedAt: iso(5),
+        acceptedBy: owner.id,
+      });
+
+      const stale = async (staleDays?: number) =>
+        (
+          await ctx.reportsController.getReportsOverview.fetch(
+            {
+              params: { id: projectId },
+              query: staleDays ? { staleDays } : {},
+            },
+            { user: owner },
+          )
+        ).data.attention.staleQuests;
+
+      expect(await stale()).toBe(0);
+      expect(await stale(3)).toBe(1);
+
+      const report = await ctx.reportsController.getReportsQuests.fetch(
+        { params: { id: projectId }, query: { top: 1, agingLimit: 1 } },
+        { user: owner },
+      );
+      expect(report.data.byArea).toHaveLength(1);
+      expect(report.data.aging).toHaveLength(1);
+    });
+  });
+
+  /**
+   * The Reports gate (`questScope`) re-implements both traps of the backlog
+   * gate. Every other spec in this file runs with zero epics, which exercises
+   * only the branch that emits no clause at all: these cover the branch that
+   * does.
    */
   describe("the backlog gate", () => {
     const setupEpicProject = async () => {
@@ -521,7 +713,7 @@ describe("ProjectReportsController", () => {
       // that flip would retroactively erase them from member credit and from
       // the burn-up — rewriting the record of work that actually happened.
       //
-      // The shelved-quest exemption `liveQuest` relies on does NOT carry
+      // The shelved-quest exemption `questScope` relies on does NOT carry
       // over here: only a `todo` quest can be shelved, so a shelved quest is
       // never a completed one, whereas a completed quest can sit in a
       // draft epic quite happily.

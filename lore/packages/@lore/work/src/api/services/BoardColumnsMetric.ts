@@ -79,7 +79,10 @@ export class BoardColumnsMetric implements DashboardMetricResolver {
           candidates[0];
         if (home) counts.set(home.name, (counts.get(home.name) ?? 0) + 1);
       }
-      const completed = await this.reports.completedByDay(project.id);
+      const completed = await this.reports.completedByDay(
+        project.id,
+        this.reports.fixedQuery,
+      );
       out.set(entry.card.id, {
         ...(open.length === 0 ? { empty: "noQuests" as const } : {}),
         value: open.length,

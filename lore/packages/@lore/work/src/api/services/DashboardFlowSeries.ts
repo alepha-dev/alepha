@@ -1,5 +1,8 @@
+import type { ReportsQuery } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
+export type ReportsGrain = NonNullable<ReportsQuery["grain"]>;
 
 /**
  * One day's count, as `ProjectReportsService.completedByDay` returns it.
@@ -44,13 +47,74 @@ export class DashboardFlowSeries {
   }
 
   /**
+   * Every calendar day from `from` to `to`, both included. Takes dates or
+   * timestamps and answers UTC `YYYY-MM-DD`.
+   */
+  between(from: string, to: string): string[] {
+    const last = Date.parse(to.slice(0, 10));
+    const days: string[] = [];
+    for (let at = Date.parse(from.slice(0, 10)); at <= last; at += 86_400_000) {
+      days.push(new Date(at).toISOString().slice(0, 10));
+    }
+    return days;
+  }
+
+  /**
+   * The grain an axis of this many days reads best at, when nobody chose one.
+   */
+  grainFor(days: number): ReportsGrain {
+    return days <= 92 ? "day" : days <= 400 ? "week" : "month";
+  }
+
+  /**
+   * The first day of the bucket holding `day`: itself, its Monday, or the
+   * first of its month.
+   */
+  bucket(day: string, grain: ReportsGrain): string {
+    if (grain === "month") {
+      return `${day.slice(0, 7)}-01`;
+    }
+    if (grain === "day") {
+      return day;
+    }
+    const at = new Date(day);
+    const sinceMonday = (at.getUTCDay() + 6) % 7;
+    return new Date(at.getTime() - sinceMonday * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  /**
+   * The last point of each bucket, for a cumulative series.
+   */
+  sampled<T extends { at: string }>(points: T[], grain: ReportsGrain): T[] {
+    const last = new Map<string, T>();
+    for (const point of points) {
+      last.set(this.bucket(point.at, grain), point);
+    }
+    return [...last.values()];
+  }
+
+  /**
    * The running total at each day of the window, history before it included.
    */
   cumulative(
     rows: DailyCount[],
     days: number,
   ): Array<{ at: string; value: number }> {
-    const axis = this.days(days);
+    return this.cumulativeOver(rows, this.days(days));
+  }
+
+  /**
+   * The running total at each day of `axis`, history before it included.
+   */
+  cumulativeOver(
+    rows: DailyCount[],
+    axis: string[],
+  ): Array<{ at: string; value: number }> {
+    if (axis.length === 0) {
+      return [];
+    }
     let running = rows
       .filter((row) => row.date < axis[0]!)
       .reduce((sum, row) => sum + Number(row.count), 0);

@@ -929,7 +929,7 @@ describe("dashboard resolve", () => {
       const value = await resolveTag(project, user, "api");
 
       // ⚠️ The completed quest is EXEMPT from the backlog gate, exactly as
-      // `ProjectReportsController.questInScope` exempts it: a draft epic can
+      // `ProjectReportsService.questScope` exempts it: a draft epic can
       // hold completed quests, and gating finished work
       // would retroactively erase it.
       expect(value.detail.total).toBe(1);

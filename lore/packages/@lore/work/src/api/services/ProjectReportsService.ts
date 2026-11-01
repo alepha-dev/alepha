@@ -1,8 +1,9 @@
 import { ReportStatistics } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { projects, type ReportsQuery } from "@lore/core/schemas";
 import {
   reportsMembersSchema,
   reportsOverviewSchema,
+  reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "@lore/core/schemas";
 import { $inject, type Infer, z } from "alepha";
@@ -57,73 +58,68 @@ export class ProjectReportsService {
   protected readonly holdTime = $inject(QuestHoldTime);
 
   /**
-   * The "this quest is in scope" predicate every stats aggregate filters
-   * on. Soft-deleted quests are gone; shelved quests were deliberately
-   * set aside as out of scope, so they leave both the numerator and the
-   * denominator of every chart — a release can hit 100% with shelved
-   * quests left over.
-   *
-   * Completed-based metrics are unaffected by construction: only a "todo"
-   * quest can be shelved, so a shelved quest is never a completed one.
+   * The query a dashboard tile reads a report with (#Q2995): the project's
+   * whole history at the default thresholds, so a tile keeps its fixed range
+   * and a report asked for the same query cannot disagree with it.
    */
-  protected get liveQuest() {
-    return sql`${this.quests.table.deletedAt} IS NULL AND ${this.quests.table.shelvedAt} IS NULL`;
-  }
+  readonly fixedQuery: ReportsQuery = {};
 
   /**
-   * `liveQuest`, additionally gated on the backlog: an **open** quest inside
-   * a `draft` epic is specified and not released yet, so it leaves both
-   * the numerator and the denominator the way a shelved one does. Every
-   * aggregate below filters on this rather than on `liveQuest` directly, so
-   * the KPI tiles, the burn-up and the per-area breakdown cannot disagree
-   * about which quests exist.
+   * The "this quest is in scope" where-object every report filters on.
    *
-   * ⚠️ **Completed quests are exempt, and the exemption is the point.**
-   * `liveQuest` needs no such carve-out because shelving carries an
-   * invariant that makes one unnecessary: only a `todo` quest can be
-   * shelved, so a shelved quest is never a completed one. Draft epics
-   * carry no equivalent invariant: a completed quest may be filed into a
-   * `draft` epic, and it keeps its `epicId` there. Gating those would retroactively erase real work from member
-   * credit, the burn-up and the weekly contribution series. Completed work
-   * is history; the gate answers "is this open to work on", which is not a
+   * Soft-deleted quests are the repository's own filter. Shelved quests were
+   * deliberately set aside as out of scope, so they leave both the numerator
+   * and the denominator of every chart: a release can hit 100% with shelved
+   * quests left over. Completed-based metrics are unaffected by construction,
+   * since only a "todo" quest can be shelved.
+   *
+   * An **open** quest inside a `draft` epic is specified and not released yet,
+   * so it leaves both sides the way a shelved one does.
+   *
+   * ⚠️ **Completed quests are exempt from that gate, and the exemption is the
+   * point.** A completed quest can sit in a `draft` epic and keeps its `epicId`
+   * there. Gating those would retroactively erase real work from member
+   * credit, the burn-up and the weekly contribution series. Completed work is
+   * history; the gate answers "is this open to work on", which is not a
    * question a finished quest has.
    *
-   * This is a row-level rule rather than a per-query one because it has to
-   * be: the KPI aggregate, the funnel and both breakdowns count open and
-   * completed quests in a **single pass**, so no choice of which queries to
-   * gate could get them both right.
+   * Two traps: the `isNull` branch keeps a quest with no epic (`epic_id NOT IN
+   * (…)` is NULL for it), and an empty draft set adds no clause at all.
+   * `QuestTagTallyService.rowsFor` spells the same rule for several projects.
    *
-   * The epic-membership test itself — and both of its traps — lives in
-   * `EpicVisibilityService.draftEpicSqlPredicate`, which returns
-   * `undefined` when there is no draft epic so no clause is emitted.
-   */
-  protected questInScope(draftEpicIds: number[]) {
-    const outsidePlannedEpic =
-      this.epicVisibility.draftEpicSqlPredicate(draftEpicIds);
-
-    if (!outsidePlannedEpic) {
-      return this.liveQuest;
-    }
-
-    return sql`${this.liveQuest} AND (${this.quests.table.completedAt} IS NOT NULL OR ${outsidePlannedEpic})`;
-  }
-
-  /**
-   * {@link questInScope} as a where-object, for the reads that go through the
-   * repository. Same rule, same two traps: the soft delete is the
-   * repository's own filter, the `isNull` branch keeps a quest with no epic
-   * (`epic_id NOT IN (…)` is NULL for it), and an empty draft set adds no
-   * clause at all. `QuestTagTallyService.rowsFor` spells the same rule for
-   * several projects.
+   * The Work filters of `query` narrow it. ⚠️ `memberId` goes through `and`,
+   * since the gate owns the top-level `or`.
    */
   protected questScope(
     projectId: number,
     draftEpicIds: number[],
+    query: ReportsQuery = {},
   ): PgQueryWhere<typeof quests.schema> {
     const where: PgQueryWhere<typeof quests.schema> = {
       projectId: { eq: projectId },
       shelvedAt: { isNull: true },
     };
+    if (query.area !== undefined) where.area = { eq: query.area };
+    if (query.priority !== undefined) where.priority = { eq: query.priority };
+    if (query.epicId !== undefined) where.epicId = { eq: query.epicId };
+    if (query.releaseId !== undefined) {
+      where.releaseId = { eq: query.releaseId };
+    }
+    if (query.tag !== undefined) {
+      Object.assign(where, {
+        tags: { like: `%"${query.tag.toLowerCase()}"%` },
+      });
+    }
+    if (query.memberId !== undefined) {
+      where.and = [
+        {
+          or: [
+            { acceptedBy: { eq: query.memberId } },
+            { completedBy: { eq: query.memberId } },
+          ],
+        },
+      ];
+    }
     if (draftEpicIds.length > 0) {
       where.or = [
         { completedAt: { isNotNull: true } },
@@ -135,22 +131,67 @@ export class ProjectReportsService {
   }
 
   /**
+   * A completion inside the window: the bound of every "done in the period"
+   * figure. The where-object encodes the timestamps for the column.
+   */
+  protected completedWithin(window: ReportWindow) {
+    return {
+      isNotNull: true as const,
+      ...(window.from ? { gte: window.from } : {}),
+      ...(window.to ? { lte: window.to } : {}),
+    };
+  }
+
+  /**
+   * The same test for a timestamp already read.
+   */
+  protected inWindow(at: string, window: ReportWindow): boolean {
+    const time = this.dt.of(at).valueOf();
+    return (
+      (!window.from || time >= this.dt.of(window.from).valueOf()) &&
+      (!window.to || time <= this.dt.of(window.to).valueOf())
+    );
+  }
+
+  /**
+   * The period of the same length right before `query`'s, when the query asks
+   * for it and the period has a start to measure from.
+   */
+  protected previousWindow(query: ReportsQuery): ReportWindow | undefined {
+    if (!query.compare || !query.from) {
+      return undefined;
+    }
+    const from = this.dt.of(query.from).valueOf();
+    const to = query.to ? this.dt.of(query.to).valueOf() : this.dt.nowMillis();
+    return {
+      from: new Date(from - (to - from)).toISOString(),
+      to: new Date(from - 1).toISOString(),
+    };
+  }
+
+  /**
    * Quests created per day over the project's lifetime, in scope.
    *
    * The burn-up's left half, and the dashboard's burn-up tile (#Q2653) reads
-   * it from here rather than restating the query. `scope` defaults to the
-   * project's own {@link questScope}.
+   * it from here rather than restating the query. The period does not apply:
+   * a cumulative series starts from everything before it.
    */
   async createdByDay(
     projectId: number,
-    scope?: PgQueryWhere<typeof quests.schema>,
+    query: ReportsQuery,
   ): Promise<Array<{ date: string; count: number }>> {
-    const where =
-      scope ??
+    return this.createdDaily(
       this.questScope(
         projectId,
         await this.epicVisibility.draftEpicIds(projectId),
-      );
+        query,
+      ),
+    );
+  }
+
+  protected async createdDaily(
+    where: PgQueryWhere<typeof quests.schema>,
+  ): Promise<Array<{ date: string; count: number }>> {
     const rows = await this.quests.aggregate({
       select: {
         date: { expr: this.sqlx.dateDay(this.quests.table.createdAt) },
@@ -171,14 +212,20 @@ export class ProjectReportsService {
    */
   async completedByDay(
     projectId: number,
-    scope?: PgQueryWhere<typeof quests.schema>,
+    query: ReportsQuery,
   ): Promise<Array<{ date: string; count: number }>> {
-    const where =
-      scope ??
+    return this.completedDaily(
       this.questScope(
         projectId,
         await this.epicVisibility.draftEpicIds(projectId),
-      );
+        query,
+      ),
+    );
+  }
+
+  protected async completedDaily(
+    where: PgQueryWhere<typeof quests.schema>,
+  ): Promise<Array<{ date: string; count: number }>> {
     const rows = await this.quests.aggregate({
       select: {
         date: { expr: this.sqlx.dateDay(this.quests.table.completedAt) },
@@ -202,11 +249,12 @@ export class ProjectReportsService {
    */
   protected async cycleSamples(
     scope: PgQueryWhere<typeof quests.schema>,
+    window: ReportWindow = {},
   ): Promise<Array<{ priority: Quest["priority"]; hours: number }>> {
     const where = {
       ...scope,
       acceptedAt: { isNotNull: true },
-      completedAt: { isNotNull: true },
+      completedAt: this.completedWithin(window),
     };
     const [rows, heldRows] = await Promise.all([
       this.quests.findMany({
@@ -237,7 +285,7 @@ export class ProjectReportsService {
 
   /**
    * Members who created, accepted, completed or commented on a quest of this
-   * project since `since`. Every organization member is not an active one.
+   * project inside the window. Every organization member is not an active one.
    *
    * Not through `questScope`: filing a quest in a draft epic is still activity.
    * ⚠️ Intersected with the member list, so someone who left is not counted.
@@ -245,8 +293,12 @@ export class ProjectReportsService {
   protected async countActiveMembers(
     projectId: number,
     organizationId: string,
-    since: string,
+    window: ReportWindow,
   ): Promise<number> {
+    const within = {
+      ...(window.from ? { gte: window.from } : {}),
+      ...(window.to ? { lte: window.to } : {}),
+    };
     const [members, touched, commented] = await Promise.all([
       this.members.findMany({
         where: { organizationId: { eq: organizationId } },
@@ -256,9 +308,9 @@ export class ProjectReportsService {
         where: {
           projectId: { eq: projectId },
           or: [
-            { createdAt: { gte: since } },
-            { acceptedAt: { gte: since } },
-            { completedAt: { gte: since } },
+            { createdAt: within },
+            { acceptedAt: within },
+            { completedAt: within },
           ],
         },
         columns: [
@@ -272,7 +324,7 @@ export class ProjectReportsService {
       }),
       this.comments.findMany({
         where: {
-          createdAt: { gte: since },
+          createdAt: within,
           exists: this.quests.subquery({
             id: { eq: this.comments.table.questId },
             projectId: { eq: projectId },
@@ -284,11 +336,19 @@ export class ProjectReportsService {
 
     const active = new Set<string>();
     for (const quest of touched) {
-      if (quest.createdAt >= since) active.add(quest.createdBy);
-      if (quest.acceptedBy && (quest.acceptedAt ?? "") >= since) {
+      if (this.inWindow(quest.createdAt, window)) active.add(quest.createdBy);
+      if (
+        quest.acceptedBy &&
+        quest.acceptedAt &&
+        this.inWindow(quest.acceptedAt, window)
+      ) {
         active.add(quest.acceptedBy);
       }
-      if (quest.completedBy && (quest.completedAt ?? "") >= since) {
+      if (
+        quest.completedBy &&
+        quest.completedAt &&
+        this.inWindow(quest.completedAt, window)
+      ) {
         active.add(quest.completedBy);
       }
     }
@@ -296,6 +356,47 @@ export class ProjectReportsService {
       if (comment.authorId) active.add(comment.authorId);
     }
     return members.filter((member) => active.has(member.userId)).length;
+  }
+
+  protected cycleFigures(samples: Array<{ hours: number }>) {
+    const hours = samples.map((sample) => sample.hours);
+    return {
+      medianCycleTimeHours: this.stats.median(hours),
+      p85CycleTimeHours: this.stats.percentile(hours, 85),
+    };
+  }
+
+  /**
+   * What one period adds up to. `activeWindow` is `window` with a start: an
+   * unbounded "active member" would be everyone who ever touched a quest.
+   */
+  protected async periodFigures(
+    projectId: number,
+    organizationId: string,
+    scope: PgQueryWhere<typeof quests.schema>,
+    window: ReportWindow,
+    activeWindow: ReportWindow,
+  ): Promise<Infer<typeof reportsPeriodFiguresSchema>> {
+    const [created, completed, samples, activeMembers] = await Promise.all([
+      this.quests.count({
+        ...scope,
+        ...(window.from || window.to
+          ? {
+              createdAt: {
+                ...(window.from ? { gte: window.from } : {}),
+                ...(window.to ? { lte: window.to } : {}),
+              },
+            }
+          : {}),
+      }),
+      this.quests.count({
+        ...scope,
+        completedAt: this.completedWithin(window),
+      }),
+      this.cycleSamples(scope, window),
+      this.countActiveMembers(projectId, organizationId, activeWindow),
+    ]);
+    return { created, completed, ...this.cycleFigures(samples), activeMembers };
   }
 
   /**
@@ -309,6 +410,7 @@ export class ProjectReportsService {
    */
   async overview(
     projectId: number,
+    query: ReportsQuery,
   ): Promise<Infer<typeof reportsOverviewSchema>> {
     const params = { id: projectId };
     const organizationId = (
@@ -317,14 +419,25 @@ export class ProjectReportsService {
     const scope = this.questScope(
       params.id,
       await this.epicVisibility.draftEpicIds(params.id),
+      query,
     );
+    const window: ReportWindow = { from: query.from, to: query.to };
 
     // Week windows bound on the app clock (`DateTimeProvider`), not the
     // database's: the where-object encodes them for the column on both
     // dialects.
     const weekAgo = this.dt.now().subtract(7, "day").toISOString();
     const twoWeeksAgo = this.dt.now().subtract(14, "day").toISOString();
-    const activeSince = this.dt.now().subtract(30, "day").toISOString();
+    const staleSince = this.dt
+      .now()
+      .subtract(query.staleDays ?? 14, "day")
+      .toISOString();
+    // Without a period, "active" reads the last 30 days and the burn-up the
+    // last 90: neither means anything over a whole history.
+    const activeWindow: ReportWindow = {
+      from: query.from ?? this.dt.now().subtract(30, "day").toISOString(),
+      to: query.to,
+    };
 
     // KPI aggregate: single pass over the project's live quests. `column:
     // "id"` because a conditioned COUNT skips NULLs of the column it counts,
@@ -367,12 +480,23 @@ export class ProjectReportsService {
       where: scope,
     });
 
-    const cycleHours = (await this.cycleSamples(scope)).map((it) => it.hours);
-    const activeMembers = await this.countActiveMembers(
+    const period = await this.periodFigures(
       params.id,
       organizationId,
-      activeSince,
+      scope,
+      window,
+      activeWindow,
     );
+    const previousWindow = this.previousWindow(query);
+    const previous =
+      previousWindow &&
+      (await this.periodFigures(
+        params.id,
+        organizationId,
+        scope,
+        previousWindow,
+        previousWindow,
+      ));
 
     const kpis = {
       totalQuests: Number(kpiAgg?.totalQuests.count) || 0,
@@ -381,28 +505,34 @@ export class ProjectReportsService {
       heldQuests: Number(kpiAgg?.heldQuests.count) || 0,
       completedThisWeek: Number(kpiAgg?.completedThisWeek.count) || 0,
       completedLastWeek: Number(kpiAgg?.completedLastWeek.count) || 0,
-      medianCycleTimeHours: this.stats.median(cycleHours),
-      p85CycleTimeHours: this.stats.percentile(cycleHours, 85),
-      activeMembers,
+      medianCycleTimeHours: period.medianCycleTimeHours,
+      p85CycleTimeHours: period.p85CycleTimeHours,
+      activeMembers: period.activeMembers,
     };
 
     // Daily created and completed counts over the project's lifetime.
-    const createdByDay = await this.createdByDay(params.id, scope);
-    const completedByDay = await this.completedByDay(params.id, scope);
+    const createdByDay = await this.createdDaily(scope);
+    const completedByDay = await this.completedDaily(scope);
 
     // A continuous calendar axis, zero-filled: a quiet week is a flat stretch
     // of the chart rather than a gap that collapses, and "90" is days, never
     // points. The totals carry everything before the window.
-    const created = this.series.cumulative(createdByDay, 90);
-    const completed = this.series.cumulative(completedByDay, 90);
-    const burnup =
+    const axis = query.from
+      ? this.series.between(query.from, query.to ?? this.dt.nowISOString())
+      : this.series.days(90);
+    const created = this.series.cumulativeOver(createdByDay, axis);
+    const completed = this.series.cumulativeOver(completedByDay, axis);
+    const daily =
       (created.at(-1)?.value ?? 0) + (completed.at(-1)?.value ?? 0) > 0
         ? created.map((point, index) => ({
-            date: point.at,
+            at: point.at,
             created: point.value,
             completed: completed[index]?.value ?? 0,
           }))
         : [];
+    const burnup = this.series
+      .sampled(daily, query.grain ?? this.series.grainFor(axis.length))
+      .map(({ at, ...point }) => ({ date: at, ...point }));
 
     // Weekly completion-rate trend — sample every 7th burn-up point plus
     // the last so the latest cumulative figure is always represented.
@@ -436,7 +566,7 @@ export class ProjectReportsService {
           count: {
             column: "id",
             where: {
-              acceptedAt: { isNotNull: true, lt: twoWeeksAgo },
+              acceptedAt: { isNotNull: true, lt: staleSince },
               completedAt: { isNull: true },
               heldAt: { isNull: true },
             },
@@ -477,6 +607,8 @@ export class ProjectReportsService {
 
     return {
       kpis,
+      period,
+      ...(previous ? { previous } : {}),
       burnup,
       completionTrend,
       attention,
@@ -494,16 +626,22 @@ export class ProjectReportsService {
    */
   async questsReport(
     projectId: number,
+    query: ReportsQuery,
   ): Promise<Infer<typeof reportsQuestsSchema>> {
     const params = { id: projectId };
     const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
-    const scope = this.questScope(params.id, draftEpicIds);
+    const scope = this.questScope(params.id, draftEpicIds, query);
+    const window: ReportWindow = { from: query.from, to: query.to };
+    const top = query.top ?? 8;
 
     // The two halves every breakdown splits on. `column: "id"` because a
     // conditioned COUNT skips NULLs of the column it counts, and the key is
     // never null.
     const completedCount = {
-      count: { column: "id", where: { completedAt: { isNotNull: true } } },
+      count: {
+        column: "id",
+        where: { completedAt: this.completedWithin(window) },
+      },
     } as const;
     const remainingCount = {
       count: { column: "id", where: { completedAt: { isNull: true } } },
@@ -565,14 +703,17 @@ export class ProjectReportsService {
       where: scope,
       groupBy: ["area"],
       orderBy: { column: "id.count", direction: "desc" },
-      limit: 8,
+      limit: top,
     });
 
-    const byArea = byAreaQuery.map((row) => ({
-      area: row.area ?? "Unassigned",
-      completed: row.completed.count,
-      remaining: row.remaining.count,
-    }));
+    // A value whose work all finished outside the period adds nothing.
+    const byArea = byAreaQuery
+      .map((row) => ({
+        area: row.area ?? "Unassigned",
+        completed: row.completed.count,
+        remaining: row.remaining.count,
+      }))
+      .filter((row) => row.completed + row.remaining > 0);
 
     // Completed vs remaining per priority, most urgent first.
     const byPriorityQuery = await this.quests.aggregate({
@@ -585,11 +726,14 @@ export class ProjectReportsService {
       groupBy: ["priority"],
     });
 
-    const byPriority = byPriorityQuery.sort(byPriorityDesc).map((row) => ({
-      priority: row.priority,
-      completed: row.completed.count,
-      remaining: row.remaining.count,
-    }));
+    const byPriority = byPriorityQuery
+      .sort(byPriorityDesc)
+      .map((row) => ({
+        priority: row.priority,
+        completed: row.completed.count,
+        remaining: row.remaining.count,
+      }))
+      .filter((row) => row.completed + row.remaining > 0);
 
     /*
      * Completed vs remaining per tag.
@@ -613,13 +757,17 @@ export class ProjectReportsService {
     });
 
     const tally = this.tagTally.tally(
-      tagRows.map((row) => ({
-        tags: row.tags,
-        completed: row.completedAt != null,
-      })),
+      tagRows
+        .filter(
+          (row) => !row.completedAt || this.inWindow(row.completedAt, window),
+        )
+        .map((row) => ({
+          tags: row.tags,
+          completed: row.completedAt != null,
+        })),
     );
 
-    // Top 8 by volume, like `byArea`: a project with forty tags would
+    // Top N by volume, like `byArea`: a project with forty tags would
     // otherwise draw a chart nobody can read.
     const byTag = [...tally.entries()]
       .map(([tag, counts]) => ({ tag, ...counts }))
@@ -628,11 +776,11 @@ export class ProjectReportsService {
           b.completed + b.remaining - (a.completed + a.remaining) ||
           a.tag.localeCompare(b.tag),
       )
-      .slice(0, 8);
+      .slice(0, top);
 
     // Median and p85 cycle time per priority, most urgent first.
     const hoursByPriority = new Map<Quest["priority"], number[]>();
-    for (const sample of await this.cycleSamples(scope)) {
+    for (const sample of await this.cycleSamples(scope, window)) {
       hoursByPriority.set(sample.priority, [
         ...(hoursByPriority.get(sample.priority) ?? []),
         sample.hours,
@@ -657,7 +805,7 @@ export class ProjectReportsService {
       },
       columns: ["shortId", "title", "area", "priority", "acceptedAt"],
       orderBy: { column: "acceptedAt", direction: "asc" },
-      limit: 10,
+      limit: query.agingLimit ?? 10,
     });
 
     const now = this.dt.nowMillis();
@@ -675,12 +823,22 @@ export class ProjectReportsService {
       };
     });
 
+    const previousWindow = this.previousWindow(query);
+    const previous = previousWindow && {
+      completed: await this.quests.count({
+        ...scope,
+        completedAt: this.completedWithin(previousWindow),
+      }),
+      ...this.cycleFigures(await this.cycleSamples(scope, previousWindow)),
+    };
+
     return {
       funnel,
       byArea,
       byTag,
       byPriority,
       cycleTimeByPriority,
+      ...(previous ? { previous } : {}),
       aging,
     };
   }
@@ -697,14 +855,15 @@ export class ProjectReportsService {
    */
   async membersReport(
     projectId: number,
+    query: ReportsQuery,
   ): Promise<Infer<typeof reportsMembersSchema>> {
     const params = { id: projectId };
     const organizationId = (
       await this.projects.getOne({ where: { id: { eq: params.id } } })
     ).organizationId!;
     const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
-    const inScope = this.questInScope(draftEpicIds);
-    const scope = this.questScope(params.id, draftEpicIds);
+    const scope = this.questScope(params.id, draftEpicIds, query);
+    const window: ReportWindow = { from: query.from, to: query.to };
 
     // Compose a user's display name: "first last" trimmed, else username,
     // else a short fallback derived from the uuid.
@@ -717,58 +876,58 @@ export class ProjectReportsService {
 				)
 			`;
 
-    // Leaderboard — one row per member in the project, LEFT-JOINed to
-    // the per-user completed-quest count and the users table for the name.
-    const leaderboardQuery = await this.database.run(
+    // Leaderboard: one row per member in the project, with the users table
+    // for the name, and the completions in scope counted apart.
+    const memberRows = await this.database.run(
       sql`
 					SELECT
 						${this.members.table.userId} as user_id,
 						${userName} as name,
-						${this.users.table.picture} as picture,
-						COALESCE(q.completed_count, 0) as quests_completed
+						${this.users.table.picture} as picture
 					FROM ${this.members.table}
 					LEFT JOIN ${this.users.table}
 						ON ${this.users.table.id} = ${this.members.table.userId}
-					LEFT JOIN (
-						SELECT
-							${this.quests.table.completedBy} as completed_by,
-							COUNT(*) as completed_count
-						FROM ${this.quests.table}
-						WHERE ${this.quests.table.projectId} = ${params.id}
-							AND ${this.quests.table.completedAt} IS NOT NULL
-							AND ${inScope}
-						GROUP BY ${this.quests.table.completedBy}
-					) q ON q.completed_by = ${this.members.table.userId}
 					WHERE ${this.members.table.organizationId} = ${organizationId}
-					ORDER BY quests_completed DESC
 				`,
       z.object({
         user_id: z.string(),
         name: z.string().nullish(),
         picture: z.string().nullish(),
-        quests_completed: z.coerce.number(),
       }),
     );
 
-    const leaderboard = leaderboardQuery.map((row) => ({
-      userId: String(row.user_id),
-      name: row.name ?? String(row.user_id).slice(0, 8),
-      picture: row.picture ?? undefined,
-      questsCompleted: Number(row.quests_completed) || 0,
-    }));
+    const completedByUser = await this.quests.aggregate({
+      select: { completedBy: true, quests: { count: { column: "id" } } },
+      where: { ...scope, completedAt: this.completedWithin(window) },
+      groupBy: ["completedBy"],
+    });
+    const completedOf = new Map(
+      completedByUser.map((row) => [row.completedBy, row.quests.count]),
+    );
 
-    // Top 5 contributors by completed quests (only those with completions).
+    const leaderboard = memberRows
+      .map((row) => ({
+        userId: String(row.user_id),
+        name: row.name ?? String(row.user_id).slice(0, 8),
+        picture: row.picture ?? undefined,
+        questsCompleted: completedOf.get(String(row.user_id)) ?? 0,
+      }))
+      .sort((a, b) => b.questsCompleted - a.questsCompleted);
+
+    // Top contributors by completed quests (only those with completions).
     const contributorRows = leaderboard
       .filter((row) => row.questsCompleted > 0)
-      .slice(0, 5);
+      .slice(0, query.top ?? 5);
     const contributors = contributorRows.map((row) => row.name);
     const contributorByUserId = new Map(
       contributorRows.map((row) => [row.userId, row.name]),
     );
 
-    // Weekly completion buckets per user over (roughly) the last 8 weeks.
-    // `week` is a sortable ISO label ("2026-W11") on both dialects.
-    const eightWeeksAgo = this.dt.now().subtract(56, "day").toISOString();
+    // Weekly completion buckets per user over the period, the last 8 weeks
+    // without one. `week` is a sortable ISO label ("2026-W11") on both
+    // dialects.
+    const contributionFrom =
+      query.from ?? this.dt.now().subtract(56, "day").toISOString();
     const contributionQuery = (
       await this.quests.aggregate({
         select: {
@@ -778,7 +937,10 @@ export class ProjectReportsService {
         },
         where: {
           ...scope,
-          completedAt: { isNotNull: true, gte: eightWeeksAgo },
+          completedAt: this.completedWithin({
+            from: contributionFrom,
+            to: query.to,
+          }),
         },
         groupBy: ["week", "completedBy"],
       })
@@ -815,8 +977,8 @@ export class ProjectReportsService {
       counts: countsByWeek.get(week) ?? {},
     }));
 
-    // Idle members — most recent completed quest older than 14 days, or
-    // never completed one.
+    // Idle members: most recent completed quest older than the stale
+    // threshold, or never completed one.
     const lastCompletedQuery = await this.quests.aggregate({
       select: { completedBy: true, completedAt: { max: true } },
       where: { ...scope, completedAt: { isNotNull: true } },
@@ -839,7 +1001,9 @@ export class ProjectReportsService {
         return { member, raw, lastMs };
       })
       .filter(
-        ({ lastMs }) => lastMs === undefined || now - lastMs > 14 * 86400000,
+        ({ lastMs }) =>
+          lastMs === undefined ||
+          now - lastMs > (query.staleDays ?? 14) * 86400000,
       )
       .map(({ member, raw }) => ({
         userId: member.userId,
@@ -855,4 +1019,12 @@ export class ProjectReportsService {
       idle,
     };
   }
+}
+
+/**
+ * A period's bounds, each optional: an absent `from` means no lower bound.
+ */
+interface ReportWindow {
+  from?: string;
+  to?: string;
 }

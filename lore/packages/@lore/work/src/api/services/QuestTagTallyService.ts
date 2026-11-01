@@ -91,7 +91,7 @@ export class QuestTagTallyService {
    *   specified rather than released.
    *
    * ⚠️ **Completed quests are exempt from the backlog gate**, exactly as
-   * `ProjectReportsController.questInScope` exempts them, and for its stated
+   * `ProjectReportsService.questScope` exempts them, and for its stated
    * reason: a `draft` epic can hold completed quests (a finished quest may be
    * filed into one), and gating finished work would retroactively erase it from the numbers.
    */

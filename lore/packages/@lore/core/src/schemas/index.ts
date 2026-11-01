@@ -68,8 +68,13 @@ export {
   releaseTagSchema,
 } from "../api/schemas/releaseTagSchema.ts";
 export {
+  type ReportsQuery,
+  reportsQuerySchema,
+} from "../api/schemas/reportsQuerySchema.ts";
+export {
   reportsMembersSchema,
   reportsOverviewSchema,
+  reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "../api/schemas/reportsSchemas.ts";
 export { type RoadmapVisibility } from "../api/schemas/roadmapVisibilitySchema.ts";

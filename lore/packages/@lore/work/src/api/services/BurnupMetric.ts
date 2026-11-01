@@ -49,8 +49,8 @@ export class BurnupMetric implements DashboardMetricResolver {
         continue;
       }
       const [created, completed] = await Promise.all([
-        this.reports.createdByDay(project.id),
-        this.reports.completedByDay(project.id),
+        this.reports.createdByDay(project.id, this.reports.fixedQuery),
+        this.reports.completedByDay(project.id, this.reports.fixedQuery),
       ]);
       const done = this.series.cumulative(completed, entry.windowDays);
       const made = this.series.cumulative(created, entry.windowDays);

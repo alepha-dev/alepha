@@ -2,6 +2,7 @@ import { $ownsProject } from "@lore/core/api";
 import {
   reportsMembersSchema,
   reportsOverviewSchema,
+  reportsQuerySchema,
   reportsQuestsSchema,
 } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
@@ -42,9 +43,10 @@ export class ProjectReportsController {
       params: z.object({
         id: z.integer(),
       }),
+      query: reportsQuerySchema,
       response: reportsOverviewSchema,
     },
-    handler: ({ params }) => this.reports.overview(params.id),
+    handler: ({ params, query }) => this.reports.overview(params.id, query),
   });
 
   /**
@@ -69,9 +71,10 @@ export class ProjectReportsController {
       params: z.object({
         id: z.integer(),
       }),
+      query: reportsQuerySchema,
       response: reportsQuestsSchema,
     },
-    handler: ({ params }) => this.reports.questsReport(params.id),
+    handler: ({ params, query }) => this.reports.questsReport(params.id, query),
   });
 
   /**
@@ -97,8 +100,10 @@ export class ProjectReportsController {
       params: z.object({
         id: z.integer(),
       }),
+      query: reportsQuerySchema,
       response: reportsMembersSchema,
     },
-    handler: ({ params }) => this.reports.membersReport(params.id),
+    handler: ({ params, query }) =>
+      this.reports.membersReport(params.id, query),
   });
 }

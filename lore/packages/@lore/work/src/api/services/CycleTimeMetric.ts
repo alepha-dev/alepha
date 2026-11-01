@@ -51,9 +51,13 @@ export class CycleTimeMetric implements DashboardMetricResolver {
       const { priority } = entry.filters as CycleTimeFilters;
       const hours =
         priority === "all"
-          ? (await this.reports.overview(project.id)).kpis.medianCycleTimeHours
+          ? (await this.reports.overview(project.id, this.reports.fixedQuery))
+              .kpis.medianCycleTimeHours
           : ((
-              await this.reports.questsReport(project.id)
+              await this.reports.questsReport(
+                project.id,
+                this.reports.fixedQuery,
+              )
             ).cycleTimeByPriority.find((row) => row.priority === priority)
               ?.medianHours ?? 0);
       out.set(entry.card.id, {
