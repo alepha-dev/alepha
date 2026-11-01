@@ -1,26 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { SigilVitals } from "../SigilVitals.ts";
+import { WebVitalsCollector } from "../WebVitalsCollector.ts";
 
 /**
  * Reaches the LCP entry handler without a `PerformanceObserver`, which jsdom
  * does not dispatch largest-contentful-paint entries through.
  */
-class TestSigilVitals extends SigilVitals {
+class TestCollector extends WebVitalsCollector {
   public testNoteLcp(value: number) {
     this.noteLcp(value);
   }
 }
 
-describe("SigilVitals", () => {
-  it("reports finalized metrics, ms rounded, CLS scaled to int", () => {
+describe("WebVitalsCollector", () => {
+  it("reports finalized metrics raw", () => {
     const got: any[] = [];
-    const v = new SigilVitals((m) => got.push(m));
+    const v = new WebVitalsCollector((m) => got.push(m));
     v.report("lcp", 2345.6);
     v.report("cls", 0.123);
     expect(got).toEqual([
-      { metric: "lcp", value: 2346, path: "/" },
-      { metric: "cls", value: 123, path: "/" },
+      { metric: "lcp", value: 2345.6, path: "/" },
+      { metric: "cls", value: 0.123, path: "/" },
     ]);
   });
 
@@ -32,7 +32,7 @@ describe("SigilVitals", () => {
    */
   it("emits each metric once, dropping the duplicate report", () => {
     const got: any[] = [];
-    const v = new SigilVitals((m) => got.push(m));
+    const v = new WebVitalsCollector((m) => got.push(m));
 
     v.report("ttfb", 76);
     v.report("ttfb", 76);
@@ -48,16 +48,16 @@ describe("SigilVitals", () => {
    */
   it("keeps the first value when a later report carries a different one", () => {
     const got: any[] = [];
-    const v = new SigilVitals((m) => got.push(m));
+    const v = new WebVitalsCollector((m) => got.push(m));
 
     v.report("cls", 0.05);
     v.report("cls", 0.42);
 
-    expect(got).toEqual([{ metric: "cls", value: 50, path: "/" }]);
+    expect(got).toEqual([{ metric: "cls", value: 0.05, path: "/" }]);
   });
 
   it("observe() is a no-op when PerformanceObserver is unavailable", () => {
-    const v = new SigilVitals(() => {});
+    const v = new WebVitalsCollector(() => {});
     const orig = (globalThis as any).PerformanceObserver;
     (globalThis as any).PerformanceObserver = undefined;
     expect(() => v.observe()).not.toThrow();
@@ -65,14 +65,14 @@ describe("SigilVitals", () => {
   });
 
   /**
-   * `SigilBrowserProvider` waits on this to decide the page has settled enough
+   * The sigil waits on this to decide the page has settled enough
    * to talk to the server. It has to fire on the *first* entry: LCP is
    * dispatched again for every larger element, and a signal that re-fires would
    * keep re-triggering the thing waiting on it.
    */
   it("notifies onLcp once, on the first entry", () => {
     let notified = 0;
-    const v = new TestSigilVitals(
+    const v = new TestCollector(
       () => {},
       () => notified++,
     );
@@ -89,7 +89,7 @@ describe("SigilVitals", () => {
    */
   it("still reports the last LCP value, not the one that triggered onLcp", () => {
     const got: any[] = [];
-    const v = new TestSigilVitals(
+    const v = new TestCollector(
       (m) => got.push(m),
       () => {},
     );
@@ -108,7 +108,7 @@ describe("SigilVitals", () => {
    */
   it("notifies onLcp even when nothing consumes the metrics", () => {
     let notified = 0;
-    const v = new TestSigilVitals(
+    const v = new TestCollector(
       () => {
         throw new Error("sink must not be consulted for the timing signal");
       },
@@ -168,7 +168,7 @@ const hide = () => {
  * `/a`'s slow click were all filed under `/b` - and the page that was actually
  * slow looked fine.
  */
-describe("SigilVitals path attribution", () => {
+describe("WebVitalsCollector path attribution", () => {
   let realPO: any;
 
   beforeEach(() => {
@@ -188,7 +188,7 @@ describe("SigilVitals path attribution", () => {
   it("files LCP under the page that painted, not the one on screen at hidden", () => {
     const got: any[] = [];
     let path = "/a";
-    const v = new SigilVitals(
+    const v = new WebVitalsCollector(
       (m) => got.push(m),
       undefined,
       () => path,
@@ -208,7 +208,7 @@ describe("SigilVitals path attribution", () => {
   it("splits layout shift between the pages that shifted", () => {
     const got: any[] = [];
     let path = "/a";
-    const v = new SigilVitals(
+    const v = new WebVitalsCollector(
       (m) => got.push(m),
       undefined,
       () => path,
@@ -222,15 +222,15 @@ describe("SigilVitals path attribution", () => {
 
     const cls = got.filter((m) => m.metric === "cls");
     expect(cls).toEqual([
-      { metric: "cls", value: 50, path: "/a" },
-      { metric: "cls", value: 200, path: "/b" },
+      { metric: "cls", value: 0.05, path: "/a" },
+      { metric: "cls", value: 0.2, path: "/b" },
     ]);
   });
 
   it("attributes an interaction to the page it was made on", () => {
     const got: any[] = [];
     let path = "/a";
-    const v = new SigilVitals(
+    const v = new WebVitalsCollector(
       (m) => got.push(m),
       undefined,
       () => path,
@@ -256,7 +256,7 @@ describe("SigilVitals path attribution", () => {
    */
   it("still ignores a shift that followed an interaction", () => {
     const got: any[] = [];
-    const v = new SigilVitals(
+    const v = new WebVitalsCollector(
       (m) => got.push(m),
       undefined,
       () => "/a",
@@ -279,7 +279,7 @@ describe("SigilVitals path attribution", () => {
   it("reports a page once however often the tab is hidden", () => {
     const got: any[] = [];
     let path = "/a";
-    const v = new SigilVitals(
+    const v = new WebVitalsCollector(
       (m) => got.push(m),
       undefined,
       () => path,
@@ -293,7 +293,7 @@ describe("SigilVitals path attribution", () => {
     hide();
 
     expect(got.filter((m) => m.metric === "cls")).toEqual([
-      { metric: "cls", value: 50, path: "/a" },
+      { metric: "cls", value: 0.05, path: "/a" },
       { metric: "cls", value: 0, path: "/b" },
     ]);
   });

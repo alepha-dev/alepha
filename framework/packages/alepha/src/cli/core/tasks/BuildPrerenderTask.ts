@@ -88,18 +88,23 @@ export class BuildPrerenderTask extends BuildTask {
   }
 
   /**
-   * Infer route primitives to snapshot: `$route({ static: true })` and every
-   * `$sitemap` that is not `static: false`, whose default is `true`. Both
-   * expose an async `prerender(): { path, body }`.
+   * Infer route primitives to snapshot: `$route({ static: true })`, every
+   * `$sitemap` and `$manifest` that is not `static: false`, whose default is
+   * `true`, and a `$robots({ static: true })`, whose default is not. All expose
+   * a `prerender(): { path, body }`.
    */
   protected getStaticRoutePrimitives(ctx: BuildTaskContext): any[] {
     const routes = (ctx.alepha.primitives("route") as any[]).filter(
       (route) => route.options?.static === true,
     );
-    const sitemaps = (ctx.alepha.primitives("sitemap") as any[]).filter(
-      (sitemap) => sitemap.options?.static !== false,
+    const robots = (ctx.alepha.primitives("robots") as any[]).filter(
+      (it) => it.options?.static === true,
     );
-    return [...routes, ...sitemaps];
+    const generated = [
+      ...(ctx.alepha.primitives("sitemap") as any[]),
+      ...(ctx.alepha.primitives("manifest") as any[]),
+    ].filter((it) => it.options?.static !== false);
+    return [...routes, ...robots, ...generated];
   }
 
   protected async prerenderFromAlepha(

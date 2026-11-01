@@ -1,4 +1,14 @@
-type Metric = "lcp" | "cls" | "inp" | "fcp" | "ttfb";
+export type WebVitalMetric = "lcp" | "cls" | "inp" | "fcp" | "ttfb";
+
+/**
+ * A finalised metric. `value` is raw: milliseconds, and the unitless score for
+ * `cls`.
+ */
+export interface WebVital {
+  metric: WebVitalMetric;
+  value: number;
+  path: string;
+}
 
 /**
  * The `layout-shift` entry, which TypeScript's `lib.dom` still does not
@@ -17,7 +27,7 @@ interface LayoutShiftEntry extends PerformanceEntry {
  * {@link LayoutShiftEntry}: local, not global.
  */
 type ObserverInit = PerformanceObserverInit & { durationThreshold?: number };
-type Sink = (m: { metric: Metric; value: number; path: string }) => void;
+type Sink = (vital: WebVital) => void;
 
 /**
  * The path a metric belongs to, asked for at the moment the metric is
@@ -33,10 +43,10 @@ type PathResolver = () => string;
 
 /**
  * Collects Core Web Vitals via PerformanceObserver and reports finalized
- * values. CLS is unitless and is scaled ×1000 to an integer so it buckets
- * with the same integer machinery as the ms metrics. Browser-guarded.
+ * values, raw: what a sink buckets them into is the sink's business.
+ * Browser-guarded.
  */
-export class SigilVitals {
+export class WebVitalsCollector {
   /**
    * Metric/path pairs already emitted, keyed `metric:path`.
    *
@@ -66,8 +76,8 @@ export class SigilVitals {
    * @param sink receives each finalized metric.
    * @param onLcp runs once, when the first LCP entry arrives. This is a
    *   *timing* signal, not a measurement — the value still goes to `sink` at
-   *   hidden, where it is final. `SigilBrowserProvider` uses it to decide when
-   *   the page has settled enough to talk to the server.
+   *   hidden, where it is final. A caller uses it to decide when the page has
+   *   settled enough to talk to a server.
    * @param currentPath answers "which page is on screen right now". Supplied
    *   by the caller rather than read from `location` here, because the caller
    *   is the one that knows about client-side navigation - and because
@@ -127,11 +137,14 @@ export class SigilVitals {
    * the guard still catches is the same page reported twice, which is the
    * duplicate that inflates the population.
    */
-  public report(metric: Metric, raw: number, path = this.currentPath()) {
+  public report(
+    metric: WebVitalMetric,
+    value: number,
+    path = this.currentPath(),
+  ) {
     const key = `${metric}:${path}`;
     if (this.reported.has(key)) return;
     this.reported.add(key);
-    const value = metric === "cls" ? Math.round(raw * 1000) : Math.round(raw);
     this.sink({ metric, value, path });
   }
 

@@ -99,3 +99,47 @@ A standard `urlset`, one `<url>` per entry, each with a `<loc>` and a `<lastmod>
 nothing about when a page changed.
 
 `$sitemap` does nothing in the browser, so it can sit on an isomorphic router class.
+
+## robots.txt
+
+`$robots` serves a `robots.txt` from code, in the same module.
+
+```typescript check
+import { $robots } from "alepha/react/sitemap";
+
+class AppRouter {
+  robots = $robots({ disallow: ["/admin", "/account"] });
+}
+```
+
+Any host other than the canonical one answers `Disallow: /`, so a staging deploy or a `workers.dev` preview stays out of search engines without anyone remembering to. Canonical is `host`, else `PUBLIC_URL`. With neither, there is no host to compare and `isProduction()` decides, which reads `NODE_ENV`, so set one of the two.
+
+`Sitemap:` is added only when a `$sitemap` exists and its URL is absolute, since the directive refuses a relative one.
+
+| Option     | Default       | What it does                               |
+| ---------- | ------------- | ------------------------------------------ |
+| `disallow` | `[]`          | Paths crawlers are asked to stay out of.   |
+| `host`     | `PUBLIC_URL`  | The canonical host, or a URL holding it.   |
+| `path`     | `/robots.txt` | Where it is served.                        |
+| `static`   | `false`       | Whether the build prerenders it to a file. |
+
+It answers at runtime by default, unlike `$sitemap`: one artifact deploys everywhere, and a prerendered file would be the build's answer on every host, since static files mount over the route. A file in `public/` does the same, so delete any `public/robots.txt`.
+
+## Web app manifest
+
+`$manifest` serves the manifest of an installable app, and adds its `<link rel="manifest">` to every page.
+
+```typescript check
+import { $manifest } from "alepha/react/sitemap";
+
+class AppRouter {
+  manifest = $manifest({
+    name: "My App",
+    shortName: "App",
+    themeColor: "#010409",
+    icons: [{ src: "/logo-512x512.png", sizes: "512x512", type: "image/png" }],
+  });
+}
+```
+
+Options are the manifest's own fields, in camel case, plus `path` (`/manifest.webmanifest`) and `static`. It is prerendered by default, since nothing in it depends on the environment, and answers `application/manifest+json`.

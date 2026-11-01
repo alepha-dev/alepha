@@ -43,10 +43,9 @@ export class ReactBrowserRendererProvider {
    * the signal.
    *
    * ⚠️ It means "the hydrating render returned", which is the same claim the
-   * `Hydrated root element` log line makes. Alepha resolves a route's layers
-   * before rendering, so that render is not suspended and React flushes it
-   * synchronously — but a tree that DOES suspend during hydration would set
-   * this while part of it is still server HTML.
+   * `Hydrated root element` log line makes. The shell is hydrated by then, but
+   * a page with a deferred value suspends under its boundary: what sits inside
+   * one is still server HTML, or still its fallback, when this is set.
    */
   static readonly HYDRATED_ATTRIBUTE = "data-alepha-hydrated";
 

@@ -19,12 +19,15 @@ import { reactBootOptions } from "../atoms/reactBootOptions.ts";
 import BootMarker from "../components/BootMarker.tsx";
 import OfflineScreen from "../components/OfflineScreen.tsx";
 import { ReactBootHealth } from "../services/ReactBootHealth.ts";
+import { ReactDeferred } from "../services/ReactDeferred.ts";
 import type { RouterPushOptions } from "../services/ReactRouter.ts";
+import { ReactViewTransition } from "../services/ReactViewTransition.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
   PreviousLayerData,
   ReactRouterState,
 } from "./ReactPageProvider.ts";
+import { ReactPrefetchProvider } from "./ReactPrefetchProvider.ts";
 
 export type { RouterPushOptions } from "../services/ReactRouter.ts";
 
@@ -86,6 +89,9 @@ export class ReactBrowserProvider {
   protected readonly options = $store(reactBrowserOptions);
   protected readonly bootOptions = $store(reactBootOptions);
   protected readonly bootHealth = $inject(ReactBootHealth);
+  protected readonly viewTransition = $inject(ReactViewTransition);
+  protected readonly deferred = $inject(ReactDeferred);
+  protected readonly prefetcher = $inject(ReactPrefetchProvider);
 
   /**
    * Scroll offset of every history entry we have visited, keyed by the id
@@ -223,15 +229,36 @@ export class ReactBrowserProvider {
     return this.historyKey > 0;
   }
 
+  /**
+   * The URL on screen, an open overlay's over the state's own.
+   */
+  protected get committedUrl(): string {
+    const url = this.state.overlay?.url ?? this.state.url;
+    return url.pathname + url.search + url.hash;
+  }
+
   public pushState(path: string, replace?: boolean) {
     const url = this.base + path;
+    // An entry an overlay sits on says so: going forward to it reopens the
+    // overlay, where the same URL with no mark is a full page.
+    const background = this.state?.overlay
+      ? { background: this.state.url.pathname + this.state.url.search }
+      : {};
 
     if (replace) {
       // Same entry, same id: a replace does not create a place to come back to.
-      this.history.replaceState({ alephaKey: this.historyKey }, "", url);
+      this.history.replaceState(
+        { alephaKey: this.historyKey, ...background },
+        "",
+        url,
+      );
     } else {
       this.historyKey = this.nextHistoryKey++;
-      this.history.pushState({ alephaKey: this.historyKey }, "", url);
+      this.history.pushState(
+        { alephaKey: this.historyKey, ...background },
+        "",
+        url,
+      );
     }
   }
 
@@ -322,7 +349,7 @@ export class ReactBrowserProvider {
       }
     }
 
-    await this.render({ previous });
+    await this.render({ previous, overlay: !!this.state.overlay });
   }
 
   public async push(
@@ -341,8 +368,7 @@ export class ReactBrowserProvider {
     if (this.state?.name === "offline") {
       this.pushState(url, options.replace);
       await this.retryBoot();
-      const landed =
-        this.state.url.pathname + this.state.url.search + this.state.url.hash;
+      const landed = this.committedUrl;
       if (this.state.name !== "offline" && landed !== url) {
         this.pushState(landed, true);
       }
@@ -353,6 +379,7 @@ export class ReactBrowserProvider {
     // it is gone the moment the new view paints.
     this.saveScroll();
     this.navigationKind = options.replace ? "replace" : "push";
+    this.viewTransition.browserAnimated = false;
 
     const myTransitionId = ++this.transitionId;
 
@@ -361,6 +388,8 @@ export class ReactBrowserProvider {
       previous: options.force ? [] : this.state.layers,
       meta: options.meta,
       transitionId: myTransitionId,
+      overlay: true,
+      prefetched: !options.force,
     });
 
     // A newer navigation has superseded us — bail out without touching
@@ -373,8 +402,7 @@ export class ReactBrowserProvider {
     // The hash is part of the identity of the committed route: without it,
     // pushing "/docs#section" never matches "/docs" and takes the redirect
     // branch below, which rewrites history without the fragment.
-    const committed =
-      this.state.url.pathname + this.state.url.search + this.state.url.hash;
+    const committed = this.committedUrl;
 
     if (committed !== url) {
       // Forward `replace`: a loader redirect used to always PUSH, so history
@@ -416,6 +444,7 @@ export class ReactBrowserProvider {
       previous,
       options.meta,
       isStale,
+      { overlay: options.overlay, prefetched: options.prefetched },
     );
 
     // A newer navigation has superseded us between the time we awaited
@@ -534,13 +563,41 @@ export class ReactBrowserProvider {
   protected readonly hydrateBeforeStart = $hook({
     on: "start",
     priority: "first",
-    handler: () => {
+    handler: async () => {
+      await this.payloadWritten();
+
       const hydration = this.getHydrationState();
       if (hydration) {
         this.applyHydration(hydration);
       }
     },
   });
+
+  /**
+   * Wait until `#__ssr` is in the document.
+   *
+   * The entry is an `async` module, so it can run while the parser is still
+   * on the page. A page with a deferred value writes its payload after the
+   * shell and says so with an event, which is what starts hydration before the
+   * stream ends. Any other page writes it at the end of the document, and
+   * `DOMContentLoaded` is that moment, as it was for a deferred script.
+   *
+   * Reading the element is not enough: it can exist with half its JSON.
+   */
+  protected async payloadWritten(): Promise<void> {
+    const flag = window as unknown as { __alephaBoot?: number };
+    if (this.document.readyState !== "loading" || flag.__alephaBoot) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      this.document.addEventListener("alepha:boot", () => resolve(), {
+        once: true,
+      });
+      this.document.addEventListener("DOMContentLoaded", () => resolve(), {
+        once: true,
+      });
+    });
+  }
 
   /**
    * Apply the SSR hydration payload (the `#__ssr` script tag) to the atom
@@ -625,33 +682,72 @@ export class ReactBrowserProvider {
     return { type: "top" };
   }
 
-  protected readonly onTransitionEnd = $hook({
+  /**
+   * Whether the views are mounted. Before that nothing can report a commit,
+   * so the first screen scrolls from `react:transition:end`.
+   */
+  protected viewsMounted = false;
+
+  protected readonly onFirstTransitionEnd = $hook({
     on: "react:transition:end",
     handler: ({ state }) => {
-      if (typeof window === "undefined" || this.alepha.isTest()) {
-        return;
-      }
-
-      const action = this.resolveScrollAction(state.url.hash?.slice(1));
-      this.log.trace("Scroll action", action);
-
-      switch (action.type) {
-        case "none":
-          return;
-        case "top":
-          // Synchronous: the top is reachable at any height, so it needs no
-          // wait for layout and avoids a visible jump.
-          this.setScroll(0);
-          return;
-        case "restore":
-          this.restoreScroll(action.top);
-          return;
-        case "hash":
-          this.restoreScroll(0, action.hash);
-          return;
+      if (!this.viewsMounted) {
+        this.applyScroll(state);
       }
     },
   });
+
+  /**
+   * After the commit, never at `react:transition:end`: views commit in a
+   * transition, later than that event, and a scroll applied to the page that
+   * is leaving is reported as landed and then lost.
+   */
+  protected readonly onTransitionCommitted = $hook({
+    on: "react:transition:committed",
+    handler: ({ state }) => {
+      // Opening or closing an overlay leaves the page behind exactly where
+      // it was.
+      const closedOverlay =
+        this.overlayWasOpen && state.layers.every((layer) => layer.cache);
+      if (!state.overlay && !closedOverlay) {
+        this.applyScroll(state);
+      }
+    },
+  });
+
+  protected overlayWasOpen = false;
+
+  protected readonly onTransitionBegin = $hook({
+    on: "react:transition:begin",
+    handler: ({ previous }) => {
+      this.overlayWasOpen = !!previous?.overlay;
+    },
+  });
+
+  protected applyScroll(state: ReactRouterState): void {
+    if (typeof window === "undefined" || this.alepha.isTest()) {
+      return;
+    }
+
+    const action = this.resolveScrollAction(state.url.hash?.slice(1));
+    this.log.trace("Scroll action", action);
+
+    switch (action.type) {
+      case "none":
+        return;
+      case "top":
+        // Synchronous: the top is reachable at any height, so it needs no
+        // wait for layout and avoids a visible jump.
+        this.setScroll(0);
+        return;
+      case "restore":
+        this.restoreScroll(action.top);
+        return;
+      case "hash":
+        this.restoreScroll(0, action.hash);
+        return;
+    }
+  }
 
   /**
    * Apply a scroll offset once the new view is tall enough to hold it.
@@ -738,6 +834,7 @@ export class ReactBrowserProvider {
       // store at all.
       const hydration = this.getHydrationState();
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
+      this.deferred.revive(previous);
 
       if (!hydration && this.initialUrlResolver) {
         const initial = await this.initialUrlResolver();
@@ -787,15 +884,24 @@ export class ReactBrowserProvider {
       // not the one it was asked for when its loader redirected (a protected
       // page sending a visitor to login): the address bar must not keep
       // showing the page that refused.
-      const committed =
-        this.state.url.pathname + this.state.url.search + this.state.url.hash;
+      const committed = this.committedUrl;
+      // A reload is a full page, so an overlay's mark does not survive it, or
+      // going back and forward would reopen one over nothing.
+      const { background: _, ...entry } = this.history.state ?? {};
       this.history.replaceState(
-        { ...this.history.state, alephaKey: this.historyKey },
+        { ...entry, alephaKey: this.historyKey },
         "",
         committed === this.url ? this.location.href : this.base + committed,
       );
 
-      window.addEventListener("popstate", () => {
+      this.viewsMounted = true;
+
+      window.addEventListener("popstate", (event) => {
+        // A swipe back the browser already animated: animating it again would
+        // play the page twice.
+        this.viewTransition.browserAnimated =
+          event.hasUAVisualTransition === true;
+
         // `popstate` fires while the outgoing view is still on screen, so the
         // offset now on the page belongs to the entry we are leaving. Save it
         // under the id we were on, before adopting the one we arrived at.
@@ -813,9 +919,10 @@ export class ReactBrowserProvider {
         // query params silently without triggering a render, use
         // history.replaceState directly; popstate by definition means
         // the user navigated.
+        const onScreen = this.state.overlay?.url ?? this.state.url;
         if (
-          this.base + this.state.url.pathname === this.location.pathname &&
-          (this.state.url.search ?? "") === (this.location.search ?? "")
+          this.base + onScreen.pathname === this.location.pathname &&
+          (onScreen.search ?? "") === (this.location.search ?? "")
         ) {
           return;
         }
@@ -824,12 +931,21 @@ export class ReactBrowserProvider {
           url: this.location.pathname + this.location.search,
         });
 
-        void this.render();
+        const entry = this.history.state as { background?: string } | null;
+        void this.render({ overlay: !!entry?.background });
       });
 
       this.attachAnchorInterceptor();
+      this.prefetcher.attach();
     },
   });
+
+  /**
+   * Fetch the code of the page at `url`. See {@link ReactPrefetchProvider}.
+   */
+  public prefetch(url: string): void {
+    this.prefetcher.prefetch(url);
+  }
 
   /**
    * The first transition, bounded: what an app whose API may be unreachable
@@ -1062,4 +1178,14 @@ export interface RouterRenderOptions {
    * When omitted, render() allocates a fresh id internally.
    */
   transitionId?: number;
+  /**
+   * The target may open as an overlay. A push, an entry that was one, and a
+   * re-render of one; never a first screen.
+   */
+  overlay?: boolean;
+  /**
+   * The target may use what a prefetch loaded. A push, never an invalidation,
+   * which exists to read again.
+   */
+  prefetched?: boolean;
 }

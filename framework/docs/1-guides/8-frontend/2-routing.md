@@ -528,39 +528,213 @@ A `$page` is also an object you can call from server code:
 - `page.fetch(options?)` requests the page from the running server over HTTP, at its full path with `options.params` and `options.query` filled in, and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`.
 - `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
 
-## Page Animations
+## Deferred Data
 
-CSS-based enter/exit animations (experimental).
+A promise at the top level of a loader's result is not awaited: the page paints at once, and reads the value with React's `use()` inside a `<Suspense>`.
+
+```tsx
+product = $page({
+  path: "/products/:id",
+  schema: { params: z.object({ id: z.text() }) },
+  loader: async ({ params }) => ({
+    product: await this.api.product(params), // awaited: in the first paint
+    reviews: this.api.reviews(params), // deferred
+  }),
+  lazy: () => import("./Product.tsx"),
+});
+```
+
+```tsx
+const Reviews = (props: { reviews: Promise<Review[]> }) => {
+  const reviews = use(props.reviews);
+  return <ReviewList reviews={reviews} />;
+};
+
+const Product = (props: ProductProps) => (
+  <main>
+    <ProductDetail product={props.product} />
+    <Suspense fallback={<ReviewsSkeleton />}>
+      <Reviews reviews={props.reviews} />
+    </Suspense>
+  </main>
+);
+```
+
+- On a server render the shell leaves first and each value streams into its boundary. In a build, hydration starts right after the shell, so the page answers clicks while a value is pending. `alepha dev` streams the same way but hydrates at the end of the document, since Vite's entry cannot run ahead of React Refresh.
+- On a client navigation the page renders at once and suspends.
+- Only top-level promises are deferred: one nested in an object is not looked at.
+- A rejection reaches the nearest `errorHandler`, and keeps `name`, `message` and `status`, so `isHttpError` works. Add a `.catch` in the loader for a value the page can live without.
+- A page with a deferred value is never stored in the [page cache](/docs/guides-frontend-page-cache).
+- `stream: false` and a prerender await everything and write the settled values. So does a page with `ssr: false`, which has no HTML for a value to stream into.
+- `head` never sees a deferred value: it is filled before the render.
+
+⚠️ **The boundary goes under an element.** React cannot flush the shell while a `<Suspense>` with no host element above it is pending, because it could still hold the `<html>`: the page would wait for the value, correctly but all at once. A `<main>` around it is enough. `$page({ loading })` is such a boundary when nothing above the page renders an element.
+
+⚠️ **An atom written after the shell does not reach the browser.** The payload leaves with the shell, so anything a deferred value should change on the client is the value itself.
+
+## Link Prefetching
+
+`prefetch` fetches a page's code before the click: the `lazy` chunk of the page and those of its layouts, never its loader data.
+
+```tsx
+<Link href="/invoices" prefetch="hover">Invoices</Link>
+<Link href="/invoices" prefetch="visible">Invoices</Link>
+```
+
+`hover` waits 100 ms for intent. `visible` shares one `IntersectionObserver`, so keep it to a short list, never a table with hundreds of rows. The prop only sets `data-prefetch`, so a plain `<a href="/invoices" data-prefetch="hover">` works too.
+
+For a surface that is not a link, call the router:
+
+```tsx
+<DataTable
+  onRowHover={(row) =>
+    row && router.prefetch("invoice", { params: { id: row.id } })
+  }
+  onRowClick={(row) => router.push("invoice", { params: { id: row.id } })}
+/>
+```
+
+### Loader data
+
+`prefetch: true` on a `$page` declares its loader free of side effects, so a prefetch may run it too: hovering a tab starts its query, and the click paints at once.
+
+```tsx
+report = $page({
+  path: "/reports/flow",
+  prefetch: true,
+  loader: async ({ query, signal }) => ({
+    flow: await this.api.flow({ query }, { signal }),
+  }),
+  lazy: () => import("./Flow.tsx"),
+});
+```
+
+The router runs the layers the target would not reuse, on a throwaway state, and keeps the result for the navigation that follows.
+
+- It runs only if every one of those layers opted in, or has no loader. Otherwise it does nothing, silently, and the link fetches its code alone: a parent loader that writes atoms must not run on a hover. Mark a loader only if it reads.
+- A `use` guard runs as on a navigation, and a denial or a failure is dropped: the click then does the work and shows the error.
+- A result lives 30 seconds, is used once, and is keyed by route, layer identity and decoded query. At most eight are kept. Nothing invalidates one, so a write within those 30 seconds is not reflected by it.
+- A click landing while the prefetch runs waits for it instead of sending the same requests again.
+- `signal` is aborted when the link leaves the page, and the result is dropped. A loader passes it on to cancel the request itself.
+
+### Limits
+
+At most four chunks load at once, each only once, and nothing loads under `navigator.connection.saveData`. A failed prefetch is ignored: an old chunk after a deploy never reloads the page under a hover. `@alepha/ui`'s sidebar entries prefetch on hover unless a `NavItem` says `prefetch: false`.
+
+## Modal Routes
+
+`overlay` gives a page two presentations for one URL: an in-app navigation from a given page opens it over that page, and a reload or a shared link renders it in full.
+
+```tsx
+class Router {
+  board = $page({ path: "/board", lazy: () => import("./Board.tsx") });
+
+  card = $page({
+    path: "/cards/:id",
+    loader: ({ params }) => this.api.card(params),
+    lazy: () => import("./CardPage.tsx"),
+    overlay: {
+      over: () => [this.board],
+      lazy: () => import("./CardSheet.tsx"),
+    },
+  });
+}
+```
+
+The overlay's `component` or `lazy` replaces the page's own and receives its loader props.
+
+```tsx
+import { useOverlay } from "alepha/react/router";
+
+const CardSheet = (props: { card: Card }) => {
+  const { close } = useOverlay();
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && close()}>
+      <CardDetail card={props.card} />
+    </Sheet>
+  );
+};
+```
+
+- The page behind stays mounted and runs no loader. `useRouterState()` keeps describing it, so a layout reading `name` does not flip under the sheet: the overlay is in `state.overlay`, with its own `name`, `params`, `url` and `layers`.
+- It applies only when the committed page is in `over` and the overlay's parents are already on screen. From anywhere else it is a full page.
+- Back closes it and Forward reopens it. `useOverlay().close()` goes back through history. Neither scrolls the page behind.
+- A push from inside an overlay to a page that may open over the same background stays an overlay, so a link from one card to another replaces the sheet. Any other push leaves it.
+- `onEnter` and `onLeave` of the page behind do not fire when it opens, and the overlay's own fire when it opens and closes.
+- `loading` does not apply: the overlay opens once its loader is done. A loader that fails renders the page in full, where its `errorHandler` lands.
+
+## Loading UI
+
+`loading` is shown in the page's slot while its loader and its chunk load, with the layouts above it staying in place:
+
+```tsx
+invoices = $page({
+  path: "/invoices",
+  loading: () => <TableSkeleton />,
+  loader: async () => ({ invoices: await this.api.list() }),
+  lazy: () => import("./Invoices.tsx"),
+});
+```
+
+- It appears only if the navigation is still running after 200 ms (`reactPageOptions.loadingDelay`), so a fast page never flashes, and there is no minimum display time.
+- A page without one uses its nearest parent's, so a layout can declare one for all its children.
+- It only stands in for another page. A query change or `router.invalidate` keeps the page on screen, or a filter box would unmount itself on every keystroke.
+- It never shows on the first screen.
+- The URL does not move early: the address bar and the active sidebar entry stay on the old page until the new one is ready.
+- A navigation cancelled by going back restores the page, which remounts.
+- It is a plain component, never lazy: a skeleton that has to be fetched is not instant. It lands in the static graph, so keep it light.
+
+It is also the page's `<Suspense>` fallback.
+
+## View Transitions
+
+`viewTransition` animates a page's slot when a navigation commits, through React's `<ViewTransition>`. The layouts above the slot do not move, and a browser without the API swaps instantly.
+
+Values are CSS class names:
 
 ```typescript
-// Simple animation name
-animation: "fadeIn"
+// One class, for the page arriving and the page leaving
+viewTransition: "fade"
 
-// Detailed enter/exit
-animation: {
-  enter: { name: "fadeIn", duration: 300 },
-  exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
+// Each direction apart. `update` is a change inside a page that stays, such as
+// a query change, and only runs when asked for.
+viewTransition: {
+  enter: "slide-in",
+  exit: "slide-out",
+  update: "pulse",
 }
 
-// Dynamic based on router state
-animation: (state) => ({
-  enter: "slideIn",
-  exit: "slideOut",
-})
+// From the target of the navigation
+viewTransition: ({ url, meta }) =>
+  url.pathname === "/checkout" ? { exit: "slide-left" } : undefined
 ```
 
-Define the keyframes in your CSS:
+The page leaving answers with `exit`, the page arriving with `enter`, and both play together. An exit no longer holds the navigation: it starts at the commit, with the new page ready. Style the classes with the view transition pseudo-elements:
 
 ```css
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+::view-transition-old(.fade) {
+  animation: 200ms ease-in both fadeOut;
+}
+
+::view-transition-new(.fade) {
+  animation: 200ms ease-out both fadeIn;
 }
 ```
+
+A page with no `viewTransition` never animates. `prefers-reduced-motion` turns the option off, and so does a back gesture the browser already animated, or an iOS swipe back would play twice.
+
+A navigation carries the target page's name as a transition type, and every view of it lands in one commit, so a shared element only needs a `name`, on the two pages it links:
+
+```tsx
+import { ViewTransition } from "react";
+
+<ViewTransition name={`card-${card.id}`} share="morph">
+  <h1>{card.title}</h1>
+</ViewTransition>;
+```
+
+Views commit in a React transition, after `react:transition:end`. Code that needs the new page in the DOM listens to `react:transition:committed`.
 
 ## Router Hooks
 

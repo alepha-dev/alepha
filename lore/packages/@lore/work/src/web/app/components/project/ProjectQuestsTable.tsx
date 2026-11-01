@@ -680,6 +680,16 @@ const ProjectQuestsTable = () => {
             } as any,
           });
         }}
+        onRowHover={(quest) => {
+          if (quest) {
+            router.prefetch("projectQuest", {
+              params: {
+                projectSlug: router.state.params.projectSlug,
+                shortId: String(quest.shortId),
+              },
+            });
+          }
+        }}
         onRowClick={(quest) =>
           router.push("projectQuest", {
             params: {

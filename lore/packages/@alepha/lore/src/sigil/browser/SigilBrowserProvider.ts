@@ -8,6 +8,7 @@ import { DateTimeProvider } from "alepha/datetime";
  */
 import type {} from "alepha/react";
 import type {} from "alepha/react/router";
+import { ReactVitalsProvider } from "alepha/react/vitals";
 
 import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilCampaign } from "../shared/sigilCampaign.ts";
@@ -20,7 +21,6 @@ import type { SigilTracker } from "../shared/sigilFeatures.ts";
 import { sigilReferrerHost } from "../shared/sigilReferrerHost.ts";
 import { sigilScrubUrl } from "../shared/sigilScrubUrl.ts";
 import { SigilQueue } from "./SigilQueue.ts";
-import { SigilVitals } from "./SigilVitals.ts";
 
 /**
  * Browser bootstrap: subscribes to framework hooks, batches what it observes, and
@@ -39,6 +39,11 @@ import { SigilVitals } from "./SigilVitals.ts";
 export class SigilBrowserProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
+  /**
+   * What emits `react:vital:measured`, which nothing does unless it is
+   * injected. Free of React: this subpath keeps the sigil usable without it.
+   */
+  protected readonly vitals = $inject(ReactVitalsProvider);
   protected queue?: SigilQueue;
 
   /**
@@ -106,17 +111,6 @@ export class SigilBrowserProvider {
   protected engagementPath?: string;
   protected engagementSettled = false;
 
-  /**
-   * The page on screen right now, as the router sees it.
-   *
-   * Kept for vitals attribution: LCP, CLS and INP are finalised when the tab
-   * is hidden, and reading `location.pathname` at that moment filed the
-   * numbers of the page they measured under whatever page the visitor had
-   * navigated to since. Separate from {@link engagementPath}, which looks
-   * identical but belongs to engagement's own lifecycle and is free to change
-   * shape with it.
-   */
-  protected currentPath?: string;
   protected dwellTimer?: ReturnType<typeof setTimeout>;
 
   /**
@@ -183,7 +177,6 @@ export class SigilBrowserProvider {
         if (!this.initialRenderCounted) return;
         if (!this.wants("views")) return;
         const path = ev.state?.url?.pathname ?? location.pathname;
-        this.currentPath = path;
         // A new path is a new thing to have engaged with, so the flag resets
         // and the dwell timer restarts. Without the reset, a visitor who
         // scrolled the landing page would be counted as engaged with every
@@ -244,23 +237,22 @@ export class SigilBrowserProvider {
         this.queue!.addError(this.toError(e.reason, location.href));
       });
 
-      const vitals = new SigilVitals(
-        (m) => {
-          if (!this.wants("vitals")) return;
-          // `m.path`, not `location.pathname`: the metric carries the page it
-          // was measured on, which by the time it is reported is usually not
-          // the page on screen.
-          this.queue!.addVital({
-            path: m.path,
-            metric: m.metric,
-            value: m.value,
-            ts: this.dateTime.nowMillis(),
-          });
-        },
-        () => this.onLcpArrived(),
-        () => this.currentPath ?? location.pathname,
-      );
-      vitals.observe();
+      this.alepha.events.on("react:vital:measured", (m) => {
+        if (!this.wants("vitals")) return;
+        // `m.path`, not `location.pathname`: the metric carries the page it
+        // was measured on, which by the time it is reported is usually not
+        // the page on screen.
+        this.queue!.addVital({
+          path: m.path,
+          metric: m.metric,
+          // The sink's histogram format: integers, so CLS, which is unitless,
+          // buckets with the same machinery as the millisecond metrics.
+          value: Math.round(m.metric === "cls" ? m.value * 1000 : m.value),
+          ts: this.dateTime.nowMillis(),
+        });
+      });
+
+      this.alepha.events.on("react:lcp:painted", () => this.onLcpArrived());
 
       this.observeEngagement();
 
@@ -291,7 +283,6 @@ export class SigilBrowserProvider {
         // spent, and the page would then report nothing until `pagehide`.
         if (!this.firstIngestArmed) this.queue!.hold();
 
-        this.currentPath = location.pathname;
         this.resetEngagement(location.pathname);
         if (this.wants("views")) {
           // The referrer rides on this view and no other. `document.referrer`

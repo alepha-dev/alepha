@@ -535,54 +535,36 @@ describe("$page primitive tests", () => {
     expect(rendered.html).toBe("Leave page");
   });
 
-  test("$page - animation configuration", async ({ expect }) => {
+  test("$page - viewTransition configuration", async ({ expect }) => {
     class App {
-      simpleAnimation = $page({
-        path: "/simple-anim",
-        animation: "fadeIn",
-        component: () => "Simple animation",
+      simple = $page({
+        path: "/simple-transition",
+        viewTransition: "fade",
+        component: () => "Simple transition",
       });
 
-      detailedAnimation = $page({
-        path: "/detailed-anim",
-        animation: {
-          enter: { name: "fadeIn", duration: 300, timing: "ease-in" },
-          exit: { name: "fadeOut", duration: 200, timing: "ease-out" },
-        },
-        component: () => "Detailed animation",
+      detailed = $page({
+        path: "/detailed-transition",
+        viewTransition: { enter: "fade-in", exit: "fade-out", update: "pulse" },
+        component: () => "Detailed transition",
       });
 
-      functionAnimation = $page({
-        path: "/function-anim",
-        animation: (state) => ({ enter: "slideIn", exit: "slideOut" }),
-        component: () => "Function animation",
+      dynamic = $page({
+        path: "/function-transition",
+        viewTransition: () => ({ enter: "slide-in", exit: "slide-out" }),
+        component: () => "Function transition",
       });
     }
 
     const app = alepha.inject(App);
     await alepha.start();
 
-    expect(app.simpleAnimation.options.animation).toBe("fadeIn");
-    expect(app.detailedAnimation.options.animation).toEqual({
-      enter: { name: "fadeIn", duration: 300, timing: "ease-in" },
-      exit: { name: "fadeOut", duration: 200, timing: "ease-out" },
-    });
+    expect(app.simple.options.viewTransition).toBe("fade");
 
-    const mockState = {} as ReactRouterState;
-    const dynamicAnimation =
-      typeof app.functionAnimation.options.animation === "function"
-        ? app.functionAnimation.options.animation(mockState)
-        : app.functionAnimation.options.animation;
-    expect(dynamicAnimation).toEqual({ enter: "slideIn", exit: "slideOut" });
-
-    const simpleRendered = await app.simpleAnimation.render();
-    expect(simpleRendered.html).toBe("Simple animation");
-
-    const detailedRendered = await app.detailedAnimation.render();
-    expect(detailedRendered.html).toBe("Detailed animation");
-
-    const functionRendered = await app.functionAnimation.render();
-    expect(functionRendered.html).toBe("Function animation");
+    // Server rendering is unaffected: the option only exists at a commit.
+    expect((await app.simple.render()).html).toBe("Simple transition");
+    expect((await app.detailed.render()).html).toBe("Detailed transition");
+    expect((await app.dynamic.render()).html).toBe("Function transition");
   });
 
   test("$page - complex schema with nested objects", async ({ expect }) => {

@@ -192,7 +192,13 @@ export default defineConfig({
          * 2026-08-11 by the same route. A var is uploaded as a plain-text
          * binding whatever the manifest says, and it is not a secret.
          */
-        vars: { DATABASE_D1_MODE: "sessions" },
+        vars: {
+          DATABASE_D1_MODE: "sessions",
+          // What `$robots` compares a request's host to, so a `workers.dev`
+          // address answers `Disallow: /`. A self-hosted image has none, and
+          // answers for its own host.
+          PUBLIC_URL: "https://lore.alepha.dev",
+        },
       },
     },
   },

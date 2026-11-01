@@ -309,11 +309,14 @@ export class ReactRouter<T extends object> {
     return this.state.url.pathname as RouterPath;
   }
 
+  /**
+   * The query of the URL on screen: an open overlay's, whose URL it is.
+   */
   public get query(): Record<string, string> {
     const query: Record<string, string> = {};
 
     for (const [key, value] of new URLSearchParams(
-      this.state.url.search,
+      (this.state.overlay?.url ?? this.state.url).search,
     ).entries()) {
       query[key] = String(value);
     }
@@ -389,6 +392,22 @@ export class ReactRouter<T extends object> {
   ): Promise<void> {
     const href = this.resolveHref(target, options);
     await this.browser?.push(href, options);
+  }
+
+  /**
+   * Fetch a page's code before it is needed, by page name or path: the `lazy`
+   * chunks of the page and of its layouts, nothing else. For a surface that is
+   * not a link, such as a table row; a link takes `prefetch` or
+   * `data-prefetch`. Deduplicated, and off under `saveData`. A failure is
+   * ignored, and a no-op on the server.
+   */
+  public prefetch<K extends RouterPageName<T>>(
+    name: K,
+    ...options: RouterPageArgs<T, K>
+  ): void;
+  public prefetch(path: RouterPath, options?: RouterNavigateOptions): void;
+  public prefetch(target: string, options?: RouterPushOptions): void {
+    this.browser?.prefetch(this.resolveHref(target, options));
   }
 
   /**
@@ -489,7 +508,8 @@ export class ReactRouter<T extends object> {
   ) {
     const func = typeof record === "function" ? record : () => record;
     const search = new URLSearchParams(func(this.query)).toString();
-    const path = search ? `${this.pathname}?${search}` : this.pathname;
+    const { pathname } = this.state.overlay?.url ?? this.state.url;
+    const path = search ? `${pathname}?${search}` : pathname;
 
     if (!this.browser) {
       throw new AlephaError("Browser is required");
@@ -505,9 +525,14 @@ export class ReactRouter<T extends object> {
     // `window.location`. Writing only to history would desync them.
     const current = this.alepha.store.get("alepha.react.router.state");
     if (current) {
-      const url = new URL(current.url);
+      const url = new URL(current.overlay?.url ?? current.url);
       url.search = search;
-      this.alepha.store.set("alepha.react.router.state", { ...current, url });
+      this.alepha.store.set(
+        "alepha.react.router.state",
+        current.overlay
+          ? { ...current, overlay: { ...current.overlay, url } }
+          : { ...current, url },
+      );
     }
   }
 }

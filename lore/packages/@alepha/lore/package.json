@@ -95,7 +95,7 @@
     "@lore/deploy": "*",
     "@lore/knowledge": "*",
     "@lore/work": "*",
-    "alepha": ">=0.34.0",
+    "alepha": ">=0.34.1",
     "react": "*",
     "react-dom": "*"
   },

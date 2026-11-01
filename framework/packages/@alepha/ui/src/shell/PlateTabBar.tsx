@@ -32,6 +32,11 @@ export interface PlateTab {
    * middle-click, copy-link and the back button all depend on it.
    */
   href?: string;
+  /**
+   * When to fetch a tab that is a link ahead of the click. Loader data comes
+   * with the code when the page's `prefetch` says it may.
+   */
+  prefetch?: "hover" | "visible";
 }
 
 export interface PlateTabBarProps {
@@ -128,6 +133,7 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
           <Link
             key={tab.key}
             href={tab.href}
+            prefetch={tab.prefetch}
             aria-current={active ? "page" : undefined}
             className={className}
           >

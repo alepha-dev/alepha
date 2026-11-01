@@ -1,13 +1,18 @@
-import { useClient, useQuery, useStore } from "alepha/react";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Suspense } from "react";
 
-import type { HomeController } from "../../../../api/controllers/HomeController.ts";
-import { homeBoardAtom } from "../../atoms/homeBoardAtom.ts";
+import type { HomeBoardResource } from "../../../../api/schemas/homeBoardSchema.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { HomeBoardProjects } from "./HomeBoardProjects.tsx";
 import HomeHeader from "./HomeHeader.tsx";
 import { HomeRecentProjects } from "./HomeRecentProjects.tsx";
 import { HomeSearch } from "./HomeSearch.tsx";
+
+export interface HomeBoardProps {
+  board: Promise<HomeBoardResource | undefined>;
+}
 
 /**
  * The signed-in landing page: your projects, and how each of them is moving.
@@ -19,87 +24,21 @@ import { HomeSearch } from "./HomeSearch.tsx";
  * area. The bars, the last-activity stamps and the open counts come from
  * `getHomeBoard`, which is this page's alone - an aggregate over the audit
  * log on every route change is a cost the atom's other readers never asked
- * for. The `home` route loader reads it into `homeBoardAtom` so it is in the
- * first paint; this page fetches it itself only when that read was late or
- * failed.
- *
- * ## One resolve, no polling
- *
- * The loader reads once per entry, and the fallback `useQuery` fetches on
- * mount and when something asks it to refetch. There is
- * deliberately no interval: the QuestGraph incident (folio #1057) was a loader
- * revalidating once per second for 51 minutes, producing 4,009 identical
- * requests from one browser tab - roughly 35% of that day's account-wide
- * Worker invocations - and the landing page is the worst place to repeat it.
+ * for. The `home` route loader hands it over deferred: the momentum half is an
+ * HTTP call into Analytics Engine, and a slow one must not hold the page, so
+ * the rows paint and the search box works while it is on its way.
  */
-const HomeBoard = () => {
+const HomeBoard = (props: HomeBoardProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const homeApi = useClient<HomeController>();
   const [overview] = useStore(userProjectsAtom);
 
-  /**
-   * Quiet on purpose. A board that cannot be read costs the bars, the
-   * last-activity stamps and the open counts, and the table still lists every
-   * project: the rows are already in memory. `onError` keeps the failure out
-   * of the toaster and in error reporting.
-   */
-  const [preloaded] = useStore(homeBoardAtom);
-  const fetched = useQuery(
-    {
-      key: ["home-board"],
-      handler: () => homeApi.getHomeBoard(),
-      onError: () => {},
-      // The `home` loader read it within its budget: nothing to fetch. It is
-      // empty when that read was late or failed, and only then does the page
-      // fetch the board itself.
-      enabled: preloaded === undefined,
-    },
-    [homeApi, preloaded === undefined],
-  );
-  const board = { data: preloaded ?? fetched.data };
-
-  const days = board.data?.days ?? [];
-  const lastActivity = new Map(
-    (board.data?.lastActivity ?? []).map((entry) => [
-      entry.projectId,
-      entry.at,
-    ]),
-  );
-  const openCounts = new Map(
-    (board.data?.openCounts ?? []).map((entry) => [entry.projectId, entry]),
-  );
-  /**
-   * `undefined` when the bars could not be read, which is NOT the same as
-   * every project being quiet.
-   *
-   * Since #E65 the counts come from an `$analytics` dataset - on production an
-   * HTTP call into Analytics Engine, a dependency the rest of this response
-   * does not share - so the server answers without `momentum` rather than
-   * failing the whole board. An empty Map here would mute every row as
-   * inactive and draw fourteen zero bars, claiming a fortnight of silence
-   * that never happened.
-   */
-  const momentum = board.data?.momentum
-    ? new Map(
-        board.data.momentum.map((entry) => [entry.projectId, entry.counts]),
-      )
-    : undefined;
-
-  /**
-   * Most recently active first: the board's last activity, or the overview's
-   * `lastActivityAt` until the board arrives. Both come from the same read
-   * (`ProjectRecencyService`), so a fresh load paints the final order on the
-   * first frame; the board only moves a row when something happened since
-   * the overview was read, such as a return to Home after working in a
-   * project. Sorting that first frame by `updatedAt` reshuffled the list a
-   * second after every load.
-   */
-  const recency = (project: { id: number; lastActivityAt: string }) =>
-    Date.parse(lastActivity.get(project.id) ?? project.lastActivityAt);
+  // Most recently active first, from the overview's `lastActivityAt`.
   // Archived projects are left out (#Q2601): My projects still lists them.
   const projects = (overview?.projects ?? [])
     .filter((it) => !it.archivedAt)
-    .sort((a, b) => recency(b) - recency(a));
+    .sort(
+      (a, b) => Date.parse(b.lastActivityAt) - Date.parse(a.lastActivityAt),
+    );
 
   return (
     /*
@@ -139,13 +78,19 @@ const HomeBoard = () => {
           </h1>
           <HomeSearch projects={projects} />
           <div className="mx-auto w-full max-w-5xl px-4 sm:px-8">
-            <HomeRecentProjects
-              projects={projects}
-              momentum={momentum}
-              days={days}
-              lastActivity={lastActivity}
-              openCounts={openCounts}
-            />
+            <Suspense
+              fallback={
+                <HomeRecentProjects
+                  projects={projects}
+                  momentum={undefined}
+                  days={[]}
+                  lastActivity={new Map()}
+                  openCounts={new Map()}
+                />
+              }
+            >
+              <HomeBoardProjects board={props.board} projects={projects} />
+            </Suspense>
           </div>
         </div>
       </main>
