@@ -17,7 +17,6 @@ import { reportsUrlSchema } from "../../api/schemas/reportsUrlSchema.ts";
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { dashboardWindowAtom } from "./atoms/dashboardWindowAtom.ts";
-import { homeBoardAtom } from "./atoms/homeBoardAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
@@ -266,50 +265,19 @@ export class CoreRouter {
     },
   });
 
-  /**
-   * How long the `home` loader waits for the board before painting without
-   * it. Enough for the database half and a healthy Analytics Engine read, and
-   * short enough that a slow one costs a pop-in rather than a slow page.
-   */
-  protected static readonly HOME_BOARD_BUDGET_MS = 300;
-
-  /**
-   * The board within its budget, or `undefined` past it or on a failure.
-   */
-  protected async readHomeBoard() {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const late = new Promise<undefined>((resolve) => {
-      timer = setTimeout(
-        () => resolve(undefined),
-        CoreRouter.HOME_BOARD_BUDGET_MS,
-      );
-    });
-    try {
-      return await Promise.race([
-        this.homeApi.getHomeBoard().catch(() => undefined),
-        late,
-      ]);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
   home = $page({
     path: "/",
     viewTransition: ({ url }) =>
       url.pathname === "/new-project" ? { exit: "fade-scale-out" } : undefined,
     lazy: () => import("./components/home/Home.tsx"),
     /**
-     * What the first paint needs: the realm's signup switch for an anonymous
-     * visitor, the board for a signed-in one.
+     * The realm's signup switch for an anonymous visitor, the board for a
+     * signed-in one.
      *
-     * The board (bars, last activity, open counts) used to be fetched by
-     * `HomeBoard` after mount, so the rows painted alone and the rest popped
-     * in a second later. It is read here now, within
-     * `HOME_BOARD_BUDGET_MS`: the momentum half is an HTTP call into
-     * Analytics Engine, and a slow one must not hold the page. Past the
-     * budget, or on a failure, `homeBoardAtom` stays empty and `HomeBoard`
-     * fetches it itself, as it always did.
+     * The board (bars, last activity, open counts) is deferred: the momentum
+     * half is an HTTP call into Analytics Engine, and a slow one must not hold
+     * the page. `.catch` because a board that failed costs those three and
+     * must not reach `errorHandler`: `HomeBoard` then fetches it itself.
      *
      * ⚠️ It runs on ENTRY only, and whatever is added here must keep that
      * shape: a loader that revalidates on its own dependencies is the
@@ -317,8 +285,7 @@ export class CoreRouter {
      */
     loader: async ({ user }) => {
       if (user) {
-        this.alepha.store.set(homeBoardAtom, await this.readHomeBoard());
-        return;
+        return { board: this.homeApi.getHomeBoard().catch(() => undefined) };
       }
       // An anonymous visitor gets the hero, whose primary button is the
       // only thing on the page. Which button that should be depends on
@@ -333,6 +300,7 @@ export class CoreRouter {
         registrationAllowed:
           realmConfig?.settings.registrationAllowed !== false,
       });
+      return {};
     },
   });
 

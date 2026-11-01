@@ -1,5 +1,6 @@
 import { expect, test } from "./_fixtures.ts";
 import {
+  apiPath,
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
@@ -194,6 +195,93 @@ test.describe("Home (board)", () => {
       .getByRole("link", { name: `Board${t}`.slice(0, 20) })
       .click();
     await page.waitForURL(`**/${firstSlug}**`, { timeout: 15_000 });
+  });
+
+  /**
+   * The board is deferred: on a client navigation the rows and the search box
+   * are there while it is on its way, and it fills them in when it lands.
+   */
+  test("is usable while the board is pending", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `defer${t}@example.com`, "BoardTest123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Defer${t}`.slice(0, 20),
+    );
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: "An open quest",
+      area: "general",
+      priority: "medium",
+    });
+
+    await page.goto(`/${slug}/activity`);
+    await page.waitForLoadState("networkidle");
+
+    // By its path, whichever way the client sends it: alone, or in a batch.
+    const boardPath = await apiPath(page, "getHomeBoard");
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/api/**", async (route) => {
+      const request = route.request();
+      if (`${request.url()} ${request.postData()}`.includes(boardPath)) {
+        await held;
+      }
+      await route.continue();
+    });
+
+    await page.evaluate(() => {
+      const anchor = document.createElement("a");
+      anchor.href = "/";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    });
+
+    const row = page.getByTestId("home-project-row");
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    // The bars are the board's alone: the rows come from the overview.
+    const bars = row.getByRole("img", {
+      name: /events over the last 14 days/i,
+    });
+    await expect(bars).toHaveCount(0);
+
+    const search = page.getByRole("combobox").first();
+    await search.fill("quest");
+    await expect(search).toHaveValue("quest");
+
+    release();
+
+    await expect(bars).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("hydrates with no mismatch on a hard load", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+
+    const t = Date.now();
+    await registerAndVerify(page, `hard${t}@example.com`, "BoardTest123!");
+    await createProjectViaWizard(page, `Hard${t}`.slice(0, 20));
+
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    await expect(
+      page.getByTestId("home-project-row").getByRole("img", {
+        name: /events over the last 14 days/i,
+      }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-alepha-hydrated",
+      "true",
+    );
+    expect(errors).toEqual([]);
   });
 
   test("finds a quest in any project and opens it", async ({ page }) => {

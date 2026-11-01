@@ -218,7 +218,9 @@ const NestedView = (props: NestedViewProps) => {
   }
 
   const fallback = (error: Error) => {
-    const result = onError?.(error, state) ?? (
+    // The state's handler first: it is the page's own, then its parents', where
+    // `onError` is the layer above this slot's, and nothing at all at the root.
+    const result = state.onError?.(error, state) ?? onError?.(error, state) ?? (
       <ErrorViewer error={error} alepha={alepha} />
     );
     if (result instanceof Redirection) {

@@ -119,7 +119,7 @@ describe("ReactServerTemplateProvider", () => {
         '<link rel="stylesheet" href="/assets/style.def456.css">',
       );
       expect(response.data).toContain(
-        '<script type="module" crossorigin="" src="/assets/entry.abc123.js"></script>',
+        '<script type="module" crossorigin="" src="/assets/entry.abc123.js" async></script>',
       );
 
       await alepha.stop();

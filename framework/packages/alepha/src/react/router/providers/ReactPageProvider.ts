@@ -22,9 +22,11 @@ import {
   createElement,
   type ReactNode,
   StrictMode,
+  Suspense,
 } from "react";
 
 import { loginRoutesAtom } from "../atoms/loginRoutesAtom.ts";
+import DeferredScript from "../components/DeferredScript.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
@@ -36,6 +38,7 @@ import {
   type PagePrimitive,
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
+import { ReactDeferred } from "../services/ReactDeferred.ts";
 import { RootComponentsProvider } from "./RootComponentsProvider.ts";
 import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
@@ -94,6 +97,7 @@ export class ReactPageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly deferred = $inject(ReactDeferred);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;
 
@@ -486,6 +490,7 @@ export class ReactPageProvider {
         it.props = {
           ...props,
         };
+        this.deferred.track(it.props);
 
         // add props to context. `Object.assign` onto the accumulator rather
         // than rebuilding it: `context` is a fresh local object and this runs
@@ -587,7 +592,16 @@ export class ReactPageProvider {
             props,
             part: it.route.path,
             config: it.config,
-            element: this.renderView(i + 1, path, element, it.route, it.key),
+            element: this.renderView(
+              i + 1,
+              path,
+              element,
+              it.route,
+              it.key,
+              // A value a client navigation loaded goes nowhere: only what the
+              // server rendered has a script to match.
+              this.alepha.isBrowser() && !it.cache ? undefined : props,
+            ),
             index: i + 1,
             path,
             key: it.key,
@@ -850,23 +864,45 @@ export class ReactPageProvider {
     view: ReactNode | undefined,
     page: PageRoute,
     key?: string,
+    props?: Record<string, unknown>,
   ): ReactNode {
     view ??= this.renderEmptyView();
 
+    const context = {
+      // The layer's identity (`identityOf`): a new one is a remount of
+      // this layer and everything below it, the same one an update.
+      key,
+      value: {
+        index,
+        path,
+        onError:
+          this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
+      },
+    };
+
+    const deferred = this.deferred.entries(props);
+    if (deferred.length === 0) {
+      return createElement(RouterLayerContext.Provider, context, view);
+    }
+
+    const scripts = deferred.map(([name, promise]) =>
+      createElement(
+        Suspense,
+        { key: name, fallback: null },
+        createElement(DeferredScript, {
+          id: this.deferred.id(index, name),
+          promise,
+        }),
+      ),
+    );
+
     return createElement(
       RouterLayerContext.Provider,
-      {
-        // The layer's identity (`identityOf`): a new one is a remount of
-        // this layer and everything below it, the same one an update.
-        key,
-        value: {
-          index,
-          path,
-          onError:
-            this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
-        },
-      },
+      context,
       view,
+      // Under an element: React cannot flush a shell while a `<Suspense>` with
+      // no element above it is pending, since it could still hold the `<html>`.
+      createElement("div", { hidden: true }, ...scripts),
     );
   }
 

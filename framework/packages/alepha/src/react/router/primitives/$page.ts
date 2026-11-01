@@ -167,6 +167,11 @@ export interface PagePrimitiveOptions<
    *
    * > In SSR, the returned data will be serialized and sent to the client, then reused during the client-side hydration.
    *
+   * A promise at the top level of the result is deferred: it is not awaited,
+   * the page paints at once and reads it with `use()` inside a `<Suspense>`,
+   * and on a server render it streams into that boundary. A rejection reaches
+   * the nearest `errorHandler`. Such a page is never stored in the page cache.
+   *
    * Loader can be stopped by throwing an error, which will be handled by the `errorHandler` function.
    * It's common to throw a `NotFoundError` to display a 404 page.
    *

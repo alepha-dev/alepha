@@ -19,6 +19,7 @@ import { reactBootOptions } from "../atoms/reactBootOptions.ts";
 import BootMarker from "../components/BootMarker.tsx";
 import OfflineScreen from "../components/OfflineScreen.tsx";
 import { ReactBootHealth } from "../services/ReactBootHealth.ts";
+import { ReactDeferred } from "../services/ReactDeferred.ts";
 import type { RouterPushOptions } from "../services/ReactRouter.ts";
 import { ReactViewTransition } from "../services/ReactViewTransition.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
@@ -88,6 +89,7 @@ export class ReactBrowserProvider {
   protected readonly bootOptions = $store(reactBootOptions);
   protected readonly bootHealth = $inject(ReactBootHealth);
   protected readonly viewTransition = $inject(ReactViewTransition);
+  protected readonly deferred = $inject(ReactDeferred);
 
   /**
    * Scroll offset of every history entry we have visited, keyed by the id
@@ -558,13 +560,41 @@ export class ReactBrowserProvider {
   protected readonly hydrateBeforeStart = $hook({
     on: "start",
     priority: "first",
-    handler: () => {
+    handler: async () => {
+      await this.payloadWritten();
+
       const hydration = this.getHydrationState();
       if (hydration) {
         this.applyHydration(hydration);
       }
     },
   });
+
+  /**
+   * Wait until `#__ssr` is in the document.
+   *
+   * The entry is an `async` module, so it can run while the parser is still
+   * on the page. A page with a deferred value writes its payload after the
+   * shell and says so with an event, which is what starts hydration before the
+   * stream ends. Any other page writes it at the end of the document, and
+   * `DOMContentLoaded` is that moment, as it was for a deferred script.
+   *
+   * Reading the element is not enough: it can exist with half its JSON.
+   */
+  protected async payloadWritten(): Promise<void> {
+    const flag = window as unknown as { __alephaBoot?: number };
+    if (this.document.readyState !== "loading" || flag.__alephaBoot) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      this.document.addEventListener("alepha:boot", () => resolve(), {
+        once: true,
+      });
+      this.document.addEventListener("DOMContentLoaded", () => resolve(), {
+        once: true,
+      });
+    });
+  }
 
   /**
    * Apply the SSR hydration payload (the `#__ssr` script tag) to the atom
@@ -801,6 +831,7 @@ export class ReactBrowserProvider {
       // store at all.
       const hydration = this.getHydrationState();
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
+      this.deferred.revive(previous);
 
       if (!hydration && this.initialUrlResolver) {
         const initial = await this.initialUrlResolver();

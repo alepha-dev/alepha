@@ -528,6 +528,50 @@ A `$page` is also an object you can call from server code:
 - `page.fetch(options?)` requests the page from the running server over HTTP, at its full path with `options.params` and `options.query` filled in, and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`.
 - `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
 
+## Deferred Data
+
+A promise at the top level of a loader's result is not awaited: the page paints at once, and reads the value with React's `use()` inside a `<Suspense>`.
+
+```tsx
+product = $page({
+  path: "/products/:id",
+  schema: { params: z.object({ id: z.text() }) },
+  loader: async ({ params }) => ({
+    product: await this.api.product(params), // awaited: in the first paint
+    reviews: this.api.reviews(params), // deferred
+  }),
+  lazy: () => import("./Product.tsx"),
+});
+```
+
+```tsx
+const Reviews = (props: { reviews: Promise<Review[]> }) => {
+  const reviews = use(props.reviews);
+  return <ReviewList reviews={reviews} />;
+};
+
+const Product = (props: ProductProps) => (
+  <main>
+    <ProductDetail product={props.product} />
+    <Suspense fallback={<ReviewsSkeleton />}>
+      <Reviews reviews={props.reviews} />
+    </Suspense>
+  </main>
+);
+```
+
+- On a server render the shell leaves first and each value streams into its boundary. Hydration starts right after the shell, so the page answers clicks while a value is pending.
+- On a client navigation the page renders at once and suspends.
+- Only top-level promises are deferred: one nested in an object is not looked at.
+- A rejection reaches the nearest `errorHandler`, and keeps `name`, `message` and `status`, so `isHttpError` works. Add a `.catch` in the loader for a value the page can live without.
+- A page with a deferred value is never stored in the [page cache](/docs/guides-frontend-page-cache).
+- `stream: false` and a prerender await everything and write the settled values. So does a page with `ssr: false`, which has no HTML for a value to stream into.
+- `head` never sees a deferred value: it is filled before the render.
+
+⚠️ **The boundary goes under an element.** React cannot flush the shell while a `<Suspense>` with no host element above it is pending, because it could still hold the `<html>`: the page would wait for the value, correctly but all at once. A `<main>` around it is enough. `$page({ loading })` is such a boundary when nothing above the page renders an element.
+
+⚠️ **An atom written after the shell does not reach the browser.** The payload leaves with the shell, so anything a deferred value should change on the client is the value itself.
+
 ## Modal Routes
 
 `overlay` gives a page two presentations for one URL: an in-app navigation from a given page opens it over that page, and a reload or a shared link renders it in full.

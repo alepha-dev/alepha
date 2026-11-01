@@ -1,13 +1,12 @@
-import { z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * What `getHomeBoard` answers: everything Home draws that `getHomeOverview`
  * does not already carry.
  *
- * Its own file because two sides read it: the action's response, and
- * `homeBoardAtom`, which the `home` route loader fills so the board is in the
- * first paint. The atom lives in the browser, and a controller file is not
- * something the browser can import.
+ * Its own file because two sides read it: the action's response, and `Home`,
+ * which takes it deferred from the `home` route loader. A controller file is
+ * not something the browser can import.
  */
 export const homeBoardSchema = z.object({
   /**
@@ -67,3 +66,5 @@ export const homeBoardSchema = z.object({
     }),
   ),
 });
+
+export type HomeBoardResource = Infer<typeof homeBoardSchema>;

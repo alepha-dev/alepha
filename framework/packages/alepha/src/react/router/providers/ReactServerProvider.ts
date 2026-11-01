@@ -39,6 +39,7 @@ import {
   type PagePrimitiveRenderOptions,
   type PagePrimitiveRenderResult,
 } from "../primitives/$page.ts";
+import { ReactDeferred } from "../services/ReactDeferred.ts";
 import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
 import {
   type PageCacheEntry,
@@ -93,6 +94,7 @@ export class ReactServerProvider {
   protected readonly pageCache = $inject(ReactPageCacheProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly background = $inject(BackgroundTaskProvider);
+  protected readonly deferred = $inject(ReactDeferred);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -310,7 +312,12 @@ export class ReactServerProvider {
 
     if (assets?.js) {
       parts.push(
-        `<script type="module" crossorigin="" src="${assets.js}"></script>`,
+        // `async`: it must be able to run before the document ends, or a
+        // deferred value would hold the page dead until it settled. The early
+        // head leaves before the loaders, so this cannot depend on the page:
+        // `ReactBrowserProvider.payloadWritten` is what keeps every other page
+        // waiting for the end of the document, as a deferred script did.
+        `<script type="module" crossorigin="" src="${assets.js}" async></script>`,
       );
     }
 
@@ -865,6 +872,7 @@ export class ReactServerProvider {
           // === ASYNC WORK (runs while early head is being sent) ===
           const result = await this.renderPage(route, state, {
             preloadLinks: false,
+            streamed: true,
           });
 
           if (result.redirect) {
@@ -1003,12 +1011,16 @@ export class ReactServerProvider {
         (serverRequest as { cookies?: { res?: object } }).cookies?.res ?? {},
       ).length > 0;
 
+    // A deferred value is a dynamic hole by definition, and the page's bytes
+    // depend on whether it resolved before the shell flushed: the anonymous
+    // comparison would refuse it with a false error.
     if (
       !clean ||
       verdict === "personal" ||
       status !== 200 ||
       setsCookie ||
-      state.layers.some((layer) => layer.error)
+      state.layers.some((layer) => layer.error) ||
+      this.deferred.has(state.layers)
     ) {
       return;
     }
@@ -1201,13 +1213,15 @@ export class ReactServerProvider {
    * @param route - The page route to render
    * @param state - The router state
    * @param options - `preloadLinks: false` when the caller has already put
-   *   them in the early head, which only the streaming path can do
+   *   them in the early head, which only the streaming path can do. `streamed`
+   *   when the document goes out as it renders: anything else awaits every
+   *   deferred value and writes settled ones
    * @returns Render result with redirect or React stream
    */
   protected async renderPage(
     route: PageRoute,
     state: ReactRouterState,
-    options: { preloadLinks?: boolean } = {},
+    options: { preloadLinks?: boolean; streamed?: boolean } = {},
   ): Promise<{ redirect?: string; reactStream?: ReadableStream<Uint8Array> }> {
     // Resolve page layers (loaders)
     const { redirect } = await this.pageApi.createLayers(route, state);
@@ -1237,6 +1251,14 @@ export class ReactServerProvider {
     // Inject SEO hreflang alternates for locale-prefix routing
     this.injectLocaleHead(state);
 
+    const deferred = this.deferred.has(state.layers);
+
+    // A client-rendered page has no HTML for a value to stream into, and no
+    // script would carry it: the browser takes it from the payload.
+    if (deferred && !this.pageApi.isSSR(route)) {
+      await this.deferred.settle(state.layers);
+    }
+
     // Render React to stream
 
     const element = this.pageApi.root(state);
@@ -1253,6 +1275,10 @@ export class ReactServerProvider {
       // stops the render (#E85). The page cache's anonymous re-render runs in
       // an isolated context, where this is the app signal instead.
       signal: this.alepha.context.signal,
+      bootstrapScriptContent:
+        deferred && options.streamed
+          ? this.templateProvider.shellMarker
+          : undefined,
       onError: (error: unknown) => {
         if (error instanceof Redirection) {
           this.log.warn("Redirect during streaming ignored", {
@@ -1264,6 +1290,11 @@ export class ReactServerProvider {
         }
       },
     });
+
+    if (deferred && !options.streamed) {
+      await (reactStream as ReadableStream & { allReady: Promise<void> })
+        .allReady;
+    }
 
     return { reactStream };
   }
