@@ -1,4 +1,8 @@
-import { ProjectAnalytics, ProjectController } from "@lore/core/api";
+import {
+  ProjectAnalytics,
+  ProjectAnalyticsController,
+  ProjectController,
+} from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -848,6 +852,72 @@ describe("ProjectReportsController", () => {
       // A channel nobody recorded never reads as a person at the keyboard.
       expect(data.channels.map((row) => row.channel)).toContain("unknown");
       expect(Object.keys(member)).not.toContain("rank");
+
+      // The grid counts the same writes, whichever cell the clock lands in.
+      expect(data.heatmap).toHaveLength(7);
+      expect(
+        data.heatmap.flat().reduce((sum, n) => sum + n, 0),
+      ).toBeGreaterThan(2);
+    });
+
+    it("reads MCP calls per tool for this project alone", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const calls = ctx.alepha.inject(ProjectAnalytics).mcpCalls;
+      const call = (tool: string, outcome: string, target: string) =>
+        calls.record({
+          tool,
+          outcome,
+          actor: owner.id,
+          project: target,
+          count: 1,
+        });
+      await call("quest_get", "ok", String(project.id));
+      await call("quest_get", "refused", String(project.id));
+      await call("quest_get", "ok", String(project.id + 1));
+      await call("quest_list", "error", "none");
+
+      const { data } = await ctx.reportsController.getReportsTeam.fetch(
+        { params: { id: project.id }, query: {} },
+        { user: owner },
+      );
+
+      expect(data.mcp).toEqual([
+        { tool: "quest_get", ok: 1, refused: 1, error: 0 },
+      ]);
+      expect(data.automations).toMatchObject({ runs: [], broken: [] });
+    });
+
+    it("pins the explorer to the project, and refuses a stranger", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const explorer = ctx.alepha.inject(ProjectAnalyticsController);
+
+      const { data } = await explorer.listProjectDatasets.fetch(
+        { params: { projectId: project.id } },
+        { user: owner },
+      );
+
+      expect(data.map((row) => row.name).toSorted()).toEqual([
+        "mcp_calls",
+        "project_activity",
+      ]);
+      for (const dataset of data) {
+        expect(Object.keys(dataset.dimensions.properties ?? {})).not.toContain(
+          "project",
+        );
+      }
+      await expect(
+        explorer.listProjectDatasets.fetch(
+          { params: { projectId: project.id } },
+          { user: stranger },
+        ),
+      ).rejects.toThrow();
     });
   });
 

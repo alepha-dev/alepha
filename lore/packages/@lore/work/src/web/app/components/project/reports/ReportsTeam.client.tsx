@@ -2,12 +2,15 @@ import { Button, UserAvatar } from "@alepha/ui";
 import type { ReportsTeam as ReportsTeamData } from "@lore/core/schemas";
 import {
   type I18n,
+  ReportsHeatmap,
   ReportsHistogram,
   ReportsKpiRow,
   ReportsSection,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
+
+import ReportsTeamExplorer from "./ReportsTeamExplorer.tsx";
 
 export interface ReportsTeamProps {
   team: ReportsTeamData;
@@ -31,6 +34,8 @@ const ReportsTeam = (props: ReportsTeamProps) => {
   const known = team.channels
     .filter((row) => row.channel !== "unknown")
     .reduce((sum, row) => sum + row.count, 0);
+  const { automations } = team;
+  const hours = Array.from({ length: 24 }, (_, hour) => String(hour));
   const agents = team.channels.find((row) => row.channel === "mcp")?.count ?? 0;
 
   // The server answers by name, so that order needs no sort of its own.
@@ -175,6 +180,127 @@ const ReportsTeam = (props: ReportsTeamProps) => {
             {tr("reports.team.estimated")}
           </p>
         )}
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.team.heatmap.title")}
+        definition={tr("reports.team.heatmap.definition")}
+      >
+        <ReportsHeatmap
+          columns={hours}
+          rows={team.heatmap.map((cells, day) => ({
+            label: tr(`reports.team.day.${day}` as never),
+            cells,
+          }))}
+          describe={(day, hour, value) =>
+            tr("reports.team.heatmap.cell", {
+              args: [day, hour, String(value)],
+            })
+          }
+        />
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.team.automations.title")}
+        definition={tr("reports.team.automations.definition")}
+        csv={{ filename: "automation-runs", rows: automations.runs }}
+      >
+        <ReportsKpiRow
+          kpis={[
+            {
+              label: tr("reports.team.automations.success"),
+              definition: tr("reports.team.automations.success.definition"),
+              value: share(automations.succeeded, automations.finished),
+            },
+            {
+              label: tr("reports.team.automations.duration"),
+              definition: tr("reports.team.automations.duration.definition"),
+              value: automations.finished
+                ? `${Math.round(automations.medianSeconds)}s`
+                : "-",
+              hint: tr("reports.overview.kpi.cycleTimeHint", {
+                args: [`${Math.round(automations.p85Seconds)}s`],
+              }),
+            },
+            {
+              label: tr("reports.team.automations.broken"),
+              definition: tr("reports.team.automations.broken.definition"),
+              value: automations.broken.length,
+            },
+          ]}
+        />
+        <ReportsHistogram
+          buckets={automations.runs.map((row) => ({
+            label: tr(`reports.team.run.${row.status}` as never),
+            count: row.count,
+          }))}
+          countLabel={tr("reports.team.automations.runs")}
+        />
+        {automations.broken.length > 0 && (
+          <ul className="mt-2 text-sm" data-testid="reports-team-broken">
+            {automations.broken.map((rule) => (
+              <li key={rule.id} className="truncate py-1">
+                {rule.title}
+              </li>
+            ))}
+          </ul>
+        )}
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.team.mcp.title")}
+        definition={tr("reports.team.mcp.definition")}
+        csv={{ filename: "mcp-tools", rows: team.mcp }}
+      >
+        {team.mcp.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="reports-team-mcp">
+              <thead>
+                <tr className="text-muted-foreground border-b text-left text-xs">
+                  <th className="py-2 pr-4 font-medium">
+                    {tr("reports.team.mcp.tool")}
+                  </th>
+                  <th className="py-2 pr-4 text-right font-medium">
+                    {tr("reports.team.mcp.ok")}
+                  </th>
+                  <th className="py-2 pr-4 text-right font-medium">
+                    {tr("reports.team.mcp.refused")}
+                  </th>
+                  <th className="py-2 pr-4 text-right font-medium">
+                    {tr("reports.team.mcp.error")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-border divide-y">
+                {team.mcp.map((row) => (
+                  <tr key={row.tool}>
+                    <td className="py-2 pr-4">{row.tool}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.ok}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.refused}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {row.error}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            {tr("reports.team.mcp.empty")}
+          </p>
+        )}
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.team.explorer.title")}
+        definition={tr("reports.team.explorer.definition")}
+      >
+        <ReportsTeamExplorer />
       </ReportsSection>
     </>
   );

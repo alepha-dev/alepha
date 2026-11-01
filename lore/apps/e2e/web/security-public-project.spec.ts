@@ -108,6 +108,7 @@ test.describe("Project membership gate", () => {
         "getReportsQuests",
         "getReportsMembers",
         "getReportsTeam",
+        "listProjectDatasets",
         "getBoard",
       ] as const;
       for (const action of reads) {

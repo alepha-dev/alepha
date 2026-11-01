@@ -310,6 +310,10 @@ test.describe("Reports", () => {
     const table = page.getByTestId("reports-team");
     await expect(table.getByRole("row")).toHaveCount(2, { timeout: 20_000 });
     await expect(page.getByText("How work arrives")).toBeVisible();
+    await expect(page.getByTestId("reports-heatmap")).toBeVisible();
+    await expect(
+      page.getByTestId("reports-team-explorer").getByText("project_activity"),
+    ).toBeVisible();
 
     await page
       .getByTestId("reports-team-sort")

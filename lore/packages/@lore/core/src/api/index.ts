@@ -23,6 +23,7 @@ import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
+import { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
@@ -104,6 +105,7 @@ import { McpProjectScope } from "./services/McpProjectScope.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
+import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
@@ -263,6 +265,8 @@ export const LoreCoreApi = $module({
     DeliveryChangeRegistry,
     McpProjectScope,
     ProjectLimits,
+    ProjectAnalyticsController,
+    ProjectAutomationReport,
     ReportStatistics,
     ReportsSummaryController,
     ReportsSummaryRegistry,
@@ -476,6 +480,8 @@ export {
 export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
+export { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
+export { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 
 export { AutomationReferences } from "./services/AutomationReferences.ts";
 

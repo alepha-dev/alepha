@@ -39,6 +39,33 @@ export const reportsTeamSchema = z.object({
    */
   channels: z.array(z.object({ channel: z.string(), count: z.integer() })),
   /**
+   * Writes per weekday (Monday first) and UTC hour, over the last 30 days of
+   * the period at most: past that the dataset keeps days, not hours (#Q3014).
+   */
+  heatmap: z.array(z.array(z.integer())),
+  automations: z.object({
+    runs: z.array(z.object({ status: z.string(), count: z.integer() })),
+    /**
+     * Runs that reached an end, of which `succeeded`, and how long they took.
+     */
+    finished: z.integer(),
+    succeeded: z.integer(),
+    medianSeconds: z.number(),
+    p85Seconds: z.number(),
+    broken: z.array(z.object({ id: z.string(), title: z.string() })),
+  }),
+  /**
+   * MCP calls that resolved this project, per tool, busiest first.
+   */
+  mcp: z.array(
+    z.object({
+      tool: z.string(),
+      ok: z.integer(),
+      refused: z.integer(),
+      error: z.integer(),
+    }),
+  ),
+  /**
    * The figures come from a sampled backend.
    */
   estimated: z.boolean(),

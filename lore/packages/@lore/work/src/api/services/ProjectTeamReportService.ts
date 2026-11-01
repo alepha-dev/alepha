@@ -1,4 +1,4 @@
-import { ProjectAnalytics } from "@lore/core/api";
+import { ProjectAnalytics, ProjectAutomationReport } from "@lore/core/api";
 import type { ReportsQuery, ReportsTeam } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -22,6 +22,7 @@ export class ProjectTeamReportService {
   protected readonly reports = $inject(ProjectReportsService);
   protected readonly datasets = $inject(ProjectAnalytics);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly automations = $inject(ProjectAutomationReport);
 
   /**
    * The figure an activity point feeds, by `type:action`.
@@ -40,18 +41,31 @@ export class ProjectTeamReportService {
   };
 
   async report(projectId: number, query: ReportsQuery): Promise<ReportsTeam> {
-    const [people, scope, activity] = await Promise.all([
-      this.reports.membersOf(projectId),
-      this.reports.scopeOf(projectId, query),
-      this.datasets.activity.query({
-        // An analytics query always has a lower bound: "all" is all it keeps.
-        since: query.from?.slice(0, 10) ?? "2000-01-01",
-        ...(query.to ? { until: query.to.slice(0, 10) } : {}),
-        where: { project: String(projectId) },
-        groupBy: ["actor", "type", "action", "channel"],
-        select: { count: "sum" },
-      }),
-    ]);
+    const since = query.from?.slice(0, 10) ?? "2000-01-01";
+    const until = query.to ? { until: query.to.slice(0, 10) } : {};
+    const project = String(projectId);
+    const [people, scope, activity, heatmap, mcp, automations] =
+      await Promise.all([
+        this.reports.membersOf(projectId),
+        this.reports.scopeOf(projectId, query),
+        this.datasets.activity.query({
+          // An analytics query always has a lower bound: "all" is all it keeps.
+          since,
+          ...until,
+          where: { project },
+          groupBy: ["actor", "type", "action", "channel"],
+          select: { count: "sum" },
+        }),
+        this.heatmap(project, since, until),
+        this.datasets.mcpCalls.query({
+          since,
+          ...until,
+          where: { project },
+          groupBy: ["tool", "outcome"],
+          select: { count: "sum" },
+        }),
+        this.automations.read(projectId, query),
+      ]);
     const open = await this.quests.findMany({
       where: {
         ...scope,
@@ -120,8 +134,64 @@ export class ProjectTeamReportService {
       channels: [...channels]
         .map(([channel, count]) => ({ channel, count }))
         .toSorted((a, b) => b.count - a.count),
-      estimated: activity.estimated === true,
+      heatmap,
+      automations,
+      mcp: this.mcpTools(mcp.rows),
+      estimated: activity.estimated === true || mcp.estimated === true,
     };
+  }
+
+  /**
+   * Writes per weekday and hour. Hours exist in the hot tier alone, so the
+   * window stops at its 30 days: a rolled row would answer in days, under a key
+   * that folds into no cell.
+   */
+  protected async heatmap(
+    project: string,
+    since: string,
+    until: { until?: string },
+  ): Promise<number[][]> {
+    const hot = this.dt.now().subtract(30, "day").toISOString().slice(0, 10);
+    const { rows } = await this.datasets.activity.query({
+      since: since > hot ? since : hot,
+      ...until,
+      where: { project },
+      groupBy: ["hour"],
+      select: { count: "sum" },
+    });
+    const grid = Array.from({ length: 7 }, () =>
+      Array.from({ length: 24 }, () => 0),
+    );
+    for (const row of rows) {
+      const key = String(row.hour);
+      const at = new Date(`${key.slice(0, 13)}:00:00.000Z`);
+      const hour = at.getUTCHours();
+      const cells = grid[(at.getUTCDay() + 6) % 7];
+      if (cells) {
+        cells[hour] = (cells[hour] ?? 0) + (Number(row.count) || 0);
+      }
+    }
+    return grid;
+  }
+
+  protected mcpTools(rows: Array<Record<string, unknown>>): ReportsTeam["mcp"] {
+    const tools = new Map<string, ReportsTeam["mcp"][number]>();
+    for (const row of rows) {
+      const tool = String(row.tool);
+      const entry = tools.get(tool) ?? { tool, ok: 0, refused: 0, error: 0 };
+      const count = Number(row.count) || 0;
+      if (row.outcome === "refused") {
+        entry.refused += count;
+      } else if (row.outcome === "error") {
+        entry.error += count;
+      } else {
+        entry.ok += count;
+      }
+      tools.set(tool, entry);
+    }
+    const calls = (entry: ReportsTeam["mcp"][number]) =>
+      entry.ok + entry.refused + entry.error;
+    return [...tools.values()].toSorted((a, b) => calls(b) - calls(a));
   }
 }
 

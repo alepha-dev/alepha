@@ -239,6 +239,8 @@ export default defineConfig({
         "reports.backlog.age.",
         "reports.summary.section.",
         "reports.team.channel.",
+        "reports.team.day.",
+        "reports.team.run.",
         "reports.team.column.",
         "reports.team.sort.",
         // Catalogue-defined preset keys, slot names and channel choices (#E43).
