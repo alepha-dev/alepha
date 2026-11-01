@@ -6,6 +6,7 @@ import {
   CoreRouter,
   hasCapability,
   canInProject,
+  ProjectPageSkeleton,
   RedirectPage,
   ReportsTabRegistry,
   ReportsUrlQuery,
@@ -149,6 +150,7 @@ export class WorkRouter {
   });
 
   projectQuest = $pageProject({
+    loading: ProjectPageSkeleton,
     path: "/quests/:shortId",
     schema: {
       params: z.object({
@@ -269,6 +271,7 @@ export class WorkRouter {
   });
 
   projectEpic = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectEpic",
     // `epicNumber`, NOT `number`: route params must be unique across the
     // whole route table, or two routes with different param names at the

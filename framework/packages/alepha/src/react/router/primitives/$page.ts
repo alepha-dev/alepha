@@ -12,7 +12,7 @@ import type { DurationLike } from "alepha/datetime";
 import { KIND, OPTIONS } from "alepha/internal";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
-import type { FC, ReactNode } from "react";
+import type { ComponentType, FC, ReactNode } from "react";
 
 import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 import type { Redirection } from "../errors/Redirection.ts";
@@ -196,6 +196,30 @@ export interface PagePrimitiveOptions<
    * and enable code-splitting.
    */
   lazy?: () => Promise<{ default: FC<TProps & TPropsParent> }>;
+
+  /**
+   * Shown in this page's slot when a navigation to it takes longer than 200 ms
+   * (`reactPageOptions.loadingDelay`), with the layouts above it staying in
+   * place. A page without one uses its nearest parent's.
+   *
+   * A plain component, never lazy: a skeleton that has to be fetched is not
+   * instant. It lands in the static graph, so keep it light.
+   *
+   * It only replaces a page for another page. A query change or
+   * `router.invalidate` keeps the page on screen. The URL does not move early:
+   * the address bar stays on the old page until the new one is ready.
+   *
+   * It is also the page's `<Suspense>` fallback.
+   *
+   * ```ts
+   * invoices = $page({
+   *   path: "/invoices",
+   *   loading: () => <TableSkeleton />,
+   *   lazy: () => import("./Invoices.tsx"),
+   * });
+   * ```
+   */
+  loading?: ComponentType;
 
   /**
    * Attach child pages to create nested routes, adopting them as children of

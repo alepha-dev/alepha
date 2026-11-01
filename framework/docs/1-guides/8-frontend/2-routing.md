@@ -528,6 +528,29 @@ A `$page` is also an object you can call from server code:
 - `page.fetch(options?)` requests the page from the running server over HTTP, at its full path with `options.params` and `options.query` filled in, and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`.
 - `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
 
+## Loading UI
+
+`loading` is shown in the page's slot while its loader and its chunk load, with the layouts above it staying in place:
+
+```tsx
+invoices = $page({
+  path: "/invoices",
+  loading: () => <TableSkeleton />,
+  loader: async () => ({ invoices: await this.api.list() }),
+  lazy: () => import("./Invoices.tsx"),
+});
+```
+
+- It appears only if the navigation is still running after 200 ms (`reactPageOptions.loadingDelay`), so a fast page never flashes, and there is no minimum display time.
+- A page without one uses its nearest parent's, so a layout can declare one for all its children.
+- It only stands in for another page. A query change or `router.invalidate` keeps the page on screen, or a filter box would unmount itself on every keystroke.
+- It never shows on the first screen.
+- The URL does not move early: the address bar and the active sidebar entry stay on the old page until the new one is ready.
+- A navigation cancelled by going back restores the page, which remounts.
+- It is a plain component, never lazy: a skeleton that has to be fetched is not instant. It lands in the static graph, so keep it light.
+
+It is also the page's `<Suspense>` fallback.
+
 ## View Transitions
 
 `viewTransition` animates a page's slot when a navigation commits, through React's `<ViewTransition>`. The layouts above the slot do not move, and a browser without the API swaps instantly.

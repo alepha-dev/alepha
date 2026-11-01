@@ -4,6 +4,7 @@ import {
   $pageProject,
   $pageProjectSettings,
   currentProjectAtom,
+  ProjectPageSkeleton,
   RedirectPage,
   CoreRouter,
   ReportsTabRegistry,
@@ -300,6 +301,7 @@ export class DeployRouter {
    * variables, volumes and settings. Two segments, like an app instance.
    */
   projectStackEnvironment = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectStackEnvironment",
     path: "/stacks/:stack/:env",
     schema: { params: z.object({ stack: z.string(), env: z.string() }) },
@@ -353,6 +355,7 @@ export class DeployRouter {
    * arrives missing.
    */
   projectApp = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectApp",
     path: "/apps/:app/:env",
     children: () => [

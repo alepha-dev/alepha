@@ -7,7 +7,7 @@ import { AlephaReactHead } from "alepha/react/head";
 import { AlephaServer, type ServerRequest } from "alepha/server";
 import { AlephaServerEtag } from "alepha/server/etag";
 import { AlephaServerLinks } from "alepha/server/links";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import { $page } from "./primitives/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
@@ -145,6 +145,18 @@ declare module "alepha" {
     "react:transition:begin": {
       previous: ReactRouterState;
       state: ReactRouterState;
+    };
+    /**
+     * The first layer of a navigation that will not be the page on screen,
+     * announced before its loader runs. `index` is the `NestedView` it lands
+     * in, `loading` what the page declared, and `delay` how long to wait
+     * before showing it. Never on a query change, an invalidation or a first
+     * screen, where the page stays or there is none.
+     */
+    "react:layer:requested": {
+      index: number;
+      loading?: ComponentType;
+      delay: number;
     };
     /**
      * Fires when a route transition has succeeded.

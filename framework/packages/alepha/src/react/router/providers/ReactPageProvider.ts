@@ -17,7 +17,12 @@ import { $logger } from "alepha/logger";
 import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";
 import { currentUserAtom } from "alepha/security";
-import { createElement, type ReactNode, StrictMode } from "react";
+import {
+  type ComponentType,
+  createElement,
+  type ReactNode,
+  StrictMode,
+} from "react";
 
 import { loginRoutesAtom } from "../atoms/loginRoutesAtom.ts";
 import ErrorViewer from "../components/ErrorViewer.tsx";
@@ -61,10 +66,19 @@ export const reactPageOptions = $atom({
      * @default "\\.[a-zA-Z0-9]{1,10}$"
      */
     staticFilePattern: z.string(),
+    /**
+     * How long a navigation may run, in milliseconds, before the page's
+     * `loading` component replaces it in its slot. A navigation faster than
+     * this never shows one.
+     *
+     * @default 200
+     */
+    loadingDelay: z.number(),
   }),
   default: {
     strictMode: true,
     staticFilePattern: "\\.[a-zA-Z0-9]{1,10}$",
+    loadingDelay: 200,
   },
 });
 
@@ -320,6 +334,11 @@ export class ReactPageProvider {
 
     let forceRefresh = false;
     let identity = "";
+    let announced = false;
+
+    // What is on screen, not `previous`: `invalidate` and a forced push hand
+    // over an empty `previous` for a page that stays.
+    const committed = this.alepha.store.get("alepha.react.router.state");
 
     for (let i = 0; i < stack.length; i++) {
       const it = stack[i];
@@ -400,6 +419,22 @@ export class ReactPageProvider {
 
         // part is different, force refresh of next layers
         forceRefresh = true;
+      }
+
+      // The first layer that becomes another page. A layer that only re-runs
+      // stays on screen, or a filter box would unmount itself on a keystroke.
+      if (
+        !announced &&
+        committed &&
+        committed.name !== "offline" &&
+        committed.layers[i]?.key !== it.key
+      ) {
+        announced = true;
+        await this.alepha.events.emit("react:layer:requested", {
+          index: i,
+          loading: this.getLoading(route),
+          delay: this.options.loadingDelay,
+        });
       }
 
       // redirect shorthand
@@ -629,6 +664,17 @@ export class ReactPageProvider {
     while (parent) {
       if (parent.errorHandler) return parent.errorHandler;
       parent = parent.parent;
+    }
+  }
+
+  /**
+   * The nearest `loading` for a page: its own, else the closest parent's.
+   */
+  protected getLoading(route: PageRoute): ComponentType | undefined {
+    let current: PageRoute | undefined = route;
+    while (current) {
+      if (current.loading) return current.loading;
+      current = current.parent;
     }
   }
 
