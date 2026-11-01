@@ -1,6 +1,8 @@
 package proxy
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,8 +17,9 @@ TCP forwards raw TCP ports to stack services: `x-lore.tcp: 8883` opens 8883 on
 every interface and forwards each connection to the service's loopback port.
 
 Opt-in per service, because it is the one door Bay opens that its HTTP proxy
-does not guard: no Host routing, no TLS termination, the protocol is the
-service's own (MQTT over TLS, a game server).
+does not guard: no Host routing, the protocol is the service's own (MQTT, a
+game server). TLS is the service's own too, unless `x-lore.tls` asks Bay to
+terminate it, since Bay is what holds the certificates on a host.
 */
 type TCP struct {
 	log       *slog.Logger
@@ -25,9 +28,20 @@ type TCP struct {
 }
 
 type tcpListener struct {
-	ln     net.Listener
-	target int
+	ln  net.Listener
+	fwd Forward
 }
+
+// Forward is where a public port leads.
+type Forward struct {
+	// Target is the service's loopback port.
+	Target int
+	// TLS terminates TLS on the public port when set.
+	TLS *tls.Config
+}
+
+// tlsHandshakeTimeout bounds a client that connects and never says hello.
+const tlsHandshakeTimeout = 10 * time.Second
 
 // NewTCP returns a forwarder with nothing open.
 func NewTCP(log *slog.Logger) *TCP {
@@ -39,7 +53,7 @@ Sync makes the open listeners exactly `forwards` (public port -> loopback
 port): new ones are opened, gone ones closed, moved targets repointed without
 dropping the listener. Answers the ports that could not be opened.
 */
-func (t *TCP) Sync(forwards map[int]int) map[int]error {
+func (t *TCP) Sync(forwards map[int]Forward) map[int]error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	failed := map[int]error{}
@@ -49,9 +63,9 @@ func (t *TCP) Sync(forwards map[int]int) map[int]error {
 			delete(t.listeners, port)
 		}
 	}
-	for port, target := range forwards {
+	for port, fwd := range forwards {
 		if l, ok := t.listeners[port]; ok {
-			l.target = target
+			l.fwd = fwd
 			continue
 		}
 		ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
@@ -59,7 +73,7 @@ func (t *TCP) Sync(forwards map[int]int) map[int]error {
 			failed[port] = err
 			continue
 		}
-		l := &tcpListener{ln: ln, target: target}
+		l := &tcpListener{ln: ln, fwd: fwd}
 		t.listeners[port] = l
 		go t.serve(port, l)
 	}
@@ -84,14 +98,27 @@ func (t *TCP) serve(port int, l *tcpListener) {
 			return
 		}
 		t.mu.Lock()
-		target := l.target
+		fwd := l.fwd
 		t.mu.Unlock()
-		go forward(conn, target, t.log, port)
+		go forward(conn, fwd, t.log, port)
 	}
 }
 
-func forward(client net.Conn, target int, log *slog.Logger, port int) {
+func forward(client net.Conn, fwd Forward, log *slog.Logger, port int) {
 	defer client.Close()
+	target := fwd.Target
+	if fwd.TLS != nil {
+		conn := tls.Server(client, fwd.TLS)
+		ctx, cancel := context.WithTimeout(context.Background(), tlsHandshakeTimeout)
+		defer cancel()
+		if err := conn.HandshakeContext(ctx); err != nil {
+			if log != nil {
+				log.Debug("tcp tls handshake failed", "port", port, "err", err)
+			}
+			return
+		}
+		client = conn
+	}
 	upstream, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(target)), 5*time.Second)
 	if err != nil {
 		if log != nil {
@@ -103,7 +130,7 @@ func forward(client net.Conn, target int, log *slog.Logger, port int) {
 	done := make(chan struct{}, 2)
 	pipe := func(dst, src net.Conn) {
 		_, _ = io.Copy(dst, src)
-		if c, ok := dst.(*net.TCPConn); ok {
+		if c, ok := dst.(interface{ CloseWrite() error }); ok {
 			_ = c.CloseWrite()
 		}
 		done <- struct{}{}

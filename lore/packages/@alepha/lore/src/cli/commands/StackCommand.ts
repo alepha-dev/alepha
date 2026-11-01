@@ -960,10 +960,15 @@ export class StackCommand {
     root: string,
     file: string,
   ): Promise<Array<{ key: string; value: string }>> {
-    if (!(await this.fs.exists(this.fs.join(root, file)))) {
+    const path = this.fs.resolve(root, file);
+    if (!(await this.fs.exists(path))) {
       throw new AlephaError(`${file} does not exist.`);
     }
-    const vars = await this.envUtils.parseEnv(root, [file]);
+    // Split again: parseEnv joins its names to a directory, so a path that
+    // is absolute would land under `root`.
+    const vars = await this.envUtils.parseEnv(this.fs.resolve(path, ".."), [
+      path.slice(path.lastIndexOf("/") + 1),
+    ]);
     const pairs = Object.entries(vars).filter(
       ([, value]) => typeof value === "string" && value !== "",
     );

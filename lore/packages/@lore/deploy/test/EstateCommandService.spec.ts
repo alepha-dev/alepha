@@ -35,6 +35,10 @@ class MemoryEstateCommandTransport extends EstateCommandTransport {
     estateId: string;
     frame: EstateCommandFrame;
   }> = [];
+  /**
+   * Runs inside the push: a machine that answers before the push returns.
+   */
+  public onPush?: (frame: EstateCommandFrame) => Promise<void>;
 
   override async push(
     estate: Estate,
@@ -46,6 +50,7 @@ class MemoryEstateCommandTransport extends EstateCommandTransport {
       estateId: estate.id,
       frame: frame as EstateCommandFrame,
     });
+    await this.onPush?.(frame as EstateCommandFrame);
     return this.connected.has(estate.id);
   }
 }
@@ -282,6 +287,37 @@ describe("EstateCommandService, acknowledgements", () => {
     });
     expect(echo?.status).toBe("done");
     expect(echo?.reason).toBeUndefined();
+  });
+
+  it("keeps the ack of a machine that answers before the push returns", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const estate = await createEstate(ctx, owner, "fast");
+    ctx.transport.connected.add(estate.id);
+    let during: string | undefined;
+    ctx.transport.onPush = async (frame) => {
+      // What the pull endpoints read: a `pending` row would answer a 404.
+      const row = await ctx.repos.commands.getOne({
+        where: { id: { eq: frame.id } },
+      });
+      during = row.status;
+      await ctx.service.ack(estate.id, {
+        id: frame.id,
+        status: "failed",
+        reason: "could not download",
+      });
+    };
+
+    const command = await ctx.service.enqueue(
+      estate,
+      { kind: "restart", payload: { app: "demo", environment: "production" } },
+      owner.id,
+    );
+
+    expect(during).toBe("sent");
+    expect(command.status).toBe("failed");
+    expect(command.reason).toBe("could not download");
   });
 
   it("keeps a failure's reason, and ignores an ack from an estate that does not hold the command", async ({

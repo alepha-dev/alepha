@@ -91,3 +91,16 @@ func TestParseBackupRestore(t *testing.T) {
 		}
 	})
 }
+
+func TestParseXLoreTLS(t *testing.T) {
+	x, err := parseXLore("broker", map[string]any{"tcp": 8883, "tls": true})
+	if err != nil || !x.TLS || x.TCP != 8883 {
+		t.Fatalf("x = %+v, err = %v", x, err)
+	}
+	if _, err := parseXLore("broker", map[string]any{"tls": true}); err == nil {
+		t.Fatal("tls with no tcp was accepted")
+	}
+	if _, err := parseXLore("broker", map[string]any{"tcp": 8883, "tls": "yes"}); err == nil {
+		t.Fatal("a tls that is no boolean was accepted")
+	}
+}

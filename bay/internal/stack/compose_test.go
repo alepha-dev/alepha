@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,11 +134,29 @@ func TestLoad(t *testing.T) {
 	t.Run("tags are pinned to digests, a digest is kept", func(t *testing.T) {
 		dir := bundleDir(t, map[string]string{"compose.yml": "services:\n  a:\n    image: nginx:1\n  b:\n    image: busybox@sha256:abc\n"})
 		l, _ := Load(dir, "p-production", nil)
-		pinned, err := l.PinImages(func(image string) (string, error) { return image + "@sha256:pinned", nil })
+		pinned, err := l.PinImages(func(image string) (string, error) { return image + "@sha256:pinned", nil }, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if pinned["a"] != "nginx:1@sha256:pinned" || pinned["b"] != "busybox@sha256:abc" {
+			t.Fatalf("pinned = %v", pinned)
+		}
+	})
+
+	t.Run("pull_policy never pins what the host holds, and pulls nothing", func(t *testing.T) {
+		dir := bundleDir(t, map[string]string{"compose.yml": "services:\n  a:\n    image: nginx:1\n    pull_policy: never\n"})
+		l, err := Load(dir, "p-production", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pinned, err := l.PinImages(
+			func(image string) (string, error) { return "", fmt.Errorf("%s was pulled", image) },
+			func(string) (string, error) { return "sha256:local", nil },
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pinned["a"] != "sha256:local" {
 			t.Fatalf("pinned = %v", pinned)
 		}
 	})

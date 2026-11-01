@@ -161,19 +161,25 @@ export class EstateCommandService {
   }
 
   /**
-   * Push one command through the transport, and record `sent` if it landed.
-   * A command that could not be pushed stays `pending` for the
-   * reconciliation; nothing is lost by an offline machine.
+   * Push one command through the transport. `sent` is recorded first: a
+   * machine can call back for the command's bundle, or ack it, before the
+   * push returns, and a row still `pending` would refuse the one and write
+   * over the other. A command that could not be pushed goes back to `pending`
+   * for the reconciliation; nothing is lost by an offline machine.
    */
   async dispatch(
     estate: Estate,
     command: EstateCommand,
   ): Promise<EstateCommand> {
-    const pushed = await this.transport.push(estate, this.frameOf(command));
-    if (!pushed) {
-      return command;
+    const sent = await this.markSent(command);
+    if (await this.transport.push(estate, this.frameOf(command))) {
+      return this.commands.getOne({ where: { id: { eq: command.id } } });
     }
-    return this.markSent(command);
+    await this.commands.updateMany(
+      { id: { eq: command.id }, status: { eq: "sent" } },
+      { status: "pending", sentAt: command.sentAt ?? null },
+    );
+    return { ...sent, status: "pending", sentAt: command.sentAt };
   }
 
   /**
@@ -352,18 +358,21 @@ export class EstateCommandService {
         ? { baseDomain: command.payload.baseDomain }
         : {}),
       ...(command.payload.service ? { service: command.payload.service } : {}),
+      ...(command.payload.logs ? { logs: command.payload.logs } : {}),
     };
   }
 
   /**
-   * Record that a frame reached a socket. Public because the socket handler
-   * pushes the reconciliation itself, through `reply()`, and has to say so.
+   * Record that a frame is going to a socket, before it goes. Public because
+   * the socket handler pushes the reconciliation itself, through `reply()`,
+   * and has to say so.
    */
   async markSent(command: EstateCommand): Promise<EstateCommand> {
-    await this.commands.updateById(command.id, {
-      status: "sent",
-      sentAt: command.sentAt ?? this.now(),
-    });
+    // Only what is still `pending`: a re-pushed command may be running.
+    await this.commands.updateMany(
+      { id: { eq: command.id }, status: { eq: "pending" } },
+      { status: "sent", sentAt: command.sentAt ?? this.now() },
+    );
     return this.commands.getOne({ where: { id: { eq: command.id } } });
   }
 

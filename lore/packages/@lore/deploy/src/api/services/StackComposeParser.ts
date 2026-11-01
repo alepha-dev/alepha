@@ -41,6 +41,7 @@ export class StackComposeParser {
     "port",
     "runtime",
     "tcp",
+    "tls",
     "backup",
   ];
 
@@ -143,6 +144,7 @@ export class StackComposeParser {
       routes: lore.routes ?? [],
       port: lore.port,
       tcp: lore.tcp,
+      tls: lore.tls,
       ports: this.ports(svc.ports),
       mounts: this.mounts(svc.volumes, bundle, say),
       dependsOn: this.dependsOn(svc.depends_on),
@@ -167,12 +169,15 @@ export class StackComposeParser {
   protected xLore(
     raw: Record<string, unknown> | undefined,
     say: (message: string) => void,
-  ): Pick<StackModelService, "app" | "port" | "tcp" | "runtime" | "backup"> & {
+  ): Pick<
+    StackModelService,
+    "app" | "port" | "tcp" | "tls" | "runtime" | "backup"
+  > & {
     routes?: string[];
   } {
     const out: Pick<
       StackModelService,
-      "app" | "port" | "tcp" | "runtime" | "backup"
+      "app" | "port" | "tcp" | "tls" | "runtime" | "backup"
     > & { routes?: string[] } = {};
     if (!raw) {
       return out;
@@ -221,6 +226,13 @@ export class StackComposeParser {
             out[key] = value;
           }
           break;
+        case "tls":
+          if (typeof value !== "boolean") {
+            say("x-lore.tls must be true or false");
+          } else {
+            out.tls = value;
+          }
+          break;
         case "runtime":
           if (typeof value !== "string" || !value || /\s/.test(value)) {
             say("x-lore.runtime must be an image reference");
@@ -236,6 +248,9 @@ export class StackComposeParser {
             `x-lore.${key} is not a field Lore knows (${StackComposeParser.X_LORE_KEYS.join(", ")})`,
           );
       }
+    }
+    if (out.tls && !out.tcp) {
+      say("x-lore.tls terminates TLS on x-lore.tcp: name the port there");
     }
     if (out.runtime && !out.app) {
       say("x-lore.runtime only applies to an app service (x-lore.app)");

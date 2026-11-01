@@ -429,6 +429,23 @@ func (d *Docker) ResolveDigestAuth(tag, auth string) (string, error) {
 }
 
 /*
+LocalImage pins an image a service declares `pull_policy: never` for: one the
+host holds and no registry serves (`docker load`). The id is what pins it,
+under either image store. A digest cannot tell such an image from a pulled
+one, since the containerd store gives a loaded image a repo digest too, so
+the file says so and Bay never guesses from a failed pull.
+*/
+func (d *Docker) LocalImage(tag string) (string, error) {
+	var info struct {
+		ID string `json:"Id"`
+	}
+	if err := d.api.do("GET", "/images/"+tag+"/json", nil, nil, &info, dockerCallTimeout); err != nil {
+		return "", fmt.Errorf("image %s is not on this host, and pull_policy: never forbids a pull: %w", tag, err)
+	}
+	return info.ID, nil
+}
+
+/*
 sameRepo compares two repository names the way the daemon spells them: Docker
 Hub's official images may come back as `node` or `docker.io/library/node`.
 */

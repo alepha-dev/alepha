@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
 import { EstateCommandController, EstateController } from "../src/api/index.ts";
+import { EstateCommandService } from "../src/api/services/EstateCommandService.ts";
 import {
   appInstances,
   artifacts,
@@ -498,6 +499,9 @@ describe("EstateCommandController, logs", () => {
 
     expect(command.kind).toBe("logs");
     expect(command.payload.logs).toEqual({ lines: 200, grep: "ERROR" });
+    // The frame is what the machine reads: without it Bay has no line count.
+    const frame = ctx.alepha.inject(EstateCommandService).frameOf(command);
+    expect(frame.logs).toEqual({ lines: 200, grep: "ERROR" });
   });
 
   /**
