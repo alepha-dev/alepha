@@ -31,8 +31,8 @@ import {
  *
  * Keeping the payer on the page does not remove the trip to their bank: 3-D
  * Secure still redirects and comes back, and the return is now ours to handle
- * rather than the PSP's. And the settlement race widens — the browser can die
- * between confirming and the webhook landing — which is why the order is created
+ * rather than the PSP's. And the settlement race widens - the browser can die
+ * between confirming and the webhook landing - which is why the order is created
  * *before* the handoff and settled *only* by the webhook. The client's success
  * callback is a hint for the UI, never the record.
  */
@@ -43,7 +43,7 @@ export class EmbeddedCheckoutPayment extends CheckoutPaymentProvider {
     return {
       modes: ["embedded"],
       // The checkout owns the address and the tax, exactly as in the redirect
-      // flow — so that swapping between the two moves no forms.
+      // flow - so that swapping between the two moves no forms.
       collectsShippingAddress: false,
       computesTax: false,
     };

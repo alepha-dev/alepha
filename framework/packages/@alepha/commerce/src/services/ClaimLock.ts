@@ -66,7 +66,7 @@ export class ClaimLock {
    *   every key of an order up front, sorted, through {@link acquire}.
    */
   public async run<R>(
-    key: ClaimLockKey,
+    key: ClaimLockKey | ClaimLockKey[],
     decide: (locked: boolean) => Promise<R>,
   ): Promise<R> {
     if (!this.locks) {
@@ -74,7 +74,7 @@ export class ClaimLock {
     }
 
     return this.db.transactional(async () => {
-      await this.acquire([key]);
+      await this.acquire([key].flat());
       return decide(true);
     });
   }

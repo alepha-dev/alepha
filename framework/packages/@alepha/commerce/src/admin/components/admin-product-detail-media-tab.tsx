@@ -30,7 +30,7 @@ export interface AdminProductDetailMediaTabProps {
  * The product's photographs.
  *
  * `products.images` is ordered and the first entry is what a listing shows, so
- * order is content, not presentation — which is why this offers explicit
+ * order is content, not presentation - which is why this offers explicit
  * move-left/move-right controls rather than leaving the sequence to whatever
  * order the files were uploaded in. Drag-and-drop would be nicer and needs a
  * dependency this package does not otherwise carry.

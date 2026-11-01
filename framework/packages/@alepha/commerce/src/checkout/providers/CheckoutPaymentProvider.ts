@@ -4,7 +4,7 @@ import type { CheckoutSessionEntity } from "../entities/checkoutSessions.ts";
  * What a payment front-end needs in order to render itself.
  *
  * Two shapes, because there are genuinely two ways to take a card and the
- * difference is not cosmetic — one hands the browser a URL to leave for, the
+ * difference is not cosmetic - one hands the browser a URL to leave for, the
  * other hands it a secret to mount a field with.
  */
 export type PaymentHandoff =
@@ -39,7 +39,7 @@ export type PaymentHandoff =
  *
  * ### Why capabilities are declared rather than assumed
  *
- * The temptation is to widen `PaymentProvider` with everything Stripe can do —
+ * The temptation is to widen `PaymentProvider` with everything Stripe can do -
  * line items, shipping-option collection, automatic tax. But those have no
  * Mollie equivalent, so the interface would promise what only one
  * implementation delivers, and Mollie would become a provider in name only.
@@ -54,7 +54,7 @@ export interface PaymentCapabilities {
   modes: Array<PaymentHandoff["mode"]>;
   /**
    * Whether the PSP can collect the shipping address itself. When false, the
-   * checkout must collect it — which is the case this PoC assumes.
+   * checkout must collect it - which is the case this PoC assumes.
    */
   collectsShippingAddress: boolean;
   /**

@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
   useDialog,
+  useToast,
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
@@ -21,6 +22,7 @@ import { useI18n } from "alepha/react/i18n";
 import {
   CheckCheck,
   CircleDot,
+  Eraser,
   PackageCheck,
   Receipt,
   Truck,
@@ -30,6 +32,7 @@ import { useCallback, useState } from "react";
 import type { OrderEntity, OrderStatus } from "../../entities/orders.ts";
 import { orderStatusEnum } from "../../schemas/orderStatusSchema.ts";
 import type { AdminOrderController } from "../controllers/AdminOrderController.ts";
+import { AdminOrderRefundSheet } from "./admin-order-refund-sheet.tsx";
 
 const formatPrice = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
@@ -63,7 +66,7 @@ const STATUS_VARIANT: Record<
  * Order management: see them, ship them, refund them.
  *
  * Every mutating action is gated by a confirmation, and the labels say what will
- * happen rather than what the endpoint is called — "Rembourser 95,90 €", not
+ * happen rather than what the endpoint is called - "Rembourser 95,90 €", not
  * "Refund". An operator clicking through a list of orders needs the amount in the
  * dialog, because that is the fact they are agreeing to.
  */
@@ -71,8 +74,14 @@ export const AdminOrders = () => {
   const client = useClient<AdminOrderController>();
   const { l, tr } = useI18n();
   const dialog = useDialog();
+  const toast = useToast();
 
   const [detailOf, setDetailOf] = useState<string>();
+  const [refunding, setRefunding] = useState<{
+    order: OrderEntity;
+    refresh: () => void;
+    cancelLines?: boolean;
+  }>();
 
   /**
    * The table's only filter, so it is on the bar from the start: a default
@@ -80,6 +89,16 @@ export const AdminOrders = () => {
    * so a status added there is offered here without a second edit.
    */
   const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: {
+          title: tr("commerce.admin.searchNumber", {
+            default: "Search by order number",
+          }),
+        },
+      },
+    },
     status: {
       schema: orderStatusEnum,
       mode: "default",
@@ -107,6 +126,7 @@ export const AdminOrders = () => {
           page: params.page,
           size: params.size,
           ...(params.filters?.status ? { status: params.filters.status } : {}),
+          ...(params.filters?.search ? { q: params.filters.search } : {}),
         },
       }),
     [client],
@@ -160,35 +180,6 @@ export const AdminOrders = () => {
     [client],
   );
 
-  const refund = useConfirmedAction<[OrderEntity, () => void]>(
-    {
-      confirm: (order) => {
-        // What the button will actually take back: the rest, on an order that
-        // has already had part of it refunded. The amount is the fact the
-        // operator is agreeing to, so it has to be the real one.
-        const remaining = Math.max(0, order.total - order.refundedTotal);
-        return {
-          title: tr("commerce.admin.refundTitle", { default: "Refund" }),
-          description: tr("commerce.admin.refundConfirm", {
-            default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
-            args: [formatPrice(remaining, order.currency)],
-          }),
-          destructive: true,
-        };
-      },
-      handler: async (order, refresh) => {
-        await client.commerceAdminOrderRefund({
-          params: { id: order.id },
-          body: {},
-        });
-        refresh();
-      },
-      success: () =>
-        tr("commerce.admin.refunded", { default: "Order refunded." }),
-    },
-    [client],
-  );
-
   return (
     <AdminPage>
       <DataTable<OrderEntity, typeof filterFields>
@@ -212,15 +203,41 @@ export const AdminOrders = () => {
             onClick: (item, ctx) => void deliver.run(item, ctx.refresh),
           },
           {
+            label: tr("commerce.admin.cancelLines", {
+              default: "Cancel lines",
+            }),
+            icon: Eraser,
+            disabled: () =>
+              Boolean(order.shippedAt) ||
+              !["paid", "fulfilled", "partially_refunded"].includes(
+                order.status,
+              ),
+            onClick: (item, ctx) =>
+              setRefunding({
+                order: item,
+                refresh: ctx.refresh,
+                cancelLines: true,
+              }),
+          },
+          {
             label: tr("commerce.admin.refund", { default: "Refund" }),
             icon: Receipt,
             destructive: true,
             disabled: () =>
               ["pending", "cancelled", "refunded"].includes(order.status),
-            onClick: (item, ctx) => void refund.run(item, ctx.refresh),
+            onClick: (item, ctx) =>
+              setRefunding({ order: item, refresh: ctx.refresh }),
           },
         ]}
         columns={{
+          number: {
+            label: tr("commerce.admin.colNumber", { default: "Order" }),
+            cell: (o) => (
+              <span className="font-mono text-xs">
+                {o.number ?? o.id.slice(0, 8).toUpperCase()}
+              </span>
+            ),
+          },
           createdAt: {
             label: tr("commerce.admin.colWhen", { default: "Date" }),
             sortable: true,
@@ -268,7 +285,7 @@ export const AdminOrders = () => {
             label: tr("commerce.admin.colShipping", { default: "Shipping" }),
             cell: (o) => (
               <div className="flex flex-col">
-                <span className="text-xs">{o.shippingMethod ?? "—"}</span>
+                <span className="text-xs">{o.shippingMethod ?? "-"}</span>
                 {o.trackingNumber ? (
                   <span className="text-muted-foreground font-mono text-xs">
                     {o.trackingNumber}
@@ -279,6 +296,22 @@ export const AdminOrders = () => {
           },
         }}
       />
+
+      {refunding ? (
+        <AdminOrderRefundSheet
+          key={refunding.order.id}
+          order={refunding.order}
+          cancelLines={refunding.cancelLines}
+          onClose={() => setRefunding(undefined)}
+          onRefunded={() => {
+            refunding.refresh();
+            setRefunding(undefined);
+            toast.success(
+              tr("commerce.admin.refunded", { default: "Order refunded." }),
+            );
+          }}
+        />
+      ) : null}
 
       {detailOf ? (
         <AdminOrderSheet
@@ -299,7 +332,7 @@ interface AdminOrderSheetProps {
 /**
  * One order, in full: what was bought, where it goes, what was charged.
  *
- * A sheet rather than a route, for the same reason as the product editor — an
+ * A sheet rather than a route, for the same reason as the product editor - an
  * operator working through a morning's orders should not lose the list. The lines
  * come from the order's own snapshot, so an order placed a year ago still shows
  * the name and price that were agreed then.
@@ -331,7 +364,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <SheetTitle className="font-mono text-sm">
-            {orderId.slice(0, 8).toUpperCase()}
+            {order?.number ?? orderId.slice(0, 8).toUpperCase()}
           </SheetTitle>
         </SheetHeader>
 
@@ -367,6 +400,12 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                     >
                       <span>
                         {item.name}
+                        {item.variantLabel ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            ({item.variantLabel})
+                          </span>
+                        ) : null}
                         {item.quantity > 1 ? (
                           <span className="text-muted-foreground">
                             {" "}
@@ -376,7 +415,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                       </span>
                       <span className="tabular-nums">
                         {formatPrice(
-                          item.unitPrice * item.quantity,
+                          item.unitPrice * item.quantity - item.discount,
                           order.currency,
                         )}
                       </span>
@@ -385,6 +424,19 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                 </ul>
 
                 <dl className="mt-4 space-y-1 text-sm">
+                  {order.discountTotal > 0 ? (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">
+                        {tr("commerce.admin.discountLine", {
+                          default: "Discount",
+                        })}
+                        {order.promotionCode ? ` · ${order.promotionCode}` : ""}
+                      </dt>
+                      <dd className="tabular-nums">
+                        {formatPrice(-order.discountTotal, order.currency)}
+                      </dd>
+                    </div>
+                  ) : null}
                   {order.shippingTotal > 0 ? (
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">

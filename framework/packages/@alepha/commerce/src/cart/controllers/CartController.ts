@@ -8,11 +8,14 @@ import { CartService } from "../services/CartService.ts";
 const cartLineSchema = z.object({
   lineId: z.uuid(),
   productId: z.uuid(),
+  variantId: z.uuid().optional(),
   lineConfig: z.record(z.text(), z.any()).optional(),
   name: z.text(),
+  variantLabel: z.text().optional(),
   kind: z.text(),
   unitPrice: z.integer(),
   quantity: z.integer(),
+  discount: z.integer(),
   lineTotal: z.integer(),
   image: z.text().optional(),
 });
@@ -20,6 +23,14 @@ const cartLineSchema = z.object({
 const pricedCartSchema = z.object({
   cartId: z.uuid(),
   lines: z.array(cartLineSchema),
+  itemsTotal: z.integer(),
+  discountTotal: z.integer(),
+  discountLabel: z.text().optional(),
+  promotionCode: z.text().optional(),
+  /**
+   * The applied code does not apply any more, and why.
+   */
+  promotionRefused: z.text().optional(),
   subtotal: z.integer(),
   currency: z.text(),
 });
@@ -28,7 +39,7 @@ const pricedCartSchema = z.object({
  * The cart as a storefront sees it.
  *
  * The cart handle lives in a signed, http-only cookie rather than being passed
- * by the client. A client-supplied cart id is an enumeration hole — anyone could
+ * by the client. A client-supplied cart id is an enumeration hole - anyone could
  * read or edit a stranger's basket by guessing a uuid. Signing it means the
  * server minted it.
  */
@@ -63,6 +74,10 @@ export class CartController {
     schema: {
       body: z.object({
         productId: z.uuid(),
+        /**
+         * Required on a product sold by variant.
+         */
+        variantId: z.uuid().optional(),
         quantity: z.integer().min(1).max(999).optional(),
         /**
          * What the line chooses beyond the product, for a kind that takes
@@ -79,7 +94,24 @@ export class CartController {
         body.productId,
         body.quantity ?? 1,
         body.lineConfig,
+        body.variantId,
       );
+      return this.priceOf(cart.id);
+    },
+  });
+
+  public readonly commerceCartSetCurrency = $action({
+    method: "PUT",
+    path: `${this.url}/currency`,
+    group: this.group,
+    description: "Choose the currency the cart pays in",
+    schema: {
+      body: z.object({ currency: z.text({ minLength: 3, maxLength: 3 }) }),
+      response: pricedCartSchema,
+    },
+    handler: async ({ body }) => {
+      const cart = await this.resolveCart();
+      await this.carts.setCurrency(cart.id, body.currency);
       return this.priceOf(cart.id);
     },
   });
@@ -116,6 +148,49 @@ export class CartController {
       return this.priceOf(cart.id);
     },
   });
+
+  public readonly commerceCartApplyCode = $action({
+    method: "PUT",
+    path: `${this.url}/code`,
+    group: this.group,
+    description: "Apply a discount code",
+    schema: {
+      body: z.object({ code: z.text({ minLength: 1, maxLength: 64 }) }),
+      response: pricedCartSchema,
+    },
+    handler: async ({ body }) => {
+      const cart = await this.resolveCart();
+      await this.carts.applyCode(cart.id, body.code);
+      return this.priceOf(cart.id);
+    },
+  });
+
+  public readonly commerceCartRemoveCode = $action({
+    method: "DELETE",
+    path: `${this.url}/code`,
+    group: this.group,
+    description: "Remove the discount code",
+    schema: { response: pricedCartSchema },
+    handler: async () => {
+      const cart = await this.resolveCart();
+      await this.carts.removeCode(cart.id);
+      return this.priceOf(cart.id);
+    },
+  });
+
+  /**
+   * The cart this browser's signed cookie points at, if any. What proves a
+   * guest owns a checkout: the token is signed, so the server minted it.
+   *
+   * Outside a request there is no browser, and so no cart.
+   */
+  public async currentCart() {
+    if (!this.alepha.get("alepha.http.request")) {
+      return undefined;
+    }
+    const token = this.cartCookie.get();
+    return token ? this.carts.findByToken(token) : undefined;
+  }
 
   /**
    * Read the cart the cookie points at, minting one if this visitor has none -
@@ -180,14 +255,22 @@ export class CartController {
       lines: priced.lines.map((l) => ({
         lineId: l.lineId,
         productId: l.productId,
+        variantId: l.variantId,
         lineConfig: l.lineConfig,
         name: l.name,
+        variantLabel: l.variantLabel,
         kind: l.kind,
         unitPrice: l.unitPrice,
         quantity: l.quantity,
+        discount: l.discount,
         lineTotal: l.lineTotal,
         image: l.image,
       })),
+      itemsTotal: priced.itemsTotal,
+      discountTotal: priced.discountTotal,
+      discountLabel: priced.discountLabel,
+      promotionCode: priced.promotionCode,
+      promotionRefused: priced.codeRefusal?.message,
       subtotal: priced.subtotal,
       currency: priced.currency,
     };

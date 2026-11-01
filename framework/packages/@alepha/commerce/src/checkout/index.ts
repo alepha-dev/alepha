@@ -15,11 +15,17 @@ import {
   NoShippingQuoteProvider,
   ShippingQuoteProvider,
 } from "./providers/ShippingQuoteProvider.ts";
+import {
+  VatNumberChecker,
+  ViesVatNumberChecker,
+} from "./providers/VatNumberChecker.ts";
 import { AddressService } from "./services/AddressService.ts";
 import { CheckoutService } from "./services/CheckoutService.ts";
 import { CheckoutSettlementListener } from "./services/CheckoutSettlementListener.ts";
+import { CheckoutSweeper } from "./services/CheckoutSweeper.ts";
 import { HoldSweeper } from "./services/HoldSweeper.ts";
 import { TaxService } from "./services/TaxService.ts";
+import { taxConfig } from "./taxConfigAtom.ts";
 
 export * from "./checkoutConfigAtom.ts";
 export * from "./controllers/CheckoutController.ts";
@@ -31,11 +37,14 @@ export * from "./providers/EmbeddedCheckoutPayment.ts";
 export * from "./providers/OrderDocumentsProvider.ts";
 export * from "./providers/RedirectCheckoutPayment.ts";
 export * from "./providers/ShippingQuoteProvider.ts";
+export * from "./providers/VatNumberChecker.ts";
 export * from "./services/AddressService.ts";
 export * from "./services/CheckoutService.ts";
 export * from "./services/CheckoutSettlementListener.ts";
+export * from "./services/CheckoutSweeper.ts";
 export * from "./services/HoldSweeper.ts";
 export * from "./services/TaxService.ts";
+export * from "./taxConfigAtom.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -48,6 +57,11 @@ declare module "alepha" {
       sessionId: string;
       cartId: string;
       email: string;
+      /**
+       * Whether the buyer agreed to reminders. Capturing an address for the
+       * order is not that.
+       */
+      recoveryConsent: boolean;
     };
 
     /**
@@ -69,7 +83,7 @@ declare module "alepha" {
  *
  * Depends on the cart module and on `alepha/api/payments`, which owns the
  * intent lifecycle and the PSP adapters. Registers hosted-redirect payment by
- * default — the one handoff every PSP supports — leaving an embedded card field
+ * default - the one handoff every PSP supports - leaving an embedded card field
  * to a substitution:
  *
  * ```ts
@@ -92,16 +106,18 @@ export const AlephaCommerceCheckout = $module({
     AlephaApiPayments,
     AlephaApiJobs,
   ],
-  atoms: [checkoutConfig],
+  atoms: [checkoutConfig, taxConfig],
   services: [
     CheckoutPaymentProvider,
     ShippingQuoteProvider,
+    VatNumberChecker,
     OrderDocumentsProvider,
     AddressRulesProvider,
     AddressService,
     CheckoutService,
     CheckoutSettlementListener,
     HoldSweeper,
+    CheckoutSweeper,
     CheckoutController,
     TaxService,
   ],
@@ -109,8 +125,14 @@ export const AlephaCommerceCheckout = $module({
     RedirectCheckoutPayment,
     EmbeddedCheckoutPayment,
     NoShippingQuoteProvider,
+    ViesVatNumberChecker,
   ],
   register: (alepha) => {
+    alepha.with({
+      optional: true,
+      provide: VatNumberChecker,
+      use: ViesVatNumberChecker,
+    });
     alepha.with({
       optional: true,
       provide: CheckoutPaymentProvider,

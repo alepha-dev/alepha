@@ -4,7 +4,7 @@
 export type OrderDocumentSource = (orderId: string) => Promise<string[]>;
 
 /**
- * What documents exist for an order — invoice numbers, in practice.
+ * What documents exist for an order - invoice numbers, in practice.
  *
  * ### Why a registry and not a substitution
  *
@@ -14,7 +14,7 @@ export type OrderDocumentSource = (orderId: string) => Promise<string[]>;
  * its default, and the second got `TooLateSubstitutionError`. Substitution is
  * order-dependent by nature, and two independent plugins cannot be ordered.
  *
- * A collection that modules push into has no such problem — the same shape as
+ * A collection that modules push into has no such problem - the same shape as
  * `ProductKindRegistry` and `RootComponentsProvider`, and for the same reason.
  * A deployment with no invoicing simply has no sources and gets an empty list,
  * which is the correct answer for a POS or a ticketing app.

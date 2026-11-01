@@ -90,6 +90,23 @@ const aRing = (catalog: CatalogService, price = 8900) =>
  * Waits for the settlement job to issue the invoice: issuance is a stage of
  * that job now, landing a beat after the webhook returns.
  */
+/**
+ * Wait for the jobs to have issued this many documents.
+ */
+const invoicesOf = async (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  orderId: string,
+  count: number,
+) => {
+  const deadline = Date.now() + 5_000;
+  let issued = await ctx.invoices.listForOrder(orderId);
+  while (issued.length < count && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    issued = await ctx.invoices.listForOrder(orderId);
+  }
+  return issued;
+};
+
 const sell = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,
@@ -185,7 +202,7 @@ describe("VAT arithmetic", () => {
   it("apportions across tenders without losing a cent", async ({ expect }) => {
     const { vat } = await setup();
 
-    // 10,00 € at 5,5 % beside 20,00 € at 20 %, settled in three equal tenders —
+    // 10,00 € at 5,5 % beside 20,00 € at 20 %, settled in three equal tenders -
     // amounts that divide evenly at neither rate.
     const buckets = vat.ventilate([
       { ttcCents: 1000, rateBps: 550 },
@@ -229,7 +246,7 @@ describe("invoice issuing", () => {
   });
 
   /**
-   * A catalog is routinely mixed-rate — a book at 5.5 % beside a good at 20 %.
+   * A catalog is routinely mixed-rate - a book at 5.5 % beside a good at 20 %.
    * The rate used to come from `TaxService.rateBps()`, which takes no argument,
    * so every line billed at the seller's default and the invoice carried a
    * single bucket that disagreed with what had been sold. The per-rate
@@ -387,8 +404,8 @@ describe("invoice issuing", () => {
   });
 
   // The invoice/order total mismatch guard in `issueForOrder` is unreachable
-  // through the public API — `OrderService.create` derives `total` from the same
-  // lines the invoice bills — so there is no honest test for it. It stays as
+  // through the public API - `OrderService.create` derives `total` from the same
+  // lines the invoice bills - so there is no honest test for it. It stays as
   // defence in depth against a future caller that sets totals by hand.
 
   it("refuses to invoice an unpaid order", async ({ expect }) => {
@@ -438,13 +455,14 @@ describe("credit notes", () => {
     const orderId = await sell(ctx, ring.id);
     await ctx.orders.refund(orderId);
 
-    const issued = await ctx.invoices.listForOrder(orderId);
+    // The credit note is a job, like the invoice.
+    const issued = await invoicesOf(ctx, orderId, 2);
     expect(issued).toHaveLength(2);
 
     const [original, credit] = issued;
     const year = new Date().getFullYear();
     expect(original!.number).toBe(`FA-${year}-000001`);
-    // The next number in the same series — not a reuse of the original's.
+    // The next number in the same series - not a reuse of the original's.
     expect(credit!.number).toBe(`FA-${year}-000002`);
     expect(credit!.creditsInvoiceId).toBe(original!.id);
     expect(credit!.grandTotal).toBe(-original!.grandTotal);
@@ -462,6 +480,7 @@ describe("credit notes", () => {
     await ctx.orders.refund(orderId);
     await ctx.orders.refund(orderId);
 
+    expect(await invoicesOf(ctx, orderId, 2)).toHaveLength(2);
     expect(await ctx.invoices.listForOrder(orderId)).toHaveLength(2);
   });
 });

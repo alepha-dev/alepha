@@ -1,10 +1,20 @@
 import { $inject, AlephaError, SchemaValidator } from "alepha";
-import { $repository, type Page } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  type Page,
+  type SQL,
+  sql,
+} from "alepha/orm";
 
 import { orderItems } from "../entities/orderItems.ts";
 import { type ProductEntity, products } from "../entities/products.ts";
 import { ProductHasOrdersError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
+import type { OptionGroup } from "../schemas/optionGroupSchema.ts";
+import { CategoryService } from "./CategoryService.ts";
+import { PriceListService } from "./PriceListService.ts";
+import { StockService } from "./StockService.ts";
 
 export interface CreateProduct {
   kind?: string;
@@ -13,11 +23,22 @@ export interface CreateProduct {
   description?: string;
   price: number;
   currency?: string;
+  compareAtPrice?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  weightGrams?: number;
+  lengthMm?: number;
+  widthMm?: number;
+  heightMm?: number;
   categoryId?: string;
   /**
    * VAT rate in basis points; omit to bill at the seller's default rate.
    */
   vatRateBps?: number;
+  /**
+   * The choices the product offers; see `VariantService.generate`.
+   */
+  optionGroups?: OptionGroup[];
   /**
    * File ids or URLs; the first is the listing image.
    */
@@ -30,20 +51,52 @@ export interface CreateProduct {
   published?: boolean;
 }
 
+/**
+ * What a form leaves empty to clear: `null`, since an absent field changes
+ * nothing.
+ */
+type Clearable =
+  | "compareAtPrice"
+  | "metaTitle"
+  | "metaDescription"
+  | "weightGrams"
+  | "lengthMm"
+  | "widthMm"
+  | "heightMm";
+
+export type UpdateProduct = Omit<Partial<CreateProduct>, Clearable> & {
+  [K in Clearable]?: CreateProduct[K] | null;
+};
+
 export interface CatalogQuery {
   size?: number;
   page?: number;
   sort?: string;
   kind?: string;
   /**
-   * Narrow to one category.
-   *
-   * `products.categoryId` was writable through {@link CreateProduct} and read
-   * by nothing, so a shop could file its catalogue and then not browse it.
-   * Categories are a plain id here on purpose - there is no category entity,
-   * and the application owns whatever it points at.
+   * Narrow to one category and everything under it.
    */
   categoryId?: string;
+}
+
+/**
+ * What a buyer can ask of the public list, on top of {@link CatalogQuery}.
+ */
+export interface PublicCatalogQuery extends CatalogQuery {
+  /**
+   * Words looked for in the name and the description.
+   */
+  q?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  /**
+   * Only what sells in this currency, the price range read in it.
+   */
+  currency?: string;
+  /**
+   * Only what can be bought now: stock left, or a product no ledger counts.
+   */
+  available?: boolean;
 }
 
 /**
@@ -51,32 +104,35 @@ export interface CatalogQuery {
  *
  * The one rule it enforces: a product's `config` must satisfy the schema
  * declared by the handler that owns its `kind`. Validating on write is what
- * keeps `fulfil` free of defensive parsing — by the time a line is paid for,
+ * keeps `fulfil` free of defensive parsing - by the time a line is paid for,
  * its config has already been proven well-formed.
  */
 export class CatalogService {
   protected readonly repo = $repository(products);
   /**
-   * Read-only, and only for {@link delete}'s guard — whether a product may be
+   * Read-only, and only for {@link delete}'s guard - whether a product may be
    * removed is a catalogue rule that only the order history can answer.
    */
   protected readonly orderItemRepo = $repository(orderItems);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly validator = $inject(SchemaValidator);
+  protected readonly db = $inject(DatabaseProvider);
+  protected readonly categories = $inject(CategoryService);
+  protected readonly stock = $inject(StockService);
+  protected readonly prices = $inject(PriceListService);
 
   public async create(data: CreateProduct): Promise<ProductEntity> {
     const kind = data.kind ?? "good";
+    const config = this.validateConfig(kind, data.config);
     return this.repo.create({
       ...data,
       kind,
-      config: this.validateConfig(kind, data.config),
+      config,
+      tracksStock: this.kinds.get(kind).tracksStock(config),
     });
   }
 
-  public async update(
-    id: string,
-    data: Partial<CreateProduct>,
-  ): Promise<ProductEntity> {
+  public async update(id: string, data: UpdateProduct): Promise<ProductEntity> {
     const current = await this.repo.getById(id);
     const kind = data.kind ?? current.kind;
     // Re-validate against the (possibly new) kind: changing `kind` on an
@@ -90,13 +146,18 @@ export class CatalogService {
       ...data,
       kind,
       ...(config !== undefined ? { config } : {}),
+      tracksStock: this.kinds
+        .get(kind)
+        .tracksStock((config ?? current.config) as Record<string, any>),
     });
   }
 
   /**
-   * Public catalog listing — published rows only.
+   * Public catalog listing - published rows only.
    */
-  public async list(query: CatalogQuery = {}): Promise<Page<ProductEntity>> {
+  public async list(
+    query: PublicCatalogQuery = {},
+  ): Promise<Page<ProductEntity>> {
     const where = this.repo.createQueryWhere();
     where.published = { eq: true };
     // Omit the key entirely when absent: a `where` value of `undefined` throws.
@@ -104,14 +165,95 @@ export class CatalogService {
       where.kind = { eq: query.kind };
     }
     if (query.categoryId) {
-      where.categoryId = { eq: query.categoryId };
+      where.categoryId = {
+        inArray: await this.categories.subtreeOf(query.categoryId),
+      };
     }
-    return this.repo.paginate({ sort: "name", ...query }, { where });
+    const range =
+      query.minPrice !== undefined || query.maxPrice !== undefined
+        ? {
+            ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
+            ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}),
+          }
+        : undefined;
+    if (range && !query.currency) {
+      where.price = range;
+    }
+
+    const and = [
+      ...(query.currency
+        ? [
+            {
+              or: [
+                {
+                  currency: { eq: query.currency },
+                  ...(range ? { price: range } : {}),
+                },
+                {
+                  id: {
+                    inArray: this.prices.productsIn(query.currency, query),
+                  },
+                },
+              ],
+            },
+          ]
+        : []),
+      ...(query.available
+        ? [
+            {
+              or: [
+                { tracksStock: { eq: false } },
+                { id: { inArray: this.stock.availableProducts() } },
+              ],
+            },
+          ]
+        : []),
+      ...(query.q?.trim() ? [{ or: this.textSearch(query.q.trim()) }] : []),
+    ];
+    if (and.length > 0) {
+      where.and = and;
+    }
+
+    // The id as a tie-break, in the same direction: uuids here increase with
+    // time, and without one two rows at the same price swap places between
+    // two pages.
+    const sort = query.sort ?? "name";
+    return this.repo.paginate(
+      {
+        size: query.size,
+        page: query.page,
+        sort: `${sort},${sort.startsWith("-") ? "-id" : "id"}`,
+      },
+      { where },
+    );
+  }
+
+  /**
+   * Words in the name or the description.
+   *
+   * Full text on Postgres, for the word order and the several words a search
+   * box gets, with the `simple` configuration: a catalogue is not in one
+   * language and no stemmer is right for all of it. A substring as well, so a
+   * buyer still typing "gren" finds "grenat", and the only thing a SQLite or D1
+   * has: `contains` escapes what the buyer typed.
+   */
+  protected textSearch(q: string): Array<SQL | Record<string, any>> {
+    const { name, description } = this.repo.table;
+    return [
+      { name: { contains: q } },
+      { description: { contains: q } },
+      ...(this.db.dialect === "postgresql"
+        ? [
+            sql`to_tsvector('simple', ${name} || ' ' || coalesce(${description}, ''))
+              @@ websearch_to_tsquery('simple', ${q})`,
+          ]
+        : []),
+    ];
   }
 
   /**
    * Back-office listing: drafts included. Deliberately a separate method from
-   * {@link list} rather than a `published?` filter — a public endpoint that
+   * {@link list} rather than a `published?` filter - a public endpoint that
    * forgets to pass the filter would leak unfinished products, and an
    * easy-to-forget parameter is how that happens.
    */
@@ -177,8 +319,8 @@ export class CatalogService {
           published: false,
         });
       } catch (error) {
-        // Only a lost race for this slug is retryable. Anything else — a kind
-        // with a config schema that rejects `{}`, a database that is down — is
+        // Only a lost race for this slug is retryable. Anything else - a kind
+        // with a config schema that rejects `{}`, a database that is down - is
         // the caller's problem and must not be swallowed 50 times over.
         if (!(await this.findBySlug(slug))) throw error;
       }
@@ -193,15 +335,15 @@ export class CatalogService {
    * Remove a product from the catalogue for good.
    *
    * Refuses while any order line still points at it. Deleting anyway would be
-   * safe for the *order* — `orderItems` snapshots name, price and kind, and
-   * holds `productId` as a plain uuid precisely so nothing cascades — but it
+   * safe for the *order* - `orderItems` snapshots name, price and kind, and
+   * holds `productId` as a plain uuid precisely so nothing cascades - but it
    * would strip the catalogue row an operator needs to answer "what is this
    * line on the invoice", and there is no undo. Unpublishing hides a product
    * from buyers and keeps the history readable, which is what someone reaching
    * for delete on a product that has sold actually wants.
    *
    * The check lives here rather than in the controller so no future caller can
-   * forget it. That is why this service knows about `orderItems` at all —
+   * forget it. That is why this service knows about `orderItems` at all -
    * whether a product may be deleted is a catalogue rule that only the order
    * history can answer.
    */
@@ -218,13 +360,13 @@ export class CatalogService {
    *
    * Not simply the first registered kind: kinds are ordered arbitrarily, and
    * the first one may declare a config schema with required fields. Core's
-   * `digital` requires a `downloadUrl`, so "first registered" made
-   * {@link createDraft} fail outright on any application that registers it —
+   * `digital` requires a `fileId`, so "first registered" made
+   * {@link createDraft} fail outright on any application that registers it -
    * the button did nothing and answered 400.
    *
    * `good` first, because it is `products.kind`'s own default and needs no
    * configuration. Failing that, the first kind that can be created with an
-   * empty config — a draft has nobody to ask for a download URL yet, and the
+   * empty config - a draft has nobody to ask for a download URL yet, and the
    * operator picks the real kind on the detail page a moment later.
    */
   protected draftKind(): string {

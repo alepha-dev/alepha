@@ -112,6 +112,13 @@ export abstract class ResourceKindHandler extends ProductKindHandler {
   protected readonly resources = $inject(ResourceService);
 
   /**
+   * Intervals are not stock: nothing here is on a shelf to run out of.
+   */
+  public override tracksStock(): boolean {
+    return false;
+  }
+
+  /**
    * One lock key per resource the line claims, so an order can take every
    * lock it needs up front, in one global order.
    */

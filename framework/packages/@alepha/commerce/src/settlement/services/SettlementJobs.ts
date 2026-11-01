@@ -10,6 +10,10 @@ import { OrderMailer } from "../../notifications/services/OrderMailer.ts";
  * The durable settlement pipeline: what must happen after money is
  * captured, as `$job`s instead of fire-and-forget listeners.
  *
+ * `refundCreditNote` is its twin on the way back: a credit note is as legally
+ * required as an invoice, and a hook that caught and logged a failure could
+ * lose one in silence.
+ *
  * `orderSettlement` runs two stages in one handler, each behind an
  * `alepha.has()` guard on its module being loaded, so a shop that imports
  * neither invoicing nor notifications still gets a (trivially complete)
@@ -55,6 +59,52 @@ export class SettlementJobs {
         await this.alepha
           .inject(OrderMailer)
           .sendConfirmationFor(payload.orderId);
+      }
+    },
+  });
+
+  /**
+   * The "it's on its way" email, keyed on the order: at-least-once like the
+   * confirmation, and visible on the admin jobs page when SMTP is down.
+   */
+  public readonly shippingNotice = $job({
+    name: "system.commerce.ship-notice",
+    description: "Sends the shipping notice of an order handed to a carrier.",
+    schema: z.object({ orderId: z.uuid() }),
+    retention: { ok: { days: 30 }, error: { days: 90 } },
+    retry: {
+      retries: 4,
+      backoff: { initial: [1, "second"], factor: 4, max: [10, "minute"] },
+    },
+    timeout: [30, "seconds"],
+    handler: async ({ payload }) => {
+      if (this.alepha.has(OrderMailer)) {
+        await this.alepha
+          .inject(OrderMailer)
+          .sendShippingNoticeFor(payload.orderId);
+      }
+    },
+  });
+
+  /**
+   * One credit note per refund, keyed on the refund. Idempotent through
+   * `InvoiceService.creditRefund`, so a retry after a crash issues nothing
+   * twice. An `error` row on the admin jobs page says a refund has no credit
+   * note yet, and can be retried from there.
+   */
+  public readonly refundCreditNote = $job({
+    name: "system.commerce.credit-refund",
+    description: "Issues the credit note of a refund.",
+    schema: z.object({ refundId: z.uuid() }),
+    retention: { ok: { days: 30 }, error: { days: 90 } },
+    retry: {
+      retries: 4,
+      backoff: { initial: [1, "second"], factor: 4, max: [10, "minute"] },
+    },
+    timeout: [30, "seconds"],
+    handler: async ({ payload }) => {
+      if (this.alepha.has(InvoiceService)) {
+        await this.alepha.inject(InvoiceService).creditRefund(payload.refundId);
       }
     },
   });

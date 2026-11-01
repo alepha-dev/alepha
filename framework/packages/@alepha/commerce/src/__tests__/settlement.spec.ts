@@ -3,7 +3,11 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { PaymentService } from "alepha/api/payments";
-import { MemoryEmailProvider } from "alepha/email";
+import {
+  EmailProvider,
+  type EmailSendOptions,
+  MemoryEmailProvider,
+} from "alepha/email";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
@@ -14,6 +18,7 @@ import { AlephaCommerceInvoicing } from "../invoicing/index.ts";
 import { InvoiceService } from "../invoicing/services/InvoiceService.ts";
 import { AlephaCommerceNotifications } from "../notifications/index.ts";
 import { CatalogService } from "../services/CatalogService.ts";
+import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
 import { AlephaCommerceSettlement } from "../settlement/index.ts";
 
@@ -186,6 +191,61 @@ describe("commerce settlement job", () => {
         .inject(InvoiceService)
         .listForOrder(orderId);
       expect(invoices).toHaveLength(1);
+    },
+  );
+
+  it(
+    "retries a failed shipping notice instead of losing it",
+    {
+      timeout: 20_000,
+    },
+    async ({ expect }) => {
+      class FlakyMailProvider extends MemoryEmailProvider {
+        public failures = 0;
+        public override async send(options: EmailSendOptions) {
+          if (options.subject.includes("en route") && this.failures < 1) {
+            this.failures++;
+            throw new Error("SMTP is down (test)");
+          }
+          return super.send(options);
+        }
+      }
+
+      const alepha = Alepha.create()
+        .with({ provide: EmailProvider, use: FlakyMailProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaCommerceInvoicing)
+        .with(AlephaCommerceNotifications)
+        .with(AlephaCommerceSettlement);
+      const ctx = injectCtx(alepha);
+      const orders = alepha.inject(OrderService);
+      await alepha.start();
+
+      const orderId = await payOneOrder(ctx);
+      await orders.markShipped(orderId, { trackingNumber: "6A1234" });
+
+      const exec = await waitFor(
+        async () =>
+          (
+            await ctx.probe.executions.findMany({
+              where: { jobName: { eq: "system.commerce.ship-notice" } },
+            })
+          ).find(
+            (r) => (r.payload as { orderId?: string })?.orderId === orderId,
+          ),
+        (e) => e?.status === "ok",
+        {
+          label: "shipping notice sent after retry",
+          timeout: 18_000,
+          interval: 100,
+        },
+      );
+
+      expect(exec?.attempt).toBe(2);
+      const mail = alepha.inject(EmailProvider) as FlakyMailProvider;
+      expect(
+        mail.records.filter((it) => it.subject.includes("en route")),
+      ).toHaveLength(1);
     },
   );
 

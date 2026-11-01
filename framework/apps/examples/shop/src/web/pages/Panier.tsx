@@ -1,5 +1,9 @@
+import { AutoForm } from "@alepha/ui/form";
+import { z } from "alepha";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
+import { useMemo } from "react";
 
 import { Dessin } from "../components/Dessin.tsx";
 import { Prix } from "../components/Prix.tsx";
@@ -15,8 +19,37 @@ import { usePanier } from "../hooks/usePanier.ts";
  * the server will charge.
  */
 const Panier = () => {
-  const { panier, definirQuantite, retirer, enCours } = usePanier();
+  const {
+    panier,
+    definirQuantite,
+    retirer,
+    appliquerCode,
+    retirerCode,
+    enCours,
+  } = usePanier();
   const { tr } = useI18n();
+
+  const schema = useMemo(
+    () =>
+      z.object({
+        code: z.text({ maxLength: 64 }).meta({ title: tr("cart.code") }),
+      }),
+    [tr],
+  );
+  // A refused code is toasted by the layout's `ActionErrorToaster`, which
+  // shows the server's own reason.
+  const form = useForm(
+    {
+      schema,
+      initialValues: { code: "" },
+      handler: async (values) => {
+        if (values.code.trim()) {
+          await appliquerCode(values.code);
+        }
+      },
+    },
+    [schema],
+  );
 
   useChargementPanier();
 
@@ -48,6 +81,11 @@ const Panier = () => {
 
               <div className="min-w-0">
                 <h2 className="estampe text-sm">{line.name}</h2>
+                {line.variantLabel ? (
+                  <p className="mesure text-muted-foreground mt-1">
+                    {line.variantLabel}
+                  </p>
+                ) : null}
                 <div className="mesure text-muted-foreground mt-2 flex items-center gap-3">
                   <label className="flex items-center gap-2">
                     <span>{tr("cart.quantity")}</span>
@@ -93,6 +131,34 @@ const Panier = () => {
           </li>
         ))}
       </ul>
+
+      <div className="trait mt-2 border-t pt-6">
+        <AutoForm form={form} submitLabel={tr("cart.codeApply")} />
+        {panier.promotionRefused ? (
+          <p className="text-danger-text mt-2 text-sm">
+            {panier.promotionRefused}
+          </p>
+        ) : null}
+      </div>
+
+      {panier.discountTotal > 0 ? (
+        <div className="mt-4 flex items-baseline justify-between text-sm">
+          <span className="text-muted-foreground">
+            {panier.discountLabel}
+            {panier.promotionCode ? (
+              <button
+                type="button"
+                onClick={() => void retirerCode()}
+                disabled={enCours}
+                className="hover:text-danger-text ml-3 underline transition-colors disabled:opacity-50"
+              >
+                {tr("cart.codeRemove")}
+              </button>
+            ) : null}
+          </span>
+          <Prix cents={-panier.discountTotal} currency={panier.currency} />
+        </div>
+      ) : null}
 
       <div className="trait mt-2 flex items-baseline justify-between border-t pt-6">
         <span className="estampe text-sm">{tr("cart.subtotal")}</span>

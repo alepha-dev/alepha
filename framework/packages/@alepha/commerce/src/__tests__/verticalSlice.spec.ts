@@ -17,7 +17,7 @@ import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
 
 /**
- * A kind contributed from OUTSIDE the commerce package — the case that decides
+ * A kind contributed from OUTSIDE the commerce package - the case that decides
  * whether the registry is a real extension point or a decoration. Nothing in
  * `@alepha/commerce` knows this exists.
  */
@@ -110,7 +110,7 @@ describe("commerce vertical slice", () => {
     expect(await stock.onHand(ring.id)).toBe(3);
 
     // The PSP webhook lands in alepha/api/payments, which emits
-    // `payments:captured` — nothing in the app calls settle() by hand.
+    // `payments:captured` - nothing in the app calls settle() by hand.
     await payments.handleWebhookEvent(handoff.intentId, "captured");
 
     const settled = await checkout.getById(session.id);
@@ -193,7 +193,7 @@ describe("commerce vertical slice", () => {
     await carts.add(cart.id, ring.id, 2);
     const opened = await checkout.start(cart.id);
 
-    // Stock is held as the order is created, so two-of-one is refused here —
+    // Stock is held as the order is created, so two-of-one is refused here -
     // before a payment intent exists, let alone a charge. Earlier this failed at
     // settlement instead, which meant refunding a buyer for a ring that was
     // never available.

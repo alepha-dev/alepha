@@ -11,7 +11,7 @@ import { $entity, db } from "alepha/orm";
  * `shippingAddress` blob rather than growing this table.
  *
  * Kept as a real table, not a blob, because a signed-in customer expects their
- * address to come back next time — which is a query, and a blob is not.
+ * address to come back next time - which is a query, and a blob is not.
  */
 export const addresses = $entity({
   name: "commerce_addresses",
@@ -55,7 +55,7 @@ export const addresses = $entity({
 export type AddressEntity = Infer<typeof addresses.schema>;
 
 /**
- * What a caller submits — no id, no timestamps.
+ * What a caller submits - no id, no timestamps.
  */
 export const addressInputSchema = z.object({
   fullName: z.text({ minLength: 1, maxLength: 200 }),

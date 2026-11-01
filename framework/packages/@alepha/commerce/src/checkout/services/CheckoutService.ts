@@ -1,13 +1,25 @@
 import { $inject, Alepha } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
 
-import { CartService } from "../../cart/services/CartService.ts";
+import { CartDiscountProvider } from "../../cart/providers/CartDiscountProvider.ts";
+import {
+  CartService,
+  type PricedCart,
+} from "../../cart/services/CartService.ts";
 import {
   CommerceError,
+  InsufficientStockError,
+  NoShippingRateError,
   ResourceUnavailableError,
+  VatNumberRefusedError,
 } from "../../errors/CommerceError.ts";
+import {
+  type OrderDownload,
+  OrderDownloadsProvider,
+} from "../../providers/OrderDownloadsProvider.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import type { AddressInput } from "../entities/addresses.ts";
 import {
@@ -17,16 +29,21 @@ import {
 import type { PaymentHandoff } from "../providers/CheckoutPaymentProvider.ts";
 import { CheckoutPaymentProvider } from "../providers/CheckoutPaymentProvider.ts";
 import { OrderDocumentsProvider } from "../providers/OrderDocumentsProvider.ts";
-import type { CheckoutShippingQuote } from "../providers/ShippingQuoteProvider.ts";
+import type {
+  CheckoutShippingQuote,
+  ShippingQuoteContext,
+} from "../providers/ShippingQuoteProvider.ts";
 import { ShippingQuoteProvider } from "../providers/ShippingQuoteProvider.ts";
+import { VatNumberChecker } from "../providers/VatNumberChecker.ts";
 import { AddressService } from "./AddressService.ts";
-import { TaxService } from "./TaxService.ts";
+import { type TaxContext, TaxService } from "./TaxService.ts";
 
 /**
  * Totals for a checkout, all in the smallest currency unit.
  */
 export interface CheckoutTotals {
   subtotal: number;
+  discountTotal: number;
   shippingTotal: number;
   taxTotal: number;
   grandTotal: number;
@@ -47,14 +64,18 @@ export class CheckoutService {
   protected readonly alepha = $inject(Alepha);
   protected readonly db = $inject(DatabaseProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly repo = $repository(checkoutSessions);
   protected readonly carts = $inject(CartService);
+  protected readonly discounts = $inject(CartDiscountProvider);
   protected readonly orders = $inject(OrderService);
   protected readonly tax = $inject(TaxService);
+  protected readonly vatNumbers = $inject(VatNumberChecker);
   protected readonly payment = $inject(CheckoutPaymentProvider);
   protected readonly addresses = $inject(AddressService);
   protected readonly shipping = $inject(ShippingQuoteProvider);
   protected readonly documents = $inject(OrderDocumentsProvider);
+  protected readonly downloads = $inject(OrderDownloadsProvider);
 
   /**
    * Open a checkout for a cart, reusing an already-open one for the same cart.
@@ -64,7 +85,11 @@ export class CheckoutService {
    */
   public async start(
     cartId: string,
-    options: { userId?: string; email?: string } = {},
+    options: {
+      userId?: string;
+      email?: string;
+      recoveryConsent?: boolean;
+    } = {},
   ): Promise<CheckoutSessionEntity> {
     const existing = await this.repo.findOne({
       where: { cartId: { eq: cartId }, status: { eq: "open" } },
@@ -81,11 +106,12 @@ export class CheckoutService {
       userId: options.userId,
       email: options.email,
       status: "open",
+      ...(options.recoveryConsent ? this.consent() : {}),
       ...totals,
     });
 
     if (session.email) {
-      await this.emitEmailCaptured(session.id, cartId, session.email);
+      await this.emitEmailCaptured(session);
     }
 
     return session;
@@ -93,34 +119,57 @@ export class CheckoutService {
 
   /**
    * Record the buyer's email. Kept separate from the address so a shop can ask
-   * for it first and use it for abandoned-cart follow-up.
+   * for it first.
+   *
+   * `recoveryConsent` is the buyer's own answer to being reminded about this
+   * cart, recorded with its date. Omitted, whatever they said before stands, so
+   * correcting a typo neither gives nor withdraws it.
    */
   public async setEmail(
     sessionId: string,
     email: string,
+    options: { recoveryConsent?: boolean } = {},
   ): Promise<CheckoutSessionEntity> {
     const session = await this.repo.getById(sessionId);
     this.assertOpen(session);
-    const updated = await this.repo.updateById(sessionId, { email });
-    await this.emitEmailCaptured(updated.id, updated.cartId, email);
+    const updated = await this.repo.updateById(sessionId, {
+      email,
+      ...(options.recoveryConsent ? this.consent(session) : {}),
+      ...(options.recoveryConsent === false ? { recoveryConsentAt: null } : {}),
+    });
+    await this.emitEmailCaptured(updated);
     return updated;
   }
 
   /**
-   * Announce a captured email once the write is committed — deferred via
+   * What a buyer's yes writes on the session. A token that already exists is
+   * kept: a reminder may be out carrying it.
+   */
+  protected consent(session?: CheckoutSessionEntity) {
+    return {
+      recoveryConsentAt: this.dateTime.nowISOString(),
+      recoveryToken: session?.recoveryToken ?? this.crypto.randomText(32),
+    };
+  }
+
+  /**
+   * Announce a captured email once the write is committed - deferred via
    * afterCommit for the same reason as the order events: this method can
    * be reached from inside a caller's transaction, and subscribers must
    * read committed rows.
    */
   protected async emitEmailCaptured(
-    sessionId: string,
-    cartId: string,
-    email: string,
+    session: CheckoutSessionEntity,
   ): Promise<void> {
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
         "commerce:checkout:emailCaptured",
-        { sessionId, cartId, email },
+        {
+          sessionId: session.id,
+          cartId: session.cartId,
+          email: session.email!,
+          recoveryConsent: Boolean(session.recoveryConsentAt),
+        },
         { catch: true },
       ),
     );
@@ -128,13 +177,15 @@ export class CheckoutService {
 
   /**
    * Record the delivery address, after validating it against its country's
-   * rules, and re-price — because the destination is what decides delivery cost.
+   * rules, and re-price - because the destination is what decides delivery cost.
    *
    * Clears any previously chosen `shippingMethod`: a method valid for France is
    * not necessarily offered for Malta, and silently keeping a stale choice is
    * how a parcel gets charged at the wrong rate.
    *
    * @throws InvalidAddressError
+   * @throws NoShippingRateError when the shop delivers and nothing covers the
+   *   country
    */
   public async setAddress(
     sessionId: string,
@@ -144,11 +195,65 @@ export class CheckoutService {
     this.assertOpen(session);
 
     const clean = this.addresses.validate(address);
-    const totals = await this.computeTotals(session.cartId, clean.country);
+    const totals = await this.computeTotals(session.cartId, clean.country, {
+      country: clean.country,
+      reverseCharge: this.tax.reverseCharge(session.vatNumber, clean.country),
+    });
 
     return this.repo.updateById(sessionId, {
       shippingAddress: clean,
       shippingMethod: null,
+      ...totals,
+    });
+  }
+
+  /**
+   * Record a business buyer's VAT number, once the registry has confirmed it,
+   * and re-price: a valid number from another country takes the VAT off. Empty,
+   * it removes the number and the VAT comes back.
+   *
+   * Refused rather than kept unconfirmed: a sale without VAT on a number nobody
+   * checked is the shop's own liability.
+   *
+   * @throws VatNumberRefusedError
+   */
+  public async setVatNumber(
+    sessionId: string,
+    vatNumber?: string,
+  ): Promise<CheckoutSessionEntity> {
+    const session = await this.repo.getById(sessionId);
+    this.assertOpen(session);
+
+    const normalised = vatNumber?.replace(/[\s.-]/g, "").toUpperCase();
+    if (normalised) {
+      const check = await this.vatNumbers.check(normalised);
+      if (check.status !== "valid") {
+        throw new VatNumberRefusedError({
+          vatNumber: normalised,
+          reason: check.status,
+        });
+      }
+    }
+
+    const context = this.taxContext({ ...session, vatNumber: normalised });
+    const country = context.country;
+    const priced = await this.carts.price(session.cartId);
+    const totals =
+      session.shippingMethod && country
+        ? this.totalsOf(
+            priced,
+            await this.shipping.quoteFor(
+              country,
+              priced.subtotal,
+              session.shippingMethod,
+              this.parcelOf(priced),
+            ),
+            context,
+          )
+        : await this.computeTotals(session.cartId, country, context);
+
+    return this.repo.updateById(sessionId, {
+      vatNumber: normalised ?? null,
       ...totals,
     });
   }
@@ -165,11 +270,11 @@ export class CheckoutService {
     const country = this.countryOf(session);
     if (!country) {
       throw new CommerceError(
-        `Checkout ${sessionId} has no address yet — call setAddress() first.`,
+        `Checkout ${sessionId} has no address yet - call setAddress() first.`,
       );
     }
     const priced = await this.carts.price(session.cartId);
-    return this.shipping.quote(country, priced.subtotal);
+    return this.shipping.quote(country, priced.subtotal, this.parcelOf(priced));
   }
 
   /**
@@ -187,19 +292,24 @@ export class CheckoutService {
     const country = this.countryOf(session);
     if (!country) {
       throw new CommerceError(
-        `Checkout ${sessionId} has no address yet — call setAddress() first.`,
+        `Checkout ${sessionId} has no address yet - call setAddress() first.`,
       );
     }
 
     const priced = await this.carts.price(session.cartId);
-    const quote = await this.shipping.quoteFor(country, priced.subtotal, code);
+    const quote = await this.shipping.quoteFor(
+      country,
+      priced.subtotal,
+      code,
+      this.parcelOf(priced),
+    );
     if (!quote) {
       throw new CommerceError(
         `'${code}' is not an available delivery option for ${country}.`,
       );
     }
 
-    const totals = this.totalsOf(priced, quote);
+    const totals = this.totalsOf(priced, quote, this.taxContext(session));
     return this.repo.updateById(sessionId, {
       shippingMethod: quote.code,
       ...totals,
@@ -225,10 +335,15 @@ export class CheckoutService {
     if (priced.lines.length === 0) {
       throw new CommerceError("Cannot pay for an empty cart.");
     }
+    // Same rule as a withdrawn delivery rate: the buyer accepted a figure with
+    // this code, and charging a different one is not a recoverable mistake.
+    if (priced.codeRefusal) {
+      throw priced.codeRefusal;
+    }
 
     // Re-quote the chosen method rather than trusting the stored total: the row
     // may be minutes old, and a rate can have changed or been withdrawn. If the
-    // buyer's selection is no longer offered, stop — charging them a different
+    // buyer's selection is no longer offered, stop - charging them a different
     // delivery price than the one they accepted is not a recoverable mistake.
     let quote: CheckoutShippingQuote | undefined;
     const country = this.countryOf(session);
@@ -245,12 +360,20 @@ export class CheckoutService {
         );
       }
       if (!session.shippingMethod) {
-        const offered = await this.shipping.quote(country, priced.subtotal);
-        if (offered.length > 0) {
-          throw new CommerceError(
-            `Checkout ${sessionId} has no delivery option chosen for ${country}. Call setShippingMethod() before paying.`,
-          );
+        // Nothing offered is not "nothing to charge": a country no zone covers
+        // used to carry on with no quote, and a France-only shop took an order
+        // to Germany with free delivery.
+        const offered = await this.shipping.quote(
+          country,
+          priced.subtotal,
+          this.parcelOf(priced),
+        );
+        if (offered.length === 0) {
+          throw new NoShippingRateError({ country });
         }
+        throw new CommerceError(
+          `Checkout ${sessionId} has no delivery option chosen for ${country}. Call setShippingMethod() before paying.`,
+        );
       }
     }
 
@@ -259,6 +382,7 @@ export class CheckoutService {
         country,
         priced.subtotal,
         session.shippingMethod,
+        this.parcelOf(priced),
       );
       if (!quote) {
         throw new CommerceError(
@@ -267,16 +391,33 @@ export class CheckoutService {
       }
     }
 
-    const totals = this.totalsOf(priced, quote);
+    const context = this.taxContext(session);
+    const totals = this.totalsOf(priced, quote, context);
+    const net = context.reverseCharge
+      ? this.tax.net(priced, quote?.price).lines
+      : undefined;
 
     const order = await this.orders.create({
       userId: session.userId,
       status: "pending",
       lines: priced.lines.map((l) => ({
         productId: l.productId,
+        variantId: l.variantId,
         quantity: l.quantity,
+        discount: l.discount,
         lineConfig: l.lineConfig,
+        rateBps: context.reverseCharge
+          ? 0
+          : this.tax.rateFor(l.rateBps, country),
+        net: net?.get(l.lineId),
       })),
+      promotionCode: priced.promotionCode,
+      currency: priced.cart.currency,
+      taxCountry: country,
+      shippingRateBps: context.reverseCharge
+        ? 0
+        : this.tax.rateFor(undefined, country),
+      vatNumber: context.reverseCharge ? session.vatNumber : undefined,
       shippingMethod: session.shippingMethod,
       shippingAddress: session.shippingAddress as
         | Record<string, any>
@@ -288,8 +429,8 @@ export class CheckoutService {
     });
 
     // The invariant that matters in this whole file: the order says exactly what
-    // the card is about to be charged. It was briefly false — the order total
-    // excluded delivery — and the only reason it is not still false is that a
+    // the card is about to be charged. It was briefly false - the order total
+    // excluded delivery - and the only reason it is not still false is that a
     // test compared the two numbers. Assert it rather than trust it.
     if (order.total !== totals.grandTotal) {
       throw new CommerceError(
@@ -315,15 +456,24 @@ export class CheckoutService {
 
     let handoff: PaymentHandoff;
     try {
+      // The moment a usage limit is decided: a cart only ever read it.
+      if (priced.discount) {
+        await this.discounts.redeem(priced.discount, {
+          orderId: order.id,
+          userId: session.userId,
+          email: session.email,
+        });
+      }
       handoff = await this.payment.start(paying, {
         returnUrl: options.returnUrl,
         email: session.email,
       });
     } catch (error) {
-      // A PSP that refuses the handoff must not strand the session in
-      // `paying` with a pending order: nothing reconciles that state (the
-      // `commerce:checkout:paymentStarted` event is only emitted after the handoff)
-      // and the buyer's retry was refused as "not open".
+      // A PSP that refuses the handoff, or a promotion that ran out, must not
+      // strand the session in `paying` with a pending order: nothing reconciles
+      // that state (the `commerce:checkout:paymentStarted` event is only
+      // emitted after the handoff) and the buyer's retry was refused as "not
+      // open".
       await this.orders.cancel(order.id);
       await this.repo.updateById(sessionId, { status: "open" });
       throw error;
@@ -333,7 +483,7 @@ export class CheckoutService {
       paymentIntentId: handoff.intentId,
     });
 
-    // The buyer is now on the PSP page and may never come back — announce
+    // The buyer is now on the PSP page and may never come back - announce
     // it so the settlement module can schedule a reconciliation.
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
@@ -358,13 +508,14 @@ export class CheckoutService {
    * and returns it untouched. Fulfilment itself is idempotent one level down,
    * in {@link OrderService.markPaid}.
    *
-   * ### A capture that lands after its slot was lost
+   * ### A capture that lands after what it paid for was lost
    *
    * A hold lives 30 minutes, and nothing guarantees the capture lands inside
    * them: the sweep releases the hold but leaves the order `pending`, so the
-   * capture reaches `markPaid`, and the slot may have been sold to somebody
-   * else meanwhile. Fulfilment then refuses (`ResourceUnavailableError`)
-   * rather than double-book, and throwing that out of here would make the
+   * capture reaches `markPaid`, and the slot or the last units may have been
+   * sold to somebody else meanwhile. Fulfilment then refuses
+   * (`ResourceUnavailableError`, `InsufficientStockError`) rather than
+   * double-book or oversell, and throwing that out of here would make the
    * webhook re-deliver and throw again forever, with the money taken and
    * nothing recorded. So the failed settlement is rolled back first (no line
    * of it stays fulfilled), and then, in a transaction of its own, the order
@@ -380,7 +531,10 @@ export class CheckoutService {
     try {
       return await this.settleOnce(sessionId, options);
     } catch (error) {
-      if (!(error instanceof ResourceUnavailableError)) {
+      if (
+        !(error instanceof ResourceUnavailableError) &&
+        !(error instanceof InsufficientStockError)
+      ) {
         throw error;
       }
       return this.db.transactional(async () => {
@@ -407,7 +561,7 @@ export class CheckoutService {
       }
       if (!session.orderId) {
         throw new CommerceError(
-          `Checkout ${sessionId} has no order to settle — pay() has not run.`,
+          `Checkout ${sessionId} has no order to settle - pay() has not run.`,
         );
       }
 
@@ -416,15 +570,18 @@ export class CheckoutService {
       // abandoned - and settling it would mark an order paid whose stock has
       // already been released to other buyers.
       //
+      // Read off what `markPaid` answers rather than checked before it: a
+      // cancel can slip in between a check and the claim, and the session
+      // would then complete on a cancelled order with the money unrecorded.
+      //
       // `paid` is NOT this case: that is a re-delivered webhook, and it must
       // still complete the session, which is what makes settle() idempotent.
-      const order = await this.orders.getById(session.orderId);
+      const order = await this.orders.markPaid(session.orderId, options);
       if (order.status === "cancelled" || order.status === "refunded") {
         await this.recordStrayCapture(order, options.paymentIntentId);
         return session;
       }
 
-      await this.orders.markPaid(session.orderId, options);
       await this.carts.clear(session.cartId);
 
       return this.repo.updateById(sessionId, { status: "completed" });
@@ -482,7 +639,7 @@ export class CheckoutService {
   }
 
   /**
-   * Find the checkout that a payment intent belongs to — the lookup a webhook
+   * Find the checkout that a payment intent belongs to - the lookup a webhook
    * handler needs.
    */
   public async findByPaymentIntent(
@@ -503,11 +660,12 @@ export class CheckoutService {
     order: Awaited<ReturnType<OrderService["getById"]>>;
     items: Awaited<ReturnType<OrderService["itemsOf"]>>;
     factures: string[];
+    downloads: OrderDownload[];
   }> {
     const session = await this.repo.getById(sessionId);
     if (!session.orderId) {
       throw new CommerceError(
-        `Checkout ${sessionId} has no order yet — pay() has not run.`,
+        `Checkout ${sessionId} has no order yet - pay() has not run.`,
       );
     }
     const order = await this.orders.getById(session.orderId);
@@ -515,6 +673,7 @@ export class CheckoutService {
       order,
       items: await this.orders.itemsOf(order.id),
       factures: await this.documents.documentsFor(order.id),
+      downloads: await this.downloads.linksFor(order.id),
     };
   }
 
@@ -522,8 +681,8 @@ export class CheckoutService {
    * Record a refund against the order behind a checkout.
    *
    * `refundedTotal` is everything given back on it so far, not this refund's
-   * share - see `OrderService.refund`. Omitted, it refunds the order in full
-   * and its stock goes back.
+   * share - see `OrderService.refund`. Omitted, it refunds the order in full,
+   * and its stock goes back if it never shipped.
    */
   public async refundOrder(
     orderId: string,
@@ -543,7 +702,7 @@ export class CheckoutService {
    * reached `paying` has an order behind it, and leaving that order `pending`
    * would keep its stock held until the sweep noticed.
    *
-   * Idempotent — a second failed-payment event finds the session already
+   * Idempotent - a second failed-payment event finds the session already
    * abandoned.
    */
   public async abandonWithOrder(
@@ -592,7 +751,7 @@ export class CheckoutService {
   }
 
   /**
-   * What the payment front-end can do — surfaced so a storefront renders the
+   * What the payment front-end can do - surfaced so a storefront renders the
    * right thing without hard-coding which PSP is installed.
    */
   public capabilities() {
@@ -605,18 +764,27 @@ export class CheckoutService {
    *
    * Cheapest rather than none: the figure shown before the buyer has picked a
    * method should be the one they will most likely pay, not an optimistic zero
-   * that jumps when they choose.
+   * that jumps when they choose. A shop that delivers and has no option for
+   * the destination refuses here, at the address, rather than at the card.
    */
   protected async computeTotals(
     cartId: string,
     country?: string,
+    context: TaxContext = {},
   ): Promise<CheckoutTotals> {
     const priced = await this.carts.price(cartId);
     if (!country) {
       return this.totalsOf(priced);
     }
-    const quotes = await this.shipping.quote(country, priced.subtotal);
-    return this.totalsOf(priced, quotes[0]);
+    const quotes = await this.shipping.quote(
+      country,
+      priced.subtotal,
+      this.parcelOf(priced),
+    );
+    if (this.shipping.delivers && quotes.length === 0) {
+      throw new NoShippingRateError({ country });
+    }
+    return this.totalsOf(priced, quotes[0], context);
   }
 
   /**
@@ -631,15 +799,54 @@ export class CheckoutService {
   protected totalsOf(
     priced: Awaited<ReturnType<CartService["price"]>>,
     shippingQuote?: CheckoutShippingQuote,
+    context: TaxContext = {},
   ): CheckoutTotals {
-    const shippingTotal = shippingQuote?.price ?? 0;
-    const tax = this.tax.compute(priced, shippingTotal);
+    const shippingTotal = priced.discount?.freeShipping
+      ? 0
+      : (shippingQuote?.price ?? 0);
+
+    // Under reverse charge the figure itself changes: a business pays net.
+    if (context.reverseCharge) {
+      const net = this.tax.net(priced, shippingTotal);
+      return {
+        subtotal: net.subtotal,
+        discountTotal: net.discountTotal,
+        shippingTotal: net.shippingTotal,
+        taxTotal: 0,
+        grandTotal: net.subtotal + net.shippingTotal,
+        currency: priced.currency,
+      };
+    }
+
+    const tax = this.tax.compute(priced, shippingTotal, context);
     return {
       subtotal: priced.subtotal,
+      discountTotal: priced.discountTotal,
       shippingTotal,
       taxTotal: tax.total,
       grandTotal: priced.subtotal + shippingTotal,
       currency: priced.currency,
+    };
+  }
+
+  /**
+   * What a delivery rate needs to know about the basket.
+   */
+  protected parcelOf(priced: PricedCart): ShippingQuoteContext {
+    return {
+      currency: priced.cart.currency,
+      weightGrams: priced.weightGrams,
+    };
+  }
+
+  /**
+   * What the session's destination and number mean for its tax.
+   */
+  protected taxContext(session: CheckoutSessionEntity): TaxContext {
+    const country = this.countryOf(session);
+    return {
+      country,
+      reverseCharge: this.tax.reverseCharge(session.vatNumber, country),
     };
   }
 

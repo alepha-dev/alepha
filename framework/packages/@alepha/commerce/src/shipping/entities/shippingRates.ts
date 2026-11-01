@@ -40,9 +40,23 @@ export const shippingRates = $entity({
     price: z.integer().min(0),
 
     /**
+     * What `price` and `freeAbove` are in, the shop's own when unset. One rate
+     * per currency, each with its `code`: `air` and `air-usd`.
+     */
+    currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+
+    /**
      * Free when the cart subtotal reaches this. Null → never free.
      */
     freeAbove: z.integer().min(0).optional(),
+
+    /**
+     * The weight band it applies to, either end open: above the floor, up to
+     * and including the ceiling. One rate per band, each with its `code`: a
+     * carrier's grid is `up to 1 kg`, `1 to 2 kg`. Unset: any weight.
+     */
+    minWeightGrams: z.integer().min(0).optional(),
+    maxWeightGrams: z.integer().min(0).optional(),
 
     /**
      * Shown to the buyer as an estimate.

@@ -7,12 +7,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
 import { checkoutSessions } from "../checkout/entities/checkoutSessions.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { AlephaCommerceRecovery } from "../recovery/index.ts";
+import { CartRecoveryService } from "../recovery/services/CartRecoveryService.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 
@@ -79,6 +81,7 @@ const setup = async () => {
     mail: alepha.inject(MemoryEmailProvider),
     dt: alepha.inject(DateTimeProvider),
     probe: alepha.inject(RecoveryProbe),
+    recovery: alepha.inject(CartRecoveryService),
   };
   await alepha.start();
   return ctx;
@@ -91,6 +94,7 @@ const setup = async () => {
 const openCheckout = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   email: string | null = "camille@example.com",
+  recoveryConsent = true,
 ) => {
   const ring = await ctx.catalog.create({
     slug: `ring-${randomUUID()}`,
@@ -105,6 +109,7 @@ const openCheckout = async (
   await ctx.carts.add(cart.id, ring.id, 1);
   const opened = await ctx.checkout.start(cart.id, {
     email: email ?? undefined,
+    recoveryConsent,
   });
   return { cartId: cart.id, sessionId: opened.id };
 };
@@ -120,6 +125,123 @@ const recoveryFor = (probe: RecoveryProbe, cartId: string) =>
     .then((rows) =>
       rows.find((r) => (r.payload as { cartId?: string })?.cartId === cartId),
     );
+
+describe("consent", () => {
+  it("starts no sequence without it", async ({ expect }) => {
+    const ctx = await setup();
+
+    const { cartId } = await openCheckout(ctx, "camille@example.com", false);
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(await recoveryFor(ctx.probe, cartId)).toBeUndefined();
+  });
+
+  it("records when the buyer gave it", async ({ expect }) => {
+    const ctx = await setup();
+
+    const { sessionId } = await openCheckout(ctx);
+
+    const session = await ctx.checkout.getById(sessionId);
+    expect(session.recoveryConsentAt).toBeDefined();
+  });
+
+  it("outlives a correction of the address", async ({ expect }) => {
+    const ctx = await setup();
+    const { sessionId } = await openCheckout(ctx);
+
+    await ctx.checkout.setEmail(sessionId, "camille+corrige@example.com");
+
+    expect(
+      (await ctx.checkout.getById(sessionId)).recoveryConsentAt,
+    ).toBeDefined();
+  });
+
+  it("stops the sequence when it is taken back", async ({ expect }) => {
+    const ctx = await setup();
+    const { cartId, sessionId } = await openCheckout(ctx);
+    await waitFor(
+      () => recoveryFor(ctx.probe, cartId),
+      (row) => row?.status === "scheduled",
+      { label: "sequence parked" },
+    );
+
+    await ctx.checkout.setEmail(sessionId, "camille@example.com", {
+      recoveryConsent: false,
+    });
+
+    const row = await waitFor(
+      () => recoveryFor(ctx.probe, cartId),
+      (it) => it?.status === "cancelled",
+      { label: "sequence cancelled" },
+    );
+    expect(row?.status).toBe("cancelled");
+  });
+});
+
+describe("unsubscribing", () => {
+  it("carries a working link and the one-click headers in a reminder", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { cartId, sessionId } = await openCheckout(ctx);
+    const { recoveryToken } = await ctx.checkout.getById(sessionId);
+
+    await ctx.recovery.sendReminder(cartId, 1);
+
+    const [mail] = ctx.mail.records;
+    const url = `/commerce/recovery/unsubscribe/${recoveryToken}`;
+    expect(mail!.body).toContain(url);
+    expect(mail!.headers).toMatchObject({
+      "List-Unsubscribe": `<${url}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+  });
+
+  it("stops the sequence and answers the link", async ({ expect }) => {
+    const ctx = await setup();
+    const { cartId, sessionId } = await openCheckout(ctx);
+    await waitFor(
+      () => recoveryFor(ctx.probe, cartId),
+      (row) => row?.status === "scheduled",
+      { label: "sequence parked" },
+    );
+    const { recoveryToken } = await ctx.checkout.getById(sessionId);
+
+    const hostname = ctx.alepha.inject(ServerProvider).hostname;
+    const response = await fetch(
+      `${hostname}/commerce/recovery/unsubscribe/${recoveryToken}`,
+      { method: "POST" },
+    );
+
+    expect(response.status).toBe(200);
+    await waitFor(
+      () => recoveryFor(ctx.probe, cartId),
+      (row) => row?.status === "cancelled",
+      { label: "sequence cancelled" },
+    );
+    expect(await ctx.recovery.isRecoverable(cartId)).toBe(false);
+  });
+
+  it("is honoured by a later checkout with the same address", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.recovery.optOut("Camille@Example.com");
+
+    const { cartId } = await openCheckout(ctx, "camille@example.com");
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(await recoveryFor(ctx.probe, cartId)).toBeUndefined();
+  });
+
+  it("refuses a token no reminder carried", async ({ expect }) => {
+    const ctx = await setup();
+
+    await expect(ctx.recovery.unsubscribe("not-a-token")).rejects.toThrow(
+      /No such reminder/,
+    );
+  });
+});
 
 describe("cart recovery sequence", () => {
   it(

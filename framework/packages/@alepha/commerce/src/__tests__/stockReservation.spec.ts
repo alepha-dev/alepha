@@ -160,7 +160,7 @@ describe("stock reservation", () => {
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
     expect(await ctx.stock.onHand(ring.id)).toBe(1);
-    // The hold is gone — it must not be counted twice.
+    // The hold is gone - it must not be counted twice.
     expect(await ctx.stock.reserved(ring.id)).toBe(0);
     expect(await ctx.stock.available(ring.id)).toBe(1);
   });
@@ -218,8 +218,8 @@ describe("stock reservation", () => {
      *
      * `AlephaCommerceCheckout` registers `HoldSweeper`, whose `$job`
      * runs the very same method every fifteen minutes. `CronProvider` schedules
-     * with `dateTime.wait()`, so the travel above — 31 minutes, two cron
-     * boundaries — fires that job rather than waiting out real time. Whether its
+     * with `dateTime.wait()`, so the travel above - 31 minutes, two cron
+     * boundaries - fires that job rather than waiting out real time. Whether its
      * handler lands before or after the line below is a race decided by machine
      * load: the count was 1 when the spec ran alone and 0 under a loaded
      * `yarn v` or CI, a flake that says nothing about the sweep.
@@ -232,7 +232,7 @@ describe("stock reservation", () => {
     const holds = await ctx.stock.reservationsOf(session.orderId!);
     expect(holds.map((h) => h.status)).toEqual(["released"]);
 
-    // Running it again finds nothing — the sweep is idempotent. Deterministic
+    // Running it again finds nothing - the sweep is idempotent. Deterministic
     // whoever swept first, because by now there is nothing left to release.
     expect(await ctx.stock.releaseExpiredReservations()).toBe(0);
   });
@@ -247,7 +247,7 @@ describe("stock reservation", () => {
       name: "Guide d'entretien",
       price: 500,
       published: true,
-      config: { downloadUrl: "https://example.invalid/guide.pdf" },
+      config: { fileId: randomUUID() },
     });
 
     const { session } = await reachPayment(ctx, download.id, 1);

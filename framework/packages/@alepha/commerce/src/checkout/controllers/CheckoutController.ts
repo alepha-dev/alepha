@@ -1,23 +1,27 @@
-import { $inject, $store, z } from "alepha";
-import { $action, BadRequestError } from "alepha/server";
+import { $inject, $store, Alepha, z } from "alepha";
+import { currentUserAtom } from "alepha/security";
+import { $action, BadRequestError, ForbiddenError } from "alepha/server";
 import { safeRedirectPath } from "alepha/server/auth";
 
 import { CartController } from "../../cart/controllers/CartController.ts";
-import { orderItems } from "../../entities/orderItems.ts";
-import { orders } from "../../entities/orders.ts";
+import { publicOrderItemSchema } from "../../schemas/publicOrderItemSchema.ts";
+import { publicOrderSchema } from "../../schemas/publicOrderSchema.ts";
 import { checkoutConfig } from "../checkoutConfigAtom.ts";
 import { addressInputSchema } from "../entities/addresses.ts";
+import type { CheckoutSessionEntity } from "../entities/checkoutSessions.ts";
 import { CheckoutService } from "../services/CheckoutService.ts";
 
 const sessionSchema = z.object({
   id: z.uuid(),
   status: z.text(),
   subtotal: z.integer(),
+  discountTotal: z.integer(),
   shippingTotal: z.integer(),
   taxTotal: z.integer(),
   grandTotal: z.integer(),
   currency: z.text(),
   orderId: z.uuid().optional(),
+  vatNumber: z.text().optional(),
 });
 
 /**
@@ -27,10 +31,18 @@ const sessionSchema = z.object({
  * payment rail can do and renders accordingly, instead of hard-coding a
  * redirect button or a card field. Swapping the provider changes no front-end
  * code.
+ *
+ * ### Whose checkout it is
+ *
+ * The session id is not a credential: it travels in URLs, so in logs and
+ * referrers. Every action on a session checks the caller holds its cart's signed
+ * cookie or is its signed-in user, through {@link assertOwned}. The one exception
+ * is the confirmation, see {@link commerceCheckoutOrder}.
  */
 export class CheckoutController {
   protected readonly url = "/commerce/checkout";
   protected readonly group = "commerce:checkout";
+  protected readonly alepha = $inject(Alepha);
   protected readonly checkout = $inject(CheckoutService);
   protected readonly cartController = $inject(CartController);
   protected readonly config = $store(checkoutConfig);
@@ -56,7 +68,10 @@ export class CheckoutController {
     group: this.group,
     description: "Open a checkout for the current cart",
     schema: {
-      body: z.object({ email: z.email().optional() }),
+      body: z.object({
+        email: z.email().optional(),
+        recoveryConsent: z.boolean().optional(),
+      }),
       response: sessionSchema,
     },
     handler: async ({ body }) => {
@@ -67,6 +82,7 @@ export class CheckoutController {
       return this.checkout.start(cart.id, {
         userId: cart.userId,
         email: body.email,
+        recoveryConsent: body.recoveryConsent,
       });
     },
   });
@@ -78,11 +94,22 @@ export class CheckoutController {
     description: "Record the buyer's email",
     schema: {
       params: z.object({ id: z.uuid() }),
-      body: z.object({ email: z.email() }),
+      body: z.object({
+        email: z.email(),
+        /**
+         * The buyer's answer to being reminded about this cart. Never
+         * pre-ticked: an unticked box is the only consent that means anything.
+         */
+        recoveryConsent: z.boolean().optional(),
+      }),
       response: sessionSchema,
     },
-    handler: async ({ params, body }) =>
-      this.checkout.setEmail(params.id, body.email),
+    handler: async ({ params, body }) => {
+      await this.assertOwned(params.id);
+      return this.checkout.setEmail(params.id, body.email, {
+        recoveryConsent: body.recoveryConsent,
+      });
+    },
   });
 
   public readonly commerceCheckoutSetAddress = $action({
@@ -95,8 +122,30 @@ export class CheckoutController {
       body: addressInputSchema,
       response: sessionSchema,
     },
-    handler: async ({ params, body }) =>
-      this.checkout.setAddress(params.id, body),
+    handler: async ({ params, body }) => {
+      await this.assertOwned(params.id);
+      return this.checkout.setAddress(params.id, body);
+    },
+  });
+
+  /**
+   * A business buyer's VAT number, checked with the registry before it counts.
+   * Sent empty, it takes the number off.
+   */
+  public readonly commerceCheckoutSetVatNumber = $action({
+    method: "PUT",
+    path: `${this.url}/:id/vat-number`,
+    group: this.group,
+    description: "Record a business buyer's VAT number and re-price",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ vatNumber: z.text({ maxLength: 32 }).optional() }),
+      response: sessionSchema,
+    },
+    handler: async ({ params, body }) => {
+      await this.assertOwned(params.id);
+      return this.checkout.setVatNumber(params.id, body.vatNumber);
+    },
   });
 
   public readonly commerceCheckoutShippingOptions = $action({
@@ -118,9 +167,10 @@ export class CheckoutController {
         ),
       }),
     },
-    handler: async ({ params }) => ({
-      options: await this.checkout.shippingOptions(params.id),
-    }),
+    handler: async ({ params }) => {
+      await this.assertOwned(params.id);
+      return { options: await this.checkout.shippingOptions(params.id) };
+    },
   });
 
   public readonly commerceCheckoutSetShippingMethod = $action({
@@ -133,19 +183,21 @@ export class CheckoutController {
       body: z.object({ code: z.text({ minLength: 1, maxLength: 64 }) }),
       response: sessionSchema,
     },
-    handler: async ({ params, body }) =>
-      this.checkout.setShippingMethod(params.id, body.code),
+    handler: async ({ params, body }) => {
+      await this.assertOwned(params.id);
+      return this.checkout.setShippingMethod(params.id, body.code);
+    },
   });
 
   /**
    * What a confirmation page needs: the settled order, its lines, and any
    * invoice issued for it.
    *
-   * ⚠️ The session id is the only credential, which is what makes it usable by a
-   * guest who has no account. That is the same model as a hosted-checkout receipt
-   * URL, and it is only safe because the id is a random uuid — never expose this
-   * behind a guessable identifier, and gate it on ownership as soon as the shop
-   * has accounts that matter.
+   * ⚠️ The one action a session id alone may reach. A bank's app often sends the
+   * buyer back in another browser, with no cookie, and a stranger's refusal
+   * there would read as a payment gone wrong. So nobody is refused, and what
+   * crosses the wire is {@link publicOrderSchema}: no payment reference, no
+   * account, and no address unless the caller owns the session.
    *
    * Invoice numbers are read through a hook rather than by importing the
    * invoicing module, so a deployment without it still gets a working
@@ -159,12 +211,33 @@ export class CheckoutController {
     schema: {
       params: z.object({ id: z.uuid() }),
       response: z.object({
-        order: orders.schema,
-        items: z.array(orderItems.schema),
+        order: publicOrderSchema,
+        items: z.array(publicOrderItemSchema),
         factures: z.array(z.text()),
+        downloads: z.array(
+          z.object({
+            name: z.text(),
+            url: z.text({ maxLength: 500 }),
+            expiresAt: z.text(),
+          }),
+        ),
       }),
     },
-    handler: async ({ params }) => this.checkout.confirmation(params.id),
+    handler: async ({ params }) => {
+      const session = await this.checkout.getById(params.id);
+      const confirmation = await this.checkout.confirmation(params.id);
+      const owned = await this.owns(session);
+      return {
+        ...confirmation,
+        order: {
+          ...confirmation.order,
+          shippingAddress: owned
+            ? confirmation.order.shippingAddress
+            : undefined,
+        },
+        downloads: owned ? confirmation.downloads : [],
+      } as any;
+    },
   });
 
   public readonly commerceCheckoutPay = $action({
@@ -184,12 +257,37 @@ export class CheckoutController {
     // `url` renamed: the controller's own `this.url` is the route prefix, and
     // two things called `url` in one scope is one too many.
     handler: async ({ params, body, url: requestUrl }) => {
+      await this.assertOwned(params.id);
       const { session, handoff } = await this.checkout.pay(params.id, {
         returnUrl: this.resolveReturnUrl(body.returnUrl, requestUrl),
       });
       return { session, handoff } as any;
     },
   });
+
+  /**
+   * Refuse a caller who did not open this checkout.
+   *
+   * @throws ForbiddenError
+   */
+  protected async assertOwned(sessionId: string): Promise<void> {
+    if (!(await this.owns(await this.checkout.getById(sessionId)))) {
+      throw new ForbiddenError("This checkout is not yours.");
+    }
+  }
+
+  /**
+   * Whether the caller holds the session's cart, by its signed cookie, or is
+   * its signed-in user.
+   */
+  protected async owns(session: CheckoutSessionEntity): Promise<boolean> {
+    const userId = this.alepha.store.get(currentUserAtom)?.id;
+    if (session.userId && session.userId === userId) {
+      return true;
+    }
+    const cart = await this.cartController.currentCart();
+    return cart?.id === session.cartId;
+  }
 
   /**
    * Turn the client's `returnUrl` into an absolute URL that can only point
@@ -230,7 +328,7 @@ export class CheckoutController {
         return parsed.toString();
       }
     } catch {
-      // Not a URL at all — falls through to the rejection below.
+      // Not a URL at all - falls through to the rejection below.
     }
 
     throw new BadRequestError(

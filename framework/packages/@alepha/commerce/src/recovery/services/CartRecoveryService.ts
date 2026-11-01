@@ -1,10 +1,16 @@
-import { $inject } from "alepha";
+import { $inject, $store } from "alepha";
 import { $email } from "alepha/email";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DbConflictError } from "alepha/orm";
+import { NotFoundError } from "alepha/server";
 
 import { CartService } from "../../cart/services/CartService.ts";
-import { checkoutSessions } from "../../checkout/entities/checkoutSessions.ts";
+import {
+  type CheckoutSessionEntity,
+  checkoutSessions,
+} from "../../checkout/entities/checkoutSessions.ts";
+import { cartRecoveryConfig } from "../cartRecoveryConfigAtom.ts";
+import { recoveryOptOuts } from "../entities/recoveryOptOuts.ts";
 import { CartRecoveryMailRenderer } from "../providers/CartRecoveryMailRenderer.ts";
 
 /**
@@ -16,22 +22,77 @@ export class CartRecoveryService {
   protected readonly carts = $inject(CartService);
   protected readonly renderer = $inject(CartRecoveryMailRenderer);
   protected readonly sessions = $repository(checkoutSessions);
+  protected readonly optOuts = $repository(recoveryOptOuts);
+  protected readonly config = $store(cartRecoveryConfig);
 
   protected readonly reminderMail = $email({ name: "commerce-cart-recovery" });
 
   /**
-   * Whether the cart still needs chasing: an open or paying session with
-   * an email on file. A completed session (converted) or an abandoned one
-   * ends the sequence.
+   * The session this cart may be chased through: open or paying, with an email,
+   * with the buyer's consent on record, and an address that has not opted out.
+   * Anything else ends the sequence.
    */
-  public async isRecoverable(cartId: string): Promise<boolean> {
+  protected async chaseable(
+    cartId: string,
+  ): Promise<CheckoutSessionEntity | undefined> {
     const session = await this.sessions.findOne({
       where: {
         cartId: { eq: cartId },
         status: { inArray: ["open", "paying"] },
       },
     });
-    return Boolean(session?.email);
+    if (
+      !session?.email ||
+      !session.recoveryConsentAt ||
+      (await this.hasOptedOut(session.email))
+    ) {
+      return undefined;
+    }
+    return session;
+  }
+
+  public async isRecoverable(cartId: string): Promise<boolean> {
+    return Boolean(await this.chaseable(cartId));
+  }
+
+  public async hasOptedOut(email: string): Promise<boolean> {
+    const found = await this.optOuts.count({
+      email: { eq: email.trim().toLowerCase() },
+    });
+    return found > 0;
+  }
+
+  /**
+   * Keep an address off every later reminder. Idempotent.
+   */
+  public async optOut(email: string): Promise<void> {
+    try {
+      await this.optOuts.create({ email: email.trim().toLowerCase() });
+    } catch (error) {
+      if (!(error instanceof DbConflictError)) {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Act on an unsubscribe link: the address behind the token leaves the list,
+   * and the caller stands the running sequence down.
+   *
+   * @throws NotFoundError for a token no reminder carried
+   */
+  public async unsubscribe(token: string): Promise<CheckoutSessionEntity> {
+    const session = await this.sessions.findOne({
+      where: { recoveryToken: { eq: token } },
+    });
+    if (!session?.email) {
+      throw new NotFoundError("No such reminder.");
+    }
+    await this.optOut(session.email);
+    this.log.info("Address opted out of cart reminders", {
+      sessionId: session.id,
+    });
+    return session;
   }
 
   /**
@@ -40,13 +101,8 @@ export class CartRecoveryService {
    * failure so the job can retry.
    */
   public async sendReminder(cartId: string, stage: 1 | 2): Promise<boolean> {
-    const session = await this.sessions.findOne({
-      where: {
-        cartId: { eq: cartId },
-        status: { inArray: ["open", "paying"] },
-      },
-    });
-    if (!session?.email) {
+    const session = await this.chaseable(cartId);
+    if (!session?.email || !session.recoveryToken) {
       return false;
     }
 
@@ -55,8 +111,20 @@ export class CartRecoveryService {
       return false;
     }
 
-    const mail = await this.renderer.reminder(stage, priced.lines);
-    await this.reminderMail.send({ to: session.email, ...mail });
+    const unsubscribeUrl = `${this.config.baseUrl}/commerce/recovery/unsubscribe/${session.recoveryToken}`;
+    const mail = await this.renderer.reminder(
+      stage,
+      priced.lines,
+      unsubscribeUrl,
+    );
+    await this.reminderMail.send({
+      to: session.email,
+      ...mail,
+      headers: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    });
     return true;
   }
 

@@ -3,6 +3,7 @@ import { $inject } from "alepha";
 import {
   type CheckoutShippingQuote,
   ShippingQuoteProvider,
+  type ShippingQuoteContext,
 } from "../../checkout/providers/ShippingQuoteProvider.ts";
 import { ShippingService } from "../services/ShippingService.ts";
 
@@ -20,8 +21,9 @@ export class TableShippingQuoteProvider extends ShippingQuoteProvider {
   public async quote(
     country: string,
     subtotal: number,
+    context?: ShippingQuoteContext,
   ): Promise<CheckoutShippingQuote[]> {
-    const quotes = await this.shipping.quote(country, subtotal);
+    const quotes = await this.shipping.quote(country, subtotal, context);
     return quotes.map((q) => ({
       code: q.code,
       name: q.name,
@@ -35,8 +37,9 @@ export class TableShippingQuoteProvider extends ShippingQuoteProvider {
     country: string,
     subtotal: number,
     code: string,
+    context?: ShippingQuoteContext,
   ): Promise<CheckoutShippingQuote | undefined> {
-    const quotes = await this.quote(country, subtotal);
+    const quotes = await this.quote(country, subtotal, context);
     return quotes.find((q) => q.code === code);
   }
 }
