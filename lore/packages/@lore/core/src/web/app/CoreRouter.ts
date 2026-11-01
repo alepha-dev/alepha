@@ -24,6 +24,9 @@ import { isOAuthReturnTarget } from "./components/auth/oauthReturnTarget.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
+import { ReportsCsv } from "./services/ReportsCsv.ts";
+import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
+import { ReportsUrlQuery } from "./services/ReportsUrlQuery.ts";
 
 /**
  * Core's pages (#E75, #Q2611): the root layout and the pages every Lore has
@@ -44,6 +47,11 @@ export class CoreRouter {
   dateTime = $inject(DateTimeProvider);
 
   reportsTabs = $inject(ReportsTabRegistry);
+  // Read by components through `useInject`, which cannot construct a service
+  // once the container is locked, so the module's boot has to.
+  reportsUrl = $inject(ReportsUrlQuery);
+  reportsCsv = $inject(ReportsCsv);
+  reportsDrillDown = $inject(ReportsDrillDown);
 
   head = $head(() => {
     const head: Head = {

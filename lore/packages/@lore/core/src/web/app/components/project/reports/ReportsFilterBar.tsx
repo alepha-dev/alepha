@@ -137,11 +137,17 @@ const ReportsFilterBar = (props: ReportsFilterBarProps) => {
           label: tr(`reports.filter.grain.${value}`),
         }))}
       />
-      <Control
-        input={inputs.compare!}
-        label={tr("reports.filter.compare")}
-        disabled={off("compare")}
-      />
+      <div className="flex items-center gap-1.5 text-xs">
+        <Control
+          input={inputs.compare!}
+          label=""
+          inputProps={{ "aria-label": tr("reports.filter.compare") }}
+          disabled={off("compare")}
+        />
+        <span className="text-muted-foreground">
+          {tr("reports.filter.compare")}
+        </span>
+      </div>
       {filters.map((filter) => (
         <ReportsFilterSelect
           key={filter.key}

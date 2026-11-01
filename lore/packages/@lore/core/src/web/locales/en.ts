@@ -921,6 +921,58 @@ export default {
     "This tab shows what a test run measured. Run these two commands in CI, and the figures appear here on the next push.",
   "reports.quality.empty.credential":
     "The push needs LORE_API_KEY, an API key from your account's keys page.",
+  "reports.csv": "CSV",
+  "reports.delta": "$1 vs previous",
+  "reports.overview.burnup.definition":
+    "Quests created and quests completed, cumulative, shelved quests and open quests of draft epics excluded.",
+  "reports.overview.completionRate.definition":
+    "Quests completed over quests created, cumulative, sampled over time.",
+  "reports.quests.status.definition":
+    "Every quest in scope by state. Shelved quests and open quests of draft epics are excluded.",
+  "reports.quests.byArea.definition":
+    "Completed in the period and still open, per area.",
+  "reports.quests.byTag.definition":
+    "Completed in the period and still open, per tag. A quest counts once per tag, so the bars overlap.",
+  "reports.quests.byPriority.definition":
+    "Completed in the period and still open, per priority.",
+  "reports.quests.cycleTime.definition":
+    "Median hours from accepted to completed, hold time excluded, for quests completed in the period.",
+  "reports.quests.aging.definition":
+    "The oldest quests in progress, by days since accepted. Held quests are left out.",
+  "reports.members.leaderboard.definition":
+    "Quests completed per member in the period.",
+  "reports.members.contribution.definition":
+    "Quests completed per week by the top contributors.",
+  "reports.members.idle.definition":
+    "Members with no completed quest within the stale threshold.",
+  "reports.overview.kpi.completion.definition":
+    "Completed quests over all quests in scope.",
+  "reports.overview.kpi.open.definition":
+    "Accepted and not completed. Held quests are counted apart.",
+  "reports.overview.kpi.completedThisWeek.definition":
+    "Quests completed in the last seven days.",
+  "reports.overview.kpi.cycleTime.definition":
+    "Median time from accepted to completed, hold time excluded.",
+  "reports.overview.kpi.activeMembers.definition":
+    "Members who created, accepted, completed or commented on a quest.",
+  "reports.quality.lines.definition":
+    "Share of lines executed by the latest run.",
+  "reports.quality.statements.definition":
+    "Share of statements executed by the latest run.",
+  "reports.quality.functions.definition":
+    "Share of functions called by the latest run.",
+  "reports.quality.branches.definition":
+    "Share of branches taken by the latest run.",
+  "reports.quality.total.definition": "Tests in the latest run.",
+  "reports.quality.passed.definition": "Tests that passed in the latest run.",
+  "reports.quality.failed.definition": "Tests that failed in the latest run.",
+  "reports.quality.duration.definition": "Wall-clock time of the latest run.",
+  "reports.quality.section.coverage.definition": "Coverage of the latest run.",
+  "reports.quality.section.tests.definition": "Test counts of the latest run.",
+  "reports.quality.section.coverageOverTime.definition":
+    "Coverage of the last run of each day.",
+  "reports.quality.section.testsOverTime.definition":
+    "Passed and failed tests of the last run of each day.",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

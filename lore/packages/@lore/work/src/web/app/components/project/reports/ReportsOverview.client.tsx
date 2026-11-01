@@ -69,6 +69,7 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
   const kpiRow: ReportsKpi[] = [
     {
       label: tr("reports.overview.kpi.completion"),
+      definition: tr("reports.overview.kpi.completion.definition"),
       value: `${completionPct}%`,
       hint: tr("reports.overview.kpi.completionHint", {
         args: [String(kpis.completedQuests), String(kpis.totalQuests)],
@@ -76,6 +77,7 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     },
     {
       label: tr("reports.overview.kpi.open"),
+      definition: tr("reports.overview.kpi.open.definition"),
       value: kpis.openQuests,
       hint: tr("reports.overview.kpi.heldHint", {
         args: [String(kpis.heldQuests)],
@@ -83,6 +85,7 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     },
     {
       label: tr("reports.overview.kpi.completedThisWeek"),
+      definition: tr("reports.overview.kpi.completedThisWeek.definition"),
       value: kpis.completedThisWeek,
       hint: tr("reports.overview.kpi.weekDeltaHint", {
         args: [`${weekDelta >= 0 ? "+" : ""}${weekDelta}`],
@@ -90,6 +93,7 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     },
     {
       label: tr("reports.overview.kpi.cycleTime"),
+      definition: tr("reports.overview.kpi.cycleTime.definition"),
       value: hours(kpis.medianCycleTimeHours),
       hint: tr("reports.overview.kpi.cycleTimeHint", {
         args: [hours(kpis.p85CycleTimeHours)],
@@ -97,6 +101,7 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     },
     {
       label: tr("reports.overview.kpi.activeMembers"),
+      definition: tr("reports.overview.kpi.activeMembers.definition"),
       value: kpis.activeMembers,
       hint: tr("reports.overview.kpi.activeMembersHint"),
     },
@@ -121,7 +126,10 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
     <div className="flex flex-col gap-8">
       <ReportsKpiRow kpis={kpiRow} />
 
-      <ReportsSection title={tr("reports.overview.burnup.title")}>
+      <ReportsSection
+        title={tr("reports.overview.burnup.title")}
+        definition={tr("reports.overview.burnup.definition")}
+      >
         {burnup.length > 0 ? (
           <ChartContainer
             config={burnupChartConfig}
@@ -160,7 +168,10 @@ const ReportsOverview = (props: ReportsOverviewProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.overview.completionRate.title")}>
+      <ReportsSection
+        title={tr("reports.overview.completionRate.title")}
+        definition={tr("reports.overview.completionRate.definition")}
+      >
         {completionTrend.length > 0 ? (
           <ChartContainer
             config={completionChartConfig}

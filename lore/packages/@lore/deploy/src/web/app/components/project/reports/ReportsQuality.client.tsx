@@ -70,27 +70,47 @@ const ReportsQuality = (props: ReportsQualityProps) => {
   } satisfies ChartConfig;
 
   const coverageKpis: ReportsKpi[] = [
-    { label: tr("reports.quality.lines"), value: `${latest.coverageLines}%` },
+    {
+      label: tr("reports.quality.lines"),
+      definition: tr("reports.quality.lines.definition"),
+      value: `${latest.coverageLines}%`,
+    },
     {
       label: tr("reports.quality.statements"),
+      definition: tr("reports.quality.statements.definition"),
       value: `${latest.coverageStatements}%`,
     },
     {
       label: tr("reports.quality.functions"),
+      definition: tr("reports.quality.functions.definition"),
       value: `${latest.coverageFunctions}%`,
     },
     {
       label: tr("reports.quality.branches"),
+      definition: tr("reports.quality.branches.definition"),
       value: `${latest.coverageBranches}%`,
     },
   ];
 
   const testKpis: ReportsKpi[] = [
-    { label: tr("reports.quality.total"), value: latest.testsTotal },
-    { label: tr("reports.quality.passed"), value: latest.testsPassed },
-    { label: tr("reports.quality.failed"), value: latest.testsFailed },
+    {
+      label: tr("reports.quality.total"),
+      definition: tr("reports.quality.total.definition"),
+      value: latest.testsTotal,
+    },
+    {
+      label: tr("reports.quality.passed"),
+      definition: tr("reports.quality.passed.definition"),
+      value: latest.testsPassed,
+    },
+    {
+      label: tr("reports.quality.failed"),
+      definition: tr("reports.quality.failed.definition"),
+      value: latest.testsFailed,
+    },
     {
       label: tr("reports.quality.duration"),
+      definition: tr("reports.quality.duration.definition"),
       value: `${Math.round(latest.durationMs / 1000)}s`,
       // Two sources, one column: `numPendingTests` plus `numTodoTests`. Saying
       // so here is cheaper than a reader assuming the first.
@@ -155,16 +175,23 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     <>
       <ReportsSection
         title={tr("reports.quality.section.coverage")}
+        definition={tr("reports.quality.section.coverage.definition")}
         action={<ReportsQualityStaleness latest={latest} />}
       >
         <ReportsKpiRow kpis={coverageKpis} />
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quality.section.tests")}>
+      <ReportsSection
+        title={tr("reports.quality.section.tests")}
+        definition={tr("reports.quality.section.tests.definition")}
+      >
         <ReportsKpiRow kpis={testKpis} />
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quality.section.coverageOverTime")}>
+      <ReportsSection
+        title={tr("reports.quality.section.coverageOverTime")}
+        definition={tr("reports.quality.section.coverageOverTime.definition")}
+      >
         <ChartContainer config={coverageChartConfig} className="h-64 w-full">
           <LineChart data={series}>
             <CartesianGrid vertical={false} />
@@ -198,7 +225,10 @@ const ReportsQuality = (props: ReportsQualityProps) => {
         </ChartContainer>
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quality.section.testsOverTime")}>
+      <ReportsSection
+        title={tr("reports.quality.section.testsOverTime")}
+        definition={tr("reports.quality.section.testsOverTime.definition")}
+      >
         <ChartContainer config={testsChartConfig} className="h-64 w-full">
           <LineChart data={series}>
             <CartesianGrid vertical={false} />

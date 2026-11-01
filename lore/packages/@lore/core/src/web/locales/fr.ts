@@ -899,6 +899,60 @@ export default {
     "Cet onglet affiche ce qu'une exécution de tests a mesuré. Lancez ces deux commandes dans votre CI, et les chiffres apparaîtront ici au prochain envoi.",
   "reports.quality.empty.credential":
     "L'envoi nécessite LORE_API_KEY, une clé d'API créée depuis la page des clés de votre compte.",
+  "reports.csv": "CSV",
+  "reports.delta": "$1 par rapport à avant",
+  "reports.overview.burnup.definition":
+    "Quêtes créées et terminées, en cumulé, hors quêtes mises de côté et quêtes ouvertes des épopées en brouillon.",
+  "reports.overview.completionRate.definition":
+    "Quêtes terminées sur quêtes créées, en cumulé, échantillonné dans le temps.",
+  "reports.quests.status.definition":
+    "Chaque quête par état, hors quêtes mises de côté et quêtes ouvertes des épopées en brouillon.",
+  "reports.quests.byArea.definition":
+    "Terminées sur la période et encore ouvertes, par domaine.",
+  "reports.quests.byTag.definition":
+    "Terminées sur la période et encore ouvertes, par tag. Une quête compte une fois par tag : les barres se recoupent.",
+  "reports.quests.byPriority.definition":
+    "Terminées sur la période et encore ouvertes, par priorité.",
+  "reports.quests.cycleTime.definition":
+    "Heures médianes entre acceptation et fin, attente exclue, pour les quêtes terminées sur la période.",
+  "reports.quests.aging.definition":
+    "Les plus anciennes quêtes en cours, en jours depuis l'acceptation, hors quêtes en attente.",
+  "reports.members.leaderboard.definition":
+    "Quêtes terminées par membre sur la période.",
+  "reports.members.contribution.definition":
+    "Quêtes terminées par semaine par les principaux contributeurs.",
+  "reports.members.idle.definition":
+    "Membres sans quête terminée dans le seuil d'ancienneté.",
+  "reports.overview.kpi.completion.definition":
+    "Quêtes terminées sur toutes les quêtes retenues.",
+  "reports.overview.kpi.open.definition":
+    "Acceptées et non terminées. Les quêtes en attente sont comptées à part.",
+  "reports.overview.kpi.completedThisWeek.definition":
+    "Quêtes terminées ces sept derniers jours.",
+  "reports.overview.kpi.cycleTime.definition":
+    "Temps médian entre acceptation et fin, attente exclue.",
+  "reports.overview.kpi.activeMembers.definition":
+    "Membres ayant créé, accepté, terminé ou commenté une quête.",
+  "reports.quality.lines.definition":
+    "Part des lignes exécutées par le dernier passage.",
+  "reports.quality.statements.definition":
+    "Part des instructions exécutées par le dernier passage.",
+  "reports.quality.functions.definition":
+    "Part des fonctions appelées par le dernier passage.",
+  "reports.quality.branches.definition":
+    "Part des branches prises par le dernier passage.",
+  "reports.quality.total.definition": "Tests du dernier passage.",
+  "reports.quality.passed.definition": "Tests réussis au dernier passage.",
+  "reports.quality.failed.definition": "Tests échoués au dernier passage.",
+  "reports.quality.duration.definition": "Durée réelle du dernier passage.",
+  "reports.quality.section.coverage.definition":
+    "Couverture du dernier passage.",
+  "reports.quality.section.tests.definition":
+    "Nombre de tests du dernier passage.",
+  "reports.quality.section.coverageOverTime.definition":
+    "Couverture du dernier passage de chaque jour.",
+  "reports.quality.section.testsOverTime.definition":
+    "Tests réussis et échoués du dernier passage de chaque jour.",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

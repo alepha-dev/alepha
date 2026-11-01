@@ -132,6 +132,22 @@ export {
   default as ReportsKpiRow,
 } from "./app/components/project/reports/ReportsKpiRow.tsx";
 export { default as ReportsSection } from "./app/components/project/reports/ReportsSection.tsx";
+export { default as ReportsHeatmap } from "./app/components/project/reports/ReportsHeatmap.tsx";
+export {
+  default as ReportsHistogram,
+  type ReportsHistogramBucket,
+} from "./app/components/project/reports/ReportsHistogram.tsx";
+export {
+  default as ReportsScatterChart,
+  type ReportsScatterPoint,
+} from "./app/components/project/reports/ReportsScatterChart.tsx";
+export { default as ReportsStackedArea } from "./app/components/project/reports/ReportsStackedArea.tsx";
+export { useReportsDrillDown } from "./app/components/project/reports/useReportsDrillDown.ts";
+export { ReportsCsv, type ReportsCsvRow } from "./app/services/ReportsCsv.ts";
+export {
+  ReportsDrillDown,
+  type ReportsSegment,
+} from "./app/services/ReportsDrillDown.ts";
 export { default as ProjectSettingsCapabilitySection } from "./app/components/project/settings/ProjectSettingsCapabilitySection.tsx";
 export { default as AttachmentLightbox } from "./app/components/shared/AttachmentLightbox.tsx";
 export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";

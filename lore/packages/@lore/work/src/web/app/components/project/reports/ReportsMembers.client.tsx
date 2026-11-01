@@ -56,7 +56,10 @@ const ReportsMembers = (props: ReportsMembersProps) => {
 
   return (
     <div className="flex flex-col gap-8">
-      <ReportsSection title={tr("reports.members.leaderboard.title")}>
+      <ReportsSection
+        title={tr("reports.members.leaderboard.title")}
+        definition={tr("reports.members.leaderboard.definition")}
+      >
         {leaderboard.length > 0 ? (
           <div className="divide-border divide-y">
             {leaderboard.map((member, index) => (
@@ -94,7 +97,10 @@ const ReportsMembers = (props: ReportsMembersProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.members.contribution.title")}>
+      <ReportsSection
+        title={tr("reports.members.contribution.title")}
+        definition={tr("reports.members.contribution.definition")}
+      >
         {hasContribution ? (
           <ChartContainer
             config={contribConfig}
@@ -130,7 +136,10 @@ const ReportsMembers = (props: ReportsMembersProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.members.idle.title")}>
+      <ReportsSection
+        title={tr("reports.members.idle.title")}
+        definition={tr("reports.members.idle.definition")}
+      >
         {idle.length > 0 ? (
           <div className="divide-border divide-y">
             {idle.map((member) => (

@@ -81,7 +81,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
 
   return (
     <div className="flex flex-col gap-8">
-      <ReportsSection title={tr("reports.quests.status.title")}>
+      <ReportsSection
+        title={tr("reports.quests.status.title")}
+        definition={tr("reports.quests.status.definition")}
+      >
         {funnelTotal > 0 ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-x-10 gap-y-4">
@@ -115,7 +118,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quests.byArea.title")}>
+      <ReportsSection
+        title={tr("reports.quests.byArea.title")}
+        definition={tr("reports.quests.byArea.definition")}
+      >
         {byArea.length > 0 ? (
           <ChartContainer
             config={breakdownChartConfig}
@@ -160,7 +166,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         a reader who assumes this one does too will add the bars up and find
         more quests than exist.
       */}
-      <ReportsSection title={tr("reports.quests.byTag.title")}>
+      <ReportsSection
+        title={tr("reports.quests.byTag.title")}
+        definition={tr("reports.quests.byTag.definition")}
+      >
         {byTag.length > 0 ? (
           <>
             <p className="text-muted-foreground text-xs">
@@ -200,7 +209,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quests.byPriority.title")}>
+      <ReportsSection
+        title={tr("reports.quests.byPriority.title")}
+        definition={tr("reports.quests.byPriority.definition")}
+      >
         {byPriority.length > 0 ? (
           <ChartContainer
             config={breakdownChartConfig}
@@ -235,7 +247,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quests.cycleTime.title")}>
+      <ReportsSection
+        title={tr("reports.quests.cycleTime.title")}
+        definition={tr("reports.quests.cycleTime.definition")}
+      >
         {cycleTimeByPriority.length > 0 ? (
           <ChartContainer
             config={cycleTimeChartConfig}
@@ -265,7 +280,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         )}
       </ReportsSection>
 
-      <ReportsSection title={tr("reports.quests.aging.title")}>
+      <ReportsSection
+        title={tr("reports.quests.aging.title")}
+        definition={tr("reports.quests.aging.definition")}
+      >
         {aging.length > 0 ? (
           <div className="divide-border divide-y">
             {aging.map((quest) => (
