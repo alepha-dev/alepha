@@ -71,6 +71,14 @@ Decisions, plans and bug reports live in the Lore project **Alepha** (`https://l
 - **Folios record decisions, quests record work.** Write a folio whenever a session produces a non-obvious decision.
 - **Every commit belongs to a quest**, a small edit excepted: find or file it (`quest_create` with an existing `area`), accept it before the first commit, name it as `#Q<n>` in every commit, record each sha with `quest_commit_add`, complete it when the work lands.
 
+### MCP and the CLI
+
+⚠️ **MCP must never do more than the `lore` CLI.** The CLI may do more, because some things are not possible over MCP (file uploads go through `lore attachments push`), but an agent without MCP has to be able to do everything an agent with it can.
+
+- A new or extended `$tool` lands with its `$command` in the same change, named by the rule the help teaches: `quest_create` is `lore quest create`. A flag follows its tool's param.
+- `apps/lore/test/mcp-cli-parity.spec.ts` resolves every tool to a command. Its `GAPS` list is the debt this rule was written over: it only shrinks, and nothing is added to it.
+- A command calls existing actions over `$client` (#F1264). A tool's aggregates, made for a model's context, are not reproduced.
+
 ## Testing
 
 Vitest with globals. Specs live in `__tests__/` or `test/`, or co-located as `*.spec.ts`. `*.browser.spec.ts(x)` runs under jsdom, everything else under node. Every workspace with specs owns a `vitest.config.ts` calling `workspaceProjects` from `scripts/vitest.projects.ts`, and the root `vitest.config.ts` spreads them.

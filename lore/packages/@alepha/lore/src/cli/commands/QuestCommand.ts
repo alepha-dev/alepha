@@ -4,6 +4,7 @@ import type { QuestController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
+import { FileSystemProvider } from "alepha/system";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
@@ -15,7 +16,9 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore quest list | get | create | update | accept | objective set | complete`.
+ * `lore quest list | get | create | update | accept | objective set |
+ * comment add | commit add | hold | unhold | shelve | unshelve | unassign |
+ * complete | delete | tags | attachment get`.
  *
  * ```bash
  * lore quest list -p alepha --status in_progress --tag bug
@@ -57,6 +60,7 @@ export class QuestCommand {
   protected readonly refs = $inject(LoreReferences);
   protected readonly refusals = $inject(LoreRefusals);
   protected readonly render = $inject(LoreOutput);
+  protected readonly fs = $inject(FileSystemProvider);
 
   /**
    * ⚠️ Declared after `client`: a field initializer reading a field declared
@@ -82,6 +86,12 @@ export class QuestCommand {
   ] as const;
 
   public static readonly SIZES = ["XS", "S", "M", "L", "XL"];
+
+  /**
+   * The attachments worth printing, by the rule `quest_attachment_get` reads
+   * them with. Anything else goes to `--out`.
+   */
+  protected static readonly TEXT_LIKE = /^(text\/|application\/(json|csv))/;
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -197,9 +207,12 @@ export class QuestCommand {
           params: { id: quest.id },
           query: {},
         });
+        const attachments = await this.questApi.listQuestAttachments({
+          params: { id: quest.id },
+        });
 
         if (flags.output === "json") {
-          this.render.json(print, { ...quest, comments });
+          this.render.json(print, { ...quest, comments, attachments });
           return;
         }
 
@@ -244,6 +257,17 @@ export class QuestCommand {
                     lines: quest.commits.map(
                       (commit) =>
                         `${commit.sha.slice(0, 9)}  ${commit.message ?? ""}`,
+                    ),
+                  },
+                ]
+              : []),
+            ...(attachments.length
+              ? [
+                  {
+                    title: "Attachments",
+                    lines: attachments.map(
+                      (file) =>
+                        `${file.fileId}  ${file.name}  (${file.mimeType}, ${file.size} bytes)`,
                     ),
                   },
                 ]
@@ -314,6 +338,11 @@ export class QuestCommand {
           "Accept it too. A refused accept leaves the quest created and exits 1.",
         )
         .optional(),
+      "depends-on": z
+        .text({
+          description: "The quest that has to complete first: 12 or Q12.",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
@@ -330,10 +359,12 @@ export class QuestCommand {
         if (epic) {
           this.assertEpicTakes(epic, !!flags.accept);
         }
+        const dependsOn = await this.dependsOn(projectId, flags["depends-on"]);
 
         const created = await this.questApi.createQuest({
           body: {
             projectId,
+            ...(dependsOn != null ? { dependsOn } : {}),
             title: flags.title,
             area: flags.area,
             priority: flags.priority,
@@ -428,13 +459,25 @@ export class QuestCommand {
           "The quest's tags. REPLACES the whole set: pass every tag it should keep, or '[]' to clear them.",
         )
         .optional(),
+      epic: z
+        .text({
+          description:
+            "Move it into this epic, 45 or E45; 0 takes it out of its epic.",
+        })
+        .optional(),
+      "depends-on": z
+        .text({
+          description:
+            "The quest that has to complete first, 12 or Q12; 0 clears it.",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const shortId = this.refs.quest(args);
-        const body = {
+        const fields = {
           ...(flags.title !== undefined ? { title: flags.title } : {}),
           ...(flags.description !== undefined
             ? { description: flags.description }
@@ -444,10 +487,14 @@ export class QuestCommand {
           ...(flags.size !== undefined ? { size: flags.size } : {}),
           ...(flags.tag !== undefined ? { tags: flags.tag } : {}),
         };
-        const changed = Object.keys(body);
+        const changed = [
+          ...Object.keys(fields),
+          ...(flags["depends-on"] !== undefined ? ["depends-on"] : []),
+          ...(flags.epic !== undefined ? ["epic"] : []),
+        ];
         if (changed.length === 0) {
           throw new UsageError(
-            "Nothing to update: pass at least one of --title, --description, --area, --priority, --size or --tag.",
+            "Nothing to update: pass at least one of --title, --description, --area, --priority, --size, --tag, --epic or --depends-on.",
           );
         }
 
@@ -456,10 +503,36 @@ export class QuestCommand {
         const quest = await this.questApi.getQuestByShortId({
           params: { projectId, shortId },
         });
-        const updated = await this.questApi.updateQuestById({
-          params: { id: quest.id },
-          body,
-        });
+        const dependsOn = await this.dependsOn(projectId, flags["depends-on"]);
+
+        // The epic first, as `quest_update` does: it is a separate call that
+        // can be refused on its own, and a refusal here writes nothing else.
+        if (flags.epic === "0") {
+          if (quest.epicId != null) {
+            await this.epicApi.detachQuest({
+              params: { id: quest.epicId, questId: quest.id },
+            });
+          }
+        } else if (flags.epic !== undefined) {
+          const epic = await this.epicApi.getEpicByNumber({
+            params: { projectId, number: this.refs.epic(flags.epic) },
+          });
+          await this.epicApi.attachQuest({
+            params: { id: epic.id },
+            body: { questId: quest.id },
+          });
+        }
+
+        const body = {
+          ...fields,
+          ...(dependsOn !== undefined ? { dependsOn } : {}),
+        };
+        const updated = Object.keys(body).length
+          ? await this.questApi.updateQuestById({
+              params: { id: quest.id },
+              body,
+            })
+          : await this.questApi.getQuestById({ params: { id: quest.id } });
 
         this.printWrite(
           print,
@@ -634,6 +707,291 @@ export class QuestCommand {
     },
   });
 
+  public readonly commentAdd = $command({
+    name: "add",
+    description: "Leave a comment on a quest",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      body: z.text({
+        size: "rich",
+        atFile: true,
+        description:
+          "The comment, in Markdown. An @handle reaches that project member's inbox.",
+      }),
+      as: z
+        .text({
+          description:
+            "Your name if you are an agent, e.g. claude-code: the comment shows as agent-written instead of as this account's owner.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.quest(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const quest = await this.questApi.getQuestByShortId({
+          params: { projectId, shortId },
+        });
+        const comment = await this.commentApi.createQuestComment({
+          params: { id: quest.id },
+          body: {
+            body: flags.body,
+            ...(flags.as
+              ? { source: { kind: "cli" as const, client: flags.as } }
+              : {}),
+          },
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          comment,
+          `Commented on Q${quest.shortId}`,
+        );
+      });
+    },
+  });
+
+  public readonly comment = $command({
+    name: "comment",
+    description: "A quest's discussion: add a comment",
+    children: [this.commentAdd],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  public readonly commitAdd = $command({
+    name: "add",
+    description: "Record a commit against a quest, completed ones included",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      sha: z.text({ description: "The commit, 7 to 40 hex characters." }),
+      message: z
+        .text({ maxLength: 500, description: "The commit's subject line." })
+        .optional(),
+      repo: z
+        .text({
+          maxLength: 200,
+          description: "Which repository, e.g. alepha-dev/alepha.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.quest(args);
+        const { sha } = this.commitSha(flags.sha);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const quest = await this.questApi.getQuestByShortId({
+          params: { projectId, shortId },
+        });
+        const updated = await this.questApi.addQuestCommit({
+          params: { id: quest.id },
+          body: { sha, message: flags.message, repo: flags.repo },
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Recorded ${sha.slice(0, 9)} on Q${quest.shortId}`,
+        );
+      });
+    },
+  });
+
+  public readonly commit = $command({
+    name: "commit",
+    description: "What shipped for a quest: record a commit",
+    children: [this.commitAdd],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  public readonly hold = $command({
+    name: "hold",
+    description: "Put a quest on hold: it is blocked on something outside it",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      reason: z.text({
+        size: "rich",
+        atFile: true,
+        description:
+          "What it is waiting on, posted to its discussion. Mention who you are waiting on with @handle.",
+      }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Held", (id) =>
+        this.questApi.holdQuest({
+          params: { id },
+          body: { reason: flags.reason },
+        }),
+      );
+    },
+  });
+
+  public readonly unhold = $command({
+    name: "unhold",
+    description: "Lift a hold: the quest gets its previous status back",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Unheld", (id) =>
+        this.questApi.unholdQuest({ params: { id } }),
+      );
+    },
+  });
+
+  public readonly shelve = $command({
+    name: "shelve",
+    description: "Set a todo quest aside as out of scope, without deleting it",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Shelved", (id) =>
+        this.questApi.shelveQuest({ params: { id } }),
+      );
+    },
+  });
+
+  public readonly unshelve = $command({
+    name: "unshelve",
+    description: "Bring a shelved quest back to the backlog",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Unshelved", (id) =>
+        this.questApi.unshelveQuest({ params: { id } }),
+      );
+    },
+  });
+
+  public readonly unassign = $command({
+    name: "unassign",
+    description: "Send an accepted quest back to the backlog as todo",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Unassigned", (id) =>
+        this.questApi.unassignQuest({ params: { id } }),
+      );
+    },
+  });
+
+  public readonly delete = $command({
+    name: "delete",
+    description: "Delete a quest for good; to keep the record, shelve it",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      yes: z
+        .boolean()
+        .describe("Required: a delete cannot be undone.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const shortId = this.refs.quest(args);
+      if (!flags.yes) {
+        throw new UsageError(
+          `Nothing deleted: Q${shortId} would go for good. Pass --yes to delete it.`,
+        );
+      }
+      await this.transition(args, flags, print, "Deleted", (id) =>
+        this.questApi.deleteQuest({ params: { id } }),
+      );
+    },
+  });
+
+  public readonly tags = $command({
+    name: "tags",
+    description: "List the tags a project's quests use",
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const tags = await this.questApi.listQuestTags({
+          query: { projectId },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, tags);
+          return;
+        }
+        print(tags.length ? tags.join("\n") : "No tags yet.");
+      });
+    },
+  });
+
+  public readonly attachmentGet = $command({
+    name: "get",
+    description:
+      "Read a file attached to a quest: text is printed, --out saves anything",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      attachment: z
+        .uuid()
+        .describe("The file's id, as lore quest get lists it."),
+      out: z
+        .text({ description: "Save the file here instead of printing it." })
+        .optional(),
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.quest(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const quest = await this.questApi.getQuestByShortId({
+          params: { projectId, shortId },
+        });
+        const file = await this.questApi.getQuestAttachment({
+          params: { id: quest.id, fileId: flags.attachment },
+        });
+        const bytes = Buffer.from(file.data, "base64");
+
+        if (flags.out) {
+          const path = this.fs.resolve(root, flags.out);
+          await this.fs.writeFile(path, bytes);
+          this.render.write(print, `Saved ${file.name} to ${path}`);
+          return;
+        }
+
+        if (QuestCommand.TEXT_LIKE.test(file.mimeType)) {
+          print(bytes.toString("utf8"));
+          return;
+        }
+
+        throw new UsageError(
+          `${file.name} is ${file.mimeType} (${file.size} bytes), which does not print. Pass --out <path> to save it.`,
+        );
+      });
+    },
+  });
+
+  public readonly attachment = $command({
+    name: "attachment",
+    description: "A quest's files: read one. lore attachments push adds them",
+    children: [this.attachmentGet],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   /**
    * `lore quest objective set`, named by the rule the help teaches:
    * `quest_objective_set` is `lore quest objective set`. Declared after its
@@ -656,7 +1014,7 @@ export class QuestCommand {
   public readonly quest = $command({
     name: "quest",
     description:
-      "A project's quests: list, read, create, update, accept, tick and complete them",
+      "A project's quests: list, read, create, update, accept, tick, comment, hold, shelve, complete and delete them",
     children: [
       this.list,
       this.get,
@@ -664,12 +1022,68 @@ export class QuestCommand {
       this.update,
       this.accept,
       this.objective,
+      this.comment,
+      this.commit,
+      this.hold,
+      this.unhold,
+      this.shelve,
+      this.unshelve,
+      this.unassign,
       this.complete,
+      this.delete,
+      this.tags,
+      this.attachment,
     ],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  /**
+   * One quest, one action on its id: look it up, act, say so. The server
+   * decides whether the move is allowed, and refuses in its own words.
+   */
+  protected async transition(
+    ref: string,
+    flags: { project?: string; output: string },
+    print: (message?: string) => void,
+    verb: string,
+    act: (id: number) => Promise<unknown>,
+  ): Promise<void> {
+    const context: LoreRefusalContext = {};
+    await this.refusals.guard(context, async () => {
+      const shortId = this.refs.quest(ref);
+      const { projectId } = await this.projects.named(flags.project, context);
+
+      const quest = await this.questApi.getQuestByShortId({
+        params: { projectId, shortId },
+      });
+      const subject = await act(quest.id);
+
+      this.render.written(
+        print,
+        flags.output,
+        subject,
+        `${verb} Q${quest.shortId} ${quest.title}`,
+      );
+    });
+  }
+
+  /**
+   * `--depends-on` as `dependsOn` takes it: absent leaves it alone, `0` clears
+   * it, and a number is read first, so a wrong one fails with nothing written.
+   */
+  protected async dependsOn(
+    projectId: number,
+    ref: string | undefined,
+  ): Promise<number | null | undefined> {
+    if (ref === undefined) return undefined;
+    if (ref === "0") return null;
+    const predecessor = await this.questApi.getQuestByShortId({
+      params: { projectId, shortId: this.refs.quest(ref) },
+    });
+    return predecessor.id;
+  }
 
   /**
    * `--waive <id>=<reason>`, as `completeQuest` takes it.

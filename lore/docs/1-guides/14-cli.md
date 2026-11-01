@@ -51,10 +51,13 @@ Every project command looks for the project in this order:
 ## Conventions
 
 - **Names follow the [MCP tools](/lore/docs/guides-mcp).** The agent tool
-  `quest_create` is `lore quest create`. The CLI covers less: a command can take fewer flags than
-  its tool (`quest_create` has `dueAt`, `lore quest create` does not), and some
-  tools have no command (`quest_hold`, `quest_comment_add`, `folio_update`,
-  every `epic_*`).
+  `quest_create` is `lore quest create`. Planning is covered: projects, epics,
+  quests, folios and directories. Some tools have no command yet (feedback,
+  automations, blights, sigils, app instances and release management), and a
+  command can still take fewer flags than its tool (`quest_create` has `dueAt`,
+  `lore quest create` does not).
+- **A delete needs `--yes`.** Nothing here prompts: an agent's shell has nothing
+  to answer with.
 - **Output** is human-readable by default. `--output json` prints JSON for
   scripts on the commands whose `--help` lists it: quests, folios and projects,
   but not `lore deploy` or `lore secrets`, for instance. Logs go to standard
@@ -86,12 +89,14 @@ Every project command looks for the project in this order:
 
 ### Projects
 
-| Command                      | What it does                                                                        |
-| ---------------------------- | ----------------------------------------------------------------------------------- |
-| `lore project list`          | The projects you are a member of.                                                   |
-| `lore project info`          | One project: its capabilities, areas and more.                                      |
-| `lore project create <name>` | Create a project and link the current directory to it. `--no-link` skips the link.  |
-| `lore project link <slug>`   | Link the current directory to an existing project. `--force` replaces another link. |
+| Command                      | What it does                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| `lore project list`          | The projects you are a member of.                                                    |
+| `lore project info`          | One project: its capabilities, areas and more.                                       |
+| `lore project context`       | Orient yourself: areas, your quests, open epics, releases, folios and pinned folios. |
+| `lore project activity`      | What moved since `--since <timestamp>`, your own events included.                    |
+| `lore project create <name>` | Create a project and link the current directory to it. `--no-link` skips the link.   |
+| `lore project link <slug>`   | Link the current directory to an existing project. `--force` replaces another link.  |
 
 `lore project create` makes a project with the **Deploy and watch apps**
 capability only, its **Deploy apps** option on and **Track apps** off. Turn on
@@ -99,27 +104,68 @@ the rest in the project's settings.
 
 ### Quests
 
-| Command                          | What it does                                                                                                           |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `lore quest list`                | Newest-updated first. `--status`, `--tag`, `--epic`, `--limit` (default 20, max 100), `--offset`.                      |
-| `lore quest get <ref>`           | One quest with its description, objectives (and their ids) and discussion.                                             |
-| `lore quest create`              | `--title`, `--area`, `--priority` (required); `--description`, `--size`, `--tag`, `--objective`, `--epic`, `--accept`. |
-| `lore quest update <ref>`        | Change the title, description, area and other fields.                                                                  |
-| `lore quest accept <ref>`        | Take the quest and start it.                                                                                           |
-| `lore quest objective set <ref>` | Tick an objective by `--objective <id>`; `--no-completed` unticks it.                                                  |
-| `lore quest complete <ref>`      | `--message`, `--commit <sha>` (repeatable), `--waive <id>=<reason>` for an objective not done.                         |
+| Command                           | What it does                                                                                                           |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `lore quest list`                 | Newest-updated first. `--status`, `--tag`, `--epic`, `--limit` (default 20, max 100), `--offset`.                      |
+| `lore quest get <ref>`            | One quest with its description, objectives (and their ids) and discussion.                                             |
+| `lore quest create`               | `--title`, `--area`, `--priority` (required); `--description`, `--size`, `--tag`, `--objective`, `--epic`, `--accept`. |
+| `lore quest update <ref>`         | Change the title, description, area and other fields.                                                                  |
+| `lore quest accept <ref>`         | Take the quest and start it.                                                                                           |
+| `lore quest objective set <ref>`  | Tick an objective by `--objective <id>`; `--no-completed` unticks it.                                                  |
+| `lore quest comment add <ref>`    | `--body`; `--as <name>` marks it as written by an agent.                                                               |
+| `lore quest commit add <ref>`     | `--sha`, `--message`, `--repo`. Records a commit, on a completed quest too.                                            |
+| `lore quest hold <ref>`           | `--reason`, posted to the discussion. `lore quest unhold <ref>` lifts it.                                              |
+| `lore quest shelve <ref>`         | Set a todo quest aside. `lore quest unshelve <ref>` brings it back.                                                    |
+| `lore quest unassign <ref>`       | Send an accepted quest back to todo.                                                                                   |
+| `lore quest complete <ref>`       | `--message`, `--commit <sha>` (repeatable), `--waive <id>=<reason>` for an objective not done.                         |
+| `lore quest delete <ref>`         | For good, with `--yes`.                                                                                                |
+| `lore quest tags`                 | The tags the project uses.                                                                                             |
+| `lore quest attachment get <ref>` | `--attachment <id>`, as `quest get` lists it. Prints text; `--out <path>` saves anything.                              |
+
+`lore quest update` also takes `--epic` (`0` takes it out) and `--depends-on`
+(`0` clears it); `lore quest create` takes `--depends-on`.
 
 See [Quests](/lore/docs/guides-quests) for the statuses and rules behind these.
 
+### Epics
+
+| Command                      | What it does                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `lore epic list`             | Every epic, whatever its status.                                               |
+| `lore epic get <ref>`        | One epic: status, progress, plan and its folios.                               |
+| `lore epic create`           | `--title` (required); `--description`, `--depends-on`. Starts as a draft.      |
+| `lore epic update <ref>`     | `--title`, `--description`, `--depends-on` (`0` clears it).                    |
+| `lore epic set status <ref>` | `--status draft` or `ready`. The other statuses follow from its quests.        |
+| `lore epic shelve <ref>`     | Set it and its open quests aside. `lore epic unshelve <ref>` brings them back. |
+| `lore epic delete <ref>`     | With every quest in it, draft or ready only, with `--yes`.                     |
+
 ### Folios
 
-| Command                | What it does                                                                            |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| `lore folio list`      | Pinned first, then newest-updated. `--epic` narrows to one epic.                        |
-| `lore folio get <ref>` | One folio: its summary and Markdown content.                                            |
-| `lore folio create`    | `--title`, `--summary`, `--content` (required, `@file` works); `--directory`, `--epic`. |
+| Command                              | What it does                                                                                 |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `lore folio list`                    | Pinned first, then newest-updated. `--epic` narrows to one epic.                             |
+| `lore folio get <ref>`               | One folio: its summary and Markdown content.                                                 |
+| `lore folio create`                  | `--title`, `--summary`, `--content` (required, `@file` works); `--directory`, `--epic`.      |
+| `lore folio search <query>`          | The matches, each with a snippet.                                                            |
+| `lore folio update <ref>`            | `--title`, `--summary`, `--content`, `--directory`, `--pinned`, `--epic` (`0` takes it out). |
+| `lore folio history <ref>`           | Its revisions; `--output json` carries their content.                                        |
+| `lore folio revert <ref>`            | `--revision <id>`. What it replaces stays in the history.                                    |
+| `lore folio delete <ref>`            | For good, with `--yes`.                                                                      |
+| `lore folio attachment list <ref>`   | A folio's files.                                                                             |
+| `lore folio attachment rename <ref>` | `--name`, by the attachment's number.                                                        |
+| `lore folio attachment delete <ref>` | With `--yes`, by the attachment's number.                                                    |
 
 See [Folios](/lore/docs/guides-folios).
+
+### Directories
+
+| Command                        | What it does                                                |
+| ------------------------------ | ----------------------------------------------------------- |
+| `lore directory list`          | What the root holds, or `--directory <ref>`.                |
+| `lore directory create <name>` | `--parent` to nest it.                                      |
+| `lore directory rename <ref>`  | `--name`.                                                   |
+| `lore directory move <ref>`    | `--parent`, or the root without it.                         |
+| `lore directory delete <ref>`  | With `--yes`. `--cascade` also deletes everything it holds. |
 
 ### Attachments
 
