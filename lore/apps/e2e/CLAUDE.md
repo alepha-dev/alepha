@@ -86,6 +86,8 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `settings-features.spec.ts` - the capability switches in General ▸ Capabilities and on the section pages
 - `capabilities.spec.ts` - a Knowledge-only project, an Apps-only one, and a project with everything turned off and Work turned back on
 - `theme-flicker.spec.ts` — theme no-flash boot
+- `link-prefetch.spec.ts` - `prefetch` on the sidebar, a quest row and Home's rows, asserted on the network; a failed chunk under a hover reloads nothing, and `saveData` fetches nothing
+- `robots-manifest.spec.ts` - `/robots.txt` and the manifest from the built server, where a file in `public/` would answer ahead of the route
 - `page-loading.spec.ts` - `$page({ loading })` on a client navigation held open by hand: the skeleton in the shell, the URL still on the old page
 - `view-transition.spec.ts` - `$page({ viewTransition })` in a real browser (the keyframes actually played, none under `prefers-reduced-motion`, none between pages that ask for nothing), and scroll and a superseded navigation now that views commit in a React transition
 - `login-hydration.spec.ts` - `/auth/login` hydrates with no React #418, anonymous (light, dark, French, with `redirect` and `error`) and signed in (#Q2642)

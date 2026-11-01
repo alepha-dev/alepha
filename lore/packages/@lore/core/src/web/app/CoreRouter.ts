@@ -3,6 +3,7 @@ import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
+import { $manifest, $robots } from "alepha/react/sitemap";
 import { $secure, currentUserAtom } from "alepha/security";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -85,7 +86,6 @@ export class CoreRouter {
         type: "image/png",
         media: "(prefers-color-scheme: light)",
       },
-      { rel: "manifest", href: "/manifest.json" },
     ];
 
     head.meta = [
@@ -98,6 +98,42 @@ export class CoreRouter {
     ];
 
     return head;
+  });
+
+  /**
+   * A self-hosted Lore has its own `PUBLIC_URL`, or none, and answers for its
+   * own host. `/auth` and `/account` are worth no crawler's time: every unknown
+   * URL leads to the login page.
+   */
+  robots = $robots({ disallow: ["/auth", "/account"] });
+
+  manifest = $manifest({
+    name: "Lore",
+    shortName: "Lore",
+    description:
+      "Alepha Lore: planning memory, telemetry and deployments for Alepha applications.",
+    display: "standalone",
+    startUrl: "/",
+    backgroundColor: "#010409",
+    themeColor: "#010409",
+    orientation: "portrait",
+    icons: [{ src: "/logo-512x512.png", sizes: "512x512", type: "image/png" }],
+    screenshots: [
+      {
+        src: "/screenshot-1.png",
+        type: "image/png",
+        sizes: "1280x605",
+        formFactor: "wide",
+        label: "App Overview",
+      },
+      {
+        src: "/screenshot-2.png",
+        type: "image/png",
+        sizes: "365x800",
+        formFactor: "narrow",
+        label: "Quest Detail",
+      },
+    ],
   });
 
   layout = $page({

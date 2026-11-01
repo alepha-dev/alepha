@@ -14,6 +14,7 @@ export * from "./hooks/useHead.ts";
 export * from "./interfaces/Head.ts";
 export * from "./primitives/$head.ts";
 export * from "./providers/BrowserHeadProvider.ts";
+export * from "./providers/HeadProvider.ts";
 export * from "./providers/ServerHeadProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
