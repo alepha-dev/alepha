@@ -17,15 +17,16 @@ what you pasted.
 
 ## The prompts
 
-| Prompt                    | Where                                                              | Offered when                                                                         |
-| ------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **Review**                | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                                |
-| **Work on it** (epic)     | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
-| **Work on it** (quest)    | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
-| **Work on it**            | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
-| **Triage the inbox**      | the feedback detail panel                                          | Support is on                                                                        |
-| **Triage the blights**    | the blights inbox toolbar                                          | Apps is on                                                                           |
-| **Work the loose quests** | the Quests page toolbar                                            | always, with Work on                                                                 |
+| Prompt                      | Where                                                              | Offered when                                                                         |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| **Review**                  | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                                |
+| **Work on it** (epic)       | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
+| **Work on it** (quest)      | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
+| **Work on it**              | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
+| **Triage the inbox**        | the feedback detail panel                                          | Support is on                                                                        |
+| **Triage the blights**      | the blights inbox toolbar                                          | Apps is on                                                                           |
+| **Work the loose quests**   | the Quests page toolbar                                            | always, with Work on                                                                 |
+| **Write the weekly status** | the Reports Summary tab                                            | always, with Work on                                                                 |
 
 **Review** asks an agent to sharpen a plan before anyone works it: take the
 decisions the spec left open, tighten the vague quests, and say plainly what
@@ -46,10 +47,10 @@ scope.
 the report, creates the quest linked to it, does the work, and ends by
 telling the reporter what shipped.
 
-The last three name a **surface** rather than one item, so they carry no
+The last four name a **surface** rather than one item, so they carry no
 `{{number}}`, `{{id}}`, `{{reference}}` or `{{title}}`: there is nothing to
-number. Each one is a loop that re-reads its list every round, because it
-changes the list it reads. **Triage the inbox** accepts, rejects or asks
+number. All but the status are loops that re-read their list every round,
+because they change the list they read. **Triage the inbox** accepts, rejects or asks
 about every pending report until none is left, and **Triage the blights**
 files a quest for each real defect and resolves the noise.
 
@@ -59,6 +60,11 @@ one worktree and one branch for the run, each quest accepted before its
 first commit and named in every commit, completed when it lands, and one
 merge at the end once CI is green. It reads the list again after each quest,
 so a quest filed during the run is picked up rather than missed.
+
+**Write the weekly status** changes nothing: the agent reads the week through
+`project_report`, opens the section behind each figure that moved, and answers
+with what shipped, what moved and what needs a decision. See
+[Reports](/lore/docs/guides-reports).
 
 ## Writing your own
 

@@ -86,12 +86,13 @@ Every project command looks for the project in this order:
 
 ### Projects
 
-| Command                      | What it does                                                                        |
-| ---------------------------- | ----------------------------------------------------------------------------------- |
-| `lore project list`          | The projects you are a member of.                                                   |
-| `lore project info`          | One project: its capabilities, areas and more.                                      |
-| `lore project create <name>` | Create a project and link the current directory to it. `--no-link` skips the link.  |
-| `lore project link <slug>`   | Link the current directory to an existing project. `--force` replaces another link. |
+| Command                         | What it does                                                                                                               |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `lore project list`             | The projects you are a member of.                                                                                          |
+| `lore project info`             | One project: its capabilities, areas and more.                                                                             |
+| `lore project report [section]` | One [Reports](/lore/docs/guides-reports) section as JSON, `summary` by default. `--days N` sets the period, 30 by default. |
+| `lore project create <name>`    | Create a project and link the current directory to it. `--no-link` skips the link.                                         |
+| `lore project link <slug>`      | Link the current directory to an existing project. `--force` replaces another link.                                        |
 
 `lore project create` makes a project with the **Deploy and watch apps**
 capability only, its **Deploy apps** option on and **Track apps** off. Turn on

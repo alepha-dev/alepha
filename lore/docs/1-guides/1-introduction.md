@@ -39,7 +39,10 @@ flowchart LR
 ```
 
 **Reports** sits outside the four: every project has it, and each of its tabs
-appears when the capability behind it does.
+appears when the capability behind it does. Summary compares a period with the
+one before; Flow, Backlog, Planning, Support, Knowledge, Delivery and Team explain
+what moved, with one filter bar across them. See
+[Reports](/lore/docs/guides-reports).
 
 Most of those surfaces are exposed over **MCP**, which is the primary consumer: an
 AI agent reads the folio index to orient itself, drives quests as work lands, and

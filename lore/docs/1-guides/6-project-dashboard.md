@@ -45,13 +45,73 @@ your own rank matrix rather than something Lore decides for you.
 
 ## The cards
 
-| Card                 | What it counts                                      |
-| -------------------- | --------------------------------------------------- |
-| **Active quests**    | Open quests in the project - to do plus in progress |
-| **On hold**          | How many of those are parked, waiting on something  |
-| **Epic progress**    | How far one epic has got                            |
-| **Release progress** | How far one release has got                         |
-| **Tag completion**   | Completed over total for one quest tag              |
+Which cards you can add depends on the project's capabilities and your
+permissions, and most take a scope: a project, an epic, a release, a tag or an
+app. Flow cards read the same figures as [Reports](/lore/docs/guides-reports) and
+link to the tab that explains them.
+
+**The project**
+
+| Card          | What it shows                                                   |
+| ------------- | --------------------------------------------------------------- |
+| **Needs you** | Held, stale and overdue work, crashes and feedback, in one list |
+| **Activity**  | The project's last recorded writes                              |
+| **Momentum**  | Recorded writes per day, as bars                                |
+| **Note**      | Markdown you write, for everyone who reads the board            |
+
+**Quests**
+
+| Card                 | What it shows                                      |
+| -------------------- | -------------------------------------------------- |
+| **Active quests**    | Open quests in the project: to do plus in progress |
+| **On hold**          | How many of those are parked, waiting on something |
+| **Epic progress**    | How far one epic has got                           |
+| **Release progress** | How far one release has got                        |
+| **Tag completion**   | Completed over total for one quest tag             |
+| **Your quests**      | What the reader has accepted and not finished      |
+| **Reminders due**    | Your reminders in the next seven days              |
+| **Due soon**         | Open quests due in the next seven days             |
+| **Recently shipped** | The last completions, with their message           |
+
+**Flow**
+
+| Card                    | What it shows                           |
+| ----------------------- | --------------------------------------- |
+| **Burn-up**             | Created against completed, cumulative   |
+| **Completed per week**  | The last eight weeks, as bars           |
+| **Completed this week** | Against the week before                 |
+| **Cycle time**          | Median hours from accepted to completed |
+| **Quests by area**      | By area, tag or priority                |
+| **Board**               | Open quests per kanban column           |
+
+**Planning**
+
+| Card                 | What it shows                                         |
+| -------------------- | ----------------------------------------------------- |
+| **Release**          | The release this project is heading for, and its pace |
+| **Ready to publish** | Open releases whose every quest is done               |
+| **Epics in flight**  | Epics in progress, with their bar                     |
+| **Draft epics**      | Epics still being specified                           |
+
+**Folios**
+
+| Card                    | What it shows                                  |
+| ----------------------- | ---------------------------------------------- |
+| **Pinned**              | The first pinned folio, its summary            |
+| **Recently edited**     | The last folios edited, by whom and when       |
+| **New folios**          | Folios created in the window                   |
+| **Folios by directory** | How many folios each top-level directory holds |
+
+**Apps and feedback**
+
+| Card                   | What it shows                                              |
+| ---------------------- | ---------------------------------------------------------- |
+| **App health**         | One pill per copy: its last deploy, and whether it reports |
+| **Errors**             | Occurrences per day, deployments as rules                  |
+| **Coverage**           | Line coverage over the recorded runs                       |
+| **Open blights**       | For the project or a list of apps                          |
+| **Unique visitors**    | Per app, yesterday against the day before                  |
+| **Untriaged feedback** | Reports waiting for triage                                 |
 
 **On hold is a subset of Active quests.** Both count the same set of open
 quests, so "Quests 12 / On hold 3" reads as three of the twelve being stuck.
