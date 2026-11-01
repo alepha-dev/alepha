@@ -6,9 +6,12 @@ import { $repository, type PgQueryWhere } from "alepha/orm";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import { DashboardFlowSeries } from "./DashboardFlowSeries.ts";
+import { ProjectReportsService } from "./ProjectReportsService.ts";
 import { QuestFlowService } from "./QuestFlowService.ts";
 import { QuestHoldTime } from "./QuestHoldTime.ts";
+import { ReleaseForecast } from "./ReleaseForecast.ts";
 
 /**
  * The Planning tab's report (#Q3003): epics and their scope.
@@ -22,6 +25,9 @@ import { QuestHoldTime } from "./QuestHoldTime.ts";
 export class ProjectPlanningReportService {
   protected readonly epics = $repository(epics);
   protected readonly quests = $repository(quests);
+  protected readonly releases = $repository(releases);
+  protected readonly reports = $inject(ProjectReportsService);
+  protected readonly forecast = $inject(ReleaseForecast);
   protected readonly flow = $inject(QuestFlowService);
   protected readonly series = $inject(DashboardFlowSeries);
   protected readonly stats = $inject(ReportStatistics);
@@ -93,6 +99,142 @@ export class ProjectPlanningReportService {
     return {
       epics: report,
       burnup: await this.burnup(projectId, rows, query),
+      releases: await this.releaseReport(projectId, query),
+    };
+  }
+
+  /**
+   * The last twelve full weeks of completions, oldest first: what the forecast
+   * samples. Recent on purpose: the pace of a year ago is another project.
+   */
+  protected async weeklyThroughput(projectId: number): Promise<number[]> {
+    const rows = await this.reports.completedByDay(
+      projectId,
+      this.reports.fixedQuery,
+    );
+    return this.series.weekly(rows, 12).map((point) => point.value);
+  }
+
+  protected async releaseReport(
+    projectId: number,
+    query: ReportsQuery,
+  ): Promise<ReportsPlanning["releases"]> {
+    const rows = await this.releases.findMany({
+      where: { projectId: { eq: projectId } },
+      columns: [
+        "id",
+        "tag",
+        "title",
+        "createdAt",
+        "targetDate",
+        "releasedAt",
+        "inProgress",
+        "total",
+      ],
+    });
+    const label = (row: (typeof rows)[number]) => row.tag ?? row.title;
+    const openRows = rows.filter((row) => !row.releasedAt);
+    const published = rows
+      .filter((row) => row.releasedAt)
+      .toSorted((a, b) => b.releasedAt!.localeCompare(a.releasedAt!));
+
+    const members = await this.quests.findMany({
+      where: {
+        projectId: { eq: projectId },
+        releaseId: { isNotNull: true },
+        shelvedAt: { isNull: true },
+      },
+      columns: ["releaseId", "completedAt"],
+    });
+    const tally = (id: number) => {
+      const own = members.filter((quest) => quest.releaseId === id);
+      return {
+        total: own.length,
+        done: own.filter((quest) => quest.completedAt).length,
+      };
+    };
+
+    const open = openRows
+      .map((row) => ({ row, ...tally(row.id) }))
+      .filter((it) => it.total > 0)
+      .toSorted((a, b) =>
+        (a.row.targetDate ?? "9999").localeCompare(b.row.targetDate ?? "9999"),
+      )
+      .slice(0, 3);
+    const throughput = open.length
+      ? await this.weeklyThroughput(projectId)
+      : [];
+
+    return {
+      open: await Promise.all(
+        open.map(async ({ row, total, done }) => {
+          const axis = this.series.between(
+            row.createdAt,
+            this.dt.nowISOString(),
+          );
+          const points = await this.flow.points(
+            projectId,
+            this.series
+              .sampled(
+                axis.map((at) => ({ at })),
+                query.grain ?? this.series.grainFor(axis.length),
+              )
+              .map((point) => point.at),
+            { releaseId: row.id },
+          );
+          const weeks = this.forecast.weeks(total - done, throughput);
+          const inWeeks = (count: number) =>
+            this.dt
+              .now()
+              .add(count * 7, "day")
+              .toISOString()
+              .slice(0, 10);
+          return {
+            id: row.id,
+            label: label(row),
+            ...(row.targetDate ? { targetDate: row.targetDate } : {}),
+            done,
+            total,
+            burnup: points.map((point) => ({
+              date: point.date,
+              done: point.done,
+              scope: point.todo + point.inProgress + point.onHold + point.done,
+            })),
+            ...(weeks
+              ? {
+                  forecast: {
+                    p50: inWeeks(weeks.p50),
+                    p85: inWeeks(weeks.p85),
+                  },
+                }
+              : {}),
+          };
+        }),
+      ),
+      published: published.map((row, index) => {
+        const released = this.dt.of(row.releasedAt!).valueOf();
+        const previous = published[index + 1]?.releasedAt;
+        return {
+          id: row.id,
+          label: label(row),
+          releasedAt: row.releasedAt!,
+          ...(row.targetDate
+            ? {
+                slipDays:
+                  (released - this.dt.of(row.targetDate).valueOf()) /
+                  86_400_000,
+              }
+            : {}),
+          size: row.total ?? 0,
+          carriedOver: row.inProgress ?? 0,
+          ...(previous
+            ? {
+                cadenceDays:
+                  (released - this.dt.of(previous).valueOf()) / 86_400_000,
+              }
+            : {}),
+        };
+      }),
     };
   }
 

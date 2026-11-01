@@ -721,6 +721,84 @@ describe("ProjectReportsController", () => {
   });
 
   /**
+   * The Planning tab's releases (#Q3004).
+   */
+  describe("getReportsPlanning, releases", () => {
+    const day = 86_400_000;
+
+    it("reads a published release's slip, size, cadence and carry-over", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const iso = (ago: number) =>
+        new Date(ctx.now() - ago * day).toISOString();
+      const release = (number: number, tag: string, patch: object) =>
+        ctx.repos.releases.create({
+          projectId: project.id,
+          number,
+          tag,
+          title: tag,
+          ...patch,
+        } as never);
+      await release(1, "1.0.0", { releasedAt: iso(30), total: 4 });
+      await release(2, "1.1.0", {
+        releasedAt: iso(10),
+        targetDate: iso(13),
+        total: 9,
+        inProgress: 2,
+      });
+
+      const { data } = await ctx.reportsController.getReportsPlanning.fetch(
+        { params: { id: project.id }, query: {} },
+        { user: owner },
+      );
+
+      const [newest, oldest] = data.releases.published;
+      expect(newest?.label).toBe("1.1.0");
+      expect(newest?.slipDays).toBeCloseTo(3);
+      expect(newest?.carriedOver).toBe(2);
+      expect(newest?.cadenceDays).toBeCloseTo(20);
+      expect(oldest?.slipDays).toBeUndefined();
+      expect(oldest?.cadenceDays).toBeUndefined();
+    });
+
+    it("forecasts an open release from recent throughput", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "2.0.0",
+        title: "2.0.0",
+      } as never);
+      const open = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(open.id, { releaseId: release.id });
+      const closed = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(closed.id, {
+        releaseId: release.id,
+        acceptedAt: new Date(ctx.now() - day).toISOString(),
+        completedAt: new Date(ctx.now()).toISOString(),
+      });
+
+      const { data } = await ctx.reportsController.getReportsPlanning.fetch(
+        { params: { id: project.id }, query: {} },
+        { user: owner },
+      );
+
+      const [row] = data.releases.open;
+      expect(row).toMatchObject({ done: 1, total: 2 });
+      expect(row?.burnup.at(-1)).toMatchObject({ done: 1, scope: 2 });
+      expect(row?.forecast).toBeDefined();
+      expect((row?.forecast?.p85 ?? "") >= (row?.forecast?.p50 ?? "")).toBe(
+        true,
+      );
+    });
+  });
+
+  /**
    * The Backlog tab's report (#Q3002).
    */
   describe("getReportsBacklog", () => {

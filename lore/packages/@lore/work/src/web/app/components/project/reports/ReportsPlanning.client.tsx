@@ -7,11 +7,12 @@ import {
   ChartTooltipContent,
 } from "@alepha/ui/chart";
 import type { ReportsPlanning as ReportsPlanningData } from "@lore/core/schemas";
-import { type I18n, ReportsSection } from "@lore/core/web";
+import { type I18n, ReportsKpiRow, ReportsSection } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import ReportsEpicTimeline from "./ReportsEpicTimeline.tsx";
+import ReportsReleaseBurnup from "./ReportsReleaseBurnup.client.tsx";
 
 export interface ReportsPlanningProps {
   planning: ReportsPlanningData;
@@ -150,6 +151,97 @@ const ReportsPlanning = (props: ReportsPlanningProps) => {
                       {Math.round(epic.daysInProgress)}
                     </td>
                     <td className="py-1">{Math.round(epic.scopeChange)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ReportsSection>
+
+      {planning.releases.open.map((release) => (
+        <ReportsSection
+          key={release.id}
+          title={tr("reports.planning.release.title", {
+            args: [release.label],
+          })}
+          definition={tr("reports.planning.release.definition")}
+          csv={{ filename: "release-burnup", rows: release.burnup }}
+        >
+          <ReportsKpiRow
+            kpis={[
+              {
+                label: tr("reports.planning.release.progress"),
+                definition: tr("reports.planning.release.progress.definition"),
+                value: `${release.done}/${release.total}`,
+              },
+              ...(release.forecast
+                ? [
+                    {
+                      label: tr("reports.planning.release.forecast"),
+                      definition: tr(
+                        "reports.planning.release.forecast.definition",
+                      ),
+                      value: release.forecast.p50,
+                      hint: tr("reports.planning.release.forecastHint", {
+                        args: [release.forecast.p85],
+                      }),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          <ReportsReleaseBurnup release={release} />
+        </ReportsSection>
+      ))}
+
+      <ReportsSection
+        title={tr("reports.planning.published.title")}
+        definition={tr("reports.planning.published.definition")}
+        csv={{ filename: "releases", rows: planning.releases.published }}
+      >
+        {planning.releases.published.length === 0 ? (
+          <p className="text-muted-foreground py-2 text-sm">
+            {tr("reports.planning.published.empty")}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-muted-foreground text-left text-xs">
+                <tr>
+                  <th className="py-1 pr-3 font-medium">
+                    {tr("reports.planning.published.release")}
+                  </th>
+                  <th className="py-1 pr-3 font-medium">
+                    {tr("reports.planning.published.slip")}
+                  </th>
+                  <th className="py-1 pr-3 font-medium">
+                    {tr("reports.planning.published.size")}
+                  </th>
+                  <th className="py-1 pr-3 font-medium">
+                    {tr("reports.planning.published.cadence")}
+                  </th>
+                  <th className="py-1 font-medium">
+                    {tr("reports.planning.published.carried")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="tabular-nums">
+                {planning.releases.published.map((release) => (
+                  <tr key={release.id} className="border-border border-t">
+                    <td className="py-1 pr-3">{release.label}</td>
+                    <td className="py-1 pr-3">
+                      {release.slipDays === undefined
+                        ? "-"
+                        : `${release.slipDays > 0 ? "+" : ""}${Math.round(release.slipDays)}`}
+                    </td>
+                    <td className="py-1 pr-3">{release.size}</td>
+                    <td className="py-1 pr-3">
+                      {release.cadenceDays === undefined
+                        ? "-"
+                        : Math.round(release.cadenceDays)}
+                    </td>
+                    <td className="py-1">{release.carriedOver}</td>
                   </tr>
                 ))}
               </tbody>

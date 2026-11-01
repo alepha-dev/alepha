@@ -1163,6 +1163,26 @@ export default {
   "reports.planning.table.cycle": "Cycle médian",
   "reports.planning.table.days": "Jours en cours",
   "reports.planning.table.scope": "Changement de périmètre",
+  "reports.planning.target": "Cible",
+  "reports.planning.release.title": "Version $1",
+  "reports.planning.release.definition":
+    "Quêtes terminées face au périmètre de la version, avec sa date cible et la prévision.",
+  "reports.planning.release.progress": "Terminées",
+  "reports.planning.release.progress.definition":
+    "Quêtes rattachées à la version et terminées, sur toutes les quêtes rattachées, hors quêtes mises de côté.",
+  "reports.planning.release.forecast": "Date de sortie prévue",
+  "reports.planning.release.forecast.definition":
+    "La moitié des futurs simulés finissent avant cette date. Un Monte Carlo sur le débit des douze dernières semaines.",
+  "reports.planning.release.forecastHint": "p85 $1",
+  "reports.planning.published.title": "Versions publiées",
+  "reports.planning.published.definition":
+    "Le glissement est le nombre de jours après la cible. La cadence est le nombre de jours depuis la version précédente. Taille et report sont figés à la publication.",
+  "reports.planning.published.empty": "Aucune version publiée.",
+  "reports.planning.published.release": "Version",
+  "reports.planning.published.slip": "Glissement (jours)",
+  "reports.planning.published.size": "Taille",
+  "reports.planning.published.cadence": "Cadence (jours)",
+  "reports.planning.published.carried": "Reportées",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

@@ -198,6 +198,52 @@ test.describe("Reports", () => {
   });
 
   /**
+   * An open release (#Q3004): its burn-up is its own chart, fed by the flow
+   * history, so it has to be seen mounting.
+   */
+  test("Planning draws an open release's burn-up", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportsrl${t}@example.com`, "ReportsR123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RR${t}`.slice(0, 20),
+    );
+    const release = await page.evaluate(
+      async ({ projectId }) => {
+        const r = await fetch(`/api/createRelease/${projectId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ tag: "1.0.0" }),
+        });
+        if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+        return (await r.json()) as { id: number };
+      },
+      { projectId },
+    );
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: `Rel${t}`,
+      description: "Seeded for the release burn-up",
+      area: "core",
+      priority: "medium",
+      releaseId: release.id,
+      objectives: [],
+      attachments: [],
+    });
+
+    await page.goto(`/${slug}/reports/planning`);
+
+    await expect(page.getByText("Release 1.0.0")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("0/1")).toBeVisible();
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */

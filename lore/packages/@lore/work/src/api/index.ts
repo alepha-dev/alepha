@@ -56,6 +56,7 @@ import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { RecentlyShippedMetric } from "./services/RecentlyShippedMetric.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
+import { ReleaseForecast } from "./services/ReleaseForecast.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { ReleaseOutlookMetric } from "./services/ReleaseOutlookMetric.ts";
 import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
@@ -212,6 +213,7 @@ export const LoreWorkApi = $module({
     QuestFlowHistory,
     QuestFlowService,
     QuestHoldTime,
+    ReleaseForecast,
     WorkReportsSummary,
     ProjectQuestPortabilityController,
     KanbanController,
@@ -254,3 +256,4 @@ export {
   type QuestFlowPoint,
   QuestFlowService,
 } from "./services/QuestFlowService.ts";
+export { ReleaseForecast } from "./services/ReleaseForecast.ts";

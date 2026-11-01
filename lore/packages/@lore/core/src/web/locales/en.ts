@@ -1183,6 +1183,26 @@ export default {
   "reports.planning.table.cycle": "Median cycle",
   "reports.planning.table.days": "Days in progress",
   "reports.planning.table.scope": "Scope change",
+  "reports.planning.target": "Target",
+  "reports.planning.release.title": "Release $1",
+  "reports.planning.release.definition":
+    "Quests done against the release’s scope, with its target date and the forecast.",
+  "reports.planning.release.progress": "Done",
+  "reports.planning.release.progress.definition":
+    "Quests attached to the release and completed, over all of them. Shelved quests are left out.",
+  "reports.planning.release.forecast": "Forecast ship date",
+  "reports.planning.release.forecast.definition":
+    "Half the simulated futures finish by this date. A Monte Carlo over the last twelve weeks of throughput.",
+  "reports.planning.release.forecastHint": "p85 $1",
+  "reports.planning.published.title": "Published releases",
+  "reports.planning.published.definition":
+    "Slip is days past the target. Cadence is days since the release before. Size and carry-over are the counts frozen at publish.",
+  "reports.planning.published.empty": "No release published yet.",
+  "reports.planning.published.release": "Release",
+  "reports.planning.published.slip": "Slip (days)",
+  "reports.planning.published.size": "Size",
+  "reports.planning.published.cadence": "Cadence (days)",
+  "reports.planning.published.carried": "Carried over",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

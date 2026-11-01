@@ -11,6 +11,7 @@ import {
   LoreWorkApi,
   QuestFlowHistory,
   QuestFlowService,
+  ReleaseForecast,
 } from "../src/api/index.ts";
 import { WorkTestEntities } from "../src/testing/index.ts";
 
@@ -90,6 +91,34 @@ describe("QuestFlowHistory", () => {
 
     expect(times.get("Doing")).toBe(3 * day);
     expect(times.get("Review")).toBe(day);
+  });
+});
+
+describe("ReleaseForecast", () => {
+  const forecast = new ReleaseForecast();
+
+  it("needs no week for nothing left", ({ expect }) => {
+    expect(forecast.weeks(0, [0, 0])).toEqual({ p50: 0, p85: 0 });
+  });
+
+  it("refuses to predict from a history with no completion", ({ expect }) => {
+    expect(forecast.weeks(5, [0, 0, 0])).toBeUndefined();
+  });
+
+  it("reads a steady pace exactly", ({ expect }) => {
+    expect(forecast.weeks(10, [5, 5, 5])).toEqual({ p50: 2, p85: 2 });
+  });
+
+  it("widens with a bursty pace of the same mean", ({ expect }) => {
+    const bursty = forecast.weeks(20, [0, 0, 0, 20])!;
+
+    expect(bursty.p85).toBeGreaterThan(bursty.p50);
+  });
+
+  it("gives the same dates for the same history", ({ expect }) => {
+    expect(forecast.weeks(20, [1, 4, 0, 9])).toEqual(
+      forecast.weeks(20, [1, 4, 0, 9]),
+    );
   });
 });
 
