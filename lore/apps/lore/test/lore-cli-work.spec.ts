@@ -612,4 +612,381 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(human).toContain("Rank:");
     expect(human).toContain("docs  (1 open of 1)");
   });
+
+  const newQuest = async (lore: { run: any }, title = "A quest") =>
+    JSON.parse(
+      await lore.run("quest create", [
+        "--title",
+        title,
+        "--area",
+        "core",
+        "--priority",
+        "low",
+        "--output",
+        "json",
+      ]),
+    ).shortId as number;
+
+  const newFolio = async (lore: { run: any }, title = "A folio") =>
+    JSON.parse(
+      await lore.run("folio create", [
+        "--title",
+        title,
+        "--summary",
+        "The summary.",
+        "--content",
+        "Alpha body",
+        "--output",
+        "json",
+      ]),
+    ).shortId as number;
+
+  it("walks an epic from draft to delete", async () => {
+    const { lore } = await ownProject("Epics");
+
+    const first = JSON.parse(
+      await lore.run("epic create", [
+        "--title",
+        "First epic",
+        "--description",
+        "The plan",
+        "--output",
+        "json",
+      ]),
+    );
+    expect(first.status).toBe("draft");
+
+    const second = await lore.run("epic create", [
+      "--title",
+      "Second epic",
+      "--depends-on",
+      `E${first.number}`,
+    ]);
+    expect(second).toContain("as a draft");
+
+    expect(await lore.run("epic list", [])).toContain(
+      `E${first.number}  First epic`,
+    );
+
+    await lore.run("epic update", [
+      `${first.number}`,
+      "--title",
+      "Renamed epic",
+    ]);
+    await lore.run("epic set status", [
+      `E${first.number}`,
+      "--status",
+      "ready",
+    ]);
+    const read = await lore.run("epic get", [`E${first.number}`]);
+    expect(read).toContain("Renamed epic");
+    expect(read).toContain("ready");
+    expect(read).toContain("The plan");
+
+    await lore.run("epic shelve", [`E${first.number}`]);
+    expect(await lore.run("epic get", [`E${first.number}`])).toContain(
+      "shelved",
+    );
+    await lore.run("epic unshelve", [`E${first.number}`]);
+
+    const refused = await lore.fail("epic delete", [`E${first.number}`]);
+    expect(refused.error?.message).toContain("--yes");
+    expect(await lore.run("epic list", [])).toContain("Renamed epic");
+
+    await lore.run("epic delete", [`E${first.number}`, "--yes"]);
+    expect(await lore.run("epic list", [])).not.toContain("Renamed epic");
+  });
+
+  it("moves a quest in and out of an epic, and sets its predecessor", async () => {
+    const { lore } = await ownProject("Moves");
+    const before = await newQuest(lore, "Goes first");
+    const after = await newQuest(lore, "Goes after");
+    const epic = JSON.parse(
+      await lore.run("epic create", ["--title", "An epic", "--output", "json"]),
+    );
+
+    await lore.run("quest update", [
+      `Q${after}`,
+      "--epic",
+      `E${epic.number}`,
+      "--depends-on",
+      `Q${before}`,
+    ]);
+
+    const filed = JSON.parse(
+      await lore.run("quest get", [`Q${after}`, "--output", "json"]),
+    );
+    expect(filed.epicId).toBe(epic.id);
+    expect(filed.dependsOn).toBeTruthy();
+
+    await lore.run("quest update", [`Q${after}`, "--epic", "0"]);
+    const out = JSON.parse(
+      await lore.run("quest get", [`Q${after}`, "--output", "json"]),
+    );
+    expect(out.epicId ?? null).toBeNull();
+  });
+
+  it("comments, records a commit, holds, shelves and deletes a quest", async () => {
+    const { lore } = await ownProject("Quest verbs");
+    const shortId = await newQuest(lore);
+    const ref = `Q${shortId}`;
+
+    await lore.run("quest comment add", [ref, "--body", "A human note"]);
+    await lore.run("quest comment add", [
+      ref,
+      "--body",
+      "An agent note",
+      "--as",
+      "claude-code",
+    ]);
+    const discussion = await lore.run("quest get", [ref]);
+    expect(discussion).toContain("A human note");
+    expect(discussion).toContain("An agent note");
+    expect(discussion).toContain("(agent: claude-code)");
+
+    await lore.run("quest commit add", [
+      ref,
+      "--sha",
+      "1a2b3c4",
+      "--message",
+      "the fix",
+    ]);
+    expect(await lore.run("quest get", [ref])).toContain("the fix");
+
+    await lore.run("quest accept", [ref]);
+    await lore.run("quest hold", [ref, "--reason", "Waiting on a key"]);
+    const held = JSON.parse(
+      await lore.run("quest get", [ref, "--output", "json"]),
+    );
+    expect(held.metadata.status).toBe("on_hold");
+    await lore.run("quest unhold", [ref]);
+    await lore.run("quest unassign", [ref]);
+
+    await lore.run("quest shelve", [ref]);
+    expect(await lore.run("quest list", ["--status", "shelved"])).toContain(
+      ref,
+    );
+    await lore.run("quest unshelve", [ref]);
+
+    const refused = await lore.fail("quest delete", [ref]);
+    expect(refused.error?.message).toContain("--yes");
+
+    await lore.run("quest delete", [ref, "--yes"]);
+    expect(await lore.run("quest list", [])).not.toContain(ref);
+  });
+
+  it("lists the tags a project uses", async () => {
+    const { lore } = await ownProject("Tags");
+    await lore.run("quest create", [
+      "--title",
+      "Tagged",
+      "--area",
+      "core",
+      "--priority",
+      "low",
+      "--tag",
+      "bug",
+    ]);
+
+    expect(await lore.run("quest tags", [])).toContain("bug");
+  });
+
+  it("updates, searches, reverts and deletes a folio", async () => {
+    const { lore } = await ownProject("Folio verbs");
+    const shortId = await newFolio(lore);
+    const ref = `F${shortId}`;
+
+    await lore.run("folio update", [
+      ref,
+      "--content",
+      "Bravo body",
+      "--summary",
+      "A new summary.",
+      "--pinned",
+    ]);
+    const updated = await lore.run("folio get", [ref]);
+    expect(updated).toContain("Bravo body");
+    expect(updated).toContain("Pinned:");
+
+    expect(await lore.run("folio search", ["bravo"])).toContain("Bravo body");
+
+    // One revision: edits this close together coalesce into the same row.
+    const revisions = JSON.parse(
+      await lore.run("folio history", [ref, "--output", "json"]),
+    );
+    expect(revisions[0].contentSnapshot).toContain("Bravo body");
+    expect(await lore.run("folio history", [ref])).toContain(revisions[0].id);
+
+    expect(
+      await lore.run("folio revert", [ref, "--revision", revisions[0].id]),
+    ).toContain(`Reverted ${ref}`);
+
+    const refused = await lore.fail("folio delete", [ref]);
+    expect(refused.error?.message).toContain("--yes");
+
+    await lore.run("folio delete", [ref, "--yes"]);
+    expect(await lore.run("folio list", [])).not.toContain(ref);
+  });
+
+  it("files a folio under an epic and takes it out, with no revision", async () => {
+    const { lore } = await ownProject("Folio epics");
+    const shortId = await newFolio(lore);
+    const epic = JSON.parse(
+      await lore.run("epic create", ["--title", "An epic", "--output", "json"]),
+    );
+
+    await lore.run("folio update", [
+      `F${shortId}`,
+      "--epic",
+      `E${epic.number}`,
+    ]);
+    expect(await lore.run("epic get", [`E${epic.number}`])).toContain(
+      `F${shortId}`,
+    );
+
+    await lore.run("folio update", [`F${shortId}`, "--epic", "0"]);
+    expect(await lore.run("epic get", [`E${epic.number}`])).not.toContain(
+      `F${shortId}`,
+    );
+  });
+
+  it("reads a quest's attachment, and manages a folio's", async () => {
+    const { lore } = await ownProject("Attachments");
+    const quest = await newQuest(lore);
+    const folio = await newFolio(lore);
+    await lore.fs.writeFile("/work/note.txt", "Hello from a file");
+
+    await lore.run("attachments push", ["note.txt", "--quest", `${quest}`]);
+    const read = JSON.parse(
+      await lore.run("quest get", [`Q${quest}`, "--output", "json"]),
+    );
+    const file = read.attachments[0];
+    expect(file.name).toBe("note.txt");
+
+    expect(
+      await lore.run("quest attachment get", [
+        `Q${quest}`,
+        "--attachment",
+        file.fileId,
+      ]),
+    ).toContain("Hello from a file");
+
+    await lore.run("quest attachment get", [
+      `Q${quest}`,
+      "--attachment",
+      file.fileId,
+      "--out",
+      "saved.txt",
+    ]);
+    expect(lore.fs.wasWritten("/work/saved.txt")).toBe(true);
+
+    await lore.run("attachments push", ["note.txt", "--folio", `${folio}`]);
+    expect(await lore.run("folio attachment list", [`F${folio}`])).toContain(
+      "A1  note.txt",
+    );
+
+    await lore.run("folio attachment rename", ["A1", "--name", "renamed.txt"]);
+    expect(await lore.run("folio attachment list", [`F${folio}`])).toContain(
+      "A1  renamed.txt",
+    );
+
+    const refused = await lore.fail("folio attachment delete", ["A1"]);
+    expect(refused.error?.message).toContain("--yes");
+
+    await lore.run("folio attachment delete", ["A1", "--yes"]);
+    expect(await lore.run("folio attachment list", [`F${folio}`])).toContain(
+      "This folio has no attachments.",
+    );
+  });
+
+  it("creates a quest behind a predecessor", async () => {
+    const { lore } = await ownProject("Predecessor");
+    const first = await newQuest(lore, "Goes first");
+
+    const second = JSON.parse(
+      await lore.run("quest create", [
+        "--title",
+        "Goes after",
+        "--area",
+        "core",
+        "--priority",
+        "low",
+        "--depends-on",
+        `Q${first}`,
+        "--output",
+        "json",
+      ]),
+    );
+
+    const refused = await lore.fail("quest accept", [`Q${second.shortId}`]);
+    expect(refused.error).toBeDefined();
+  });
+
+  it("creates, renames, nests, moves and deletes a directory", async () => {
+    const { lore } = await ownProject("Directories");
+
+    const parent = JSON.parse(
+      await lore.run("directory create", ["Parent", "--output", "json"]),
+    );
+    const child = JSON.parse(
+      await lore.run("directory create", [
+        "Child",
+        "--parent",
+        `D${parent.shortId}`,
+        "--output",
+        "json",
+      ]),
+    );
+
+    await lore.run("directory rename", [
+      `${child.shortId}`,
+      "--name",
+      "Renamed",
+    ]);
+    expect(
+      await lore.run("directory list", ["--directory", `${parent.shortId}`]),
+    ).toContain(`D${child.shortId}  Renamed`);
+
+    await lore.run("directory move", [`${child.shortId}`]);
+    expect(await lore.run("directory list", [])).toContain(
+      `D${child.shortId}  Renamed`,
+    );
+
+    const refused = await lore.fail("directory delete", [`${parent.shortId}`]);
+    expect(refused.error?.message).toContain("--yes");
+
+    await lore.run("directory delete", [`${parent.shortId}`, "--yes"]);
+    expect(await lore.run("directory list", [])).not.toContain("Parent");
+  });
+
+  it("orients in a project, and reads what moved since a stamp", async () => {
+    const { lore } = await ownProject("Orientation");
+    const before = new Date(Date.now() - 60_000).toISOString();
+    await newQuest(lore, "Moved");
+    await newFolio(lore, "The rules");
+    await lore.run("epic create", ["--title", "The plan"]);
+    await lore.run("folio update", ["F1", "--pinned"]);
+
+    const context = await lore.run("project context", []);
+    expect(context).toContain("core");
+    expect(context).toContain("The plan");
+    expect(context).toContain("F1  The rules");
+    expect(context).toContain("Pinned: F1 The rules");
+    expect(context).toContain("Alpha body");
+
+    const json = JSON.parse(
+      await lore.run("project context", ["--output", "json"]),
+    );
+    expect(json.epics).toHaveLength(1);
+    expect(json.folios).toHaveLength(1);
+
+    const activity = await lore.run("project activity", ["--since", before]);
+    expect(activity).toContain("create quest");
+    expect(activity).toContain("Next: --since");
+
+    const stamp = new Date(Date.now() + 60_000).toISOString();
+    expect(await lore.run("project activity", ["--since", stamp])).toContain(
+      "Nothing since then.",
+    );
+  });
 });

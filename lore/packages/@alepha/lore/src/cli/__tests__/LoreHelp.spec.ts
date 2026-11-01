@@ -60,7 +60,7 @@ describe("lore -h and lore help", () => {
     const description = LoreConventions.describe("0.0.0");
 
     expect(description).toContain(
-      "(for project, quest, folio, estate, registry and stack)",
+      "(for project, epic, quest, folio, directory, estate, registry and stack)",
     );
   });
 

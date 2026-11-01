@@ -18,11 +18,13 @@ import { type Infer, z } from "alepha";
  */
 export const questCommentSourceSchema = z.object({
   /**
-   * How the comment was written. `mcp` is the only value: it is stamped by
+   * How the comment was written. `mcp` is stamped by
    * `QuestTools.quest_comment_add`, which by construction is only ever
-   * reached over MCP.
+   * reached over MCP. `cli` is `lore quest comment add --as <agent>`: a shell
+   * has a person or an agent at it, so the CLI claims a machine only when
+   * told to.
    */
-  kind: z.enum(["mcp"]),
+  kind: z.enum(["mcp", "cli"]),
   /**
    * Which agent wrote the comment, when it named itself.
    *
