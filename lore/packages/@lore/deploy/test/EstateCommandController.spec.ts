@@ -9,8 +9,8 @@ import { AlephaServer, ForbiddenError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
-import { EstateCommandService } from "../src/api/services/EstateCommandService.ts";
 import { EstateCommandController, EstateController } from "../src/api/index.ts";
+import { EstateCommandService } from "../src/api/services/EstateCommandService.ts";
 import {
   appInstances,
   artifacts,
