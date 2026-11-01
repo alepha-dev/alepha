@@ -66,6 +66,7 @@ volumes:
 | `port`       | the container port routes reach, when the service publishes several or none                              |
 | `runtime`    | an app service's runtime image, instead of the one Bay picks                                             |
 | `tcp`        | open this port on every host interface and forward it raw to the same container port. A Compose service only; no TLS and no `Host` routing, so the service guards it itself (MQTT over TLS, for example) |
+| `tls`        | with `tcp`: Bay terminates TLS on that port with the certificate of the name the client asks for, and forwards plain TCP to the same container port. A client that names none gets the environment's first route. Renewals are Bay's, so the service holds no certificate |
 | `backup`     | how to dump the service: `{postgres: {user, db}}`, or `{command, restore}`                               |
 
 Unknown keys and malformed values are refused at deploy, naming the service,
@@ -132,7 +133,10 @@ and symlinks. So `scp compose.yml host:`, then
 all of `$HOME`, `.ssh` included, into the revision. Give each stack a directory
 of its own. A bundle is capped at 16 MiB, uploaded and unpacked alike.
 
-Each deploy is a numbered **revision** that pins the image digests it ran.
+Each deploy is a numbered **revision** that pins the image digests it ran. An
+image that no registry serves, loaded on the host with `docker load`, is
+declared `pull_policy: never` on its service: Bay pulls nothing and pins the
+host's image id, and refuses the deploy when the host does not hold it.
 Only the services whose definition changed are recreated, and app services are
 restarted with the new network and variables. A bad revision is undone by
 reapplying an earlier one, with the same digests:

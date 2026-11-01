@@ -143,3 +143,31 @@ func freePortOnLoopback() (int, error) {
 	defer ln.Close()
 	return ln.Addr().(*net.TCPAddr).Port, nil
 }
+
+// An image `docker load` put on the host has no registry to pull from: a
+// service declaring `pull_policy: never` pins it by id, and Compose runs it.
+func TestLocalImagePinsToItsIDDaemon(t *testing.T) {
+	d := daemonDocker(t)
+	tag := "bay-test-registry.invalid/loaded:" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	if out, err := exec.Command("docker", "pull", "-q", "busybox:1").CombinedOutput(); err != nil {
+		t.Fatalf("docker pull: %v\n%s", err, out)
+	}
+	if out, err := exec.Command("docker", "tag", "busybox:1", tag).CombinedOutput(); err != nil {
+		t.Fatalf("docker tag: %v\n%s", err, out)
+	}
+	t.Cleanup(func() { _ = exec.Command("docker", "rmi", tag).Run() })
+
+	ref, err := d.LocalImage(tag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(ref, "sha256:") {
+		t.Fatalf("ref = %q, want an image id", ref)
+	}
+	if out, err := exec.Command("docker", "run", "--rm", ref, "true").CombinedOutput(); err != nil {
+		t.Fatalf("the id does not run: %v\n%s", err, out)
+	}
+	if _, err := d.LocalImage("bay-test-registry.invalid/never-loaded:1"); err == nil {
+		t.Fatal("an image the host does not hold resolved")
+	}
+}

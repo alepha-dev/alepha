@@ -561,7 +561,7 @@ the model, answering service -> pinned reference for the revision record.
 rollback pulls exactly what ran. A reference already carrying a digest is kept
 as is.
 */
-func (l *Loaded) PinImages(resolve func(image string) (string, error)) (map[string]string, error) {
+func (l *Loaded) PinImages(resolve, local func(image string) (string, error)) (map[string]string, error) {
 	pinned := map[string]string{}
 	services, _ := l.Model["services"].(map[string]any)
 	for _, name := range l.Services {
@@ -576,8 +576,12 @@ func (l *Loaded) PinImages(resolve func(image string) (string, error)) (map[stri
 		}
 		ref := image
 		if !strings.Contains(image, "@sha256:") {
+			pin := resolve
+			if policy, _ := svc["pull_policy"].(string); policy == "never" {
+				pin = local
+			}
 			var err error
-			if ref, err = resolve(image); err != nil {
+			if ref, err = pin(image); err != nil {
 				return nil, fmt.Errorf("service %s: %w", name, err)
 			}
 		}
