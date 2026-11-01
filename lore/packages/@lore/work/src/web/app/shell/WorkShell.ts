@@ -505,6 +505,13 @@ export class WorkShell {
       filters: ["period", ...workFilters],
     });
     this.reports.register({
+      route: "reportsPlanning",
+      labelKey: "project.reports.nav.planning",
+      order: 9.5,
+      needs: "work",
+      filters: ["period", "grain", "epicId", "releaseId"],
+    });
+    this.reports.register({
       route: "reportsOverview",
       labelKey: "project.reports.nav.overview",
       order: 10,

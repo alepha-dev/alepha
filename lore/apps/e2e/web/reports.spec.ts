@@ -177,6 +177,27 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Planning tab (#Q3003), on a project that has started nothing yet.
+   */
+  test("Planning says so when no epic has started", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportspl${t}@example.com`, "ReportsP123!");
+    const { slug } = await createProjectViaWizard(page, `RP${t}`.slice(0, 20));
+
+    await page.goto(`/${slug}/reports/planning`);
+
+    await expect(page.getByText("Epic timeline")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+    await expect(
+      page.getByText("No epic has started in this period.").first(),
+    ).toBeVisible();
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */

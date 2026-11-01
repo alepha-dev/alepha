@@ -612,6 +612,115 @@ describe("ProjectReportsController", () => {
   });
 
   /**
+   * The Planning tab's report (#Q3003).
+   */
+  describe("getReportsPlanning", () => {
+    const day = 86_400_000;
+
+    const seed = async () => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const iso = (ago: number) =>
+        new Date(ctx.now() - ago * day).toISOString();
+      const epic = await ctx.repos.epics.create({
+        projectId: project.id,
+        number: 7,
+        title: "Started epic",
+        description: "",
+        status: "in_progress",
+        startedAt: iso(10),
+      });
+      await ctx.repos.epics.create({
+        projectId: project.id,
+        number: 8,
+        title: "Draft epic",
+        description: "",
+        status: "draft",
+      });
+      const quest = async (patch: Record<string, unknown>) => {
+        const row = await createTestQuest(ctx, owner, project.id);
+        await ctx.repos.quests.updateById(row.id, {
+          epicId: epic.id,
+          ...patch,
+        });
+        return row;
+      };
+      await ctx.repos.quests.updateById((await quest({})).id, {
+        createdAt: iso(20),
+      } as never);
+      return { owner, projectId: project.id, epic, quest, iso };
+    };
+
+    const planning = async (
+      owner: { id: string; roles: string[] },
+      projectId: number,
+      query: Record<string, unknown> = {},
+    ) =>
+      (
+        await ctx.reportsController.getReportsPlanning.fetch(
+          { params: { id: projectId }, query },
+          { user: owner },
+        )
+      ).data;
+
+    it("lists started epics only, with their age", async ({ expect }) => {
+      const { owner, projectId } = await seed();
+
+      const { epics } = await planning(owner, projectId);
+
+      expect(epics.map((epic) => epic.title)).toEqual(["Started epic"]);
+      expect(epics[0]?.daysInProgress).toBeCloseTo(10);
+    });
+
+    it("counts a quest filed after the start as scope added", async ({
+      expect,
+    }) => {
+      const { owner, projectId, quest, iso } = await seed();
+      // `createTestQuest` stamps now, after `startedAt`.
+      await quest({});
+      await quest({ shelvedAt: iso(1) });
+
+      const [epic] = (await planning(owner, projectId)).epics;
+
+      expect(epic?.scopeAdded).toBe(2);
+      expect(epic?.scopeCut).toBe(1);
+      expect(epic?.total).toBe(2);
+    });
+
+    it("reads a quest moved out from its history", async ({ expect }) => {
+      const { owner, projectId, quest, iso } = await seed();
+      const moved = await quest({});
+      await ctx.repos.quests.updateById(moved.id, {
+        epicId: null,
+        history: [
+          {
+            at: iso(1),
+            by: owner.id,
+            action: "updated",
+            changes: [{ field: "epic", from: "#E7" }],
+          },
+        ],
+      } as never);
+
+      const [epic] = (await planning(owner, projectId)).epics;
+
+      expect(epic?.scopeCut).toBe(1);
+    });
+
+    it("gives the burn-up of the epic in progress, its scope beside done", async ({
+      expect,
+    }) => {
+      const { owner, projectId, epic, quest, iso } = await seed();
+      await quest({ acceptedAt: iso(2), completedAt: iso(1) });
+
+      const { burnup } = await planning(owner, projectId);
+
+      expect(burnup?.epicId).toBe(epic.id);
+      expect(burnup?.points.at(-1)).toMatchObject({ done: 1, scope: 2 });
+    });
+  });
+
+  /**
    * The Backlog tab's report (#Q3002).
    */
   describe("getReportsBacklog", () => {

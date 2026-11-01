@@ -76,6 +76,10 @@ export {
   reportsFlowSchema,
 } from "../api/schemas/reportsFlowSchema.ts";
 export {
+  type ReportsPlanning,
+  reportsPlanningSchema,
+} from "../api/schemas/reportsPlanningSchema.ts";
+export {
   type ReportsSummaryLine,
   reportsSummaryLineSchema,
   reportsSummarySchema,

@@ -4,6 +4,7 @@ import {
   reportsBacklogSchema,
   reportsFlowSchema,
   reportsOverviewSchema,
+  reportsPlanningSchema,
   reportsQuerySchema,
   reportsQuestsSchema,
 } from "@lore/core/schemas";
@@ -13,6 +14,7 @@ import { $etag } from "alepha/server/etag";
 
 import { ProjectBacklogReportService } from "../services/ProjectBacklogReportService.ts";
 import { ProjectFlowReportService } from "../services/ProjectFlowReportService.ts";
+import { ProjectPlanningReportService } from "../services/ProjectPlanningReportService.ts";
 import { ProjectReportsService } from "../services/ProjectReportsService.ts";
 
 /**
@@ -26,6 +28,7 @@ export class ProjectReportsController {
   protected readonly reports = $inject(ProjectReportsService);
   protected readonly flow = $inject(ProjectFlowReportService);
   protected readonly backlog = $inject(ProjectBacklogReportService);
+  protected readonly planning = $inject(ProjectPlanningReportService);
 
   /**
    * Reports "Flow" tab: how work moved through the period (#Q3000).
@@ -69,6 +72,28 @@ export class ProjectReportsController {
       response: reportsBacklogSchema,
     },
     handler: ({ params, query }) => this.backlog.report(params.id, query),
+  });
+
+  /**
+   * Reports "Planning" tab: epics and releases (#Q3003).
+   */
+  getReportsPlanning = $action({
+    path: "/getReportsPlanning/:id",
+    method: "GET",
+    use: [
+      $etag({
+        control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
+      }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
+    ],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      query: reportsQuerySchema,
+      response: reportsPlanningSchema,
+    },
+    handler: ({ params, query }) => this.planning.report(params.id, query),
   });
 
   /**
