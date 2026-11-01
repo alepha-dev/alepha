@@ -41,6 +41,23 @@ export const feedback = $entity({
     description: z.string().max(10_000),
     status: z.enum(["pending", "accepted", "rejected"]).meta({ mode: "text" }),
     /**
+     * When, and by whom, the report was accepted or rejected (#Q3005), so time
+     * to triage can be measured. Set by `acceptFeedback` and `rejectFeedback`,
+     * and only there: a report never goes back to pending today, and whatever
+     * adds that path clears both.
+     *
+     * Rows triaged before this existed were backfilled from their audits; one
+     * whose audit is gone stays empty, and reads as "unknown", never as fast.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`, and `.optional()` INSIDE `db.ref`, or
+     * no foreign key is generated.
+     */
+    triagedAt: z.datetime().optional(),
+    triagedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
      * Attachment file ids (uploaded via `POST /projects/:id/feedback/attachments`).
      * Stored as `uuid[]` mirroring `quests.attachments`.
      */
