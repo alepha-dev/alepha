@@ -26,7 +26,19 @@ export interface DocLink {
  * container.
  */
 export class DocsMarkdown {
-  public static readonly SITE = "https://alepha.dev";
+  /**
+   * The address of the site being built: the `latest` deploy names its own
+   * (#Q3028), so its agent files link to itself.
+   */
+  public static readonly SITE = process.env.PUBLIC_URL ?? "https://alepha.dev";
+
+  /**
+   * Point every absolute link of an agent file at the site being built, so a
+   * reader of latest.alepha.dev stays on it.
+   */
+  public static forSite(text: string, site = DocsMarkdown.SITE): string {
+    return text.replace(DocsMarkdown.RELEASE_SITE, site);
+  }
 
   /**
    * A doc link: `/docs/x`, `/bay/docs/x` or `/lore/docs/x`, site-relative or
@@ -35,6 +47,12 @@ export class DocsMarkdown {
    */
   protected static readonly DOC_LINK =
     /\]\((?:https:\/\/alepha\.dev)?\/(?:(bay|lore)\/)?docs\/([^)\s#?]+?)(?:\.md)?(?:#([^)\s]*))?(\s+"[^"]*")?\)/g;
+
+  /**
+   * The site's address as the pages spell it.
+   */
+  protected static readonly RELEASE_SITE =
+    /https:\/\/alepha\.dev(?![\w-]|\.\w)/g;
 
   protected static readonly FENCE = /^(\s*)(`{3,}|~{3,})(.*)$/;
 

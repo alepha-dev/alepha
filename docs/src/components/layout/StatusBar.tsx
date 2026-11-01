@@ -3,6 +3,8 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { useEffect, useState } from "react";
 
+import { isLatestSite, LATEST_SITE } from "../../config/site.ts";
+
 const StatusBar = () => {
   const alepha = useAlepha();
   const state = useRouterState();
@@ -44,6 +46,19 @@ const StatusBar = () => {
         <span style={{ color: "var(--color-border)" }}>│</span>
 
         <span>TypeScript</span>
+
+        {!isLatestSite() && (
+          <>
+            <span style={{ color: "var(--color-border)" }}>│</span>
+
+            <a
+              href={`${LATEST_SITE}${currentPage}`}
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              docs for main
+            </a>
+          </>
+        )}
       </div>
 
       {/* Right side */}
