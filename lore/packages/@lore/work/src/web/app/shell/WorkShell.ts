@@ -498,6 +498,13 @@ export class WorkShell {
       filters: ["period", "grain", "compare", ...workFilters],
     });
     this.reports.register({
+      route: "reportsBacklog",
+      labelKey: "project.reports.nav.backlog",
+      order: 9,
+      needs: "work",
+      filters: ["period", ...workFilters],
+    });
+    this.reports.register({
       route: "reportsOverview",
       labelKey: "project.reports.nav.overview",
       order: 10,

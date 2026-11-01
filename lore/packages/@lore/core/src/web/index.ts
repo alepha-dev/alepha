@@ -131,6 +131,7 @@ export {
   type ReportsKpi,
   default as ReportsKpiRow,
 } from "./app/components/project/reports/ReportsKpiRow.tsx";
+export { default as ReportsQuestList } from "./app/components/project/reports/ReportsQuestList.tsx";
 export { default as ReportsSection } from "./app/components/project/reports/ReportsSection.tsx";
 export { default as ReportsHeatmap } from "./app/components/project/reports/ReportsHeatmap.tsx";
 export {

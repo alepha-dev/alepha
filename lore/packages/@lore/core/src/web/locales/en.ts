@@ -1110,6 +1110,60 @@ export default {
     "Quests completed in the period before their due date, over the ones that had one.",
   "reports.flow.due.rate": "Hit rate",
   "reports.flow.due.hint": "$1 of $2 on time",
+  "project.reports.nav.backlog": "Backlog",
+  "reports.backlog.empty": "Nothing here.",
+  "reports.backlog.days": "$1 d",
+  "reports.backlog.kpi.open": "Open quests",
+  "reports.backlog.kpi.open.definition":
+    "Quests not completed, held ones included. Shelved quests and quests of draft epics are left out.",
+  "reports.backlog.kpi.overdue": "Overdue",
+  "reports.backlog.kpi.overdue.definition": "Open quests past their due date.",
+  "reports.backlog.kpi.shelved": "Shelved rate",
+  "reports.backlog.kpi.shelved.definition":
+    "Shelved quests over every quest of the project, whatever the filters.",
+  "reports.backlog.kpi.waived": "Objectives waived",
+  "reports.backlog.kpi.waived.definition":
+    "Objectives waived over objectives decided, on the quests completed in the period.",
+  "reports.backlog.kpi.waivedHint": "$1 completed, $2 waived",
+  "reports.backlog.byArea.title": "By area",
+  "reports.backlog.byArea.definition":
+    "Open quests per area, every area, stacked by state.",
+  "reports.backlog.byTag.title": "By tag",
+  "reports.backlog.byTag.definition":
+    "Open quests per tag, stacked by state. A quest counts once per tag it holds, so the bars overlap.",
+  "reports.backlog.byPriority.title": "By priority",
+  "reports.backlog.byPriority.definition":
+    "Open quests per priority, stacked by state.",
+  "reports.backlog.bySize.title": "By size",
+  "reports.backlog.bySize.definition":
+    "Open quests per size, stacked by state.",
+  "reports.backlog.age.title": "Backlog age",
+  "reports.backlog.age.definition":
+    "Open quests by time since they were created.",
+  "reports.backlog.age.under1w": "< 1 week",
+  "reports.backlog.age.under1m": "< 1 month",
+  "reports.backlog.age.under3m": "< 3 months",
+  "reports.backlog.age.under6m": "< 6 months",
+  "reports.backlog.age.under1y": "< 1 year",
+  "reports.backlog.age.over1y": "1 year +",
+  "reports.backlog.blocked.title": "Blocked chains",
+  "reports.backlog.blocked.definition":
+    "Open quests waiting on another open quest, by the quest at the head of the chain.",
+  "reports.backlog.blocked.detail": "blocks $1, $2 deep",
+  "reports.backlog.held.title": "On hold",
+  "reports.backlog.held.definition":
+    "Held quests, who held them and for how long.",
+  "reports.backlog.overdue.title": "Overdue",
+  "reports.backlog.overdue.definition":
+    "Open quests past their due date, by days late.",
+  "reports.backlog.dueSoon.title": "Due within 7 days",
+  "reports.backlog.dueSoon.definition":
+    "Open quests due in the next seven days.",
+  "reports.backlog.hygiene.title": "Hygiene",
+  "reports.backlog.hygiene.definition":
+    "Open quests with no objectives or an empty description.",
+  "reports.backlog.hygiene.noObjectives": "no objectives",
+  "reports.backlog.hygiene.noDescription": "no description",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

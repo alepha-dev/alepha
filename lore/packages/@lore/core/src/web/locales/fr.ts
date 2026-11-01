@@ -1089,6 +1089,61 @@ export default {
     "Quêtes terminées sur la période avant leur échéance, sur celles qui en avaient une.",
   "reports.flow.due.rate": "Taux de respect",
   "reports.flow.due.hint": "$1 sur $2 à l’heure",
+  "project.reports.nav.backlog": "Backlog",
+  "reports.backlog.empty": "Rien ici.",
+  "reports.backlog.days": "$1 j",
+  "reports.backlog.kpi.open": "Quêtes ouvertes",
+  "reports.backlog.kpi.open.definition":
+    "Quêtes non terminées, en attente comprises, hors quêtes mises de côté et quêtes des épopées en brouillon.",
+  "reports.backlog.kpi.overdue": "En retard",
+  "reports.backlog.kpi.overdue.definition":
+    "Quêtes ouvertes dont l’échéance est passée.",
+  "reports.backlog.kpi.shelved": "Taux de mise de côté",
+  "reports.backlog.kpi.shelved.definition":
+    "Quêtes mises de côté sur toutes les quêtes du projet, quels que soient les filtres.",
+  "reports.backlog.kpi.waived": "Objectifs abandonnés",
+  "reports.backlog.kpi.waived.definition":
+    "Objectifs abandonnés sur objectifs tranchés, pour les quêtes terminées sur la période.",
+  "reports.backlog.kpi.waivedHint": "$1 atteints, $2 abandonnés",
+  "reports.backlog.byArea.title": "Par domaine",
+  "reports.backlog.byArea.definition":
+    "Quêtes ouvertes par domaine, tous domaines, empilées par état.",
+  "reports.backlog.byTag.title": "Par tag",
+  "reports.backlog.byTag.definition":
+    "Quêtes ouvertes par tag, empilées par état. Une quête compte une fois par tag : les barres se recoupent.",
+  "reports.backlog.byPriority.title": "Par priorité",
+  "reports.backlog.byPriority.definition":
+    "Quêtes ouvertes par priorité, empilées par état.",
+  "reports.backlog.bySize.title": "Par taille",
+  "reports.backlog.bySize.definition":
+    "Quêtes ouvertes par taille, empilées par état.",
+  "reports.backlog.age.title": "Ancienneté du backlog",
+  "reports.backlog.age.definition":
+    "Quêtes ouvertes par temps écoulé depuis leur création.",
+  "reports.backlog.age.under1w": "< 1 semaine",
+  "reports.backlog.age.under1m": "< 1 mois",
+  "reports.backlog.age.under3m": "< 3 mois",
+  "reports.backlog.age.under6m": "< 6 mois",
+  "reports.backlog.age.under1y": "< 1 an",
+  "reports.backlog.age.over1y": "1 an et plus",
+  "reports.backlog.blocked.title": "Chaînes bloquées",
+  "reports.backlog.blocked.definition":
+    "Quêtes ouvertes qui attendent une autre quête ouverte, par quête en tête de chaîne.",
+  "reports.backlog.blocked.detail": "bloque $1, profondeur $2",
+  "reports.backlog.held.title": "En attente",
+  "reports.backlog.held.definition":
+    "Quêtes en attente, par qui et depuis combien de temps.",
+  "reports.backlog.overdue.title": "En retard",
+  "reports.backlog.overdue.definition":
+    "Quêtes ouvertes dont l’échéance est passée, par jours de retard.",
+  "reports.backlog.dueSoon.title": "Échéance sous 7 jours",
+  "reports.backlog.dueSoon.definition":
+    "Quêtes ouvertes à échéance dans les sept prochains jours.",
+  "reports.backlog.hygiene.title": "Hygiène",
+  "reports.backlog.hygiene.definition":
+    "Quêtes ouvertes sans objectifs ou sans description.",
+  "reports.backlog.hygiene.noObjectives": "sans objectifs",
+  "reports.backlog.hygiene.noDescription": "sans description",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

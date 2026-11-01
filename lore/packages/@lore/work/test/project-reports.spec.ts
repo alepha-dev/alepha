@@ -612,6 +612,142 @@ describe("ProjectReportsController", () => {
   });
 
   /**
+   * The Backlog tab's report (#Q3002).
+   */
+  describe("getReportsBacklog", () => {
+    const day = 86_400_000;
+    const backlog = async (
+      owner: { id: string; roles: string[] },
+      projectId: number,
+    ) =>
+      (
+        await ctx.reportsController.getReportsBacklog.fetch(
+          { params: { id: projectId }, query: {} },
+          { user: owner },
+        )
+      ).data;
+
+    it("keeps every value of an axis, stacked by state", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      for (let index = 0; index < 10; index++) {
+        await createTestQuest(ctx, owner, project.id, {
+          area: `area-${index}`,
+        });
+      }
+      const held = await createTestQuest(ctx, owner, project.id, {
+        area: "area-0",
+        tags: ["bug", "ui"],
+      });
+      await ctx.repos.quests.updateById(held.id, {
+        heldAt: new Date(ctx.now() - 2 * day).toISOString(),
+        heldBy: owner.id,
+      });
+
+      const data = await backlog(owner, project.id);
+
+      expect(data.byArea).toHaveLength(10);
+      expect(data.byArea[0]).toEqual({
+        value: "area-0",
+        todo: 1,
+        inProgress: 0,
+        onHold: 1,
+      });
+      // One quest, two tags: the rows overlap.
+      expect(data.byTag.map((row) => row.value).sort()).toEqual(["bug", "ui"]);
+      expect(data.held[0]?.heldBy).toBe(owner.id);
+      expect(data.held[0]?.heldDays).toBeCloseTo(2);
+    });
+
+    it("groups a blocked chain under the quest at its head", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const head = await createTestQuest(ctx, owner, project.id, {
+        title: "head",
+      });
+      const middle = await createTestQuest(ctx, owner, project.id);
+      const tail = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(middle.id, { dependsOn: head.id });
+      await ctx.repos.quests.updateById(tail.id, { dependsOn: middle.id });
+
+      const { blocked } = await backlog(owner, project.id);
+
+      expect(blocked).toHaveLength(1);
+      expect(blocked[0]?.blocker.title).toBe("head");
+      expect(blocked[0]?.blocked).toHaveLength(2);
+      expect(blocked[0]?.depth).toBe(2);
+    });
+
+    it("survives a dependency cycle a past write left", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const a = await createTestQuest(ctx, owner, project.id);
+      const b = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(a.id, { dependsOn: b.id });
+      await ctx.repos.quests.updateById(b.id, { dependsOn: a.id });
+
+      await expect(backlog(owner, project.id)).resolves.toBeDefined();
+    });
+
+    it("splits overdue from due soon, and leaves the far future out", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const due = async (days: number) => {
+        const quest = await createTestQuest(ctx, owner, project.id);
+        await ctx.repos.quests.updateById(quest.id, {
+          dueAt: new Date(ctx.now() + days * day).toISOString(),
+        });
+      };
+      await due(-3);
+      await due(3);
+      await due(30);
+
+      const data = await backlog(owner, project.id);
+
+      expect(data.overdue).toHaveLength(1);
+      expect(data.dueSoon).toHaveLength(1);
+    });
+
+    it("lists hygiene gaps, and counts objectives done against waived", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      await createTestQuest(ctx, owner, project.id);
+      const done = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(done.id, {
+        completedAt: new Date(ctx.now()).toISOString(),
+        objectives: [
+          { id: 0, title: "a", completed: true },
+          { id: 1, title: "b", completed: false, waivedReason: "no" },
+        ],
+      });
+
+      const data = await backlog(owner, project.id);
+
+      expect(data.hygiene[0]?.noObjectives).toBe(true);
+      expect(data.objectives).toEqual({ completed: 1, waived: 1 });
+    });
+
+    it("rates shelved quests over the project", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      await createTestQuest(ctx, owner, project.id);
+      const shelved = await createTestQuest(ctx, owner, project.id);
+      await ctx.questController.shelveQuest.fetch(
+        { params: { id: shelved.id } },
+        { user: owner },
+      );
+
+      expect((await backlog(owner, project.id)).shelvedRate).toBe(50);
+    });
+  });
+
+  /**
    * The query every report takes (#Q2995).
    */
   describe("a period, filters and thresholds", () => {

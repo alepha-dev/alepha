@@ -35,6 +35,7 @@ const reportsTabs = (
     [
       "reportsSummary",
       "reportsFlow",
+      "reportsBacklog",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",
@@ -75,6 +76,7 @@ describe("reportsTabs", () => {
     expect(names(["work"])).toEqual([
       "reportsSummary",
       "reportsFlow",
+      "reportsBacklog",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",

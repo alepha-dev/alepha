@@ -141,6 +141,42 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Backlog tab (#Q3002).
+   */
+  test("Backlog breaks down the open work and lists what needs a hand", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportsbl${t}@example.com`, "ReportsB123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RL${t}`.slice(0, 20),
+    );
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: `Bare${t}`,
+      description: "",
+      area: "core",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    await page.goto(`/${slug}/reports/backlog`);
+
+    await expect(page.getByText("Backlog age")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+    // A quest with no objectives lands on the hygiene list, as a link.
+    await expect(
+      page.getByRole("link", { name: new RegExp(`Bare${t}`) }),
+    ).toBeVisible();
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */

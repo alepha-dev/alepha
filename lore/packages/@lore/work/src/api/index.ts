@@ -40,6 +40,7 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { ProjectBacklogReportService } from "./services/ProjectBacklogReportService.ts";
 import { ProjectFlowReportService } from "./services/ProjectFlowReportService.ts";
 import { ProjectReportsService } from "./services/ProjectReportsService.ts";
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
@@ -204,6 +205,7 @@ export const LoreWorkApi = $module({
     AreaController,
     ProjectReportsController,
     ProjectReportsService,
+    ProjectBacklogReportService,
     ProjectFlowReportService,
     QuestFlowHistory,
     QuestFlowService,
