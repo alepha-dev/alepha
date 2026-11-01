@@ -953,6 +953,56 @@ export default {
     "Couverture du dernier passage de chaque jour.",
   "reports.quality.section.testsOverTime.definition":
     "Tests réussis et échoués du dernier passage de chaque jour.",
+  "project.reports.nav.summary": "Résumé",
+  "reports.summary.copy": "Copier comme point d’avancement",
+  "reports.summary.copied": "Point d’avancement copié",
+  "reports.summary.empty": "Aucune capacité à présenter.",
+  "reports.summary.definition":
+    "Chaque chiffre sur la période, face à la période de même durée qui la précède.",
+  "reports.summary.section.work": "Travail",
+  "reports.summary.section.support": "Support",
+  "reports.summary.section.knowledge": "Connaissance",
+  "reports.summary.section.apps": "Livraison",
+  "reports.summary.line.throughput": "Quêtes terminées",
+  "reports.summary.line.throughput.definition":
+    "Quêtes terminées sur la période.",
+  "reports.summary.line.cycleTime": "Temps de cycle médian",
+  "reports.summary.line.cycleTime.definition":
+    "Temps médian entre acceptation et fin, attente exclue.",
+  "reports.summary.line.wip": "En cours",
+  "reports.summary.line.wip.definition":
+    "Quêtes acceptées et non terminées, hors quêtes en attente.",
+  "reports.summary.line.epicsShipped": "Épopées livrées",
+  "reports.summary.line.epicsShipped.definition":
+    "Épopées terminées sur la période.",
+  "reports.summary.line.releasesShipped": "Versions publiées",
+  "reports.summary.line.releasesShipped.definition":
+    "Versions publiées sur la période.",
+  "reports.summary.line.feedbackIn": "Retours reçus",
+  "reports.summary.line.feedbackIn.definition": "Retours reçus sur la période.",
+  "reports.summary.line.feedbackPending": "En attente de tri",
+  "reports.summary.line.feedbackPending.definition":
+    "Retours à trier aujourd’hui.",
+  "reports.summary.line.foliosCreated": "Folios créés",
+  "reports.summary.line.foliosCreated.definition":
+    "Folios créés sur la période.",
+  "reports.summary.line.foliosRevised": "Révisions de folios",
+  "reports.summary.line.foliosRevised.definition":
+    "Révisions enregistrées sur la période, tous folios confondus.",
+  "reports.summary.line.deploys": "Déploiements",
+  "reports.summary.line.deploys.definition":
+    "Déploiements terminés sur la période, échecs compris.",
+  "reports.summary.line.deploySuccess": "Réussite des déploiements",
+  "reports.summary.line.deploySuccess.definition":
+    "Déploiements réussis sur déploiements terminés, hors annulés.",
+  "reports.summary.line.openBlights": "Blights ouverts",
+  "reports.summary.line.openBlights.definition": "Blights ouverts aujourd’hui.",
+  "reports.summary.line.uptime": "Disponibilité",
+  "reports.summary.line.uptime.definition":
+    "Temps de surveillance hors incident, sur la période.",
+  "reports.summary.line.coverage": "Couverture",
+  "reports.summary.line.coverage.definition":
+    "Couverture de lignes du dernier passage qualité de la période.",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

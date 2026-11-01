@@ -566,7 +566,7 @@ export class WorkRouter {
   reportsOverview = $page({
     parent: this.core.projectReports,
     name: "reportsOverview",
-    path: "/",
+    path: "/overview",
     lazy: () =>
       import("./components/project/reports/ReportsOverview.client.tsx"),
     schema: { query: reportsUrlSchema },

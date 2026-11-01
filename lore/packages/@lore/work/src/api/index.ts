@@ -77,6 +77,7 @@ import { WorkFlowDashboardMetrics } from "./services/WorkFlowDashboardMetrics.ts
 import { WorkPlanDashboardMetrics } from "./services/WorkPlanDashboardMetrics.ts";
 import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
 import { WorkProjectMerge } from "./services/WorkProjectMerge.ts";
+import { WorkReportsSummary } from "./services/WorkReportsSummary.ts";
 import { WorkYourDashboardMetrics } from "./services/WorkYourDashboardMetrics.ts";
 import { YourQuestsMetric } from "./services/YourQuestsMetric.ts";
 
@@ -205,6 +206,7 @@ export const LoreWorkApi = $module({
     QuestFlowHistory,
     QuestFlowService,
     QuestHoldTime,
+    WorkReportsSummary,
     ProjectQuestPortabilityController,
     KanbanController,
     FeedbackController,

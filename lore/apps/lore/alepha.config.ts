@@ -232,6 +232,8 @@ export default defineConfig({
         // The Reports bar (#Q2996): its period and grain, built from the value.
         "reports.filter.range.",
         "reports.filter.grain.",
+        "reports.summary.line.",
+        "reports.summary.section.",
         // Catalogue-defined preset keys, slot names and channel choices (#E43).
         "automation.preset.",
         "automation.setup.",

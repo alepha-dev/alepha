@@ -27,6 +27,7 @@ import { KnowledgeDashboard } from "./services/KnowledgeDashboard.ts";
 import { KnowledgeDashboardMetrics } from "./services/KnowledgeDashboardMetrics.ts";
 import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
 import { KnowledgeProjectMerge } from "./services/KnowledgeProjectMerge.ts";
+import { KnowledgeReportsSummary } from "./services/KnowledgeReportsSummary.ts";
 import { PinnedFolioMetric } from "./services/PinnedFolioMetric.ts";
 import { RecentFoliosMetric } from "./services/RecentFoliosMetric.ts";
 
@@ -35,6 +36,7 @@ export const LoreKnowledgeApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    KnowledgeReportsSummary,
     KnowledgeAutomationActions,
     KnowledgeAutomationReferences,
     FolioNameService,

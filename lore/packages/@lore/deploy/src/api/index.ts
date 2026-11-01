@@ -57,6 +57,7 @@ import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
 import { DeployProjectMerge } from "./services/DeployProjectMerge.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
+import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
@@ -114,6 +115,7 @@ export const LoreDeployApi = $module({
     AlephaRateLimit,
   ],
   services: [
+    DeployReportsSummary,
     DeployAutomationEventSubjects,
     DeployAutomationReferences,
     DeployDashboardMetrics,

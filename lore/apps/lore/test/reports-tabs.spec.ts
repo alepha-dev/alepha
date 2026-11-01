@@ -12,7 +12,14 @@ const registry = (() => {
   const alepha = Alepha.create();
   alepha.inject(WorkShell);
   alepha.inject(DeployShell);
-  return alepha.inject(ReportsTabRegistry);
+  const tabs = alepha.inject(ReportsTabRegistry);
+  // Core's own tab, which `CoreRouter` registers.
+  tabs.register({
+    route: "reportsSummary",
+    labelKey: "project.reports.nav.summary",
+    order: 5,
+  });
+  return tabs;
 })();
 
 /**
@@ -25,9 +32,12 @@ const reportsTabs = (
 ) =>
   registry.tabs(
     project,
-    ["reportsOverview", "reportsQuests", "reportsMembers"].concat(
-      hasQualityRun ? ["reportsQuality"] : [],
-    ),
+    [
+      "reportsSummary",
+      "reportsOverview",
+      "reportsQuests",
+      "reportsMembers",
+    ].concat(hasQualityRun ? ["reportsQuality"] : []),
   );
 
 /**
@@ -62,6 +72,7 @@ describe("reportsTabs", () => {
 
   it("gives a Work project the two derived quest tabs, plus Members", () => {
     expect(names(["work"])).toEqual([
+      "reportsSummary",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",
@@ -72,13 +83,17 @@ describe("reportsTabs", () => {
     // Members comes from a core table, so it is the one tab that survives
     // everything being turned off - which is what makes Reports worth keeping
     // as a Core entry.
-    expect(names([])).toEqual(["reportsMembers"]);
+    expect(names([])).toEqual(["reportsSummary", "reportsMembers"]);
   });
 
   it("keeps Quality for an Apps-only project, once a run exists", () => {
     // The case that decided Reports is Core rather than Work: this project
     // has no quests at all and still needs to reach what CI pushed.
-    expect(names(["apps"], true)).toEqual(["reportsMembers", "reportsQuality"]);
+    expect(names(["apps"], true)).toEqual([
+      "reportsSummary",
+      "reportsMembers",
+      "reportsQuality",
+    ]);
   });
 
   it("hides Quality until a run exists", () => {

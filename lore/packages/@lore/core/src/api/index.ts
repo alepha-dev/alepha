@@ -29,6 +29,7 @@ import { ProjectDashboardController } from "./controllers/ProjectDashboardContro
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
+import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
@@ -105,6 +106,7 @@ import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 
@@ -256,6 +258,8 @@ export const LoreCoreApi = $module({
     NotificationPreferenceController,
     ProjectLimits,
     ReportStatistics,
+    ReportsSummaryController,
+    ReportsSummaryRegistry,
     // The dashboard: the membership gate every card scope goes through, and
     // card storage. The declarative registry (`DashboardMetricCatalog`) is
     // browser-safe and constructed by whatever injects it; each module
@@ -415,6 +419,12 @@ export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
 export { ReportStatistics } from "./services/ReportStatistics.ts";
+export { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
+export {
+  ReportsSummaryRegistry,
+  type ReportsSummarySource,
+  type ReportsSummarySourceLine,
+} from "./services/ReportsSummaryRegistry.ts";
 export { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 export {
   ProjectMergeNumbers,

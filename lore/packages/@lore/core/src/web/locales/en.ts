@@ -973,6 +973,57 @@ export default {
     "Coverage of the last run of each day.",
   "reports.quality.section.testsOverTime.definition":
     "Passed and failed tests of the last run of each day.",
+  "project.reports.nav.summary": "Summary",
+  "reports.summary.copy": "Copy as status update",
+  "reports.summary.copied": "Status update copied",
+  "reports.summary.empty": "No capability to report on.",
+  "reports.summary.definition":
+    "Each figure over the period, against the period of the same length before it.",
+  "reports.summary.section.work": "Work",
+  "reports.summary.section.support": "Support",
+  "reports.summary.section.knowledge": "Knowledge",
+  "reports.summary.section.apps": "Delivery",
+  "reports.summary.line.throughput": "Quests completed",
+  "reports.summary.line.throughput.definition":
+    "Quests completed in the period.",
+  "reports.summary.line.cycleTime": "Median cycle time",
+  "reports.summary.line.cycleTime.definition":
+    "Median time from accepted to completed, hold time excluded.",
+  "reports.summary.line.wip": "In progress",
+  "reports.summary.line.wip.definition":
+    "Quests accepted and not completed now. Held quests are left out.",
+  "reports.summary.line.epicsShipped": "Epics shipped",
+  "reports.summary.line.epicsShipped.definition":
+    "Epics completed in the period.",
+  "reports.summary.line.releasesShipped": "Releases shipped",
+  "reports.summary.line.releasesShipped.definition":
+    "Releases published in the period.",
+  "reports.summary.line.feedbackIn": "Feedback in",
+  "reports.summary.line.feedbackIn.definition":
+    "Reports received in the period.",
+  "reports.summary.line.feedbackPending": "Pending",
+  "reports.summary.line.feedbackPending.definition":
+    "Reports waiting for triage now.",
+  "reports.summary.line.foliosCreated": "Folios created",
+  "reports.summary.line.foliosCreated.definition":
+    "Folios created in the period.",
+  "reports.summary.line.foliosRevised": "Folio revisions",
+  "reports.summary.line.foliosRevised.definition":
+    "Revisions recorded in the period, on every folio.",
+  "reports.summary.line.deploys": "Deploys",
+  "reports.summary.line.deploys.definition":
+    "Deployments that finished in the period, failed ones included.",
+  "reports.summary.line.deploySuccess": "Deploy success",
+  "reports.summary.line.deploySuccess.definition":
+    "Succeeded deployments over finished ones. Cancelled ones are left out.",
+  "reports.summary.line.openBlights": "Open blights",
+  "reports.summary.line.openBlights.definition": "Blights open now.",
+  "reports.summary.line.uptime": "Uptime",
+  "reports.summary.line.uptime.definition":
+    "Monitor time outside an incident, over the period.",
+  "reports.summary.line.coverage": "Coverage",
+  "reports.summary.line.coverage.definition":
+    "Line coverage of the latest quality run in the period.",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

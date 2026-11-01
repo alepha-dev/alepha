@@ -123,6 +123,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   // ever reads the active leaf: a set that names four of the five is a trap
   // for whoever adds the sixth.
   "projectReports",
+  "reportsSummary",
   "reportsOverview",
   "reportsQuests",
   "reportsMembers",
@@ -253,6 +254,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectReleases: "project.menu.releases",
   projectRelease: "project.menu.releases",
   projectReports: "project.menu.reports",
+  reportsSummary: "project.menu.reports",
   reportsOverview: "project.menu.reports",
   reportsQuests: "project.menu.reports",
   reportsMembers: "project.menu.reports",

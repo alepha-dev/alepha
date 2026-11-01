@@ -12,6 +12,7 @@ import type { HomeController } from "../../api/controllers/HomeController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
+import type { ReportsSummaryController } from "../../api/controllers/ReportsSummaryController.ts";
 import { reportsUrlSchema } from "../../api/schemas/reportsUrlSchema.ts";
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -26,6 +27,7 @@ import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
 import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
+import { ReportsSummaryMarkdown } from "./services/ReportsSummaryMarkdown.ts";
 import { ReportsUrlQuery } from "./services/ReportsUrlQuery.ts";
 
 /**
@@ -52,6 +54,17 @@ export class CoreRouter {
   reportsUrl = $inject(ReportsUrlQuery);
   reportsCsv = $inject(ReportsCsv);
   reportsDrillDown = $inject(ReportsDrillDown);
+  reportsMarkdown = $inject(ReportsSummaryMarkdown);
+  reportsSummaryApi = $client<ReportsSummaryController>();
+
+  constructor() {
+    this.reportsTabs.register({
+      route: "reportsSummary",
+      labelKey: "project.reports.nav.summary",
+      order: 5,
+      filters: ["period"],
+    });
+  }
 
   head = $head(() => {
     const head: Head = {
@@ -453,6 +466,33 @@ export class CoreRouter {
       ),
       query,
     }),
+  });
+
+  /**
+   * The first tab (#Q2999): every enabled capability's period, against the
+   * previous one, so it always compares.
+   */
+  reportsSummary = $page({
+    parent: this.projectReports,
+    name: "reportsSummary",
+    path: "/",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsSummary.client.tsx"),
+    loader: async ({ query }) => {
+      const projectId = this.alepha.store.get(currentProjectAtom)?.id ?? -1;
+      return {
+        url: query,
+        tabs: await this.reportsTabs.availability(projectId),
+        summary: await this.reportsSummaryApi.getReportsSummary({
+          params: { id: projectId },
+          query: this.reportsUrl.toQuery(
+            query,
+            this.reportsTabs.honours("reportsSummary"),
+          ),
+        }),
+      };
+    },
   });
 
   // -------------------------------------------------------------------------------------------------------------------

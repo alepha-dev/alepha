@@ -136,14 +136,15 @@ export { default as ReportsHeatmap } from "./app/components/project/reports/Repo
 export {
   default as ReportsHistogram,
   type ReportsHistogramBucket,
-} from "./app/components/project/reports/ReportsHistogram.tsx";
+} from "./app/components/project/reports/ReportsHistogram.client.tsx";
 export {
   default as ReportsScatterChart,
   type ReportsScatterPoint,
-} from "./app/components/project/reports/ReportsScatterChart.tsx";
-export { default as ReportsStackedArea } from "./app/components/project/reports/ReportsStackedArea.tsx";
+} from "./app/components/project/reports/ReportsScatterChart.client.tsx";
+export { default as ReportsStackedArea } from "./app/components/project/reports/ReportsStackedArea.client.tsx";
 export { useReportsDrillDown } from "./app/components/project/reports/useReportsDrillDown.ts";
 export { ReportsCsv, type ReportsCsvRow } from "./app/services/ReportsCsv.ts";
+export { ReportsSummaryMarkdown } from "./app/services/ReportsSummaryMarkdown.ts";
 export {
   ReportsDrillDown,
   type ReportsSegment,

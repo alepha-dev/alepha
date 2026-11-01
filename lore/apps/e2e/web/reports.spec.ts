@@ -76,6 +76,31 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Summary tab (#Q2999): the first tab, its lines the enabled
+   * capabilities' only, and a line linking to the tab that explains it while
+   * keeping the filters.
+   */
+  test("Summary is the first tab and shows the project's capabilities", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportssum${t}@example.com`, "ReportsS123!");
+    const { slug } = await createProjectViaWizard(page, `RS${t}`.slice(0, 20));
+
+    await page.goto(`/${slug}/reports?range=7d`);
+
+    await expect(
+      page.getByTestId("reports-tabs").getByRole("link").first(),
+    ).toHaveText("Summary", { timeout: 20_000 });
+    await expect(page.getByText("Quests completed")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Copy as status update" }),
+    ).toBeVisible();
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */
