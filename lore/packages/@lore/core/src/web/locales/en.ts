@@ -2099,6 +2099,9 @@ export default {
   "account.notifications.category.feedback": "Your reports",
   "account.notifications.category.feedback.description":
     "When a project accepts, rejects or answers a report you submitted.",
+  "account.notifications.category.invitations": "Project invitations",
+  "account.notifications.category.invitations.description":
+    "A project invites you, in the bell only: the invitation email still arrives.",
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Somebody writes your name in a quest or feedback comment.",
