@@ -322,6 +322,7 @@ export class ReactPageProvider {
     route: PageRoute,
     state: ReactRouterState,
     previous: PreviousLayerData[] = [],
+    options: CreateLayersOptions = {},
   ): Promise<CreateLayersResult> {
     const context: Record<string, any> = {}; // all props
     const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
@@ -425,6 +426,7 @@ export class ReactPageProvider {
       // stays on screen, or a filter box would unmount itself on a keystroke.
       if (
         !announced &&
+        !options.overlay &&
         committed &&
         committed.name !== "offline" &&
         committed.layers[i]?.key !== it.key
@@ -566,7 +568,9 @@ export class ReactPageProvider {
           const element = skipComponents
             ? undefined
             : await this.createElement(
-                it.route,
+                options.overlay && i === stack.length - 1
+                  ? { ...it.route, ...it.route.overlay }
+                  : it.route,
                 {
                   // default props attached to page
                   ...(it.route.props ? it.route.props() : {}),
@@ -665,6 +669,38 @@ export class ReactPageProvider {
       if (parent.errorHandler) return parent.errorHandler;
       parent = parent.parent;
     }
+  }
+
+  /**
+   * Whether a navigation to `route` opens as an overlay over what is on
+   * screen: the page declares one, it opens over the committed page, and its
+   * parent chain is already there. The overlay renders on the layers its
+   * parents hold, so with any other chain it has nothing to stand on.
+   */
+  public canOverlay(
+    route: PageRoute,
+    params: Record<string, string>,
+    committed?: ReactRouterState,
+  ): boolean {
+    if (!route.overlay || !committed?.name) {
+      return false;
+    }
+
+    const over = route.overlay.over().map((page) => page.name);
+    if (!over.includes(committed.name)) {
+      return false;
+    }
+
+    const parents: PageRoute[] = [];
+    for (let it = route.parent; it; it = it.parent) {
+      parents.unshift(it);
+    }
+
+    let identity = "";
+    return parents.every((parent, index) => {
+      identity = this.identityOf(identity, parent, params);
+      return committed.layers[index]?.key === identity;
+    });
   }
 
   /**
@@ -1198,6 +1234,23 @@ export interface ReactRouterState {
    * Optional name of the current page route
    */
   name?: string;
+
+  /**
+   * The page open as an overlay over this state.
+   *
+   * ⚠️ `name`, `layers`, `url` and `params` stay the BACKGROUND's, so
+   * everything that reads them keeps describing the page that stays mounted.
+   * The URL of the address bar is `overlay.url`.
+   */
+  overlay?: ReactRouterOverlay;
+}
+
+export interface ReactRouterOverlay {
+  name: string;
+  url: URL;
+  params: Record<string, any>;
+  query: Record<string, string>;
+  layers: Array<Layer>;
 }
 
 export interface RouterStackItem {
@@ -1207,6 +1260,13 @@ export interface RouterStackItem {
   props?: Record<string, any>;
   error?: Error;
   cache?: boolean;
+}
+
+export interface CreateLayersOptions {
+  /**
+   * The leaf renders its `overlay` component, and no slot is announced.
+   */
+  overlay?: boolean;
 }
 
 export interface CreateLayersResult {

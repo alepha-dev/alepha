@@ -21,6 +21,7 @@ import { useRouterState } from "../hooks/useRouterState.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
 import { ReactViewTransition } from "../services/ReactViewTransition.ts";
 import ErrorViewer from "./ErrorViewer.tsx";
+import OverlayView from "./OverlayView.tsx";
 
 export interface NestedViewProps {
   children?: ReactNode;
@@ -187,15 +188,18 @@ const NestedView = (props: NestedViewProps) => {
   // `default="none"`: a page that asks for nothing gets no view transition
   // name at all, so it never animates.
   const element = (
-    <ViewTransition
-      key={view.slot}
-      default="none"
-      enter={view.enter}
-      exit={exitClass.current}
-      update={view.update}
-    >
-      {content}
-    </ViewTransition>
+    <>
+      <ViewTransition
+        key={view.slot}
+        default="none"
+        enter={view.enter}
+        exit={exitClass.current}
+        update={view.update}
+      >
+        {content}
+      </ViewTransition>
+      <OverlayView index={index} />
+    </>
   );
 
   if (props.errorBoundary === false) {

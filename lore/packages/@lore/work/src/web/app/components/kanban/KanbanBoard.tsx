@@ -155,9 +155,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const [collapsedLanes, setCollapsedLanes] = useState<Set<string>>(new Set());
   const [laneMode, setLaneMode] = useState<LaneMode>("none");
   const [reloadKey] = useStore(kanbanReloadAtom);
-  // The open card lives on its own route (`projectKanbanCard`), which
-  // renders the sheet into this page's `NestedView`. The board only has to
-  // keep its own row in step: `QuestView` writes every mutation into
+  // The open card is `projectQuest`'s overlay, a sheet over this board. The
+  // board only has to keep its own row in step: `QuestView` writes every mutation into
   // `currentQuestAtom`, so watching it is how a card moves column without
   // either side holding a reference to the other, and without a refetch.
   const [openQuest] = useStore(currentQuestAtom);
@@ -500,7 +499,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   );
 
   const openCard = (quest: QuestResource) => {
-    void router.push("projectKanbanCard", {
+    void router.push("projectQuest", {
       params: { projectSlug: project.slug, shortId: String(quest.shortId) },
     });
   };
@@ -945,9 +944,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       {/*
         The quest sheet used to live here, over local `selectedQuest` state:
         no URL, no refetch, so a long-lived board edited whatever `getBoard`
-        returned however long ago. It is `ProjectKanbanCard` on its own
-        route now, rendered into this page's `NestedView` — see `openCard`
-        above and the `currentQuestAtom` effect that keeps the row in step.
+        returned however long ago. It is `projectQuest`'s overlay now — see
+        `openCard` above and the `currentQuestAtom` effect that keeps the row
+        in step.
       */}
     </div>
   );

@@ -222,6 +222,33 @@ export interface PagePrimitiveOptions<
   loading?: ComponentType;
 
   /**
+   * Open this page as an overlay over another one, on an in-app navigation
+   * from it: one URL, two presentations. A reload, a shared link or a
+   * navigation from anywhere else renders the page in full, which is what
+   * makes the overlay's URL safe to share.
+   *
+   * `component` (or `lazy`) replaces the page's own and receives its loader
+   * props. The page behind stays mounted and is not re-fetched, and
+   * `useRouterState()` keeps describing it: the overlay is in `state.overlay`.
+   * Close it with `useOverlay().close()`, which goes back through history.
+   *
+   * ```ts
+   * board = $page({ path: "/board", lazy: () => import("./Board.tsx") });
+   *
+   * card = $page({
+   *   path: "/cards/:id",
+   *   loader: ({ params }) => this.api.card(params),
+   *   lazy: () => import("./CardPage.tsx"),
+   *   overlay: {
+   *     over: () => [this.board],
+   *     lazy: () => import("./CardSheet.tsx"),
+   *   },
+   * });
+   * ```
+   */
+  overlay?: PageOverlay<TProps & TPropsParent>;
+
+  /**
    * Attach child pages to create nested routes, adopting them as children of
    * this page.
    *
@@ -859,6 +886,23 @@ export type PageLoader<
 > = PageRequestConfig<TConfig> &
   TPropsParent &
   Omit<ReactRouterState, "layers" | "onError">;
+
+/**
+ * How a page opens over another one. See `$page`'s `overlay`.
+ */
+export interface PageOverlay<TProps = any> {
+  /**
+   * The pages it opens over. From any other page, it is a full page.
+   */
+  over: () => Array<PagePrimitive<any, any, any>>;
+
+  /**
+   * What renders instead of the page's component, with the same props.
+   */
+  component?: FC<TProps>;
+
+  lazy?: () => Promise<{ default: FC<TProps> }>;
+}
 
 export type PageViewTransition =
   | PageViewTransitionObject

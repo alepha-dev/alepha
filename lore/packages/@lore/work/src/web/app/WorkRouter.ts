@@ -165,6 +165,20 @@ export class WorkRouter {
       };
     },
     lazy: () => import("./components/project/quest/QuestView.tsx"),
+    /**
+     * A card opens as a sheet over the board, which stays mounted and does not
+     * refetch, and a reload of it is this page. It used to be a local
+     * `setSelectedQuest`, which had no URL and, the part that actually bit, no
+     * refetch: a long-lived board edited whatever `getBoard` returned however
+     * long ago. The loader below gets fresh data on open for free.
+     *
+     * The board reads `currentQuestAtom`, which that loader seeds, to patch its
+     * own row.
+     */
+    overlay: {
+      over: () => [this.projectKanban],
+      lazy: () => import("./components/project/ProjectKanbanCard.tsx"),
+    },
     loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
@@ -480,20 +494,11 @@ export class WorkRouter {
   });
 
   /**
-   * One card, open over the board.
+   * Where a card opened on the board used to live, for the links people hold.
+   * A card is `projectQuest` now, as a sheet over the board.
    *
-   * A child route rather than local state: clicking a card used to be
-   * `setSelectedQuest(quest)`, which had no URL and — the part that
-   * actually bit — **no refetch**, so a long-lived board edited whatever
-   * `getBoard` returned however long ago. A loader gets fresh data on open
-   * for free, and the card becomes linkable.
-   *
-   * ⚠️ The param is `shortId`, the SAME name `projectQuest` uses at the
-   * same position. That is deliberate: the router keeps one param name per
-   * path position, so two routes naming it DIFFERENTLY are what silently
-   * lose the inner value (the trap `projectEpic`'s `epicNumber` documents).
-   * Sharing the name is the safe side of that rule, as `projectSlug` does
-   * across the whole tree.
+   * From a loader, because `redirect:` is a static string and cannot carry
+   * `:shortId`.
    */
   projectKanbanCard = $page({
     name: "projectKanbanCard",
@@ -503,37 +508,12 @@ export class WorkRouter {
         shortId: z.integer(),
       }),
     },
-    head: (props, previous) => {
-      const questTitle = (props as { quest?: { title?: string } } | undefined)
-        ?.quest?.title;
-      return {
-        title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
-      };
-    },
-    lazy: () => import("./components/project/ProjectKanbanCard.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const quest = await this.questApi.getQuestByShortId({
-        params: {
-          projectId: project.id,
-          shortId: params.shortId,
-        },
+    component: RedirectPage,
+    // Annotated `Promise<void>` because it always throws.
+    loader: async ({ params }): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/quests/${params.shortId}`,
       });
-      // The board watches this atom to patch its own row, which is how an
-      // edit in the sheet moves the card behind it without a refetch.
-      this.alepha.store.set(currentQuestAtom, quest);
-      return { quest };
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentQuestAtom, undefined);
-    },
-    errorHandler: (error) => {
-      if (isHttpError(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
     },
   });
 

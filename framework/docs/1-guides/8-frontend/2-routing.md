@@ -528,6 +528,49 @@ A `$page` is also an object you can call from server code:
 - `page.fetch(options?)` requests the page from the running server over HTTP, at its full path with `options.params` and `options.query` filled in, and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`.
 - `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
 
+## Modal Routes
+
+`overlay` gives a page two presentations for one URL: an in-app navigation from a given page opens it over that page, and a reload or a shared link renders it in full.
+
+```tsx
+class Router {
+  board = $page({ path: "/board", lazy: () => import("./Board.tsx") });
+
+  card = $page({
+    path: "/cards/:id",
+    loader: ({ params }) => this.api.card(params),
+    lazy: () => import("./CardPage.tsx"),
+    overlay: {
+      over: () => [this.board],
+      lazy: () => import("./CardSheet.tsx"),
+    },
+  });
+}
+```
+
+The overlay's `component` or `lazy` replaces the page's own and receives its loader props.
+
+```tsx
+import { useOverlay } from "alepha/react/router";
+
+const CardSheet = (props: { card: Card }) => {
+  const { close } = useOverlay();
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && close()}>
+      <CardDetail card={props.card} />
+    </Sheet>
+  );
+};
+```
+
+- The page behind stays mounted and runs no loader. `useRouterState()` keeps describing it, so a layout reading `name` does not flip under the sheet: the overlay is in `state.overlay`, with its own `name`, `params`, `url` and `layers`.
+- It applies only when the committed page is in `over` and the overlay's parents are already on screen. From anywhere else it is a full page.
+- Back closes it and Forward reopens it. `useOverlay().close()` goes back through history. Neither scrolls the page behind.
+- A push from inside an overlay to a page that may open over the same background stays an overlay, so a link from one card to another replaces the sheet. Any other push leaves it.
+- `onEnter` and `onLeave` of the page behind do not fire when it opens, and the overlay's own fire when it opens and closes.
+- `loading` does not apply: the overlay opens once its loader is done. A loader that fails renders the page in full, where its `errorHandler` lands.
+
 ## Loading UI
 
 `loading` is shown in the page's slot while its loader and its chunk load, with the layouts above it staying in place:

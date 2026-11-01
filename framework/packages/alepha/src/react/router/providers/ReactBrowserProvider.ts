@@ -225,15 +225,36 @@ export class ReactBrowserProvider {
     return this.historyKey > 0;
   }
 
+  /**
+   * The URL on screen, an open overlay's over the state's own.
+   */
+  protected get committedUrl(): string {
+    const url = this.state.overlay?.url ?? this.state.url;
+    return url.pathname + url.search + url.hash;
+  }
+
   public pushState(path: string, replace?: boolean) {
     const url = this.base + path;
+    // An entry an overlay sits on says so: going forward to it reopens the
+    // overlay, where the same URL with no mark is a full page.
+    const background = this.state?.overlay
+      ? { background: this.state.url.pathname + this.state.url.search }
+      : {};
 
     if (replace) {
       // Same entry, same id: a replace does not create a place to come back to.
-      this.history.replaceState({ alephaKey: this.historyKey }, "", url);
+      this.history.replaceState(
+        { alephaKey: this.historyKey, ...background },
+        "",
+        url,
+      );
     } else {
       this.historyKey = this.nextHistoryKey++;
-      this.history.pushState({ alephaKey: this.historyKey }, "", url);
+      this.history.pushState(
+        { alephaKey: this.historyKey, ...background },
+        "",
+        url,
+      );
     }
   }
 
@@ -324,7 +345,7 @@ export class ReactBrowserProvider {
       }
     }
 
-    await this.render({ previous });
+    await this.render({ previous, overlay: !!this.state.overlay });
   }
 
   public async push(
@@ -343,8 +364,7 @@ export class ReactBrowserProvider {
     if (this.state?.name === "offline") {
       this.pushState(url, options.replace);
       await this.retryBoot();
-      const landed =
-        this.state.url.pathname + this.state.url.search + this.state.url.hash;
+      const landed = this.committedUrl;
       if (this.state.name !== "offline" && landed !== url) {
         this.pushState(landed, true);
       }
@@ -364,6 +384,7 @@ export class ReactBrowserProvider {
       previous: options.force ? [] : this.state.layers,
       meta: options.meta,
       transitionId: myTransitionId,
+      overlay: true,
     });
 
     // A newer navigation has superseded us — bail out without touching
@@ -376,8 +397,7 @@ export class ReactBrowserProvider {
     // The hash is part of the identity of the committed route: without it,
     // pushing "/docs#section" never matches "/docs" and takes the redirect
     // branch below, which rewrites history without the fragment.
-    const committed =
-      this.state.url.pathname + this.state.url.search + this.state.url.hash;
+    const committed = this.committedUrl;
 
     if (committed !== url) {
       // Forward `replace`: a loader redirect used to always PUSH, so history
@@ -419,6 +439,7 @@ export class ReactBrowserProvider {
       previous,
       options.meta,
       isStale,
+      options.overlay,
     );
 
     // A newer navigation has superseded us between the time we awaited
@@ -651,7 +672,22 @@ export class ReactBrowserProvider {
   protected readonly onTransitionCommitted = $hook({
     on: "react:transition:committed",
     handler: ({ state }) => {
-      this.applyScroll(state);
+      // Opening or closing an overlay leaves the page behind exactly where
+      // it was.
+      const closedOverlay =
+        this.overlayWasOpen && state.layers.every((layer) => layer.cache);
+      if (!state.overlay && !closedOverlay) {
+        this.applyScroll(state);
+      }
+    },
+  });
+
+  protected overlayWasOpen = false;
+
+  protected readonly onTransitionBegin = $hook({
+    on: "react:transition:begin",
+    handler: ({ previous }) => {
+      this.overlayWasOpen = !!previous?.overlay;
     },
   });
 
@@ -814,10 +850,12 @@ export class ReactBrowserProvider {
       // not the one it was asked for when its loader redirected (a protected
       // page sending a visitor to login): the address bar must not keep
       // showing the page that refused.
-      const committed =
-        this.state.url.pathname + this.state.url.search + this.state.url.hash;
+      const committed = this.committedUrl;
+      // A reload is a full page, so an overlay's mark does not survive it, or
+      // going back and forward would reopen one over nothing.
+      const { background: _, ...entry } = this.history.state ?? {};
       this.history.replaceState(
-        { ...this.history.state, alephaKey: this.historyKey },
+        { ...entry, alephaKey: this.historyKey },
         "",
         committed === this.url ? this.location.href : this.base + committed,
       );
@@ -847,9 +885,10 @@ export class ReactBrowserProvider {
         // query params silently without triggering a render, use
         // history.replaceState directly; popstate by definition means
         // the user navigated.
+        const onScreen = this.state.overlay?.url ?? this.state.url;
         if (
-          this.base + this.state.url.pathname === this.location.pathname &&
-          (this.state.url.search ?? "") === (this.location.search ?? "")
+          this.base + onScreen.pathname === this.location.pathname &&
+          (onScreen.search ?? "") === (this.location.search ?? "")
         ) {
           return;
         }
@@ -858,7 +897,8 @@ export class ReactBrowserProvider {
           url: this.location.pathname + this.location.search,
         });
 
-        void this.render();
+        const entry = this.history.state as { background?: string } | null;
+        void this.render({ overlay: !!entry?.background });
       });
 
       this.attachAnchorInterceptor();
@@ -1096,4 +1136,9 @@ export interface RouterRenderOptions {
    * When omitted, render() allocates a fresh id internally.
    */
   transitionId?: number;
+  /**
+   * The target may open as an overlay. A push, an entry that was one, and a
+   * re-render of one; never a first screen.
+   */
+  overlay?: boolean;
 }

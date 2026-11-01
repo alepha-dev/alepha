@@ -7,6 +7,7 @@ import { createElement, type ReactNode } from "react";
 import NotFoundPage from "../components/NotFound.tsx";
 import { Redirection } from "../errors/Redirection.ts";
 import {
+  type CreateLayersResult,
   isPageRoute,
   type PageRoute,
   type PageRouteEntry,
@@ -54,8 +55,11 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     previous: PreviousLayerData[] = [],
     meta = {},
     isStale: () => boolean = () => false,
+    overlayAllowed = false,
   ): Promise<string | undefined> {
     const { pathname, search } = url;
+    const committed = this.alepha.store.get("alepha.react.router.state");
+    let opensOverlay = false;
 
     const entry: Partial<ReactRouterState> = {
       url,
@@ -106,11 +110,15 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       state.params = params ?? {};
 
       if (isPageRoute(route)) {
-        const { redirect } = await this.pageApi.createLayers(
-          route.page,
-          state,
-          previous,
-        );
+        opensOverlay =
+          overlayAllowed &&
+          this.pageApi.canOverlay(route.page, state.params, committed);
+
+        const { redirect } = opensOverlay
+          ? await this.openOverlay(route.page, state, committed!)
+          : await this.pageApi.createLayers(route.page, state, previous);
+
+        opensOverlay = opensOverlay && !state.layers.some((it) => it.error);
         // A newer navigation already won — bail before committing or
         // emitting any further events. The caller (ReactBrowserProvider)
         // also re-checks staleness, but stopping here avoids running
@@ -156,6 +164,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
         // error handler itself failed, fall through to default
       }
 
+      opensOverlay = false;
       state.layers = [
         {
           name: "error",
@@ -182,33 +191,96 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       return;
     }
 
-    // [feature]: local hook for leaving a page
-    for (let i = 0; i < previous.length; i++) {
-      const layer = previous[i];
-      if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
-        this.pageApi.findRoute(layer.name)?.onLeave?.();
+    // An overlay has one page of its own, its leaf, compared apart from the
+    // background's layers: the board's `onLeave` must not fire when a card
+    // opens, and the card's must fire when it closes.
+    const overlayName = opensOverlay ? state.name : undefined;
+    if (committed?.overlay && committed.overlay.name !== overlayName) {
+      this.pageApi.findRoute(committed.overlay.name)?.onLeave?.();
+    }
+    if (overlayName && committed?.overlay?.name !== overlayName) {
+      this.pageApi.findRoute(overlayName)?.onEnter?.();
+    }
+
+    if (!opensOverlay) {
+      // [feature]: local hook for leaving a page
+      for (let i = 0; i < previous.length; i++) {
+        const layer = previous[i];
+        if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
+          this.pageApi.findRoute(layer.name)?.onLeave?.();
+        }
+      }
+
+      // [feature]: local hook for entering a page
+      for (let i = 0; i < state.layers.length; i++) {
+        const layer = state.layers[i];
+        if (previous?.[i]?.name !== layer.name && layer.name !== "error") {
+          this.pageApi.findRoute(layer.name)?.onEnter?.();
+        }
       }
     }
 
-    // [feature]: local hook for entering a page
-    for (let i = 0; i < state.layers.length; i++) {
-      const layer = state.layers[i];
-      if (previous?.[i]?.name !== layer.name && layer.name !== "error") {
-        this.pageApi.findRoute(layer.name)?.onEnter?.();
-      }
-    }
+    const next = opensOverlay ? this.overBackground(state, committed!) : state;
 
-    this.alepha.store.set("alepha.react.router.state", state);
+    this.alepha.store.set("alepha.react.router.state", next);
 
     await this.alepha.events.emit("react:action:end", {
       type: "transition",
     });
     await this.alepha.events.emit("react:transition:end", {
-      state,
+      state: next,
     });
 
-    // Fill and render head from route configurations
+    // Fill and render head from route configurations. The target's, overlay
+    // included: the tab names what the URL names.
     this.browserHeadProvider.fillAndRenderHead(state);
+  }
+
+  /**
+   * The overlay's layers, on the ones its parents hold on screen.
+   *
+   * A loader that fails has no business rendering in a floating root view, so
+   * the page is built again in full, where `errorHandler` expects to land.
+   */
+  protected async openOverlay(
+    page: PageRoute,
+    state: ReactRouterState,
+    committed: ReactRouterState,
+  ): Promise<CreateLayersResult> {
+    const result = await this.pageApi.createLayers(
+      page,
+      state,
+      committed.layers,
+      { overlay: true },
+    );
+
+    if (!state.layers.some((it) => it.error)) {
+      return result;
+    }
+
+    state.layers = [];
+    return this.pageApi.createLayers(page, state, committed.layers);
+  }
+
+  /**
+   * The state an overlay commits: the background's, with the overlay beside
+   * it. Every layer is marked reused, so no view moves.
+   */
+  protected overBackground(
+    target: ReactRouterState,
+    background: ReactRouterState,
+  ): ReactRouterState {
+    return {
+      ...background,
+      layers: background.layers.map((it) => ({ ...it, cache: true })),
+      overlay: {
+        name: target.name as string,
+        url: target.url,
+        params: target.params,
+        query: target.query,
+        layers: target.layers,
+      },
+    };
   }
 
   public root(state: ReactRouterState): ReactNode {
