@@ -2,6 +2,7 @@ import { $hook, $inject } from "alepha";
 import { $logger } from "alepha/logger";
 
 import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
+import { McpProjectScope } from "./McpProjectScope.ts";
 
 /**
  * One point in `mcp_calls` per MCP tool call (#E65).
@@ -42,6 +43,7 @@ import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 export class McpCallRates {
   protected readonly log = $logger();
   protected readonly datasets = $inject(ProjectAnalytics);
+  protected readonly scope = $inject(McpProjectScope);
 
   public readonly onToolEnd = $hook({
     on: "mcp:tool:call:end",
@@ -52,6 +54,7 @@ export class McpCallRates {
           outcome,
           // The transport's `buildContext` puts the authenticated user here.
           actor: (context?.data as { id?: string } | undefined)?.id ?? "anon",
+          project: this.scope.current(),
           count: 1,
         });
       } catch (error) {

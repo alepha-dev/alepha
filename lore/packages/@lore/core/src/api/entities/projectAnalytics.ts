@@ -160,7 +160,7 @@ export class ProjectAnalytics {
    * `project_activity` was one member and could have been a D1 table; this is
    * the second, and it could not have been, because nothing was ever stored.
    *
-   * ## Three dimensions
+   * ## The dimensions
    *
    * `tool` is the index: Analytics Engine samples equitably per index value,
    * so a hot tool cannot starve a rare one out of the sample, and per-tool is
@@ -177,11 +177,15 @@ export class ProjectAnalytics {
    * `actor` is the calling user's id, or `anon`. Bounded by the instance's
    * accounts.
    *
-   * **No `project`.** A tool names its project in its own arguments, under a
-   * different key per tool and sometimes not at all (`project_list`), so the
-   * value would be a per-tool guess written into one dimension. What happens
-   * inside a project is `project_activity`'s question; this dataset's is what
-   * the MCP surface itself is asked for.
+   * `project` is the project the tool actually resolved through its permission
+   * check, or `none` (#Q3012). It is never read from the arguments: a tool
+   * names its project under a different key per tool and sometimes not at all
+   * (`project_list`), so that would be a per-tool guess. `McpProjectScope` takes
+   * it from `$ownsProject` and `ProjectTools.resolveProjectId`, which is what
+   * lets a project see what agents did in it. A call refused before a check
+   * passed is `none`, so a stranger's probing reads on no project's page.
+   * ⚠️ A point written before it existed reads `none` on the relational
+   * backend, and an empty slot on Analytics Engine: a reader folds that too.
    *
    * ## ⚠️ Append only, from the first commit
    *
@@ -208,10 +212,15 @@ export class ProjectAnalytics {
        * The calling user's id, or `anon` when the call carried no identity.
        */
       actor: z.string().default("anon"),
+      /**
+       * The project id the call resolved, as text, or `none`. Appended at the
+       * END of the slot map.
+       */
+      project: z.string().default("none"),
     }),
     measures: z.object({ count: z.number() }),
     slots: {
-      dimensions: ["tool", "outcome", "actor"],
+      dimensions: ["tool", "outcome", "actor", "project"],
       measures: ["count"],
     },
     retention: { hot: "30d", rollup: "day", cold: "400d" },

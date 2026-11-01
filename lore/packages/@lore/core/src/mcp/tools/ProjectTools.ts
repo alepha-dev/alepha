@@ -16,6 +16,7 @@ import type { AssignedWorkItem } from "../../api/schemas/assignedWorkItemSchema.
 import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { projectMergeResultSchema } from "../../api/schemas/projectMergeResultSchema.ts";
 import { ProjectSlugService } from "../../api/schemas/ProjectSlugService.ts";
+import { McpProjectScope } from "../../api/services/McpProjectScope.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
 import {
   projectActivityParamsSchema,
@@ -41,6 +42,7 @@ export class ProjectTools {
   protected readonly ranks = $inject(RankService);
   protected readonly members = $repository(organizationMembers);
   protected readonly alepha = $inject(Alepha);
+  protected readonly mcpScope = $inject(McpProjectScope);
 
   /**
    * Resolve project ID from params (by ID or name).
@@ -51,6 +53,15 @@ export class ProjectTools {
    * of them.
    */
   public async resolveProjectId(
+    project?: number,
+    projectName?: string,
+  ): Promise<number> {
+    const id = await this.lookupProjectId(project, projectName);
+    this.mcpScope.resolved(id);
+    return id;
+  }
+
+  protected async lookupProjectId(
     project?: number,
     projectName?: string,
   ): Promise<number> {

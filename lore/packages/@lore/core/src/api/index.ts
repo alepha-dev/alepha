@@ -100,6 +100,7 @@ import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
+import { McpProjectScope } from "./services/McpProjectScope.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
@@ -260,6 +261,7 @@ export const LoreCoreApi = $module({
     NotificationPreferenceController,
     ActivityChannel,
     DeliveryChangeRegistry,
+    McpProjectScope,
     ProjectLimits,
     ReportStatistics,
     ReportsSummaryController,
@@ -430,6 +432,7 @@ export {
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "./services/DeliveryChangeRegistry.ts";
+export { McpProjectScope } from "./services/McpProjectScope.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
 export {
   type ReportsGrain,
