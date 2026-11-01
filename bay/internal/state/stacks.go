@@ -38,6 +38,8 @@ type StackEnv struct {
 	// TCP maps each public port opened for `x-lore.tcp` to the loopback port
 	// it forwards to.
 	TCP map[int]int `json:"tcp,omitempty"`
+	// TCPTLS holds the public ports of TCP Bay terminates TLS on (`x-lore.tls`).
+	TCPTLS map[int]bool `json:"tcpTls,omitempty"`
 	// Volumes maps each named volume to the services mounting it, from the
 	// applied revision: what backup coverage is computed from.
 	Volumes map[string][]string `json:"volumes,omitempty"`
@@ -192,6 +194,10 @@ func copyStackEnv(e StackEnv) StackEnv {
 	c.TCP = make(map[int]int, len(e.TCP))
 	for k, v := range e.TCP {
 		c.TCP[k] = v
+	}
+	c.TCPTLS = make(map[int]bool, len(e.TCPTLS))
+	for k, v := range e.TCPTLS {
+		c.TCPTLS[k] = v
 	}
 	c.HostPorts = make(map[string]int, len(e.HostPorts))
 	for k, v := range e.HostPorts {

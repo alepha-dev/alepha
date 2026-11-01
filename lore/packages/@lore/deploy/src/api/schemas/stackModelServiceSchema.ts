@@ -31,6 +31,10 @@ export const stackModelServiceSchema = z.object({
    */
   tcp: z.integer().optional(),
   /**
+   * Bay terminates TLS on the TCP port.
+   */
+  tls: z.boolean().optional(),
+  /**
    * Every container port the file publishes.
    */
   ports: z.array(z.integer()),

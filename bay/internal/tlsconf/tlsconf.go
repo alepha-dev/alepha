@@ -129,6 +129,25 @@ func (m *Manager) TLSConfig() *tls.Config {
 	return m.cfg.TLSConfig()
 }
 
+/*
+TCPConfig is TLSConfig for a port that is not HTTP (`x-lore.tls`). A client that
+sends no SNI gets the certificate of `fallback`, since a broker's clients never
+had to name it. No ALPN: a client offering its own protocol would otherwise be
+refused for not speaking h2.
+*/
+func (m *Manager) TCPConfig(fallback string) *tls.Config {
+	cfg := m.cfg.TLSConfig()
+	cfg.NextProtos = nil
+	get := cfg.GetCertificate
+	cfg.GetCertificate = func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		if hello.ServerName == "" {
+			hello.ServerName = fallback
+		}
+		return get(hello)
+	}
+	return cfg
+}
+
 // HTTPChallengeHandler wraps a handler so ACME HTTP-01 challenges are answered
 // on the plain-HTTP listener, and everything else falls through to Bay's proxy.
 func (m *Manager) HTTPChallengeHandler(next http.Handler) http.Handler {

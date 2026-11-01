@@ -70,6 +70,7 @@ type stackMember struct {
 // digestResolver is the runner's ability to pin a tag: the Docker runner.
 type digestResolver interface {
 	ResolveDigestAuth(tag, auth string) (string, error)
+	LocalImage(tag string) (string, error)
 }
 
 // networkCreator is the runner's ability to create a stack's network.
@@ -213,7 +214,7 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 				return "", err
 			}
 			return resolver.ResolveDigestAuth(ref, auth)
-		})
+		}, resolver.LocalImage)
 		if err != nil {
 			return nil, err
 		}
@@ -284,6 +285,7 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 		e.Revision = n
 		e.HostPorts = hostPorts
 		e.TCP = tcp
+		e.TCPTLS = tcpTLS(lore)
 		e.Volumes = loaded.VolumeMounts()
 		if e.BaseDomain == "" {
 			e.BaseDomain = base
@@ -635,6 +637,9 @@ func (s *server) stackTCP(name, env string, lore map[string]stack.XLore, hostPor
 				}
 			}
 		}
+		if x.TLS && s.tls == nil {
+			return nil, fmt.Errorf("service %s: x-lore.tls needs a Bay serving TLS (--tls)", service)
+		}
 		if s.tcp == nil || !s.tcp.Owns(x.TCP) {
 			if err := proxy.PortFree(x.TCP); err != nil {
 				return nil, fmt.Errorf("service %s: %w", service, err)
@@ -645,19 +650,47 @@ func (s *server) stackTCP(name, env string, lore map[string]stack.XLore, hostPor
 	return out, nil
 }
 
+// tcpTLS lists the public ports Bay terminates TLS on.
+func tcpTLS(lore map[string]stack.XLore) map[int]bool {
+	out := map[int]bool{}
+	for _, x := range lore {
+		if x.TCP != 0 && x.TLS {
+			out[x.TCP] = true
+		}
+	}
+	return out
+}
+
+// tcpTLSName is the certificate a client with no SNI gets on an environment's
+// TLS port: its first route, else its base domain.
+func tcpTLSName(e state.StackEnv) string {
+	if len(e.Routes) > 0 {
+		return e.Routes[0].Domain
+	}
+	return e.BaseDomain
+}
+
 // syncTCP opens exactly the TCP ports every stack environment asks for.
 func (s *server) syncTCP() {
 	if s.tcp == nil {
 		return
 	}
-	forwards := map[int]int{}
+	forwards := map[int]proxy.Forward{}
 	for _, st := range s.store.Stacks() {
 		for _, e := range st.Envs {
 			if e.Stopped {
 				continue
 			}
 			for public, target := range e.TCP {
-				forwards[public] = target
+				fwd := proxy.Forward{Target: target}
+				if e.TCPTLS[public] {
+					if s.tls == nil {
+						s.log.Error("a stack's TCP port needs TLS and this Bay serves none", "port", public)
+						continue
+					}
+					fwd.TLS = s.tls.TCPConfig(tcpTLSName(e))
+				}
+				forwards[public] = fwd
 			}
 		}
 	}

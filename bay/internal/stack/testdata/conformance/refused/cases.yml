@@ -202,3 +202,13 @@
   compose: |
     services:
       web: {extends: {file: base.yml, service: base}}
+
+- name: tls-without-tcp
+  stage: parse
+  expect: "x-lore.tls terminates TLS on x-lore.tcp"
+  compose: |
+    services:
+      broker:
+        image: eclipse-mosquitto:2
+        x-lore:
+          tls: true

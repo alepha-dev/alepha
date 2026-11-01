@@ -28,6 +28,9 @@ type XLore struct {
 	Runtime string
 	// TCP opens a raw TCP listener for this container port (MQTT over TLS).
 	TCP int
+	// TLS makes Bay terminate TLS on the TCP port with the certificate of the
+	// name the client asks for, and forward plain TCP to the container.
+	TLS bool
 	// Backup declares how to dump the service; run by stack backups.
 	Backup *Backup
 }
@@ -98,6 +101,12 @@ func parseXLore(service string, raw map[string]any) (XLore, error) {
 			} else {
 				x.TCP = n
 			}
+		case "tls":
+			b, ok := value.(bool)
+			if !ok {
+				return fail("tls must be true or false")
+			}
+			x.TLS = b
 		case "runtime":
 			s, ok := value.(string)
 			if !ok || s == "" || strings.ContainsAny(s, " \t") {
@@ -111,11 +120,14 @@ func parseXLore(service string, raw map[string]any) (XLore, error) {
 			}
 			x.Backup = b
 		default:
-			return fail("%s is not a field Bay knows (app, routes, port, runtime, tcp, backup)", key)
+			return fail("%s is not a field Bay knows (app, routes, port, runtime, tcp, tls, backup)", key)
 		}
 	}
 	if x.Runtime != "" && x.App == "" {
 		return fail("runtime only applies to an app service (x-lore.app)")
+	}
+	if x.TLS && x.TCP == 0 {
+		return fail("tls terminates TLS on x-lore.tcp: name the port there")
 	}
 	return x, nil
 }
