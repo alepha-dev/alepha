@@ -52,6 +52,7 @@ import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
 import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
 import { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";
@@ -257,6 +258,7 @@ export const LoreCoreApi = $module({
     // `main.server.ts`, same arrangement.
     LoreNotificationPreferences,
     NotificationPreferenceController,
+    ActivityChannel,
     DeliveryChangeRegistry,
     ProjectLimits,
     ReportStatistics,
@@ -419,6 +421,10 @@ export { LoreAuditService } from "./services/LoreAuditService.ts";
 export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
+export {
+  ActivityChannel,
+  type ActivityChannelValue,
+} from "./services/ActivityChannel.ts";
 export {
   type BlightForward,
   type DeliveryChange,

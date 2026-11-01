@@ -1,4 +1,5 @@
 import {
+  ActivityChannel,
   ProjectController,
   LoreAudits,
   LoreAuditService,
@@ -86,6 +87,15 @@ const setup = async (broken = false): Promise<TestContext> => {
 /**
  * Every point the dataset holds, one row per distinct dimension tuple.
  */
+const readChannels = async (ctx: TestContext) => {
+  const result = await ctx.datasets.activity.query({
+    since: "2000-01-01",
+    groupBy: ["channel"],
+    select: { count: "sum" },
+  });
+  return result.rows.map((row) => String(row.channel));
+};
+
 const readPoints = async (ctx: TestContext) => {
   const result = await ctx.datasets.activity.query({
     since: "2000-01-01",
@@ -101,6 +111,27 @@ const readPoints = async (ctx: TestContext) => {
   }));
 };
 
+describe("ActivityChannel", () => {
+  const channel = new Alepha().inject(ActivityChannel);
+  const of = (pathname: string, agent?: string) =>
+    channel.classify({
+      url: { pathname },
+      headers: agent ? { "user-agent": agent } : {},
+    } as never);
+
+  it("reads the MCP endpoint first, whoever is calling", ({ expect }) => {
+    expect(of("/mcp", "node")).toBe("mcp");
+  });
+
+  it("tells a browser from the CLI and from anything else", ({ expect }) => {
+    expect(of("/api/x", "Mozilla/5.0 (Macintosh)")).toBe("web");
+    expect(of("/api/x", "node")).toBe("cli");
+    expect(of("/api/x", "Bun/1.2.0")).toBe("cli");
+    expect(of("/api/x", "curl/8.0")).toBe("api");
+    expect(of("/api/x")).toBe("api");
+  });
+});
+
 describe("LoreAuditService", () => {
   let ctx: TestContext;
 
@@ -111,6 +142,25 @@ describe("LoreAuditService", () => {
   describe("the record path", () => {
     beforeEach(async () => {
       ctx = await setup();
+    });
+
+    it("stamps the channel the request arrived on, and system with none", async ({
+      expect,
+    }) => {
+      await ctx.audits.quest.logSuccess("complete", {
+        ...ctx.audits.scope(7),
+      });
+      expect(await readChannels(ctx)).toEqual(["system"]);
+
+      await ctx.alepha.context.run(async () => {
+        // What the `server:request:before` hook leaves on the request layer.
+        ctx.alepha.context.set(ActivityChannel.KEY, "mcp");
+        await ctx.audits.quest.logSuccess("complete", {
+          ...ctx.audits.scope(7),
+        });
+      });
+
+      expect((await readChannels(ctx)).toSorted()).toEqual(["mcp", "system"]);
     });
 
     it("writes one point beside a project-scoped audit row", async ({

@@ -25,7 +25,7 @@ export class ProjectAnalytics {
    * was the storage rather than the query. On Workers this dataset answers the
    * same question out of Analytics Engine and reads zero D1 rows.
    *
-   * ## The four dimensions, decided rather than defaulted
+   * ## The dimensions, decided rather than defaulted
    *
    * `project` is the index: Analytics Engine samples equitably per index
    * value, and per-project is the granularity every read here filters on. It
@@ -45,6 +45,16 @@ export class ProjectAnalytics {
    *
    * `actor` is the user id, or `system` for a write with no token behind it.
    * Bounded by a project's membership, so it groups safely.
+   *
+   * `channel` is how the write arrived: `web`, `mcp`, `cli`, `api`,
+   * `automation` or `system` (#Q3011, `ActivityChannel`). Over MCP the actor is
+   * the API key's owner, so it is the only thing that tells an agent's work
+   * from its owner's.
+   *
+   * ⚠️ A point written before it existed reads `unknown`: on the relational
+   * backend through the column default, on Analytics Engine as an empty slot,
+   * which a reader folds into `unknown`. Never into `web`: that would credit
+   * every old agent write to a person.
    *
    * **No `resourceId`.** Unbounded cardinality, never grouped by, and
    * drilling from a bar into its events is what `/project/activities` is for.
@@ -102,6 +112,10 @@ export class ProjectAnalytics {
        * on a table that already holds rows.
        */
       actor: z.string().default("system"),
+      /**
+       * How the write arrived. Appended at the END of the slot map.
+       */
+      channel: z.string().default("unknown"),
     }),
     /**
      * One measure, and it is the audit row's `eventCount` rather than a bare
@@ -117,7 +131,7 @@ export class ProjectAnalytics {
      */
     measures: z.object({ count: z.number() }),
     slots: {
-      dimensions: ["project", "type", "action", "actor"],
+      dimensions: ["project", "type", "action", "actor", "channel"],
       measures: ["count"],
     },
     /**

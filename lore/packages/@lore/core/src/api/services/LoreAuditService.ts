@@ -4,6 +4,10 @@ import type { CreateAudit } from "alepha/api/audits";
 import { $logger } from "alepha/logger";
 
 import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
+import {
+  ActivityChannel,
+  type ActivityChannelValue,
+} from "./ActivityChannel.ts";
 import { AutomationMutationContext } from "./AutomationMutationContext.ts";
 
 /**
@@ -38,6 +42,7 @@ import { AutomationMutationContext } from "./AutomationMutationContext.ts";
 export class LoreAuditService extends AuditService {
   protected readonly logger = $logger();
   protected readonly datasets = $inject(ProjectAnalytics);
+  protected readonly channels = $inject(ActivityChannel);
 
   /**
    * Records an audit event, best effort (#Q2555).
@@ -69,7 +74,9 @@ export class LoreAuditService extends AuditService {
             .consumeAudit(type, action, options)
         : undefined;
       if (native) {
-        if (native.activity) await this.recordActivity(native.activity);
+        if (native.activity) {
+          await this.recordActivity(native.activity, "automation");
+        }
         return undefined;
       }
       return await super.record(type, action, options);
@@ -104,7 +111,8 @@ export class LoreAuditService extends AuditService {
       "scopeType" | "scopeId" | "type" | "action" | "userId"
     >,
   ): Promise<void> {
-    return this.recordActivity(entry);
+    // Only an automation's write comes through here.
+    return this.recordActivity(entry, "automation");
   }
 
   /**
@@ -131,6 +139,7 @@ export class LoreAuditService extends AuditService {
       AuditEntity,
       "scopeType" | "scopeId" | "type" | "action" | "userId"
     >,
+    channel: ActivityChannelValue = this.channels.current(),
   ): Promise<void> {
     if (entry.scopeType !== "project" || !entry.scopeId) {
       return;
@@ -142,6 +151,7 @@ export class LoreAuditService extends AuditService {
         type: entry.type,
         action: entry.action,
         actor: entry.userId ?? "system",
+        channel,
         count: 1,
       });
     } catch (error) {
