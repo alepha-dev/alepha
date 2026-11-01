@@ -284,6 +284,7 @@ export default defineConfig({
         "agentPrompts.settings.feedbackWork.",
         "agentPrompts.settings.feedbackLoop.",
         "agentPrompts.settings.questLoop.",
+        "agentPrompts.settings.weeklyStatus.",
         "agentPrompts.settings.blightTriage.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",

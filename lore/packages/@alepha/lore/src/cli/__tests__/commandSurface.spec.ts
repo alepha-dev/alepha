@@ -120,7 +120,7 @@ describe("the Lore CLI command surface", () => {
       artifacts: ["push", "push-image"],
       attachments: ["push"],
       folio: ["list", "get", "create"],
-      project: ["list", "info", "create", "link"],
+      project: ["list", "info", "report", "create", "link"],
       estate: ["add", "list"],
       registry: ["add", "list", "remove"],
       stack: [

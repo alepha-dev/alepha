@@ -127,16 +127,16 @@ coding agent. The owner writes those prompts once, in Settings.
 no backfill.** So a project shows no Agent Prompts menu until someone opens
 Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
 
-| piece          | where                                                                                                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the kinds      | `src/api/schemas/agentPromptKindSchema.ts` - item-scoped `epicReview`, `epicActivate`, `questWork`, `feedbackWork`; surface-scoped `feedbackLoop`, `blightTriage`, `questLoop` (the Quests page toolbar)      |
-| the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default |
-| the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                            |
-| the defaults   | `src/web/app/prompts/` - one file per kind, registered by its module on `AgentPromptRegistry`                                                                                                                 |
-| the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                  |
-| the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                              |
-| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` (Work's typed helpers: `useWorkPromptSubject`) and `questAgentGate` beside it                                                    |
-| the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                          |
+| piece          | where                                                                                                                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the kinds      | `src/api/schemas/agentPromptKindSchema.ts` - item-scoped `epicReview`, `epicActivate`, `questWork`, `feedbackWork`; surface-scoped `feedbackLoop`, `blightTriage`, `questLoop`, `weeklyStatus` (Reports Summary) |
+| the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default    |
+| the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                               |
+| the defaults   | `src/web/app/prompts/` - one file per kind, registered by its module on `AgentPromptRegistry`                                                                                                                    |
+| the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                     |
+| the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                                 |
+| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` (Work's typed helpers: `useWorkPromptSubject`) and `questAgentGate` beside it                                                       |
+| the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                             |
 
 **Four rules, and none of them is obvious from the code.**
 

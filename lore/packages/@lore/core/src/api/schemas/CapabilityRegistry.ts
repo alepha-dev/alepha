@@ -552,10 +552,10 @@ export class CapabilityRegistry {
   /**
    * Which capability owns an MCP tool, or `undefined` for a Core tool.
    *
-   * `project_list`, `project_info`, `project_context` and `project_activity`
-   * are Core and answer `undefined`: they describe the project itself, and a
-   * project with no capabilities at all is a legal state that must still be
-   * readable.
+   * `project_list`, `project_info`, `project_context`, `project_activity` and
+   * `project_report` are Core and answer `undefined`: they describe the project
+   * itself, and a project with no capabilities at all is a legal state that
+   * must still be readable.
    */
   ownerOfTool(tool: string): CapabilityKey | undefined {
     return this.capabilities.find((capability) =>

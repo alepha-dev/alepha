@@ -58,6 +58,7 @@ connect, so this page says what a tool is for and leaves the fields to them.
 | `project_context`  | Orientation: capabilities, areas, your active quests, epics, the folio index, pinned folios.                          |
 | `project_info`     | A lighter read: areas, your active quests and your membership.                                                        |
 | `project_activity` | Everything that happened since a timestamp, oldest first, with a cursor. Your own events are left out unless you ask. |
+| `project_report`   | One Reports section for the last N days, as the tab reads it: `summary`, `flow`, `team`... Needs `stats:read`.        |
 | `project_merge`    | Move one project into another. A dry run unless you pass `dryRun: false`. Needs `project:delete` in both.             |
 
 ## Quests

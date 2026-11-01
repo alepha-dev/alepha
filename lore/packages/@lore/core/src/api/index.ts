@@ -30,6 +30,7 @@ import { ProjectDashboardController } from "./controllers/ProjectDashboardContro
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
+import { ProjectReportController } from "./controllers/ProjectReportController.ts";
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
@@ -109,6 +110,7 @@ import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
@@ -267,6 +269,8 @@ export const LoreCoreApi = $module({
     ProjectLimits,
     ProjectAnalyticsController,
     ProjectAutomationReport,
+    ProjectReportController,
+    ProjectReportRegistry,
     ReportStatistics,
     ReportsSummaryController,
     ReportsSummaryRegistry,
@@ -482,6 +486,11 @@ export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
 export { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
 export { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
+export { ProjectReportController } from "./controllers/ProjectReportController.ts";
+export {
+  type ProjectReportSection,
+  ProjectReportRegistry,
+} from "./services/ProjectReportRegistry.ts";
 
 export { AutomationReferences } from "./services/AutomationReferences.ts";
 

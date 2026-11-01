@@ -1,7 +1,11 @@
-import type { ProjectController } from "@lore/core/api";
+import type {
+  ProjectController,
+  ProjectReportController,
+} from "@lore/core/api";
 import type { AreaController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
@@ -43,6 +47,7 @@ export class ProjectCommand {
   protected readonly refusals = $inject(LoreRefusals);
   protected readonly render = $inject(LoreOutput);
   protected readonly link = $inject(LoreProjectLink);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * ⚠️ Declared after `client`: a field initializer reading a field declared
@@ -52,6 +57,9 @@ export class ProjectCommand {
     this.client.scope(),
   );
   protected readonly areaApi = $client<AreaController>(this.client.scope());
+  protected readonly reportApi = $client<ProjectReportController>(
+    this.client.scope(),
+  );
 
   public readonly list = $command({
     name: "list",
@@ -157,6 +165,49 @@ export class ProjectCommand {
   });
 
   /**
+   * `lore project report [section]`: what `project_report` answers, as JSON
+   * whatever `--output` says, since a report has no line to print.
+   */
+  public readonly report = $command({
+    name: "report",
+    description:
+      "Print a Reports section as JSON: summary, flow, backlog, planning, support, knowledge, delivery or team",
+    args: z
+      .text({
+        title: "section",
+        description: "The section, summary by default",
+      })
+      .optional(),
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description: "The project, by slug or id. Defaults to LORE_PROJECT.",
+        })
+        .optional(),
+      days: z
+        .integer()
+        .describe("The period: the last N days, 30 by default")
+        .optional(),
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const now = this.dt.now();
+        const report = await this.reportApi.getProjectReport({
+          params: { id: projectId, section: args ?? "summary" },
+          query: {
+            from: now.subtract(flags.days ?? 30, "day").toISOString(),
+            to: now.toISOString(),
+          },
+        });
+        this.render.json(print, report);
+      });
+    },
+  });
+
+  /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
    * `findLast`, so a second class declaring `project` would shadow this one
    * silently.
@@ -243,8 +294,14 @@ export class ProjectCommand {
   public readonly project = $command({
     name: "project",
     description:
-      "The projects you belong to: list, look at one, create one, or link this directory to one",
-    children: [this.list, this.info, this.create, this.linkProject],
+      "The projects you belong to: list, look at one, read its reports, create one, or link this directory to one",
+    children: [
+      this.list,
+      this.info,
+      this.report,
+      this.create,
+      this.linkProject,
+    ],
     handler: async ({ help }) => {
       help();
     },

@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, ProjectReportRegistry } from "@lore/core/api";
 import {
   reportsMembersSchema,
   reportsBacklogSchema,
@@ -35,6 +35,18 @@ export class ProjectReportsController {
   protected readonly planning = $inject(ProjectPlanningReportService);
   protected readonly support = $inject(ProjectSupportReportService);
   protected readonly team = $inject(ProjectTeamReportService);
+  protected readonly sections = $inject(ProjectReportRegistry);
+
+  constructor() {
+    const { sections } = this;
+    sections.register("flow", (id, query) => this.flow.report(id, query));
+    sections.register("backlog", (id, query) => this.backlog.report(id, query));
+    sections.register("planning", (id, query) =>
+      this.planning.report(id, query),
+    );
+    sections.register("support", (id, query) => this.support.report(id, query));
+    sections.register("team", (id, query) => this.team.report(id, query));
+  }
 
   /**
    * Reports "Flow" tab: how work moved through the period (#Q3000).

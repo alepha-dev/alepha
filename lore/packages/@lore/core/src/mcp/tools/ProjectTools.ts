@@ -1,5 +1,6 @@
 import { $inject, Alepha, z } from "alepha";
 import { organizationMembers, RankService } from "alepha/api/organizations";
+import { DateTimeProvider } from "alepha/datetime";
 import { $tool } from "alepha/mcp";
 import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
@@ -12,6 +13,7 @@ import {
 
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { ProjectMergeController } from "../../api/controllers/ProjectMergeController.ts";
+import { ProjectReportController } from "../../api/controllers/ProjectReportController.ts";
 import type { AssignedWorkItem } from "../../api/schemas/assignedWorkItemSchema.ts";
 import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { projectMergeResultSchema } from "../../api/schemas/projectMergeResultSchema.ts";
@@ -27,6 +29,8 @@ import {
   projectInfoResultSchema,
   projectListResultSchema,
   projectMergeParamsSchema,
+  projectReportParamsSchema,
+  projectReportResultSchema,
 } from "../schemas/projectSchemas.ts";
 import { ProjectContextRegistry } from "../services/ProjectContextRegistry.ts";
 
@@ -43,6 +47,8 @@ export class ProjectTools {
   protected readonly members = $repository(organizationMembers);
   protected readonly alepha = $inject(Alepha);
   protected readonly mcpScope = $inject(McpProjectScope);
+  protected readonly reports = $inject(ProjectReportController);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * Resolve project ID from params (by ID or name).
@@ -402,6 +408,34 @@ export class ProjectTools {
         permissions: result.permissions ?? [],
         preferredLanguage: result.preferredLanguage,
       };
+    },
+  });
+
+  /**
+   * One Reports section, aggregated.
+   */
+  project_report = $tool({
+    description:
+      "How a project is going, aggregated: the same figures the Reports tabs show, for a period and a section. Read-only. Use it for a status update or a question like 'how did this week go'; `project_context` and the lists give items, not trends. Start with section `summary`, which compares the period with the one before it, then open the section that explains what moved. Needs the `stats:read` permission.",
+    title: "Project report",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: projectReportParamsSchema,
+      result: projectReportResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const now = this.dt.now();
+      const from = now.subtract(params.days, "day").toISOString();
+      const to = now.toISOString();
+      const report = await this.reports.getProjectReport({
+        params: { id, section: params.section },
+        query: { from, to },
+      });
+      return { section: params.section, from, to, report };
     },
   });
 

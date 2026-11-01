@@ -1,5 +1,5 @@
-import { $ownsProject } from "@lore/core/api";
-import { reportsQuerySchema } from "@lore/core/schemas";
+import { $ownsProject, ProjectReportRegistry } from "@lore/core/api";
+import { type ReportsQuery, reportsQuerySchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
@@ -16,6 +16,19 @@ export class DeliveryReportsController {
   protected readonly reports = $inject(ProjectDeliveryReportService);
   protected readonly quality = $inject(ProjectQualityReportService);
   protected readonly qualityApi = $inject(QualityController);
+  protected readonly sections = $inject(ProjectReportRegistry);
+
+  constructor() {
+    this.sections.register("delivery", (id, query) => this.report(id, query));
+  }
+
+  protected async report(id: number, query: ReportsQuery) {
+    const [delivery, quality] = await Promise.all([
+      this.reports.report(id, query),
+      this.quality.report(id, query, (run) => this.qualityApi.resource(run)),
+    ]);
+    return { ...delivery, quality };
+  }
 
   getReportsDelivery = $action({
     path: "/getReportsDelivery/:id",
@@ -31,14 +44,6 @@ export class DeliveryReportsController {
       query: reportsQuerySchema,
       response: deliveryReportSchema,
     },
-    handler: async ({ params, query }) => {
-      const [delivery, quality] = await Promise.all([
-        this.reports.report(params.id, query),
-        this.quality.report(params.id, query, (run) =>
-          this.qualityApi.resource(run),
-        ),
-      ]);
-      return { ...delivery, quality };
-    },
+    handler: ({ params, query }) => this.report(params.id, query),
   });
 }

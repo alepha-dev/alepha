@@ -2837,6 +2837,11 @@ export default {
   "agentPrompts.settings.blightTriage.title": "Blights: Triage",
   "agentPrompts.settings.blightTriage.description":
     "Offered on the blights inbox. Files a quest for each real defect and resolves the noise.",
+  "agentPrompts.weeklyStatus": "Write the weekly status",
+  "agentPrompts.settings.weeklyStatus.title":
+    "Reports: Write the weekly status",
+  "agentPrompts.settings.weeklyStatus.description":
+    "On the Reports Summary tab: the week against the one before, and what explains it.",
   "agentPrompts.settings.questLoop.title": "Quests: Work the loose quests",
   "agentPrompts.settings.questLoop.description":
     "Offered on the Quests page. Works every to-do quest that belongs to no epic, one by one, in one run.",

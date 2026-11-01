@@ -23,6 +23,7 @@ import {
   Layers,
   ListChecks,
   ListTodo,
+  Newspaper,
   MessageSquarePlus,
   ScrollText,
   Swords,
@@ -58,6 +59,7 @@ import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
 import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
 import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
 import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
+import { weeklyStatusPromptDefault } from "../prompts/weeklyStatusPrompt.ts";
 
 /**
  * Work's part of the project shell, registered on core's
@@ -451,6 +453,12 @@ export class WorkShell {
       template: questLoopPromptDefault,
       icon: ListTodo,
       labelKey: "agentPrompts.workLooseQuests",
+    });
+    this.prompts.register({
+      kind: "weeklyStatus",
+      template: weeklyStatusPromptDefault,
+      icon: Newspaper,
+      labelKey: "agentPrompts.weeklyStatus",
     });
 
     this.pickers.registerTags({ useTags: useDashboardQuestTags });

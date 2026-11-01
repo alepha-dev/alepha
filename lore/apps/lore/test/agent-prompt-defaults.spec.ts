@@ -28,7 +28,12 @@ const AGENT_PROMPT_DEFAULTS = (() => {
  * project has whatever it does. Named rather than inferred: an allowlist
  * that grows silently is the same as no check.
  */
-const UNOWNED_TOOLS = ["project_context", "project_info"];
+const UNOWNED_TOOLS = [
+  "project_activity",
+  "project_context",
+  "project_info",
+  "project_report",
+];
 
 /**
  * Backticked snake_case identifiers that are PARAMETER names rather than
@@ -133,6 +138,7 @@ describe("the default prompts", () => {
     "feedbackLoop",
     "blightTriage",
     "questLoop",
+    "weeklyStatus",
   ];
 
   it("carries the placeholders that name its subject", () => {

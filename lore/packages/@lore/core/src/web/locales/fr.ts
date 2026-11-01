@@ -2830,6 +2830,11 @@ export default {
   "agentPrompts.settings.blightTriage.title": "Anomalies : traiter",
   "agentPrompts.settings.blightTriage.description":
     "Proposée sur la boîte des anomalies. Crée une quête pour chaque vrai défaut et résout le bruit.",
+  "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
+  "agentPrompts.settings.weeklyStatus.title":
+    "Rapports : rédiger le point hebdomadaire",
+  "agentPrompts.settings.weeklyStatus.description":
+    "Sur l'onglet Résumé des rapports : la semaine face à la précédente, et ce qui l'explique.",
   "agentPrompts.settings.questLoop.title": "Quêtes : traiter les quêtes libres",
   "agentPrompts.settings.questLoop.description":
     "Proposée sur la page Quêtes. Traite une à une chaque quête à faire qui n’appartient à aucune épopée, en une seule session.",

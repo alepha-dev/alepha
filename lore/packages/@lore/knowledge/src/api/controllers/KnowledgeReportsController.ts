@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, ProjectReportRegistry } from "@lore/core/api";
 import { reportsKnowledgeSchema, reportsQuerySchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
@@ -11,6 +11,13 @@ import { ProjectKnowledgeReportService } from "../services/ProjectKnowledgeRepor
  */
 export class KnowledgeReportsController {
   protected readonly reports = $inject(ProjectKnowledgeReportService);
+  protected readonly sections = $inject(ProjectReportRegistry);
+
+  constructor() {
+    this.sections.register("knowledge", (id, query) =>
+      this.reports.report(id, query),
+    );
+  }
 
   getReportsKnowledge = $action({
     path: "/getReportsKnowledge/:id",
