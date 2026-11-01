@@ -398,6 +398,32 @@ count, and that bucket's midpoint is the estimate. The walk (and any un-scaling 
 metric's buckets need) belongs entirely to caller-side code; `$analytics` only ever stores and
 returns counts per bucket.
 
+## Web Vitals
+
+`ReactVitalsProvider`, in `alepha/react/vitals`, reports LCP, CLS, INP, FCP and TTFB as events, so a page's Core Web Vitals can be recorded like anything else, and a regression shows up right after the deploy that caused it. It is opt-in: inject it from what consumes the events, since it runs five observers. The events are emitted only while it is injected.
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { ReactVitalsProvider } from "alepha/react/vitals";
+
+class VitalsForwarder {
+  provider = $inject(ReactVitalsProvider);
+
+  measured = $hook({
+    on: "react:vital:measured",
+    handler: ({ metric, value, path }) => {
+      navigator.sendBeacon("/vitals", JSON.stringify({ metric, value, path }));
+    },
+  });
+}
+```
+
+CLS and INP are measured per path across client navigations, so each page a visitor reads gets its own sample, and every metric is reported once per path. LCP, FCP and TTFB happen once, at load. `path` is the page the metric was measured on, not the page on screen when the tab was hidden.
+
+`value` is raw: milliseconds, and the unitless score for `cls`. A histogram sink scales CLS itself, as in [the histogram pattern](#the-histogram-pattern). `react:lcp:painted` fires once, when the main content has painted, and is a timing signal rather than a measurement.
+
+The collector itself is `WebVitalsCollector` in `alepha/vitals`, a plain class with no import at all, for a bundle that wants the numbers and nothing of the framework.
+
 ## Retention and rollup
 
 `retention` is an ordered chain of tiers, finest first. Each tier keeps its buckets for `keep`,

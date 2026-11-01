@@ -378,6 +378,11 @@
       "import": "./src/react/ui/index.ts",
       "default": "./src/react/ui/index.ts"
     },
+    "./react/vitals": {
+      "types": "./src/react/vitals/index.ts",
+      "import": "./src/react/vitals/index.ts",
+      "default": "./src/react/vitals/index.ts"
+    },
     "./react/websocket": {
       "types": "./src/react/websocket/index.ts",
       "import": "./src/react/websocket/index.ts",
@@ -510,6 +515,11 @@
       "browser": "./src/topic/core/index.browser.ts",
       "import": "./src/topic/core/index.ts",
       "default": "./src/topic/core/index.ts"
+    },
+    "./vitals": {
+      "types": "./src/vitals/index.ts",
+      "import": "./src/vitals/index.ts",
+      "default": "./src/vitals/index.ts"
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",
@@ -865,6 +875,11 @@
         "import": "./dist/react/ui/index.js",
         "default": "./dist/react/ui/index.js"
       },
+      "./react/vitals": {
+        "types": "./dist/react/vitals/index.d.ts",
+        "import": "./dist/react/vitals/index.js",
+        "default": "./dist/react/vitals/index.js"
+      },
       "./react/websocket": {
         "types": "./dist/react/websocket/index.d.ts",
         "import": "./dist/react/websocket/index.js",
@@ -997,6 +1012,11 @@
         "browser": "./dist/topic/core/index.browser.js",
         "import": "./dist/topic/core/index.js",
         "default": "./dist/topic/core/index.js"
+      },
+      "./vitals": {
+        "types": "./dist/vitals/index.d.ts",
+        "import": "./dist/vitals/index.js",
+        "default": "./dist/vitals/index.js"
       },
       "./websocket": {
         "types": "./dist/websocket/index.d.ts",
