@@ -353,6 +353,34 @@ const inviteAndAccept = async (
   );
   await member.page.getByRole("button", { name: /^accept$/i }).click();
   expect((await accepted).ok()).toBe(true);
+
+  // The invitation is in the bell too (#Q2947). Read it here, through the
+  // bell, so a spec's own count starts at zero. Polled: a job files it, after
+  // the invite's own response.
+  await expect(async () => {
+    await member.page.goto(`/${slug}/quests`);
+    await member.page.waitForLoadState("domcontentloaded");
+    await expect(member.page.getByTestId("inbox-badge")).toHaveText("1", {
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 60_000 });
+
+  await member.page
+    .getByRole("button", { name: /notifications/i })
+    .first()
+    .click();
+  const row = member.page.getByText(/invitation to join/i).first();
+  await expect(row).toBeVisible();
+  await row.click();
+
+  // The account's page, and never the email's one-time link.
+  await member.page.waitForURL(/\/account\/invitations$/, { timeout: 20_000 });
+
+  await expect(async () => {
+    await member.page.goto(`/${slug}/quests`);
+    await member.page.waitForLoadState("domcontentloaded");
+    await expect(member.page.getByTestId("inbox-badge")).toHaveCount(0);
+  }).toPass({ timeout: 30_000 });
 };
 
 /**
