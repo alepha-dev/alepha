@@ -10,7 +10,7 @@ import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   AppWindow,
   Container,
@@ -114,6 +114,7 @@ const ProjectArtifacts = () => {
   const artifactApi = useClient<ArtifactController>();
   const [project] = useStore(currentProjectAtom);
   const deleteArtifact = useDeleteArtifact();
+  const router = useRouter();
 
   // ⚠️ No `loading`. It existed to keep the page-level empty panel off screen
   // while the first read was in flight; the table owns the empty state now
@@ -209,6 +210,13 @@ const ProjectArtifacts = () => {
    * release filter: a multi-select offering one option that matches
    * everything is a control with nothing to do.
    */
+  const buildHref = (row: ArtifactRow) =>
+    artifactHref(project.slug, {
+      app: row.app,
+      tag: row.tag,
+      variant: artifactVariantKey(row),
+    });
+
   const filterFields = {
     search: {
       preset: "search",
@@ -319,6 +327,7 @@ const ProjectArtifacts = () => {
             bulkActions={bulkActions}
             data={rows}
             rowKey={(row) => row.key}
+            onRowClick={(row) => void router.push(buildHref(row))}
             defaultSort={{ field: "pushedAt", direction: "desc" }}
             /*
              * ⚠️ Two states, never `emptyMessage`. That prop is the one-line
@@ -438,16 +447,15 @@ const ProjectArtifacts = () => {
               tag: {
                 label: tr("artifacts.table.tag"),
                 sortable: true,
-                // The tag opens this build's page, with this row's variant
-                // selected. The release it may belong to is linked from there.
+                // The row and the tag open this build's page, with this row's
+                // variant selected. The tag stays a real anchor, for a new tab
+                // and a copied link. The release it may belong to is linked
+                // from the page.
                 cell: (row) => (
                   <Link
-                    href={artifactHref(project.slug, {
-                      app: row.app,
-                      tag: row.tag,
-                      variant: artifactVariantKey(row),
-                    })}
-                    className="font-mono text-xs"
+                    href={buildHref(row)}
+                    onClick={(event) => event.stopPropagation()}
+                    className="font-mono text-xs underline-offset-2 hover:underline"
                   >
                     {row.tag}
                   </Link>

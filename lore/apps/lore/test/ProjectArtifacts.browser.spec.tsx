@@ -18,7 +18,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { $page, AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -55,8 +55,18 @@ class RecordingLinkProvider extends LinkProvider {
 }
 
 /**
- * The routes the page links into. `projectRelease` is the one that matters:
- * the tag column links there only when a release with that tag exists.
+ * What the row asked for, since a jsdom render has no browser to navigate.
+ */
+class RecordingRouter extends ReactRouter<object> {
+  public pushed: string[] = [];
+
+  public override async push(target: any): Promise<void> {
+    this.pushed.push(target);
+  }
+}
+
+/**
+ * The routes the page links into.
  */
 class Routes {
   projectAppRedirect = $page({
@@ -123,6 +133,7 @@ describe("ProjectArtifacts", () => {
       // Before anything that instantiates it: a substitution after that is
       // too late.
       .with({ provide: LinkProvider, use: RecordingLinkProvider })
+      .with({ provide: ReactRouter, use: RecordingRouter })
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
@@ -147,6 +158,7 @@ describe("ProjectArtifacts", () => {
     for (const name of options.denied ?? []) links.denied.add(name);
     return {
       links,
+      router: alepha.inject(ReactRouter) as RecordingRouter,
       ...render(
         <AlephaContext.Provider value={alepha}>
           {/* The delete confirm is `useDialog`, which requires one. */}
@@ -545,6 +557,29 @@ describe("ProjectArtifacts", () => {
     expect(tagged.closest("a")?.getAttribute("href")).toMatch(
       /^\/alepha\/artifacts\/docs\/1\.0\.0\?variant=[a-z]+-[a-z]+$/,
     );
+  });
+
+  /**
+   * A row is the item, as on the Apps table. A tag alone was too small a
+   * target, and it looked like plain text: the page seemed to link nothing.
+   */
+  it("opens the build from anywhere on its row", async ({ expect }) => {
+    const view = await show(listing([group()]));
+
+    fireEvent.click(await view.findByText("docs"));
+
+    expect(view.router.pushed).toHaveLength(1);
+    expect(view.router.pushed[0]).toMatch(
+      /^\/alepha\/artifacts\/docs\/1\.0\.0\?variant=[a-z]+-[a-z]+$/,
+    );
+  });
+
+  it("does not open the build twice from its tag", async ({ expect }) => {
+    const view = await show(listing([group()]));
+
+    fireEvent.click(await view.findByText("1.0.0"));
+
+    expect(view.router.pushed).toEqual([]);
   });
 
   /**

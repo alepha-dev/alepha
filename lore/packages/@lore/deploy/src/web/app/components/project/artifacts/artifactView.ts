@@ -71,7 +71,7 @@ export const artifactVariantKey = (
 export const artifactHref = (
   projectSlug: string | undefined,
   build: { app: string; tag: string; variant?: string },
-): string =>
+): `/${string}` =>
   `/${projectSlug}/artifacts/${build.app}/${build.tag}${
     build.variant ? `?variant=${build.variant}` : ""
   }`;
