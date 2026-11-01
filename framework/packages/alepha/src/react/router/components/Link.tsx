@@ -15,6 +15,12 @@ export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
    * The query string, for either form.
    */
   query?: Record<string, string>;
+  /**
+   * Fetch the page's code before it is clicked: on `hover`, or when the link
+   * becomes `visible`. Loader data is never fetched. It only sets
+   * `data-prefetch`, which a plain `<a>` can carry too.
+   */
+  prefetch?: "hover" | "visible";
 }
 
 /**
@@ -24,7 +30,7 @@ export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
  */
 const Link = (props: LinkProps) => {
   const router = useRouter();
-  const { params, query, ...rest } = props;
+  const { params, query, prefetch, ...rest } = props;
   // `useRouter()` is untyped here, so a name is any string; the router
   // throws at runtime for one no page has.
   const anchor = router.anchor(props.href, { params, query });
@@ -34,6 +40,7 @@ const Link = (props: LinkProps) => {
     {
       ...rest,
       ...anchor,
+      "data-prefetch": prefetch,
       // Compose instead of overwrite: the caller's onClick always runs, and
       // preventing default in it opts out of the SPA navigation.
       onClick: (ev: React.MouseEvent<HTMLAnchorElement>) => {

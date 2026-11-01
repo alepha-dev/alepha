@@ -27,6 +27,7 @@ import type {
   PreviousLayerData,
   ReactRouterState,
 } from "./ReactPageProvider.ts";
+import { ReactPrefetchProvider } from "./ReactPrefetchProvider.ts";
 
 export type { RouterPushOptions } from "../services/ReactRouter.ts";
 
@@ -90,6 +91,7 @@ export class ReactBrowserProvider {
   protected readonly bootHealth = $inject(ReactBootHealth);
   protected readonly viewTransition = $inject(ReactViewTransition);
   protected readonly deferred = $inject(ReactDeferred);
+  protected readonly prefetcher = $inject(ReactPrefetchProvider);
 
   /**
    * Scroll offset of every history entry we have visited, keyed by the id
@@ -933,8 +935,16 @@ export class ReactBrowserProvider {
       });
 
       this.attachAnchorInterceptor();
+      this.prefetcher.attach();
     },
   });
+
+  /**
+   * Fetch the code of the page at `url`. See {@link ReactPrefetchProvider}.
+   */
+  public prefetch(url: string): void {
+    this.prefetcher.prefetch(url);
+  }
 
   /**
    * The first transition, bounded: what an app whose API may be unreachable

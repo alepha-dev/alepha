@@ -65,6 +65,7 @@ export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
           href={router.path("project", {
             params: { projectSlug: props.project.slug },
           })}
+          prefetch="visible"
           className="truncate font-medium after:absolute after:inset-0"
         >
           {props.project.title}

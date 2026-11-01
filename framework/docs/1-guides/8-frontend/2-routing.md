@@ -572,6 +572,30 @@ const Product = (props: ProductProps) => (
 
 ⚠️ **An atom written after the shell does not reach the browser.** The payload leaves with the shell, so anything a deferred value should change on the client is the value itself.
 
+## Link Prefetching
+
+`prefetch` fetches a page's code before the click: the `lazy` chunk of the page and those of its layouts, never its loader data.
+
+```tsx
+<Link href="/invoices" prefetch="hover">Invoices</Link>
+<Link href="/invoices" prefetch="visible">Invoices</Link>
+```
+
+`hover` waits 100 ms for intent. `visible` shares one `IntersectionObserver`, so keep it to a short list, never a table with hundreds of rows. The prop only sets `data-prefetch`, so a plain `<a href="/invoices" data-prefetch="hover">` works too.
+
+For a surface that is not a link, call the router:
+
+```tsx
+<DataTable
+  onRowHover={(row) =>
+    row && router.prefetch("invoice", { params: { id: row.id } })
+  }
+  onRowClick={(row) => router.push("invoice", { params: { id: row.id } })}
+/>
+```
+
+At most four chunks load at once, each only once, and nothing loads under `navigator.connection.saveData`. A failed prefetch is ignored: an old chunk after a deploy never reloads the page under a hover. `@alepha/ui`'s sidebar entries prefetch on hover unless a `NavItem` says `prefetch: false`.
+
 ## Modal Routes
 
 `overlay` gives a page two presentations for one URL: an in-app navigation from a given page opens it over that page, and a reload or a shared link renders it in full.

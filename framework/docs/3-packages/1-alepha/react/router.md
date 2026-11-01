@@ -42,6 +42,7 @@ This module enables:
 - [`ReactDomServerProvider`](/docs/reference-providers-reactdomserverprovider) - The renderer half of React, loaded only once something actually renders.
 - [`ReactPageCacheProvider`](/docs/reference-providers-reactpagecacheprovider) - The automatic page cache (#E78).
 - [`ReactPageProvider`](/docs/reference-providers-reactpageprovider) - Handle page routes for React applications. (Browser and Server)
+- [`ReactPrefetchProvider`](/docs/reference-providers-reactprefetchprovider) - Fetches a page's code before it is clicked: the `lazy` chunks of the page and
 - [`ReactPreloadProvider`](/docs/reference-providers-reactpreloadprovider) - Adds HTTP Link headers for preloading entry assets.
 - [`ReactServerErrorProvider`](/docs/reference-providers-reactservererrorprovider) - Answers a browser navigation with an HTML error page instead of JSON.
 - [`ReactServerProvider`](/docs/reference-providers-reactserverprovider) - React server provider responsible for SSR and static file serving.

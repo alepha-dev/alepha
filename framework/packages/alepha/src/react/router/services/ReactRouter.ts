@@ -395,6 +395,22 @@ export class ReactRouter<T extends object> {
   }
 
   /**
+   * Fetch a page's code before it is needed, by page name or path: the `lazy`
+   * chunks of the page and of its layouts, nothing else. For a surface that is
+   * not a link, such as a table row; a link takes `prefetch` or
+   * `data-prefetch`. Deduplicated, and off under `saveData`. A failure is
+   * ignored, and a no-op on the server.
+   */
+  public prefetch<K extends RouterPageName<T>>(
+    name: K,
+    ...options: RouterPageArgs<T, K>
+  ): void;
+  public prefetch(path: RouterPath, options?: RouterNavigateOptions): void;
+  public prefetch(target: string, options?: RouterPushOptions): void {
+    this.browser?.prefetch(this.resolveHref(target, options));
+  }
+
+  /**
    * Anchor props (`href` and an SPA `onClick`) for a page name or a path,
    * under the same two forms as {@link push}.
    */
