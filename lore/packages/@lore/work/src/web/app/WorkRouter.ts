@@ -1,3 +1,4 @@
+import { type ReportsUrl, reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
   $pageProjectSettings,
@@ -5,6 +6,8 @@ import {
   CoreRouter,
   hasCapability,
   canInProject,
+  ReportsTabRegistry,
+  ReportsUrlQuery,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { $page, NotFound, Redirection } from "alepha/react/router";
@@ -33,6 +36,8 @@ export class WorkRouter {
   alepha = $inject(Alepha);
   questApi = $client<QuestController>();
   projectReportsApi = $client<ProjectReportsController>();
+  reportsUrl = $inject(ReportsUrlQuery);
+  reportsTabs = $inject(ReportsTabRegistry);
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
@@ -551,17 +556,26 @@ export class WorkRouter {
     },
   });
 
+  /**
+   * The query `route` reads: the URL, narrowed to the filters the tab declares.
+   */
+  protected reportsQuery(route: string, url: ReportsUrl) {
+    return this.reportsUrl.toQuery(url, this.reportsTabs.honours(route));
+  }
+
   reportsOverview = $page({
     parent: this.core.projectReports,
     name: "reportsOverview",
     path: "/",
     lazy: () =>
       import("./components/project/reports/ReportsOverview.client.tsx"),
-    loader: async () => ({
+    schema: { query: reportsUrlSchema },
+    loader: async ({ query }) => ({
       overview: await this.projectReportsApi.getReportsOverview({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
+        query: this.reportsQuery("reportsOverview", query),
       }),
     }),
   });
@@ -571,11 +585,13 @@ export class WorkRouter {
     name: "reportsQuests",
     path: "/quests",
     lazy: () => import("./components/project/reports/ReportsQuests.client.tsx"),
-    loader: async () => ({
+    schema: { query: reportsUrlSchema },
+    loader: async ({ query }) => ({
       quests: await this.projectReportsApi.getReportsQuests({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
+        query: this.reportsQuery("reportsQuests", query),
       }),
     }),
   });
@@ -586,11 +602,13 @@ export class WorkRouter {
     path: "/members",
     lazy: () =>
       import("./components/project/reports/ReportsMembers.client.tsx"),
-    loader: async () => ({
+    schema: { query: reportsUrlSchema },
+    loader: async ({ query }) => ({
       members: await this.projectReportsApi.getReportsMembers({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
+        query: this.reportsQuery("reportsMembers", query),
       }),
     }),
   });

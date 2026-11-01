@@ -212,7 +212,15 @@ export {
   type ProjectCreateDialogProps,
   ProjectShellRegistry,
 } from "./app/registries/ProjectShellRegistry.ts";
-export { ReportsTabRegistry } from "./app/registries/ReportsTabRegistry.ts";
+export {
+  type ReportsFilter,
+  type ReportsTab,
+  ReportsTabRegistry,
+} from "./app/registries/ReportsTabRegistry.ts";
+export {
+  type ReportsFilterKey,
+  ReportsUrlQuery,
+} from "./app/services/ReportsUrlQuery.ts";
 export {
   type LinkedCollection,
   ResourceTabRegistry,

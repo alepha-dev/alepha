@@ -68,6 +68,10 @@ export {
   releaseTagSchema,
 } from "../api/schemas/releaseTagSchema.ts";
 export {
+  type ReportsUrl,
+  reportsUrlSchema,
+} from "../api/schemas/reportsUrlSchema.ts";
+export {
   type ReportsQuery,
   reportsQuerySchema,
 } from "../api/schemas/reportsQuerySchema.ts";

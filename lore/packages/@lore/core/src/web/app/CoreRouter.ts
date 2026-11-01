@@ -12,6 +12,7 @@ import type { HomeController } from "../../api/controllers/HomeController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
+import { reportsUrlSchema } from "../../api/schemas/reportsUrlSchema.ts";
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { dashboardWindowAtom } from "./atoms/dashboardWindowAtom.ts";
@@ -422,6 +423,7 @@ export class CoreRouter {
 
   projectReports = $pageProject({
     path: "/reports",
+    schema: { query: reportsUrlSchema },
     // Each tab is its module's page, mounted with `parent: core.projectReports`
     // and offered by `ReportsTabRegistry` (#E75, #Q2611).
     head: (_props, previous) => ({
@@ -437,10 +439,11 @@ export class CoreRouter {
      * push a run - so this is paid when Reports opens, by the one page that
      * needs the answer. A failed read hides a tab, never the page.
      */
-    loader: async () => ({
+    loader: async ({ query }) => ({
       available: await this.reportsTabs.availability(
         this.alepha.store.get(currentProjectAtom)?.id ?? -1,
       ),
+      query,
     }),
   });
 

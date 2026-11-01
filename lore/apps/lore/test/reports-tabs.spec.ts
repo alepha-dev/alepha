@@ -45,6 +45,13 @@ const reportsTabs = (
  * something in it.
  */
 describe("reportsTabs", () => {
+  it("declares the filters of each tab, and honours none on an unknown tab", () => {
+    expect(registry.honours("reportsOverview")).toContain("area");
+    expect(registry.honours("reportsQuests")).not.toContain("grain");
+    expect(registry.honours("reportsQuality")).toEqual([]);
+    expect(registry.honours("nowhere")).toEqual([]);
+  });
+
   const names = (
     capabilities: Array<"work" | "knowledge" | "apps" | "support">,
     hasQualityRun = false,

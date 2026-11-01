@@ -7,6 +7,7 @@ import {
   DashboardPickerRegistry,
   ElementReferenceRegistry,
   ProjectShellRegistry,
+  type ReportsFilter,
   ReportsTabRegistry,
   capabilityOption,
   hasCapability,
@@ -43,6 +44,14 @@ import { useQuestElementImageUpload } from "../components/project/quest/useQuest
 import { useQuestReferences } from "../components/project/quest/useQuestReferences.ts";
 import { useDashboardReleaseOptions } from "../components/project/releases/useDashboardReleaseOptions.ts";
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
+import {
+  useReportAreaOptions,
+  useReportEpicOptions,
+  useReportMemberOptions,
+  useReportPriorityOptions,
+  useReportReleaseOptions,
+  useReportTagOptions,
+} from "../components/project/reports/useReportFilterOptions.ts";
 import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
@@ -473,23 +482,54 @@ export class WorkShell {
     // Overview and Quests are derived from quests, so they belong to Work.
     // Members is too (completed quests per member), but it needs no switch:
     // the leaderboard exists for every project that has members.
+    const workFilters = [
+      "area",
+      "epicId",
+      "releaseId",
+      "tag",
+      "priority",
+      "memberId",
+    ] as const;
     this.reports.register({
       route: "reportsOverview",
       labelKey: "project.reports.nav.overview",
       order: 10,
       needs: "work",
+      filters: ["period", "grain", "compare", ...workFilters],
     });
     this.reports.register({
       route: "reportsQuests",
       labelKey: "project.reports.nav.quests",
       order: 20,
       needs: "work",
+      filters: ["period", "compare", ...workFilters],
     });
     this.reports.register({
       route: "reportsMembers",
       labelKey: "project.reports.nav.members",
       order: 30,
+      filters: ["period", ...workFilters],
     });
+    this.registerReportFilters();
+  }
+
+  /**
+   * The bar's Work filters: their options are this module's atoms, and core
+   * names none of them.
+   */
+  protected registerReportFilters(): void {
+    const filter = (
+      key: ReportsFilter["key"],
+      labelKey: string,
+      useOptions: ReportsFilter["useOptions"],
+    ) =>
+      this.reports.registerFilter({ key, labelKey, needs: "work", useOptions });
+    filter("area", "reports.filter.area", useReportAreaOptions);
+    filter("epicId", "reports.filter.epic", useReportEpicOptions);
+    filter("releaseId", "reports.filter.release", useReportReleaseOptions);
+    filter("tag", "reports.filter.tag", useReportTagOptions);
+    filter("priority", "reports.filter.priority", useReportPriorityOptions);
+    filter("memberId", "reports.filter.member", useReportMemberOptions);
   }
 
   /**

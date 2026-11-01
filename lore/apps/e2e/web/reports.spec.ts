@@ -76,6 +76,46 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The filter bar (#Q2996). The state lives in the URL, so a link is
+   * shareable, a reload keeps it, and moving between tabs carries it.
+   */
+  test("the filter bar round-trips through the URL and across tabs", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportsbar${t}@example.com`, "ReportsB123!");
+    const { slug } = await createProjectViaWizard(page, `RB${t}`.slice(0, 20));
+
+    await page.goto(`/${slug}/reports?range=7d&compare=true&priority=nope`);
+    const bar = page.getByTestId("reports-filter-bar");
+    await expect(bar).toBeVisible({ timeout: 20_000 });
+    await expect(bar.getByText("Last 7 days")).toBeVisible();
+
+    await page
+      .getByTestId("reports-tabs")
+      .getByRole("link", { name: "Quests" })
+      .click();
+    await expect(page).toHaveURL(/\/reports\/quests\?.*range=7d/);
+    await expect(page).toHaveURL(/compare=true/);
+
+    // Quests does not declare a grain: the bar keeps it, disabled.
+    await expect(bar.getByLabel("Grain")).toBeDisabled();
+
+    await page.reload();
+    await expect(bar.getByText("Last 7 days")).toBeVisible({ timeout: 20_000 });
+
+    // The write path: picking a value is what moves the URL, and it keeps the
+    // rest of the query.
+    await bar.getByRole("combobox", { name: "Period" }).click();
+    await page.getByRole("option", { name: "Last 90 days" }).click();
+    await expect(page).toHaveURL(/range=90d/);
+    await expect(page).toHaveURL(/compare=true/);
+    await expect(bar.getByText("Last 90 days")).toBeVisible();
+  });
+
+  /**
    * A project with tagged quests is the interesting case; a project with none
    * is the one that ships to everybody who has never used a tag, and an empty
    * chart area is what they see.

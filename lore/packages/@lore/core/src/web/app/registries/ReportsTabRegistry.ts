@@ -1,8 +1,10 @@
 import { AlephaError } from "alepha";
+import type { LucideIcon } from "lucide-react";
 
 import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../api/schemas/projectResourceSchema.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
+import type { ReportsFilterKey } from "../services/ReportsUrlQuery.ts";
 
 /**
  * The tabs of the Reports page, as each module registers them (#E75,
@@ -16,6 +18,31 @@ import { hasCapability } from "../services/projectCapabilities.ts";
  */
 export class ReportsTabRegistry {
   protected readonly entries: ReportsTab[] = [];
+  protected readonly filterEntries: ReportsFilter[] = [];
+
+  /**
+   * A filter of the bar that core cannot draw: its options are a module's.
+   */
+  public registerFilter(filter: ReportsFilter): void {
+    if (this.filterEntries.some((it) => it.key === filter.key)) {
+      throw new AlephaError(
+        `Reports filter '${filter.key}' is registered twice`,
+      );
+    }
+    this.filterEntries.push(filter);
+  }
+
+  public filters(): ReportsFilter[] {
+    return this.filterEntries;
+  }
+
+  /**
+   * The filters `route` declares. A tab with none honours none, and the report
+   * behind it is read with the empty query.
+   */
+  public honours(route: string): readonly ReportsFilterKey[] {
+    return this.entries.find((it) => it.route === route)?.filters ?? [];
+  }
 
   public register(tab: ReportsTab): void {
     if (this.entries.some((it) => it.route === tab.route)) {
@@ -63,14 +90,35 @@ export interface ReportsTab {
    */
   route: string;
   labelKey: string;
+  /**
+   * What the tab answers, in a line under the bar.
+   */
+  descriptionKey?: string;
+  icon?: LucideIcon;
   order: number;
   /**
    * The capability this tab's data source belongs to.
    */
   needs?: CapabilityKey;
   /**
+   * The filters this tab honours: its loader reads only these, and the bar
+   * shows the others disabled (#Q2996).
+   */
+  filters?: readonly ReportsFilterKey[];
+  /**
    * A last say that needs a request, run when Reports opens. Only Quality
    * has one: the tab exists once there is something in it.
    */
   available?: (projectId: number) => Promise<boolean>;
+}
+
+export interface ReportsFilter {
+  key: Exclude<ReportsFilterKey, "period" | "grain" | "compare">;
+  labelKey: string;
+  needs?: CapabilityKey;
+  /**
+   * The filter's values. A hook, called once by the component drawing this
+   * filter.
+   */
+  useOptions: () => Array<{ value: string; label: string }>;
 }

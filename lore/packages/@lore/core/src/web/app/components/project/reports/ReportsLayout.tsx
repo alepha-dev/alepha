@@ -3,13 +3,15 @@ import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
+import type { ReportsUrl } from "../../../../../api/schemas/reportsUrlSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { ReportsTabRegistry } from "../../../registries/ReportsTabRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import ReportsFilterBar from "./ReportsFilterBar.tsx";
 
 /**
- * Reports shell: a tab strip and a `<NestedView />` rendering the active
- * child page. No plate - see the note at the `PlateLayout` call below.
+ * Reports shell: a tab strip, the filter bar every tab shares (#Q2996) and a
+ * `<NestedView />` rendering the active child page. No plate - see the note at the `PlateLayout` call below.
  *
  * On `PlateLayout` since #1693, which is the Release view's shape lifted into
  * `@alepha/ui`. Before that this file drew its own tab row inside a
@@ -29,6 +31,10 @@ export interface ReportsLayoutProps {
    * opened (`ReportsTabRegistry.availability`), from the loader.
    */
   available: string[];
+  /**
+   * The page query, which the bar edits and every tab's link carries.
+   */
+  query: ReportsUrl;
 }
 
 const ReportsLayout = (props: ReportsLayoutProps) => {
@@ -38,15 +44,21 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
   const [project] = useStore(currentProjectAtom);
   const registry = useInject(ReportsTabRegistry);
 
-  const tabs: PlateTab[] = registry
-    .tabs(project, props.available)
-    .map((tab) => ({
-      key: tab.route,
-      label: tr(tab.labelKey as never),
-      // Each tab is its own route, so each is a link: middle-click, copy-link
-      // and the back button all depend on it.
-      href: router.path(tab.route as never),
-    }));
+  const registered = registry.tabs(project, props.available);
+  const active = registered.find((tab) => tab.route === routerState.name);
+  const search = new URLSearchParams(
+    props.query as Record<string, string>,
+  ).toString();
+
+  const tabs: PlateTab[] = registered.map((tab) => ({
+    key: tab.route,
+    label: tr(tab.labelKey as never),
+    icon: tab.icon,
+    // Each tab is its own route, so each is a link: middle-click, copy-link
+    // and the back button all depend on it. It carries the query, so moving
+    // between tabs keeps the period and the filters.
+    href: router.path(tab.route as never, { query: props.query } as never),
+  }));
 
   return (
     <PlateLayout
@@ -63,7 +75,13 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
       // carries what the breadcrumb leaf cannot. A plate that names the
       // section is the leaf, drawn twice.
     >
+      <ReportsFilterBar key={search} url={props.query} />
       <div className="flex flex-col gap-8 p-4">
+        {active?.descriptionKey ? (
+          <p className="text-muted-foreground text-sm">
+            {tr(active.descriptionKey as never)}
+          </p>
+        ) : null}
         <NestedView />
       </div>
     </PlateLayout>
