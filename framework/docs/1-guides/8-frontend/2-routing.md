@@ -560,7 +560,7 @@ const Product = (props: ProductProps) => (
 );
 ```
 
-- On a server render the shell leaves first and each value streams into its boundary. Hydration starts right after the shell, so the page answers clicks while a value is pending.
+- On a server render the shell leaves first and each value streams into its boundary. In a build, hydration starts right after the shell, so the page answers clicks while a value is pending. `alepha dev` streams the same way but hydrates at the end of the document, since Vite's entry cannot run ahead of React Refresh.
 - On a client navigation the page renders at once and suspends.
 - Only top-level promises are deferred: one nested in an object is not looked at.
 - A rejection reaches the nearest `errorHandler`, and keeps `name`, `message` and `status`, so `isHttpError` works. Add a `.catch` in the loader for a value the page can live without.

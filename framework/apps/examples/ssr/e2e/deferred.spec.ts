@@ -40,7 +40,11 @@ test.describe("Deferred loader data", () => {
 
   test("hydrates and answers clicks while the value is pending", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    // Vite's entry stays a deferred module, since React Refresh's preamble has
+    // to run first, so `alepha dev` hydrates at the end of the document.
+    test.skip(testInfo.project.name === "dev", "a built entry is async");
+
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
