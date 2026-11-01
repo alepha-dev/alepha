@@ -207,6 +207,21 @@ export class DeployRouter {
     lazy: () => import("./components/project/artifacts/ProjectArtifacts.tsx"),
   });
 
+  /**
+   * One tag of one app, every variant on one page.
+   *
+   * ⚠️ `:artifactTag`, never `:tag`: one param name per tree position, the
+   * trap `:epicNumber` and `:releaseTag` document. No loader, like the list:
+   * the page owns its reads, and a missing tag is its own state.
+   */
+  projectArtifact = $pageProject({
+    path: "/artifacts/:app/:artifactTag",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Artifacts`,
+    }),
+    lazy: () => import("./components/project/artifacts/ProjectArtifact.tsx"),
+  });
+
   projectBlights = $pageProject({
     name: "projectBlights",
     path: "/blights",

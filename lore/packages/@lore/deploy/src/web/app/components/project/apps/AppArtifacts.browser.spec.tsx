@@ -6,6 +6,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
+import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
@@ -64,6 +65,8 @@ describe("AppArtifacts", () => {
       // too late.
       .with({ provide: LinkProvider, use: RecordingLinkProvider })
       .with(AlephaReact)
+      // The row links to the build, and `Link` reads the router.
+      .with(AlephaReactRouter)
       .with(AlephaReactI18n);
     // The dictionaries are lazy chunks on a service, so nothing loads them
     // until something injects it.

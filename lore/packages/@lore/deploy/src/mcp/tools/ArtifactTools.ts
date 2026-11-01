@@ -64,7 +64,7 @@ export class ArtifactTools {
   artifact_get = $tool({
     title: "Get an artifact",
     description:
-      "One tag's builds: their runtimes, formats, sizes, sha256 digests and the commit each was built from when CI named one. Reach for it to confirm a build exists before referencing its tag, or to read the digest a deploy should pin - a tag can be moved by whoever pushes next (`latest` always, any other tag under `--force`), and a digest cannot. `runtime` and `format` each narrow, and it takes BOTH to name a single variant: a tag may carry a `node` archive and a `node` image at once. Omit both for every variant, which is usually the useful answer. An `image` variant carries a `reference` to pull and no bytes; only an `archive` can be deployed. `size` is absent on a variant whose size is not known, which is normal for an image. 404 when this project has no such tag for this app, which is a normal state rather than an error: an artifact with no release and a release with no artifact are both ordinary.",
+      "One tag's builds: their runtimes, formats, sizes, sha256 digests and the commit each was built from when CI named one, and with `manifest: true` what each one declares. Reach for it to confirm a build exists before referencing its tag, or to read the digest a deploy should pin - a tag can be moved by whoever pushes next (`latest` always, any other tag under `--force`), and a digest cannot. `runtime` and `format` each narrow, and it takes BOTH to name a single variant: a tag may carry a `node` archive and a `node` image at once. Omit both for every variant, which is usually the useful answer. An `image` variant carries a `reference` to pull and no bytes; only an `archive` can be deployed. `size` is absent on a variant whose size is not known, which is normal for an image. 404 when this project has no such tag for this app, which is a normal state rather than an error: an artifact with no release and a release with no artifact are both ordinary.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: artifactGetParamsSchema,
@@ -84,12 +84,24 @@ export class ArtifactTools {
         query: { app: params.app, tag: params.tag },
       });
 
-      const [group] = res.groups;
-      if (!group) {
+      const [listed] = res.groups;
+      if (!listed) {
         throw new NotFoundError(
           `No artifact tagged "${params.tag}" for app "${params.app}" in this project.`,
         );
       }
+
+      // Only when asked: a manifest is 3 KB of a model's context per variant.
+      const group = params.manifest
+        ? {
+            ...listed,
+            variants: (
+              await this.artifacts.getArtifact({
+                params: { projectId, app: params.app, tag: params.tag },
+              })
+            ).variants,
+          }
+        : listed;
 
       if (!params.runtime && !params.format) {
         return { artifact: group };

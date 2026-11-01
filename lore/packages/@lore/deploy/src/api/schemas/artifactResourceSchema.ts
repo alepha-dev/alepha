@@ -71,6 +71,19 @@ export const artifactResourceSchema = z.object({
    * Absent when the pusher named no commit, which a laptop push never does.
    */
   commitSha: z.string().optional(),
+  /**
+   * The build's own document, parsed. Only `getArtifact` fills it: a listing
+   * of a hundred builds has no use for a hundred manifests.
+   *
+   * ⚠️ **Two shapes, told apart only by `format`**: `dist/manifest.json` for
+   * an archive, the OCI index for an image. Absent means UNKNOWN, never
+   * "declares nothing": builds pushed before the column exist.
+   */
+  manifest: z.record(z.text(), z.any()).optional(),
+  /**
+   * Whether source maps are stored beside this build. `getArtifact` only.
+   */
+  hasMaps: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
