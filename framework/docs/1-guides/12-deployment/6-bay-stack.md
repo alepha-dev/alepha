@@ -83,7 +83,7 @@ The app applies them itself at boot, as it does on SQLite. See [Migrations](/doc
 Each stack environment has its own variables. `DATABASE_URL` and `REDIS_URL` are what Alepha reads,
 pointing at the services by name; `POSTGRES_PASSWORD` fills the compose file. The `bay` commands on
 this page run on the host and find Bay through `BAY_SOCKET`: the installer puts the socket at
-`/run/bay/control.sock`, and `bay stack deploy` takes no `--control-socket` flag.
+`/run/bay/control.sock`.
 
 ```bash
 ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack env set mcs/production -' <<'EOF'
