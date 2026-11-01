@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -68,12 +69,27 @@ func TestEndWatchDoesNotCancelAWatchThatSupersededIt(t *testing.T) {
 
 	first := s.beginWatch("demo/production")
 	second := s.beginWatch("demo/production")
-	_ = first
 
-	s.endWatch("demo/production")
+	s.endWatch(first, "demo/production")
 
 	if second.Err() != nil {
 		t.Fatal("the live watch must survive the superseded one's cleanup")
+	}
+}
+
+func TestASupersededWatchLeavesTheNewerOneWithinReach(t *testing.T) {
+	// Same ordering. Losing the entry would leave a watch that no later deploy
+	// supersedes and no stop ends.
+	s := &server{}
+
+	first := s.beginWatch("demo/production")
+	second := s.beginWatch("demo/production")
+	s.endWatch(first, "demo/production")
+
+	s.cancelWatch("demo/production")
+
+	if second.Err() == nil {
+		t.Fatal("the newer watch must still be reachable after the old one's cleanup")
 	}
 }
 
@@ -111,6 +127,108 @@ func (d downWhileStopped) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, errors.New("connection refused")
 	}
 	return readyTransport{}.RoundTrip(req)
+}
+
+// slowBoot is a /health that refuses a number of probes after the app starts
+// again, the way a container does while it boots.
+type slowBoot struct{ probesLeft *atomic.Int32 }
+
+func (b slowBoot) RoundTrip(req *http.Request) (*http.Response, error) {
+	if b.probesLeft.Add(-1) >= 0 {
+		return nil, errors.New("connection refused")
+	}
+	return readyTransport{}.RoundTrip(req)
+}
+
+func TestAStopAndAStartInsideTheWindowAreNotRolledBack(t *testing.T) {
+	// Both land between two probes and the app takes its time to boot. By the
+	// third refused probe nothing says stopped any more, so the verdict cannot
+	// tell this from a release that died.
+	f := localAppWithUploads(t)
+	s := f.server
+	var probesLeft atomic.Int32
+	s.probe = &health.Probe{Client: &http.Client{Transport: slowBoot{&probesLeft}}}
+	s.watchWindow, s.watchEvery = time.Minute, time.Millisecond
+	key := "demo/production"
+	out, failure := s.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: bucketDeployableArtifact(t), Name: "demo", Env: "production",
+	})
+	if failure != nil {
+		t.Fatalf("redeploy: %v", failure)
+	}
+	for !s.watching(key) {
+		time.Sleep(time.Millisecond)
+	}
+	f.runner.refuseStart = func(int) error {
+		probesLeft.Store(5)
+		return nil
+	}
+
+	if err := s.stopInstance(key); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.startInstance(key); err != nil {
+		t.Fatal(err)
+	}
+	waitForWatch(t, s, key)
+
+	if got := f.app(t).Release; got != out.Result.Release {
+		t.Fatalf("rolled back to %s, on a release somebody only stopped and started", got)
+	}
+}
+
+func TestAStackStopEndsTheWatchOfItsApps(t *testing.T) {
+	f := newDeployFixture(t)
+	s := f.server
+	if err := s.store.MutateStackEnv("shop", "production", func(*state.StackEnv) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.store.Upsert(state.App{Name: "shop.api", Env: "production", Stack: "shop", Service: "api", ServiceKind: "app"}); err != nil {
+		t.Fatal(err)
+	}
+	watch := s.beginWatch("shop.api/production")
+
+	if err := s.stopStack("shop", "production"); err != nil {
+		t.Fatal(err)
+	}
+
+	if watch.Err() == nil {
+		t.Fatal("the watch must end with the stop, or a start inside the window can be rolled back")
+	}
+}
+
+func TestAVerdictReachedAsAStopLandsDoesNotUndoIt(t *testing.T) {
+	// The other side of the same race: the stop has been recorded, its cancel
+	// comes too late for a watch that has already decided.
+	f := localAppWithUploads(t)
+	s := f.server
+	s.probe = &health.Probe{Client: &http.Client{Transport: downWhileStopped{f.runner}}}
+	s.watchWindow, s.watchEvery = time.Minute, time.Millisecond
+	key := "demo/production"
+	out, failure := s.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: bucketDeployableArtifact(t), Name: "demo", Env: "production",
+	})
+	if failure != nil {
+		t.Fatalf("redeploy: %v", failure)
+	}
+	for !s.watching(key) {
+		time.Sleep(time.Millisecond)
+	}
+
+	if err := s.store.SetStopped(key, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.runner.Park(key, 0); err != nil {
+		t.Fatal(err)
+	}
+	waitForWatch(t, s, key)
+
+	if got := f.app(t).Release; got != out.Result.Release {
+		t.Fatalf("rolled back to %s, on an app somebody stopped", got)
+	}
+	if f.runner.Running(key) {
+		t.Fatal("the watch started an app somebody stopped")
+	}
 }
 
 func TestAStorageMigrationInsideTheWindowIsNotRolledBack(t *testing.T) {
