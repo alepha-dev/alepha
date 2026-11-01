@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CommandPalette from "./CommandPalette.tsx";
 import Header from "./Header.tsx";
 import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp.tsx";
-import LatestBanner from "./LatestBanner.tsx";
 import Sidebar from "./Sidebar.tsx";
 import StatusBar from "./StatusBar.tsx";
 
@@ -347,8 +346,6 @@ const LayoutContent = () => {
           onClose={() => setShowHelp(false)}
         />
 
-        <LatestBanner />
-
         {/* Header without tabs - sticky */}
         <div className={styles.stickyHeader}>
           <Header showTabs={false} />
@@ -414,8 +411,6 @@ const LayoutContent = () => {
 
       {/* Main IDE Layout */}
       <div className="flex h-screen w-full flex-col">
-        {!focusMode && <LatestBanner />}
-
         {/* Header with tabs */}
         {!focusMode && <Header showTabs />}
 
