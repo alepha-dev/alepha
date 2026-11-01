@@ -352,6 +352,7 @@ export class EstateCommandService {
         ? { baseDomain: command.payload.baseDomain }
         : {}),
       ...(command.payload.service ? { service: command.payload.service } : {}),
+      ...(command.payload.logs ? { logs: command.payload.logs } : {}),
     };
   }
 
