@@ -21,16 +21,10 @@ import ReportsFilterBar from "./ReportsFilterBar.tsx";
  * the width.
  *
  * The tab list is not a constant: each module registers its own tabs on
- * `ReportsTabRegistry` (#E75, #Q2611), Overview, Quests and Members from Work
- * and Quality from Deploy, each with its gate. See the registry for why this
- * section is Core while its tabs are not.
+ * `ReportsTabRegistry` (#E75, #Q2611), each with its gate. See the registry for
+ * why this section is Core while its tabs are not.
  */
 export interface ReportsLayoutProps {
-  /**
-   * The routes of the tabs whose `available` answered yes when Reports
-   * opened (`ReportsTabRegistry.availability`), from the loader.
-   */
-  available: string[];
   /**
    * The page query, which the bar edits and every tab's link carries.
    */
@@ -44,7 +38,7 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
   const [project] = useStore(currentProjectAtom);
   const registry = useInject(ReportsTabRegistry);
 
-  const registered = registry.tabs(project, props.available);
+  const registered = registry.tabs(project);
   const active = registered.find((tab) => tab.route === routerState.name);
   const search = new URLSearchParams(
     props.query as Record<string, string>,

@@ -898,8 +898,6 @@ export default {
   "project.settings.areas.delete.blocked":
     "This area still holds quests. Merge it into another area instead.",
   "project.settings.nav.estates": "Estates",
-  "project.reports.nav.overview": "Overview",
-  "project.reports.nav.quests": "Quests",
   "project.reports.nav.team": "Team",
   "reports.team.kpi.wip": "In progress",
   "reports.team.kpi.wip.definition":
@@ -985,7 +983,6 @@ export default {
   "reports.team.run.partial": "Partial",
   "reports.team.run.failed": "Failed",
   "reports.team.run.unknown": "Unknown",
-  "project.reports.nav.members": "Members",
   "reports.quality.section.coverage": "Coverage",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Coverage over time",
@@ -1007,38 +1004,6 @@ export default {
     "The push needs LORE_API_KEY, an API key from your account's keys page.",
   "reports.csv": "CSV",
   "reports.delta": "$1 vs previous",
-  "reports.overview.burnup.definition":
-    "Quests created and quests completed, cumulative, shelved quests and open quests of draft epics excluded.",
-  "reports.overview.completionRate.definition":
-    "Quests completed over quests created, cumulative, sampled over time.",
-  "reports.quests.status.definition":
-    "Every quest in scope by state. Shelved quests and open quests of draft epics are excluded.",
-  "reports.quests.byArea.definition":
-    "Completed in the period and still open, per area.",
-  "reports.quests.byTag.definition":
-    "Completed in the period and still open, per tag. A quest counts once per tag, so the bars overlap.",
-  "reports.quests.byPriority.definition":
-    "Completed in the period and still open, per priority.",
-  "reports.quests.cycleTime.definition":
-    "Median hours from accepted to completed, hold time excluded, for quests completed in the period.",
-  "reports.quests.aging.definition":
-    "The oldest quests in progress, by days since accepted. Held quests are left out.",
-  "reports.members.leaderboard.definition":
-    "Quests completed per member in the period.",
-  "reports.members.contribution.definition":
-    "Quests completed per week by the top contributors.",
-  "reports.members.idle.definition":
-    "Members with no completed quest within the stale threshold.",
-  "reports.overview.kpi.completion.definition":
-    "Completed quests over all quests in scope.",
-  "reports.overview.kpi.open.definition":
-    "Accepted and not completed. Held quests are counted apart.",
-  "reports.overview.kpi.completedThisWeek.definition":
-    "Quests completed in the last seven days.",
-  "reports.overview.kpi.cycleTime.definition":
-    "Median time from accepted to completed, hold time excluded.",
-  "reports.overview.kpi.activeMembers.definition":
-    "Members who created, accepted, completed or commented on a quest.",
   "reports.quality.lines.definition":
     "Share of lines executed by the latest run.",
   "reports.quality.statements.definition":
@@ -1449,57 +1414,7 @@ export default {
   "reports.filter.tag": "Tag",
   "reports.filter.priority": "Priority",
   "reports.filter.member": "Member",
-  "reports.overview.kpi.completion": "Completion",
-  "reports.overview.kpi.open": "Open",
-  "reports.overview.kpi.completedThisWeek": "Completed this week",
-  "reports.overview.kpi.cycleTime": "Median cycle time",
   "reports.overview.kpi.cycleTimeHint": "p85 $1",
-  "reports.overview.kpi.heldHint": "$1 on hold",
-  "reports.overview.kpi.activeMembersHint": "in the period",
-  "reports.overview.kpi.activeMembers": "Active members",
-  "reports.overview.kpi.completionHint": "$1/$2 quests",
-  "reports.overview.kpi.weekDeltaHint": "$1 vs last week",
-  "reports.overview.burnup.title": "Burn-up",
-  "reports.overview.completionRate.title": "Completion rate",
-  "reports.overview.chart.created": "Created",
-  "reports.overview.chart.completed": "Completed",
-  "reports.overview.chart.completionRate": "Completion %",
-  "reports.overview.empty": "No data yet",
-  "reports.overview.attention.none": "Nothing needs attention.",
-  "reports.overview.attention.stale": "stale",
-  "reports.overview.attention.notStarted": "not started",
-  "reports.overview.attention.blocked": "blocked",
-  "reports.quests.status.title": "Status",
-  "reports.quests.status.todo": "To do",
-  "reports.quests.status.inProgress": "In progress",
-  "reports.quests.status.held": "On hold",
-  "reports.quests.status.completed": "Completed",
-  "reports.quests.status.empty": "No quests yet",
-  "reports.quests.byArea.title": "By area",
-  "reports.quests.byTag.title": "By tag",
-  // ⚠️ Said out loud because every other breakdown on this page
-  // partitions the project. A reader who assumes this one does too will
-  // add the bars up and find more quests than exist.
-  "reports.quests.byTag.description":
-    "A quest appears under each of its tags, so these bars overlap.",
-  "reports.quests.byTag.empty": "No quest carries a tag yet",
-  "reports.quests.byPriority.title": "By priority",
-  "reports.quests.cycleTime.title": "Cycle time by priority",
-  "reports.quests.cycleTime.medianHours": "Median hours",
-  "reports.quests.aging.title": "Oldest open quests",
-  "reports.quests.aging.empty": "No open quests",
-  "reports.quests.completed": "Completed",
-  "reports.quests.remaining": "Remaining",
-  "reports.quests.empty": "No data yet",
-  "reports.members.leaderboard.title": "Leaderboard",
-  "reports.members.leaderboard.empty": "No members yet.",
-  "reports.members.label.quests": "quests",
-  "reports.members.contribution.title": "Contribution",
-  "reports.members.contribution.empty": "Not enough activity yet.",
-  "reports.members.idle.title": "Idle members",
-  "reports.members.idle.empty": "Everyone's been active.",
-  "reports.members.idle.lastCompleted": "last completed $1",
-  "reports.members.idle.never": "never",
   "project.settings.kanban.tagColors.title": "Tag colours",
   "project.settings.kanban.tagColors.description":
     "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",

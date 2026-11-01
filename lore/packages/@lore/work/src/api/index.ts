@@ -263,3 +263,4 @@ export {
   QuestFlowService,
 } from "./services/QuestFlowService.ts";
 export { ReleaseForecast } from "./services/ReleaseForecast.ts";
+export { ProjectReportsService } from "./services/ProjectReportsService.ts";

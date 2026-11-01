@@ -876,8 +876,6 @@ export default {
   "project.settings.areas.delete.blocked":
     "Ce domaine contient encore des quêtes. Fusionnez-le vers un autre domaine.",
   "project.settings.nav.estates": "Domaines",
-  "project.reports.nav.overview": "Vue d'ensemble",
-  "project.reports.nav.quests": "Quêtes",
   "project.reports.nav.team": "Équipe",
   "reports.team.kpi.wip": "En cours",
   "reports.team.kpi.wip.definition":
@@ -965,7 +963,6 @@ export default {
   "reports.team.run.partial": "Partielle",
   "reports.team.run.failed": "Échouée",
   "reports.team.run.unknown": "Inconnue",
-  "project.reports.nav.members": "Groupe",
   "reports.quality.section.coverage": "Couverture",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Couverture dans le temps",
@@ -987,38 +984,6 @@ export default {
     "L'envoi nécessite LORE_API_KEY, une clé d'API créée depuis la page des clés de votre compte.",
   "reports.csv": "CSV",
   "reports.delta": "$1 par rapport à avant",
-  "reports.overview.burnup.definition":
-    "Quêtes créées et terminées, en cumulé, hors quêtes mises de côté et quêtes ouvertes des épopées en brouillon.",
-  "reports.overview.completionRate.definition":
-    "Quêtes terminées sur quêtes créées, en cumulé, échantillonné dans le temps.",
-  "reports.quests.status.definition":
-    "Chaque quête par état, hors quêtes mises de côté et quêtes ouvertes des épopées en brouillon.",
-  "reports.quests.byArea.definition":
-    "Terminées sur la période et encore ouvertes, par domaine.",
-  "reports.quests.byTag.definition":
-    "Terminées sur la période et encore ouvertes, par tag. Une quête compte une fois par tag : les barres se recoupent.",
-  "reports.quests.byPriority.definition":
-    "Terminées sur la période et encore ouvertes, par priorité.",
-  "reports.quests.cycleTime.definition":
-    "Heures médianes entre acceptation et fin, attente exclue, pour les quêtes terminées sur la période.",
-  "reports.quests.aging.definition":
-    "Les plus anciennes quêtes en cours, en jours depuis l'acceptation, hors quêtes en attente.",
-  "reports.members.leaderboard.definition":
-    "Quêtes terminées par membre sur la période.",
-  "reports.members.contribution.definition":
-    "Quêtes terminées par semaine par les principaux contributeurs.",
-  "reports.members.idle.definition":
-    "Membres sans quête terminée dans le seuil d'ancienneté.",
-  "reports.overview.kpi.completion.definition":
-    "Quêtes terminées sur toutes les quêtes retenues.",
-  "reports.overview.kpi.open.definition":
-    "Acceptées et non terminées. Les quêtes en attente sont comptées à part.",
-  "reports.overview.kpi.completedThisWeek.definition":
-    "Quêtes terminées ces sept derniers jours.",
-  "reports.overview.kpi.cycleTime.definition":
-    "Temps médian entre acceptation et fin, attente exclue.",
-  "reports.overview.kpi.activeMembers.definition":
-    "Membres ayant créé, accepté, terminé ou commenté une quête.",
   "reports.quality.lines.definition":
     "Part des lignes exécutées par le dernier passage.",
   "reports.quality.statements.definition":
@@ -1433,55 +1398,7 @@ export default {
   "reports.filter.tag": "Tag",
   "reports.filter.priority": "Priorité",
   "reports.filter.member": "Membre",
-  "reports.overview.kpi.completion": "Avancement",
-  "reports.overview.kpi.open": "En cours",
-  "reports.overview.kpi.completedThisWeek": "Terminées cette semaine",
-  "reports.overview.kpi.cycleTime": "Temps de cycle médian",
   "reports.overview.kpi.cycleTimeHint": "p85 $1",
-  "reports.overview.kpi.heldHint": "$1 en attente",
-  "reports.overview.kpi.activeMembersHint": "sur la période",
-  "reports.overview.kpi.activeMembers": "Membres actifs",
-  "reports.overview.kpi.completionHint": "$1/$2 quêtes",
-  "reports.overview.kpi.weekDeltaHint": "$1 par rapport à la semaine dernière",
-  "reports.overview.burnup.title": "Burn-up",
-  "reports.overview.completionRate.title": "Taux d'achèvement",
-  "reports.overview.chart.created": "Créées",
-  "reports.overview.chart.completed": "Terminées",
-  "reports.overview.chart.completionRate": "Taux d'achèvement",
-  "reports.overview.empty": "Aucune donnée pour le moment",
-  "reports.overview.attention.none": "Rien ne requiert d'attention.",
-  "reports.overview.attention.stale": "en attente",
-  "reports.overview.attention.notStarted": "non démarrées",
-  "reports.overview.attention.blocked": "bloquées",
-  "reports.quests.status.title": "Statut",
-  "reports.quests.status.todo": "À faire",
-  "reports.quests.status.inProgress": "En cours",
-  "reports.quests.status.held": "En attente",
-  "reports.quests.status.completed": "Terminées",
-  "reports.quests.status.empty": "Aucune quête pour le moment",
-  "reports.quests.byArea.title": "Par domaine",
-  "reports.quests.byTag.title": "Par étiquette",
-  "reports.quests.byTag.description":
-    "Une quête apparaît sous chacune de ses étiquettes : ces barres se recoupent.",
-  "reports.quests.byTag.empty": "Aucune quête n'a encore d'étiquette",
-  "reports.quests.byPriority.title": "Par priorité",
-  "reports.quests.cycleTime.title": "Temps de cycle par priorité",
-  "reports.quests.cycleTime.medianHours": "Heures (médiane)",
-  "reports.quests.aging.title": "Quêtes ouvertes les plus anciennes",
-  "reports.quests.aging.empty": "Aucune quête ouverte",
-  "reports.quests.completed": "Terminées",
-  "reports.quests.remaining": "Restantes",
-  "reports.quests.empty": "Aucune donnée pour le moment",
-  "reports.members.leaderboard.title": "Classement",
-  "reports.members.leaderboard.empty":
-    "Aucun membre dans le groupe pour le moment.",
-  "reports.members.label.quests": "quêtes",
-  "reports.members.contribution.title": "Contribution",
-  "reports.members.contribution.empty": "Pas assez d'activité pour le moment.",
-  "reports.members.idle.title": "Membres inactifs",
-  "reports.members.idle.empty": "Tout le monde a été actif.",
-  "reports.members.idle.lastCompleted": "dernière quête terminée $1",
-  "reports.members.idle.never": "jamais",
   "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
   "project.settings.kanban.tagColors.description":
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",

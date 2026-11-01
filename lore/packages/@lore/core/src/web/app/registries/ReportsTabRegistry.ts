@@ -53,33 +53,13 @@ export class ReportsTabRegistry {
   }
 
   /**
-   * Which tabs a project has wants to know something only a request can
-   * answer (whether a quality run exists): each such tab's `available` runs
-   * here, in parallel, when Reports opens. A failure hides the tab, never the
-   * page.
-   */
-  public async availability(projectId: number): Promise<string[]> {
-    const answers = await Promise.all(
-      this.entries.map(async (tab) =>
-        !tab.available || (await tab.available(projectId).catch(() => false))
-          ? tab.route
-          : undefined,
-      ),
-    );
-    return answers.filter((it): it is string => !!it);
-  }
-
-  /**
-   * Which Reports tabs this project has, given what `availability` answered.
+   * Which Reports tabs this project has.
    */
   public tabs(
     project: Pick<ProjectResource, "capabilities"> | undefined,
-    available: readonly string[],
   ): ReportsTab[] {
     return this.entries.filter(
-      (tab) =>
-        (!tab.needs || hasCapability(project, tab.needs)) &&
-        available.includes(tab.route),
+      (tab) => !tab.needs || hasCapability(project, tab.needs),
     );
   }
 }
@@ -105,11 +85,6 @@ export interface ReportsTab {
    * shows the others disabled (#Q2996).
    */
   filters?: readonly ReportsFilterKey[];
-  /**
-   * A last say that needs a request, run when Reports opens. Only Quality
-   * has one: the tab exists once there is something in it.
-   */
-  available?: (projectId: number) => Promise<boolean>;
 }
 
 export interface ReportsFilter {

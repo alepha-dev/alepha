@@ -109,7 +109,6 @@ export {
   reportsQuerySchema,
 } from "../api/schemas/reportsQuerySchema.ts";
 export {
-  reportsMembersSchema,
   reportsOverviewSchema,
   reportsPeriodFiguresSchema,
   reportsQuestsSchema,

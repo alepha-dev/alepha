@@ -25,7 +25,7 @@ export class WorkFlowDashboardMetrics {
 
   constructor() {
     const toReports =
-      (route: "reportsOverview" | "reportsQuests") =>
+      (route: "reportsFlow" | "reportsBacklog") =>
       (
         _scope: unknown,
         target: DashboardCardTarget,
@@ -51,7 +51,7 @@ export class WorkFlowDashboardMetrics {
       presentation: "chart",
       chartStyle: "area",
       filters: burnupFiltersSchema,
-      link: toReports("reportsOverview"),
+      link: toReports("reportsFlow"),
     });
     this.catalog.register({
       ...common,
@@ -63,7 +63,7 @@ export class WorkFlowDashboardMetrics {
       presentation: "chart",
       chartStyle: "bars",
       filters: completedPerWeekFiltersSchema,
-      link: toReports("reportsOverview"),
+      link: toReports("reportsFlow"),
     });
     this.catalog.register({
       ...common,
@@ -84,7 +84,7 @@ export class WorkFlowDashboardMetrics {
       icon: "check-circle-2",
       presentation: "trend",
       filters: completedThisWeekFiltersSchema,
-      link: toReports("reportsOverview"),
+      link: toReports("reportsFlow"),
     });
     this.catalog.register({
       ...common,
@@ -95,7 +95,7 @@ export class WorkFlowDashboardMetrics {
       icon: "timer",
       presentation: "scalar",
       filters: cycleTimeFiltersSchema,
-      link: toReports("reportsQuests"),
+      link: toReports("reportsFlow"),
     });
     this.catalog.register({
       ...common,
@@ -106,7 +106,7 @@ export class WorkFlowDashboardMetrics {
       icon: "pie-chart",
       presentation: "progress",
       filters: questBreakdownFiltersSchema,
-      link: toReports("reportsQuests"),
+      link: toReports("reportsBacklog"),
     });
     this.catalog.register({
       ...common,

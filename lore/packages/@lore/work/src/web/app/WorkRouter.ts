@@ -6,6 +6,7 @@ import {
   CoreRouter,
   hasCapability,
   canInProject,
+  RedirectPage,
   ReportsTabRegistry,
   ReportsUrlQuery,
 } from "@lore/core/web";
@@ -648,54 +649,31 @@ export class WorkRouter {
     }),
   });
 
-  reportsOverview = $page({
-    parent: this.core.projectReports,
-    name: "reportsOverview",
-    path: "/overview",
-    lazy: () =>
-      import("./components/project/reports/ReportsOverview.client.tsx"),
-    schema: { query: reportsUrlSchema },
-    loader: async ({ query }) => ({
-      overview: await this.projectReportsApi.getReportsOverview({
-        params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-        query: this.reportsQuery("reportsOverview", query),
-      }),
-    }),
-  });
-
+  // The Quests and Members tabs became Backlog and Team (#Q3016). The routes
+  // stay for the links people hold, like `reportsQuality`.
   reportsQuests = $page({
     parent: this.core.projectReports,
     name: "reportsQuests",
     path: "/quests",
-    lazy: () => import("./components/project/reports/ReportsQuests.client.tsx"),
-    schema: { query: reportsUrlSchema },
-    loader: async ({ query }) => ({
-      quests: await this.projectReportsApi.getReportsQuests({
-        params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-        query: this.reportsQuery("reportsQuests", query),
-      }),
-    }),
+    component: RedirectPage,
+    // Annotated `Promise<void>` because it always throws.
+    loader: async (): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/reports/backlog`,
+      });
+    },
   });
 
   reportsMembers = $page({
     parent: this.core.projectReports,
     name: "reportsMembers",
     path: "/members",
-    lazy: () =>
-      import("./components/project/reports/ReportsMembers.client.tsx"),
-    schema: { query: reportsUrlSchema },
-    loader: async ({ query }) => ({
-      members: await this.projectReportsApi.getReportsMembers({
-        params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-        query: this.reportsQuery("reportsMembers", query),
-      }),
-    }),
+    component: RedirectPage,
+    loader: async (): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/reports/team`,
+      });
+    },
   });
 
   projectFeedbackRequest = $page({

@@ -2,7 +2,7 @@ import { ProjectController, ProjectDashboardController } from "@lore/core/api";
 import type { DashboardCardValue, DashboardScope } from "@lore/core/schemas";
 import { projectCapabilities } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { ProjectReportsController } from "@lore/work/api";
+import { ProjectReportsService } from "@lore/work/api";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -36,7 +36,7 @@ describe("dashboard flow tiles", () => {
   let alepha: Alepha;
   let repos: FlowRepositories;
   let board: ProjectDashboardController;
-  let reports: ProjectReportsController;
+  let reports: ProjectReportsService;
   let dateTime: DateTimeProvider;
   let owner: UserAccountToken;
   let projectId: number;
@@ -54,7 +54,7 @@ describe("dashboard flow tiles", () => {
     repos = alepha.inject(FlowRepositories);
     await alepha.start();
     board = alepha.inject(ProjectDashboardController);
-    reports = alepha.inject(ProjectReportsController);
+    reports = alepha.inject(ProjectReportsService);
     dateTime = alepha.inject(DateTimeProvider);
 
     owner = token(crypto.randomUUID());
@@ -117,10 +117,9 @@ describe("dashboard flow tiles", () => {
       await completeDaysAgo(9, 2);
 
       const value = await resolve("completedThisWeek");
-      const overview = await reports.getReportsOverview.fetch(
-        { params: { id: projectId } },
-        { user: owner },
-      );
+      const overview = {
+        data: await reports.overview(projectId, {}),
+      };
 
       expect(value.value).toBe(overview.data.kpis.completedThisWeek);
       expect(value.detail.lastWeek).toBe(overview.data.kpis.completedLastWeek);
@@ -135,10 +134,9 @@ describe("dashboard flow tiles", () => {
       await completeDaysAgo(2, 2);
 
       const value = await resolve("burnup");
-      const overview = await reports.getReportsOverview.fetch(
-        { params: { id: projectId } },
-        { user: owner },
-      );
+      const overview = {
+        data: await reports.overview(projectId, {}),
+      };
       const last = overview.data.burnup[overview.data.burnup.length - 1]!;
 
       expect(value.value).toBe(last.completed);
@@ -149,10 +147,9 @@ describe("dashboard flow tiles", () => {
       await completeDaysAgo(1);
 
       const value = await resolve("cycleTime");
-      const overview = await reports.getReportsOverview.fetch(
-        { params: { id: projectId } },
-        { user: owner },
-      );
+      const overview = {
+        data: await reports.overview(projectId, {}),
+      };
 
       expect(value.value).toBe(
         Math.round(overview.data.kpis.medianCycleTimeHours),
@@ -166,10 +163,9 @@ describe("dashboard flow tiles", () => {
       await quest({ area: "ui" });
 
       const value = await resolve("questBreakdown", { by: "area" });
-      const tab = await reports.getReportsQuests.fetch(
-        { params: { id: projectId } },
-        { user: owner },
-      );
+      const tab = {
+        data: await reports.questsReport(projectId, {}),
+      };
 
       expect(value.segments).toEqual(
         tab.data.byArea.map((row) => ({

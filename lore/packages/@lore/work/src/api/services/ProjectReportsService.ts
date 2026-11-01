@@ -1,7 +1,6 @@
 import { ReportStatistics } from "@lore/core/api";
 import { projects, type ReportsQuery } from "@lore/core/schemas";
 import {
-  reportsMembersSchema,
   reportsOverviewSchema,
   reportsPeriodFiguresSchema,
   reportsQuestsSchema,
@@ -415,8 +414,8 @@ export class ProjectReportsService {
   }
 
   /**
-   * Reports "Overview" tab: KPI tiles, a cumulative created-vs-completed
-   * burn-up chart, a weekly completion-rate trend, and counts of quests that
+   * The figures Flow, the Summary and the dashboard tiles share: KPI tiles, a cumulative created-vs-completed
+   * burn-up chart, and counts of quests that
    * need attention (stale, not started, blocked).
    *
    * Members-only. Every date computation
@@ -549,30 +548,6 @@ export class ProjectReportsService {
       .sampled(daily, query.grain ?? this.series.grainFor(axis.length))
       .map(({ at, ...point }) => ({ date: at, ...point }));
 
-    // Weekly completion-rate trend — sample every 7th burn-up point plus
-    // the last so the latest cumulative figure is always represented.
-    const completionTrend: { date: string; rate: number }[] = [];
-    for (let i = 0; i < burnup.length; i += 7) {
-      const p = burnup[i];
-      completionTrend.push({
-        date: p.date,
-        rate: p.created > 0 ? Math.round((p.completed / p.created) * 100) : 0,
-      });
-    }
-    const last = burnup[burnup.length - 1];
-    if (
-      last &&
-      completionTrend[completionTrend.length - 1]?.date !== last.date
-    ) {
-      completionTrend.push({
-        date: last.date,
-        rate:
-          last.created > 0
-            ? Math.round((last.completed / last.created) * 100)
-            : 0,
-      });
-    }
-
     // Attention counts. A quest is blocked while the one it depends on is
     // still open: `subquery` correlates through the outer `depends_on`.
     const [attentionAgg] = await this.quests.aggregate({
@@ -625,13 +600,12 @@ export class ProjectReportsService {
       period,
       ...(previous ? { previous } : {}),
       burnup,
-      completionTrend,
       attention,
     };
   }
 
   /**
-   * Reports "Quests" tab: a lifecycle funnel (to do → in progress → completed),
+   * The quest breakdowns the dashboard tiles read: a lifecycle funnel (to do → in progress → completed),
    * completed-vs-remaining breakdowns by area and by priority, median cycle
    * time per priority, and an actionable list of the oldest still-open quests.
    *
@@ -898,151 +872,6 @@ export class ProjectReportsService {
       name: row.name ?? String(row.user_id).slice(0, 8),
       picture: row.picture ?? undefined,
     }));
-  }
-
-  /**
-   * Reports "Members" tab: a per-member leaderboard (completed quests), a
-   * weekly per-contributor contribution matrix for a stacked-area chart, and
-   * an "idle" list of members who have not completed a quest in the last 14
-   * days.
-   *
-   * Same access model as `getReportsOverview`: members-only. Date
-   * computations dialect-branch (SQLite epoch-ms integers on D1, Postgres
-   * timestamps on node).
-   */
-  async membersReport(
-    projectId: number,
-    query: ReportsQuery,
-  ): Promise<Infer<typeof reportsMembersSchema>> {
-    const params = { id: projectId };
-    const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
-    const scope = this.questScope(params.id, draftEpicIds, query);
-    const window: ReportWindow = { from: query.from, to: query.to };
-
-    // Leaderboard: one row per member in the project, and the completions in
-    // scope counted apart.
-    const memberRows = await this.membersOf(params.id);
-
-    const completedByUser = await this.quests.aggregate({
-      select: { completedBy: true, quests: { count: { column: "id" } } },
-      where: { ...scope, completedAt: this.completedWithin(window) },
-      groupBy: ["completedBy"],
-    });
-    const completedOf = new Map(
-      completedByUser.map((row) => [row.completedBy, row.quests.count]),
-    );
-
-    const leaderboard = memberRows
-      .map((row) => ({
-        ...row,
-        questsCompleted: completedOf.get(row.userId) ?? 0,
-      }))
-      .sort((a, b) => b.questsCompleted - a.questsCompleted);
-
-    // Top contributors by completed quests (only those with completions).
-    const contributorRows = leaderboard
-      .filter((row) => row.questsCompleted > 0)
-      .slice(0, query.top ?? 5);
-    const contributors = contributorRows.map((row) => row.name);
-    const contributorByUserId = new Map(
-      contributorRows.map((row) => [row.userId, row.name]),
-    );
-
-    // Weekly completion buckets per user over the period, the last 8 weeks
-    // without one. `week` is a sortable ISO label ("2026-W11") on both
-    // dialects.
-    const contributionFrom =
-      query.from ?? this.dt.now().subtract(56, "day").toISOString();
-    const contributionQuery = (
-      await this.quests.aggregate({
-        select: {
-          week: { expr: this.sqlx.dateWeek(this.quests.table.completedAt) },
-          completedBy: true,
-          quests: { count: { column: "id" } },
-        },
-        where: {
-          ...scope,
-          completedAt: this.completedWithin({
-            from: contributionFrom,
-            to: query.to,
-          }),
-        },
-        groupBy: ["week", "completedBy"],
-      })
-    ).map((row) => ({
-      week: String(row.week),
-      completed_by: row.completedBy,
-      count: row.quests.count,
-    }));
-
-    // Pivot: week axis × contributor name → count.
-    const weeks = Array.from(
-      new Set(contributionQuery.map((r) => String(r.week))),
-    ).sort();
-    const countsByWeek = new Map<string, Record<string, number>>();
-    for (const week of weeks) {
-      const counts: Record<string, number> = {};
-      for (const name of contributors) {
-        counts[name] = 0;
-      }
-      countsByWeek.set(week, counts);
-    }
-    for (const row of contributionQuery) {
-      const name = row.completed_by
-        ? contributorByUserId.get(String(row.completed_by))
-        : undefined;
-      if (!name) continue;
-      const counts = countsByWeek.get(String(row.week));
-      if (counts) {
-        counts[name] = (counts[name] ?? 0) + Number(row.count);
-      }
-    }
-    const contribution = weeks.map((week) => ({
-      date: week,
-      counts: countsByWeek.get(week) ?? {},
-    }));
-
-    // Idle members: most recent completed quest older than the stale
-    // threshold, or never completed one.
-    const lastCompletedQuery = await this.quests.aggregate({
-      select: { completedBy: true, completedAt: { max: true } },
-      where: { ...scope, completedAt: { isNotNull: true } },
-      groupBy: ["completedBy"],
-    });
-
-    const lastCompletedByUserId = new Map<string, string>();
-    for (const row of lastCompletedQuery) {
-      if (row.completedBy && row.completedAt.max != null) {
-        lastCompletedByUserId.set(row.completedBy, row.completedAt.max);
-      }
-    }
-
-    const now = this.dt.nowMillis();
-    const idle = leaderboard
-      .map((member) => {
-        // Decoded by the column, so an ISO timestamp on both dialects.
-        const raw = lastCompletedByUserId.get(member.userId);
-        const lastMs = raw == null ? undefined : this.dt.of(raw).valueOf();
-        return { member, raw, lastMs };
-      })
-      .filter(
-        ({ lastMs }) =>
-          lastMs === undefined ||
-          now - lastMs > (query.staleDays ?? 14) * 86400000,
-      )
-      .map(({ member, raw }) => ({
-        userId: member.userId,
-        name: member.name,
-        picture: member.picture,
-        lastCompletedAt: raw ?? undefined,
-      }));
-
-    return {
-      leaderboard,
-      contributors,
-      contribution,
-      idle,
-    };
   }
 }
 

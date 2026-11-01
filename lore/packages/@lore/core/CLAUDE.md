@@ -95,8 +95,8 @@ column conflated the two, which is what this epic fixed; it was dropped with #E7
 Everything not claimed above is **Core** and always on: project identity,
 members, settings, and the three surfaces that _compose_ capabilities - the
 dashboard, the activity feed and the command palette. Reports is Core too, and
-each of its tabs declares its own capability, because Quality is Apps baseline
-and Members comes from a core table.
+each of its tabs declares its own capability, because Delivery is Apps baseline
+and Team reads core's activity dataset.
 
 **Where it lives.**
 

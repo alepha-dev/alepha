@@ -451,21 +451,7 @@ export class CoreRouter {
       title: `${previous?.title ?? ""} › Reports`,
     }),
     lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
-    /**
-     * Which registered tabs have something to show, for a tab whose gate needs
-     * a request (Quality: whether any run exists).
-     *
-     * ⚠️ Read HERE and not on the `project` loader. That one already runs its
-     * parallel reads on every project navigation, and most projects will never
-     * push a run - so this is paid when Reports opens, by the one page that
-     * needs the answer. A failed read hides a tab, never the page.
-     */
-    loader: async ({ query }) => ({
-      available: await this.reportsTabs.availability(
-        this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-      ),
-      query,
-    }),
+    loader: async ({ query }) => ({ query }),
   });
 
   /**
@@ -480,10 +466,11 @@ export class CoreRouter {
     lazy: () =>
       import("./components/project/reports/ReportsSummary.client.tsx"),
     loader: async ({ query }) => {
-      const projectId = this.alepha.store.get(currentProjectAtom)?.id ?? -1;
+      const project = this.alepha.store.get(currentProjectAtom);
+      const projectId = project?.id ?? -1;
       return {
         url: query,
-        tabs: await this.reportsTabs.availability(projectId),
+        tabs: this.reportsTabs.tabs(project).map((tab) => tab.route),
         summary: await this.reportsSummaryApi.getReportsSummary({
           params: { id: projectId },
           query: this.reportsUrl.toQuery(

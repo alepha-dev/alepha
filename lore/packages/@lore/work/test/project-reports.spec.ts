@@ -3,6 +3,7 @@ import {
   ProjectAnalyticsController,
   ProjectController,
 } from "@lore/core/api";
+import type { ReportsQuery } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -13,7 +14,11 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectReportsController, QuestController } from "../src/api/index.ts";
+import {
+  ProjectReportsController,
+  ProjectReportsService,
+  QuestController,
+} from "../src/api/index.ts";
 import { LoreWorkApi } from "../src/api/index.ts";
 import { WorkTestEntities } from "../src/testing/index.ts";
 
@@ -121,11 +126,31 @@ async function createTestQuest(
   return response.data;
 }
 
+/**
+ * The figures the dashboard and Flow share, read off the service: no tab shows
+ * them whole any more (#Q3016). Shaped like an action's answer so the specs read
+ * the same.
+ */
+let reports: ProjectReportsService;
+const overviewOf = async (
+  request: { params: { id: number }; query?: Partial<ReportsQuery> },
+  _options?: unknown,
+) => ({
+  data: await reports.overview(request.params.id, request.query ?? {}),
+});
+const questsOf = async (
+  request: { params: { id: number }; query?: Partial<ReportsQuery> },
+  _options?: unknown,
+) => ({
+  data: await reports.questsReport(request.params.id, request.query ?? {}),
+});
+
 describe("ProjectReportsController", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
     ctx = await setup();
+    reports = ctx.alepha.inject(ProjectReportsService);
   });
 
   afterEach(async () => {
@@ -183,7 +208,7 @@ describe("ProjectReportsController", () => {
       expect,
     }) => {
       const c = await setupReportsProject();
-      const res = await c.controller.getReportsOverview.fetch(
+      const res = await overviewOf(
         { params: { id: c.projectId } },
         { user: c.owner },
       );
@@ -197,7 +222,7 @@ describe("ProjectReportsController", () => {
       expect,
     }) => {
       const ctx = await setupReportsProject();
-      const res = await ctx.controller.getReportsQuests.fetch(
+      const res = await questsOf(
         { params: { id: ctx.projectId } },
         { user: ctx.owner },
       );
@@ -252,7 +277,7 @@ describe("ProjectReportsController", () => {
         area: "core",
       });
 
-      const res = await ctx.reportsController.getReportsQuests.fetch(
+      const res = await questsOf(
         { params: { id: project.id } },
         { user: owner },
       );
@@ -275,19 +300,6 @@ describe("ProjectReportsController", () => {
         0,
       );
       expect(counted).toBe(3);
-    });
-
-    it("getReportsMembers returns the leaderboard and contribution series", async ({
-      expect,
-    }) => {
-      const ctx = await setupReportsProject();
-      const res = await ctx.controller.getReportsMembers.fetch(
-        { params: { id: ctx.projectId } },
-        { user: ctx.owner },
-      );
-      expect(Array.isArray(res.data.leaderboard)).toBe(true);
-      expect(Array.isArray(res.data.contributors)).toBe(true);
-      expect(Array.isArray(res.data.contribution)).toBe(true);
     });
   });
 
@@ -320,12 +332,7 @@ describe("ProjectReportsController", () => {
       owner: { id: string; roles: string[] },
       projectId: number,
     ) =>
-      (
-        await ctx.reportsController.getReportsOverview.fetch(
-          { params: { id: projectId } },
-          { user: owner },
-        )
-      ).data;
+      (await overviewOf({ params: { id: projectId } }, { user: owner })).data;
 
     it("active members are the ones who touched a quest, not the organization", async ({
       expect,
@@ -365,7 +372,7 @@ describe("ProjectReportsController", () => {
       expect(data.kpis.heldQuests).toBe(1);
       expect(data.attention.staleQuests).toBe(0);
 
-      const quests = await ctx.reportsController.getReportsQuests.fetch(
+      const quests = await questsOf(
         { params: { id: project.id } },
         { user: owner },
       );
@@ -1214,7 +1221,7 @@ describe("ProjectReportsController", () => {
     it("narrows every period figure to the period", async ({ expect }) => {
       const { owner, projectId, iso } = await seed();
 
-      const res = await ctx.reportsController.getReportsOverview.fetch(
+      const res = await overviewOf(
         { params: { id: projectId }, query: { from: iso(7), to: iso(0) } },
         { user: owner },
       );
@@ -1231,7 +1238,7 @@ describe("ProjectReportsController", () => {
     }) => {
       const { owner, projectId, iso } = await seed();
 
-      const res = await ctx.reportsController.getReportsOverview.fetch(
+      const res = await overviewOf(
         {
           params: { id: projectId },
           query: { from: iso(7), to: iso(0), compare: true },
@@ -1241,7 +1248,7 @@ describe("ProjectReportsController", () => {
 
       expect(res.data.previous?.completed).toBe(1);
 
-      const wider = await ctx.reportsController.getReportsOverview.fetch(
+      const wider = await overviewOf(
         {
           params: { id: projectId },
           query: { from: iso(10), to: iso(0), compare: true },
@@ -1251,7 +1258,7 @@ describe("ProjectReportsController", () => {
       expect(wider.data.previous?.completed).toBe(1);
       expect(wider.data.previous?.medianCycleTimeHours).toBeCloseTo(100);
 
-      const quests = await ctx.reportsController.getReportsQuests.fetch(
+      const quests = await questsOf(
         {
           params: { id: projectId },
           query: { from: iso(10), to: iso(0), compare: true },
@@ -1266,7 +1273,7 @@ describe("ProjectReportsController", () => {
     }) => {
       const { owner, projectId } = await seed();
 
-      const res = await ctx.reportsController.getReportsOverview.fetch(
+      const res = await overviewOf(
         { params: { id: projectId }, query: { compare: true } },
         { user: owner },
       );
@@ -1278,7 +1285,7 @@ describe("ProjectReportsController", () => {
       const { owner, projectId } = await seed();
       const fetch = async (query: Record<string, unknown>) =>
         (
-          await ctx.reportsController.getReportsOverview.fetch(
+          await overviewOf(
             { params: { id: projectId }, query },
             { user: owner },
           )
@@ -1306,7 +1313,7 @@ describe("ProjectReportsController", () => {
         acceptedBy: owner.id,
       });
 
-      const res = await ctx.reportsController.getReportsOverview.fetch(
+      const res = await overviewOf(
         { params: { id: projectId }, query: { memberId: owner.id } },
         { user: owner },
       );
@@ -1317,7 +1324,7 @@ describe("ProjectReportsController", () => {
     it("draws the burn-up at the grain asked for", async ({ expect }) => {
       const { owner, projectId, iso } = await seed();
 
-      const res = await ctx.reportsController.getReportsOverview.fetch(
+      const res = await overviewOf(
         {
           params: { id: projectId },
           query: { from: iso(70), to: iso(0), grain: "week" },
@@ -1339,7 +1346,7 @@ describe("ProjectReportsController", () => {
 
       const stale = async (staleDays?: number) =>
         (
-          await ctx.reportsController.getReportsOverview.fetch(
+          await overviewOf(
             {
               params: { id: projectId },
               query: staleDays ? { staleDays } : {},
@@ -1351,7 +1358,7 @@ describe("ProjectReportsController", () => {
       expect(await stale()).toBe(0);
       expect(await stale(3)).toBe(1);
 
-      const report = await ctx.reportsController.getReportsQuests.fetch(
+      const report = await questsOf(
         { params: { id: projectId }, query: { top: 1, agingLimit: 1 } },
         { user: owner },
       );
@@ -1407,7 +1414,7 @@ describe("ProjectReportsController", () => {
     }) => {
       const c = await setupEpicProject();
 
-      const res = await ctx.reportsController.getReportsOverview.fetch(
+      const res = await overviewOf(
         { params: { id: c.projectId } },
         { user: c.owner },
       );
@@ -1454,7 +1461,7 @@ describe("ProjectReportsController", () => {
       });
       await ctx.repos.quests.updateById(done.id, { epicId: parkedEpic.id });
 
-      const overview = await ctx.reportsController.getReportsOverview.fetch(
+      const overview = await overviewOf(
         { params: { id: project.id } },
         { user: owner },
       );
@@ -1463,16 +1470,6 @@ describe("ProjectReportsController", () => {
       // The burn-up is cumulative, so the last point carries the total.
       const last = overview.data.burnup[overview.data.burnup.length - 1];
       expect(last?.completed).toBe(1);
-
-      const members = await ctx.reportsController.getReportsMembers.fetch(
-        { params: { id: project.id } },
-        { user: owner },
-      );
-
-      const credit = members.data.leaderboard.find(
-        (row) => row.userId === owner.id,
-      );
-      expect(credit?.questsCompleted).toBe(1);
     });
 
     it("keeps the funnel consistent with the KPI totals", async ({
@@ -1480,7 +1477,7 @@ describe("ProjectReportsController", () => {
     }) => {
       const c = await setupEpicProject();
 
-      const res = await ctx.reportsController.getReportsQuests.fetch(
+      const res = await questsOf(
         { params: { id: c.projectId } },
         { user: c.owner },
       );

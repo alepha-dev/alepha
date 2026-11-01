@@ -239,17 +239,17 @@ test.describe("Project capabilities", () => {
       timeout: 15_000,
     });
 
-    // Reports is Core and its tabs declare their own capability: Members
-    // comes from a core table and survives with no capability at all.
+    // Reports is Core and its tabs declare their own capability: Team reads
+    // core's activity dataset and survives with no capability at all.
     await page.goto(`/${slug}/reports`);
     await page.waitForLoadState("networkidle");
+    await expect(page.locator(`a[href="/${slug}/reports/team"]`)).toBeVisible({
+      timeout: 15_000,
+    });
+    // Flow and Backlog belong to Work, which is off.
     await expect(
-      page.locator(`a[href="/${slug}/reports/members"]`),
-    ).toBeVisible({ timeout: 15_000 });
-    // Overview and Quests belong to Work, which is off.
-    await expect(page.locator(`a[href="/${slug}/reports/quests"]`)).toHaveCount(
-      0,
-    );
+      page.locator(`a[href="/${slug}/reports/backlog"]`),
+    ).toHaveCount(0);
     // Delivery is Apps baseline. Its Quality section self-hides until a run
     // exists, so nothing names it right up to the push below.
     await expect(

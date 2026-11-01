@@ -87,7 +87,6 @@ const NAV_ROUTE_NAMES = [
   "bayCommands",
   "baySettings",
   // Reports tab bar — ReportsLayout.tsx
-  "reportsOverview",
   "reportsQuests",
   "reportsMembers",
   "reportsQuality",

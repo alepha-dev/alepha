@@ -23,24 +23,6 @@ const registry = (() => {
 })();
 
 /**
- * Every tab available, except Quality unless a run exists: what
- * `ReportsTabRegistry.availability` answers.
- */
-const reportsTabs = (project: ReturnType<typeof projectFixture>) =>
-  registry.tabs(project, [
-    "reportsSummary",
-    "reportsFlow",
-    "reportsBacklog",
-    "reportsPlanning",
-    "reportsSupport",
-    "reportsDelivery",
-    "reportsTeam",
-    "reportsOverview",
-    "reportsQuests",
-    "reportsMembers",
-  ]);
-
-/**
  * Which Reports tabs a project has.
  *
  * Reports itself is Core: its ENTRY is unconditional, and each tab declares
@@ -56,38 +38,31 @@ const reportsTabs = (project: ReturnType<typeof projectFixture>) =>
  */
 describe("reportsTabs", () => {
   it("declares the filters of each tab, and honours none on an unknown tab", () => {
-    expect(registry.honours("reportsOverview")).toContain("area");
-    expect(registry.honours("reportsQuests")).not.toContain("grain");
+    expect(registry.honours("reportsFlow")).toContain("area");
+    expect(registry.honours("reportsBacklog")).not.toContain("grain");
     expect(registry.honours("reportsDelivery")).toContain("branch");
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
   const names = (
     capabilities: Array<"work" | "knowledge" | "apps" | "support">,
-  ) => reportsTabs(projectFixture({ capabilities })).map((tab) => tab.route);
+  ) => registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
 
-  it("gives a Work project the two derived quest tabs, plus Members", () => {
+  it("gives a Work project its tabs, plus Team", () => {
     expect(names(["work"])).toEqual([
       "reportsSummary",
       "reportsFlow",
       "reportsBacklog",
       "reportsPlanning",
       "reportsTeam",
-      "reportsOverview",
-      "reportsQuests",
-      "reportsMembers",
     ]);
   });
 
-  it("leaves Members standing on a project with no capability at all", () => {
-    // Members comes from a core table, so it is the one tab that survives
+  it("leaves Team standing on a project with no capability at all", () => {
+    // Team reads core's activity dataset, so it is the one tab that survives
     // everything being turned off - which is what makes Reports worth keeping
     // as a Core entry.
-    expect(names([])).toEqual([
-      "reportsSummary",
-      "reportsTeam",
-      "reportsMembers",
-    ]);
+    expect(names([])).toEqual(["reportsSummary", "reportsTeam"]);
   });
 
   it("keeps Delivery for an Apps-only project", () => {
@@ -98,7 +73,6 @@ describe("reportsTabs", () => {
       "reportsSummary",
       "reportsDelivery",
       "reportsTeam",
-      "reportsMembers",
     ]);
   });
 

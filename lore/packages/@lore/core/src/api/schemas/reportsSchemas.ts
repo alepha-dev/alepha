@@ -1,8 +1,8 @@
 import { z } from "alepha";
 
 /**
- * Response schemas for the three Reports dashboard endpoints. Shared by
- * `ProjectReportsController`, its tests, and the frontend page loaders.
+ * What `ProjectReportsService` answers, for Flow, the Summary and the dashboard
+ * tiles.
  */
 
 /**
@@ -45,8 +45,6 @@ export const reportsOverviewSchema = z.object({
       completed: z.integer(),
     }),
   ),
-  // Sampled completion rate (cumulative completed / cumulative created * 100).
-  completionTrend: z.array(z.object({ date: z.string(), rate: z.number() })),
   attention: z.object({
     staleQuests: z.integer(),
     notStartedQuests: z.integer(),
@@ -115,34 +113,6 @@ export const reportsQuestsSchema = z.object({
       area: z.string(),
       priority: z.string(),
       ageDays: z.integer(),
-    }),
-  ),
-});
-
-export const reportsMembersSchema = z.object({
-  leaderboard: z.array(
-    z.object({
-      userId: z.string(),
-      name: z.string(),
-      picture: z.string().optional(),
-      questsCompleted: z.integer(),
-    }),
-  ),
-  // Top contributors' names — drives the dynamic stacked-area ChartConfig.
-  contributors: z.array(z.string()),
-  // Weekly completions; `counts` keyed by contributor name (from `contributors`).
-  contribution: z.array(
-    z.object({
-      date: z.string(),
-      counts: z.record(z.text(), z.integer()),
-    }),
-  ),
-  idle: z.array(
-    z.object({
-      userId: z.string(),
-      name: z.string(),
-      picture: z.string().optional(),
-      lastCompletedAt: z.string().optional(),
     }),
   ),
 });

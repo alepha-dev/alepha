@@ -534,26 +534,6 @@ export class WorkShell {
       order: 9.9,
       filters: ["period"],
     });
-    this.reports.register({
-      route: "reportsOverview",
-      labelKey: "project.reports.nav.overview",
-      order: 10,
-      needs: "work",
-      filters: ["period", "grain", "compare", ...workFilters],
-    });
-    this.reports.register({
-      route: "reportsQuests",
-      labelKey: "project.reports.nav.quests",
-      order: 20,
-      needs: "work",
-      filters: ["period", "compare", ...workFilters],
-    });
-    this.reports.register({
-      route: "reportsMembers",
-      labelKey: "project.reports.nav.members",
-      order: 30,
-      filters: ["period", ...workFilters],
-    });
     this.registerReportFilters();
   }
 
