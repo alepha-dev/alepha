@@ -50,6 +50,14 @@ export class WorkAutomationPresets {
       { folio: { kind: "folio", required: true } },
       ["appendFolio", "notify"],
     );
+    this.register(
+      "weekly-report-digest",
+      "Weekly report",
+      "Send the Reports summary of the last seven days to one member, every Monday at 08:00 UTC. They opt out in their notification settings.",
+      "reports.summary",
+      (values) => this.weekly(values),
+      "0 8 * * 1",
+    );
   }
   protected register(
     key: string,
@@ -144,6 +152,17 @@ export class WorkAutomationPresets {
       guard: null,
       actions: [
         this.notify(values, "Tagged quest digest: {{tag}}", "{{summary}}"),
+      ],
+    };
+  }
+  protected weekly(values: AutomationPresetValues): AutomationRule {
+    return {
+      version: 1,
+      trigger: { kind: "schedule", cron: "0 8 * * 1" },
+      select: { kind: "collection", key: "reports.summary", filters: {} },
+      guard: null,
+      actions: [
+        this.notify(values, "Weekly report: {{project}}", "{{summary}}"),
       ],
     };
   }

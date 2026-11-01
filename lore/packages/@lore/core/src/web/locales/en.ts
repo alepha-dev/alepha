@@ -95,6 +95,11 @@ export default {
   "automation.preset.feedback-created.title": "New feedback",
   "automation.preset.feedback-created.description":
     "Notify one member when feedback is created. Reporter contact details are excluded.",
+  "automation.preset.weekly-report-digest.title": "Weekly report",
+  "automation.preset.weekly-report-digest.description":
+    "Send the Reports summary of the last seven days to one member, every Monday at 08:00 UTC. They opt out in their notification settings.",
+  "automation.source.reports.summary":
+    "The Reports summary of the last seven days",
   "automation.preset.tagged-quest-digest.title": "Nightly tagged quests",
   "automation.preset.tagged-quest-digest.description":
     "Send one digest of open quests with a chosen tag at 00:00 UTC. Empty digests are skipped.",

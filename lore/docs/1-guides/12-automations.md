@@ -13,7 +13,7 @@ or enables capabilities for you.
 ## Start in the application
 
 Open **Automations > New automation**. The seven stock presets cover new
-feedback, a nightly tagged-quest digest, epic completion, coverage regression,
+feedback, a nightly tagged-quest digest, a weekly report, epic completion, coverage regression,
 open-blight crossings, release publication to a folio, and failed deployments.
 Only the presets this project's capabilities, your permissions and the configured
 channels allow are offered.

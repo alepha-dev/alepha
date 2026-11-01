@@ -100,6 +100,11 @@ export default {
   "automation.preset.feedback-created.title": "Nouveau retour",
   "automation.preset.feedback-created.description":
     "Notifier un membre lors de la création d’un retour, sans divulguer les coordonnées de son auteur.",
+  "automation.preset.weekly-report-digest.title": "Rapport hebdomadaire",
+  "automation.preset.weekly-report-digest.description":
+    "Envoie le résumé des rapports des sept derniers jours à un membre, chaque lundi à 08:00 UTC. Il peut s'en désabonner dans ses réglages de notification.",
+  "automation.source.reports.summary":
+    "Le résumé des rapports des sept derniers jours",
   "automation.preset.tagged-quest-digest.title":
     "Récapitulatif nocturne des quêtes",
   "automation.preset.tagged-quest-digest.description":

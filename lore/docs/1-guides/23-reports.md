@@ -113,6 +113,15 @@ The rest of the tab:
 Deploys and MCP calls per project are recorded from the release that added them,
 so earlier periods read zero there.
 
+## The weekly report
+
+The **Weekly report** automation preset sends Summary's last seven days against
+the seven before, every Monday at 08:00 UTC, to the member you pick, as an inbox
+notification or an email. It starts disabled like every preset; see
+[Automations](/lore/docs/guides-automations). A preset has one recipient, so
+reaching several members takes one rule each. A recipient opts out by turning off
+the automations category in their notification settings.
+
 ## For agents and scripts
 
 `project_report` answers one section for the last N days, the figures as the tab

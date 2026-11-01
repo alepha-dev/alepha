@@ -113,6 +113,7 @@ import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { ReportsDigest } from "./services/ReportsDigest.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
@@ -273,6 +274,7 @@ export const LoreCoreApi = $module({
     ProjectReportRegistry,
     ReportStatistics,
     ReportsSummaryController,
+    ReportsDigest,
     ReportsSummaryRegistry,
     // The dashboard: the membership gate every card scope goes through, and
     // card storage. The declarative registry (`DashboardMetricCatalog`) is
@@ -484,6 +486,7 @@ export {
 export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
+export { ReportsDigest } from "./services/ReportsDigest.ts";
 export { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
 export { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 export { ProjectReportController } from "./controllers/ProjectReportController.ts";
