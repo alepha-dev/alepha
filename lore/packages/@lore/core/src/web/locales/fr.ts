@@ -1284,6 +1284,36 @@ export default {
   "reports.delivery.apps.empty": "Aucun déploiement terminé sur cette période.",
   "reports.delivery.apps.app": "Application",
   "reports.delivery.apps.rollbacks": "Retours arrière",
+  "reports.reliability.blights.title": "Blights",
+  "reports.reliability.blights.definition":
+    "Nouveaux blights et blights résolus par intervalle, et combien restaient ouverts. Un blight résolu est placé au jour de sa dernière occurrence : rien n’enregistre sa résolution.",
+  "reports.reliability.series.opened": "Nouveaux",
+  "reports.reliability.series.resolved": "Résolus",
+  "reports.reliability.series.open": "Ouverts",
+  "reports.reliability.series.errors": "Erreurs",
+  "reports.reliability.top.title": "Principaux blights",
+  "reports.reliability.top.definition":
+    "Les blights aux occurrences les plus nombreuses, quelle que soit leur date.",
+  "reports.reliability.top.empty": "Aucun blight signalé.",
+  "reports.reliability.forwarded": "Transmis à une quête",
+  "reports.reliability.forwarded.definition":
+    "Blights transformés en quête, et combien de ces quêtes sont terminées.",
+  "reports.reliability.forwarded.hint": "$1 corrigés",
+  "reports.reliability.fix": "Délai médian de correction",
+  "reports.reliability.fix.definition":
+    "De la première occurrence d’un blight transmis à la fin de sa quête.",
+  "reports.reliability.fix.hint": "p85 $1",
+  "reports.reliability.errors.title": "Erreurs",
+  "reports.reliability.errors.definition":
+    "Occurrences d’erreurs par intervalle, sur les applications du projet. Une ligne pointillée marque un intervalle avec un déploiement réussi.",
+  "reports.reliability.uptime.title": "Disponibilité",
+  "reports.reliability.uptime.definition":
+    "Part de sondes réussies, incidents commencés et temps médian de rétablissement, par moniteur sur la période.",
+  "reports.reliability.uptime.empty": "Aucun moniteur dans ce projet.",
+  "reports.reliability.uptime.monitor": "Moniteur",
+  "reports.reliability.uptime.uptime": "Disponibilité",
+  "reports.reliability.uptime.incidents": "Incidents",
+  "reports.reliability.uptime.mttr": "Temps de rétablissement",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

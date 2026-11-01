@@ -1303,6 +1303,36 @@ export default {
   "reports.delivery.apps.empty": "No deploy finished in this period.",
   "reports.delivery.apps.app": "App",
   "reports.delivery.apps.rollbacks": "Rollbacks",
+  "reports.reliability.blights.title": "Blights",
+  "reports.reliability.blights.definition":
+    "New blights and resolved ones per grain, and how many stood open. A resolved blight sits on the day it was last seen: nothing records when it was resolved.",
+  "reports.reliability.series.opened": "New",
+  "reports.reliability.series.resolved": "Resolved",
+  "reports.reliability.series.open": "Open",
+  "reports.reliability.series.errors": "Errors",
+  "reports.reliability.top.title": "Top blights",
+  "reports.reliability.top.definition":
+    "The blights with the most occurrences, whenever they happened.",
+  "reports.reliability.top.empty": "No blight reported.",
+  "reports.reliability.forwarded": "Forwarded to a quest",
+  "reports.reliability.forwarded.definition":
+    "Blights turned into a quest, and how many of those quests are done.",
+  "reports.reliability.forwarded.hint": "$1 fixed",
+  "reports.reliability.fix": "Median time to fix",
+  "reports.reliability.fix.definition":
+    "From a forwarded blight first seen to its quest completed.",
+  "reports.reliability.fix.hint": "p85 $1",
+  "reports.reliability.errors.title": "Errors",
+  "reports.reliability.errors.definition":
+    "Error occurrences per grain, across the project’s apps. A dashed line marks a grain with a successful deploy.",
+  "reports.reliability.uptime.title": "Uptime",
+  "reports.reliability.uptime.definition":
+    "Share of probes up, incidents started and median time to recover, per monitor over the period.",
+  "reports.reliability.uptime.empty": "No monitor in this project.",
+  "reports.reliability.uptime.monitor": "Monitor",
+  "reports.reliability.uptime.uptime": "Uptime",
+  "reports.reliability.uptime.incidents": "Incidents",
+  "reports.reliability.uptime.mttr": "MTTR",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

@@ -9,6 +9,7 @@ import { artifacts } from "../entities/artifacts.ts";
 import { deployments } from "../entities/deployments.ts";
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { monitors } from "../entities/monitors.ts";
+import { ProjectReliabilityReportService } from "./ProjectReliabilityReportService.ts";
 
 /**
  * The Delivery tab's report (#Q3008): DORA's four keys, per app and
@@ -26,6 +27,7 @@ export class ProjectDeliveryReportService {
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
   protected readonly changes = $inject(DeliveryChangeRegistry);
+  protected readonly reliability = $inject(ProjectReliabilityReportService);
   protected readonly stats = $inject(ReportStatistics);
   protected readonly dt = $inject(DateTimeProvider);
 
@@ -99,6 +101,7 @@ export class ProjectDeliveryReportService {
       },
       apps: this.perApp(finished, nameOf, rollbacks),
       timeline: this.timeline(finished, from, to, query),
+      reliability: await this.reliability.report(projectId, query, from, to),
     };
   }
 

@@ -57,6 +57,57 @@ export const reportsDeliverySchema = z.object({
       medianDurationMinutes: z.number(),
     }),
   ),
+  /**
+   * Blights, errors and uptime (#Q3009).
+   */
+  reliability: z.object({
+    /**
+     * Per grain: new blights, resolved ones, and how many stood open at its
+     * end. A resolved blight sits on the day it was last seen: nothing records
+     * when it was resolved.
+     */
+    blights: z.array(
+      z.object({
+        date: z.string(),
+        opened: z.integer(),
+        resolved: z.integer(),
+        open: z.integer(),
+      }),
+    ),
+    topBlights: z.array(
+      z.object({
+        name: z.string(),
+        origin: z.string(),
+        count: z.integer(),
+        status: z.string(),
+      }),
+    ),
+    /**
+     * Blights forwarded to a quest, and from first seen to that quest done.
+     */
+    forwarded: z.object({
+      total: z.integer(),
+      fixed: z.integer(),
+      medianFixHours: z.number(),
+      p85FixHours: z.number(),
+    }),
+    errors: z.array(z.object({ date: z.string(), count: z.number() })),
+    /**
+     * The grains holding a successful deploy.
+     */
+    deployMarkers: z.array(z.string()),
+    monitors: z.array(
+      z.object({
+        name: z.string(),
+        /**
+         * Absent with no probe in the period.
+         */
+        uptime: z.number().optional(),
+        incidents: z.integer(),
+        mttrMinutes: z.number(),
+      }),
+    ),
+  }),
 });
 
 export type ReportsDelivery = Infer<typeof reportsDeliverySchema>;

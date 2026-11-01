@@ -420,6 +420,7 @@ export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export {
+  type BlightForward,
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "./services/DeliveryChangeRegistry.ts";

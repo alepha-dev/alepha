@@ -1,6 +1,10 @@
-import { type DeliveryChange, DeliveryChangeRegistry } from "@lore/core/api";
+import {
+  type BlightForward,
+  type DeliveryChange,
+  DeliveryChangeRegistry,
+} from "@lore/core/api";
 import { $inject } from "alepha";
-import { $repository } from "alepha/orm";
+import { $repository, type PgQueryWhere } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
@@ -15,8 +19,29 @@ export class WorkDeliveryChanges {
   protected readonly releases = $repository(releases);
 
   constructor() {
-    this.registry.register((projectId, window) =>
-      this.changes(projectId, window),
+    this.registry.register(
+      (projectId, window) => this.changes(projectId, window),
+      (projectId) => this.forwards(projectId),
+    );
+  }
+
+  protected async forwards(projectId: number): Promise<BlightForward[]> {
+    const rows = await this.quests.findMany({
+      where: {
+        projectId: { eq: projectId },
+        source: { like: '%"sigilBlightId"%' },
+      } as PgQueryWhere<typeof quests.schema>,
+      columns: ["source", "completedAt"],
+    });
+    return rows.flatMap((row) =>
+      row.source?.sigilBlightId === undefined
+        ? []
+        : [
+            {
+              blightId: row.source.sigilBlightId,
+              ...(row.completedAt ? { completedAt: row.completedAt } : {}),
+            },
+          ],
     );
   }
 

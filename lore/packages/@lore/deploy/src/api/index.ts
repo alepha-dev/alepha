@@ -71,6 +71,7 @@ import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
+import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityService } from "./services/QualityService.ts";
@@ -224,6 +225,7 @@ export const LoreDeployApi = $module({
     WebSocketEstateCommandTransport,
     DeliveryReportsController,
     ProjectDeliveryReportService,
+    ProjectReliabilityReportService,
     QualityController,
     ArtifactController,
     AppController,

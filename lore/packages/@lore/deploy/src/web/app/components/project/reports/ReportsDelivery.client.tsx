@@ -19,6 +19,8 @@ import {
   YAxis,
 } from "recharts";
 
+import ReportsReliability from "./ReportsReliability.client.tsx";
+
 export interface ReportsDeliveryProps {
   delivery: ReportsDeliveryData;
 }
@@ -214,6 +216,8 @@ const ReportsDelivery = (props: ReportsDeliveryProps) => {
           </div>
         )}
       </ReportsSection>
+
+      <ReportsReliability reliability={delivery.reliability} />
     </>
   );
 };

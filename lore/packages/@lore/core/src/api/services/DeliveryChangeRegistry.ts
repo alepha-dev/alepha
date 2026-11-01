@@ -8,12 +8,17 @@ import { AlephaError } from "alepha";
  */
 export class DeliveryChangeRegistry {
   protected source?: DeliveryChangeSource;
+  protected forwards?: BlightForwardSource;
 
-  public register(source: DeliveryChangeSource): void {
+  public register(
+    source: DeliveryChangeSource,
+    forwards: BlightForwardSource,
+  ): void {
     if (this.source) {
       throw new AlephaError("A delivery change source is already registered");
     }
     this.source = source;
+    this.forwards = forwards;
   }
 
   /**
@@ -25,6 +30,23 @@ export class DeliveryChangeRegistry {
   ): Promise<DeliveryChange[]> {
     return (await this.source?.(projectId, window)) ?? [];
   }
+
+  /**
+   * The quests blights were forwarded to (#Q3009): a blight names its quest,
+   * and only Work knows whether that quest finished.
+   */
+  public async forwardedBlights(projectId: number): Promise<BlightForward[]> {
+    return (await this.forwards?.(projectId)) ?? [];
+  }
+}
+
+export type BlightForwardSource = (
+  projectId: number,
+) => Promise<BlightForward[]>;
+
+export interface BlightForward {
+  blightId: number;
+  completedAt?: string;
 }
 
 export type DeliveryChangeSource = (
