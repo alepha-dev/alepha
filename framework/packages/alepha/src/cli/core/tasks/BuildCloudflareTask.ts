@@ -1127,11 +1127,18 @@ const readBookmarkCookie = (request) => {
 // into it, and it always carries its bookmark, so read-your-writes already
 // holds there. Sending it to the primary would switch replicas off for the
 // browser in practice.
+//
+// A read with a credential and no bookmark is that same client, reading what
+// it just wrote: \`lore deploy\` POSTs a run, GETs it, and a replica answered
+// that the run did not exist. An anonymous read keeps its replica.
 const D1_READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 const d1AnchorFor = (request) => {
   const incoming = readBookmarkCookie(request);
-  if (D1_READ_METHODS.has(request.method)) return incoming;
+  if (D1_READ_METHODS.has(request.method)) {
+    if (incoming) return incoming;
+    return request.headers.has("authorization") ? "first-primary" : undefined;
+  }
   if (new URL(request.url).pathname === "/api/_batch") return incoming;
   return "first-primary";
 };
