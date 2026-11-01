@@ -343,6 +343,18 @@ const inviteAndAccept = async (
   await owner.getByRole("button", { name: /send invitation/i }).click();
   expect((await invited).ok()).toBe(true);
 
+  // The invitation is in the bell too (#Q2947), filed by a job after the
+  // invite's own response, so it is awaited rather than raced by the accept.
+  await expect(async () => {
+    const entries = await member.page.evaluate(async () => {
+      const r = await fetch("/api/inbox", { credentials: "include" });
+      const page = (await r.json()) as { items?: { href?: string }[] };
+      return (page.items ?? []).map((it) => it.href);
+    });
+    // The account's page, and never the email's one-time link.
+    expect(entries).toEqual(["/account/invitations"]);
+  }).toPass({ timeout: 60_000 });
+
   await member.page.goto("/account/invitations");
   await member.page.waitForLoadState("domcontentloaded");
   const accepted = member.page.waitForResponse(
@@ -354,33 +366,10 @@ const inviteAndAccept = async (
   await member.page.getByRole("button", { name: /^accept$/i }).click();
   expect((await accepted).ok()).toBe(true);
 
-  // The invitation is in the bell too (#Q2947). Read it here, through the
-  // bell, so a spec's own count starts at zero. Polled: a job files it, after
-  // the invite's own response.
-  await expect(async () => {
-    await member.page.goto(`/${slug}/quests`);
-    await member.page.waitForLoadState("domcontentloaded");
-    await expect(member.page.getByTestId("inbox-badge")).toHaveText("1", {
-      timeout: 5_000,
-    });
-  }).toPass({ timeout: 60_000 });
-
-  await member.page
-    .getByRole("button", { name: /notifications/i })
-    .first()
-    .click();
-  const row = member.page.getByText(/invitation to join/i).first();
-  await expect(row).toBeVisible();
-  await row.click();
-
-  // The account's page, and never the email's one-time link.
-  await member.page.waitForURL(/\/account\/invitations$/, { timeout: 20_000 });
-
-  await expect(async () => {
-    await member.page.goto(`/${slug}/quests`);
-    await member.page.waitForLoadState("domcontentloaded");
-    await expect(member.page.getByTestId("inbox-badge")).toHaveCount(0);
-  }).toPass({ timeout: 30_000 });
+  // The accept settles it (#Q3026), so a spec's own count starts at zero.
+  await member.page.goto(`/${slug}/quests`);
+  await member.page.waitForLoadState("domcontentloaded");
+  await expect(member.page.getByTestId("inbox-badge")).toHaveCount(0);
 };
 
 /**

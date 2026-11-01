@@ -24,7 +24,7 @@ did. A comment that both answers a report and names its author sends one message
 
 A project invitation reaches the bell only when its address already has an
 account. The bell links to your **Invitations** page; the email alone carries the
-one-time link.
+one-time link. Accepting the invitation marks its message read.
 
 An agent's comment is a comment too. Over MCP, `@name` reaches that member, the
 owner of the API key the agent works as included, so an agent can ask you for a

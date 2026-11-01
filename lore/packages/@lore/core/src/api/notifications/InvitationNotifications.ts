@@ -1,8 +1,10 @@
 import { $hook, $inject, Alepha, z } from "alepha";
 import {
   $notification,
+  notificationInboxEntity,
   NotificationInboxRecipientProvider,
 } from "alepha/api/notifications";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
@@ -18,7 +20,9 @@ export class InvitationNotifications {
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly projects = $repository(projects);
+  protected readonly inboxEntries = $repository(notificationInboxEntity);
 
   /**
    * The invitation mail. One link, and the link does the work.
@@ -174,6 +178,37 @@ export class InvitationNotifications {
           error,
         });
       }
+    },
+  });
+
+  /**
+   * The bell's entry is settled by the accept (#Q3026): left unread, it would
+   * point at a page that no longer lists the invitation. Only this entry: the
+   * invitee's other messages stay as they are, and the accept never pays for a
+   * failure here.
+   */
+  protected onInvitationAccepted = $hook({
+    on: "organization:invitation:accepted",
+    handler: async ({ invitation, acceptedBy }) => {
+      await this.bestEffort.run(
+        "Failed to mark invitation inbox entry read",
+        async () => {
+          const project = await this.projects.findOne({
+            where: { organizationId: { eq: invitation.organizationId } },
+          });
+          if (!project) return;
+
+          await this.inboxEntries.updateMany(
+            {
+              userId: { eq: acceptedBy.id },
+              template: { eq: this.invitationInbox.name },
+              scope: { eq: `project:${project.id}` },
+              readAt: { isNull: true },
+            },
+            { readAt: this.dateTime.nowISOString() },
+          );
+        },
+      );
     },
   });
 

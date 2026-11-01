@@ -12,6 +12,7 @@ import {
   NotificationJobs,
   NotificationPreferenceProvider,
 } from "alepha/api/notifications";
+import { InvitationService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -188,6 +189,34 @@ describe("a project invitation's notifications", () => {
 
     expect(await probe.inbox.findMany({})).toEqual([]);
     expect(mailsTo(invitee.email)).toHaveLength(1);
+  });
+
+  it("marks only the invitation's entry read when it is accepted", async ({
+    expect,
+  }) => {
+    const invitee = await createUser("invitee");
+    const { invitation } = await invite(invitee.email);
+    const other = await probe.inbox.create({
+      userId: invitee.id,
+      title: "Somebody mentioned you",
+      href: "/alepha/quests/1",
+      template: "lore:inbox:mention",
+    });
+
+    await alepha.inject(InvitationService).accept(invitation.id, {
+      id: invitee.id,
+      roles: invitee.roles,
+      email: invitee.email,
+    });
+
+    const entry = await probe.inbox.findOne({
+      where: {
+        userId: { eq: invitee.id },
+        template: { eq: "lore:invitation:received" },
+      },
+    });
+    expect(entry?.readAt).toBeTruthy();
+    expect((await probe.inbox.getById(other.id)).readAt).toBeFalsy();
   });
 
   it("names the template explicitly and declares its French", ({ expect }) => {
