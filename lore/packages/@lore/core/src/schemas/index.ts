@@ -84,6 +84,10 @@ export {
   reportsSupportSchema,
 } from "../api/schemas/reportsSupportSchema.ts";
 export {
+  type ReportsKnowledge,
+  reportsKnowledgeSchema,
+} from "../api/schemas/reportsKnowledgeSchema.ts";
+export {
   type ReportsSummaryLine,
   reportsSummaryLineSchema,
   reportsSummarySchema,

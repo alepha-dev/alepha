@@ -1219,6 +1219,40 @@ export default {
   "reports.support.sources.definition":
     "Les tags d’hôte et de chemin les plus fréquents sur la période. Un retour compte une fois par tag.",
   "reports.support.sources.empty": "Aucun retour ne porte d’hôte ni de chemin.",
+  "project.reports.nav.knowledge": "Connaissance",
+  "reports.knowledge.empty": "Rien ici.",
+  "reports.knowledge.pinned": "épinglé",
+  "reports.knowledge.kpi.total": "Folios",
+  "reports.knowledge.kpi.total.definition": "Tous les folios du projet.",
+  "reports.knowledge.kpi.stale": "Périmés",
+  "reports.knowledge.kpi.stale.definition":
+    "Folios non modifiés depuis $1 jours, épinglés d’abord.",
+  "reports.knowledge.kpi.orphans": "Orphelins",
+  "reports.knowledge.kpi.orphans.definition":
+    "Folios vers lesquels rien ne pointe. Les folios épinglés sont exclus : épingler est un chemin d’accès.",
+  "reports.knowledge.kpi.links": "Liens médians par folio",
+  "reports.knowledge.kpi.links.definition":
+    "Liens entrants par folio, médiane, depuis les folios et les quêtes.",
+  "reports.knowledge.kpi.reverts": "Retours arrière",
+  "reports.knowledge.kpi.reverts.definition":
+    "Révisions ramenant un folio à une version antérieure, sur la période.",
+  "reports.knowledge.activity.title": "Activité",
+  "reports.knowledge.activity.definition":
+    "Folios créés et révisions enregistrées par intervalle.",
+  "reports.knowledge.series.created": "Créés",
+  "reports.knowledge.series.revised": "Révisés",
+  "reports.knowledge.series.folios": "Folios",
+  "reports.knowledge.mostRevised.title": "Les plus révisés",
+  "reports.knowledge.mostRevised.definition":
+    "Les folios ayant le plus de révisions sur la période.",
+  "reports.knowledge.mostLinked.title": "Les plus liés",
+  "reports.knowledge.mostLinked.definition":
+    "Les folios ayant le plus de liens entrants.",
+  "reports.knowledge.stale.title": "Folios périmés",
+  "reports.knowledge.orphans.title": "Folios orphelins",
+  "reports.knowledge.byDirectory.title": "Par dossier",
+  "reports.knowledge.byDirectory.definition":
+    "Folios par dossier de premier niveau.",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

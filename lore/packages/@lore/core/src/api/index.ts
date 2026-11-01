@@ -418,7 +418,10 @@ export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
-export { ReportStatistics } from "./services/ReportStatistics.ts";
+export {
+  type ReportsGrain,
+  ReportStatistics,
+} from "./services/ReportStatistics.ts";
 export { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 export {
   ReportsSummaryRegistry,

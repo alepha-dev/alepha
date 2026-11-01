@@ -1239,6 +1239,39 @@ export default {
   "reports.support.sources.definition":
     "The busiest host and path tags of the reports received in the period. A report counts once per tag.",
   "reports.support.sources.empty": "No report carries a host or path.",
+  "project.reports.nav.knowledge": "Knowledge",
+  "reports.knowledge.empty": "Nothing here.",
+  "reports.knowledge.pinned": "pinned",
+  "reports.knowledge.kpi.total": "Folios",
+  "reports.knowledge.kpi.total.definition": "Every folio of the project.",
+  "reports.knowledge.kpi.stale": "Stale",
+  "reports.knowledge.kpi.stale.definition":
+    "Folios not updated for $1 days, pinned ones first.",
+  "reports.knowledge.kpi.orphans": "Orphans",
+  "reports.knowledge.kpi.orphans.definition":
+    "Folios nothing links to. Pinned folios are left out: pinning is a way in.",
+  "reports.knowledge.kpi.links": "Median links per folio",
+  "reports.knowledge.kpi.links.definition":
+    "Inbound links per folio, median, from folios and from quests.",
+  "reports.knowledge.kpi.reverts": "Reverts",
+  "reports.knowledge.kpi.reverts.definition":
+    "Revisions that put a folio back to an older one, in the period.",
+  "reports.knowledge.activity.title": "Activity",
+  "reports.knowledge.activity.definition":
+    "Folios created and revisions recorded per grain.",
+  "reports.knowledge.series.created": "Created",
+  "reports.knowledge.series.revised": "Revised",
+  "reports.knowledge.series.folios": "Folios",
+  "reports.knowledge.mostRevised.title": "Most revised",
+  "reports.knowledge.mostRevised.definition":
+    "The folios with the most revisions in the period.",
+  "reports.knowledge.mostLinked.title": "Most linked",
+  "reports.knowledge.mostLinked.definition":
+    "The folios with the most inbound links.",
+  "reports.knowledge.stale.title": "Stale folios",
+  "reports.knowledge.orphans.title": "Orphan folios",
+  "reports.knowledge.byDirectory.title": "By directory",
+  "reports.knowledge.byDirectory.definition": "Folios per top-level directory.",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

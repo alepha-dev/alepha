@@ -1,8 +1,6 @@
-import type { ReportsQuery } from "@lore/core/schemas";
+import { type ReportsGrain, ReportStatistics } from "@lore/core/api";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-
-export type ReportsGrain = NonNullable<ReportsQuery["grain"]>;
 
 /**
  * One day's count, as `ProjectReportsService.completedByDay` returns it.
@@ -22,6 +20,7 @@ export interface DailyCount {
  */
 export class DashboardFlowSeries {
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly stats = $inject(ReportStatistics);
 
   /**
    * The last `days` days, oldest first, ending today.
@@ -47,41 +46,19 @@ export class DashboardFlowSeries {
   }
 
   /**
-   * Every calendar day from `from` to `to`, both included. Takes dates or
-   * timestamps and answers UTC `YYYY-MM-DD`.
+   * {@link ReportStatistics.between}, kept here for the callers holding this
+   * service.
    */
   between(from: string, to: string): string[] {
-    const last = Date.parse(to.slice(0, 10));
-    const days: string[] = [];
-    for (let at = Date.parse(from.slice(0, 10)); at <= last; at += 86_400_000) {
-      days.push(new Date(at).toISOString().slice(0, 10));
-    }
-    return days;
+    return this.stats.between(from, to);
   }
 
-  /**
-   * The grain an axis of this many days reads best at, when nobody chose one.
-   */
   grainFor(days: number): ReportsGrain {
-    return days <= 92 ? "day" : days <= 400 ? "week" : "month";
+    return this.stats.grainFor(days);
   }
 
-  /**
-   * The first day of the bucket holding `day`: itself, its Monday, or the
-   * first of its month.
-   */
   bucket(day: string, grain: ReportsGrain): string {
-    if (grain === "month") {
-      return `${day.slice(0, 7)}-01`;
-    }
-    if (grain === "day") {
-      return day;
-    }
-    const at = new Date(day);
-    const sinceMonday = (at.getUTCDay() + 6) % 7;
-    return new Date(at.getTime() - sinceMonday * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
+    return this.stats.bucket(day, grain);
   }
 
   /**

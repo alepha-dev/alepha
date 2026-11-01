@@ -1,9 +1,13 @@
+import { reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
   $pageProjectSettings,
+  CoreRouter,
   currentProjectAtom,
   hasCapability,
   canInProject,
+  ReportsTabRegistry,
+  ReportsUrlQuery,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -13,6 +17,7 @@ import { $client } from "alepha/server/links";
 
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
+import type { KnowledgeReportsController } from "../../api/controllers/KnowledgeReportsController.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
@@ -25,9 +30,33 @@ import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
  */
 export class KnowledgeRouter {
   alepha = $inject(Alepha);
+  core = $inject(CoreRouter);
   folioApi = $client<FolioController>();
+  reportsApi = $client<KnowledgeReportsController>();
+  reportsUrl = $inject(ReportsUrlQuery);
+  reportsTabs = $inject(ReportsTabRegistry);
   directoryApi = $client<DirectoryController>();
   dateTime = $inject(DateTimeProvider);
+
+  reportsKnowledge = $page({
+    parent: this.core.projectReports,
+    name: "reportsKnowledge",
+    path: "/knowledge",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsKnowledge.client.tsx"),
+    loader: async ({ query }) => ({
+      knowledge: await this.reportsApi.getReportsKnowledge({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsUrl.toQuery(
+          query,
+          this.reportsTabs.honours("reportsKnowledge"),
+        ),
+      }),
+    }),
+  });
 
   /**
    * How long a folio-tree seed stays usable. Matches the `staleTime` on

@@ -4,6 +4,7 @@ import {
   DocumentSinkRegistry,
   ElementReferenceRegistry,
   ProjectShellRegistry,
+  ReportsTabRegistry,
   ResourceTabRegistry,
   hasCapability,
   canInProject,
@@ -29,9 +30,17 @@ export class KnowledgeShell {
   protected readonly references = $inject(ElementReferenceRegistry);
   protected readonly documents = $inject(DocumentSinkRegistry);
   protected readonly tabs = $inject(ResourceTabRegistry);
+  protected readonly reports = $inject(ReportsTabRegistry);
   protected readonly folioApi = $client<FolioController>();
 
   constructor() {
+    this.reports.register({
+      route: "reportsKnowledge",
+      labelKey: "project.reports.nav.knowledge",
+      order: 9.7,
+      needs: "knowledge",
+      filters: ["period", "grain"],
+    });
     this.shell.registerNav("knowledge", [
       {
         route: "projectFolios",

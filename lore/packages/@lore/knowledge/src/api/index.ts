@@ -4,6 +4,7 @@ import { $module } from "alepha";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
+import { KnowledgeReportsController } from "./controllers/KnowledgeReportsController.ts";
 import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
 import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
 import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
@@ -29,6 +30,7 @@ import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
 import { KnowledgeProjectMerge } from "./services/KnowledgeProjectMerge.ts";
 import { KnowledgeReportsSummary } from "./services/KnowledgeReportsSummary.ts";
 import { PinnedFolioMetric } from "./services/PinnedFolioMetric.ts";
+import { ProjectKnowledgeReportService } from "./services/ProjectKnowledgeReportService.ts";
 import { RecentFoliosMetric } from "./services/RecentFoliosMetric.ts";
 
 export const LoreKnowledgeApi = $module({
@@ -36,6 +38,8 @@ export const LoreKnowledgeApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    KnowledgeReportsController,
+    ProjectKnowledgeReportService,
     KnowledgeReportsSummary,
     KnowledgeAutomationActions,
     KnowledgeAutomationReferences,
@@ -65,6 +69,7 @@ export const LoreKnowledgeApi = $module({
 
 export { folioHistoryAtom } from "./atoms/folioHistoryAtom.ts";
 export { DirectoryController } from "./controllers/DirectoryController.ts";
+export { KnowledgeReportsController } from "./controllers/KnowledgeReportsController.ts";
 export { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 export { FolioController } from "./controllers/FolioController.ts";
 export { FolioAttachmentService } from "./services/FolioAttachmentService.ts";

@@ -269,6 +269,28 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Knowledge tab (#Q3007).
+   */
+  test("Knowledge reports on the project's folios", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportskn${t}@example.com`, "ReportsK123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RK${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "knowledge");
+
+    await page.goto(`/${slug}/reports/knowledge`);
+
+    await expect(page.getByText("Most revised")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */
