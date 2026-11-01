@@ -2,7 +2,10 @@ import type {
   ProjectController,
   ProjectReportController,
 } from "@lore/core/api";
+import type { FolioController } from "@lore/knowledge/api";
 import type { AreaController } from "@lore/work/api";
+import type { EpicController } from "@lore/work/api";
+import type { ReleaseController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
@@ -57,6 +60,11 @@ export class ProjectCommand {
     this.client.scope(),
   );
   protected readonly areaApi = $client<AreaController>(this.client.scope());
+  protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly releaseApi = $client<ReleaseController>(
+    this.client.scope(),
+  );
+  protected readonly folioApi = $client<FolioController>(this.client.scope());
   protected readonly reportApi = $client<ProjectReportController>(
     this.client.scope(),
   );
@@ -291,13 +299,225 @@ export class ProjectCommand {
     },
   });
 
+  /**
+   * `lore project context`: what `project_context` gives an agent, from the
+   * actions behind it. A section whose capability is off is not read, and
+   * stays absent from `--output json`.
+   */
+  public readonly context = $command({
+    name: "context",
+    description:
+      "Orient yourself in a project: areas, your quests, open epics, releases, the folio index and pinned folios",
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description: "The project, by slug or id. Defaults to LORE_PROJECT.",
+        })
+        .optional(),
+      "all-epics": z
+        .boolean()
+        .describe("List the completed epics too, in the human output.")
+        .optional(),
+      limit: z
+        .integer()
+        .min(1)
+        .max(200)
+        .describe("How many folios to index, at most 200. Defaults to 30.")
+        .default(30),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const found = await this.projectApi.getProjectById({
+          params: { id: projectId },
+        });
+        const enabled = new Set(
+          found.capabilities.map((capability) => capability.key),
+        );
+        const params = { projectId };
+
+        const work = enabled.has("work")
+          ? {
+              areas: await this.areaApi.getAreas({ params }),
+              epics: await this.epicApi.getEpics({ params }),
+              openReleases: await this.releaseApi.getOpenReleaseProgress({
+                params,
+              }),
+            }
+          : {};
+        const folios = enabled.has("knowledge")
+          ? await this.folioApi.index({
+              params,
+              query: { limit: flags.limit, pinnedContent: true },
+            })
+          : undefined;
+
+        if (flags.output === "json") {
+          this.render.json(print, {
+            ...found,
+            ...work,
+            ...(folios ? { folios } : {}),
+          });
+          return;
+        }
+
+        const pinned = (folios ?? []).filter(
+          (folio) => folio.pinned && !folio.protected && folio.content,
+        );
+        const epics = (work.epics ?? []).filter(
+          (epic) => flags["all-epics"] || epic.status !== "completed",
+        );
+        this.render.entity(print, {
+          fields: [
+            ["Project", found.slug],
+            ["Title", found.title],
+            ["Id", found.id],
+            ["Rank", found.rank?.name],
+            ["Language", found.preferredLanguage],
+            [
+              "Capabilities",
+              found.capabilities.map((capability) => capability.key).join(", "),
+            ],
+          ],
+          sections: [
+            ...(work.areas
+              ? [
+                  {
+                    title: "Areas",
+                    lines: work.areas.map((area) =>
+                      area.description
+                        ? `${area.name}  ${area.description}`
+                        : area.name,
+                    ),
+                  },
+                  {
+                    title: "Your quests in progress",
+                    lines: found.quests.length
+                      ? found.quests.map(
+                          (quest) => `Q${quest.shortId}  ${quest.title}`,
+                        )
+                      : ["(none)"],
+                  },
+                  {
+                    title: "Epics",
+                    lines: epics.length
+                      ? epics.map(
+                          (epic) =>
+                            `E${epic.number}  ${epic.title}  ${epic.status}  ${epic.progress.completed}/${epic.questCount}`,
+                        )
+                      : ["(none)"],
+                  },
+                  {
+                    title: "Open releases",
+                    lines: work.openReleases?.length
+                      ? work.openReleases.map(
+                          (release) =>
+                            `${release.tag}  ${release.completed}/${release.total}${release.defaultSince ? "  default" : ""}`,
+                        )
+                      : ["(none)"],
+                  },
+                ]
+              : []),
+            ...(folios
+              ? [
+                  {
+                    title: "Folios",
+                    lines: folios.length
+                      ? folios.map((folio) =>
+                          folio.summary?.trim()
+                            ? `F${folio.shortId}  ${folio.title}: ${folio.summary}`
+                            : `F${folio.shortId}  ${folio.title}`,
+                        )
+                      : ["(none)"],
+                  },
+                ]
+              : []),
+            ...pinned.map((folio) => ({
+              title: `Pinned: F${folio.shortId} ${folio.title}`,
+              lines: [folio.content ?? ""],
+            })),
+          ],
+        });
+      });
+    },
+  });
+
+  /**
+   * `lore project activity`, read forward from a stamp like `project_activity`.
+   *
+   * ⚠️ Unlike the tool it keeps your own events: the tool drops them by the
+   * session's user, and no action tells this process who it is.
+   */
+  public readonly activity = $command({
+    name: "activity",
+    description:
+      "What happened in a project since a timestamp, oldest first; your own events included",
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description: "The project, by slug or id. Defaults to LORE_PROJECT.",
+        })
+        .optional(),
+      since: z.datetime().describe("The stamp to read from, exclusive."),
+      limit: z
+        .integer()
+        .min(1)
+        .max(100)
+        .describe("How many events to print, at most 100. Defaults to 100.")
+        .default(100),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const page = await this.projectApi.getProjectActivity({
+          params: { id: projectId },
+          query: { after: flags.since, size: flags.limit, sort: "createdAt" },
+        });
+        // `after` excludes the boundary at the column's precision; this does
+        // at the caller's, the millisecond stamp `Next` hands out.
+        const events = page.content.filter(
+          (event) => event.createdAt > flags.since,
+        );
+
+        if (flags.output === "json") {
+          this.render.json(print, { ...page, content: events });
+          return;
+        }
+
+        if (events.length === 0) {
+          print("Nothing since then.");
+          return;
+        }
+        for (const event of events) {
+          const times =
+            (event.eventCount ?? 1) > 1 ? ` x${event.eventCount}` : "";
+          const title = event.description ? ` (${event.description})` : "";
+          print(
+            `${event.createdAt}  ${event.action}${times} ${event.type} ${event.resourceId ?? ""}${title}`,
+          );
+        }
+        print(`Next: --since ${events.at(-1)?.createdAt}`);
+      });
+    },
+  });
+
   public readonly project = $command({
     name: "project",
     description:
-      "The projects you belong to: list, look at one, read its reports, create one, or link this directory to one",
+      "The projects you belong to: list, look at one, orient yourself, read what moved, read its reports, create one, or link this directory to one",
     children: [
       this.list,
       this.info,
+      this.context,
+      this.activity,
       this.report,
       this.create,
       this.linkProject,

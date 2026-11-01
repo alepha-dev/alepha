@@ -145,6 +145,35 @@ describe("route guards on a capability", () => {
     await expect(loader?.({} as never)).resolves.toBeUndefined();
   });
 
+  it("answers a 404 on every automation route without automation:read", async ({
+    expect,
+  }) => {
+    const alepha = await bootRouter();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: true } },
+        permissions: ["project:read", "project:delete"],
+      }) as never,
+    );
+
+    // What a privileged identity outside the project is sent since #Q3022:
+    // a NotFoundError, so the project layout draws its 404 and never a page
+    // whose reads are all refused.
+    for (const [name, args] of [
+      ["projectAutomations", {}],
+      ["projectAutomationGallery", {}],
+      ["projectAutomationVariables", { query: {} }],
+      ["projectAutomationRun", { params: { runId: "x" } }],
+      ["projectAutomationAdoption", {}],
+      ["projectAutomationDetail", { params: { automationId: "x" } }],
+    ] as const) {
+      const run = async () => loaderOf(alepha, name)?.(args as never);
+      await expect(run(), name).rejects.toMatchObject({ status: 404 });
+    }
+  });
+
   it("requires both read and write permission for the automation gallery", async ({
     expect,
   }) => {

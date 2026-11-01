@@ -2549,6 +2549,9 @@ export default {
   "account.notifications.category.feedback": "Vos demandes",
   "account.notifications.category.feedback.description":
     "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",
+  "account.notifications.category.invitations": "Invitations à un projet",
+  "account.notifications.category.invitations.description":
+    "Un projet vous invite, dans la cloche uniquement : l'e-mail d'invitation arrive quand même.",
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Quelqu'un écrit votre nom dans un commentaire de quête ou de retour.",

@@ -87,7 +87,14 @@ describe("DatabaseCacheProvider — lazy expiration on read", () => {
   });
 
   it("excludes expired entries from keys() and from get() but leaves them in storage until swept", async () => {
-    const { alepha, provider } = make();
+    // Off, not the default: it asserts the row is on disk, and the 1% sweep
+    // can reap it the moment the write that expires it returns.
+    const { alepha, provider } = make((app) => {
+      app.store.mut(databaseCacheOptions, (cur) => ({
+        ...cur,
+        sweepProbability: 0,
+      }));
+    });
     await alepha.start();
     const p = provider();
 

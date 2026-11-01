@@ -14,13 +14,17 @@ clear the inbox, and which messages you can turn off.
 | A report answered           | The person who filed it                                    | Yes   | Yes   |
 | An automation's message     | The rule's recipient, on the channel the rule names        | Yes   | Yes   |
 | A quest reminder            | Whoever accepted the quest                                 | No    | Yes   |
-| A project invitation        | The person invited                                         | No    | Yes   |
+| A project invitation        | The person invited                                         | Yes   | Yes   |
 | A healthcheck alert         | The [monitor's recipients](/lore/docs/guides-healthchecks) | No    | Yes   |
 | A Cloudflare token failing  | The estate's owner                                         | No    | Yes   |
 
 Lore's own messages skip your own actions: a report you triage yourself sends you
 nothing. An automation has no such rule, so it can tell you about something you
 did. A comment that both answers a report and names its author sends one message.
+
+A project invitation reaches the bell only when its address already has an
+account. The bell links to your **Invitations** page; the email alone carries the
+one-time link. Accepting the invitation marks its message read.
 
 An agent's comment is a comment too. Over MCP, `@name` reaches that member, the
 owner of the API key the agent works as included, so an agent can ask you for a
@@ -59,15 +63,16 @@ every project.
 - **Kinds of message** are switches that apply to both channels at once. Sign-in
   codes and password resets are not listed, and stay on whatever you mute here.
 
-| Kind               | What it covers                                                |
-| ------------------ | ------------------------------------------------------------- |
-| Automations        | Messages from project automation rules.                       |
-| Deploy credentials | A deploy credential you own has stopped working.              |
-| Your reports       | A project accepts, rejects or answers a report you submitted. |
-| Healthchecks       | Confirmed outages and recoveries from your monitors.          |
-| Mentions           | Somebody writes your name in a quest or feedback comment.     |
-| Releases           | A project you belong to publishes a release.                  |
-| Quest reminders    | Nudges about a quest you accepted, and project invitations.   |
+| Kind                | What it covers                                                                  |
+| ------------------- | ------------------------------------------------------------------------------- |
+| Automations         | Messages from project automation rules.                                         |
+| Deploy credentials  | A deploy credential you own has stopped working.                                |
+| Your reports        | A project accepts, rejects or answers a report you submitted.                   |
+| Healthchecks        | Confirmed outages and recoveries from your monitors.                            |
+| Project invitations | A project invites you, in the bell only: the email stays under Quest reminders. |
+| Mentions            | Somebody writes your name in a quest or feedback comment.                       |
+| Releases            | A project you belong to publishes a release.                                    |
+| Quest reminders     | Nudges about a quest you accepted, and project invitations.                     |
 
 Only a signed-in session can change them: an API key or a connected app cannot.
 

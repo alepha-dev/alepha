@@ -465,7 +465,9 @@ export class ReactRouter<T extends object> {
       return path;
     }
 
-    return base + path;
+    // Vite hands the base over with a trailing slash, and `path` starts with
+    // one.
+    return base.replace(/\/$/, "") + path;
   }
 
   /**

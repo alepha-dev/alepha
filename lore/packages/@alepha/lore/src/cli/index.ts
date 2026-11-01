@@ -7,6 +7,8 @@ import { AlephaLoreDeploy } from "./AlephaLoreDeploy.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
+import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
+import { EpicCommand } from "./commands/EpicCommand.ts";
 import { EstateCommand } from "./commands/EstateCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
@@ -103,7 +105,9 @@ export const AlephaLoreCli = $module({
     LoreStackService,
     ProjectCommand,
     QuestCommand,
+    EpicCommand,
     FolioCommand,
+    DirectoryCommand,
     QualityCommand,
     AppsCommand,
     ArtifactCommand,

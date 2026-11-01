@@ -159,9 +159,8 @@ set-cookie: alepha_d1_bookmark=<bookmark>; Path=/; HttpOnly; Secure; SameSite=La
 ```
 
 A cookie rather than a header because the browser returns it with no
-client-side code. An API client that does not keep cookies gets a fresh
-session per request, which is correct but forfeits read-your-writes across
-calls - send the cookie back yourself if that matters.
+client-side code. A client that keeps no cookies gets its read-your-writes from
+the two rules below.
 
 **A request that can write reads from the primary.** Any method other than
 `GET`, `HEAD` or `OPTIONS` opens its session on `first-primary`, whatever
@@ -172,8 +171,14 @@ the stale copy over that write. The one exception is `POST /api/_batch`: the
 browser coalesces a page load's reads into it and always sends its bookmark,
 so it keeps the bookmark and its replicas.
 
-The cost: every MCP call is a `POST`, read-only tools included, so all MCP
-traffic reads from the primary.
+**So does a read with a credential and no bookmark.** A `GET` or `HEAD` that
+sends an `Authorization` header without the bookmark cookie opens on
+`first-primary`: an API client reading what it just wrote must not reach a
+replica that missed it. A bookmark still wins, and an anonymous read with none
+stays `first-unconstrained`, so public traffic keeps its replicas.
+
+The cost: every MCP call is a `POST`, read-only tools included, and an API key
+sends no cookie, so MCP and API client traffic reads from the primary.
 
 Two consequences worth knowing before switching it on:
 
