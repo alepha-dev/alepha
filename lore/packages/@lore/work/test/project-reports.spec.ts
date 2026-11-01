@@ -537,6 +537,58 @@ describe("ProjectReportsController", () => {
       expect(data.aging[0]?.ageDays).toBeCloseTo(30);
     });
 
+    it("reads sizes, estimates and due dates against what happened", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const now = ctx.now();
+      const iso = (ago: number) => new Date(now - ago).toISOString();
+      const done = async (patch: Record<string, unknown>) => {
+        const quest = await createTestQuest(ctx, owner, project.id);
+        await ctx.questController.acceptQuest.fetch(
+          { params: { id: quest.id } },
+          { user: owner },
+        );
+        await ctx.questController.completeQuest.fetch(
+          { params: { id: quest.id }, body: {} },
+          { user: owner },
+        );
+        await ctx.repos.quests.updateById(quest.id, {
+          acceptedAt: iso(10 * hour),
+          completedAt: iso(0),
+          ...patch,
+        });
+      };
+      await done({ size: 1, dueAt: iso(-hour) });
+      await done({
+        size: 5,
+        estimateMinutes: 120,
+        dueAt: iso(hour),
+        timerSessions: [{ startedAt: iso(4 * hour), stoppedAt: iso(hour) }],
+      });
+      await done({ size: 5, estimateMinutes: 60 });
+
+      const { data } = await ctx.reportsController.getReportsFlow.fetch(
+        { params: { id: project.id }, query: { from: iso(day) } },
+        { user: owner },
+      );
+
+      expect(data.sizes.map((row) => [row.size, row.quests])).toEqual([
+        [1, 1],
+        [5, 2],
+      ]);
+      expect(data.dueDates).toEqual({ withDue: 2, onTime: 1 });
+      const estimates = Object.fromEntries(
+        data.estimates.map((row) => [row.estimateHours, row]),
+      );
+      expect(estimates[2]?.tracked).toBe(true);
+      expect(estimates[2]?.actualHours).toBeCloseTo(3);
+      // No timer: its cycle time stands in, and says so.
+      expect(estimates[1]?.tracked).toBe(false);
+      expect(estimates[1]?.actualHours).toBeCloseTo(10);
+    });
+
     it("draws the cumulative flow at the grain, today's state last", async ({
       expect,
     }) => {

@@ -235,6 +235,7 @@ export default defineConfig({
         "reports.summary.line.",
         "reports.flow.bucket.",
         "reports.flow.band.",
+        "reports.flow.size.",
         "reports.summary.section.",
         // Catalogue-defined preset keys, slot names and channel choices (#E43).
         "automation.preset.",

@@ -1068,6 +1068,27 @@ export default {
   "reports.flow.time.holdHint": "$1 quêtes, p85 $2",
   "reports.flow.time.column.definition":
     "Temps médian passé par une quête dans cette colonne, d’après ses déplacements.",
+  "reports.flow.sizes.title": "Temps de cycle par taille",
+  "reports.flow.sizes.definition":
+    "Temps de cycle médian et p85 par taille, pour les quêtes terminées sur la période.",
+  "reports.flow.size.1": "XS",
+  "reports.flow.size.2": "S",
+  "reports.flow.size.3": "M",
+  "reports.flow.size.4": "L",
+  "reports.flow.size.5": "XL",
+  "reports.flow.size.definition":
+    "Temps de cycle médian des quêtes de cette taille.",
+  "reports.flow.size.hint": "$1 quêtes, p85 $2",
+  "reports.flow.estimates.title": "Estimations et réalisé",
+  "reports.flow.estimates.definition":
+    "Quêtes terminées sur la période qui portent une estimation. Le réalisé est le temps chronométré, ou le temps de cycle sinon, qui mesure le temps écoulé et non l’effort.",
+  "reports.flow.estimates.tracked": "$1 estimé, $2 chronométré",
+  "reports.flow.estimates.cycle": "$1 estimé, $2 écoulé",
+  "reports.flow.due.title": "Échéances",
+  "reports.flow.due.definition":
+    "Quêtes terminées sur la période avant leur échéance, sur celles qui en avaient une.",
+  "reports.flow.due.rate": "Taux de respect",
+  "reports.flow.due.hint": "$1 sur $2 à l’heure",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

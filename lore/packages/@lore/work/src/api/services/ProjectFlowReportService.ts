@@ -98,6 +98,24 @@ export class ProjectFlowReportService {
       aging: await this.aging(scope, query, cycleP50Hours, cycleP85Hours),
       hold: this.hold(completed.map((row) => row.heldHours)),
       columns,
+      sizes: this.sizes(completed),
+      estimates: completed.flatMap((row) =>
+        row.estimateHours === undefined
+          ? []
+          : [
+              {
+                shortId: row.shortId,
+                title: row.title,
+                estimateHours: row.estimateHours,
+                actualHours: row.trackedHours || row.cycleHours,
+                tracked: row.trackedHours > 0,
+              },
+            ],
+      ),
+      dueDates: {
+        withDue: completed.filter((row) => row.onTime !== undefined).length,
+        onTime: completed.filter((row) => row.onTime).length,
+      },
     };
   }
 
@@ -167,6 +185,10 @@ export class ProjectFlowReportService {
           "createdAt",
           "acceptedAt",
           "completedAt",
+          "size",
+          "estimateMinutes",
+          "dueAt",
+          "timerSessions",
         ],
       }),
       this.quests.findMany({
@@ -192,8 +214,49 @@ export class ProjectFlowReportService {
         cycleHours: Math.max(done - accepted - held, 0) / 3_600_000,
         leadHours: Math.max(done - created, 0) / 3_600_000,
         heldHours: held / 3_600_000,
+        size: row.size,
+        estimateHours:
+          row.estimateMinutes === undefined
+            ? undefined
+            : row.estimateMinutes / 60,
+        trackedHours: this.tracked(row.timerSessions, done),
+        onTime: row.dueAt ? done <= this.dt.of(row.dueAt).valueOf() : undefined,
       };
     });
+  }
+
+  /**
+   * Hours on the quest's timer. A session left running ends with the quest.
+   */
+  protected tracked(
+    sessions: Array<{ startedAt: string; stoppedAt?: string }>,
+    until: number,
+  ): number {
+    return (
+      sessions.reduce((sum, session) => {
+        const end = session.stoppedAt
+          ? this.dt.of(session.stoppedAt).valueOf()
+          : until;
+        return sum + Math.max(end - this.dt.of(session.startedAt).valueOf(), 0);
+      }, 0) / 3_600_000
+    );
+  }
+
+  protected sizes(
+    rows: Array<{ size: number; cycleHours: number }>,
+  ): ReportsFlow["sizes"] {
+    const bySize = new Map<number, number[]>();
+    for (const row of rows) {
+      bySize.set(row.size, [...(bySize.get(row.size) ?? []), row.cycleHours]);
+    }
+    return [...bySize.entries()]
+      .toSorted(([a], [b]) => a - b)
+      .map(([size, hours]) => ({
+        size,
+        quests: hours.length,
+        medianHours: this.stats.median(hours),
+        p85Hours: this.stats.percentile(hours, 85),
+      }));
   }
 
   protected histogram(hours: number[]): ReportsFlow["cycleHistogram"] {

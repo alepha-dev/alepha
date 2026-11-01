@@ -93,6 +93,36 @@ export const reportsFlowSchema = z.object({
       p85Hours: z.number(),
     }),
   ),
+  /**
+   * Cycle time per t-shirt size, smallest first (#Q3001).
+   */
+  sizes: z.array(
+    z.object({
+      size: z.integer(),
+      quests: z.integer(),
+      medianHours: z.number(),
+      p85Hours: z.number(),
+    }),
+  ),
+  /**
+   * The estimate against what it took, for the quests that have one. Actual
+   * is the time tracked on the quest's timer, or its cycle time without one.
+   */
+  estimates: z.array(
+    z.object({
+      ...questRef,
+      estimateHours: z.number(),
+      actualHours: z.number(),
+      tracked: z.boolean(),
+    }),
+  ),
+  /**
+   * Quests completed in the period that had a deadline, and how many met it.
+   */
+  dueDates: z.object({
+    withDue: z.integer(),
+    onTime: z.integer(),
+  }),
 });
 
 export type ReportsFlow = Infer<typeof reportsFlowSchema>;

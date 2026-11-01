@@ -1089,6 +1089,27 @@ export default {
   "reports.flow.time.holdHint": "$1 quests, p85 $2",
   "reports.flow.time.column.definition":
     "Median time a quest spent in this column, from its moved events.",
+  "reports.flow.sizes.title": "Cycle time by size",
+  "reports.flow.sizes.definition":
+    "Median and p85 cycle time per size, for quests completed in the period.",
+  "reports.flow.size.1": "XS",
+  "reports.flow.size.2": "S",
+  "reports.flow.size.3": "M",
+  "reports.flow.size.4": "L",
+  "reports.flow.size.5": "XL",
+  "reports.flow.size.definition":
+    "Median cycle time of the quests of this size.",
+  "reports.flow.size.hint": "$1 quests, p85 $2",
+  "reports.flow.estimates.title": "Estimates against actuals",
+  "reports.flow.estimates.definition":
+    "Quests completed in the period that carry an estimate. Actual is the time on their timer, or their cycle time when nothing was tracked, which is elapsed time rather than effort.",
+  "reports.flow.estimates.tracked": "$1 estimated, $2 tracked",
+  "reports.flow.estimates.cycle": "$1 estimated, $2 elapsed",
+  "reports.flow.due.title": "Due dates",
+  "reports.flow.due.definition":
+    "Quests completed in the period before their due date, over the ones that had one.",
+  "reports.flow.due.rate": "Hit rate",
+  "reports.flow.due.hint": "$1 of $2 on time",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

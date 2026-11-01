@@ -369,6 +369,91 @@ const ReportsFlow = (props: ReportsFlowProps) => {
           ]}
         />
       </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.flow.sizes.title")}
+        definition={tr("reports.flow.sizes.definition")}
+        csv={{ filename: "cycle-by-size", rows: flow.sizes }}
+      >
+        {flow.sizes.length === 0 ? (
+          empty
+        ) : (
+          <ReportsKpiRow
+            kpis={flow.sizes.map((row) => ({
+              label: tr(`reports.flow.size.${row.size}` as never),
+              definition: tr("reports.flow.size.definition"),
+              value: duration(row.medianHours),
+              hint: tr("reports.flow.size.hint", {
+                args: [String(row.quests), duration(row.p85Hours)],
+              }),
+            }))}
+          />
+        )}
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.flow.estimates.title")}
+        definition={tr("reports.flow.estimates.definition")}
+        csv={{ filename: "estimates", rows: flow.estimates }}
+      >
+        {flow.estimates.length === 0 ? (
+          empty
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {flow.estimates.map((row) => (
+              <li key={row.shortId} className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 truncate text-left hover:underline"
+                  onClick={() => openQuest(row.shortId)}
+                >
+                  #{row.shortId} {row.title}
+                </button>
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {tr(
+                    row.tracked
+                      ? "reports.flow.estimates.tracked"
+                      : "reports.flow.estimates.cycle",
+                    {
+                      args: [
+                        duration(row.estimateHours),
+                        duration(row.actualHours),
+                      ],
+                    },
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ReportsSection>
+
+      <ReportsSection
+        title={tr("reports.flow.due.title")}
+        definition={tr("reports.flow.due.definition")}
+      >
+        {flow.dueDates.withDue === 0 ? (
+          empty
+        ) : (
+          <ReportsKpiRow
+            kpis={[
+              {
+                label: tr("reports.flow.due.rate"),
+                definition: tr("reports.flow.due.definition"),
+                value: `${Math.round(
+                  (flow.dueDates.onTime / flow.dueDates.withDue) * 100,
+                )}%`,
+                hint: tr("reports.flow.due.hint", {
+                  args: [
+                    String(flow.dueDates.onTime),
+                    String(flow.dueDates.withDue),
+                  ],
+                }),
+              },
+            ]}
+          />
+        )}
+      </ReportsSection>
     </>
   );
 };
