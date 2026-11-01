@@ -2,14 +2,19 @@ import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
+import { ReactPrefetchCache } from "../services/ReactPrefetchCache.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
-import type { PageRoute } from "./ReactPageProvider.ts";
-import { isPageRoute } from "./ReactPageProvider.ts";
+import type {
+  PageRoute,
+  PendingLayer,
+  ReactRouterState,
+} from "./ReactPageProvider.ts";
+import { isPageRoute, ReactPageProvider } from "./ReactPageProvider.ts";
 import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
 /**
- * Fetches a page's code before it is clicked: the `lazy` chunks of the page and
- * of its layouts, nothing else.
+ * Fetches a page before it is clicked: the `lazy` chunks of the page and of its
+ * layouts, and the loaders that opted in with `prefetch: true`.
  *
  * The attribute is the API, on the model of the anchor interceptor: a delegated
  * listener reads `data-prefetch`, so a plain `<a>` works as well as a `Link`,
@@ -25,6 +30,8 @@ export class ReactPrefetchProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly router = $inject(ReactBrowserRouterProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly pageApi = $inject(ReactPageProvider);
+  protected readonly cache = $inject(ReactPrefetchCache);
 
   /**
    * How long the pointer stays on a link before it counts as intent.
@@ -39,6 +46,11 @@ export class ReactPrefetchProvider {
   protected readonly started = new WeakSet<object>();
   protected readonly queue: Array<() => Promise<unknown>> = [];
   protected inFlight = 0;
+
+  /**
+   * The links with a data prefetch running, to abort when they leave the page.
+   */
+  protected readonly loading = new Map<Element, AbortController>();
 
   protected hoverTimer?: { clear: () => void };
   protected hovered?: Element;
@@ -55,13 +67,15 @@ export class ReactPrefetchProvider {
   }
 
   /**
-   * Fetch the code of the page at `url`, a path without the base. A URL no
-   * page answers does nothing: prefetching is never an error.
+   * Fetch the page at `url`, a path without the base. A URL no page answers
+   * does nothing: prefetching is never an error.
    */
-  public prefetch(url: string): void {
+  public prefetch(url: string, source?: Element): void {
     if (this.saveData) {
       return;
     }
+
+    this.prefetchData(url, source);
 
     for (const lazy of this.chunksOf(url)) {
       if (this.started.has(lazy)) {
@@ -75,26 +89,124 @@ export class ReactPrefetchProvider {
   }
 
   /**
+   * The page at `url`, if the router answers it with a page.
+   */
+  protected pageAt(url: URL): { page: PageRoute; params: any } | undefined {
+    const path = this.localeProvider.enabled
+      ? this.localeProvider.detect(url.pathname).pathname
+      : url.pathname;
+
+    try {
+      const { route, params } = this.router.match(path);
+      return isPageRoute(route) ? { page: route.page, params } : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Run the layers `url` would not reuse, on a throwaway state, and keep their
+   * results for the navigation that follows.
+   *
+   * All of them or none: a parent loader that writes atoms must not run on a
+   * hover, so one layer that did not opt in stops it, silently, before any has
+   * run.
+   */
+  protected prefetchData(url: string, source?: Element): void {
+    const committed = this.alepha.store.get("alepha.react.router.state");
+    const parsed = new URL(url, "http://localhost");
+    const target = this.pageAt(parsed);
+    if (!committed || !target || this.cache.isRunning(url)) {
+      return;
+    }
+
+    const query: Record<string, string> = {};
+    for (const [key, value] of parsed.searchParams.entries()) {
+      query[key] = value;
+    }
+
+    const controller = new AbortController();
+    const state = {
+      url: parsed,
+      name: target.page.name,
+      params: target.params ?? {},
+      query,
+      layers: [],
+      meta: {},
+      head: {},
+      onError: () => null,
+      signal: controller.signal,
+    } as unknown as ReactRouterState;
+
+    const pending = this.pageApi.pendingLayers(
+      target.page,
+      state,
+      committed.layers,
+    );
+    const allowed = pending.every(
+      ({ route }) => !route.loader || route.prefetch,
+    );
+    const useful = pending.some(
+      ({ route, key, query }) =>
+        route.loader && !this.cache.has(this.cache.key(route.name, key, query)),
+    );
+    if (!allowed || !useful) {
+      return;
+    }
+
+    if (source) {
+      this.loading.set(source, controller);
+    }
+
+    this.cache.track(
+      url,
+      this.runLoaders(target.page, state, committed, pending).finally(() => {
+        if (source) {
+          this.loading.delete(source);
+        }
+      }),
+    );
+  }
+
+  protected async runLoaders(
+    page: PageRoute,
+    state: ReactRouterState,
+    committed: ReactRouterState,
+    pending: PendingLayer[],
+  ): Promise<void> {
+    try {
+      const { redirect } = await this.pageApi.createLayers(
+        page,
+        state,
+        committed.layers,
+        { prefetch: true },
+      );
+
+      const failed = state.layers.some((layer) => layer.error);
+      if (redirect || failed || state.signal?.aborted) {
+        return;
+      }
+
+      for (const { route, key, query } of pending) {
+        const layer = state.layers.find((it) => it.key === key);
+        if (route.loader && layer?.props) {
+          this.cache.put(this.cache.key(route.name, key, query), layer.props);
+        }
+      }
+    } catch (error) {
+      this.log.debug("Prefetch failed", error);
+    }
+  }
+
+  /**
    * The `lazy` of the page at `url` and of every layout above it, the
    * overlay's included: which of the two a navigation renders depends on what
    * is on screen when it happens.
    */
   protected chunksOf(url: string): Array<() => Promise<unknown>> {
-    const { pathname } = new URL(url, "http://localhost");
-    const path = this.localeProvider.enabled
-      ? this.localeProvider.detect(pathname).pathname
-      : pathname;
-
-    let page: PageRoute | undefined;
-    try {
-      const { route } = this.router.match(path);
-      page = isPageRoute(route) ? route.page : undefined;
-    } catch {
-      return [];
-    }
-
     const chunks: Array<() => Promise<unknown>> = [];
-    for (let it = page; it; it = it.parent) {
+    const target = this.pageAt(new URL(url, "http://localhost"));
+    for (let it = target?.page; it; it = it.parent) {
       if (it.lazy) chunks.push(it.lazy);
       if (it.overlay?.lazy) chunks.push(it.overlay.lazy);
     }
@@ -142,22 +254,27 @@ export class ReactPrefetchProvider {
       }
     });
 
-    if (typeof IntersectionObserver === "undefined") {
-      return;
+    if (typeof IntersectionObserver !== "undefined") {
+      this.observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            this.observer?.unobserve(entry.target);
+            this.prefetchElement(entry.target);
+          }
+        }
+      });
+
+      this.observeWithin(document.body);
     }
 
-    this.observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          this.observer?.unobserve(entry.target);
-          this.prefetchElement(entry.target);
+    new MutationObserver((mutations) => {
+      for (const [element, controller] of this.loading) {
+        if (!element.isConnected) {
+          controller.abort();
+          this.loading.delete(element);
         }
       }
-    });
 
-    this.observeWithin(document.body);
-
-    new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType === 1) {
@@ -185,7 +302,7 @@ export class ReactPrefetchProvider {
     }
     const url = new URL(href, window.location.href);
     if (url.origin === window.location.origin) {
-      this.prefetch(url.pathname + url.search);
+      this.prefetch(url.pathname + url.search, element);
     }
   }
 }

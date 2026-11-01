@@ -52,6 +52,9 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
     // and the back button all depend on it. It carries the query, so moving
     // between tabs keeps the period and the filters.
     href: router.path(tab.route as never, { query: props.query } as never),
+    // Each report is a heavy, pure read: `prefetch: true` on its page lets the
+    // hover start it, and the click paints with no request.
+    prefetch: "hover",
   }));
 
   return (

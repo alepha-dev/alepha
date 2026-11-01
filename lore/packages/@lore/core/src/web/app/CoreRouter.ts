@@ -458,6 +458,7 @@ export class CoreRouter {
   reportsSummary = $page({
     parent: this.projectReports,
     name: "reportsSummary",
+    prefetch: true,
     path: "/",
     schema: { query: reportsUrlSchema },
     lazy: () =>

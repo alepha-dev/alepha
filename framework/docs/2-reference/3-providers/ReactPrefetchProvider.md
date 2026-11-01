@@ -8,8 +8,8 @@ import { ReactPrefetchProvider } from "alepha/react/router";
 
 ## Overview
 
-Fetches a page's code before it is clicked: the `lazy` chunks of the page and
-of its layouts, nothing else.
+Fetches a page before it is clicked: the `lazy` chunks of the page and of its
+layouts, and the loaders that opted in with `prefetch: true`.
 
 The attribute is the API, on the model of the anchor interceptor: a delegated
 listener reads `data-prefetch`, so a plain `<a>` works as well as a `Link`,

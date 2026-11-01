@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
 import {
+  apiPath,
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
@@ -63,6 +64,42 @@ test.describe("Link prefetching", () => {
     await page.waitForURL((url) => url.pathname === `/${slug}/quests`);
     await page.waitForLoadState("networkidle");
     expect(new Set(seen).size).toBe(seen.length);
+  });
+
+  test("a Reports tab starts its query on hover, and the click paints with no request", async ({
+    page,
+  }) => {
+    const { slug } = await setup(page, "PrefetchTab");
+
+    await page.goto(`/${slug}/reports`);
+    await expect(page.getByTestId("reports-tabs")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.waitForLoadState("networkidle");
+
+    const flow = await apiPath(page, "getReportsFlow");
+    const reads: string[] = [];
+    page.on("request", (request) => {
+      const line = `${request.url()} ${request.postData()}`;
+      if (line.includes(flow.split(":")[0])) {
+        reads.push(line);
+      }
+    });
+
+    const tab = page
+      .getByTestId("reports-tabs")
+      .locator(`a[href^="/${slug}/reports/flow"]`);
+    await tab.hover();
+    await expect.poll(() => reads.length).toBeGreaterThan(0);
+    await page.waitForLoadState("networkidle");
+
+    const before = reads.length;
+    await tab.click();
+    await page.waitForURL((url) => url.pathname === `/${slug}/reports/flow`);
+    await expect(tab).toHaveAttribute("aria-current", "page");
+    await page.waitForLoadState("networkidle");
+
+    expect(reads.length).toBe(before);
   });
 
   test("a quest row fetches the quest page's code on hover", async ({

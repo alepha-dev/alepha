@@ -759,6 +759,7 @@ export class DeployRouter {
   reportsDelivery = $page({
     parent: this.core.projectReports,
     name: "reportsDelivery",
+    prefetch: true,
     path: "/delivery",
     schema: { query: reportsUrlSchema },
     lazy: () =>

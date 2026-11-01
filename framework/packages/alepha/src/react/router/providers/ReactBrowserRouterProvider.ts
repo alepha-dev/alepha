@@ -6,6 +6,7 @@ import { createElement, type ReactNode } from "react";
 
 import NotFoundPage from "../components/NotFound.tsx";
 import { Redirection } from "../errors/Redirection.ts";
+import { ReactPrefetchCache } from "../services/ReactPrefetchCache.ts";
 import {
   type CreateLayersResult,
   isPageRoute,
@@ -21,6 +22,17 @@ export interface BrowserRoute extends Route {
   page: PageRoute;
 }
 
+export interface RouterTransitionOptions {
+  /**
+   * The target may open as an overlay.
+   */
+  overlay?: boolean;
+  /**
+   * The target may use what a prefetch loaded.
+   */
+  prefetched?: boolean;
+}
+
 /**
  * Implementation of AlephaRouter for React in browser environment.
  */
@@ -30,6 +42,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
   protected readonly pageApi = $inject(ReactPageProvider);
   protected readonly browserHeadProvider = $inject(BrowserHeadProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly prefetchCache = $inject(ReactPrefetchCache);
 
   public add(entry: PageRouteEntry) {
     this.pageApi.add(entry);
@@ -55,7 +68,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     previous: PreviousLayerData[] = [],
     meta = {},
     isStale: () => boolean = () => false,
-    overlayAllowed = false,
+    options: RouterTransitionOptions = {},
   ): Promise<string | undefined> {
     const { pathname, search } = url;
     const committed = this.alepha.store.get("alepha.react.router.state");
@@ -111,12 +124,19 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
 
       if (isPageRoute(route)) {
         opensOverlay =
-          overlayAllowed &&
+          !!options.overlay &&
           this.pageApi.canOverlay(route.page, state.params, committed);
 
+        // A click right behind its own hover: the requests are already out.
+        if (options.prefetched) {
+          await this.prefetchCache.settled(pathname + search);
+        }
+
         const { redirect } = opensOverlay
-          ? await this.openOverlay(route.page, state, committed!)
-          : await this.pageApi.createLayers(route.page, state, previous);
+          ? await this.openOverlay(route.page, state, committed!, options)
+          : await this.pageApi.createLayers(route.page, state, previous, {
+              prefetched: options.prefetched,
+            });
 
         opensOverlay = opensOverlay && !state.layers.some((it) => it.error);
         // A newer navigation already won — bail before committing or
@@ -246,12 +266,13 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     page: PageRoute,
     state: ReactRouterState,
     committed: ReactRouterState,
+    options: RouterTransitionOptions,
   ): Promise<CreateLayersResult> {
     const result = await this.pageApi.createLayers(
       page,
       state,
       committed.layers,
-      { overlay: true },
+      { overlay: true, prefetched: options.prefetched },
     );
 
     if (!state.layers.some((it) => it.error)) {

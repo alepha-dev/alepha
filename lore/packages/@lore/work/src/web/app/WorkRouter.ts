@@ -527,6 +527,7 @@ export class WorkRouter {
   reportsFlow = $page({
     parent: this.core.projectReports,
     name: "reportsFlow",
+    prefetch: true,
     path: "/flow",
     schema: { query: reportsUrlSchema },
     lazy: () => import("./components/project/reports/ReportsFlow.client.tsx"),
@@ -544,6 +545,7 @@ export class WorkRouter {
   reportsBacklog = $page({
     parent: this.core.projectReports,
     name: "reportsBacklog",
+    prefetch: true,
     path: "/backlog",
     schema: { query: reportsUrlSchema },
     lazy: () =>
@@ -562,6 +564,7 @@ export class WorkRouter {
   reportsPlanning = $page({
     parent: this.core.projectReports,
     name: "reportsPlanning",
+    prefetch: true,
     path: "/planning",
     schema: { query: reportsUrlSchema },
     lazy: () =>
@@ -579,6 +582,7 @@ export class WorkRouter {
   reportsSupport = $page({
     parent: this.core.projectReports,
     name: "reportsSupport",
+    prefetch: true,
     path: "/support",
     schema: { query: reportsUrlSchema },
     lazy: () =>
@@ -596,6 +600,7 @@ export class WorkRouter {
   reportsTeam = $page({
     parent: this.core.projectReports,
     name: "reportsTeam",
+    prefetch: true,
     path: "/team",
     schema: { query: reportsUrlSchema },
     lazy: () => import("./components/project/reports/ReportsTeam.client.tsx"),

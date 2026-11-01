@@ -39,6 +39,7 @@ import {
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
 import { ReactDeferred } from "../services/ReactDeferred.ts";
+import { ReactPrefetchCache } from "../services/ReactPrefetchCache.ts";
 import { RootComponentsProvider } from "./RootComponentsProvider.ts";
 import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
@@ -98,6 +99,7 @@ export class ReactPageProvider {
   protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
   protected readonly deferred = $inject(ReactDeferred);
+  protected readonly prefetched = $inject(ReactPrefetchCache);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;
 
@@ -431,6 +433,7 @@ export class ReactPageProvider {
       if (
         !announced &&
         !options.overlay &&
+        !options.prefetch &&
         committed &&
         committed.name !== "offline" &&
         committed.layers[i]?.key !== it.key
@@ -441,6 +444,18 @@ export class ReactPageProvider {
           loading: this.getLoading(route),
           delay: this.options.loadingDelay,
         });
+      }
+
+      // A prefetch ran this loader moments ago.
+      if (options.prefetched) {
+        const result = this.prefetched.take(
+          this.prefetched.key(route.name, it.key, config.query),
+        );
+        if (result) {
+          it.props = result;
+          Object.assign(context, result);
+          continue;
+        }
       }
 
       // redirect shorthand
@@ -536,7 +551,11 @@ export class ReactPageProvider {
     //
     // Loaders are untouched. They ran in the loop above and their props are
     // what the client hydrates from; only the component import is skipped.
-    const skipComponents = !this.alepha.isBrowser() && !this.isSSR(route);
+    //
+    // A prefetch builds no view either: nothing will render it, and a chunk
+    // that fails there would reload the page under a hover.
+    const skipComponents =
+      options.prefetch || (!this.alepha.isBrowser() && !this.isSSR(route));
 
     let acc = "";
     for (let i = 0; i < stack.length; i++) {
@@ -683,6 +702,57 @@ export class ReactPageProvider {
       if (parent.errorHandler) return parent.errorHandler;
       parent = parent.parent;
     }
+  }
+
+  /**
+   * The layers a navigation to `route` would not reuse, with what a prefetch
+   * needs to key them. The same decision as `createLayers`, without running
+   * anything: it has to be known that every one of them may run before the
+   * first one does.
+   */
+  public pendingLayers(
+    route: PageRoute,
+    state: ReactRouterState,
+    previous: PreviousLayerData[],
+  ): PendingLayer[] {
+    const stack: PageRoute[] = [route];
+    for (let it = route.parent; it; it = it.parent) {
+      stack.unshift(it);
+    }
+
+    const pending: PendingLayer[] = [];
+    let identity = "";
+
+    for (let i = 0; i < stack.length; i++) {
+      const it = stack[i];
+      identity = this.identityOf(identity, it, state.params);
+
+      let query: Record<string, any> = {};
+      try {
+        this.convertStringObjectToObject(it.schema?.query, state.query);
+        if (it.schema?.query) {
+          query = this.alepha.codec.decode(
+            it.schema.query,
+            coerceObject(it.schema.query, state.query),
+          ) as Record<string, any>;
+        }
+      } catch {
+        // A query the page refuses is an error page, not something to load.
+        return [];
+      }
+
+      const same =
+        pending.length === 0 &&
+        previous[i]?.name === it.name &&
+        JSON.stringify([previous[i].key, previous[i].config?.query ?? {}]) ===
+          JSON.stringify([identity, query]);
+
+      if (!same) {
+        pending.push({ route: it, key: identity, query });
+      }
+    }
+
+    return pending;
   }
 
   /**
@@ -1272,6 +1342,12 @@ export interface ReactRouterState {
   name?: string;
 
   /**
+   * Set on a prefetch, for a loader to hand to what it calls: aborted when the
+   * link that asked for it leaves the page.
+   */
+  signal?: AbortSignal;
+
+  /**
    * The page open as an overlay over this state.
    *
    * ⚠️ `name`, `layers`, `url` and `params` stay the BACKGROUND's, so
@@ -1303,6 +1379,24 @@ export interface CreateLayersOptions {
    * The leaf renders its `overlay` component, and no slot is announced.
    */
   overlay?: boolean;
+  /**
+   * A dry run for a prefetch: loaders run, nothing is announced, and no view
+   * is built.
+   */
+  prefetch?: boolean;
+  /**
+   * Take a layer's props from what a prefetch left, instead of its loader.
+   */
+  prefetched?: boolean;
+}
+
+/**
+ * A layer a navigation would not reuse. See `ReactPageProvider.pendingLayers`.
+ */
+export interface PendingLayer {
+  route: PageRoute;
+  key: string;
+  query: Record<string, any>;
 }
 
 export interface CreateLayersResult {

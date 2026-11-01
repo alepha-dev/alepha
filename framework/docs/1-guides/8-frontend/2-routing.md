@@ -594,6 +594,31 @@ For a surface that is not a link, call the router:
 />
 ```
 
+### Loader data
+
+`prefetch: true` on a `$page` declares its loader free of side effects, so a prefetch may run it too: hovering a tab starts its query, and the click paints at once.
+
+```tsx
+report = $page({
+  path: "/reports/flow",
+  prefetch: true,
+  loader: async ({ query, signal }) => ({
+    flow: await this.api.flow({ query }, { signal }),
+  }),
+  lazy: () => import("./Flow.tsx"),
+});
+```
+
+The router runs the layers the target would not reuse, on a throwaway state, and keeps the result for the navigation that follows.
+
+- It runs only if every one of those layers opted in, or has no loader. Otherwise it does nothing, silently, and the link fetches its code alone: a parent loader that writes atoms must not run on a hover. Mark a loader only if it reads.
+- A `use` guard runs as on a navigation, and a denial or a failure is dropped: the click then does the work and shows the error.
+- A result lives 30 seconds, is used once, and is keyed by route, layer identity and decoded query. At most eight are kept. Nothing invalidates one, so a write within those 30 seconds is not reflected by it.
+- A click landing while the prefetch runs waits for it instead of sending the same requests again.
+- `signal` is aborted when the link leaves the page, and the result is dropped. A loader passes it on to cancel the request itself.
+
+### Limits
+
 At most four chunks load at once, each only once, and nothing loads under `navigator.connection.saveData`. A failed prefetch is ignored: an old chunk after a deploy never reloads the page under a hover. `@alepha/ui`'s sidebar entries prefetch on hover unless a `NavItem` says `prefetch: false`.
 
 ## Modal Routes

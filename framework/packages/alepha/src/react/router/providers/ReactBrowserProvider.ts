@@ -389,6 +389,7 @@ export class ReactBrowserProvider {
       meta: options.meta,
       transitionId: myTransitionId,
       overlay: true,
+      prefetched: !options.force,
     });
 
     // A newer navigation has superseded us — bail out without touching
@@ -443,7 +444,7 @@ export class ReactBrowserProvider {
       previous,
       options.meta,
       isStale,
-      options.overlay,
+      { overlay: options.overlay, prefetched: options.prefetched },
     );
 
     // A newer navigation has superseded us between the time we awaited
@@ -1182,4 +1183,9 @@ export interface RouterRenderOptions {
    * re-render of one; never a first screen.
    */
   overlay?: boolean;
+  /**
+   * The target may use what a prefetch loaded. A push, never an invalidation,
+   * which exists to read again.
+   */
+  prefetched?: boolean;
 }

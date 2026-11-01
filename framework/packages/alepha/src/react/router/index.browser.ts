@@ -15,6 +15,7 @@ import { RouterLocaleProvider } from "./providers/RouterLocaleProvider.ts";
 import { ReactBootHealth } from "./services/ReactBootHealth.ts";
 import { ReactDeferred } from "./services/ReactDeferred.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
+import { ReactPrefetchCache } from "./services/ReactPrefetchCache.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
 import { ReactViewTransition } from "./services/ReactViewTransition.ts";
 
@@ -38,6 +39,7 @@ export const AlephaReactRouter = $module({
     ReactPrefetchProvider,
     ReactRouter,
     ReactViewTransition,
+    ReactPrefetchCache,
     ReactDeferred,
     ReactBrowserRendererProvider,
     RouterLocaleProvider,

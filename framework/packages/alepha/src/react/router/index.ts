@@ -29,6 +29,7 @@ import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
 import { ReactDeferred } from "./services/ReactDeferred.ts";
 import { ReactPageServerService } from "./services/ReactPageServerService.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
+import { ReactPrefetchCache } from "./services/ReactPrefetchCache.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
 import { ReactViewTransition } from "./services/ReactViewTransition.ts";
 
@@ -215,6 +216,7 @@ export const AlephaReactRouter = $module({
     ReactPreloadProvider,
     ReactRouter,
     ReactViewTransition,
+    ReactPrefetchCache,
     ReactDeferred,
     ReactServerErrorProvider,
     ReactServerProvider,

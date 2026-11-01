@@ -180,6 +180,20 @@ export interface PagePrimitiveOptions<
   loader?: (context: PageLoader<TConfig, TPropsParent>) => Async<TProps>;
 
   /**
+   * Declare the `loader` free of side effects, so a prefetch may run it.
+   *
+   * On a prefetch (a link's `prefetch`, or `router.prefetch`) the router runs
+   * the layers the target would not reuse, and keeps the result for the
+   * navigation that follows, for 30 seconds. It runs only if EVERY one of those
+   * layers has a loader marked this way, or none: a loader that writes atoms
+   * must not run on a hover, and a target with one simply prefetches its code.
+   * A `use` guard runs as on a navigation, and a denial or a failure is dropped.
+   *
+   * @default false
+   */
+  prefetch?: boolean;
+
+  /**
    * Default props to pass to the component when rendering the page.
    *
    * Props returned by the `loader` will override these default props.
