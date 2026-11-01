@@ -131,6 +131,21 @@ export class ProjectReportsService {
   }
 
   /**
+   * {@link questScope} for a reader outside this service, with the project's
+   * draft epics looked up.
+   */
+  async scopeOf(
+    projectId: number,
+    query: ReportsQuery,
+  ): Promise<PgQueryWhere<typeof quests.schema>> {
+    return this.questScope(
+      projectId,
+      await this.epicVisibility.draftEpicIds(projectId),
+      query,
+    );
+  }
+
+  /**
    * A completion inside the window: the bound of every "done in the period"
    * figure. The where-object encodes the timestamps for the column.
    */

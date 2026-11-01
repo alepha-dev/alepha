@@ -44,6 +44,8 @@ import { ProjectReportsService } from "./services/ProjectReportsService.ts";
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestEditAccess } from "./services/QuestEditAccess.ts";
+import { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
+import { QuestFlowService } from "./services/QuestFlowService.ts";
 import { QuestHoldTime } from "./services/QuestHoldTime.ts";
 import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
 import { QuestService } from "./services/QuestService.ts";
@@ -200,6 +202,8 @@ export const LoreWorkApi = $module({
     AreaController,
     ProjectReportsController,
     ProjectReportsService,
+    QuestFlowHistory,
+    QuestFlowService,
     QuestHoldTime,
     ProjectQuestPortabilityController,
     KanbanController,
@@ -237,3 +241,8 @@ export { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 export { ReleaseContentService } from "./services/ReleaseContentService.ts";
 
 export { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
+export { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
+export {
+  type QuestFlowPoint,
+  QuestFlowService,
+} from "./services/QuestFlowService.ts";

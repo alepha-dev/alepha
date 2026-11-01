@@ -34,7 +34,14 @@ class Probe {
  * another table already moves, or that never belonged to one project.
  * A table added here says why.
  */
-const NOT_MOVED: Record<string, string> = {};
+const NOT_MOVED: Record<string, string> = {
+  // A night's counts of that project as it stood, with its epic and release
+  // ids as subjects. They stay with the source: added to the target's own
+  // nights they would double a day, and the merge renumbers those ids. The
+  // target's flow reads its own rows and shows the merged quests from the
+  // first snapshot after the merge.
+  quest_flow_daily: "the source's history as it was",
+};
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on
 // purpose, as the history of what happened there.

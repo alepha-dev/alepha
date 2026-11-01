@@ -1,12 +1,16 @@
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
+import { QuestFlowService } from "../services/QuestFlowService.ts";
 
 export class EpicJobs {
   protected readonly log = $logger();
   protected readonly workflow = $inject(EpicWorkflowService);
+  protected readonly flow = $inject(QuestFlowService);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * Finish the epic transitions a failed write left undone (#Q2547).
@@ -31,6 +35,26 @@ export class EpicJobs {
       if (started + completed > 0) {
         this.log.info("Epic transitions healed", { started, completed });
       }
+    },
+  });
+
+  /**
+   * The day that just ended, into `quest_flow_daily` (#Q2998).
+   *
+   * Here and not in a job class of its own for the cron: `0 0 * * *` is the
+   * expression Lore's nightly jobs already use, so it adds no Cloudflare cron
+   * trigger either (#F1325).
+   */
+  public readonly snapshotFlow = $job({
+    name: "quests.snapshot-flow",
+    description:
+      "Records how many quests sat in each state at the end of the day, per project, epic, release and area, nightly.",
+    cron: "0 0 * * *",
+    timeout: [5, "minutes"],
+    handler: async () => {
+      const day = this.dt.now().subtract(1, "day").toISOString().slice(0, 10);
+      const rows = await this.flow.snapshotAll(day);
+      this.log.info("Quest flow snapshot written", { day, rows });
     },
   });
 }

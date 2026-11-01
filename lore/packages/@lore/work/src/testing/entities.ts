@@ -7,6 +7,7 @@ import { areas } from "../api/entities/areas.ts";
 import { type Epic, epics } from "../api/entities/epics.ts";
 import { feedback } from "../api/entities/feedback.ts";
 import { questComments } from "../api/entities/questComments.ts";
+import { questFlowDaily } from "../api/entities/questFlowDaily.ts";
 import {
   type Quest,
   type QuestInsert,
@@ -30,6 +31,7 @@ export class WorkTestEntities extends CoreTestEntities {
   epics = $repository(epics);
   quests = $repository(quests);
   questComments = $repository(questComments);
+  questFlowDaily = $repository(questFlowDaily);
 
   /**
    * The bag the container constructed, when it is a Work one or a subclass
