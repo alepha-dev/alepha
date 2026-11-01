@@ -63,10 +63,25 @@ export class ProjectPermissions {
      * ranks and the capabilities for one would be two queries spent on an
      * answer that ignores them. The bypass itself lives upstream; this is
      * only about not paying for it.
+     *
+     * ⚠️ Automations are the exception (#Q3022): the API refuses the bypass
+     * for them, on purpose, so `automation:*` is what the caller holds as a
+     * member. `AutomationAccess` recomputes the same way, and outside the
+     * project there is nothing to recompute, so this stays free.
      */
     if (user.ownership === false) {
+      const permissions = this.effective.resolve({
+        user,
+        exclude: ["admin:"],
+      });
+      const asMember = member
+        ? (await this.of(projectId, { ...user, ownership: true }, member))
+            .permissions
+        : [];
       return {
-        permissions: this.effective.resolve({ user, exclude: ["admin:"] }),
+        permissions: permissions.filter(
+          (it) => !it.startsWith("automation:") || asMember.includes(it),
+        ),
       };
     }
 
