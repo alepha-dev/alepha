@@ -113,4 +113,17 @@ describe("DocsMarkdown", () => {
       );
     });
   });
+
+  describe("forSite", () => {
+    it("should point the site's own links at the site being built", () => {
+      expect(
+        DocsMarkdown.forSite(
+          "[a](https://alepha.dev/llms.txt) [b](https://lore.alepha.dev) [c](https://alepha.dev.example.com)",
+          "https://latest.alepha.dev",
+        ),
+      ).toBe(
+        "[a](https://latest.alepha.dev/llms.txt) [b](https://lore.alepha.dev) [c](https://alepha.dev.example.com)",
+      );
+    });
+  });
 });

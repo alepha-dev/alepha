@@ -142,8 +142,9 @@ export class LlmsCommand {
       const pages = new Map<string, Page>();
       const written = new Map<string, string>();
       const write = async (path: string, content: string) => {
-        written.set(path, content);
-        await this.write(join(outputDir, path), content);
+        const sited = DocsMarkdown.forSite(content);
+        written.set(path, sited);
+        await this.write(join(outputDir, path), sited);
       };
 
       await run("write markdown pages", async () => {
@@ -490,7 +491,8 @@ export class LlmsCommand {
    */
   protected dangling(written: Map<string, string>): string[] {
     const problems: string[] = [];
-    const target = /\]\((https:\/\/alepha\.dev\/[^)\s#]+\.(?:md|txt))/g;
+    const site = DocsMarkdown.SITE.replaceAll(".", "\\.");
+    const target = new RegExp(`\\]\\((${site}/[^)\\s#]+\\.(?:md|txt))`, "g");
     for (const [path, content] of written) {
       for (const match of content.matchAll(target)) {
         if (!written.has(this.pathOf(match[1]))) {

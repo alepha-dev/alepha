@@ -29,8 +29,8 @@ export default defineConfig({
     // `$env` default is only visible to the schema that declares it: the head
     // layer reads `alepha.env`, which sees nothing until a real variable
     // exists. Without this line every page shipped with no canonical and no
-    // `og:url`, silently.
-    PUBLIC_URL: "https://alepha.dev",
+    // `og:url`, silently. The `latest` deploy names its own address.
+    PUBLIC_URL: process.env.PUBLIC_URL ?? "https://alepha.dev",
   },
   // ---------------------------------------------------------------------------
   // Cloudflare Workers deploy of the docs at `alepha.dev`.
@@ -102,6 +102,10 @@ export default defineConfig({
       // top, giving `alepha-alepha-docs-production`, a new Worker.
       environments: {
         production: lore({ project: "alepha", estate: "cf-feunard" }),
+        // latest.alepha.dev: the same site from `main`, with no release pin
+        // (#Q3028). ⚠️ Lore keeps one `latest` tag per app, so the two copies
+        // share it: `docs.yml` never runs their deploys at the same time.
+        latest: lore({ project: "alepha", estate: "cf-feunard" }),
       },
     }),
   ],

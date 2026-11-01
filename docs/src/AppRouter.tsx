@@ -13,6 +13,7 @@ import BayHome from "./components/product/BayHome.tsx";
 import LoreHome from "./components/product/LoreHome.tsx";
 import type { DocProduct } from "./config/docs.ts";
 import { changelog, docs, docsHref, docsOf } from "./config/docs.ts";
+import { isLatestSite } from "./config/site.ts";
 
 /**
  * `<link rel="alternate">` to a doc set's `llms.txt`, the index an agent
@@ -108,6 +109,9 @@ export class AppRouter {
           content: "#010409",
           media: "(prefers-color-scheme: dark)",
         },
+        // The search results belong to the release: `main` is a working copy
+        // of the same pages, for projects that vendor Alepha.
+        ...(isLatestSite() ? [{ name: "robots", content: "noindex" }] : []),
       ],
     };
 
