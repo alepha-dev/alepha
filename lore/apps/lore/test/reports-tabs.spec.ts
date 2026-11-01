@@ -38,6 +38,7 @@ const reportsTabs = (
       "reportsBacklog",
       "reportsPlanning",
       "reportsSupport",
+      "reportsDelivery",
       "reportsOverview",
       "reportsQuests",
       "reportsMembers",
@@ -98,6 +99,7 @@ describe("reportsTabs", () => {
     // has no quests at all and still needs to reach what CI pushed.
     expect(names(["apps"], true)).toEqual([
       "reportsSummary",
+      "reportsDelivery",
       "reportsMembers",
       "reportsQuality",
     ]);

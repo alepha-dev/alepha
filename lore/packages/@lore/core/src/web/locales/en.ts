@@ -1272,6 +1272,37 @@ export default {
   "reports.knowledge.orphans.title": "Orphan folios",
   "reports.knowledge.byDirectory.title": "By directory",
   "reports.knowledge.byDirectory.definition": "Folios per top-level directory.",
+  "project.reports.nav.delivery": "Delivery",
+  "reports.delivery.kpi.frequency": "Deploys per week",
+  "reports.delivery.kpi.frequency.definition":
+    "Successful deploys per week over the period.",
+  "reports.delivery.kpi.lead": "Lead time for changes",
+  "reports.delivery.kpi.lead.definition":
+    "Median time from a quest completed to the first successful deploy of its release tag or its commits.",
+  "reports.delivery.kpi.leadHint": "p85 $1, $2 not placed",
+  "reports.delivery.kpi.failure": "Change failure rate",
+  "reports.delivery.kpi.failure.definition":
+    "Failed deploys and rollbacks, over all finished deploys. A rollback is a deploy back to a tag the instance already ran.",
+  "reports.delivery.kpi.failureHint": "$1 failed, $2 rolled back",
+  "reports.delivery.kpi.restore": "Time to restore",
+  "reports.delivery.kpi.restore.definition":
+    "Median time from an incident starting to it ending, from monitors.",
+  "reports.delivery.kpi.restoreHint": "p85 $1, $2 incidents",
+  "reports.delivery.series.succeeded": "Succeeded",
+  "reports.delivery.series.failed": "Failed",
+  "reports.delivery.series.duration": "Median duration",
+  "reports.delivery.deploys.title": "Deploys and success",
+  "reports.delivery.deploys.definition":
+    "Finished deploys per grain. Cancelled ones are left out.",
+  "reports.delivery.duration.title": "Deploy duration",
+  "reports.delivery.duration.definition":
+    "Median time from a deploy starting to it finishing, per grain, in minutes.",
+  "reports.delivery.apps.title": "By app and environment",
+  "reports.delivery.apps.definition":
+    "Finished deploys of each deployed copy over the period.",
+  "reports.delivery.apps.empty": "No deploy finished in this period.",
+  "reports.delivery.apps.app": "App",
+  "reports.delivery.apps.rollbacks": "Rollbacks",
   "reports.filter.period": "Period",
   "reports.filter.range.7d": "Last 7 days",
   "reports.filter.range.30d": "Last 30 days",

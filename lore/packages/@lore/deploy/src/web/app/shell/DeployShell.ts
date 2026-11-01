@@ -264,6 +264,13 @@ export class DeployShell {
     // exists once there is something in it. Asked when Reports opens, not on
     // the `project` loader, which every project navigation pays.
     this.reports.register({
+      route: "reportsDelivery",
+      labelKey: "project.reports.nav.delivery",
+      order: 9.8,
+      needs: "apps",
+      filters: ["period", "grain"],
+    });
+    this.reports.register({
       route: "reportsQuality",
       labelKey: "project.reports.nav.quality",
       order: 40,

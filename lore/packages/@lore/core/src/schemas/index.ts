@@ -88,6 +88,10 @@ export {
   reportsKnowledgeSchema,
 } from "../api/schemas/reportsKnowledgeSchema.ts";
 export {
+  type ReportsDelivery,
+  reportsDeliverySchema,
+} from "../api/schemas/reportsDeliverySchema.ts";
+export {
   type ReportsSummaryLine,
   reportsSummaryLineSchema,
   reportsSummarySchema,

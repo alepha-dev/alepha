@@ -8,6 +8,7 @@ import { AppController } from "./controllers/AppController.ts";
 import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
+import { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
@@ -69,6 +70,7 @@ import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
+import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityService } from "./services/QualityService.ts";
@@ -220,6 +222,8 @@ export const LoreDeployApi = $module({
     // The real transport, substituted for `EstateCommandTransport` in
     // `main.server.ts`. Listed so DI scanning sees the class.
     WebSocketEstateCommandTransport,
+    DeliveryReportsController,
+    ProjectDeliveryReportService,
     QualityController,
     ArtifactController,
     AppController,
@@ -257,6 +261,7 @@ export { EstateController } from "./controllers/EstateController.ts";
 export { EstateSocketController } from "./controllers/EstateSocketController.ts";
 export { InsightsController } from "./controllers/InsightsController.ts";
 export { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
+export { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
 export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 export { SigilController } from "./controllers/SigilController.ts";

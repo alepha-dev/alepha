@@ -1253,6 +1253,37 @@ export default {
   "reports.knowledge.byDirectory.title": "Par dossier",
   "reports.knowledge.byDirectory.definition":
     "Folios par dossier de premier niveau.",
+  "project.reports.nav.delivery": "Livraison",
+  "reports.delivery.kpi.frequency": "Déploiements par semaine",
+  "reports.delivery.kpi.frequency.definition":
+    "Déploiements réussis par semaine sur la période.",
+  "reports.delivery.kpi.lead": "Délai de livraison",
+  "reports.delivery.kpi.lead.definition":
+    "Temps médian entre une quête terminée et le premier déploiement réussi de son tag de version ou de ses commits.",
+  "reports.delivery.kpi.leadHint": "p85 $1, $2 non rattachées",
+  "reports.delivery.kpi.failure": "Taux d’échec des changements",
+  "reports.delivery.kpi.failure.definition":
+    "Déploiements échoués et retours arrière, sur tous les déploiements terminés. Un retour arrière redéploie un tag déjà lancé sur l’instance.",
+  "reports.delivery.kpi.failureHint": "$1 échoués, $2 retours arrière",
+  "reports.delivery.kpi.restore": "Temps de rétablissement",
+  "reports.delivery.kpi.restore.definition":
+    "Temps médian entre le début et la fin d’un incident, d’après les moniteurs.",
+  "reports.delivery.kpi.restoreHint": "p85 $1, $2 incidents",
+  "reports.delivery.series.succeeded": "Réussis",
+  "reports.delivery.series.failed": "Échoués",
+  "reports.delivery.series.duration": "Durée médiane",
+  "reports.delivery.deploys.title": "Déploiements et réussite",
+  "reports.delivery.deploys.definition":
+    "Déploiements terminés par intervalle, hors annulés.",
+  "reports.delivery.duration.title": "Durée des déploiements",
+  "reports.delivery.duration.definition":
+    "Temps médian entre le début et la fin d’un déploiement, par intervalle, en minutes.",
+  "reports.delivery.apps.title": "Par application et environnement",
+  "reports.delivery.apps.definition":
+    "Déploiements terminés de chaque copie déployée sur la période.",
+  "reports.delivery.apps.empty": "Aucun déploiement terminé sur cette période.",
+  "reports.delivery.apps.app": "Application",
+  "reports.delivery.apps.rollbacks": "Retours arrière",
   "reports.filter.period": "Période",
   "reports.filter.range.7d": "7 derniers jours",
   "reports.filter.range.30d": "30 derniers jours",

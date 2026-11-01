@@ -96,6 +96,7 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
+import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
@@ -256,6 +257,7 @@ export const LoreCoreApi = $module({
     // `main.server.ts`, same arrangement.
     LoreNotificationPreferences,
     NotificationPreferenceController,
+    DeliveryChangeRegistry,
     ProjectLimits,
     ReportStatistics,
     ReportsSummaryController,
@@ -417,6 +419,10 @@ export { LoreAuditService } from "./services/LoreAuditService.ts";
 export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
+export {
+  type DeliveryChange,
+  DeliveryChangeRegistry,
+} from "./services/DeliveryChangeRegistry.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
 export {
   type ReportsGrain,

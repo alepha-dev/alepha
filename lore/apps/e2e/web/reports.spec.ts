@@ -291,6 +291,30 @@ test.describe("Reports", () => {
   });
 
   /**
+   * The Delivery tab (#Q3008).
+   */
+  test("Delivery reads DORA's keys on a project that has shipped nothing", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reportsdl${t}@example.com`, "ReportsD123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RD${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "apps");
+
+    await page.goto(`/${slug}/reports/delivery`);
+
+    await expect(page.getByText("Change failure rate")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+  });
+
+  /**
    * The filter bar (#Q2996). The state lives in the URL, so a link is
    * shareable, a reload keeps it, and moving between tabs carries it.
    */

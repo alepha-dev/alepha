@@ -77,6 +77,7 @@ import { WorkAutomationReferences } from "./services/WorkAutomationReferences.ts
 import { WorkAutomationSelections } from "./services/WorkAutomationSelections.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
+import { WorkDeliveryChanges } from "./services/WorkDeliveryChanges.ts";
 import { WorkFileAccess } from "./services/WorkFileAccess.ts";
 import { WorkFlowDashboardMetrics } from "./services/WorkFlowDashboardMetrics.ts";
 import { WorkPlanDashboardMetrics } from "./services/WorkPlanDashboardMetrics.ts";
@@ -216,6 +217,7 @@ export const LoreWorkApi = $module({
     QuestFlowService,
     QuestHoldTime,
     ReleaseForecast,
+    WorkDeliveryChanges,
     WorkReportsSummary,
     ProjectQuestPortabilityController,
     KanbanController,
