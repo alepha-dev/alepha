@@ -57,3 +57,65 @@ test("downloads the stored artifact from its row menu with matching bytes", asyn
   );
   expect(downloaded).toEqual(Buffer.from(bytes));
 });
+
+test("opens a build from the table and reads what it declares", async ({
+  page,
+}) => {
+  await registerAndVerify(
+    page,
+    `artifact-detail-${crypto.randomUUID()}@example.com`,
+    "GoodPassw0rd",
+  );
+  const project = await createProjectViaWizard(page, "Artifact detail", {
+    capabilities: ["apps"],
+  });
+  const file = await packedArtifact({
+    name: "my-app-1.2.3-node.tar.gz",
+    manifest: {
+      runtimes: [{ runtime: "node", entry: "index.node.js" }],
+      resources: { hasDatabase: true, hasKV: false },
+      secrets: [{ name: "APP_SECRET" }],
+    },
+  });
+  const bytes = [...new Uint8Array(await file.arrayBuffer())];
+  const status = await page.evaluate(
+    async ({ projectId, bytes, name }) => {
+      const body = new FormData();
+      body.set("app", "my-app");
+      body.set("tag", "1.2.3");
+      body.set(
+        "file",
+        new File([new Uint8Array(bytes)], name, { type: "application/gzip" }),
+      );
+      const response = await fetch(`/api/projects/${projectId}/artifacts`, {
+        method: "POST",
+        body,
+      });
+      return response.status;
+    },
+    { projectId: project.id, bytes, name: file.name },
+  );
+  expect(status).toBe(200);
+
+  await page.goto(`/${project.slug}/artifacts`);
+  await page.getByRole("link", { name: "1.2.3", exact: true }).click();
+
+  await expect(page).toHaveURL(
+    new RegExp(`/${project.slug}/artifacts/my-app/1\\.2\\.3`),
+  );
+  await expect(page.getByTestId("artifact-plate")).toContainText("my-app");
+  await expect(page.getByTestId("artifact-needs")).toContainText("database");
+  await expect(page.getByTestId("artifact-needs")).toContainText("APP_SECRET");
+
+  await page
+    .getByTestId("artifact-tabs")
+    .getByRole("tab", { name: "Manifest" })
+    .click();
+  await expect(page).toHaveURL(/tab=manifest/);
+  await expect(page.getByTestId("artifact-manifest")).toContainText(
+    "index.node.js",
+  );
+
+  await page.goto(`/${project.slug}/artifacts/my-app/9.9.9`);
+  await expect(page.getByTestId("artifact-not-found")).toBeVisible();
+});

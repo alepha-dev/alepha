@@ -2,12 +2,14 @@ import { TimeAgo } from "@alepha/ui";
 import { currentProjectAtom, type I18n, CommitLink } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Link } from "alepha/react/router";
 import { GitCommitHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ArtifactGroup } from "../../../../../api/schemas/artifactGroupSchema.ts";
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
 import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
+import { artifactHref } from "../artifacts/artifactView.ts";
 
 export interface AppArtifactsRowProps {
   group: ArtifactGroup;
@@ -88,9 +90,13 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-      <span className="w-28 shrink-0 truncate font-medium" title={group.tag}>
+      <Link
+        href={artifactHref(project?.slug, { app: group.app, tag: group.tag })}
+        className="w-28 shrink-0 truncate font-medium"
+        title={group.tag}
+      >
         {group.tag}
-      </span>
+      </Link>
 
       <span className="flex shrink-0 flex-wrap items-center gap-1.5">
         {group.variants.map((variant) => (

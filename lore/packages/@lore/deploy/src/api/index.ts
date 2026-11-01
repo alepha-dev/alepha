@@ -38,6 +38,7 @@ import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
+import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BlightQuestHandBack } from "./services/BlightQuestHandBack.ts";
@@ -53,6 +54,7 @@ import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
+import { DeployedBuildService } from "./services/DeployedBuildService.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
@@ -151,7 +153,9 @@ export const LoreDeployApi = $module({
     EstateNotifications,
     QualityService,
     ArtifactTarReader,
+    ArtifactDetailService,
     ArtifactService,
+    DeployedBuildService,
     // Deploying a stored artifact to an estate (epic #1). `DeployRegistry` is
     // the seam #1201 replaces with the `deployments` table; the runner is what
     // writes through it.
@@ -288,6 +292,7 @@ export { StackTargets } from "./services/StackTargets.ts";
 export { StackVariableService } from "./services/StackVariableService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";
+export { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 export { ArtifactService } from "./services/ArtifactService.ts";
 export { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 export { BlightRuleService } from "./services/BlightRuleService.ts";

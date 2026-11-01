@@ -75,6 +75,24 @@ export const appInstanceResourceSchema = appInstances.schema
      */
     version: deployments.schema.shape.tag.optional(),
     /**
+     * The same run with its digest, which is what says which BYTES run here.
+     *
+     * `state`, `runtime` and `format` come from `getApp` alone, which reads the
+     * registry: `current` when a variant of the tag still has this digest,
+     * `moved` when the tag has newer bytes, `gone` when the tag was deleted.
+     * Absent on the list, which reads as "not looked up", never as `current`.
+     */
+    deployed: z
+      .object({
+        tag: deployments.schema.shape.tag,
+        sha256: deployments.schema.shape.sha256,
+        at: z.string(),
+        state: z.enum(["current", "moved", "gone"]).optional(),
+        runtime: z.string().optional(),
+        format: z.string().optional(),
+      })
+      .optional(),
+    /**
      * The stack environment this copy is a member of, named: a member deploys
      * through it and takes its estate from it (#Q2695).
      */

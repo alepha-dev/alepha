@@ -1,10 +1,12 @@
 import { TimeAgo, Badge, Button, useDialog, useToast } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
-import { useAction, useClient } from "alepha/react";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Link } from "alepha/react/router";
 import { useEffect, useState } from "react";
 
 import type { DeployController } from "../../../../../api/controllers/DeployController.ts";
+import { artifactHref } from "../artifacts/artifactView.ts";
 
 export interface AppDeployRunProps {
   run: Record<string, any>;
@@ -47,6 +49,7 @@ const AppDeployRun = (props: AppDeployRunProps) => {
   const toaster = useToast();
   const dialog = useDialog();
   const deployApi = useClient<DeployController>();
+  const [project] = useStore(currentProjectAtom);
   const [open, setOpen] = useState(false);
 
   const run = props.run;
@@ -156,7 +159,15 @@ const AppDeployRun = (props: AppDeployRunProps) => {
         <Badge variant={status === "failed" ? "destructive" : "tint"}>
           {statusLabel}
         </Badge>
-        <span className="font-mono text-sm">{String(run.tag)}</span>
+        <Link
+          href={artifactHref(project?.slug, {
+            app: String(run.app),
+            tag: String(run.tag),
+          })}
+          className="font-mono text-sm"
+        >
+          {String(run.tag)}
+        </Link>
         <span
           className="text-muted-foreground font-mono text-xs"
           title={String(run.sha256 ?? "")}

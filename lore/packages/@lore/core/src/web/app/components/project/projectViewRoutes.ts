@@ -135,6 +135,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   "reportsMembers",
   "reportsQuality",
   "projectArtifacts",
+  "projectArtifact",
   "projectFolios",
   "projectFoliosNew",
   "projectFoliosFolio",
@@ -182,6 +183,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectEpics"
   | "projectQuests"
   | "projectApps"
+  | "projectArtifacts"
   | "projectUptime"
   | "projectStacks"
   | "projectReleases"
@@ -211,6 +213,7 @@ export const SECTION_HREF_ROUTES: Record<
   appErrors: "projectApps",
   appExplore: "projectApps",
   appArtifacts: "projectApps",
+  projectArtifact: "projectArtifacts",
   appDeploy: "projectApps",
   appEnvironment: "projectApps",
   appSettings: "projectApps",
@@ -271,6 +274,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   reportsTeam: "project.menu.reports",
   reportsMembers: "project.menu.reports",
   projectArtifacts: "project.menu.artifacts",
+  projectArtifact: "project.menu.artifacts",
   projectFolios: "project.menu.folios",
   projectFoliosNew: "project.menu.folios",
   projectFoliosFolio: "project.menu.folios",
