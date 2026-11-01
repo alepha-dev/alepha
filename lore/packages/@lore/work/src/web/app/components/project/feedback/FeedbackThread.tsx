@@ -153,7 +153,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                 {/* Written by a machine over MCP. Over MCP the account is
                     the owner's, so without this the reporter reads an
                     agent's triage note as the owner's own words. */}
-                {comment.source?.kind === "mcp" && (
+                {comment.source && (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Bot className="size-3" />
                     {tr("feedback.thread.agent")}

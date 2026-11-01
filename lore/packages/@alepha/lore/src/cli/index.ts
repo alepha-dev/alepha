@@ -4,12 +4,17 @@ import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { AlephaLoreDeploy } from "./AlephaLoreDeploy.ts";
+import { AppInstanceCommand } from "./commands/AppInstanceCommand.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
+import { AutomationCommand } from "./commands/AutomationCommand.ts";
+import { BlightCommand } from "./commands/BlightCommand.ts";
+import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
 import { EstateCommand } from "./commands/EstateCommand.ts";
+import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { ProjectCommand } from "./commands/ProjectCommand.ts";
@@ -18,6 +23,7 @@ import { QuestCommand } from "./commands/QuestCommand.ts";
 import { RegistryCommand } from "./commands/RegistryCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
+import { SigilCommand } from "./commands/SigilCommand.ts";
 import { StackCommand } from "./commands/StackCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
@@ -47,9 +53,8 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
  *
  * ## ⚠️ Top-level commands, and no root of its own
  *
- * `quality`, `artifacts`, `attachments`, `releases`, `apps`, `deploy`,
- * `secrets`, `login`, `logout`, `project`, `quest` and `folio` register at
- * the top level, because the binary IS the root. A `lore` command inside a
+ * Every command registers at the top level (`commandSurface.spec.ts` lists
+ * them), because the binary IS the root. A `lore` command inside a
  * `lore` binary reads `lore lore quality push`.
  *
  * That also means nothing here may inject a command from `alepha/cli`:
@@ -108,12 +113,18 @@ export const AlephaLoreCli = $module({
     EpicCommand,
     FolioCommand,
     DirectoryCommand,
+    FeedbackCommand,
+    BlightCommand,
+    AutomationCommand,
     QualityCommand,
+    AppInstanceCommand,
+    DeployCommand,
     AppsCommand,
     ArtifactCommand,
     AttachmentCommand,
     ReleaseCommand,
     SecretsCommand,
+    SigilCommand,
     EstateCommand,
     RegistryCommand,
     StackCommand,

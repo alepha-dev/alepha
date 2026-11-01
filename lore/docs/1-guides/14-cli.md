@@ -98,6 +98,7 @@ Every project command looks for the project in this order:
 | `lore project report [section]` | One [Reports](/lore/docs/guides-reports) section as JSON, `summary` by default. `--days N` sets the period, 30 by default. |
 | `lore project create <name>`    | Create a project and link the current directory to it. `--no-link` skips the link.                                         |
 | `lore project link <slug>`      | Link the current directory to an existing project. `--force` replaces another link.                                        |
+| `lore project merge`            | Merge `--source` into `--target`, owners only. A dry run unless `--no-dry-run`: read the plan first.                       |
 
 `lore project create` makes a project with the **Deploy and watch apps**
 capability only, its **Deploy apps** option on and **Track apps** off. Turn on
@@ -105,23 +106,23 @@ the rest in the project's settings.
 
 ### Quests
 
-| Command                           | What it does                                                                                                           |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `lore quest list`                 | Newest-updated first. `--status`, `--tag`, `--epic`, `--limit` (default 20, max 100), `--offset`.                      |
-| `lore quest get <ref>`            | One quest with its description, objectives (and their ids) and discussion.                                             |
-| `lore quest create`               | `--title`, `--area`, `--priority` (required); `--description`, `--size`, `--tag`, `--objective`, `--epic`, `--accept`. |
-| `lore quest update <ref>`         | Change the title, description, area and other fields.                                                                  |
-| `lore quest accept <ref>`         | Take the quest and start it.                                                                                           |
-| `lore quest objective set <ref>`  | Tick an objective by `--objective <id>`; `--no-completed` unticks it.                                                  |
-| `lore quest comment add <ref>`    | `--body`; `--as <name>` marks it as written by an agent.                                                               |
-| `lore quest commit add <ref>`     | `--sha`, `--message`, `--repo`. Records a commit, on a completed quest too.                                            |
-| `lore quest hold <ref>`           | `--reason`, posted to the discussion. `lore quest unhold <ref>` lifts it.                                              |
-| `lore quest shelve <ref>`         | Set a todo quest aside. `lore quest unshelve <ref>` brings it back.                                                    |
-| `lore quest unassign <ref>`       | Send an accepted quest back to todo.                                                                                   |
-| `lore quest complete <ref>`       | `--message`, `--commit <sha>` (repeatable), `--waive <id>=<reason>` for an objective not done.                         |
-| `lore quest delete <ref>`         | For good, with `--yes`.                                                                                                |
-| `lore quest tags`                 | The tags the project uses.                                                                                             |
-| `lore quest attachment get <ref>` | `--attachment <id>`, as `quest get` lists it. Prints text; `--out <path>` saves anything.                              |
+| Command                           | What it does                                                                                                                      |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `lore quest list`                 | Newest-updated first. `--status`, `--tag`, `--epic`, `--search`, `--include-drafts`, `--limit` (default 20, max 100), `--offset`. |
+| `lore quest get <ref>`            | One quest with its description, objectives (and their ids) and discussion.                                                        |
+| `lore quest create`               | `--title`, `--area`, `--priority` (required); `--description`, `--size`, `--tag`, `--objective`, `--epic`, `--accept`.            |
+| `lore quest update <ref>`         | Change the title, description, area and other fields.                                                                             |
+| `lore quest accept <ref>`         | Take the quest and start it.                                                                                                      |
+| `lore quest objective set <ref>`  | Tick an objective by `--objective <id>`; `--no-completed` unticks it.                                                             |
+| `lore quest comment add <ref>`    | `--body`; `--as <name>` marks it as written by an agent.                                                                          |
+| `lore quest commit add <ref>`     | `--sha`, `--message`, `--repo`. Records a commit, on a completed quest too.                                                       |
+| `lore quest hold <ref>`           | `--reason`, posted to the discussion. `lore quest unhold <ref>` lifts it.                                                         |
+| `lore quest shelve <ref>`         | Set a todo quest aside. `lore quest unshelve <ref>` brings it back.                                                               |
+| `lore quest unassign <ref>`       | Send an accepted quest back to todo.                                                                                              |
+| `lore quest complete <ref>`       | `--message`, `--commit <sha>` (repeatable), `--waive <id>=<reason>` for an objective not done.                                    |
+| `lore quest delete <ref>`         | For good, with `--yes`.                                                                                                           |
+| `lore quest tags`                 | The tags the project uses.                                                                                                        |
+| `lore quest attachment get <ref>` | `--attachment <id>`, as `quest get` lists it. Prints text; `--out <path>` saves anything.                                         |
 
 `lore quest update` also takes `--epic` (`0` takes it out) and `--depends-on`
 (`0` clears it); `lore quest create` takes `--depends-on`.
@@ -189,6 +190,69 @@ One file per call, onto a quest or a folio. See
 
 See [Releases](/lore/docs/guides-releases) for how these fit in a release job.
 
+The release's own record is here too, each naming it by `--tag`:
+
+| Command                     | What it does                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| `lore releases list`        | Every release, open and published.                                                 |
+| `lore releases get`         | One release, with its epics and quests.                                            |
+| `lore releases create`      | Create one. `--title`, `--description`, `--target-date`.                           |
+| `lore releases update`      | Edit an open one. `--new-tag` moves its URL and breaks every shared link.          |
+| `lore releases attach`      | Put an `--epic` or a `--quest` in it. An epic carries its quests.                  |
+| `lore releases detach`      | Take one out.                                                                      |
+| `lore releases reopen`      | Undo a publication.                                                                |
+| `lore releases set default` | Point the project's intake at `--tag`, or `--clear` it.                            |
+| `lore releases delete`      | Delete it. Needs `--yes`: a published release's frozen record exists nowhere else. |
+
+`lore releases changelog --frozen` prints a release's changelog as Lore holds
+it, published ones included. Without it the command serves a release job, and
+refuses a published or incomplete release.
+
+### Feedback
+
+A reference is `120`, `P120` or `'#P120'`.
+
+| Command                           | What it does                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `lore feedback list`              | The pending inbox, newest first. `--status`, `--limit`, `--offset`.                |
+| `lore feedback get <ref>`         | One item: its report, where it was made from, files, quests and discussion.        |
+| `lore feedback attachment get`    | Read a file: text is printed, `--out` saves anything.                              |
+| `lore feedback comment add <ref>` | Comment, with `--body`. The reporter is told. `--as <agent>` marks it a machine's. |
+| `lore feedback accept <ref>`      | Accept it. Quests come from `lore quest create --feedback <ref>`.                  |
+| `lore feedback reject <ref>`      | Reject it. The row stays.                                                          |
+
+### Blights and insights
+
+A reference is `12` or `B12`.
+
+| Command                     | What it does                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `lore blight list`          | The inbox: one row per root cause, open ones unless `--include-resolved`.                              |
+| `lore blight resolve <ref>` | Close it for good. Check `lore insights read --segment errors` first: a later report never reopens it. |
+| `lore blight forward <ref>` | Turn it into a new quest and close it.                                                                 |
+| `lore insights read`        | Analytics, vitals and the error budget. `--range`, `--segment`, `--traffic`.                           |
+
+### Automations
+
+A rule is JSON, usually in a file (`--rule @rule.json`):
+`lore automation catalog` names what it may hold. Every write takes the
+`--expected-revision` you read, so a rule edited since is refused rather than
+overwritten.
+
+| Command                                               | What it does                                                    |
+| ----------------------------------------------------- | --------------------------------------------------------------- |
+| `lore automation catalog`                             | What a rule may say in this project.                            |
+| `lore automation list`                                | The project's rules. `--search`, `--state`, `--author-user-id`. |
+| `lore automation get <id>`                            | One rule, with its revision.                                    |
+| `lore automation create`                              | Create one, disabled. `--enabled` enables it in a second step.  |
+| `lore automation update <id>`                         | `--title` with `--rule`, or `--enabled` / `--no-enabled` alone. |
+| `lore automation delete <id>`                         | Delete it. Needs `--yes`.                                       |
+| `lore automation test <id>`                           | Preview it, with no writes and no delivery.                     |
+| `lore automation runs <id>`                           | Its retained runs.                                              |
+| `lore automation adoption preview <policy>`           | What adopting a legacy policy would do.                         |
+| `lore automation adopt <policy>`                      | Adopt it, permanently. Needs `--confirm`.                       |
+| `lore automation variable list/set/delete/dependents` | The project's shared variables.                                 |
+
 ### Quality
 
 `lore quality push` sends the coverage and test totals of the last run to the
@@ -197,12 +261,33 @@ the checked-out one. It expects an Alepha project.
 
 ### Apps and deploys
 
-| Command              | What it does                                                                                                                                                                                                |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lore apps build`    | Build this app for one or more deploy targets.                                                                                                                                                              |
-| `lore deploy`        | Deploy this app onto one of its environments. Without `--tag` it builds, pushes and deploys; with one it deploys that stored build. `--env`, `--app`, `--sigil` / `--no-sigil`. Same as `lore apps deploy`. |
-| `lore apps redeploy` | Deploy a stored build onto every copy of the app whose environment ends with `--suffix`.                                                                                                                    |
-| `lore apps destroy`  | Take a copy down: `--env` and `--confirm <app>/<env>` are both required.                                                                                                                                    |
+| Command                | What it does                                                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore apps build`      | Build this app for one or more deploy targets.                                                                                                                                                              |
+| `lore deploy`          | Deploy this app onto one of its environments. Without `--tag` it builds, pushes and deploys; with one it deploys that stored build. `--env`, `--app`, `--sigil` / `--no-sigil`. Same as `lore apps deploy`. |
+| `lore apps redeploy`   | Deploy a stored build onto every copy of the app whose environment ends with `--suffix`.                                                                                                                    |
+| `lore apps destroy`    | Take a copy down: `--env` and `--confirm <app>/<env>` are both required.                                                                                                                                    |
+| `lore deploy status`   | Where a run got to, by `--deployment`, or a copy's newest by `--app` and `--env`.                                                                                                                           |
+| `lore deploy rollback` | Go back to a `--deployment`. Code only: past a migration it needs `--acknowledge-migrations`.                                                                                                               |
+
+The deployed copies themselves, each named by `--app` and `--env`:
+
+| Command                     | What it does                                                                        |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| `lore apps instance list`   | Every copy this project tracks.                                                     |
+| `lore apps instance get`    | One copy, with what it has unlocked.                                                |
+| `lore apps instance create` | Track a copy. Nothing is minted. `--url`, `--ephemeral`.                            |
+| `lore apps instance update` | `--new-app`, `--new-env`, `--url`, or `--estate-id` (`0` clears it).                |
+| `lore apps instance delete` | Forget a copy, its sigil and what it reported. It undeploys nothing. Needs `--yes`. |
+
+A sigil is the key one copy reports with:
+
+| Command                  | What it does                                                                |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `lore sigil list`        | Every key, with when it last reported. Never a token.                       |
+| `lore sigil create`      | Mint one for `--app` and `--env`, creating the copy if missing. Shown once. |
+| `lore sigil rotate <id>` | Replace a token, keeping what it reported. Shown once.                      |
+| `lore sigil delete <id>` | Delete it and that copy's analytics. Needs `--yes`.                         |
 
 `lore secrets` manages the variables a deployed copy runs with. `--env` is
 required, and no command ever prints a whole value (`list` shows a masked
@@ -220,10 +305,12 @@ See [Deploying an app](/lore/docs/guides-deploying) for the whole flow.
 
 ### Artifacts
 
-| Command                     | What it does                                                     |
-| --------------------------- | ---------------------------------------------------------------- |
-| `lore artifacts push`       | Pack the current build and push it. `--tag`, `--app`, `--force`. |
-| `lore artifacts push-image` | Record a container image CI pushed, by `--image` and `--digest`. |
+| Command                     | What it does                                                             |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `lore artifacts push`       | Pack the current build and push it. `--tag`, `--app`, `--force`.         |
+| `lore artifacts push-image` | Record a container image CI pushed, by `--image` and `--digest`.         |
+| `lore artifacts list`       | What was built, one line per tag. `--app`, `--tag`, `--limit`.           |
+| `lore artifacts get`        | One tag's builds and digests. `--app`, `--tag`, `--runtime`, `--format`. |
 
 See [Artifacts](/lore/docs/guides-artifacts).
 
@@ -249,19 +336,20 @@ See [Estates](/lore/docs/guides-estates).
 A stack is a group of apps and services deployed together from one
 `compose.yml` onto a Bay estate.
 
-| Command                             | What it does                                                                                                                     |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `lore stack create`                 | Create a stack with its default `--estate`, and upload its first revision from `--file`.                                         |
-| `lore stack deploy`                 | Deploy to an environment (`-e`, default `production`), uploading `--file` as a new revision first.                               |
-| `lore stack rollback`               | Deploy an earlier revision again. Volumes and their data are untouched.                                                          |
-| `lore stack destroy`                | Forget an environment in Lore, and print the command that removes it from the machine.                                           |
-| `lore stack list`                   | The project's stacks and their environments.                                                                                     |
-| `lore stack revisions`              | A stack's revisions, newest first.                                                                                               |
-| `lore stack secrets set/list/unset` | A stack environment's variables. `set` takes `KEY=VALUE`, `KEY` (read from `$KEY`), `--file`, or `--generate` for random values. |
-| `lore stack route add/list/remove`  | Serve a full domain from one service.                                                                                            |
-| `lore stack ps`                     | The services: state, memory, restarts and image digest.                                                                          |
-| `lore stack logs <service>`         | The tail of one service's logs.                                                                                                  |
-| `lore stack restart <service>`      | Restart one service.                                                                                                             |
+| Command                             | What it does                                                                                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore stack create`                 | Create a stack with its default `--estate`, and upload its first revision from `--file`.                                                        |
+| `lore stack deploy`                 | Deploy to an environment (`-e`, default `production`), uploading `--file` as a new revision first. `--app` with `--tag` deploys one member app. |
+| `lore stack rollback`               | Deploy an earlier revision again. Volumes and their data are untouched.                                                                         |
+| `lore stack destroy`                | Forget an environment in Lore, and print the command that removes it from the machine.                                                          |
+| `lore stack list`                   | The project's stacks and their environments.                                                                                                    |
+| `lore stack get`                    | One stack: routes, services and newest deploys of each environment. `--env` narrows it. Never a value.                                          |
+| `lore stack revisions`              | A stack's revisions, newest first.                                                                                                              |
+| `lore stack secrets set/list/unset` | A stack environment's variables. `set` takes `KEY=VALUE`, `KEY` (read from `$KEY`), `--file`, or `--generate` for random values.                |
+| `lore stack route add/list/remove`  | Serve a full domain from one service.                                                                                                           |
+| `lore stack ps`                     | The services: state, memory, restarts and image digest.                                                                                         |
+| `lore stack logs <service>`         | The tail of one service's logs.                                                                                                                 |
+| `lore stack restart <service>`      | Restart one service.                                                                                                                            |
 
 `--name` picks the stack and defaults to the project slug. See
 [Stacks](/lore/docs/guides-stacks) for Lore's side, and

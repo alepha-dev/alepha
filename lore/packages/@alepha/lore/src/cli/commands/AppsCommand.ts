@@ -5,6 +5,8 @@ import { $logger } from "alepha/logger";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreDeployer } from "../services/LoreDeployer.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
+import { AppInstanceCommand } from "./AppInstanceCommand.ts";
+import { DeployCommand } from "./DeployCommand.ts";
 
 /**
  * `lore apps build` and `lore deploy` - produce the bytes, and place them.
@@ -117,6 +119,8 @@ export class AppsCommand {
   protected readonly log = $logger();
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
+  protected readonly instances = $inject(AppInstanceCommand);
+  protected readonly deploys = $inject(DeployCommand);
   protected readonly deployer = $inject(LoreDeployer);
 
   /**
@@ -343,6 +347,7 @@ export class AppsCommand {
     name: "deploy",
     description: AppsCommand.DEPLOY_DESCRIPTION,
     flags: AppsCommand.DEPLOY_FLAGS,
+    children: [this.deploys.status, this.deploys.rollback],
     handler: (args) => this.runDeploy(args),
   });
 
@@ -468,7 +473,13 @@ export class AppsCommand {
   public readonly appsCommand = $command({
     name: "apps",
     description: "Build and deploy this project's apps",
-    children: [this.build, this.deploy, this.redeploy, this.destroy],
+    children: [
+      this.build,
+      this.deploy,
+      this.redeploy,
+      this.destroy,
+      this.instances.instance,
+    ],
     handler: async ({ help }) => {
       help();
     },

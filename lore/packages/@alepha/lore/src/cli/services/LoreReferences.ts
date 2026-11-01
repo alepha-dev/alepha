@@ -33,6 +33,14 @@ export class LoreReferences {
     return this.parse(ref, "A", "attachment");
   }
 
+  public feedback(ref: string): number {
+    return this.parse(ref, "P", "feedback");
+  }
+
+  public blight(ref: string): number {
+    return this.parse(ref, "B", "blight");
+  }
+
   protected parse(ref: string, letter: string, kind: string): number {
     const match = new RegExp(`^#?${letter}?(\\d+)$`, "i").exec(ref.trim());
     const number = match ? Number(match[1]) : 0;

@@ -1,10 +1,11 @@
 import type {
+  DeployController,
   StackController,
   StackDeployController,
   StackVariableController,
 } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
-import { $command, CommandError, EnvUtils } from "alepha/command";
+import { $command, CommandError, EnvUtils, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 
@@ -37,6 +38,9 @@ export class StackCommand {
 
   protected readonly stackApi = $client<StackController>(this.client.scope());
   protected readonly deployApi = $client<StackDeployController>(
+    this.client.scope(),
+  );
+  protected readonly appDeployApi = $client<DeployController>(
     this.client.scope(),
   );
   protected readonly variableApi = $client<StackVariableController>(
@@ -159,6 +163,18 @@ export class StackCommand {
         .integer()
         .describe("Deploy this revision instead of the newest")
         .optional(),
+      app: z
+        .text({
+          description:
+            "Deploy this member app alone, blue/green, from a stored build",
+        })
+        .optional(),
+      tag: z
+        .text({
+          aliases: ["t"],
+          description: "With --app: the build's tag. Defaults to latest",
+        })
+        .optional(),
       "dry-run": z
         .boolean()
         .describe("Say what would happen, and change nothing")
@@ -178,6 +194,30 @@ export class StackCommand {
         );
         const env = (flags.env ?? "production").trim().toLowerCase();
         let stack = await this.stacks.getStack(projectId, name);
+
+        if (flags.app) {
+          const environment = this.stacks.environmentOf(stack, env);
+          const member = environment.members.find((m) => m.app === flags.app);
+          if (!member) {
+            throw new UsageError(
+              `${flags.app} is not a member app of ${stack.name}/${env}`,
+            );
+          }
+          const tag = flags.tag ?? "latest";
+          if (flags["dry-run"]) {
+            print(`Would deploy ${flags.app}@${tag} on ${stack.name}/${env}.`);
+            return;
+          }
+          const started = await this.appDeployApi.startDeploy({
+            params: { projectId, instanceId: member.id },
+            body: { tag },
+          });
+          print(
+            `Deploying ${flags.app}@${tag} on ${stack.name}/${env}: ${started.id}. Follow it with lore deploy status`,
+          );
+          return;
+        }
+
         // The compose file beside the command, as `docker compose up` would
         // read it, unless a revision already uploaded is named.
         const file =
@@ -377,6 +417,92 @@ export class StackCommand {
           undefined,
           "No stack yet. Create one with `lore stack create --file compose.yml --estate <estate>`.",
         );
+      });
+    },
+  });
+
+  public readonly get = $command({
+    name: "get",
+    description:
+      "One stack: each environment with its routes, members, services and newest deploys. Never a value",
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: z
+        .text({ aliases: ["e"], description: "Only this environment." })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        const name = await this.stacks.stackName(
+          project,
+          projectId,
+          flags.name,
+        );
+        const { items } = await this.stackApi.listStacks({
+          params: { projectId },
+        });
+        const stack = items.find((it) => it.name === name);
+        if (!stack) {
+          throw new UsageError(`This project has no stack named ${name}.`);
+        }
+        const env = flags.env?.trim().toLowerCase();
+        const environments = stack.environments.filter(
+          (e) => !env || e.env === env,
+        );
+        if (env && environments.length === 0) {
+          throw new UsageError(`Stack ${stack.name} has no environment ${env}`);
+        }
+
+        const revisions = (
+          await this.stackApi.listStackRevisions({
+            params: { projectId, stackId: stack.id },
+          })
+        ).items;
+        const detailed = await Promise.all(
+          environments.map(async (e) => {
+            const applied = revisions.find((r) => r.number === e.revision);
+            const model = applied
+              ? (JSON.parse(applied.model) as {
+                  services?: Array<{ name: string; kind: string }>;
+                })
+              : undefined;
+            const deploys = (
+              await this.deployApi.listStackDeployments({
+                params: { projectId, stackId: stack.id, environmentId: e.id },
+              })
+            ).items.slice(0, 10);
+            return { ...e, services: model?.services ?? [], deploys };
+          }),
+        );
+
+        if (flags.output === "json") {
+          this.render.json(print, { ...stack, environments: detailed });
+          return;
+        }
+
+        this.render.entity(print, {
+          fields: [
+            ["Stack", stack.name],
+            ["Latest revision", stack.latestRevision ?? undefined],
+          ],
+          sections: detailed.map((e) => ({
+            title: e.env,
+            lines: [
+              `revision ${e.revision ?? "-"}, routes ${e.routes.map((r) => r.domain).join(", ") || "-"}`,
+              ...e.services.map((s) => `${s.name}  ${s.kind}`),
+              ...e.deploys.map(
+                (d) => `${d.createdAt}  revision ${d.revision}  ${d.status}`,
+              ),
+            ],
+          })),
+        });
       });
     },
   });
@@ -757,6 +883,7 @@ export class StackCommand {
       this.rollback,
       this.destroy,
       this.list,
+      this.get,
       this.revisions,
       this.secrets,
       this.route,
