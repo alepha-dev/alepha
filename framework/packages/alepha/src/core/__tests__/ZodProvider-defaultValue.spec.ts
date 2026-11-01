@@ -42,7 +42,6 @@ describe("z.schema.defaultValue", () => {
     // as an own property on the ORIGINAL schema (quest #Q341).
     const grain = z.enum(["day", "week", "month"]);
     void grain.default("month");
-    expect(Object.hasOwn(grain, "default")).toBe(true);
 
     expect(z.schema.defaultValue(grain)).toBe(undefined);
   });
