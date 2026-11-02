@@ -5559,6 +5559,7 @@ __metadata:
   resolution: "e2e-cli@workspace:framework/apps/e2e-cli"
   dependencies:
     ajv: "npm:8.20.0"
+    alepha: "workspace:^"
     miniflare: "npm:5.20261001.0-alpha"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"

@@ -3,10 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "alepha typecheck"
   },
   "devDependencies": {
     "ajv": "8.20.0",
+    "alepha": "workspace:^",
     "miniflare": "5.20261001.0-alpha",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
