@@ -75,7 +75,9 @@ The size of a database is bounded by the disk, not by Bay's RAM.
 **Every SQLite file in `data/` is backed up, together.** Bay finds them by
 their header, whatever they are called (an empty `.db`, `.sqlite` or
 `.sqlite3` counts too); `-wal`/`-shm`/`-journal`, the copies a restore sets
-aside and symbolic links are left out, the links named in the manifest. Each
+aside, hidden files and folders (a browser profile's or `HOME`'s own SQLite
+stores live there) and symbolic links are left out, the links named in the
+manifest. Each
 file is snapshotted with `VACUUM INTO` and integrity-checked in the app's own
 runtime, then uploaded as one bundle:
 

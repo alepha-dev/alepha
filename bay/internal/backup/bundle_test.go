@@ -22,6 +22,8 @@ func TestDiscoverFindsDatabasesByHeaderAndSkipsTheRest(t *testing.T) {
 	write(t, filepath.Join(data, "notes.txt"), "not a database")
 	write(t, filepath.Join(data, "fresh.sqlite"), "") // created, never written: still a database
 	write(t, filepath.Join(data, "empty.txt"), "")
+	write(t, filepath.Join(data, ".home", ".local", "share", "pki", "nssdb", "key4.db"), db) // a HOME, not data
+	write(t, filepath.Join(data, ".hidden.db"), db)
 	outside := filepath.Join(t.TempDir(), "other.db")
 	write(t, outside, db)
 	if err := os.Symlink(outside, filepath.Join(data, "linked.db")); err != nil {

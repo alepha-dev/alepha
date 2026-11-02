@@ -113,6 +113,9 @@ Left out on purpose:
   - `-wal`, `-shm`, `-journal`: the snapshot reads through them already;
   - `*.before-restore-*`: the copies a restore sets aside, which would
     otherwise be backed up - and restored over the live data - forever;
+  - hidden files and folders (`.home`, `.cache`...): a browser's profile
+    and the system's key stores live there as SQLite files, and they are
+    neither the app's data nor anything a bucket should hold;
   - symbolic links, reported in `skipped`: following one could read another
     app's data into this app's bucket.
 */
@@ -133,6 +136,12 @@ func DiscoverSQLite(dataDir string) (files, skipped []string, err error) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
+		if strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if d.Type()&fs.ModeSymlink != 0 {
 			skipped = append(skipped, rel+" (symbolic link)")
 			return nil
