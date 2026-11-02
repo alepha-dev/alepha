@@ -202,16 +202,7 @@ export class BuildCloudflareTask extends BuildTask {
       ...appConfig,
     };
 
-    // `request.signal` aborts on client disconnect only with this flag, and
-    // the ambient cancellation of every request reads it (#E85). Added to a
-    // flag list the app supplied too, since replacing the defaults is the
-    // usual reason to supply one.
-    wrangler.compatibility_flags = [
-      ...new Set([
-        ...(wrangler.compatibility_flags ?? []),
-        "enable_request_signal",
-      ]),
-    ];
+    this.enhanceRequestSignal(wrangler);
 
     if (hasAssets) {
       // Merged, not `??=`. The app only ever wants to add a key  -
@@ -332,6 +323,27 @@ export class BuildCloudflareTask extends BuildTask {
     if (services.length > 0) {
       (wrangler as { services?: unknown }).services = services;
     }
+  }
+
+  /**
+   * Turn on `request.signal`, which the ambient cancellation of every request
+   * reads (#E85): it aborts on client disconnect.
+   *
+   * Added to a flag list the app supplied too, since replacing the defaults
+   * is the usual reason to supply one. Left out when the app's own
+   * `compatibility_date` already enables it (`2026-11-17`), since workerd
+   * refuses a flag its date makes redundant, and when the app opted out with
+   * `disable_request_signal` (#Q3046).
+   */
+  protected enhanceRequestSignal(wrangler: WranglerConfig): void {
+    const flags: string[] = wrangler.compatibility_flags ?? [];
+    const date = String(wrangler.compatibility_date ?? "");
+    if (date >= "2026-11-17" || flags.includes("disable_request_signal")) {
+      return;
+    }
+    wrangler.compatibility_flags = [
+      ...new Set([...flags, "enable_request_signal"]),
+    ];
   }
 
   protected enhanceDomain(
