@@ -18,13 +18,15 @@ import {
  * Shipping, from a conversation: what to deploy, deploy it, watch it, take it
  * back.
  *
- * ## ⚠️ There is no artifact tool here, and no estate tool anywhere
+ * ## ⚠️ There is no artifact tool here, and no estate tool that acts
  *
  * `artifact_list` and `artifact_get` already ship in `ArtifactTools`, so
  * "list what is deployable" is answered and adding a third would be a
  * duplicate. **Estates are not a project resource**: an estate is owned by a
  * USER and lent to projects, `app_instance_list` already answers which one a
- * copy deploys to, and there is nothing an `estate_list` would add.
+ * copy deploys to, and there is nothing an `estate_list` would add. The one
+ * estate tool, `estate_stats` (`EstateTools`, #Q3047), reads the caller's own
+ * machine's CPU and memory and can do nothing to it.
  *
  * That also settles the old warning cleanly. A credential grant was never to be
  * initiated from MCP, and now no MCP tool goes near one.

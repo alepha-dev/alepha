@@ -316,10 +316,11 @@ See [Artifacts](/lore/docs/guides-artifacts).
 
 ### Estates
 
-| Command                  | What it does                                                                                                            |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `lore estate add <slug>` | Create a Bay estate, lend it to the project, and print the command to run on the machine. `--label`, `--allow-deploys`. |
-| `lore estate list`       | The estates lent to the project, and whether each is connected.                                                         |
+| Command                    | What it does                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `lore estate add <slug>`   | Create a Bay estate, lend it to the project, and print the command to run on the machine. `--label`, `--allow-deploys`. |
+| `lore estate list`         | The estates lent to the project, whether each is connected, and its current CPU and memory.                             |
+| `lore estate stats <slug>` | One of your estates' CPU and memory: the current reading, then one mean per day. `--since`, `--output json`.            |
 
 See [Estates](/lore/docs/guides-estates).
 

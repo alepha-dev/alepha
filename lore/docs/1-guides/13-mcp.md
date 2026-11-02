@@ -215,6 +215,7 @@ See [Deploying an app](/lore/docs/guides-deploying),
 | `stack_deploy`    | Deploy a revision, or one app service alone.                                            |
 | `stack_rollback`  | Deploy an earlier revision again.                                                       |
 | `stack_logs`      | Ask for a service's logs, then read them.                                               |
+| `estate_stats`    | One of your estates' CPU and memory: the current reading and one mean per day.          |
 
 ## What has no tool
 
@@ -222,7 +223,7 @@ Some of Lore is not reachable over MCP. Reach for the page or the CLI instead:
 
 | Surface                                                          | Where it is                                                    |
 | ---------------------------------------------------------------- | -------------------------------------------------------------- |
-| [Estates](/lore/docs/guides-estates) and their secrets           | No tool on purpose: no deploy tool takes a machine.            |
+| [Estates](/lore/docs/guides-estates) and their secrets           | No tool but `estate_stats`, which reads: no tool acts on one.  |
 | [Healthchecks](/lore/docs/guides-healthchecks)                   | The Uptime page. An outage shows up in `blight_list`.          |
 | [Notifications](/lore/docs/guides-notifications)                 | The bell. A comment naming someone reaches them.               |
 | Deleting a blight                                                | The Blights page.                                              |
