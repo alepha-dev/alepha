@@ -324,6 +324,7 @@ func usageText() string {
   bay backup  <name/env>          # snapshot + verify + upload
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
+  bay restore <name/env> --dismiss # keep the empty db; resume pruning old backups
   bay backup list <stack>/<env> [service]   # a stack's service dumps
   bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]
   bay connector set <lore-url> <secret>
@@ -2039,6 +2040,10 @@ func cmdStatus(args []string) error {
 		if a.LastBackupError != "" {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
+		}
+		if p := a.RestorePending; p != nil {
+			problems++
+			fmt.Printf("           ⚠ %s\n", restorePendingProblem(a.Key(), *p))
 		}
 		// Named, not counted as a problem: an unhooked volume is a choice the
 		// stack's author made, and a status that always fails is one nobody

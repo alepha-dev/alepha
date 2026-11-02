@@ -97,6 +97,16 @@ type App struct {
 	// LastBackupError is when and why the most recent attempt failed. Cleared on
 	// the next success.
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// RestorePending is set when Bay created an empty database for this
+	// instance but could not find out whether a backup should have been
+	// restored into it (no destination yet, bucket unreachable, download or
+	// install failed). Nil means nothing is pending.
+	//
+	// What it guards is retention. The app keeps running and its new data
+	// keeps being backed up, but every one of those backups is newer than the
+	// real ones, so `keep N` would delete the real data N runs later. While
+	// this is set and a backup older than `Since` exists, pruning is skipped.
+	RestorePending *RestorePending `json:"restorePending,omitempty"`
 
 	// Crons is how many cron expressions the artifact declared. Derived from the
 	// manifest at deploy time, so it is replaced on every deploy rather than
@@ -184,6 +194,21 @@ type App struct {
 	// from the revision at deploy time. A service member with a hook has
 	// Backups set, so the schedule takes it like any app database.
 	BackupHook *BackupHook `json:"backupHook,omitempty"`
+}
+
+// RestorePending records when and why an instance started on an empty
+// database without its backups having been checked.
+type RestorePending struct {
+	// Since is RFC3339 UTC. Backups taken before it predate the empty
+	// database, so they are the ones worth protecting.
+	Since  string `json:"since"`
+	Reason string `json:"reason"`
+}
+
+// SinceTime parses Since; the zero time when it cannot be read.
+func (p RestorePending) SinceTime() time.Time {
+	t, _ := time.Parse(time.RFC3339, p.Since)
+	return t
 }
 
 // BackupHook is one service's dump declaration: postgres, or a command.
@@ -382,6 +407,9 @@ func (s *Store) Upsert(app App) error {
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
+			// A redeploy onto the existing database changes nothing about
+			// whether the backups taken before it still need protecting.
+			app.RestorePending = a.RestorePending
 			// Traffic history belongs to the instance, not the release. Resetting
 			// it here would make every app read "no traffic ever" right after a
 			// deploy — so the staleness badge would be blank for exactly the apps
@@ -469,6 +497,28 @@ func (s *Store) RecordBackupFailure(key, reason string, at time.Time) error {
 	return s.mutate(key, func(a *App) {
 		a.LastBackupError = at.UTC().Format(time.RFC3339) + ": " + reason
 	})
+}
+
+// SetRestorePending marks an instance as started empty without its backups
+// checked.
+//
+// An instance already pending keeps its original `Since`: the backups taken
+// in between are of the empty database, and moving `Since` forward would
+// start protecting those instead of the real ones.
+func (s *Store) SetRestorePending(key, reason string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		since := at.UTC().Format(time.RFC3339)
+		if a.RestorePending != nil && a.RestorePending.Since != "" {
+			since = a.RestorePending.Since
+		}
+		a.RestorePending = &RestorePending{Since: since, Reason: reason}
+	})
+}
+
+// ClearRestorePending ends the guard: restored, dismissed, or nothing to
+// protect.
+func (s *Store) ClearRestorePending(key string) error {
+	return s.mutate(key, func(a *App) { a.RestorePending = nil })
 }
 
 // SetStorageBackend records where an app's blobs live, after a migration has

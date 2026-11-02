@@ -84,6 +84,10 @@ type InventoryApp struct {
 	LastBackupAt    string `json:"lastBackupAt,omitempty"`
 	BackupStale     bool   `json:"backupStale,omitempty"`
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// RestorePendingSince is set while the instance runs on a database Bay
+	// created empty without checking its backups; pruning is paused for it.
+	RestorePendingSince  string `json:"restorePendingSince,omitempty"`
+	RestorePendingReason string `json:"restorePendingReason,omitempty"`
 
 	LastRequestAt string `json:"lastRequestAt,omitempty"`
 	Crons         int    `json:"crons,omitempty"`

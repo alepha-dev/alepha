@@ -91,6 +91,9 @@ func inventoryRow(a listedApp, state string, now time.Time, interval time.Durati
 		Service:     a.Service,
 		ServiceKind: a.ServiceKind,
 	}
+	if p := a.RestorePending; p != nil {
+		row.RestorePendingSince, row.RestorePendingReason = p.Since, p.Reason
+	}
 	if u := a.Usage; u != nil {
 		restarts, memory, cpu, tasks := u.Restarts, u.MemoryBytes, u.CPUSeconds, u.Tasks
 		row.Restarts, row.MemoryBytes, row.CPUSeconds, row.Tasks = &restarts, &memory, &cpu, &tasks

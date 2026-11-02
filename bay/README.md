@@ -64,6 +64,16 @@ that is never the backup one) or they are not shared at all, and secrets come
 from the deploy. The worst failure of a backup system is somebody believing it
 covers more than it does.
 
+A deploy that creates the database restores the latest backup first. When it
+cannot find out whether there is one (no bucket configured yet, bucket
+unreachable, download or install failed) the app still starts, on an empty
+database, and the instance is marked **restore pending**: its new data keeps
+being backed up, but pruning is paused while a backup older than that empty
+start exists, so `keep N` never deletes the real data on its own. It shows as
+a problem in `bay status` and the inventory until `bay restore <name/env>`
+brings the data back or `bay restore <name/env> --dismiss` keeps the new
+database.
+
 A stack service is data too, so it declares how to dump itself in
 `x-lore.backup`: `{postgres: {user, db}}` runs `pg_dump` in the service's
 container and verifies with `pg_restore --list`, and `{command, restore}` takes

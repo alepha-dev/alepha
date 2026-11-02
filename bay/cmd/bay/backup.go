@@ -140,6 +140,7 @@ func (s *server) registerBackupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /apps/{name}/{env}/backup", s.handleBackup)
 	mux.HandleFunc("GET /apps/{name}/{env}/backups", s.handleListBackups)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore", s.handleRestore)
+	mux.HandleFunc("POST /apps/{name}/{env}/restore/dismiss", s.handleRestoreDismiss)
 }
 
 func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +186,8 @@ type backupOutcome struct {
 	Result      *backup.Result
 	Pruned      []backup.Entry
 	NotBackedUp []string
+	// PruneSuspended says why retention was skipped, empty when it ran.
+	PruneSuspended string
 }
 
 /*
@@ -274,7 +277,11 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 	// quietly disappearing. A failed prune must not look like a failed backup:
 	// the data is safe.
 	var pruned []backup.Entry
+	suspended := ""
 	if cfg.Keep > 0 {
+		suspended = s.pruneSuspended(ctx, mgr, app.Key(), app.Name, app.Env)
+	}
+	if cfg.Keep > 0 && suspended == "" {
 		pruned, err = mgr.Prune(ctx, app.Name, app.Env, cfg.Keep)
 		if err != nil {
 			s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", err)
@@ -285,12 +292,53 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
 
 	return backupOutcome{
-		Result: res,
-		Pruned: pruned,
+		Result:         res,
+		Pruned:         pruned,
+		PruneSuspended: suspended,
 		// What is NOT covered has to be stated, every time. The worst failure
 		// of a backup system is someone believing they are covered.
 		NotBackedUp: append(notCovered, notBackedUpVolumes(s.uncoveredVolumes(app.Stack, app.Env))...),
 	}, nil
+}
+
+/*
+pruneSuspended is the retention guard for an instance marked RestorePending:
+non-empty (the reason) when pruning must be skipped this time.
+
+Read from the store rather than the `app` the caller holds, which may be a
+copy taken before the deploy marked it.
+
+The guard lifts itself once there is nothing left to protect: no backup older
+than the moment the empty database appeared. Listing failed is "keep
+everything" - deleting backups on a guess is the one thing this must not do.
+*/
+func (s *server) pruneSuspended(ctx context.Context, mgr *backup.Manager, key, name, env string) string {
+	current, ok := s.store.Get(key)
+	if !ok || current.RestorePending == nil {
+		return ""
+	}
+	pending := *current.RestorePending
+	entries, err := mgr.List(ctx, name, env)
+	if err != nil {
+		s.log.Warn("pruning skipped: restore pending and backups could not be listed", "app", key, "err", err)
+		return "restore pending since " + pending.Since + " (" + pending.Reason + "); backups could not be listed"
+	}
+	since := pending.SinceTime()
+	older := 0
+	for _, e := range entries {
+		if since.IsZero() || e.Timestamp.Before(since) {
+			older++
+		}
+	}
+	if older == 0 {
+		s.log.Info("restore pending lifted: no backup predates the empty database", "app", key)
+		s.clearRestorePending(key)
+		return ""
+	}
+	s.log.Warn("pruning skipped: backups older than the empty database are kept until `bay restore` or `bay restore --dismiss`",
+		"app", key, "since", pending.Since, "reason", pending.Reason, "older", older)
+	return fmt.Sprintf("restore pending since %s (%s); %d older backup(s) kept: run `bay restore %s` or `bay restore %s --dismiss`",
+		pending.Since, pending.Reason, older, key, key)
 }
 
 /*
@@ -337,7 +385,7 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"key":         out.Result.Key,
 		"rawBytes":    out.Result.RawBytes,
 		"storedBytes": out.Result.StoredBytes,
@@ -345,7 +393,11 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		"integrity":   "ok",
 		"pruned":      keys(out.Pruned),
 		"notBackedUp": out.NotBackedUp,
-	})
+	}
+	if out.PruneSuspended != "" {
+		resp["pruneSuspended"] = out.PruneSuspended
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
@@ -456,6 +508,8 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("database restored", "app", app.Key(), "key", key)
+	// The backups the guard was protecting have done their job.
+	s.clearRestorePending(app.Key())
 	writeJSON(w, http.StatusOK, map[string]any{
 		"restored":    key,
 		"app":         app.Key(),
@@ -473,42 +527,77 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	mgr, _, err := s.backupManager()
 	if err != nil {
 		s.log.Error("backup config unusable, skipping auto-restore", "err", err)
-		return map[string]any{"database": "empty (backup destination unusable)"}
+		return s.startedEmptyUnchecked(app, "backup destination unusable")
 	}
 	if mgr == nil {
-		return map[string]any{"database": "empty (no backup destination configured)"}
+		// Pending too: the usual disaster recovery configures the bucket AFTER
+		// the first deploy, and that bucket may hold the previous machine's
+		// backups.
+		return s.startedEmptyUnchecked(app, "no backup destination configured")
 	}
 
 	latest, found, err := mgr.Latest(ctx, app.Name, app.Env)
 	if err != nil {
 		s.log.Error("could not list backups", "app", app.Key(), "err", err)
-		return map[string]any{"database": "empty (could not reach the bucket)"}
+		return s.startedEmptyUnchecked(app, "could not reach the bucket")
 	}
 	if !found {
 		s.log.Info("no backup to restore", "app", app.Key())
+		// Checked and nothing there: a genuinely new app, nothing to protect.
+		s.clearRestorePending(app.Key())
 		return map[string]any{"database": "empty (no backup found)"}
 	}
 
 	runtime, _, err := s.appPaths(app)
 	if err != nil {
-		return map[string]any{"database": "empty (" + err.Error() + ")"}
+		return s.startedEmptyUnchecked(app, err.Error())
 	}
 	restored, cleanup, err := mgr.Fetch(ctx, latest.Key, runtime)
 	if err != nil {
 		s.log.Error("auto-restore failed", "app", app.Key(), "key", latest.Key, "err", err)
-		return map[string]any{"database": "empty (restore failed: " + err.Error() + ")"}
+		return s.startedEmptyUnchecked(app, "restore failed: "+err.Error())
 	}
 	defer cleanup()
 
 	if err := backup.Install(restored, dbPath); err != nil {
 		s.log.Error("auto-restore install failed", "app", app.Key(), "err", err)
-		return map[string]any{"database": "empty (install failed: " + err.Error() + ")"}
+		return s.startedEmptyUnchecked(app, "install failed: "+err.Error())
 	}
+	s.clearRestorePending(app.Key())
 	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key)
 	return map[string]any{
 		"database":    "restored from " + latest.Key,
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
 		"notRestored": []string{"storage/ (uploaded files)"},
+	}
+}
+
+/*
+startedEmptyUnchecked is the deploy going ahead on an empty database when Bay
+could not find out whether a backup should have been restored into it.
+
+The deploy is not refused: an app that cannot start because a bucket is down
+is an outage of its own. But the instance is marked `RestorePending`, and that
+is what stops retention from deleting the real backups once the empty
+database starts being backed up in their place.
+*/
+func (s *server) startedEmptyUnchecked(app state.App, reason string) map[string]any {
+	s.log.Warn("app started on an EMPTY database, its backups were not checked; "+
+		"pruning is paused for it until `bay restore` or `bay restore --dismiss`",
+		"app", app.Key(), "reason", reason)
+	if err := s.store.SetRestorePending(app.Key(), reason, time.Now()); err != nil {
+		s.log.Error("could not record the pending restore", "app", app.Key(), "err", err)
+	}
+	return map[string]any{
+		"database":       "empty (" + reason + ")",
+		"restorePending": true,
+		"next":           "old backups are kept (pruning paused); run `bay restore " + app.Key() + "` to recover them, or `bay restore " + app.Key() + " --dismiss` to keep the new database",
+	}
+}
+
+func (s *server) clearRestorePending(key string) {
+	if err := s.store.ClearRestorePending(key); err != nil {
+		s.log.Error("could not clear the pending restore", "app", key, "err", err)
 	}
 }
 
@@ -597,9 +686,19 @@ func cmdBackups(args []string) error {
 }
 
 func cmdRestore(args []string) error {
-	key, err := appKeyArg(args, "bay restore <name/env> [--key <backup-key>]")
+	key, err := appKeyArg(args, "bay restore <name/env> [--key <backup-key>] [--dismiss]")
 	if err != nil {
 		return err
+	}
+	for _, a := range args {
+		if a == "--dismiss" {
+			res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/restore/dismiss?confirm=yes", nil)
+			if err != nil {
+				return err
+			}
+			fmt.Println(res)
+			return nil
+		}
 	}
 	url := controlHost + "/apps/" + key + "/restore?confirm=yes"
 	for i := 0; i < len(args)-1; i++ {
@@ -613,6 +712,39 @@ func cmdRestore(args []string) error {
 	}
 	fmt.Println(res)
 	return nil
+}
+
+/*
+handleRestoreDismiss lifts a pending restore without restoring: the operator
+has looked and the database the app started with is the one to keep.
+
+Retention resumes from the next backup, and that is what eventually deletes
+the old backups - which is why this, too, wants ?confirm=yes.
+*/
+func (s *server) handleRestoreDismiss(w http.ResponseWriter, r *http.Request) {
+	app, ok := s.store.Get(r.PathValue("name") + "/" + r.PathValue("env"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown app")
+		return
+	}
+	if app.RestorePending == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"app": app.Key(), "restorePending": false})
+		return
+	}
+	if r.URL.Query().Get("confirm") != "yes" {
+		writeError(w, http.StatusPreconditionRequired, "dismissing resumes retention, which will delete the backups taken before "+app.RestorePending.Since+"; repeat with ?confirm=yes")
+		return
+	}
+	if err := s.store.ClearRestorePending(app.Key()); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.log.Warn("pending restore dismissed; retention resumes", "app", app.Key(), "since", app.RestorePending.Since)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"app":            app.Key(),
+		"restorePending": false,
+		"dismissed":      *app.RestorePending,
+	})
 }
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alepha-dev/bay/internal/schedule"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // statusLine is one instance as `bay status --json` reports it.
@@ -38,6 +39,9 @@ type statusLine struct {
 	BackupAge       string `json:"backupAge,omitempty"`
 	BackupStale     bool   `json:"backupStale"`
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// RestorePending is set while the instance runs on a database Bay created
+	// empty without checking its backups. Additive: absent otherwise.
+	RestorePending *state.RestorePending `json:"restorePending,omitempty"`
 	// NotBackedUp names the stack volumes this member mounts that no hook
 	// covers. Not a problem, a fact said every time.
 	NotBackedUp []string `json:"notBackedUp,omitempty"`
@@ -62,19 +66,20 @@ a clock a caller cannot move is arithmetic nobody can test.
 */
 func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLine {
 	line := statusLine{
-		App:           a.Name,
-		Env:           a.Env,
-		Domains:       a.Domains,
-		Release:       a.Release,
-		Running:       a.Running,
-		Static:        a.Static,
-		LastRequestAt: a.LastRequestAt,
-		IdleFor:       idleFor(a.LastRequestAt, now),
-		Crons:         a.Crons,
-		Backups:       a.Backups,
-		LastBackupAt:  a.LastBackupAt,
-		NotBackedUp:   a.NotBackedUp,
-		Problems:      []string{},
+		App:            a.Name,
+		Env:            a.Env,
+		Domains:        a.Domains,
+		Release:        a.Release,
+		Running:        a.Running,
+		Static:         a.Static,
+		LastRequestAt:  a.LastRequestAt,
+		IdleFor:        idleFor(a.LastRequestAt, now),
+		Crons:          a.Crons,
+		Backups:        a.Backups,
+		LastBackupAt:   a.LastBackupAt,
+		NotBackedUp:    a.NotBackedUp,
+		RestorePending: a.RestorePending,
+		Problems:       []string{},
 	}
 	if u := a.Usage; u != nil {
 		line.Restarts = u.Restarts
@@ -104,7 +109,17 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	if a.LastBackupError != "" {
 		line.Problems = append(line.Problems, "last backup attempt failed: "+a.LastBackupError)
 	}
+	// A problem, not a note: someone has to decide between the old backups and
+	// the new database, and until they do retention is off for this instance.
+	if p := a.RestorePending; p != nil {
+		line.Problems = append(line.Problems, restorePendingProblem(a.Key(), *p))
+	}
 	return line
+}
+
+func restorePendingProblem(key string, p state.RestorePending) string {
+	return "started on an empty database without checking its backups (" + p.Reason + ", since " + p.Since +
+		"); pruning paused - run `bay restore " + key + "` or `bay restore " + key + " --dismiss`"
 }
 
 // printStatusJSON writes the machine view and fails the same way the human one
