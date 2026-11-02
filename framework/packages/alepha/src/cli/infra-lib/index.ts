@@ -102,6 +102,7 @@ export * from "./adapters/InfraAdapter.ts";
 // `DeployRunner` - writes its descriptor itself.
 export * from "./adapters/WorkerCloudflareAdapter.ts";
 export * from "./atoms/infraOptions.ts";
+export * from "./schemas/bayBackupOptions.ts";
 export * from "./schemas/bayEnvironmentOptions.ts";
 export * from "./schemas/cloudflareEnvironmentOptions.ts";
 export * from "./schemas/environmentOptions.ts";

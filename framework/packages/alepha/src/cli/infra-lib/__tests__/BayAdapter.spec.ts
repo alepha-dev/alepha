@@ -1653,6 +1653,25 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     expect(shell.getCallsMatching(/bay deploy .*--name/)).toHaveLength(0);
   });
 
+  it("carries the backup policy to the stack's service too", async () => {
+    // Bay rewrites `<stack>/<env>/<service>` into the member's own name and
+    // keeps every other flag, so the member gets the app's layer like a
+    // standalone app does.
+    const { adapter, shell } = await withListing(stackListing);
+
+    await adapter.deploy(
+      inStack({ backup: { schedule: { every: "6h" } } }),
+      run,
+    );
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/api - " +
+          `--backup-policy '{"schedule":{"every":"6h"}}'`,
+      ),
+    ).toBe(true);
+  });
+
   it("finds the service by app name, not by service name", async () => {
     const { adapter, shell } = await withListing(
       JSON.stringify([
@@ -1805,5 +1824,126 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
       /bay stack destroy mcs\/staging/,
     );
     expect(shell.calls).toHaveLength(0);
+  });
+});
+
+describe("BayAdapter  -  the backup policy that rides the deploy", () => {
+  const withBackup = (backup: unknown) =>
+    context({ options: { host: "deploy@bay.example.com", backup } });
+
+  const policy = {
+    enabled: true,
+    schedule: { every: "6h", timezone: "Europe/Paris" },
+    window: "01:00-06:00",
+    onDeploy: true,
+    retention: { keep: 10, daily: 7, weekly: 4, monthly: 6 },
+    verify: { every: "168h" },
+  };
+
+  it("sends the environment's `backup` as inline JSON on `bay deploy`", async () => {
+    const { adapter, shell } = await setup();
+
+    await adapter.deploy(withBackup(policy), run);
+
+    const [call] = shell.getCallsMatching(/bay deploy -/);
+    const sent = /--backup-policy '([^']*)'/.exec(call.command)?.[1];
+    expect(sent).toBeDefined();
+    expect(JSON.parse(sent as string)).toEqual(policy);
+  });
+
+  it("sends nothing when the environment sets no `backup`", async () => {
+    // Bay then drops whatever an earlier release declared, which is the point:
+    // the policy describes the release being deployed.
+    const { adapter, shell } = await setup();
+
+    await adapter.deploy(context(), run);
+    await adapter.deploy(withBackup({}), run);
+
+    expect(shell.wasCalledMatching(/--backup-policy/)).toBe(false);
+  });
+
+  it("keeps a value with a quote literal for the remote shell", async () => {
+    const { adapter, shell } = await setup();
+
+    await adapter.deploy(withBackup({ window: "it's" }), run);
+
+    const [call] = shell.getCallsMatching(/bay deploy -/);
+    expect(call.command).toContain(`--backup-policy '{"window":"it'\\''s"}'`);
+  });
+
+  it("refuses `backup` for a static site before packing anything", async () => {
+    const { adapter, shell, alepha } = await setup();
+    alepha.store.mut(buildOptions, (current) => ({
+      ...current,
+      runtime: "static" as BuildRuntimeDeclaration,
+    }));
+
+    await expect(adapter.deploy(withBackup(policy), run)).rejects.toThrow(
+      /static site: it has no database/,
+    );
+    expect(shell.wasCalledMatching(/alepha pack/)).toBe(false);
+  });
+
+  it("names an old bay that does not know --backup-policy", async () => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      errors: {
+        [`ssh -o BatchMode=yes deploy@bay.example.com bay deploy - --name demo --env production --backup-policy '{"enabled":true}'`]:
+          'unknown flag "--backup-policy"',
+      },
+    });
+
+    await expect(
+      adapter.deploy(withBackup({ enabled: true }), run),
+    ).rejects.toThrow(
+      /does not know `--backup-policy`[\s\S]*Nothing was deployed/,
+    );
+  });
+
+  it("passes Bay's reason on when it refuses the policy", async () => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      errors: {
+        [`ssh -o BatchMode=yes deploy@bay.example.com bay deploy - --name demo --env production --backup-policy '{"retention":{"keep":400}}'`]:
+          "error: backup policy declared by the app: retention.keep: 400 is more than an app may ask for (365)",
+      },
+    });
+
+    await expect(
+      adapter.deploy(withBackup({ retention: { keep: 400 } }), run),
+    ).rejects.toThrow(
+      /refused this environment's `backup` option[\s\S]*retention\.keep/,
+    );
+  });
+
+  describe("the option's schema", () => {
+    const parse = (backup: unknown) =>
+      BayAdapter.options.safeParse({ host: "h", backup });
+
+    it("accepts a full policy as written", () => {
+      const result = parse(policy);
+      expect(result.success).toBe(true);
+      expect(result.data?.backup).toEqual(policy);
+    });
+
+    it("refuses a misspelled key rather than dropping it", () => {
+      // Bay's decoder refuses unknown fields; stripping one here would send a
+      // policy missing the setting the author thought they made.
+      expect(parse({ retension: { keep: 3 } }).success).toBe(false);
+      expect(parse({ retention: { kep: 3 } }).success).toBe(false);
+    });
+
+    it("refuses two schedule shapes at once", () => {
+      expect(parse({ schedule: { every: "6h", at: ["03:00"] } }).success).toBe(
+        false,
+      );
+    });
+
+    it("refuses what an app may not ask Bay for", () => {
+      expect(parse({ retention: { keep: 0 } }).success).toBe(false);
+      expect(parse({ retention: { daily: 366 } }).success).toBe(false);
+      expect(parse({ retention: { weekly: -1 } }).success).toBe(false);
+      expect(parse({ prune: "lifecycle" }).success).toBe(false);
+    });
   });
 });

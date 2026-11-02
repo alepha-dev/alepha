@@ -181,7 +181,10 @@ prune would delete, and why.
 A field this Bay does not enforce is refused rather than stored, so a policy
 never reads as doing more than it does. The app layer is untrusted input: it
 is checked before the upload is staged (every 5m–31d, keep 1–365 per rule) and a bad one
-refuses the deploy. `--backup-interval 0` turns scheduling off by default, and
+refuses the deploy. From an Alepha project, the app layer is the environment's
+`backup` option in `alepha.config.ts` (`bay({ host, backup: { … } })`), which
+`alepha deploy` sends as `--backup-policy`; leaving it out sends nothing, so
+the next deploy drops the earlier declaration. `--backup-interval 0` turns scheduling off by default, and
 any layer can turn it back on for one app; `enabled: false` stops the schedule
 only — `bay backup` still works, and the app is not reported stale.
 `bay status` and the inventory show the effective policy with the layer behind

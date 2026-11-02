@@ -199,6 +199,28 @@ adapter's default guess is `<root>/control.sock` resolved from `$HOME` — an SS
 starts there — so every `--root /opt/bay/data` install needs the path spelled out. It must be
 absolute.
 
+To set this app's own backup schedule and retention, add `backup` to the environment. It is sent
+with each deploy as `bay deploy --backup-policy`, and overrides the host's defaults
+(`bay config backup`) for this app only:
+
+```typescript
+production: bay({
+  host: "bay-prod",
+  socket: "/run/bay/control.sock",
+  backup: {
+    enabled: true,
+    schedule: { every: "6h", timezone: "Europe/Paris" },
+    onDeploy: true,
+    retention: { keep: 10, daily: 7, weekly: 4, monthly: 6 },
+  },
+}),
+```
+
+The bucket and its keys stay on the host (`bay config s3:backups`, and `bay config s3:apps` for a
+per-app key): an app chooses when and how many, never where. What is
+backed up is always the SQLite databases under the app's `data/`. The fields and their bounds are in
+the [README's backup policy section](README.md).
+
 Then, from the project:
 
 ```bash
@@ -230,15 +252,20 @@ dials nobody again.
 What Lore may make the machine do is a **closed vocabulary of seven verbs**, each naming one instance
 or stack environment this Bay already runs:
 
-| verb      | what it does                                                                                        |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| `restart` | hold requests, stop, start. Refused for an app somebody stopped on purpose: use `start`             |
-| `deploy`  | an artifact named by DIGEST, which the machine pulls and verifies before anything touches disk      |
-| `stop`    | out of service and disabled, so it stays down through a reboot and a Bay upgrade                    |
-| `start`   | back into service, clearing that intent. A no-op on an app already running, never a restart         |
-| `backup`  | the same snapshot the schedule takes, now. Refused for an app with no database Bay owns             |
-| `logs`    | a tail, uploaded back to Lore. A READ, so it answers during a deploy rather than queueing behind it |
-| `stack-deploy` | a stack bundle named by DIGEST, pulled and verified like an artifact, then applied as a revision |
+| verb            | what it does                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `restart`       | hold requests, stop, start. Refused for an app somebody stopped on purpose: use `start`                 |
+| `deploy`        | an artifact named by DIGEST, which the machine pulls and verifies before anything touches disk          |
+| `stop`          | out of service and disabled, so it stays down through a reboot and a Bay upgrade                        |
+| `start`         | back into service, clearing that intent. A no-op on an app already running, never a restart             |
+| `backup`        | the same snapshot the schedule takes, now. Refused for an app with no database Bay owns                 |
+| `logs`          | a tail, uploaded back to Lore. A READ, so it answers during a deploy rather than queueing behind it     |
+| `stack-deploy`  | a stack bundle named by DIGEST, pulled and verified like an artifact, then applied as a revision        |
+| `backups-list`  | the instance's backups in the bucket, newest first, uploaded back to Lore                               |
+| `backup-verify` | downloads a backup (the newest by default) and checks it as a restore would, without touching the app   |
+| `target-probe`  | checks the S3 bucket now and reports whether it answers                                                 |
+| `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's          |
+| `restore`       | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run |
 
 Deploys stay refused until the estate's owner allows them on the estate, and the machine honours
 that switch on its own side too.
@@ -246,8 +273,11 @@ that switch on its own side too.
 ⚠️ **This list is a security boundary, not a menu.** The secret is on the host in cleartext, so
 whoever holds it can ask for anything in this table and nothing outside it. Every verb names an
 instance and takes no path, no shell command and no argument list; `logs` carries a line count, a
-window and a pattern, all bounded and validated. Adding a verb widens what a leaked secret is
-worth, so it is a decision about that, not a feature.
+window and a pattern, all bounded and validated. `backup-policy` carries a policy checked like
+`bay backup config`'s, and `restore` a backup key or a time, the instance to restore from and a
+reason; both are held to the same switch as `deploy`, and a restore first backs up what it replaces
+(and says so when it could not). Adding a verb widens what a leaked secret is worth, so it is a
+decision about that, not a feature.
 
 `stack-deploy` is the one verb that runs a compose file, which is to say containers of the
 bundle's choosing: allowing deploys on an estate that runs stacks is trusting Lore with the

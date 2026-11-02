@@ -231,6 +231,43 @@ the host; see [Bay's documentation](https://alepha.dev/bay).
 > and the CLI turns that into `its bay does not know --secrets-file … Upgrade bay on the host`. That
 > failure happens **before anything is unpacked**, so the release that was serving still is.
 
+## Backups
+
+Bay backs up each app's SQLite databases (everything under its `data/`) to the host's S3 bucket by
+itself, and restores them on a fresh host. The bucket, its keys and the host-wide defaults are the
+host's (`bay config s3:backups`, `bay config backup`); the app chooses only when and how many, with
+`backup`:
+
+```typescript
+bay({
+  host: "deploy@bay.example.com",
+  backup: {
+    enabled: true,
+    // One of every, at (times of day) or cron, read in timezone.
+    schedule: { every: "6h", timezone: "Europe/Paris" },
+    // Scheduled backups start only inside this range.
+    window: "01:00-06:00",
+    // A backup tagged pre-deploy before each deploy of an app with data.
+    onDeploy: true,
+    // A backup survives when any rule keeps it.
+    retention: { keep: 10, daily: 7, weekly: 4, monthly: 6, maxAge: "400d" },
+    // How often the newest backup is downloaded and checked like a restore.
+    verify: { every: "7d" },
+  },
+});
+```
+
+It is sent with each deploy as `bay deploy --backup-policy '<json>'`. Fields left out come from the
+host's defaults, and an operator override on the host (`bay backup config`, or Lore) still wins over
+it. It describes the release being deployed: remove it and deploy, and Bay drops it.
+
+Unknown keys are refused here, because Bay refuses them too. Bay also bounds what an app may ask for
+(every 5m to 31d, keep 1 to 365 per rule, never "keep everything", never bucket-lifecycle pruning):
+a refused policy fails the deploy with Bay's reason **before anything is unpacked**, as does a `bay`
+too old to know `--backup-policy`. A static site has no database, so `backup` there is refused before
+the pack. The fields, the layers and the restore commands are in
+[Bay's documentation](https://alepha.dev/bay).
+
 ## Resources
 
 You do not provision anything from the CLI. Cloudflare needs `provision` because D1, R2 and KV are

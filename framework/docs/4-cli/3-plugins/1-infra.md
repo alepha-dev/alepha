@@ -88,6 +88,7 @@ From `alepha/cli/infra`. Node only.
 | `domain` | `string` | Domain Bay registers for the app, which answers ACME for it. A plain host.                                                                                                                                                         |
 | `socket` | `string` | Absolute path of Bay's control socket - required on any host whose Bay root isn't `$HOME/bay-data`. See the [Bay guide](/docs/guides-deployment-bay).                                                                              |
 | `stack`  | `string` | Bay stack the app is deployed into: redeploys only the service whose `x-lore: { app }` names it, in the stack environment named like this environment. `BAY_STACK` overrides it. See the [Bay guide](/docs/guides-deployment-bay). |
+| `backup` | `object` | This app's backup policy on the Bay (schedule, window, `onDeploy`, retention, restore test), sent with each deploy as `--backup-policy`. Unknown keys are refused. See the [Bay guide](/docs/guides-deployment-bay#backups).       |
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
