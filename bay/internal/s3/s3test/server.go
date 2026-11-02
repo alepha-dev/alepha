@@ -34,6 +34,10 @@ type Server struct {
 	// returned as is, with an S3-style error body.
 	Fail func(r *http.Request) int
 
+	// Versioning is what GET ?versioning reports: "Enabled", "Suspended", or
+	// "" for never turned on.
+	Versioning string
+
 	mu      sync.Mutex
 	objects map[string][]byte
 	// Requests counts what reached the bucket, by method, for tests that
@@ -121,6 +125,13 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	switch {
+	case r.Method == http.MethodGet && key == "" && r.URL.Query().Has("versioning"):
+		w.Header().Set("Content-Type", "application/xml")
+		body := `<?xml version="1.0" encoding="UTF-8"?><VersioningConfiguration>`
+		if s.Versioning != "" {
+			body += "<Status>" + s.Versioning + "</Status>"
+		}
+		_, _ = io.WriteString(w, body+"</VersioningConfiguration>")
 	case r.Method == http.MethodGet && key == "":
 		s.list(w, r)
 	case r.Method == http.MethodPut:

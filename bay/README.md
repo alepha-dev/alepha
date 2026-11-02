@@ -65,6 +65,20 @@ that is never the backup one) or they are not shared at all, and secrets come
 from the deploy. The worst failure of a backup system is somebody believing it
 covers more than it does.
 
+**One upload key per app, proved by S3.** The `s3:apps` key is written into
+every app's `.env`, so on its own any app can read and delete every other
+app's uploads: `apps/<name>-<env>/blobs/` is a convention, not a permission.
+`bay config s3:apps <name/env> --endpoint … --bucket …` gives one instance a
+key of its own, and Bay stores it only after trying it: it must write, list
+and delete under its own prefix, and be **refused** (401/403) when listing the
+backups and every other app's prefix on the same endpoint. A listing that
+succeeds is a leak; one that times out proves nothing - both refuse the key
+(`--allow-wide-key` stores it anyway, and says so). R2 scopes a token to a
+bucket, not a prefix: there, isolation means one bucket per app. A key already
+held by the backups, the host-wide `s3:apps` or another app is always refused,
+and `s3:apps` / `s3:backups` refuse each other's key unless
+`--allow-shared-key`.
+
 A stack service is data too, so it declares how to dump itself in
 `x-lore.backup`: `{postgres: {user, db}}` runs `pg_dump` in the service's
 container and verifies with `pg_restore --list`, and `{command, restore}` takes

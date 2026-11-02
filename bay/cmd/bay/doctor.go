@@ -71,6 +71,7 @@ func runDoctor(root string) []check {
 	checks = append(checks, composePlugin())
 	checks = append(checks, portFree(80), portFree(443))
 	checks = append(checks, diskFree(root))
+	checks = append(checks, storageChecks(root)...)
 	return checks
 }
 

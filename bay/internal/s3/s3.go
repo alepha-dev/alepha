@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -91,6 +92,37 @@ func (c *Client) Delete(ctx context.Context, key string) error {
 	}
 	defer res.Body.Close()
 	return expect(res, http.StatusNoContent, http.StatusOK, http.StatusNotFound)
+}
+
+/*
+Versioning reports the bucket's versioning status: "Enabled", "Suspended", or
+"" for a bucket on which it was never turned on.
+
+Asked because a blob bucket without it keeps only the current version: code
+that deletes or overwrites the wrong key has lost it everywhere, and no backup
+of Bay's covers blobs. Some providers (R2) do not implement the call; that
+comes back as an error, which callers must read as "unknown", not "off".
+*/
+func (c *Client) Versioning(ctx context.Context) (string, error) {
+	res, err := c.do(ctx, http.MethodGet, "", url.Values{"versioning": {""}}, nil)
+	if err != nil {
+		return "", err
+	}
+	raw, readErr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err := expect(res, http.StatusOK); err != nil {
+		return "", err
+	}
+	if readErr != nil {
+		return "", readErr
+	}
+	var parsed struct {
+		Status string `xml:"Status"`
+	}
+	if err := xml.Unmarshal(raw, &parsed); err != nil {
+		return "", fmt.Errorf("s3: parse versioning: %w", err)
+	}
+	return parsed.Status, nil
 }
 
 // List returns every object under prefix, following continuation tokens.
@@ -296,5 +328,25 @@ func expect(res *http.Response, codes ...int) error {
 		}
 	}
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
-	return fmt.Errorf("s3: %s: %s", res.Status, strings.TrimSpace(string(body)))
+	return &StatusError{Code: res.StatusCode, Status: res.Status, Body: strings.TrimSpace(string(body))}
+}
+
+// StatusError is an S3 answer that was not one of the expected codes.
+//
+// Typed so a caller can tell "the bucket said no" from "the bucket did not
+// answer": an isolation probe needs exactly that difference, because a denied
+// listing is the proof it is looking for and a timeout proves nothing.
+type StatusError struct {
+	Code   int
+	Status string
+	Body   string
+}
+
+func (e *StatusError) Error() string { return "s3: " + e.Status + ": " + e.Body }
+
+// IsDenied reports whether err is S3 refusing the credential (401/403), as
+// opposed to a network failure or a missing bucket.
+func IsDenied(err error) bool {
+	var se *StatusError
+	return errors.As(err, &se) && (se.Code == http.StatusForbidden || se.Code == http.StatusUnauthorized)
 }
