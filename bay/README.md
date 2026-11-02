@@ -64,6 +64,14 @@ that is never the backup one) or they are not shared at all, and secrets come
 from the deploy. The worst failure of a backup system is somebody believing it
 covers more than it does.
 
+**A backup never sits in memory.** The snapshot is compressed file to file and
+streamed to the bucket — in one PUT up to 16 MiB, as a multipart upload in
+16 MiB parts beyond (a failed part is retried, a failed upload aborted so no
+invisible parts stay billed) — then checked with HEAD: it counts only when the
+bucket reports the size that was sent. A restore streams back through gunzip
+into a file, and a download cut short is an error, never a smaller database.
+The size of a database is bounded by the disk, not by Bay's RAM.
+
 A deploy that creates the database restores the latest backup first. When it
 cannot find out whether there is one (no bucket configured yet, bucket
 unreachable, download or install failed) the app still starts, on an empty

@@ -274,7 +274,7 @@ func localBackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 func recordingS3(t *testing.T, puts *[]string) *httptest.Server {
 	t.Helper()
 	var mu sync.Mutex
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(withHead(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/xml")
 			_, _ = w.Write([]byte(

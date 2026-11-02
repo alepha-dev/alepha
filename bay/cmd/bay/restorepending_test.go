@@ -30,7 +30,7 @@ func newMemoryS3(t *testing.T, keys ...string) *memoryS3 {
 	for _, k := range keys {
 		m.objects[k] = 1
 	}
-	m.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	m.srv = httptest.NewServer(withHead(func(w http.ResponseWriter, r *http.Request) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		key := strings.TrimPrefix(r.URL.Path, "/backups/")

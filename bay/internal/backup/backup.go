@@ -75,23 +75,23 @@ func (m *Manager) Backup(ctx context.Context, app, env string, runtime Interpret
 		return nil, err
 	}
 
-	raw, err := os.ReadFile(snapshot)
+	// File to file, then a streamed upload: the database never sits in
+	// memory, so its size is bounded by the disk, not by Bay's RAM.
+	packed := snapshot + ".gz"
+	rawBytes, err := gzipFile(snapshot, packed)
 	if err != nil {
-		return nil, err
-	}
-	packed, err := gzipBytes(raw)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("compress: %w", err)
 	}
 
 	key := dbPrefix(app, env) + time.Now().UTC().Format(timeLayout) + ".sqlite.gz"
-	if err := m.store.Put(ctx, key, packed); err != nil {
+	stored, err := m.store.PutFile(ctx, key, packed)
+	if err != nil {
 		return nil, fmt.Errorf("upload %s: %w", key, err)
 	}
 	return &Result{
 		Key:         key,
-		RawBytes:    int64(len(raw)),
-		StoredBytes: int64(len(packed)),
+		RawBytes:    rawBytes,
+		StoredBytes: stored,
 		Tables:      inspection.Tables,
 	}, nil
 }
@@ -135,15 +135,6 @@ func (m *Manager) Latest(ctx context.Context, app, env string) (Entry, bool, err
 // a corrupt backup over a working database would turn a recoverable incident
 // into data loss.
 func (m *Manager) Fetch(ctx context.Context, key string, runtime Interpreter) (path string, cleanup func(), err error) {
-	packed, err := m.store.Get(ctx, key)
-	if err != nil {
-		return "", nil, fmt.Errorf("download %s: %w", key, err)
-	}
-	raw, err := gunzipBytes(packed)
-	if err != nil {
-		return "", nil, fmt.Errorf("decompress %s: %w", key, err)
-	}
-
 	dir, err := os.MkdirTemp("", "bay-restore-*")
 	if err != nil {
 		return "", nil, err
@@ -151,7 +142,7 @@ func (m *Manager) Fetch(ctx context.Context, key string, runtime Interpreter) (p
 	cleanup = func() { os.RemoveAll(dir) }
 
 	out := filepath.Join(dir, "restored.sqlite")
-	if err := os.WriteFile(out, raw, 0o600); err != nil {
+	if err := m.download(ctx, key, out); err != nil {
 		cleanup()
 		return "", nil, err
 	}
@@ -250,6 +241,57 @@ func parseKeyTime(key string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("not a backup key: %s", key)
 	}
 	return time.Parse(timeLayout, stamp)
+}
+
+// download streams a backup from the bucket through gunzip into out.
+func (m *Manager) download(ctx context.Context, key, out string) error {
+	body, _, err := m.store.Open(ctx, key)
+	if err != nil {
+		return fmt.Errorf("download %s: %w", key, err)
+	}
+	defer body.Close()
+	zr, err := gzip.NewReader(body)
+	if err != nil {
+		return fmt.Errorf("decompress %s: %w", key, err)
+	}
+	defer zr.Close()
+	f, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(f, zr); err != nil {
+		f.Close()
+		return fmt.Errorf("download %s: %w", key, err)
+	}
+	return f.Close()
+}
+
+// gzipFile compresses src into dst and returns the size of src.
+func gzipFile(src, dst string) (int64, error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return 0, err
+	}
+	defer out.Close()
+	// Default rather than best compression: on a database of gigabytes the
+	// last few percent cost minutes of CPU on a small VPS.
+	zw, err := gzip.NewWriterLevel(out, gzip.DefaultCompression)
+	if err != nil {
+		return 0, err
+	}
+	n, err := io.Copy(zw, in)
+	if err != nil {
+		return 0, err
+	}
+	if err := zw.Close(); err != nil {
+		return 0, err
+	}
+	return n, out.Close()
 }
 
 func gzipBytes(raw []byte) ([]byte, error) {

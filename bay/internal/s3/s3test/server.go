@@ -1,12 +1,14 @@
 // Package s3test is an in-memory S3 bucket for tests.
 //
 // It speaks the slice of the protocol the s3 client uses (path-style PUT, GET,
-// DELETE and ListObjectsV2) and nothing more. It does not verify signatures:
+// HEAD, DELETE, ListObjectsV2 and multipart uploads) and nothing more. It does not verify signatures:
 // that is pinned against AWS's own published vectors in the s3 package, which
 // proves more than a server sharing the client's signing code ever could.
 package s3test
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/xml"
 	"io"
 	"net/http"
@@ -30,12 +32,19 @@ type Server struct {
 	// exercised with a handful of objects. Zero means 1000, as on S3.
 	PageSize int
 
+	// PartSize is handed to clients from Client, so multipart uploads can be
+	// exercised with a few bytes. Zero leaves the client's default.
+	PartSize int64
+
 	// Fail, when set, is consulted before every request; a non-zero status is
 	// returned as is, with an S3-style error body.
 	Fail func(r *http.Request) int
 
 	mu      sync.Mutex
 	objects map[string][]byte
+	// uploads holds multipart uploads in progress: id → key and parts.
+	uploads map[string]*upload
+	uploadN int
 	// Requests counts what reached the bucket, by method, for tests that
 	// assert something was NOT done.
 	requests map[string]int
@@ -44,7 +53,7 @@ type Server struct {
 // New starts a server closed with the test.
 func New(t testing.TB) *Server {
 	t.Helper()
-	s := &Server{Bucket: "bucket", objects: map[string][]byte{}, requests: map[string]int{}}
+	s := &Server{Bucket: "bucket", objects: map[string][]byte{}, requests: map[string]int{}, uploads: map[string]*upload{}}
 	ts := httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(ts.Close)
 	s.URL = ts.URL
@@ -54,7 +63,7 @@ func New(t testing.TB) *Server {
 // Client returns an s3 client pointed at this bucket.
 func (s *Server) Client(t testing.TB) *s3.Client {
 	t.Helper()
-	c, err := s3.New(s3.Config{Endpoint: s.URL, Bucket: s.Bucket, AccessKey: "AK", SecretKey: "SK"})
+	c, err := s3.New(s3.Config{Endpoint: s.URL, Bucket: s.Bucket, AccessKey: "AK", SecretKey: "SK", PartSize: s.PartSize})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,6 +95,14 @@ func (s *Server) Keys() []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// PendingUploads returns how many multipart uploads were started and neither
+// completed nor aborted: each one is storage a provider bills and no listing shows.
+func (s *Server) PendingUploads() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.uploads)
 }
 
 // Requests returns how many requests of a method reached the bucket.
@@ -120,7 +137,10 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	q := r.URL.Query()
 	switch {
+	case key != "" && (q.Has("uploads") || q.Has("uploadId")):
+		s.multipart(w, r, key)
 	case r.Method == http.MethodGet && key == "":
 		s.list(w, r)
 	case r.Method == http.MethodPut:
@@ -130,6 +150,15 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.objects[key] = body
+		w.Header().Set("ETag", etag(body))
+		w.WriteHeader(http.StatusOK)
+	case r.Method == http.MethodHead:
+		body, ok := s.objects[key]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 		w.WriteHeader(http.StatusOK)
 	case r.Method == http.MethodGet:
 		body, ok := s.objects[key]
@@ -198,6 +227,79 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/xml")
 	_ = xml.NewEncoder(w).Encode(out)
+}
+
+type upload struct {
+	key   string
+	parts map[int][]byte
+}
+
+func etag(body []byte) string {
+	sum := md5.Sum(body)
+	return `"` + hex.EncodeToString(sum[:]) + `"`
+}
+
+// multipart handles Create (POST ?uploads), UploadPart (PUT ?partNumber&uploadId),
+// Complete (POST ?uploadId) and Abort (DELETE ?uploadId). The caller holds s.mu.
+func (s *Server) multipart(w http.ResponseWriter, r *http.Request, key string) {
+	q := r.URL.Query()
+	if r.Method == http.MethodPost && q.Has("uploads") {
+		s.uploadN++
+		id := "upload-" + strconv.Itoa(s.uploadN)
+		s.uploads[id] = &upload{key: key, parts: map[int][]byte{}}
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = io.WriteString(w, "<InitiateMultipartUploadResult><Key>"+key+"</Key><UploadId>"+id+"</UploadId></InitiateMultipartUploadResult>")
+		return
+	}
+	up, ok := s.uploads[q.Get("uploadId")]
+	if !ok || up.key != key {
+		writeError(w, http.StatusNotFound, "NoSuchUpload")
+		return
+	}
+	switch r.Method {
+	case http.MethodPut:
+		n, err := strconv.Atoi(q.Get("partNumber"))
+		if err != nil || n < 1 || n > 10000 {
+			writeError(w, http.StatusBadRequest, "InvalidPartNumber")
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "IncompleteBody")
+			return
+		}
+		up.parts[n] = body
+		w.Header().Set("ETag", etag(body))
+		w.WriteHeader(http.StatusOK)
+	case http.MethodPost:
+		var req struct {
+			Parts []struct {
+				PartNumber int
+				ETag       string
+			} `xml:"Part"`
+		}
+		if err := xml.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Parts) == 0 {
+			writeError(w, http.StatusBadRequest, "MalformedXML")
+			return
+		}
+		var whole []byte
+		for i, p := range req.Parts {
+			body, ok := up.parts[p.PartNumber]
+			if !ok || p.PartNumber != i+1 || etag(body) != p.ETag {
+				writeError(w, http.StatusBadRequest, "InvalidPart")
+				return
+			}
+			whole = append(whole, body...)
+		}
+		s.objects[key] = whole
+		delete(s.uploads, q.Get("uploadId"))
+		_, _ = io.WriteString(w, "<CompleteMultipartUploadResult><Key>"+key+"</Key></CompleteMultipartUploadResult>")
+	case http.MethodDelete:
+		delete(s.uploads, q.Get("uploadId"))
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "MethodNotAllowed")
+	}
 }
 
 func writeError(w http.ResponseWriter, code int, s3Code string) {

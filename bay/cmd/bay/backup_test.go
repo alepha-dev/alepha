@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -42,6 +46,38 @@ echo '{"integrity":"ok","tables":3}'
 	return path
 }
 
+/*
+withHead gives a minimal fake bucket the HEAD that PutFile checks an upload
+with: it remembers the size of every PUT by path and answers HEAD with it,
+404 for a path never written.
+*/
+func withHead(next http.HandlerFunc) http.HandlerFunc {
+	var mu sync.Mutex
+	sizes := map[string]int{}
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			body, _ := io.ReadAll(r.Body)
+			mu.Lock()
+			sizes[r.URL.Path] = len(body)
+			mu.Unlock()
+			r.Body = io.NopCloser(bytes.NewReader(body))
+		case http.MethodHead:
+			mu.Lock()
+			n, ok := sizes[r.URL.Path]
+			mu.Unlock()
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Length", strconv.Itoa(n))
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next(w, r)
+	}
+}
+
 // fakeS3 accepts an upload and reports an empty bucket.
 //
 // Empty on purpose: retention runs right after the upload, and a listing with
@@ -49,7 +85,7 @@ echo '{"integrity":"ok","tables":3}'
 // the one thing it is about.
 func fakeS3(t *testing.T) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(withHead(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/xml")
 			_, _ = w.Write([]byte(

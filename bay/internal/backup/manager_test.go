@@ -279,6 +279,54 @@ console.log(db.prepare("SELECT body FROM notes").get().body);
 	}
 }
 
+// A database larger than one part goes up as a multipart upload and comes back
+// byte for byte: the path every database over 16 MiB takes in production,
+// exercised here with 16 KiB parts.
+func TestBackupOverSeveralPartsRoundTrips(t *testing.T) {
+	node := nodeWithSQLite(t)
+	dir := t.TempDir()
+	live := filepath.Join(dir, "app.sqlite")
+	runNode(t, node, `
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync(process.argv[1]);
+db.exec("PRAGMA journal_mode=WAL; CREATE TABLE blobs(body BLOB);");
+const insert = db.prepare("INSERT INTO blobs VALUES (randomblob(200))");
+db.exec("BEGIN");
+for (let i = 0; i < 2000; i++) insert.run();
+db.exec("COMMIT");
+`, live)
+
+	srv := s3test.New(t)
+	srv.PartSize = 16 << 10
+	m := New(srv.Client(t))
+	ctx := context.Background()
+
+	res, err := m.Backup(ctx, "lore", "production", HostRuntime(node), live)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StoredBytes <= srv.PartSize {
+		t.Fatalf("the fixture must exceed one part to test anything, stored %d", res.StoredBytes)
+	}
+	if srv.Requests(http.MethodPost) < 2 || srv.PendingUploads() != 0 {
+		t.Fatalf("want a completed multipart upload, got %d POSTs and %d pending", srv.Requests(http.MethodPost), srv.PendingUploads())
+	}
+
+	path, cleanup, err := m.Fetch(ctx, res.Key, HostRuntime(node))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	out := runNode(t, node, `
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync(process.argv[1], { readOnly: true });
+console.log(db.prepare("SELECT count(*) AS n FROM blobs").get().n);
+`, path)
+	if strings.TrimSpace(out) != "2000" {
+		t.Fatalf("restored database has %q rows, want 2000", out)
+	}
+}
+
 func TestFetchRefusesACorruptDatabase(t *testing.T) {
 	node := nodeWithSQLite(t)
 	packed, err := gzipBytes([]byte(strings.Repeat("this is not a database", 100)))
