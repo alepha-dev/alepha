@@ -35,7 +35,8 @@ export class DocsCommand {
    * The pages ship inside each package, at `node_modules/<package>/docs/`,
    * so they always describe the installed version and need no network. Only
    * installed packages appear: a project without `@alepha/ui` sees none of
-   * its pages. The output is plain markdown with no colour, whatever the
+   * its pages. Run outside a project, it prints the pages of the `alepha`
+   * running it, so `npx alepha docs` works from any folder. The output is plain markdown with no colour, whatever the
    * terminal, because the reader is usually an agent piping it.
    *
    * The bare command prints the index and never the whole corpus, which is
