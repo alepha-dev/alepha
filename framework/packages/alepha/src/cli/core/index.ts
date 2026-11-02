@@ -46,7 +46,6 @@ import { BuildSlices } from "./services/BuildSlices.ts";
 import { DesktopAdapterResolver } from "./services/DesktopAdapterResolver.ts";
 import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
 import { DocsLibrary } from "./services/DocsLibrary.ts";
-import { InfraConfigEditor } from "./services/InfraConfigEditor.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
@@ -160,7 +159,6 @@ export const AlephaCliServices = $module({
     PackageManagerUtils,
     ViteUtils,
     ProjectScaffolder,
-    InfraConfigEditor,
     AppEntryProvider,
     GitMessageParser,
     GitProvider,

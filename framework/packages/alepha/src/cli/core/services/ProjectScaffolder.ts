@@ -34,7 +34,6 @@ import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
-import { InfraConfigEditor } from "./InfraConfigEditor.ts";
 import {
   type DependencyModes,
   PackageManagerUtils,
@@ -55,7 +54,6 @@ export class ProjectScaffolder {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly pm = $inject(PackageManagerUtils);
-  protected readonly infraEditor = $inject(InfraConfigEditor);
   protected readonly utils = $inject(AlephaCliUtils);
 
   /**
@@ -424,24 +422,49 @@ export class ProjectScaffolder {
    */
   public async ensureAlephaConfig(
     root: string,
-    opts: { force?: boolean; infra?: InfraProvider; prepared?: string } = {},
+    opts: { force?: boolean; infra?: InfraProvider } = {},
   ): Promise<void> {
-    const path = this.fs.join(root, "alepha.config.ts");
-    const prepared =
-      opts.prepared ??
-      (opts.infra && !opts.force && (await this.fs.exists(path))
-        ? this.infraEditor.addCloudflare(await this.fs.readTextFile(path))
-        : undefined);
-    if (prepared !== undefined) {
-      if (prepared !== (await this.fs.readTextFile(path)))
-        await this.fs.writeFile(path, prepared);
-      return;
-    }
+    await this.refuseInfraOverExistingConfig(root, opts);
     await this.ensureFile(
       root,
       "alepha.config.ts",
       alephaConfigTs({ infra: opts.infra }),
       opts.force,
+    );
+  }
+
+  /**
+   * `--infra` writes a fresh `alepha.config.ts` and never edits one in place.
+   * An in-place edit needs a parser that understands the user's imports,
+   * aliases and plugin list, which cost the whole TypeScript compiler as a
+   * dependency (#Q3085), for a one-time change the user can paste. `--force`
+   * still replaces the file with the template.
+   */
+  protected async refuseInfraOverExistingConfig(
+    root: string,
+    opts: { force?: boolean; infra?: InfraProvider },
+  ): Promise<void> {
+    if (
+      !opts.infra ||
+      opts.force ||
+      !(await this.fs.exists(this.fs.join(root, "alepha.config.ts")))
+    ) {
+      return;
+    }
+    throw new AlephaError(
+      [
+        "alepha.config.ts already exists, so --infra will not touch it.",
+        "Add Cloudflare yourself, without duplicating an existing infra() registration:",
+        "",
+        'import { defineConfig } from "alepha/cli/config";',
+        'import { cloudflare, infra } from "alepha/cli/infra";',
+        "",
+        "export default defineConfig({",
+        "  plugins: [infra({ environments: { production: cloudflare() } })],",
+        "});",
+        "",
+        "Or rerun with --force to replace every scaffolded file, alepha.config.ts included.",
+      ].join("\n"),
     );
   }
 
@@ -790,13 +813,8 @@ export class ProjectScaffolder {
       }
     }
 
-    // Prepare the entire bounded edit before any scaffold files or installs.
-    // --force is the existing broad re-scaffold operation, not a provider switch.
-    const configPath = this.fs.join(root, "alepha.config.ts");
-    const preparedInfra =
-      flags.infra && !flags.force && (await this.fs.exists(configPath))
-        ? this.infraEditor.addCloudflare(await this.fs.readTextFile(configPath))
-        : undefined;
+    // Refused before any scaffold file or install, so a refusal changes nothing.
+    await this.refuseInfraOverExistingConfig(root, flags);
 
     // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
     const workspace = await this.pm.getWorkspaceContext(root);
@@ -851,7 +869,6 @@ export class ProjectScaffolder {
         await this.ensureAlephaConfig(root, {
           force,
           infra: flags.infra,
-          prepared: preparedInfra,
         });
 
         // Only the saas preset has an identity surface to hand an admin to.

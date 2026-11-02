@@ -173,9 +173,7 @@ alepha deploy
 
 `npm create alepha my-app -- --yes --infra cf` forwards the same typed choice without a provider question. Other providers and the old `--platform` and `--deploy` flags are rejected. `create-alepha` does not forward a force flag.
 
-In place, `alepha init --infra cf` makes a bounded edit to a direct `export default defineConfig({ ... })` configuration with literal options and a literal `plugins` array. It preserves import aliases, comments, unrelated plugins, services and build options. A single canonical production Cloudflare registration is already satisfied, including its domain/options and other environments, so rerunning preserves it byte for byte.
-
-The editor refuses legacy imports, conflicting production adapters, multiple or indirect infra registrations, and dynamic/spread config shapes before scaffolding writes or installation. Resolve the configuration explicitly, then rerun. It never evaluates the config to decide an edit. Naming an existing nonempty target still requires `--force`; the additive flag does not bypass that guard. Force is the broad scaffold replacement mode, including `alepha.config.ts`, while an existing `.env` is preserved.
+`--infra` only writes a fresh `alepha.config.ts`. When the file already exists, `alepha init --infra cf` refuses before scaffolding anything or installing, and prints the canonical configuration to add by hand: an in-place edit would need a parser for your imports and plugin list, and the TypeScript compiler as a dependency, for a change made once. Naming an existing nonempty target still requires `--force`, and so does replacing the config: force is the broad scaffold replacement mode, `alepha.config.ts` included, while an existing `.env` is preserved.
 
 See [Infra](/docs/cli-plugins-infra) for auth, full versus granular deployment, and arbitrary environment names.
 
@@ -183,7 +181,7 @@ See [Infra](/docs/cli-plugins-infra) for auth, full versus granular deployment, 
 
 When you name a target path, the directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to scaffold over existing files.
 
-A bare `alepha init` fills missing files without replacing them. The explicit `--infra` flag can also edit a supported existing config as described above; conflicting or dynamic config is refused.
+A bare `alepha init` fills missing files without replacing them. With `--infra`, an existing `alepha.config.ts` is refused as described above.
 
 ## Package Manager Detection
 
