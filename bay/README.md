@@ -92,9 +92,29 @@ is a backup that died halfway: never listed, never restored, removed by
 retention once older than every backup kept. One file failing fails the whole
 bundle. A restore checks every file against its sha256 and SQLite before the
 app is stopped, then installs them all or none - a failure puts back the
-files already replaced. A restore key must belong to the app being restored.
-Backups taken before bundles (`<stamp>.sqlite.gz`, `app.db` only) stay
-listed and restorable.
+files already replaced. Backups taken before bundles (`<stamp>.sqlite.gz`,
+`app.db` only) stay listed and restorable.
+
+`bay restore <name/env>` restores the newest backup; `--key` names one (a key
+or a stamp), `--at "2026-10-30 14:00"` takes the newest at or before that time
+(read in the policy's timezone, or `--tz`; a date alone is its first moment).
+A key must belong to the instance being restored, unless `--from <name/env>`
+says to read another instance's backups - staging data into production, say;
+only the operator can, through the control socket. `--dry-run` downloads and
+verifies the backup and says which databases it would replace, create or leave
+alone, without stopping the app. A real restore first backs up the data it is
+about to replace, tagged `pre-restore` (kept like any tagged backup), so a
+restore of the wrong point can be undone from the bucket; if that backup
+fails the restore goes on, and the replaced files are still kept on disk as
+`<file>.before-restore-*`.
+
+`bay backup verify <name/env>` is the restore test: it downloads a backup (the
+newest, or `--key`/`--at`), checks each file's sha256, opens it with SQLite
+and compares its table count with the manifest, without touching the app.
+`--all` tests every app and exits non-zero if one fails. The policy's
+`verify.every` (7 days by default, `off` to disable, 1h–90d) runs it on its
+own, one app per scheduler tick; a failure is retried after 6h. The last
+result shows in the app's state (`lastVerifyAt`, `lastVerifyError`).
 
 A deploy that creates the database restores the latest backup first. When it
 cannot find out whether there is one (no bucket configured yet, bucket
@@ -129,7 +149,8 @@ it names; the rest comes from below.
     "weekly": 8,
     "monthly": 12,
     "maxAge": "400d"
-  }
+  },
+  "verify": { "every": "7d" }
 }
 ```
 

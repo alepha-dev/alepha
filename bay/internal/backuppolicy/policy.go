@@ -52,6 +52,14 @@ type Policy struct {
 	// backup; "lifecycle" leaves it to the bucket's own expiry rules, for a
 	// bucket where Bay's key cannot delete.
 	Prune string `json:"prune,omitempty"`
+	// Verify is the restore test: how often the newest backup is downloaded
+	// and checked as a restore would check it.
+	Verify *Verify `json:"verify,omitempty"`
+}
+
+// Verify schedules the restore test. Every is a duration, or "off".
+type Verify struct {
+	Every string `json:"every,omitempty"`
 }
 
 // Schedule is when backups are taken: one of Every, At or Cron.
@@ -133,6 +141,13 @@ const (
 	PruneLifecycle = "lifecycle"
 	// WindowAny lifts a window a lower layer set.
 	WindowAny = "any"
+	// VerifyOff turns the restore test off.
+	VerifyOff = "off"
+	// MinVerifyEvery, MaxVerifyEvery bound the restore test: each one
+	// downloads a whole backup, and past three months a backup nobody has
+	// tried to read is a guess.
+	MinVerifyEvery = time.Hour
+	MaxVerifyEvery = 90 * 24 * time.Hour
 )
 
 // Layer is a policy and who set it.
@@ -162,6 +177,8 @@ type Effective struct {
 	KeepPreDeploy                          int
 	KeepTagged                             bool
 	Prune                                  string
+	// VerifyEvery is how often the newest backup is test-restored; 0 is off.
+	VerifyEvery time.Duration
 
 	// Sources says which layer decided each field.
 	Sources Sources
@@ -187,6 +204,7 @@ type Sources struct {
 	KeepPreDeploy Source `json:"keepPreDeploy"`
 	KeepTagged    Source `json:"keepTagged"`
 	Prune         Source `json:"prune"`
+	Verify        Source `json:"verify"`
 }
 
 type effectiveJSON struct {
@@ -209,6 +227,7 @@ type effectiveJSON struct {
 	KeepPreDeploy int      `json:"keepPreDeploy"`
 	KeepTagged    bool     `json:"keepTagged"`
 	Prune         string   `json:"prune"`
+	VerifyEvery   string   `json:"verifyEvery"`
 	Sources       Sources  `json:"source"`
 }
 
@@ -222,7 +241,7 @@ func (e Effective) MarshalJSON() ([]byte, error) {
 		Keep: e.Keep, Hourly: e.Hourly, Daily: e.Daily, Weekly: e.Weekly,
 		Monthly: e.Monthly, Yearly: e.Yearly, MaxAge: FormatDuration(e.MaxAge),
 		KeepPreDeploy: e.KeepPreDeploy, KeepTagged: e.KeepTagged, Prune: e.Prune,
-		Sources: e.Sources,
+		VerifyEvery: verifyWord(e.VerifyEvery), Sources: e.Sources,
 	})
 }
 
@@ -243,9 +262,24 @@ func (e *Effective) UnmarshalJSON(raw []byte) error {
 		Keep: w.Keep, Hourly: w.Hourly, Daily: w.Daily, Weekly: w.Weekly,
 		Monthly: w.Monthly, Yearly: w.Yearly, MaxAge: dur(w.MaxAge),
 		KeepPreDeploy: w.KeepPreDeploy, KeepTagged: w.KeepTagged, Prune: w.Prune,
-		Sources: w.Sources,
+		VerifyEvery: dur(w.VerifyEvery), Sources: w.Sources,
 	}
 	return nil
+}
+
+func verifyWord(d time.Duration) string {
+	if d <= 0 {
+		return VerifyOff
+	}
+	return FormatDuration(d)
+}
+
+// VerifyWords is the restore test as a person says it.
+func (e Effective) VerifyWords() string {
+	if e.VerifyEvery <= 0 {
+		return "restore test off"
+	}
+	return "restore test every " + FormatDuration(e.VerifyEvery)
 }
 
 // KeepsEverything reports whether no rule ever deletes a backup.
@@ -429,6 +463,13 @@ func Resolve(layers ...Layer) Effective {
 		if p.Prune == PruneBay || p.Prune == PruneLifecycle {
 			out.Prune, out.Sources.Prune = p.Prune, l.Source
 		}
+		if v := p.Verify; v != nil && v.Every != "" {
+			if v.Every == VerifyOff {
+				out.VerifyEvery, out.Sources.Verify = 0, l.Source
+			} else if d, err := ParseDuration(v.Every); err == nil {
+				out.VerifyEvery, out.Sources.Verify = d, l.Source
+			}
+		}
 	}
 	// For at and cron, the interval reported (and judged for staleness) is
 	// the longest gap between two slots.
@@ -442,7 +483,7 @@ func Resolve(layers ...Layer) Effective {
 
 // supported lists the fields Decode accepts, for its refusal message.
 const supported = "enabled, schedule.{every,at,cron,timezone,jitter}, window, minGap, onDeploy, " +
-	"retention.{keep,hourly,daily,weekly,monthly,yearly,maxAge,keepPreDeploy,keepTagged}, prune"
+	"retention.{keep,hourly,daily,weekly,monthly,yearly,maxAge,keepPreDeploy,keepTagged}, prune, verify.every"
 
 // Decode reads a policy, refusing fields this Bay does not enforce.
 func Decode(raw []byte) (*Policy, error) {
@@ -501,6 +542,11 @@ func (p *Policy) Validate(source Source) error {
 		}
 	default:
 		return fmt.Errorf("prune: %q is not bay or lifecycle", p.Prune)
+	}
+	if v := p.Verify; v != nil && v.Every != "" && v.Every != VerifyOff {
+		if err := bounded("verify.every", v.Every, MinVerifyEvery, MaxVerifyEvery); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -633,6 +679,9 @@ func (p *Policy) Normalize() *Policy {
 	if r := p.Retention; r != nil && *r != (Retention{}) {
 		c := *r
 		out.Retention = &c
+	}
+	if v := p.Verify; v != nil && v.Every != "" {
+		out.Verify = &Verify{Every: v.Every}
 	}
 	if *out == (Policy{}) {
 		return nil

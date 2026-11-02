@@ -99,6 +99,13 @@ type App struct {
 	// LastBackupError is when and why the most recent attempt failed. Cleared on
 	// the next success.
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// LastVerifyAt is when a restore test (`bay backup verify`, or the
+	// policy's verify.every) last ran, RFC3339 UTC, whatever its outcome;
+	// LastVerifyKey the backup it read; LastVerifyError why it failed, empty
+	// when it passed.
+	LastVerifyAt    string `json:"lastVerifyAt,omitempty"`
+	LastVerifyKey   string `json:"lastVerifyKey,omitempty"`
+	LastVerifyError string `json:"lastVerifyError,omitempty"`
 	// RestorePending is set when Bay created an empty database for this
 	// instance but could not find out whether a backup should have been
 	// restored into it (no destination yet, bucket unreachable, download or
@@ -422,6 +429,9 @@ func (s *Store) Upsert(app App) error {
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
+			app.LastVerifyAt = a.LastVerifyAt
+			app.LastVerifyKey = a.LastVerifyKey
+			app.LastVerifyError = a.LastVerifyError
 			// A redeploy onto the existing database changes nothing about
 			// whether the backups taken before it still need protecting.
 			app.RestorePending = a.RestorePending
@@ -514,6 +524,15 @@ func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
 func (s *Store) RecordBackupFailure(key, reason string, at time.Time) error {
 	return s.mutate(key, func(a *App) {
 		a.LastBackupError = at.UTC().Format(time.RFC3339) + ": " + reason
+	})
+}
+
+// RecordVerify stores a restore test's outcome; failure is "" when it passed.
+func (s *Store) RecordVerify(key, s3Key, failure string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		a.LastVerifyAt = at.UTC().Format(time.RFC3339)
+		a.LastVerifyKey = s3Key
+		a.LastVerifyError = failure
 	})
 }
 

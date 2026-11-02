@@ -200,27 +200,32 @@ func (m *Manager) Latest(ctx context.Context, app, env string) (Entry, bool, err
 // a corrupt backup over a working database would turn a recoverable incident
 // into data loss.
 func (m *Manager) Fetch(ctx context.Context, key string, runtime Interpreter) (path string, cleanup func(), err error) {
+	path, _, cleanup, err = m.fetch(ctx, key, runtime)
+	return path, cleanup, err
+}
+
+func (m *Manager) fetch(ctx context.Context, key string, runtime Interpreter) (path string, inspection Inspection, cleanup func(), err error) {
 	dir, err := os.MkdirTemp("", "bay-restore-*")
 	if err != nil {
-		return "", nil, err
+		return "", Inspection{}, nil, err
 	}
 	cleanup = func() { os.RemoveAll(dir) }
 
 	out := filepath.Join(dir, "restored.sqlite")
 	if err := m.download(ctx, key, out); err != nil {
 		cleanup()
-		return "", nil, err
+		return "", Inspection{}, nil, err
 	}
-	inspection, err := Verify(ctx, runtime, out)
+	inspection, err = Verify(ctx, runtime, out)
 	if err != nil {
 		cleanup()
-		return "", nil, fmt.Errorf("verify %s: %w", key, err)
+		return "", Inspection{}, nil, fmt.Errorf("verify %s: %w", key, err)
 	}
 	if !inspection.OK() {
 		cleanup()
-		return "", nil, fmt.Errorf("backup %s is corrupt: %s", key, inspection.Integrity)
+		return "", Inspection{}, nil, fmt.Errorf("backup %s is corrupt: %s", key, inspection.Integrity)
 	}
-	return out, cleanup, nil
+	return out, inspection, cleanup, nil
 }
 
 // Install puts a fetched database in place.

@@ -192,6 +192,8 @@ func main() {
 			err = cmdStackBackup(os.Args[2], os.Args[3:])
 		} else if len(os.Args) > 2 && os.Args[2] == "config" {
 			err = cmdBackupConfig(os.Args[3:])
+		} else if len(os.Args) > 2 && os.Args[2] == "verify" {
+			err = cmdBackupVerify(os.Args[3:])
 		} else {
 			err = cmdBackup(os.Args[2:])
 		}
@@ -349,10 +351,19 @@ func usageText() string {
               #   retention --keep N --hourly N --daily N --weekly N --monthly N
               #             --yearly N --max-age 400d --keep-pre-deploy N
               #             --keep-tagged true|false --prune bay|lifecycle
+              #   test      --verify-every 7d|off
   bay backups <name/env> [--plan] # list what is stored, with kind and file count;
                                   # --plan: what retention keeps or deletes, and why
-  bay restore <name/env> [--key K] # destructive; every database replaced is kept
-                                  # aside; K is a key or a stamp of THIS app
+  bay restore <name/env> [--key K | --at TIME [--tz ZONE]] [--from <name/env>] [--dry-run]
+              # destructive: the newest backup, key/stamp K, or the newest at
+              # or before TIME ("2026-10-30 14:00", read in the policy's
+              # timezone). --from reads another instance's backups (staging
+              # into production). The data replaced is first backed up,
+              # tagged pre-restore, and kept aside on disk. --dry-run only
+              # verifies the backup and says what would change.
+  bay backup verify <name/env> [--key K | --at TIME] | --all
+              # restore test: download, checksum and open every database of a
+              # backup (the newest by default) without touching the app
   bay restore <name/env> --dismiss # keep the empty db; resume pruning old backups
   bay backup list <stack>/<env> [service]   # a stack's service dumps
   bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]
@@ -2151,6 +2162,13 @@ func cmdStatus(args []string) error {
 		if a.LastBackupError != "" {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
+		}
+		switch {
+		case a.LastVerifyError != "":
+			problems++
+			fmt.Printf("           ⚠ restore test failed (%s): %s\n", a.LastVerifyAt, a.LastVerifyError)
+		case a.LastVerifyAt != "":
+			fmt.Printf("           restore test passed %s\n", a.LastVerifyAt)
 		}
 		if p := a.RestorePending; p != nil {
 			problems++

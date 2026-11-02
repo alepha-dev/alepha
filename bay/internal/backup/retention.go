@@ -12,6 +12,10 @@ import (
 // daily backups out, nor the daily backups the last good state before a deploy.
 const TagPreDeploy = "pre-deploy"
 
+// TagPreRestore marks the backup a restore takes of the data it is about to
+// replace. It is an ordinary tagged backup: kept while keepTagged is on.
+const TagPreRestore = "pre-restore"
+
 // MaxTagLength keeps a stamp directory readable in a bucket listing.
 const MaxTagLength = 40
 

@@ -52,8 +52,14 @@ func (s *server) builtInBackupLayer() backuppolicy.Layer {
 			KeepTagged:    backuppolicy.Bool(true),
 		},
 		Prune: backuppolicy.PruneBay,
+		// A backup nobody has read back is a hope: test the newest one weekly.
+		Verify: &backuppolicy.Verify{Every: defaultVerifyEvery},
 	}}
 }
+
+// defaultVerifyEvery is how often the newest backup of each app is test-
+// restored when no layer says otherwise.
+const defaultVerifyEvery = "7d"
 
 // defaultKeepPreDeploy is how many pre-deploy backups survive by default: the
 // starting points of the last few releases, enough to step back through a
@@ -239,7 +245,7 @@ func policyLine(p backuppolicy.Effective) string {
 	if p.OnDeploy {
 		when += ", and before each deploy (" + string(p.Sources.OnDeploy) + ")"
 	}
-	return when + "; " + retention
+	return when + "; " + retention + "; " + p.VerifyWords() + " (" + string(p.Sources.Verify) + ")"
 }
 
 func policyLog(p *backuppolicy.Policy) string {
@@ -257,7 +263,7 @@ func policyLog(p *backuppolicy.Policy) string {
 const policyFlagsUsage = "[--on|--off|--inherit-enabled] [--every 6h | --at 03:00,15:00 | --cron EXPR] " +
 	"[--tz ZONE] [--jitter D] [--window HH:MM-HH:MM|any] [--min-gap D] [--on-deploy|--no-on-deploy] " +
 	"[--keep N] [--hourly N] [--daily N] [--weekly N] [--monthly N] [--yearly N] [--max-age D|0] " +
-	"[--keep-pre-deploy N] [--keep-tagged true|false] [--prune bay|lifecycle] [--reset]"
+	"[--keep-pre-deploy N] [--keep-tagged true|false] [--prune bay|lifecycle] [--verify-every D|off] [--reset]"
 
 // policyValueFlags are the flags taking a value; every one also accepts
 // `inherit`, which hands the field back to the layer below.
@@ -265,7 +271,7 @@ var policyValueFlags = map[string]bool{
 	"--every": true, "--at": true, "--cron": true, "--tz": true, "--jitter": true,
 	"--window": true, "--min-gap": true, "--keep": true, "--hourly": true, "--daily": true,
 	"--weekly": true, "--monthly": true, "--yearly": true, "--max-age": true,
-	"--keep-pre-deploy": true, "--keep-tagged": true, "--prune": true,
+	"--keep-pre-deploy": true, "--keep-tagged": true, "--prune": true, "--verify-every": true,
 }
 
 /*
@@ -364,6 +370,12 @@ func applyPolicyFlags(p *backuppolicy.Policy, args []string) error {
 			p.Prune = text(value)
 		case "--max-age":
 			r.MaxAge = text(value)
+		case "--verify-every":
+			if value == "inherit" {
+				p.Verify = nil
+			} else {
+				p.Verify = &backuppolicy.Verify{Every: value}
+			}
 		case "--keep":
 			r.Keep, err = count(flag, value)
 		case "--hourly":

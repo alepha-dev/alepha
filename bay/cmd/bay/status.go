@@ -40,6 +40,9 @@ type statusLine struct {
 	BackupAge       string `json:"backupAge,omitempty"`
 	BackupStale     bool   `json:"backupStale"`
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// LastVerifyAt and LastVerifyError are the last restore test. Additive.
+	LastVerifyAt    string `json:"lastVerifyAt,omitempty"`
+	LastVerifyError string `json:"lastVerifyError,omitempty"`
 	// RestorePending is set while the instance runs on a database Bay created
 	// empty without checking its backups. Additive: absent otherwise.
 	RestorePending *state.RestorePending `json:"restorePending,omitempty"`
@@ -82,6 +85,7 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 		Crons:          a.Crons,
 		Backups:        a.Backups,
 		LastBackupAt:   a.LastBackupAt,
+		LastVerifyAt:   a.LastVerifyAt,
 		NotBackedUp:    a.NotBackedUp,
 		RestorePending: a.RestorePending,
 		BackupPolicy:   a.BackupPolicy,
@@ -115,6 +119,11 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	}
 	if a.LastBackupError != "" {
 		line.Problems = append(line.Problems, "last backup attempt failed: "+a.LastBackupError)
+	}
+	// A backup that does not read back is no backup, however recent.
+	if a.LastVerifyError != "" {
+		line.LastVerifyError = a.LastVerifyError
+		line.Problems = append(line.Problems, "restore test failed: "+a.LastVerifyError)
 	}
 	// A problem, not a note: someone has to decide between the old backups and
 	// the new database, and until they do retention is off for this instance.

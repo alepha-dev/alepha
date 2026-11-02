@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -140,6 +139,8 @@ func (s *server) registerBackupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /apps/{name}/{env}/backups", s.handleListBackups)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore", s.handleRestore)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore/dismiss", s.handleRestoreDismiss)
+	mux.HandleFunc("POST /apps/{name}/{env}/backup/verify", s.handleVerifyBackup)
+	mux.HandleFunc("POST /backups/verify", s.handleVerifyAll)
 	s.registerBackupPolicyRoutes(mux)
 }
 
@@ -510,121 +511,6 @@ func (s *server) writeRetentionPlan(w http.ResponseWriter, r *http.Request, mgr 
 //
 // Destructive and explicit: it stops the app, sets the current database aside
 // rather than deleting it, and only then installs the restored copy.
-func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
-	app, ok := s.store.Get(r.PathValue("name") + "/" + r.PathValue("env"))
-	if !ok {
-		writeError(w, http.StatusNotFound, "unknown app")
-		return
-	}
-	if r.URL.Query().Get("confirm") != "yes" {
-		writeError(w, http.StatusPreconditionRequired, "restoring overwrites the live database; repeat with ?confirm=yes")
-		return
-	}
-	mgr, _, err := s.backupManager()
-	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
-		return
-	}
-	runtime, dataDir, err := s.appPaths(app)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	dbPath := filepath.Join(dataDir, "app.db")
-
-	key, kind := r.URL.Query().Get("key"), ""
-	if key == "" {
-		latest, found, err := mgr.Latest(r.Context(), app.Name, app.Env)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		if !found {
-			writeError(w, http.StatusNotFound, "no backup found for this app")
-			return
-		}
-		key = latest.Key
-	}
-	if key, kind, err = backup.RestoreKey(app.Name, app.Env, key); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	// Verified before the app is touched: a corrupt backup must not cost the
-	// working database.
-	fetched, cleanup, err := fetchForRestore(r.Context(), mgr, key, kind, runtime)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer cleanup()
-
-	// A restore swaps the database under the app, so it has to stop. Requests
-	// wait rather than fail for the length of it.
-	defer s.holdDuring(app.Key())()
-
-	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {
-		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
-		return
-	}
-	untouched, err := backup.InstallBundle(fetched, dataDir)
-	if err != nil {
-		// The app was stopped above; a refused install must not also be an
-		// outage. When the live database is still in place (setting it aside
-		// is the first step, and it is the one that failed) the app comes
-		// back on it. Otherwise the database is already set aside and the
-		// app stays stopped rather than booting on a half-written file.
-		msg := "install: " + err.Error()
-		if _, statErr := os.Stat(dbPath); statErr == nil {
-			if startErr := s.start(app); startErr != nil {
-				msg += "; and the app did not come back: " + startErr.Error()
-			} else {
-				msg += "; the app is back on its current database"
-			}
-		} else {
-			msg += "; the app is left stopped, its database is set aside next to " + dbPath
-		}
-		writeError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	if err := s.start(app); err != nil {
-		writeError(w, http.StatusBadGateway,
-			"database restored but the app did not come back: "+err.Error(),
-			map[string]any{"restored": key},
-		)
-		return
-	}
-	s.log.Info("database restored", "app", app.Key(), "key", key)
-	// The backups the guard was protecting have done their job.
-	s.clearRestorePending(app.Key())
-	resp := map[string]any{
-		"restored":    key,
-		"app":         app.Key(),
-		"files":       fetchedPaths(fetched),
-		"previousDb":  "each database replaced is kept alongside as <file>.before-restore-*",
-		"notRestored": []string{"storage/ (uploaded files)"},
-	}
-	if len(untouched) > 0 {
-		resp["untouched"] = untouched
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-/*
-fetchForRestore downloads and verifies a backup of either shape as a bundle:
-the older single-file snapshot is a bundle of one, app.db.
-*/
-func fetchForRestore(ctx context.Context, mgr *backup.Manager, key, kind string, runtime backup.Interpreter) (*backup.Fetched, func(), error) {
-	if kind == backup.KindBundle {
-		return mgr.FetchBundle(ctx, key, runtime)
-	}
-	restored, cleanup, err := mgr.Fetch(ctx, key, runtime)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &backup.Fetched{Files: []backup.FetchedFile{{Path: "app.db", Local: restored}}}, cleanup, nil
-}
-
 func fetchedPaths(f *backup.Fetched) []string {
 	out := make([]string, 0, len(f.Files))
 	for _, file := range f.Files {
@@ -671,7 +557,7 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	if err != nil {
 		return s.startedEmptyUnchecked(app, err.Error())
 	}
-	fetched, cleanup, err := fetchForRestore(ctx, mgr, key, kind, runtime)
+	fetched, cleanup, err := mgr.FetchAny(ctx, key, kind, runtime)
 	if err != nil {
 		s.log.Error("auto-restore failed", "app", app.Key(), "key", latest.Key, "err", err)
 		return s.startedEmptyUnchecked(app, "restore failed: "+err.Error())
@@ -824,35 +710,6 @@ func cmdBackups(args []string) error {
 	return nil
 }
 
-func cmdRestore(args []string) error {
-	key, err := appKeyArg(args, "bay restore <name/env> [--key <backup-key>] [--dismiss]")
-	if err != nil {
-		return err
-	}
-	for _, a := range args {
-		if a == "--dismiss" {
-			res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/restore/dismiss?confirm=yes", nil)
-			if err != nil {
-				return err
-			}
-			fmt.Println(res)
-			return nil
-		}
-	}
-	url := controlHost + "/apps/" + key + "/restore?confirm=yes"
-	for i := 0; i < len(args)-1; i++ {
-		if args[i] == "--key" {
-			url += "&key=" + neturl.QueryEscape(args[i+1])
-		}
-	}
-	res, err := call(http.MethodPost, url, nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println(res)
-	return nil
-}
-
 /*
 handleRestoreDismiss lifts a pending restore without restoring: the operator
 has looked and the database the app started with is the one to keep.
@@ -927,6 +784,7 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 			return
 		case <-ticker.C:
 			s.runDueBackups(ctx)
+			s.runDueVerifies(ctx)
 		}
 	}
 }

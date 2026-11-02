@@ -312,6 +312,8 @@ func (m *Manager) Manifest(ctx context.Context, key string) (*Manifest, error) {
 type FetchedFile struct {
 	Path  string // relative to data/, forward slashes
 	Local string
+	// Inspection is what SQLite said of the downloaded file.
+	Inspection Inspection
 }
 
 // Fetched is a bundle downloaded and verified, waiting to be installed.
@@ -377,7 +379,7 @@ func (m *Manager) FetchBundle(ctx context.Context, manifestKey string, runtime I
 			cleanup()
 			return nil, nil, fmt.Errorf("backup %s is corrupt: %s", f.Key, inspection.Integrity)
 		}
-		out.Files = append(out.Files, FetchedFile{Path: f.Path, Local: local})
+		out.Files = append(out.Files, FetchedFile{Path: f.Path, Local: local, Inspection: inspection})
 	}
 	return out, cleanup, nil
 }

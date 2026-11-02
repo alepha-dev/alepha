@@ -99,6 +99,11 @@ func TestValidateBoundsDependOnTheSource(t *testing.T) {
 		{"app lifecycle", Policy{Prune: "lifecycle"}, App, false},
 		{"operator lifecycle", Policy{Prune: "lifecycle"}, Operator, true},
 		{"prune typo", Policy{Prune: "s3"}, Operator, false},
+		{"verify weekly", Policy{Verify: &Verify{Every: "7d"}}, App, true},
+		{"verify off", Policy{Verify: &Verify{Every: "off"}}, App, true},
+		{"verify too often", Policy{Verify: &Verify{Every: "10m"}}, Operator, false},
+		{"verify too rare", Policy{Verify: &Verify{Every: "120d"}}, Operator, false},
+		{"verify typo", Policy{Verify: &Verify{Every: "weekly"}}, Operator, false},
 	}
 	for _, c := range cases {
 		if err := c.p.Validate(c.source); (err == nil) != c.ok {
@@ -194,5 +199,30 @@ func TestJitterStaysUnderHalfTheShortestGap(t *testing.T) {
 func TestKeepsEverything(t *testing.T) {
 	if !(Effective{}).KeepsEverything() || (Effective{Daily: 7}).KeepsEverything() || !(Effective{Keep: 3, Prune: PruneLifecycle}).KeepsEverything() {
 		t.Fatal("keeps everything")
+	}
+}
+
+func TestResolveVerify(t *testing.T) {
+	e := Resolve(
+		Layer{Source: BuiltIn, Policy: &Policy{Verify: &Verify{Every: "7d"}}},
+		Layer{Source: Global, Policy: &Policy{Verify: &Verify{Every: "1d"}}},
+	)
+	if e.VerifyEvery != 24*time.Hour || e.Sources.Verify != Global || e.VerifyWords() != "restore test every 1d" {
+		t.Fatalf("got %v from %s (%s)", e.VerifyEvery, e.Sources.Verify, e.VerifyWords())
+	}
+	e = Resolve(
+		Layer{Source: BuiltIn, Policy: &Policy{Verify: &Verify{Every: "7d"}}},
+		Layer{Source: App, Policy: &Policy{Verify: &Verify{Every: VerifyOff}}},
+	)
+	if e.VerifyEvery != 0 || e.Sources.Verify != App || e.VerifyWords() != "restore test off" {
+		t.Fatalf("off: got %v from %s", e.VerifyEvery, e.Sources.Verify)
+	}
+	raw, err := json.Marshal(e)
+	if err != nil || !strings.Contains(string(raw), `"verifyEvery":"off"`) {
+		t.Fatalf("JSON %s, %v", raw, err)
+	}
+	var back Effective
+	if err := json.Unmarshal(raw, &back); err != nil || back.VerifyEvery != 0 {
+		t.Fatalf("round trip: %+v, %v", back, err)
 	}
 }
