@@ -20,7 +20,6 @@ import (
 	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/s3"
-	"github.com/alepha-dev/bay/internal/schedule"
 	"github.com/alepha-dev/bay/internal/state"
 )
 
@@ -210,12 +209,17 @@ sequential for its own reasons - it spawns a runtime per app on a 2-vCPU box).
 minutes, and holding that lock would queue an unrelated restart behind it.
 */
 func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutcome, error) {
-	return s.backupInstanceAs(ctx, app, "manual")
+	return s.backupInstanceAs(ctx, app, "manual", "")
 }
 
 // backupInstanceAs is backupInstance saying what asked for it, which the
-// bundle's manifest records: "manual", "schedule", "console".
-func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger string) (backupOutcome, error) {
+// bundle's manifest records ("manual", "schedule", "console", "deploy"), and
+// with the tag its directory carries (backup.TagPreDeploy, an operator's
+// label, or none).
+func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, tag string) (backupOutcome, error) {
+	if err := backup.ValidTag(tag); err != nil {
+		return backupOutcome{}, backupRefused{err.Error()}
+	}
 	// A static site has nothing Bay can snapshot. Trying anyway used to record
 	// a failure that only a success can clear, so `bay status` reported the
 	// site as broken on every run, forever.
@@ -250,6 +254,9 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger st
 		// A stack service: its own hook, in its own container. A stopped
 		// stack has no container to run it in, and that is a refusal: the
 		// operator stopped it, the backup did not fail.
+		if tag != "" {
+			return backupOutcome{}, backupRefused{"a service dump is one object and takes no tag; tags apply to database bundles"}
+		}
 		if se, ok := s.store.StackEnv(app.Stack, app.Env); ok && se.Stopped {
 			return backupOutcome{}, backupRefused{app.Stack + "/" + app.Env + " is stopped: start it to back up " + app.Service}
 		}
@@ -266,7 +273,7 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger st
 			return backupOutcome{}, err
 		}
 		res, _, err = mgr.BackupBundle(ctx, app.Name, app.Env, runtime, dataDir,
-			backup.BundleMeta{Release: app.Release, Trigger: trigger, Bay: version})
+			backup.BundleMeta{Release: app.Release, Trigger: trigger, Tag: tag, Bay: version})
 		if err != nil {
 			s.recordBackupFailure(app.Key(), "backup", err)
 			return backupOutcome{}, err
@@ -285,16 +292,18 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger st
 	// quietly disappearing. A failed prune must not look like a failed backup:
 	// the data is safe.
 	//
-	// The count is the app's effective policy, not the bucket's: two apps on
-	// one bucket may keep different histories. 0 keeps everything.
+	// The rules are the app's effective policy, not the bucket's: two apps on
+	// one bucket may keep different histories. No rule at all, or a bucket
+	// whose lifecycle rules expire backups, and Bay deletes nothing.
 	var pruned []backup.Entry
 	suspended := ""
-	keep := s.effectiveBackupPolicy(app).Keep
-	if keep > 0 {
+	policy := s.effectiveBackupPolicy(app)
+	prunes := !policy.KeepsEverything()
+	if prunes {
 		suspended = s.pruneSuspended(ctx, mgr, app.Key(), app.Name, app.Env)
 	}
-	if keep > 0 && suspended == "" {
-		pruned, err = mgr.Prune(ctx, app.Name, app.Env, keep)
+	if prunes && suspended == "" {
+		pruned, err = mgr.Prune(ctx, app.Name, app.Env, retentionRules(policy))
 		if err != nil {
 			s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", err)
 		}
@@ -386,7 +395,7 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "unknown app")
 		return
 	}
-	out, err := s.backupInstance(r.Context(), app)
+	out, err := s.backupInstanceAs(r.Context(), app, "manual", r.URL.Query().Get("tag"))
 	if err != nil {
 		var refused backupRefused
 		if errors.As(err, &refused) {
@@ -425,6 +434,20 @@ func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
+	describe := func(e backup.Entry) map[string]any {
+		m := map[string]any{
+			"key": e.Key, "at": e.Timestamp.Format(time.RFC3339), "storedBytes": e.Size,
+			"kind": e.Kind, "files": e.Files,
+		}
+		if e.Tag != "" {
+			m["tag"] = e.Tag
+		}
+		return m
+	}
+	if r.URL.Query().Get("plan") != "" {
+		s.writeRetentionPlan(w, r, mgr, app, describe)
+		return
+	}
 	entries, err := mgr.List(r.Context(), app.Name, app.Env)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -432,12 +455,55 @@ func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]map[string]any, 0, len(entries))
 	for _, e := range entries {
-		out = append(out, map[string]any{
-			"key": e.Key, "at": e.Timestamp.Format(time.RFC3339), "storedBytes": e.Size,
-			"kind": e.Kind, "files": e.Files,
-		})
+		out = append(out, describe(e))
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+/*
+writeRetentionPlan answers `bay backups --plan`: what the next prune would
+keep and delete, and why, deleting nothing. A retention change is checked
+here before it costs a backup.
+*/
+func (s *server) writeRetentionPlan(w http.ResponseWriter, r *http.Request, mgr *backup.Manager, app state.App, describe func(backup.Entry) map[string]any) {
+	policy := s.effectiveBackupPolicy(app)
+	resp := map[string]any{"policy": policyLine(policy)}
+	if policy.KeepsEverything() {
+		resp["prunes"] = false
+		entries, err := mgr.List(r.Context(), app.Name, app.Env)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp["keep"], resp["delete"] = len(entries), 0
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	plan, err := mgr.Plan(r.Context(), app.Name, app.Env, retentionRules(policy), time.Now())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	backups := make([]map[string]any, 0, len(plan))
+	kept, deleted := 0, 0
+	for _, d := range plan {
+		m := describe(d.Entry)
+		m["keep"], m["reasons"] = d.Keep, d.Reasons
+		if d.Incomplete {
+			m["incomplete"] = true
+		}
+		if d.Keep {
+			kept++
+		} else {
+			deleted++
+		}
+		backups = append(backups, m)
+	}
+	resp["prunes"], resp["keep"], resp["delete"], resp["backups"] = true, kept, deleted, backups
+	if reason := s.pruneSuspended(r.Context(), mgr, app.Key(), app.Name, app.Env); reason != "" {
+		resp["pruneSuspended"] = reason
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // handleRestore replaces an app's database with a backup.
@@ -716,11 +782,21 @@ func cmdConfigS3(args []string) error {
 }
 
 func cmdBackup(args []string) error {
-	key, err := appKeyArg(args, "bay backup <name/env>")
+	key, err := appKeyArg(args, "bay backup <name/env> [--tag NAME]")
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/backup", nil)
+	if err := checkFlags(args[1:], nil, map[string]bool{"--tag": true}); err != nil {
+		return err
+	}
+	path := controlHost + "/apps/" + key + "/backup"
+	if tag := flagValue(args, "--tag"); tag != "" {
+		if err := backup.ValidTag(tag); err != nil {
+			return err
+		}
+		path += "?tag=" + tag
+	}
+	res, err := call(http.MethodPost, path, nil)
 	if err != nil {
 		return err
 	}
@@ -729,11 +805,18 @@ func cmdBackup(args []string) error {
 }
 
 func cmdBackups(args []string) error {
-	key, err := appKeyArg(args, "bay backups <name/env>")
+	key, err := appKeyArg(args, "bay backups <name/env> [--plan]")
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodGet, controlHost+"/apps/"+key+"/backups", nil)
+	if err := checkFlags(args[1:], map[string]bool{"--plan": true}, nil); err != nil {
+		return err
+	}
+	path := controlHost + "/apps/" + key + "/backups"
+	if hasFlag(args, "--plan") {
+		path += "?plan=1"
+	}
+	res, err := call(http.MethodGet, path, nil)
 	if err != nil {
 		return err
 	}
@@ -830,7 +913,8 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 	}
 
 	// The tick is only a prompt to re-examine state, never the schedule itself —
-	// that lives in `schedule.Due`, read from the recorded timestamp. So a run
+	// that lives in the policy's `Spec().Decide`, read from the recorded
+	// timestamp. So a run
 	// missed while Bay was down is taken on the first tick after boot, through
 	// the same code path as any other run.
 	ticker := time.NewTicker(time.Minute)
@@ -872,10 +956,42 @@ func (s *server) runDueBackups(ctx context.Context) {
 			continue
 		}
 		policy := s.effectiveBackupPolicy(app)
-		if !policy.Enabled || !schedule.Due(app.LastBackupAt, now, policy.Every) {
+		if !policy.Enabled {
 			continue
 		}
-		s.backupOne(ctx, app)
+		if retry, ok := s.backupRetries[app.Key()]; ok && now.Before(retry.at) {
+			continue
+		}
+		// An unreadable timestamp counts as never: backing up once too often
+		// beats silently never backing up again.
+		last, _ := time.Parse(time.RFC3339, app.LastBackupAt)
+		if !policy.Spec().Decide(last, app.Key(), now).Due {
+			continue
+		}
+		s.backupOne(ctx, app, now)
+	}
+}
+
+// backupRetry is the scheduler's memory of an instance whose scheduled
+// backups keep failing.
+type backupRetry struct {
+	failures int
+	at       time.Time
+}
+
+/*
+retryBackoff is how long the scheduler waits after the n-th failure in a row:
+1m, 5m, then every 15m. Without it, a bucket that is down (or a database that
+no longer opens) meant one attempt and one stored failure every minute.
+*/
+func retryBackoff(failures int) time.Duration {
+	switch {
+	case failures <= 1:
+		return time.Minute
+	case failures == 2:
+		return 5 * time.Minute
+	default:
+		return 15 * time.Minute
 	}
 }
 
@@ -884,12 +1000,23 @@ func (s *server) runDueBackups(ctx context.Context) {
 // The outcome is already recorded and logged there; a refusal reaching here is
 // a state `runDueBackups` filtered for and is worth one debug line, not a
 // stored failure.
-func (s *server) backupOne(ctx context.Context, app state.App) {
-	if _, err := s.backupInstanceAs(ctx, app, "schedule"); err != nil {
-		var refused backupRefused
-		if errors.As(err, &refused) {
-			s.log.Debug("scheduled backup skipped", "app", app.Key(), "reason", refused.Error())
+func (s *server) backupOne(ctx context.Context, app state.App, now time.Time) {
+	_, err := s.backupInstanceAs(ctx, app, "schedule", "")
+	var refused backupRefused
+	switch {
+	case err == nil:
+		delete(s.backupRetries, app.Key())
+	case errors.As(err, &refused):
+		s.log.Debug("scheduled backup skipped", "app", app.Key(), "reason", refused.Error())
+	default:
+		if s.backupRetries == nil {
+			s.backupRetries = map[string]backupRetry{}
 		}
+		r := s.backupRetries[app.Key()]
+		r.failures++
+		r.at = now.Add(retryBackoff(r.failures))
+		s.backupRetries[app.Key()] = r
+		s.log.Warn("scheduled backup will be retried", "app", app.Key(), "failures", r.failures, "at", r.at.Format(time.RFC3339))
 	}
 }
 

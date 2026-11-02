@@ -43,7 +43,7 @@ func TestOperatorPolicyLayersOverGlobalAndBuiltIn(t *testing.T) {
 	}
 	e := effectiveOf(t, decode(t, rec))
 	src := e["source"].(map[string]any)
-	if e["every"] != "6h" || src["every"] != "operator" || e["keep"] != float64(30) || src["keep"] != "global" ||
+	if e["every"] != "6h" || src["schedule"] != "operator" || e["keep"] != float64(30) || src["keep"] != "global" ||
 		e["enabled"] != true || src["enabled"] != "built-in" {
 		t.Fatalf("effective = %v", e)
 	}
@@ -57,7 +57,7 @@ func TestOperatorPolicyLayersOverGlobalAndBuiltIn(t *testing.T) {
 func TestPolicyRoutesRefuseWhatTheyWouldNotEnforce(t *testing.T) {
 	f := newBackupFixture(t)
 	for path, body := range map[string]string{
-		"/config/backup":                      `{"schedule":{"cron":"0 3 * * *"}}`,
+		"/config/backup":                      `{"schedule":{"cron":"* * * * *"}}`,
 		"/apps/demo/production/backup/config": `{"schedule":{"every":"1m"}}`,
 	} {
 		if rec := f.call(t, http.MethodPut, path, body); rec.Code != http.StatusBadRequest {
@@ -219,9 +219,30 @@ func TestPolicyFlagsEditOnlyWhatTheyName(t *testing.T) {
 	if !*p.Enabled || p.Schedule != nil || *p.Retention.Keep != 30 {
 		t.Fatalf("got %+v", p)
 	}
-	for _, bad := range [][]string{{"--on", "--off"}, {"--every", "daily"}, {"--keep", "lots"}, {"--cron", "x"}} {
+	for _, bad := range [][]string{
+		{"--on", "--off"}, {"--every", "daily"}, {"--keep", "lots"}, {"--cron", "x"},
+		{"--every", "6h", "--at", "03:00"}, {"--tz", "Mars/Olympus"}, {"--window", "night"},
+		{"--keep-tagged", "maybe"}, {"--prune", "s3"}, {"--on-deploy", "--no-on-deploy"}, {"--max-age", "1h"},
+	} {
 		if err := applyPolicyFlags(&backuppolicy.Policy{}, bad); err == nil {
 			t.Fatalf("%v should be refused", bad)
 		}
+	}
+
+	// A new shape replaces the old one and keeps the timezone.
+	p = &backuppolicy.Policy{Schedule: &backuppolicy.Schedule{Every: "6h", Timezone: "Europe/Paris"}}
+	if err := applyPolicyFlags(p, []string{"--at", "03:00,15:00", "--daily", "7", "--weekly", "4",
+		"--on-deploy", "--keep-pre-deploy", "3", "--window", "01:00-06:00", "--prune", "lifecycle"}); err != nil {
+		t.Fatal(err)
+	}
+	if p.Schedule.Every != "" || len(p.Schedule.At) != 2 || p.Schedule.Timezone != "Europe/Paris" || *p.Retention.Daily != 7 ||
+		*p.Retention.Weekly != 4 || !*p.OnDeploy || *p.Retention.KeepPreDeploy != 3 || p.Window != "01:00-06:00" || p.Prune != "lifecycle" {
+		t.Fatalf("got %+v %+v %+v", p, p.Schedule, p.Retention)
+	}
+	if err := applyPolicyFlags(p, []string{"--at", "inherit", "--tz", "inherit", "--daily", "inherit", "--window", "any"}); err != nil {
+		t.Fatal(err)
+	}
+	if p.Schedule != nil || p.Retention.Daily != nil || p.Window != "any" {
+		t.Fatalf("inherit: %+v %+v", p.Schedule, p.Retention)
 	}
 }

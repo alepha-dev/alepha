@@ -65,6 +65,7 @@ type Manifest struct {
 	Instance  string    `json:"instance"`
 	Release   string    `json:"release,omitempty"`
 	Trigger   string    `json:"trigger,omitempty"`
+	Tag       string    `json:"tag,omitempty"`
 	Bay       string    `json:"bay,omitempty"`
 	// Encryption is null: bundles are stored as they are. A field rather than
 	// an absence, so a reader written later can tell "not encrypted" from "a
@@ -94,6 +95,9 @@ type BundleMeta struct {
 	Release string
 	Trigger string
 	Bay     string
+	// Tag goes into the bundle's directory name (see ValidTag), so retention
+	// can tell a pre-deploy or labelled backup without opening its manifest.
+	Tag string
 }
 
 /*
@@ -207,6 +211,9 @@ func (m *Manager) BackupBundle(ctx context.Context, app, env string, runtime Int
 	if len(files) == 0 {
 		return nil, nil, fmt.Errorf("no database to back up: no SQLite file in %s", dataDir)
 	}
+	if err := ValidTag(meta.Tag); err != nil {
+		return nil, nil, err
+	}
 
 	tmpDir, err := os.MkdirTemp("", "bay-backup-*")
 	if err != nil {
@@ -216,11 +223,14 @@ func (m *Manager) BackupBundle(ctx context.Context, app, env string, runtime Int
 
 	now := time.Now().UTC()
 	stamp := now.Format(timeLayout)
+	if meta.Tag != "" {
+		stamp += "-" + meta.Tag
+	}
 	prefix := bundlePrefix(app, env, stamp)
 	manifest := &Manifest{
 		Format: ManifestFormat, CreatedAt: now, App: app, Env: env,
 		Instance: naming.Instance(app, env), Release: meta.Release,
-		Trigger: meta.Trigger, Bay: meta.Bay, Skipped: skipped,
+		Trigger: meta.Trigger, Tag: meta.Tag, Bay: meta.Bay, Skipped: skipped,
 	}
 	var uploaded []string
 	fail := func(err error) (*Result, *Manifest, error) {
@@ -525,7 +535,7 @@ func RestoreKey(app, env, given string) (key, kind string, err error) {
 		return k, KindSQLite, nil
 	}
 	stamp := strings.TrimSuffix(rest, "/"+manifestName)
-	if _, err := time.Parse(timeLayout, stamp); err != nil {
+	if _, _, err := parseStamp(stamp); err != nil {
 		return "", "", fmt.Errorf("%s is not a backup key", given)
 	}
 	return prefix + stamp + "/" + manifestName, KindBundle, nil

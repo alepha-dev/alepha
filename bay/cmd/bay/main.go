@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/connector"
 	"github.com/alepha-dev/bay/internal/control"
@@ -332,17 +333,24 @@ func usageText() string {
                 # has not been set. e.g.
                 #    ssh HOST 'bay env set demo/production -' < .env.production
   bay env list <name/env>         # which variables are set, by NAME only
-  bay backup  <name/env>          # every SQLite file of data/: snapshot + verify +
-                                  # upload, then a manifest that names them
-  bay backup config <name/env> [--every 6h|inherit] [--keep N|inherit]
-              [--on|--off|--inherit-enabled] [--reset]
+  bay backup  <name/env> [--tag T] # every SQLite file of data/: snapshot + verify +
+                                  # upload, then a manifest that names them. A
+                                  # tagged backup (a-z0-9-) is never pruned
+  bay backup config <name/env> [policy flags] [--on|--off|--inherit-enabled] [--reset]
               # the operator's override for one app. No flag shows every layer
               # and the effective policy; "inherit" hands a field back down.
-  bay config backup [--every 6h|inherit] [--keep N|inherit]
-              [--on|--off|--inherit-enabled] [--reset]
+  bay config backup [policy flags] [--on|--off|--inherit-enabled] [--reset]
               # the host-wide default policy. Precedence, lowest first:
               # built-in (--backup-interval, keep 14) < global < app < operator
-  bay backups <name/env>          # list what is stored, with kind and file count
+              # policy flags (each also takes "inherit"):
+              #   schedule  --every 6h | --at 03:00,15:00 | --cron "0 3 * * *"
+              #             --tz Europe/Paris --jitter 10m --window 01:00-06:00
+              #             --min-gap 1h --on-deploy | --no-on-deploy
+              #   retention --keep N --hourly N --daily N --weekly N --monthly N
+              #             --yearly N --max-age 400d --keep-pre-deploy N
+              #             --keep-tagged true|false --prune bay|lifecycle
+  bay backups <name/env> [--plan] # list what is stored, with kind and file count;
+                                  # --plan: what retention keeps or deletes, and why
   bay restore <name/env> [--key K] # destructive; every database replaced is kept
                                   # aside; K is a key or a stamp of THIS app
   bay restore <name/env> --dismiss # keep the empty db; resume pruning old backups
@@ -446,6 +454,10 @@ type server struct {
 	// a backup deliberately stays out of. `backupMu` guards the map only.
 	backupMu    sync.Mutex
 	backupLocks map[string]*sync.Mutex
+	// backupRetries holds, per instance, the scheduled backups failing in a
+	// row and when the scheduler may try again. Only the scheduler goroutine
+	// touches it; in memory, because a restart retrying at once is fine.
+	backupRetries map[string]backupRetry
 	// keepReleases is how many releases survive a prune. Zero in the CLI paths
 	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
 	keepReleases int
@@ -1239,13 +1251,49 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"app":     out.Result.App,
-		"release": out.Result.Release,
-		"url":     "https://" + out.Result.App.Domain() + "/",
-		"restore": out.Restore,
-		"pruned":  out.Pruned,
-		"runtime": out.Runtime,
+		"app":             out.Result.App,
+		"release":         out.Result.Release,
+		"url":             "https://" + out.Result.App.Domain() + "/",
+		"restore":         out.Restore,
+		"pruned":          out.Pruned,
+		"runtime":         out.Runtime,
+		"preDeployBackup": out.PreDeployBackup,
 	})
+}
+
+/*
+preDeployBackup takes the backup a policy with onDeploy asks for before an
+instance is redeployed, tagged pre-deploy so retention keeps those apart.
+
+The policy is resolved with the layer THIS deploy declares, since that is the
+one about to take effect: an app turning onDeploy on gets its first one now.
+
+It never stops the deploy. A deploy is how a broken app gets fixed, and a
+bucket that is down must not hold that hostage: a failure is logged, recorded
+like any failed backup (so `bay status` shows it) and reported in the
+deploy's answer. Nil when there is nothing to do: a first deploy, a static
+site, a service, an app without a Bay database or without data yet.
+*/
+func (s *server) preDeployBackup(ctx context.Context, key string, declared *backuppolicy.Policy) map[string]any {
+	app, ok := s.store.Get(key)
+	if !ok || app.Static || !app.Backups || app.BackupHook != nil {
+		return nil
+	}
+	app.BackupDeclared = declared
+	if !s.effectiveBackupPolicy(app).OnDeploy {
+		return nil
+	}
+	if _, dataDir, err := s.appPaths(app); err == nil {
+		if files, _, err := backup.DiscoverSQLite(dataDir); err == nil && len(files) == 0 {
+			return map[string]any{"skipped": "no database yet in data/"}
+		}
+	}
+	out, err := s.backupInstanceAs(ctx, app, "deploy", backup.TagPreDeploy)
+	if err != nil {
+		s.log.Warn("pre-deploy backup failed; deploying anyway", "app", key, "err", err)
+		return map[string]any{"error": err.Error(), "deployed": "anyway: a failed backup does not block a deploy"}
+	}
+	return map[string]any{"key": out.Result.Key, "storedBytes": out.Result.StoredBytes, "pruned": keys(out.Pruned)}
 }
 
 // deployArtifactOptions is one deploy, whatever asked for it.
@@ -1276,6 +1324,9 @@ type deployOutcome struct {
 	Result  deploy.Result
 	Restore map[string]any
 	Pruned  []string
+	// PreDeployBackup is what the backup taken before this deploy did, nil
+	// when the policy asked for none.
+	PreDeployBackup map[string]any
 	// Runtime is the image the app now runs on and, when Bay had to decide
 	// something the build did not say, why. Reported to whoever deployed,
 	// because "it runs on Node 26" is a fact they may not have chosen.
@@ -1350,6 +1401,10 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		}
 		stackVars = vars
 	}
+
+	// Before anything moves, so it holds exactly what the outgoing release
+	// left; never a reason to refuse the deploy (see preDeployBackup).
+	preDeploy := s.preDeployBackup(ctx, key, opts.BackupPolicy)
 
 	// Whether it was serving is read first, because it decides both how this
 	// deploy runs and what a failed one has to put back.
@@ -1435,7 +1490,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// repointed here and no longer protecting it.
 	pruned := s.pruneReleases(res.App, res.Previous)
 
-	outcome := &deployOutcome{Result: *res, Restore: restore, Pruned: pruned}
+	outcome := &deployOutcome{Result: *res, Restore: restore, Pruned: pruned, PreDeployBackup: preDeploy}
 	if _, inContainers := s.runner.(containerRunner); inContainers && !res.App.Static {
 		if sel, err := s.runtimeSelection(res.App); err == nil {
 			outcome.Runtime = &deployRuntime{Image: sel.Ref, Warning: sel.Warning}

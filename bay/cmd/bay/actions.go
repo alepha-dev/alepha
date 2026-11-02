@@ -322,7 +322,7 @@ func (a *actions) backup(ctx context.Context, cmd connector.Command) (status, st
 	if !ok {
 		return "failed", "", "unknown instance " + key + " on this bay"
 	}
-	out, err := a.s.backupInstanceAs(ctx, app, "console")
+	out, err := a.s.backupInstanceAs(ctx, app, "console", "")
 	if err != nil {
 		return "failed", "", err.Error()
 	}

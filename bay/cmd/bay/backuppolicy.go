@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -20,7 +21,9 @@ The backup policy, in layers (see package backuppolicy):
 	built-in  <  global  <  app  <  operator
 
   - built-in is what `serve` was started with: `--backup-interval` (0 turns
-    scheduled backups off by default) and a retention of `defaultKeep`.
+    scheduled backups off by default), in UTC, a retention of `defaultKeep`
+    plus the last `defaultKeepPreDeploy` pre-deploy backups, tagged backups
+    kept, Bay pruning, no backup on deploy.
   - global is `bay config backup`, plus the older `bay config s3:backups
     --keep`, which still counts as the global retention when the policy itself
     sets none — so a host configured before policies existed prunes exactly as
@@ -40,10 +43,29 @@ func (s *server) builtInBackupLayer() backuppolicy.Layer {
 		every = defaultBackupInterval
 	}
 	return backuppolicy.Layer{Source: backuppolicy.BuiltIn, Policy: &backuppolicy.Policy{
-		Enabled:   backuppolicy.Bool(s.backupInterval > 0),
-		Schedule:  &backuppolicy.Schedule{Every: backuppolicy.FormatDuration(every)},
-		Retention: &backuppolicy.Retention{Keep: backuppolicy.Int(defaultKeep)},
+		Enabled:  backuppolicy.Bool(s.backupInterval > 0),
+		Schedule: &backuppolicy.Schedule{Every: backuppolicy.FormatDuration(every), Timezone: "UTC"},
+		OnDeploy: backuppolicy.Bool(false),
+		Retention: &backuppolicy.Retention{
+			Keep:          backuppolicy.Int(defaultKeep),
+			KeepPreDeploy: backuppolicy.Int(defaultKeepPreDeploy),
+			KeepTagged:    backuppolicy.Bool(true),
+		},
+		Prune: backuppolicy.PruneBay,
 	}}
+}
+
+// defaultKeepPreDeploy is how many pre-deploy backups survive by default: the
+// starting points of the last few releases, enough to step back through a
+// bad week of deploys.
+const defaultKeepPreDeploy = 5
+
+// retentionRules turns a policy into what package backup prunes with.
+func retentionRules(p backuppolicy.Effective) backup.Rules {
+	return backup.Rules{
+		Keep: p.Keep, Hourly: p.Hourly, Daily: p.Daily, Weekly: p.Weekly, Monthly: p.Monthly, Yearly: p.Yearly,
+		MaxAge: p.MaxAge, KeepPreDeploy: p.KeepPreDeploy, KeepTagged: p.KeepTagged, Location: p.Location(),
+	}
 }
 
 func (s *server) globalBackupLayer() backuppolicy.Layer {
@@ -203,22 +225,21 @@ func (s *server) setAppPolicy(w http.ResponseWriter, app state.App, p *backuppol
 	writeJSON(w, http.StatusOK, s.appPolicyView(app))
 }
 
-// policyLine is the policy as `bay status` prints it, each value with the
-// layer that set it: "every 6h (app), keep 14 (global)".
+// policyLine is the policy as `bay status` prints it, each part with the
+// layer that set it: "every 6h (app); keep 14, 7 daily (global)".
 func policyLine(p backuppolicy.Effective) string {
+	retention := p.RetentionWords() + " (" + string(p.Sources.Keep) + ")"
+	if p.Prune == backuppolicy.PruneLifecycle {
+		retention = "pruned by the bucket's lifecycle rules (" + string(p.Sources.Prune) + ")"
+	}
+	when := p.ScheduleWords() + " (" + string(p.Sources.Schedule) + ")"
 	if !p.Enabled {
-		return fmt.Sprintf("schedule off (%s) — only `bay backup` takes one; keep %s (%s)",
-			p.Sources.Enabled, keepWords(p.Keep), p.Sources.Keep)
+		when = "schedule off (" + string(p.Sources.Enabled) + ") — only `bay backup` takes one"
 	}
-	return fmt.Sprintf("every %s (%s), keep %s (%s)",
-		backuppolicy.FormatDuration(p.Every), p.Sources.Every, keepWords(p.Keep), p.Sources.Keep)
-}
-
-func keepWords(keep int) string {
-	if keep == 0 {
-		return "all"
+	if p.OnDeploy {
+		when += ", and before each deploy (" + string(p.Sources.OnDeploy) + ")"
 	}
-	return strconv.Itoa(keep)
+	return when + "; " + retention
 }
 
 func policyLog(p *backuppolicy.Policy) string {
@@ -233,18 +254,47 @@ func policyLog(p *backuppolicy.Policy) string {
 // client commands
 // ---------------------------------------------------------------------------
 
-const policyFlagsUsage = "[--every 6h|inherit] [--keep N|inherit] [--on|--off|--inherit-enabled] [--reset]"
+const policyFlagsUsage = "[--on|--off|--inherit-enabled] [--every 6h | --at 03:00,15:00 | --cron EXPR] " +
+	"[--tz ZONE] [--jitter D] [--window HH:MM-HH:MM|any] [--min-gap D] [--on-deploy|--no-on-deploy] " +
+	"[--keep N] [--hourly N] [--daily N] [--weekly N] [--monthly N] [--yearly N] [--max-age D|0] " +
+	"[--keep-pre-deploy N] [--keep-tagged true|false] [--prune bay|lifecycle] [--reset]"
 
-// applyPolicyFlags edits a layer from command-line flags. Each field can be
-// set, or handed back to the layer below with `inherit`.
+// policyValueFlags are the flags taking a value; every one also accepts
+// `inherit`, which hands the field back to the layer below.
+var policyValueFlags = map[string]bool{
+	"--every": true, "--at": true, "--cron": true, "--tz": true, "--jitter": true,
+	"--window": true, "--min-gap": true, "--keep": true, "--hourly": true, "--daily": true,
+	"--weekly": true, "--monthly": true, "--yearly": true, "--max-age": true,
+	"--keep-pre-deploy": true, "--keep-tagged": true, "--prune": true,
+}
+
+/*
+applyPolicyFlags edits a layer from command-line flags. Only the fields named
+change. --every, --at and --cron each replace the schedule's shape (the
+timezone and jitter stay); `--every inherit` (or --at, --cron) hands the
+shape back to the layer below.
+*/
 func applyPolicyFlags(p *backuppolicy.Policy, args []string) error {
 	if err := checkFlags(args,
-		map[string]bool{"--on": true, "--off": true, "--inherit-enabled": true, "--reset": true},
-		map[string]bool{"--every": true, "--keep": true}); err != nil {
+		map[string]bool{"--on": true, "--off": true, "--inherit-enabled": true, "--reset": true,
+			"--on-deploy": true, "--no-on-deploy": true},
+		policyValueFlags); err != nil {
 		return err
 	}
 	if hasFlag(args, "--on") && hasFlag(args, "--off") {
 		return errors.New("--on and --off contradict each other")
+	}
+	if hasFlag(args, "--on-deploy") && hasFlag(args, "--no-on-deploy") {
+		return errors.New("--on-deploy and --no-on-deploy contradict each other")
+	}
+	shapes := 0
+	for _, f := range []string{"--every", "--at", "--cron"} {
+		if hasFlag(args, f) {
+			shapes++
+		}
+	}
+	if shapes > 1 {
+		return errors.New("--every, --at and --cron are three ways to say when: pick one")
 	}
 	switch {
 	case hasFlag(args, "--on"):
@@ -254,31 +304,102 @@ func applyPolicyFlags(p *backuppolicy.Policy, args []string) error {
 	case hasFlag(args, "--inherit-enabled"):
 		p.Enabled = nil
 	}
+	switch {
+	case hasFlag(args, "--on-deploy"):
+		p.OnDeploy = backuppolicy.Bool(true)
+	case hasFlag(args, "--no-on-deploy"):
+		p.OnDeploy = backuppolicy.Bool(false)
+	}
+	if p.Schedule == nil {
+		p.Schedule = &backuppolicy.Schedule{}
+	}
+	if p.Retention == nil {
+		p.Retention = &backuppolicy.Retention{}
+	}
+	sc, r := p.Schedule, p.Retention
+	count := func(flag, value string) (*int, error) {
+		if value == "inherit" {
+			return nil, nil
+		}
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 0 {
+			return nil, fmt.Errorf("%s: %q is not a whole number", flag, value)
+		}
+		return backuppolicy.Int(n), nil
+	}
+	text := func(value string) string {
+		if value == "inherit" {
+			return ""
+		}
+		return value
+	}
 	for i := 0; i < len(args)-1; i++ {
-		value := args[i+1]
-		switch args[i] {
-		case "--every":
-			if value == "inherit" {
-				p.Schedule = nil
-				continue
+		flag, value := args[i], args[i+1]
+		if !policyValueFlags[flag] {
+			continue
+		}
+		i++
+		var err error
+		switch flag {
+		case "--every", "--at", "--cron":
+			sc.Every, sc.At, sc.Cron = "", nil, ""
+			switch {
+			case value == "inherit":
+			case flag == "--every":
+				sc.Every = value
+			case flag == "--at":
+				sc.At = strings.Split(value, ",")
+			default:
+				sc.Cron = value
 			}
-			if _, err := backuppolicy.ParseDuration(value); err != nil {
-				return fmt.Errorf("--every: %w", err)
-			}
-			p.Schedule = &backuppolicy.Schedule{Every: value}
+		case "--tz":
+			sc.Timezone = text(value)
+		case "--jitter":
+			sc.Jitter = text(value)
+		case "--window":
+			p.Window = text(value)
+		case "--min-gap":
+			p.MinGap = text(value)
+		case "--prune":
+			p.Prune = text(value)
+		case "--max-age":
+			r.MaxAge = text(value)
 		case "--keep":
-			if value == "inherit" {
-				p.Retention = nil
-				continue
+			r.Keep, err = count(flag, value)
+		case "--hourly":
+			r.Hourly, err = count(flag, value)
+		case "--daily":
+			r.Daily, err = count(flag, value)
+		case "--weekly":
+			r.Weekly, err = count(flag, value)
+		case "--monthly":
+			r.Monthly, err = count(flag, value)
+		case "--yearly":
+			r.Yearly, err = count(flag, value)
+		case "--keep-pre-deploy":
+			r.KeepPreDeploy, err = count(flag, value)
+		case "--keep-tagged":
+			switch value {
+			case "inherit":
+				r.KeepTagged = nil
+			case "true", "false":
+				r.KeepTagged = backuppolicy.Bool(value == "true")
+			default:
+				err = fmt.Errorf("--keep-tagged: %q is not true, false or inherit", value)
 			}
-			keep, err := strconv.Atoi(value)
-			if err != nil {
-				return fmt.Errorf("--keep: %q is not a whole number (0 keeps every backup)", value)
-			}
-			p.Retention = &backuppolicy.Retention{Keep: backuppolicy.Int(keep)}
+		}
+		if err != nil {
+			return err
 		}
 	}
-	return nil
+	if n := p.Normalize(); n != nil {
+		*p = *n
+	} else {
+		*p = backuppolicy.Policy{}
+	}
+	// Checked here as well as by the server, so a typo is answered before
+	// anything is sent. Global and operator layers obey the same bounds.
+	return p.Validate(backuppolicy.Operator)
 }
 
 // editPolicy is the read-modify-write both `config backup` and `backup config`
@@ -364,4 +485,14 @@ func hasFlag(args []string, flag string) bool {
 		}
 	}
 	return false
+}
+
+// flagValue is the value after flag, empty when the flag is absent.
+func flagValue(args []string, flag string) string {
+	for i := 0; i < len(args)-1; i++ {
+		if args[i] == flag {
+			return args[i+1]
+		}
+	}
+	return ""
 }

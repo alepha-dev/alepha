@@ -113,12 +113,53 @@ built-in (`serve --backup-interval`, keep 14) < global (`bay config backup`)
 it names; the rest comes from below.
 
 ```json
-{ "enabled": true, "schedule": { "every": "6h" }, "retention": { "keep": 30 } }
+{
+  "enabled": true,
+  "schedule": {
+    "at": ["03:00", "15:00"],
+    "timezone": "Europe/Paris",
+    "jitter": "10m"
+  },
+  "window": "01:00-06:00",
+  "minGap": "1h",
+  "onDeploy": true,
+  "retention": {
+    "keep": 7,
+    "daily": 14,
+    "weekly": 8,
+    "monthly": 12,
+    "maxAge": "400d"
+  }
+}
 ```
+
+The schedule is one shape: `every` (an interval), `at` (times of day) or
+`cron` (five fields), read in `timezone` (UTC by default) and spread by up to
+`jitter` (capped at half the shortest gap). A layer that names a shape
+replaces the whole shape below it; timezone and jitter are inherited field by
+field. `window` keeps scheduled starts inside a time range (`any` lifts one
+set below), and `minGap` skips a slot that comes too soon after the last
+backup, whatever took it. A failed scheduled backup is retried after 1m, 5m,
+then every 15m until one succeeds.
+
+Retention keeps the newest `keep` backups, plus the newest backup of each of
+the last N hours, days, weeks (ISO), months and years that have one, counted
+in the schedule's timezone; `maxAge` then drops anything older. The newest
+backup is always kept, and if it is under half the size of the largest of the
+last 30 days, the newest backup of normal size is kept too, so an emptied
+database never pushes the real data out. `onDeploy` takes a backup tagged
+`pre-deploy` before each deploy of an instance that already has data; those
+are kept apart (`keepPreDeploy`, 5 by default), and a failure is logged and
+reported without blocking the deploy. `bay backup <name/env> --tag before-v2`
+takes a tagged backup that neither the rules nor `maxAge` ever delete
+(`keepTagged`, on by default). `prune: "lifecycle"`
+(operator or global only) leaves deletion to the bucket's own expiry rules.
+`bay backups <name/env> --plan` shows what each rule keeps and what the next
+prune would delete, and why.
 
 A field this Bay does not enforce is refused rather than stored, so a policy
 never reads as doing more than it does. The app layer is untrusted input: it
-is checked before the upload is staged (every 5m–31d, keep 1–365) and a bad one
+is checked before the upload is staged (every 5m–31d, keep 1–365 per rule) and a bad one
 refuses the deploy. `--backup-interval 0` turns scheduling off by default, and
 any layer can turn it back on for one app; `enabled: false` stops the schedule
 only — `bay backup` still works, and the app is not reported stale.

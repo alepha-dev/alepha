@@ -54,7 +54,7 @@ func TestPruneKeepsTheNewest(t *testing.T) {
 	srv.Seed(prefix+"notes.txt", nil)
 	m := New(srv.Client(t))
 
-	removed, err := m.Prune(context.Background(), "lore", "production", 2)
+	removed, err := m.Prune(context.Background(), "lore", "production", Rules{Keep: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestPruneKeepsTheNewest(t *testing.T) {
 
 	// Under the limit is a no-op that touches nothing.
 	before := srv.Requests(http.MethodDelete)
-	if removed, err := m.Prune(context.Background(), "lore", "production", 5); err != nil || removed != nil {
+	if removed, err := m.Prune(context.Background(), "lore", "production", Rules{Keep: 5}); err != nil || removed != nil {
 		t.Fatalf("Prune under the limit = %v, %v", removed, err)
 	}
 	if srv.Requests(http.MethodDelete) != before {
@@ -83,7 +83,7 @@ func TestPruneKeepsTheNewest(t *testing.T) {
 func TestPruneRefusesToKeepNothing(t *testing.T) {
 	srv := s3test.New(t)
 	seedBackups(srv, "20260801T000000Z")
-	if _, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", 0); err == nil {
+	if _, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", Rules{Keep: 0}); err == nil {
 		t.Fatal("keep=0 would delete every backup; it must be refused")
 	}
 	if len(srv.Keys()) != 1 {
@@ -100,7 +100,7 @@ func TestPruneReportsWhatItRemovedBeforeAFailure(t *testing.T) {
 		}
 		return 0
 	}
-	removed, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", 1)
+	removed, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", Rules{Keep: 1})
 	if err == nil {
 		t.Fatal("want the delete failure surfaced")
 	}

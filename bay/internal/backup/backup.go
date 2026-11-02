@@ -46,6 +46,9 @@ type Entry struct {
 	Kind string
 	// Files is how many databases a bundle holds; 1 for the other kinds.
 	Files int
+	// Tag is what follows the stamp in a bundle's directory name: TagPreDeploy,
+	// an operator's own label, or nothing for a scheduled or manual backup.
+	Tag string
 
 	objects []string // every key to delete to remove this backup
 }
@@ -134,13 +137,13 @@ func (m *Manager) list(ctx context.Context, app, env string) (complete, incomple
 	for _, o := range objects {
 		rest := strings.TrimPrefix(o.Key, prefix)
 		if stamp, inside, ok := strings.Cut(rest, "/"); ok {
-			ts, err := time.Parse(timeLayout, stamp)
+			ts, tag, err := parseStamp(stamp)
 			if err != nil {
 				continue // ignore anything that is not one of ours
 			}
 			b := bundles[stamp]
 			if b == nil {
-				b = &bundle{entry: Entry{Key: prefix + stamp + "/" + manifestName, Timestamp: ts, Kind: KindBundle}}
+				b = &bundle{entry: Entry{Key: prefix + stamp + "/" + manifestName, Timestamp: ts, Kind: KindBundle, Tag: tag}}
 				bundles[stamp] = b
 			}
 			b.entry.Size += o.Size
@@ -278,32 +281,25 @@ func install(restored, livePath string) (aside string, err error) {
 	return aside, out.Sync()
 }
 
-// Prune keeps the newest `keep` backups and deletes the rest.
-//
-// Returns what it removed so the caller can report it: retention that happens
-// invisibly is indistinguishable from backups going missing.
-func (m *Manager) Prune(ctx context.Context, app, env string, keep int) ([]Entry, error) {
-	if keep < 1 {
-		return nil, fmt.Errorf("keep must be at least 1, got %d", keep)
-	}
-	entries, incomplete, err := m.list(ctx, app, env)
+/*
+Prune applies the retention rules: it deletes what Plan says goes, and returns
+it so the caller can report it — retention that happens invisibly is
+indistinguishable from backups going missing.
+
+Rules that keep nothing in particular are refused rather than read as "keep
+only the newest": the caller is expected to skip pruning altogether then.
+*/
+func (m *Manager) Prune(ctx context.Context, app, env string, rules Rules) ([]Entry, error) {
+	plan, err := m.Plan(ctx, app, env, rules, time.Now())
 	if err != nil {
 		return nil, err
 	}
-	if len(entries) <= keep {
-		return nil, nil
-	}
-	victims := entries[keep:]
-	// An incomplete bundle older than every backup kept is a dead upload, and
-	// goes with them. A newer one may be a backup still running: left alone.
-	oldestKept := entries[keep-1].Timestamp
-	for _, e := range incomplete {
-		if e.Timestamp.Before(oldestKept) {
-			victims = append(victims, e)
-		}
-	}
 	var removed []Entry
-	for _, e := range victims {
+	for _, d := range plan {
+		if d.Keep {
+			continue
+		}
+		e := d.Entry
 		// The manifest first, then the files: a bundle interrupted halfway
 		// through deletion is an incomplete one, which nothing restores and
 		// the next prune finishes, never a manifest pointing at holes.
@@ -319,6 +315,19 @@ func (m *Manager) Prune(ctx context.Context, app, env string, keep int) ([]Entry
 		removed = append(removed, e)
 	}
 	return removed, nil
+}
+
+// Plan says, for every stored backup, whether the rules keep it and why,
+// without deleting anything.
+func (m *Manager) Plan(ctx context.Context, app, env string, rules Rules, now time.Time) ([]Decision, error) {
+	if err := rules.check(); err != nil {
+		return nil, err
+	}
+	complete, incomplete, err := m.list(ctx, app, env)
+	if err != nil {
+		return nil, err
+	}
+	return PlanRetention(complete, incomplete, rules, now), nil
 }
 
 func parseKeyTime(key string) (time.Time, error) {

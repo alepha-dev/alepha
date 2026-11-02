@@ -107,7 +107,7 @@ func TestPruneRemovesWholeBundlesAndDeadUploads(t *testing.T) {
 	bundle("20260805T000000Z", true)
 	bundle("20260806T000000Z", false) // maybe still uploading
 
-	removed, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", 2)
+	removed, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", Rules{Keep: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
