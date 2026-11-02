@@ -28,6 +28,90 @@
       "tasks": 23,
       "backups": true,
       "lastBackupAt": "2026-09-06T03:00:00Z",
+      "backup": {
+        "state": "ok",
+        "policy": {
+          "enabled": true,
+          "schedule": "every 6h",
+          "retention": "7 daily, 4 weekly, 6 monthly",
+          "everySeconds": 21600,
+          "timezone": "Europe/Paris",
+          "onDeploy": true,
+          "prune": "after-backup",
+          "verifyEverySeconds": 604800,
+          "sources": {
+            "retention": "app",
+            "schedule": "operator"
+          }
+        },
+        "target": {
+          "status": "ok",
+          "since": "2026-09-01T00:00:00Z",
+          "lastProbeAt": "2026-09-06T11:55:00Z",
+          "bucket": "lore-backups"
+        },
+        "nextAt": "2026-09-06T15:00:00Z",
+        "last": {
+          "at": "2026-09-06T09:00:00Z",
+          "key": "apps/lore-production/db/20260906T090000Z/manifest.json",
+          "kind": "bundle",
+          "trigger": "schedule",
+          "tag": "pre-upgrade",
+          "release": "r-2026-09-06-1",
+          "rawBytes": 52428800,
+          "storedBytes": 9437184,
+          "durationMs": 2140,
+          "files": 1,
+          "databases": [
+            {
+              "path": "app.db",
+              "rawBytes": 52428800,
+              "storedBytes": 9437184,
+              "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+              "integrity": "ok",
+              "tables": 42,
+              "pages": 12800,
+              "pageSize": 4096,
+              "journalMode": "wal",
+              "topTables": [
+                {
+                  "table": "deals",
+                  "rows": 18234
+                }
+              ],
+              "migrations": [
+                {
+                  "table": "migrations",
+                  "count": 31,
+                  "last": "20260901_brave_lions"
+                }
+              ]
+            }
+          ],
+          "anomalies": ["deals shrank by 62% since the previous backup"]
+        },
+        "catalog": {
+          "listedAt": "2026-09-06T09:00:05Z",
+          "count": 38,
+          "totalBytes": 358612992,
+          "oldestAt": "2026-03-06T03:00:00Z",
+          "newestAt": "2026-09-06T09:00:00Z"
+        },
+        "verify": {
+          "at": "2026-09-05T04:00:00Z",
+          "key": "apps/lore-production/db/20260905T030000Z/manifest.json",
+          "ok": true
+        },
+        "restore": {
+          "at": "2026-08-20T10:12:00Z",
+          "key": "apps/lore-production/db/20260820T030000Z/manifest.json",
+          "reason": "rows deleted by a bad migration",
+          "trigger": "console",
+          "status": "done",
+          "preRestoreKey": "apps/lore-production/db/20260820T101155Z/manifest.json"
+        },
+        "notCovered": ["uploads/ (files outside the database)"]
+      },
       "lastRequestAt": "2026-09-06T11:59:41Z",
       "crons": 3,
       "problems": []
@@ -72,6 +156,29 @@
       "backups": true,
       "lastBackupAt": "2026-09-06T03:00:00Z",
       "lastBackupError": "2026-09-06T03:00:12Z: upload to s3 failed: 503",
+      "backup": {
+        "state": "failing",
+        "target": {
+          "status": "down",
+          "since": "2026-09-06T02:45:00Z",
+          "lastError": "upload to s3 failed: 503"
+        },
+        "failure": {
+          "at": "2026-09-06T03:00:12Z",
+          "stage": "upload",
+          "message": "upload to s3 failed: 503",
+          "consecutive": 3
+        },
+        "verify": {
+          "at": "2026-09-04T04:00:00Z",
+          "ok": false,
+          "error": "app.db: integrity check failed"
+        },
+        "restorePending": {
+          "since": "2026-09-06T08:00:00Z",
+          "reason": "interrupted restore"
+        }
+      },
       "lastRequestAt": "2026-09-06T09:14:22Z",
       "problems": [
         "not running",

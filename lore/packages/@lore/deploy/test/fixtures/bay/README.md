@@ -11,6 +11,9 @@ The estate wire format between Bay and Lore, as Bay pins it:
   accepts and refuses, with its words, read by `stack-model.spec.ts`.
 - `logs-result.json` is Bay's `cmd/bay/testdata/logs-result.json`, what a
   `logs` command uploads, read by `estate-command-result.spec.ts`.
+- `backup-results/` is Bay's `cmd/bay/testdata/backup-results`, what the
+  `backups-list`, `backup-verify`, `target-probe` and dry-run `restore`
+  commands upload, read by `estate-backup-results.spec.ts`.
 
 **Bay's copies, in `github.com/alepha-dev/bay`, are the authority.** These were
 copied when Bay and Lore left the Alepha monorepo (#E72). A change to the wire

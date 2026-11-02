@@ -5,6 +5,7 @@ import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
+import { BackupStateBadge } from "../backup/BackupPanel.tsx";
 import BayActions from "./BayActions.tsx";
 import {
   type BayInstanceRow,
@@ -212,11 +213,18 @@ const BayApps = () => {
                   {row.lastBackupAt
                     ? l(row.lastBackupAt, { date: "fromNow" })
                     : tr("bay.apps.backupNever")}
-                  {row.backupStale && (
-                    <Badge variant="outline" className="text-xs">
-                      {tr("bay.apps.backupStale")}
-                    </Badge>
-                  )}
+                  {row.backup
+                    ? // Bay's own verdict, which already folds staleness,
+                      // failures and a pending restore into one word; ok stays
+                      // quiet so the rows needing a look stand out.
+                      row.backup.state !== "ok" && (
+                        <BackupStateBadge state={row.backup.state} />
+                      )
+                    : row.backupStale && (
+                        <Badge variant="outline" className="text-xs">
+                          {tr("bay.apps.backupStale")}
+                        </Badge>
+                      )}
                 </span>
               );
             },

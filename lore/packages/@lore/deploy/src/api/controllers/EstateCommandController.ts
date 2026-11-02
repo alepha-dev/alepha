@@ -18,6 +18,12 @@ import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import {
+  backupCommandInput,
+  ESTATE_BACKUP_COMMAND_KINDS,
+  type EstateBackupCommandBody,
+  estateBackupCommandTargetedSchema,
+} from "../schemas/estateBackupCommandSchema.ts";
+import {
   type EstateCommandListItem,
   type EstateCommandResource,
   estateCommandListItemSchema,
@@ -143,10 +149,12 @@ export class EstateCommandController {
       params: z.object({ estateId: z.uuid() }),
       body: z.union([
         z.object({
-          kind: z.enum(["restart", "stop", "start", "backup"]),
+          kind: z.enum(["restart", "stop", "start"]),
           app: z.string().min(1).max(100),
           environment: z.string().min(1).max(100),
         }),
+        // The backup verbs, `app` being the machine's own instance name.
+        estateBackupCommandTargetedSchema,
         z.object({
           kind: z.literal("logs"),
           app: z.string().min(1).max(100),
@@ -197,8 +205,22 @@ export class EstateCommandController {
         );
       }
 
+      if (
+        (ESTATE_BACKUP_COMMAND_KINDS as readonly string[]).includes(body.kind)
+      ) {
+        const backup = body as EstateBackupCommandBody & {
+          app: string;
+          environment: string;
+        };
+        return this.commands.enqueue(
+          estate,
+          backupCommandInput(backup, backup.app, backup.environment),
+          user.id,
+        );
+      }
+
       if (body.kind !== "deploy") {
-        // `restart`, `stop`, `start` and `backup` all name one instance on
+        // `restart`, `stop` and `start` all name one instance on
         // the machine and nothing else, so they share a shape and a gate. The
         // deploy path below is the one that needs an artifact, a project and
         // a lending.
@@ -340,7 +362,7 @@ export class EstateCommandController {
         return file;
       } catch {
         throw new NotFoundError(
-          "This command's result has expired; logs are kept for 24 hours",
+          "This command's result has expired; results are kept for 24 hours",
         );
       }
     },

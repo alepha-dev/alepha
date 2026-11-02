@@ -8,6 +8,7 @@ import { type Estate, estates } from "../entities/estates.ts";
 import { estateClientFrameSchema } from "../schemas/estateClientFrameSchema.ts";
 import { estateServerFrameSchema } from "../schemas/estateServerFrameSchema.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
+import { EstateEventService } from "../services/EstateEventService.ts";
 import { EstateInventoryService } from "../services/EstateInventoryService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateStatsService } from "../services/EstateStatsService.ts";
@@ -68,6 +69,7 @@ export class EstateSocketController {
   protected readonly commands = $inject(EstateCommandService);
   protected readonly stats = $inject(EstateStatsService);
   protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly events = $inject(EstateEventService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   channel = $channel({
@@ -127,6 +129,10 @@ export class EstateSocketController {
       }
       if (message.type === "inventory") {
         await this.inventories.record(estate, message);
+        return;
+      }
+      if (message.type === "event") {
+        await this.events.record(estate, message);
         return;
       }
       await this.stats.record(estate, message);

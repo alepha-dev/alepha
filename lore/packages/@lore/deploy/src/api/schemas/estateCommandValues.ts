@@ -33,6 +33,16 @@ export const ESTATE_COMMAND_KINDS = [
   // digest, the environment's routes and base domain. Held to the same
   // deploy switch as `deploy`. Bay's `actionStackDeploy` is its other half.
   "stack-deploy",
+  // Backups (Bay's `cmd/bay/backupactions.go`). `backups-list`,
+  // `backup-verify` and `target-probe` only read, and answer through the
+  // result route; `backup-policy` sets the operator layer of an instance's
+  // policy and `restore` replaces its databases, so both are held to the
+  // deploy switch (a dry-run restore only reads, and is not).
+  "backups-list",
+  "backup-verify",
+  "target-probe",
+  "backup-policy",
+  "restore",
 ] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];

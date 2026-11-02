@@ -4,7 +4,12 @@ import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/infra-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { $route, NotFoundError, UnauthorizedError } from "alepha/server";
+import {
+  $route,
+  BadRequestError,
+  NotFoundError,
+  UnauthorizedError,
+} from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
@@ -12,7 +17,14 @@ import {
   type EstateCommand,
   estateCommands,
 } from "../entities/estateCommands.ts";
+import {
+  estateBackupsListResultSchema,
+  estateBackupVerifyResultSchema,
+  estateRestoreResultSchema,
+  estateTargetProbeResultSchema,
+} from "../schemas/estateBackupResultSchemas.ts";
 import { estateCommandResultSchema } from "../schemas/estateCommandResultSchema.ts";
+import type { EstateCommandKind } from "../schemas/estateCommandValues.ts";
 import { stackDeployOutcomeSchema } from "../schemas/stackDeployOutcomeSchema.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
@@ -50,6 +62,10 @@ import { StackDeployService } from "../services/StackDeployService.ts";
  * executing. A `deploy` that finished cannot re-fetch its artifact; a retry
  * is a new command.
  */
+type SafeParsed =
+  | { success: true; data: Record<string, unknown> }
+  | { success: false; error: { message: string } };
+
 export class EstatePullController {
   public static readonly ARTIFACT_PATH = "/estates/commands/:id/artifact";
   public static readonly SECRETS_PATH = "/estates/commands/:id/secrets";
@@ -76,6 +92,20 @@ export class EstatePullController {
   public static readonly MAX_RESULT_BYTES = 1024 * 1024;
 
   /**
+   * The answer each kind uploads, by kind. A kind absent here answers with
+   * its ack alone, and an upload for it is refused like a foreign id.
+   */
+  public static readonly RESULT_SCHEMAS: Partial<
+    Record<EstateCommandKind, { safeParse: (v: unknown) => SafeParsed }>
+  > = {
+    logs: estateCommandResultSchema,
+    "backups-list": estateBackupsListResultSchema,
+    "backup-verify": estateBackupVerifyResultSchema,
+    "target-probe": estateTargetProbeResultSchema,
+    restore: estateRestoreResultSchema,
+  };
+
+  /**
    * How long a stored answer lives. A log tail is read once, minutes after it
    * was asked for; keeping it a day is generous and keeping it forever is a
    * bucket that only grows.
@@ -94,7 +124,8 @@ export class EstatePullController {
 
   resultBucket = $storage({
     name: EstatePullController.RESULT_BUCKET,
-    description: "What a machine answered a logs command with",
+    description:
+      "What a machine answered a logs or backup command with (list, verify, probe, restore)",
     maxSize: 1,
     mimeTypes: ["application/json"],
   });
@@ -375,11 +406,28 @@ export class EstatePullController {
     schema: {
       params: z.object({ id: z.string().min(1).max(64) }),
       headers: z.object({ authorization: z.string().optional() }),
-      body: estateCommandResultSchema,
+      // Validated per kind in the handler, once the command says which
+      // answer it is waiting for.
+      body: z.record(z.string(), z.any()),
       response: z.object({ stored: z.boolean() }),
     },
-    handler: async ({ params, headers, body }) => {
+    handler: async ({ params, headers, body: raw }) => {
       const command = await this.resolve(params.id, headers.authorization);
+      const schema = EstatePullController.RESULT_SCHEMAS[command.kind];
+      if (!schema) {
+        this.log.warn("Command result refused: this kind has no answer", {
+          commandId: command.id,
+          kind: command.kind,
+        });
+        throw this.refused();
+      }
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        throw new BadRequestError(
+          `The ${command.kind} answer does not match what Lore reads: ${parsed.error.message.slice(0, 500)}`,
+        );
+      }
+      const body = parsed.data;
       if (command.resultFileId) {
         // Already answered. Refused rather than replaced: the owner may be
         // reading the first answer, and a redelivery is not a new one.

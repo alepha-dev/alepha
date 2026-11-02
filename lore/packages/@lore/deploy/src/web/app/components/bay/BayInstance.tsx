@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 
 import BayActions from "./BayActions.tsx";
+import BayBackups from "./BayBackups.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
 import BayLogTail from "./BayLogTail.tsx";
 import BayStateBadge from "./BayStateBadge.tsx";
@@ -39,7 +40,7 @@ const BayInstance = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const router = useRouter();
   const routerState = useRouterState();
-  const { estate, data } = useBayInventory();
+  const { estate, data, refetch } = useBayInventory();
 
   const app = String(routerState.params?.app ?? "");
   const env = String(routerState.params?.env ?? "");
@@ -202,25 +203,15 @@ const BayInstance = () => {
                 : ""}
             </p>
 
-            <h3 className="mt-2 text-sm font-semibold">
-              {tr("bay.instance.backups")}
-            </h3>
-            <p className="text-sm">
-              {!reported.backups
-                ? // A different fact from "never backed up": there is nothing
-                  // here Bay could snapshot.
-                  tr("bay.instance.noDatabase")
-                : reported.lastBackupAt
-                  ? tr("bay.instance.lastBackup", {
-                      args: [l(reported.lastBackupAt, { date: "fromNow" })],
-                    })
-                  : tr("bay.instance.neverBackedUp")}
-              {reported.backupStale ? ` ${tr("bay.instance.backupStale")}` : ""}
-            </p>
-            {reported.lastBackupError && (
-              <p className="text-muted-foreground font-mono text-xs">
-                {reported.lastBackupError}
-              </p>
+            {!reported.backups && (
+              <>
+                <h3 className="mt-2 text-sm font-semibold">
+                  {tr("bay.instance.backups")}
+                </h3>
+                {/* A different fact from "never backed up": there is nothing
+                    here Bay could snapshot. */}
+                <p className="text-sm">{tr("bay.instance.noDatabase")}</p>
+              </>
             )}
 
             {reported.problems.length > 0 && (
@@ -239,6 +230,15 @@ const BayInstance = () => {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {reported?.backups && (
+        <BayBackups
+          app={app}
+          env={env}
+          backup={reported.backup}
+          reload={() => void refetch()}
+        />
       )}
 
       <BayLogTail app={app} env={env} />

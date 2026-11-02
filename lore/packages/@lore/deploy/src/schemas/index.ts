@@ -15,6 +15,7 @@ export { artifacts } from "../api/entities/artifacts.ts";
 export { blights } from "../api/entities/blights.ts";
 export { deployments } from "../api/entities/deployments.ts";
 export { estateCommands } from "../api/entities/estateCommands.ts";
+export { estateEvents } from "../api/entities/estateEvents.ts";
 export { estateInventories } from "../api/entities/estateInventories.ts";
 export { estateProjects } from "../api/entities/estateProjects.ts";
 export { type Estate, estates } from "../api/entities/estates.ts";
@@ -52,6 +53,12 @@ export {
 } from "../api/schemas/cloudflareTokenTemplate.ts";
 export { createEstateBodySchema } from "../api/schemas/createEstateBodySchema.ts";
 export { defaultAppInstance } from "../api/schemas/defaultAppInstance.ts";
+export {
+  estateBackupsListResultSchema,
+  estateBackupVerifyResultSchema,
+  estateRestoreResultSchema,
+  estateTargetProbeResultSchema,
+} from "../api/schemas/estateBackupResultSchemas.ts";
 export { estateClientFrameSchema } from "../api/schemas/estateClientFrameSchema.ts";
 export type { EstateCommandFrame } from "../api/schemas/estateCommandFrameSchema.ts";
 export { estateCommandResultSchema } from "../api/schemas/estateCommandResultSchema.ts";

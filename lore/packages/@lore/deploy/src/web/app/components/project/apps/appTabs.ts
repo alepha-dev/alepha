@@ -10,6 +10,7 @@ export type AppTabRoute =
   | "appArtifacts"
   | "appDeploy"
   | "appEnvironment"
+  | "appBackups"
   | "appSettings";
 
 export type AppTabLabelKey =
@@ -21,6 +22,7 @@ export type AppTabLabelKey =
   | "app.tab.artifacts"
   | "app.tab.deploy"
   | "app.tab.environment"
+  | "app.tab.backups"
   | "app.tab.settings";
 
 /**
@@ -154,6 +156,14 @@ export const APP_TABS: AppTab[] = [
     labelKey: "app.tab.environment",
     unlockedBy: (instance) =>
       !!instance.estateId || !!instance.stackEnvironmentId,
+    option: "deploy",
+  },
+  // After Environment: what a deploy leaves behind. An estate only, never a
+  // stack environment: backups are Bay's, and a stack has no Bay instance.
+  {
+    route: "appBackups",
+    labelKey: "app.tab.backups",
+    unlockedBy: (instance) => !!instance.estateId,
     option: "deploy",
   },
   { route: "appSettings", labelKey: "app.tab.settings" },

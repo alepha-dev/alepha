@@ -360,6 +360,7 @@ export class DeployRouter {
       this.appArtifacts,
       this.appDeploy,
       this.appEnvironment,
+      this.appBackups,
       this.appSettings,
     ],
     schema: {
@@ -674,6 +675,22 @@ export class DeployRouter {
       title: `${previous?.title ?? ""} › Deploy`,
     }),
     lazy: () => import("./components/project/apps/AppDeploy.tsx"),
+  });
+
+  /**
+   * This copy's backups on its Bay machine, and every verb Bay offers on them.
+   *
+   * ⚠️ Unguarded in the router, like `appDeploy`: the tab self-hides on
+   * `apps.deploy` plus an estate, and `BackupController` refuses every read
+   * and write server-side.
+   */
+  appBackups = $page({
+    name: "appBackups",
+    path: "/backups",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Backups`,
+    }),
+    lazy: () => import("./components/project/apps/AppBackups.tsx"),
   });
 
   /**

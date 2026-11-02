@@ -1,0 +1,14 @@
+{
+  "app": "demo/production",
+  "backup": {
+    "createdAt": "2026-11-02T14:49:15.355696383Z",
+    "release": "2026-11-02-144915.320",
+    "tag": "",
+    "trigger": "manual"
+  },
+  "creates": null,
+  "dryRun": true,
+  "files": ["app.db", "queue/jobs.db"],
+  "replaces": ["app.db", "queue/jobs.db"],
+  "wouldRestore": "apps/demo-production/db/20261102T144915Z/manifest.json"
+}

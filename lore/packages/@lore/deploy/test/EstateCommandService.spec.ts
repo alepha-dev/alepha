@@ -5,7 +5,7 @@ import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServer, ForbiddenError } from "alepha/server";
+import { AlephaServer, BadRequestError, ForbiddenError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
@@ -571,5 +571,143 @@ describe("EstateCommandService, logs", () => {
     );
 
     expect(command.resultFileId).toBeUndefined();
+  });
+});
+
+/**
+ * The backup verbs. Reads (list, verify, probe, a dry-run restore) and a
+ * backup itself run on a stats-only estate; anything that changes an app
+ * (a policy, a real restore) waits for the owner's deploy switch, and a real
+ * restore also has to say why.
+ */
+describe("EstateCommandService, backups", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  const instance = { app: "lore", environment: "production" };
+  const key = "lore/production/2026/11/01/030000Z.tar.zst";
+
+  const allow = async (estate: Estate, owner: UserAccountToken) => {
+    await ctx.estateApi.updateEstate(
+      { params: { estateId: estate.id }, body: { deployAllowed: true } },
+      { user: owner },
+    );
+    return ctx.repos.estates.getOne({ where: { id: { eq: estate.id } } });
+  };
+
+  it("runs the reads and a backup without the deploy switch", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-backup-reads");
+    ctx.transport.connected.add(estate.id);
+
+    for (const input of [
+      { kind: "backup" as const, payload: { ...instance, tag: "pre-upgrade" } },
+      { kind: "backups-list" as const, payload: instance },
+      {
+        kind: "backup-verify" as const,
+        payload: { ...instance, restore: { key } },
+      },
+      { kind: "target-probe" as const, payload: instance },
+      {
+        kind: "restore" as const,
+        payload: { ...instance, restore: { key, dryRun: true } },
+      },
+    ]) {
+      const command = await ctx.service.enqueue(estate, input, owner.id);
+      expect(command.status).toBe("sent");
+      expect(command.timeoutSeconds).toBe(
+        EstateCommandService.RUN_TIMEOUT_SECONDS[input.kind],
+      );
+    }
+    expect(ctx.transport.pushed[0]?.frame).toMatchObject({
+      kind: "backup",
+      tag: "pre-upgrade",
+    });
+    expect(ctx.transport.pushed.at(-1)?.frame.restore).toEqual({
+      key,
+      dryRun: true,
+    });
+  });
+
+  it("refuses a policy and a real restore until the estate allows changes", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-backup-writes");
+    const policy = {
+      kind: "backup-policy" as const,
+      payload: { ...instance, policy: { schedule: { every: "6h" } } },
+    };
+    const restore = {
+      kind: "restore" as const,
+      payload: { ...instance, restore: { key, reason: "bad migration" } },
+    };
+
+    await expect(ctx.service.enqueue(estate, policy, owner.id)).rejects.toThrow(
+      ForbiddenError,
+    );
+    await expect(
+      ctx.service.enqueue(estate, restore, owner.id),
+    ).rejects.toThrow(ForbiddenError);
+
+    const allowed = await allow(estate, owner);
+    const queuedPolicy = await ctx.service.enqueue(allowed, policy, owner.id);
+    expect(ctx.service.frameOf(queuedPolicy).policy).toEqual({
+      schedule: { every: "6h" },
+    });
+    const queuedRestore = await ctx.service.enqueue(allowed, restore, owner.id);
+    expect(ctx.service.frameOf(queuedRestore).restore).toEqual({
+      key,
+      reason: "bad migration",
+    });
+  });
+
+  it("sends an explicit null to clear the operator policy", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const estate = await allow(
+      await createEstate(ctx, owner, "ovh-backup-clear"),
+      owner,
+    );
+    const command = await ctx.service.enqueue(
+      estate,
+      { kind: "backup-policy", payload: { ...instance, policy: null } },
+      owner.id,
+    );
+    const frame = ctx.service.frameOf(command);
+    expect("policy" in frame).toBe(true);
+    expect(frame.policy).toBeNull();
+  });
+
+  it("refuses a real restore without a reason, even when allowed", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const estate = await allow(
+      await createEstate(ctx, owner, "ovh-backup-reason"),
+      owner,
+    );
+    for (const reason of [undefined, "   "]) {
+      await expect(
+        ctx.service.enqueue(
+          estate,
+          {
+            kind: "restore",
+            payload: { ...instance, restore: { key, reason } },
+          },
+          owner.id,
+        ),
+      ).rejects.toThrow(BadRequestError);
+    }
   });
 });
