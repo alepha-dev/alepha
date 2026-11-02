@@ -49,15 +49,15 @@
     "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "dependencies": {
-    "stripe": "^23.0.0"
+    "stripe": "^23.1.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.4",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
     "alepha": "0.34.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.3",
-    "vitest": "^5.0.3"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "peerDependencies": {
     "alepha": "^0.34.0"

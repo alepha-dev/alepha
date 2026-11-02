@@ -174,6 +174,23 @@ describe("the stack model", () => {
       expect(byName.many.hostEnvFiles).toEqual(["../up.env", "/etc/two.env"]);
     });
 
+    it("applies merge keys from an x- anchor, as Compose does", ({
+      expect,
+    }) => {
+      const model = parser.parse(
+        [
+          "x-common: &common",
+          "  env_file: /etc/common.env",
+          "services:",
+          "  web:",
+          "    <<: *common",
+          "    image: nginx",
+        ].join("\n"),
+        [],
+      );
+      expect(model.services[0].hostEnvFiles).toEqual(["/etc/common.env"]);
+    });
+
     it("lists interpolated variables, required unless they carry a default, and never a value", ({
       expect,
     }) => {

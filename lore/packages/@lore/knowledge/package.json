@@ -19,19 +19,20 @@
   },
   "dependencies": {
     "@alepha/ui": "workspace:*",
-    "@codemirror/view": "^6.43.14",
+    "@codemirror/view": "^6.43.15",
     "@lore/core": "workspace:*",
     "alepha": "workspace:*",
-    "lucide-react": "^1.56.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "lucide-react": "^1.66.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@types/bun": "^1.4.3",
+    "@types/bun": "^1.4.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }

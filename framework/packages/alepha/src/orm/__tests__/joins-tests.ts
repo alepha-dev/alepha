@@ -291,6 +291,18 @@ export const testLeftJoinSqlWrapper = async (alepha: Alepha) => {
   expect(result.name).toBe("Alice");
   expect(result.profile).toBeDefined();
   expect(result.profile.bio).toBe("Tech lead and mentor");
+
+  // Alice's profile is seeded first: Bob's proves the condition compares columns.
+  const bob = await app.users.getOne({
+    where: { id: { eq: testUsers.bob.id } },
+    with: {
+      profile: {
+        join: profiles,
+        on: sql`${users.cols.id} = ${profiles.cols.userId}`,
+      },
+    },
+  });
+  expect(bob.profile.bio).toBe("Senior developer");
 };
 
 export const testInnerJoin = async (alepha: Alepha) => {

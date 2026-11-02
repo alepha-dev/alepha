@@ -1,10 +1,10 @@
 import { $inject, SchemaValidator, type ZObject, z } from "alepha";
-import { getTableName, type SQL, sql } from "drizzle-orm";
+import { getTableName, SQL, sql } from "drizzle-orm";
 import type { PgSelectBase, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { isSQLWrapper } from "drizzle-orm/sql/sql";
 
 import type { PgRelationMap } from "../interfaces/PgQuery.ts";
-import type { EntityPrimitive } from "../primitives/$entity.ts";
+import { EntityPrimitive } from "../primitives/$entity.ts";
 import type { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 import type { PgJoin } from "./QueryManager.ts";
 
@@ -28,7 +28,7 @@ export class PgRelationManager {
     for (const [key, join] of Object.entries(withRelations)) {
       const from = provider.table(join.join as EntityPrimitive);
       const on = isSQLWrapper(join.on)
-        ? (join.on as SQL)
+        ? this.resolveColumns(provider, join.on as SQL)
         : sql`${table[(join.on as readonly [string, { name: string }])[0]]} = ${from[(join.on as readonly [string, { name: string }])[1].name]}`;
 
       if (join.type === "right") {
@@ -58,6 +58,33 @@ export class PgRelationManager {
         );
       }
     }
+  }
+
+  /**
+   * Replace every `entity.cols.x` inside a raw join condition with the
+   * table's column. Left as is, drizzle binds the `{ name, entity }` object
+   * as a parameter, so `${users.cols.id} = ${profiles.cols.userId}` compares
+   * two serialized objects instead of two columns.
+   */
+  protected resolveColumns(provider: DatabaseProvider, expression: SQL): SQL {
+    return new SQL(
+      expression.queryChunks.map((chunk) => {
+        if (chunk instanceof SQL) {
+          return this.resolveColumns(provider, chunk);
+        }
+        if (
+          typeof chunk === "object" &&
+          chunk !== null &&
+          "entity" in chunk &&
+          chunk.entity instanceof EntityPrimitive &&
+          "name" in chunk &&
+          typeof chunk.name === "string"
+        ) {
+          return provider.table(chunk.entity)[chunk.name];
+        }
+        return chunk;
+      }),
+    );
   }
 
   /**

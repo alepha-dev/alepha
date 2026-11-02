@@ -29,15 +29,15 @@
   },
   "devDependencies": {
     "@alepha/lore": "workspace:*",
-    "@playwright/test": "^1.64.0",
-    "@types/bun": "^1.4.3",
-    "@types/node": "^26.6.5",
-    "@vitest/coverage-v8": "^5.0.4",
+    "@playwright/test": "^1.64.1",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.0.5",
     "alepha": "workspace:*",
     "depcheck": "^1.4.7",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "dependenciesMeta": {
     "esbuild": {

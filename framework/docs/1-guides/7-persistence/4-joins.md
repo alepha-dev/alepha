@@ -377,7 +377,7 @@ with: {
 },
 ```
 
-⚠️ **PostgreSQL only.** On SQLite a raw SQL join condition fails with "Unknown named parameter". Use the tuple syntax on SQLite and D1.
+An `entity.cols.x` inside the expression is replaced by that table's column, so it works on every database.
 
 ## Joins with Pagination
 

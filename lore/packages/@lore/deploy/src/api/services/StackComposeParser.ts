@@ -1,5 +1,5 @@
 import { BadRequestError } from "alepha/server";
-import { load as parseYaml } from "js-yaml";
+import { CORE_SCHEMA, mergeTag, load as parseYaml } from "js-yaml";
 
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import type { StackModelService } from "../schemas/stackModelServiceSchema.ts";
@@ -45,6 +45,12 @@ export class StackComposeParser {
     "backup",
   ];
 
+  /**
+   * YAML 1.2 scalars plus merge keys (`<<`), as Compose reads a file. Since
+   * js-yaml 5 the default schema has no merge tag.
+   */
+  public static readonly YAML_SCHEMA = CORE_SCHEMA.withTags(mergeTag);
+
   protected static readonly ROUTE_LABEL =
     /^(@|[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)$/;
 
@@ -56,8 +62,8 @@ export class StackComposeParser {
     let raw: unknown;
     try {
       // js-yaml rather than `yaml`: its Node build requires `process`, which a
-      // Worker bundle cannot load. Merge keys (`<<`) are in its default schema.
-      raw = parseYaml(text);
+      // Worker bundle cannot load.
+      raw = parseYaml(text, { schema: StackComposeParser.YAML_SCHEMA });
     } catch (error) {
       throw new BadRequestError(
         `The compose file is not valid YAML: ${error instanceof Error ? error.message : String(error)}`,

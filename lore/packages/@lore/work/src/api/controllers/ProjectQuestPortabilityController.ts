@@ -66,9 +66,7 @@ export class ProjectQuestPortabilityController {
       const emailOf = (u?: { email?: string; username?: string }): string =>
         u?.email ?? u?.username ?? "";
 
-      const status = (
-        q: (typeof projectQuests)[number],
-      ): ExportRow["status"] =>
+      const status = (q: (typeof projectQuests)[number]): ExportRow["status"] =>
         q.completedAt ? "completed" : q.acceptedAt ? "in_progress" : "todo";
 
       const text = this.formatter.format(
