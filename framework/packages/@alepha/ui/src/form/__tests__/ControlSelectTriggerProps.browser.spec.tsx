@@ -44,9 +44,7 @@ describe("Control inputProps on a select", () => {
   const Probe = (props: { multi?: boolean; count?: number }) => {
     const form = useForm({
       schema: z.object({
-        tag: props.multi
-          ? (z.array(z.text()).optional() as never)
-          : (z.text().optional() as never),
+        tag: props.multi ? z.array(z.text()).optional() : z.text().optional(),
       }),
       handler: () => {},
     });

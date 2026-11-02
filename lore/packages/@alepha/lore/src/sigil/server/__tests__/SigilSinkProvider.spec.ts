@@ -26,7 +26,7 @@ class RecordingHttpClient extends HttpClient {
       this.failNext = false;
       throw new Error("sink unreachable");
     }
-    return { data: {}, status: 204 } as any;
+    return { data: {}, status: 204 };
   }
 }
 

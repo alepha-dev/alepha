@@ -264,13 +264,13 @@ const testRefusals = async (alepha: Alepha) => {
 
   await expect(
     app.quests.aggregate({
-      select: { priority: { expr: sql`1` } } as any,
+      select: { priority: { expr: sql`1` } },
     }),
   ).rejects.toThrow(/'priority' carries 'expr'/);
 
   await expect(
     app.quests.aggregate({
-      select: { created_at: { expr: app.sqlx.dateDay(t.createdAt) } } as any,
+      select: { created_at: { expr: app.sqlx.dateDay(t.createdAt) } },
     }),
   ).rejects.toThrow(/spelled like a column/);
 

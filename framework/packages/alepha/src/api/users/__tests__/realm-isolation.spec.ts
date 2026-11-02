@@ -72,7 +72,7 @@ describe("realm isolation", () => {
       ).rejects.toThrow();
 
       const page = await controller.findUsers(
-        { query: { userRealmName: "tenant-a", email: victim.email } } as never,
+        { query: { userRealmName: "tenant-a", email: victim.email } },
         asAdminA,
       );
       expect(page.content.map((u) => u.id)).not.toContain(victim.id);
@@ -123,7 +123,7 @@ describe("realm isolation", () => {
       alepha.inject(SecurityProvider).resolveUserFromServerRequest({
         url: new URL("https://app.example/api"),
         headers: { authorization: `Bearer ${accessToken}` },
-      } as never);
+      });
 
     /**
      * `createToken` writes a session row, so the account has to exist.
@@ -144,7 +144,7 @@ describe("realm isolation", () => {
       const { alepha, realms } = await boot();
       const user = await account(alepha, "staff", ["admin"]);
 
-      const { access_token } = await realms.staff.createToken(user as never);
+      const { access_token } = await realms.staff.createToken(user);
 
       // Before the audience check this resolved, and resolved as `citizens`:
       // the caller's own roles were dropped and the first realm's substituted.
@@ -162,8 +162,8 @@ describe("realm isolation", () => {
       const staffUser = await account(alepha, "staff", ["admin"]);
       const citizenUser = await account(alepha, "citizens", ["user"]);
 
-      const staff = await realms.staff.createToken(staffUser as never);
-      const citizens = await realms.citizens.createToken(citizenUser as never);
+      const staff = await realms.staff.createToken(staffUser);
+      const citizens = await realms.citizens.createToken(citizenUser);
 
       const asStaff = await resolve(alepha, staff.access_token);
       expect(asStaff?.realm).toBe("staff");
@@ -225,7 +225,7 @@ describe("realm isolation", () => {
         "tenant-b",
       );
       const { refreshToken } = await sessionService.createSession(
-        userB as never,
+        userB,
         3600,
         "tenant-b",
       );

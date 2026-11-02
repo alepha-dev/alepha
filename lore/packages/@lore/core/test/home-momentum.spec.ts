@@ -101,7 +101,7 @@ const setup = async (unreadable = false): Promise<TestContext> => {
   const user = { id: created.data.id, roles: created.data.roles };
   const project = await projectApi.createProject.fetch(
     { body: { title: "Garden a" } },
-    { user } as never,
+    { user },
   );
 
   return {
@@ -138,9 +138,12 @@ describe("Home momentum", () => {
         });
       }
 
-      const board = await ctx.homeApi.getHomeBoard.fetch({}, {
-        user: ctx.user,
-      } as never);
+      const board = await ctx.homeApi.getHomeBoard.fetch(
+        {},
+        {
+          user: ctx.user,
+        },
+      );
 
       expect(board.data.days).toHaveLength(14);
       const entry = board.data.momentum?.find(
@@ -158,9 +161,12 @@ describe("Home momentum", () => {
     it("gives a project with no activity fourteen zeroes rather than nothing", async ({
       expect,
     }) => {
-      const board = await ctx.homeApi.getHomeBoard.fetch({}, {
-        user: ctx.user,
-      } as never);
+      const board = await ctx.homeApi.getHomeBoard.fetch(
+        {},
+        {
+          user: ctx.user,
+        },
+      );
 
       const entry = board.data.momentum?.find(
         (row) => row.projectId === ctx.projectId,
@@ -182,9 +188,12 @@ describe("Home momentum", () => {
         userId: ctx.user.id,
       });
 
-      const board = await ctx.homeApi.getHomeBoard.fetch({}, {
-        user: ctx.user,
-      } as never);
+      const board = await ctx.homeApi.getHomeBoard.fetch(
+        {},
+        {
+          user: ctx.user,
+        },
+      );
 
       // ⚠️ Absent, never an empty array: an empty array is fourteen quiet
       // days, which would mute every row in the table as inactive.

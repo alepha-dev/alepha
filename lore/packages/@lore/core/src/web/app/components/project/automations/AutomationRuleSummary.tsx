@@ -55,7 +55,7 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
   const channel = (value: string) =>
     tokens.whole(value) !== undefined
       ? named(value)
-      : tr(`automation.channel.${value}` as never, { default: value });
+      : tr(`automation.channel.${value}`, { default: value });
   const operators: Record<string, string> = {
     eq: "=",
     ne: "≠",

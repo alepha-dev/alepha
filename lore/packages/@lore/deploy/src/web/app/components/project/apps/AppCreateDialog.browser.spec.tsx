@@ -81,8 +81,8 @@ describe("AppCreateDialog", () => {
       .with(AlephaReactI18n)
       .with(I18n);
     await alepha.start();
-    alepha.store.set(currentProjectAtom, aProject as never);
-    alepha.store.set(currentInstancesAtom, instances as never);
+    alepha.store.set(currentProjectAtom, aProject);
+    alepha.store.set(currentInstancesAtom, instances);
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;

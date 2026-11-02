@@ -96,12 +96,12 @@ export class NotificationEmailChannel extends NotificationChannel<
     // same values the body does.
     const subject =
       typeof email.subject === "function"
-        ? await email.subject(renderVariables as any)
+        ? await email.subject(renderVariables)
         : email.subject;
 
     const body =
       typeof email.body === "function"
-        ? await email.body(renderVariables as any)
+        ? await email.body(renderVariables)
         : email.body;
 
     // A template's own text always wins. Deriving one when it is absent is
@@ -110,7 +110,7 @@ export class NotificationEmailChannel extends NotificationChannel<
     // scores worse with every spam filter.
     const declared =
       typeof email.text === "function"
-        ? await email.text(renderVariables as any)
+        ? await email.text(renderVariables)
         : email.text;
     const text = declared ?? this.textRenderer.fromHtml(body);
 

@@ -263,7 +263,7 @@ export class DevtoolsServerProvider {
     if (run.status === "dead") {
       if (request.method === "GET" && params["*"] === "logs") {
         const query = Object.fromEntries(request.url.searchParams);
-        this.reply(request, 200, await connection.logs(query as any));
+        this.reply(request, 200, await connection.logs(query));
         return;
       }
       this.reply(request, 410, {

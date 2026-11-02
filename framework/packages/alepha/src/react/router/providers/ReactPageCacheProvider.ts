@@ -712,7 +712,7 @@ export class ReactPageCacheProvider {
    */
   public lang(): string | undefined {
     const value = this.alepha.store.getUntracked(
-      "alepha.react.i18n.lang" as never,
+      "alepha.react.i18n.lang",
     ) as unknown;
     return typeof value === "string" ? value : undefined;
   }

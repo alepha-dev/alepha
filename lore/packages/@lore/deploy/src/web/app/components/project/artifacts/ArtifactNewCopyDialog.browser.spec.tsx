@@ -89,8 +89,8 @@ describe("ArtifactNewCopyDialog", () => {
       .with(AlephaReactI18n)
       .with(I18n);
     await alepha.start();
-    alepha.store.set(currentProjectAtom, aProject as never);
-    alepha.store.set(currentInstancesAtom, [] as never);
+    alepha.store.set(currentProjectAtom, aProject);
+    alepha.store.set(currentInstancesAtom, []);
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = {

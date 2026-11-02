@@ -31,7 +31,7 @@ describe("Control (date range)", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   const start = async () => {

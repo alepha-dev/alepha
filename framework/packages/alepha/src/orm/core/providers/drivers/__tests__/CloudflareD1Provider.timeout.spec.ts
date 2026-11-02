@@ -40,7 +40,7 @@ describe("CloudflareD1Provider timeout", () => {
     const { binding, time, provider } = await boot();
     binding.stalling = true;
 
-    const pending = provider.execute("select 1" as never);
+    const pending = provider.execute("select 1");
     // The assertion is attached BEFORE the clock moves, on purpose: `pending`
     // rejects during the `travel()` below, and with no handler attached yet
     // that surfaces as an unhandled rejection. It is awaited two lines down.
@@ -55,7 +55,7 @@ describe("CloudflareD1Provider timeout", () => {
     const { binding, time, provider } = await boot({ DATABASE_TIMEOUT: 1000 });
     binding.stalling = true;
 
-    const pending = provider.execute("select 1" as never);
+    const pending = provider.execute("select 1");
     // The assertion is attached BEFORE the clock moves, on purpose: `pending`
     // rejects during the `travel()` below, and with no handler attached yet
     // that surfaces as an unhandled rejection. It is awaited two lines down.
@@ -73,7 +73,7 @@ describe("CloudflareD1Provider timeout", () => {
     binding.stalling = true;
 
     let settled = false;
-    void provider.execute("select 1" as never).then(
+    void provider.execute("select 1").then(
       () => {
         settled = true;
       },
@@ -91,7 +91,7 @@ describe("CloudflareD1Provider timeout", () => {
   it("still answers normally when the database is healthy", async () => {
     const { provider } = await boot();
 
-    await expect(provider.execute("select 1" as never)).resolves.toEqual([]);
+    await expect(provider.execute("select 1")).resolves.toEqual([]);
   });
 
   it("surfaces a timeout as a retryable 503 through the repository", async () => {

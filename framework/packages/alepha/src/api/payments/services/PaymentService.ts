@@ -927,7 +927,7 @@ export class PaymentService {
     operation: string,
   ): Promise<PaymentIntentEntity> {
     const updated = await this.intentRepo
-      .updateOne({ id: { eq: intentId }, status: { eq: from } }, data as never)
+      .updateOne({ id: { eq: intentId }, status: { eq: from } }, data)
       .catch(() => undefined);
 
     if (!updated) {

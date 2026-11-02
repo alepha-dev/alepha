@@ -76,7 +76,7 @@ const HomeHeader = () => {
         }}
         // A push, not a full navigation: Lore has a router, and reloading the
         // document to reach a page one hop away throws the whole SPA away.
-        onOpen={(href) => router.push(href as never)}
+        onOpen={(href) => router.push(href)}
       />
       <HeaderActions />
     </header>

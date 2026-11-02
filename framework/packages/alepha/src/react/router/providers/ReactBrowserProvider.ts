@@ -635,7 +635,7 @@ export class ReactBrowserProvider {
           );
           continue;
         }
-        this.alepha.store.set(key as keyof State, result.data as any, {
+        this.alepha.store.set(key as keyof State, result.data, {
           skipValidation: true,
         });
       } else {

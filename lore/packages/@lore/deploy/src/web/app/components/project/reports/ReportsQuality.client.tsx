@@ -66,16 +66,13 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     keepDirty: false,
     handler: async () => {},
     onChange: (_key, value) => {
-      void router.push(
-        "reportsQuality" as never,
-        {
-          query: reportsUrl.patch(
-            props.url,
-            "branch",
-            value as string | undefined,
-          ),
-        } as never,
-      );
+      void router.push("reportsQuality", {
+        query: reportsUrl.patch(
+          props.url,
+          "branch",
+          value as string | undefined,
+        ),
+      });
     },
   });
 

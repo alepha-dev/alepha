@@ -117,31 +117,31 @@ describe("QueryManager", () => {
     };
 
     it("should produce a condition when filtering by zero", () => {
-      const result = qm.toSQL({ age: 0 } as any, options);
+      const result = qm.toSQL({ age: 0 }, options);
 
       expect(result).toBeDefined();
     });
 
     it("should produce a condition when filtering by false", () => {
-      const result = qm.toSQL({ active: false } as any, options);
+      const result = qm.toSQL({ active: false }, options);
 
       expect(result).toBeDefined();
     });
 
     it("should produce a condition when filtering by empty string", () => {
-      const result = qm.toSQL({ name: "" } as any, options);
+      const result = qm.toSQL({ name: "" }, options);
 
       expect(result).toBeDefined();
     });
 
     it("should produce a condition when filtering by string value", () => {
-      const result = qm.toSQL({ name: "alice" } as any, options);
+      const result = qm.toSQL({ name: "alice" }, options);
 
       expect(result).toBeDefined();
     });
 
     it("should produce a condition when filtering with eq operator on zero", () => {
-      const result = qm.toSQL({ age: { eq: 0 } } as any, options);
+      const result = qm.toSQL({ age: { eq: 0 } }, options);
 
       expect(result).toBeDefined();
     });
@@ -149,26 +149,24 @@ describe("QueryManager", () => {
     it("should throw when a column is explicitly null", () => {
       // A null condition used to be dropped from the WHERE clause, which is
       // the same silent unfiltered query as the undefined case below.
-      expect(() => qm.toSQL({ age: null } as any, options)).toThrow(/null/);
+      expect(() => qm.toSQL({ age: null }, options)).toThrow(/null/);
     });
 
     it("should throw when a column is explicitly undefined", () => {
       // Drizzle silently drops `undefined` conditions, which turns a broken
       // filter into an unfiltered query. Fail loudly.
-      expect(() => qm.toSQL({ age: undefined } as any, options)).toThrow(
+      expect(() => qm.toSQL({ age: undefined }, options)).toThrow(/undefined/);
+    });
+
+    it("should throw when eq is explicitly undefined", () => {
+      expect(() => qm.toSQL({ age: { eq: undefined } }, options)).toThrow(
         /undefined/,
       );
     });
 
-    it("should throw when eq is explicitly undefined", () => {
-      expect(() =>
-        qm.toSQL({ age: { eq: undefined } } as any, options),
-      ).toThrow(/undefined/);
-    });
-
     it("should include not condition alongside sibling conditions", () => {
       const result = qm.toSQL(
-        { name: "John", not: { active: false } } as any,
+        { name: "John", not: { active: false } },
         options,
       );
 
@@ -181,7 +179,7 @@ describe("QueryManager", () => {
 
     it("should not discard conditions after not", () => {
       const result = qm.toSQL(
-        { not: { active: false }, name: "Alice", age: { eq: 30 } } as any,
+        { not: { active: false }, name: "Alice", age: { eq: 30 } },
         options,
       );
 
@@ -193,7 +191,7 @@ describe("QueryManager", () => {
     });
 
     it("should handle not as the only condition", () => {
-      const result = qm.toSQL({ not: { active: true } } as any, options);
+      const result = qm.toSQL({ not: { active: true } }, options);
 
       expect(result).toBeDefined();
       const sqlStr = toSqlString(result!);

@@ -8,7 +8,7 @@ describe("RootComponentsProvider", () => {
     const alepha = Alepha.create();
     const provider = alepha.inject(RootComponentsProvider);
     expect(provider.rootComponents).toEqual([]);
-    provider.rootComponents.push("x" as any);
+    provider.rootComponents.push("x");
     expect(alepha.inject(RootComponentsProvider).rootComponents).toHaveLength(
       1,
     );

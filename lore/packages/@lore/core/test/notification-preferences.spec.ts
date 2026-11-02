@@ -60,7 +60,7 @@ const setup = async () => {
       alepha.store.set(currentUserAtom, {
         id: user.id,
         roles: ["user"],
-      } as any);
+      });
       return fn();
     });
 
@@ -85,7 +85,7 @@ const ask = (
     template: "lore:inbox:mention",
     category: "mentions",
     ...options,
-  } as never);
+  });
 
 describe("Lore's notification preferences", () => {
   it("allows everything when there is no row", async ({ expect }) => {
@@ -118,7 +118,7 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       emailEnabled: false,
-    } as never);
+    });
 
     expect(await ask(ctx, { channel: "email" })).toBe(false);
     expect(await ask(ctx, { channel: "inbox" })).toBe(true);
@@ -135,7 +135,7 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       mutedCategories: ["releases"],
-    } as never);
+    });
 
     expect(await ask(ctx, { category: "releases" })).toBe(false);
     expect(await ask(ctx, { category: "releases", channel: "inbox" })).toBe(
@@ -156,7 +156,7 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       mutedCategories: ["security"],
-    } as never);
+    });
 
     expect(await ask(ctx, { category: "security" })).toBe(false);
     expect(await ask(ctx, { category: "security", critical: true })).toBe(true);
@@ -175,7 +175,7 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       emailEnabled: false,
-    } as never);
+    });
 
     expect(await ask(ctx, { category: "security", critical: true })).toBe(true);
     // `critical` is what earns it, not the category.
@@ -220,7 +220,7 @@ describe("Lore's notification preferences", () => {
     const ctx = await setup();
 
     const initial = await ctx.asUser(() =>
-      ctx.controller.getMyNotificationPreferences({} as never),
+      ctx.controller.getMyNotificationPreferences({}),
     );
     expect(initial.emailEnabled).toBe(true);
     expect(initial.mutedCategories).toEqual([]);
@@ -234,7 +234,7 @@ describe("Lore's notification preferences", () => {
     const updated = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { emailEnabled: false, mutedCategories: ["releases"] },
-      } as never),
+      }),
     );
     expect(updated.emailEnabled).toBe(false);
     expect(updated.mutedCategories).toEqual(["releases"]);
@@ -253,12 +253,12 @@ describe("Lore's notification preferences", () => {
     await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { mutedCategories: ["releases"] },
-      } as never),
+      }),
     );
     const after = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { emailEnabled: false },
-      } as never),
+      }),
     );
 
     expect(after.emailEnabled).toBe(false);
@@ -273,7 +273,7 @@ describe("Lore's notification preferences", () => {
     const after = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { mutedCategories: ["releases", "made-up"] },
-      } as never),
+      }),
     );
 
     expect(after.mutedCategories).toEqual(["releases"]);

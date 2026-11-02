@@ -145,7 +145,7 @@ describe("SigilServerErrors — background jobs", () => {
       name: "lore:blights:purge",
       error: new Error("D1 unreachable"),
       executionId: "exec-1",
-    } as any);
+    });
 
     const sink = alepha.inject(SigilSinkProvider) as FakeSink;
     expect(sink.ingested).toHaveLength(1);

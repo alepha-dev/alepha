@@ -46,7 +46,7 @@ export const $repositories = <
   for (const key of Object.keys(relations.schema) as Array<
     keyof ZType & string
   >) {
-    (repositories as any)[key] = $repository(relations, key);
+    repositories[key] = $repository(relations, key);
   }
 
   return repositories;

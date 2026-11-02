@@ -746,7 +746,7 @@ export class ReactServerProvider {
             // `alepha/security`, which react cannot import — an optional
             // module must not become a compile-time dependency of the router.
             // Hence the cast: the field is real, react just cannot see it.
-            user: (serverRequest as any).user,
+            user: serverRequest.user,
             authorization: serverRequest.headers.authorization,
           }),
         );

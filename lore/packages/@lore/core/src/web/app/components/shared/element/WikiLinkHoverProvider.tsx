@@ -426,7 +426,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             {tr("folios.wikilink.broken.title")}
           </span>
           <span className="text-muted-foreground text-xs">
-            {tr(brokenReasonKey(target.reason, props.references) as never)}
+            {tr(brokenReasonKey(target.reason, props.references))}
           </span>
         </div>
       )}

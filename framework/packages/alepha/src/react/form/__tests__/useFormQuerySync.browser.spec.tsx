@@ -59,7 +59,7 @@ describe("useFormQuerySync", () => {
     const { result } = render();
 
     await act(async () => {
-      (result.current.input as any).status.set("new");
+      result.current.input.status.set("new");
     });
 
     await waitFor(() => {
@@ -81,7 +81,7 @@ describe("useFormQuerySync", () => {
     const { result } = render();
 
     await act(async () => {
-      (result.current.input as any).status.set("new");
+      result.current.input.status.set("new");
     });
 
     await waitFor(() => {

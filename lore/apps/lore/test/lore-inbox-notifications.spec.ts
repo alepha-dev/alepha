@@ -69,7 +69,7 @@ describe("Lore's inbox notifications", () => {
     const user = await rows.users.create({
       username: "nfo",
       email: "Member@Example.com",
-    } as never);
+    });
 
     expect(await recipients.resolve("member@example.com")).toEqual({
       userId: user.id,
@@ -109,7 +109,7 @@ describe("Lore's inbox notifications", () => {
     await rows.users.create({
       username: "nfo",
       email: "Member@Example.com",
-    } as never);
+    });
 
     await templates.inboxMention.push({
       contact: "member@example.com",
@@ -155,7 +155,7 @@ describe("Lore's inbox notifications", () => {
     const user = await rows.users.create({
       username: "nfo",
       email: "Member@Example.com",
-    } as never);
+    });
 
     await rows.projects.create({ id: 1, title: "Alepha", createdBy: user.id });
 

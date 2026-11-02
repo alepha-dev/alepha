@@ -369,7 +369,7 @@ describe("relations on postgres", () => {
       const { campaign } = await seed();
 
       await provider.execute(
-        `update ${provider.schema}.users set email = 'not-an-email'` as never,
+        `update ${provider.schema}.users set email = 'not-an-email'`,
       );
 
       await expect(
@@ -637,7 +637,7 @@ describe("relations on postgres", () => {
       await seed();
 
       await provider.execute(
-        `drop table ${provider.schema}.characters cascade` as never,
+        `drop table ${provider.schema}.characters cascade`,
       );
 
       const relational = await app.db.campaigns

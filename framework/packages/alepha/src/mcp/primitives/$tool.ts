@@ -310,7 +310,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   protected currentUser(): unknown {
     return (
       this.alepha.store.get("alepha.http.request")?.user ??
-      this.alepha.store.get("alepha.security.user" as never)
+      this.alepha.store.get("alepha.security.user")
     );
   }
 
@@ -489,7 +489,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       // is described by its input type; the output mode (zod's default)
       // marked the first as required and the second by what the handler
       // receives, so clients rejected calls the server would have accepted.
-      json = z.toJSONSchema(schema as any, { io: "input" });
+      json = z.toJSONSchema(schema, { io: "input" });
     } catch (error) {
       this.log.warn(
         `Tool '${this.name}': params schema cannot be expressed as JSON Schema, advertising an open object`,
@@ -508,7 +508,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
    */
   protected propertyToJsonSchema(schema: ZType): Record<string, unknown> {
     try {
-      const json: any = z.toJSONSchema(schema as any);
+      const json: any = z.toJSONSchema(schema);
       json.$schema = undefined;
       return json;
     } catch (error) {

@@ -162,13 +162,10 @@ const DashboardCard = (props: DashboardCardProps) => {
 
   const open = () => {
     if (!link) return;
-    void router.push(
-      link.route as never,
-      {
-        params: link.params,
-        query: link.query,
-      } as never,
-    );
+    void router.push(link.route, {
+      params: link.params,
+      query: link.query,
+    });
   };
 
   return (
@@ -221,7 +218,7 @@ const DashboardCard = (props: DashboardCardProps) => {
       >
         <Icon className="text-muted-foreground size-3.5 shrink-0" />
         <span className="text-muted-foreground truncate text-[11.5px] font-medium tracking-[0.05em] uppercase">
-          {tr(props.labelKey as never)}
+          {tr(props.labelKey)}
         </span>
         <span className="flex-1" />
         {/* ⚠️ ABSENT without the permission, never disabled. A greyed kebab
@@ -270,7 +267,7 @@ const DashboardCard = (props: DashboardCardProps) => {
               key={key}
               className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
             >
-              {tr(key as never)}
+              {tr(key)}
             </span>
           ))}
         </div>

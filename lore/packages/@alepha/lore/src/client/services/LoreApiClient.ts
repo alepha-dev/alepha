@@ -148,7 +148,7 @@ export class LoreApiClient {
         // Carried so a caller can branch on "does not exist yet" without
         // matching on a sentence. The 404 from `getApp` is the one case a
         // caller legitimately treats as data.
-        cause: { status: res.status } as never,
+        cause: { status: res.status },
       });
     }
 

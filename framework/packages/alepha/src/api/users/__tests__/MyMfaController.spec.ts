@@ -43,7 +43,7 @@ const setup = async (username: string) => {
     controller: alepha.inject(MyMfaController),
     totp: alepha.inject(TotpService),
     mfa: alepha.inject(MfaService),
-    caller: { id: user.id, realm: "default" } as never,
+    caller: { id: user.id, realm: "default" },
     user,
   };
 };

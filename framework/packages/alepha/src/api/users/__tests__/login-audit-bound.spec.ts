@@ -96,7 +96,7 @@ describe("login audit rows before the password compare", () => {
       await alepha
         .inject(AuditService)
         .find({ type: "security", action: "rate_limited", size: 100 })
-    ).content.filter((row) => (row.metadata as any)?.ip === ip);
+    ).content.filter((row) => row.metadata?.ip === ip);
     expect(locks).toHaveLength(1);
   });
 
@@ -110,7 +110,7 @@ describe("login audit rows before the password compare", () => {
     for (let i = 0; i < 10; i++) await attempt(undefined, first, "wrong");
     for (let i = 0; i < 10; i++) await attempt(undefined, second, "wrong");
     const notFound = await rows((row) =>
-      [first, second].includes((row.metadata as any)?.username),
+      [first, second].includes(row.metadata?.username),
     );
     expect(notFound).toHaveLength(15);
   });

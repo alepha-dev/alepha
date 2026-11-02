@@ -67,7 +67,7 @@ const AppUptimeCard = (props: AppUptimeCardProps) => {
               </div>
             </div>
             <span className="bg-muted rounded-full px-2 py-1 text-xs font-medium">
-              {tr(`uptime.status.${status}` as never)}
+              {tr(`uptime.status.${status}`)}
             </span>
           </>
         ) : (

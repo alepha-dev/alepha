@@ -73,7 +73,7 @@ const browser = (ctx: Ctx) => {
       ctx.alepha.set("alepha.http.request", request);
       ctx.alepha.store.set(
         currentUserAtom,
-        userId ? ({ id: userId, roles: [] } as any) : undefined,
+        userId ? { id: userId, roles: [] } : undefined,
       );
       return await fn();
     });

@@ -412,7 +412,7 @@ describe("QuestController hold", () => {
       const newOnes = await ctx.controller.getQuests(
         {
           params: { projectId: project.id },
-          query: { status: "todo" } as never,
+          query: { status: "todo" },
         },
         { user },
       );
@@ -437,7 +437,7 @@ describe("QuestController hold", () => {
       const held = await ctx.controller.getQuests(
         {
           params: { projectId: project.id },
-          query: { status: "on_hold" } as never,
+          query: { status: "on_hold" },
         },
         { user },
       );
@@ -459,7 +459,7 @@ describe("QuestController hold", () => {
       );
 
       const all = await ctx.controller.getQuests(
-        { params: { projectId: project.id }, query: {} as never },
+        { params: { projectId: project.id }, query: {} },
         { user },
       );
 
@@ -477,7 +477,7 @@ describe("QuestController hold", () => {
       query: Record<string, string>,
     ) => {
       const page = await ctx.controller.getQuests(
-        { params: { projectId: project.id }, query: query as never },
+        { params: { projectId: project.id }, query: query },
         { user: ownerToken(project) },
       );
       return page.content

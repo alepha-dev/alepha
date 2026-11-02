@@ -22,7 +22,7 @@ class Probe extends I18nProvider<any, any> {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  const probe = alepha.inject(Probe as never) as Probe;
+  const probe = alepha.inject(Probe) as Probe;
   await alepha.start();
   return probe;
 };

@@ -126,7 +126,7 @@ async function setup() {
 
   const clock = new FakeClock();
   const ctx = fakeCtx();
-  const room = new ExposedRoom(ctx as any, {}, clock);
+  const room = new ExposedRoom(ctx, {}, clock);
   return { room, ctx, clock, events, queries };
 }
 
@@ -228,7 +228,7 @@ describe("WebSocketRoom hosting a $room engine", () => {
     // Simulate an isolate reset: a brand-new room over the SAME hibernation
     // sockets, with fresh (empty) in-memory engine state.
     const clock2 = new FakeClock();
-    const room2 = new WebSocketRoom(ctx as any, {}, clock2);
+    const room2 = new WebSocketRoom(ctx, {}, clock2);
 
     clock2.advance(50); // engine is gone  -  nothing ticks
     const beforeAlarm = ws.sent.length;
@@ -255,7 +255,7 @@ describe("WebSocketRoom hosting a $room engine", () => {
     await room.webSocketMessage(ws, JSON.stringify({ move: "left" }));
     expect(await room.callRoom("/ws/world", "lobby", "moveCount")).toBe(1);
 
-    const recreated = new ExposedRoom(ctx as any, {}, new FakeClock());
+    const recreated = new ExposedRoom(ctx, {}, new FakeClock());
     await recreated.alarm();
     expect(await recreated.callRoom("/ws/world", "lobby", "moveCount")).toBe(0);
     expect(recreated.socket(ws, attachment).data).toEqual({});
@@ -270,7 +270,7 @@ describe("WebSocketRoom hosting a $room engine", () => {
 
     // Simulate an isolate reset: a brand-new room over the SAME hibernation
     // sockets, whose attachment is all that survives.
-    const room2 = new WebSocketRoom(ctx as any, {}, new FakeClock());
+    const room2 = new WebSocketRoom(ctx, {}, new FakeClock());
     await room2.alarm(); // watchdog re-hydrates c1, calling onJoin again
 
     expect(queries).toEqual([{ hero: "h-42", roomId: "lobby" }]);

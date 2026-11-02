@@ -286,7 +286,7 @@ describe("$owns request memo", () => {
         id: "u2",
         realm: "default",
         roles: [],
-      } as any);
+      });
 
       expect(await app.readQ1.run({ params: { id: "q1" } })).toBe("q1");
       expect(await app.readQ2.run({ params: { id: "q2" } })).toBe("q2");

@@ -164,7 +164,7 @@ describe("ProjectController.createProject", () => {
       await ctx.controller.updateProjectById({
         params: { id: resource.id },
         body: { title: "Renamed Project" },
-      } as any);
+      });
     });
 
     const renamed = await ctx.repos.organizations.getById(organization.id);

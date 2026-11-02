@@ -1416,7 +1416,7 @@ export class QuestController {
       }
 
       if (groups.length > 0) {
-        where.and = groups as any;
+        where.and = groups;
       }
 
       // Quests of a `draft` epic are specified but not released into the

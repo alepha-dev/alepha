@@ -531,9 +531,7 @@ export class StateManager<State extends object = AlephaState> {
     track: boolean,
   ): any {
     if (target instanceof Computed) {
-      return target.compute((dep: AnyDep) =>
-        this.read(dep as any, scope, track),
-      );
+      return target.compute((dep: AnyDep) => this.read(dep, scope, track));
     }
 
     if (target instanceof Atom) {

@@ -85,10 +85,7 @@ export const AdminNotifications = () => {
     {
       handler: ({ signal }) =>
         client.listNotificationTemplates.can()
-          ? (client.listNotificationTemplates(
-              {},
-              { request: { signal } },
-            ) as any)
+          ? client.listNotificationTemplates({}, { request: { signal } })
           : Promise.resolve([]),
       onError: () => {},
     },
@@ -215,7 +212,7 @@ export const AdminNotifications = () => {
           ...(f.status ? { status: f.status } : {}),
           ...(f.channel ? { channel: f.channel } : {}),
           ...(f.template ? { template: f.template } : {}),
-        } as any,
+        },
       });
       resolveUsers(page.content);
       return page;

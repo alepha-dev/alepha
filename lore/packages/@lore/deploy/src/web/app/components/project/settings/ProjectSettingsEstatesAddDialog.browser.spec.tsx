@@ -87,7 +87,7 @@ describe("ProjectSettingsEstatesAddDialog", () => {
     alepha.inject(I18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentProjectAtom, aProject as never);
+    alepha.store.set(currentProjectAtom, aProject);
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = { listMyEstates: { items: [] }, ...responses };

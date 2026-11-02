@@ -116,7 +116,7 @@ describe("UserJobs", () => {
       realmProvider.register("default", {
         settings: {
           refreshToken: { expirationIdle: 5 * 60 * 1000 }, // 5 minutes
-        } as never,
+        },
       });
       await alepha.start();
 

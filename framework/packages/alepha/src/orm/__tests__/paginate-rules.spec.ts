@@ -72,10 +72,13 @@ describe("paginate rules", () => {
     ).rejects.toThrow(/limit' or 'offset'/);
     // The relational engine's own path, taken when relations are included.
     await expect(
-      app.relBooks.paginate({}, {
-        offset: 2,
-        include: { author: true },
-      } as never),
+      app.relBooks.paginate(
+        {},
+        {
+          offset: 2,
+          include: { author: true },
+        },
+      ),
     ).rejects.toThrow(/limit' or 'offset'/);
     await expect(
       app.relBooks.paginate({ size: 0 }, { include: { author: true } }),

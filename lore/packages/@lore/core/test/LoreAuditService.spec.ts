@@ -117,7 +117,7 @@ describe("ActivityChannel", () => {
     channel.classify({
       url: { pathname },
       headers: agent ? { "user-agent": agent } : {},
-    } as never);
+    });
 
   it("reads the MCP endpoint first, whoever is calling", ({ expect }) => {
     expect(of("/mcp", "node")).toBe("mcp");

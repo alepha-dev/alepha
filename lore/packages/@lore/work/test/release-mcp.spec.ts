@@ -137,7 +137,7 @@ describe("MCP release tools", () => {
       ctx.alepha.store.set(currentUserAtom, {
         id: user.id,
         roles: user.roles,
-      } as never);
+      });
       return fn();
     });
 

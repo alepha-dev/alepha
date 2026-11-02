@@ -50,7 +50,7 @@ describe("parameter schemaHash validation bypass", () => {
     const { alepha, parameters } = await setup();
 
     await expect(
-      parameters.save("app.flags", { maxUploads: "not-a-number" } as never, ""),
+      parameters.save("app.flags", { maxUploads: "not-a-number" }, ""),
     ).rejects.toThrow();
 
     await alepha.stop();
@@ -61,7 +61,7 @@ describe("parameter schemaHash validation bypass", () => {
 
     const saved = await parameters.save(
       "app.flags",
-      { maxUploads: 42, label: "hi" } as never,
+      { maxUploads: 42, label: "hi" },
       "",
     );
     expect(saved.content).toMatchObject({ maxUploads: 42, label: "hi" });
@@ -76,7 +76,7 @@ describe("parameter schemaHash validation bypass", () => {
     // schema is restored without being judged by the current one.
     const saved = await parameters.save(
       "app.flags",
-      { legacyShape: true } as never,
+      { legacyShape: true },
       "hash-from-a-previous-schema",
     );
     expect(saved.content).toMatchObject({ legacyShape: true });

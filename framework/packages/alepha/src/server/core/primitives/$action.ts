@@ -630,7 +630,7 @@ export class ActionPrimitive<
       options,
     };
 
-    await this.alepha.events.emit("action:request:before", eventData as any);
+    await this.alepha.events.emit("action:request:before", eventData);
 
     if (serverActionRequest.reply?.body) {
       return serverActionRequest.reply.body as ClientRequestResponse<TConfig>;

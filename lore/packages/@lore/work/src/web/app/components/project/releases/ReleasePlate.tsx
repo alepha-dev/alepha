@@ -178,11 +178,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
         ? [
             {
               icon: tab.icon as LucideIcon,
-              text: count(
-                rows ?? 0,
-                tab.metaKeys.one as never,
-                tab.metaKeys.many as never,
-              ),
+              text: count(rows ?? 0, tab.metaKeys.one, tab.metaKeys.many),
               divide: true,
             },
           ]

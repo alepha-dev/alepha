@@ -68,9 +68,12 @@ const setup = async () => {
 
   const create = async (title: string) =>
     (
-      await projectApi.createProject.fetch({ body: { title } }, {
-        user,
-      } as never)
+      await projectApi.createProject.fetch(
+        { body: { title } },
+        {
+          user,
+        },
+      )
     ).data;
 
   /**
@@ -82,7 +85,7 @@ const setup = async () => {
   };
 
   const overview = async () =>
-    (await projectApi.getHomeOverview.fetch({}, { user } as never)).data;
+    (await projectApi.getHomeOverview.fetch({}, { user })).data;
 
   return { alepha, projectApi, limits, probe, user, create, abandon, overview };
 };

@@ -395,7 +395,7 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
                     icon={iconOf(field)}
                     clearable
                     placeholder={placeholderOf(field)}
-                    items={itemsOf(field) as never}
+                    items={itemsOf(field)}
                     // The filter's name, as the control's accessible name:
                     // an empty select says only its placeholder, and a set
                     // one only its value. A name the caller gave wins.

@@ -20,14 +20,14 @@ describe("useStore", () => {
 
   it("reflects a mutation to the subscribed key", async () => {
     const { alepha, wrapper } = await setup();
-    alepha.store.set("count" as any, 1 as any);
+    alepha.store.set("count", 1);
 
-    const { result } = renderHook(() => useStore("count" as any), { wrapper });
+    const { result } = renderHook(() => useStore("count"), { wrapper });
 
     expect(result.current[0]).toBe(1);
 
     await act(async () => {
-      alepha.store.set("count" as any, 2 as any);
+      alepha.store.set("count", 2);
     });
 
     expect(result.current[0]).toBe(2);
@@ -35,12 +35,12 @@ describe("useStore", () => {
 
   it("ignores mutations to other keys", async () => {
     const { alepha, wrapper } = await setup();
-    alepha.store.set("count" as any, 1 as any);
+    alepha.store.set("count", 1);
 
-    const { result } = renderHook(() => useStore("count" as any), { wrapper });
+    const { result } = renderHook(() => useStore("count"), { wrapper });
 
     await act(async () => {
-      alepha.store.set("unrelated" as any, 99 as any);
+      alepha.store.set("unrelated", 99);
     });
 
     expect(result.current[0]).toBe(1);
@@ -53,13 +53,13 @@ describe("useStore", () => {
    */
   it("re-reads the store when the target key changes", async () => {
     const { alepha, wrapper } = await setup();
-    alepha.store.set("a" as any, "value-a" as any);
-    alepha.store.set("b" as any, "value-b" as any);
+    alepha.store.set("a", "value-a");
+    alepha.store.set("b", "value-b");
 
-    const { result, rerender } = renderHook(
-      ({ target }) => useStore(target as any),
-      { wrapper, initialProps: { target: "a" } },
-    );
+    const { result, rerender } = renderHook(({ target }) => useStore(target), {
+      wrapper,
+      initialProps: { target: "a" },
+    });
 
     expect(result.current[0]).toBe("value-a");
 
@@ -70,18 +70,18 @@ describe("useStore", () => {
 
   it("re-subscribes when the target key changes", async () => {
     const { alepha, wrapper } = await setup();
-    alepha.store.set("a" as any, "value-a" as any);
-    alepha.store.set("b" as any, "value-b" as any);
+    alepha.store.set("a", "value-a");
+    alepha.store.set("b", "value-b");
 
-    const { result, rerender } = renderHook(
-      ({ target }) => useStore(target as any),
-      { wrapper, initialProps: { target: "a" } },
-    );
+    const { result, rerender } = renderHook(({ target }) => useStore(target), {
+      wrapper,
+      initialProps: { target: "a" },
+    });
 
     rerender({ target: "b" });
 
     await act(async () => {
-      alepha.store.set("b" as any, "value-b2" as any);
+      alepha.store.set("b", "value-b2");
     });
 
     expect(result.current[0]).toBe("value-b2");
@@ -90,25 +90,25 @@ describe("useStore", () => {
   it("seeds the default value into the store", async () => {
     const { alepha, wrapper } = await setup();
 
-    const { result } = renderHook(() => useStore("seeded" as any, "hello"), {
+    const { result } = renderHook(() => useStore("seeded", "hello"), {
       wrapper,
     });
 
     expect(result.current[0]).toBe("hello");
-    expect(alepha.store.get("seeded" as any)).toBe("hello");
+    expect(alepha.store.get("seeded")).toBe("hello");
   });
 
   it("writes through the setter", async () => {
     const { alepha, wrapper } = await setup();
-    alepha.store.set("count" as any, 1 as any);
+    alepha.store.set("count", 1);
 
-    const { result } = renderHook(() => useStore("count" as any), { wrapper });
+    const { result } = renderHook(() => useStore("count"), { wrapper });
 
     await act(async () => {
-      result.current[1](5 as any);
+      result.current[1](5);
     });
 
-    expect(alepha.store.get("count" as any)).toBe(5);
+    expect(alepha.store.get("count")).toBe(5);
     expect(result.current[0]).toBe(5);
   });
 });

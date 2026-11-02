@@ -170,7 +170,7 @@ const ReportsTeam = (props: ReportsTeamProps) => {
       >
         <ReportsHistogram
           buckets={team.channels.map((row) => ({
-            label: tr(`reports.team.channel.${row.channel}` as never),
+            label: tr(`reports.team.channel.${row.channel}`),
             count: row.count,
           }))}
           countLabel={tr("reports.team.channels.writes")}
@@ -189,7 +189,7 @@ const ReportsTeam = (props: ReportsTeamProps) => {
         <ReportsHeatmap
           columns={hours}
           rows={team.heatmap.map((cells, day) => ({
-            label: tr(`reports.team.day.${day}` as never),
+            label: tr(`reports.team.day.${day}`),
             cells,
           }))}
           describe={(day, hour, value) =>
@@ -231,7 +231,7 @@ const ReportsTeam = (props: ReportsTeamProps) => {
         />
         <ReportsHistogram
           buckets={automations.runs.map((row) => ({
-            label: tr(`reports.team.run.${row.status}` as never),
+            label: tr(`reports.team.run.${row.status}`),
             count: row.count,
           }))}
           countLabel={tr("reports.team.automations.runs")}

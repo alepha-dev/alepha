@@ -45,7 +45,7 @@ describe("ButtonSettings", () => {
       alepha.store.set("alepha.security.user", {
         id: "u-1",
         email: "ada@example.com",
-      } as never);
+      });
     }
     await alepha.start();
 

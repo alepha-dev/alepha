@@ -25,8 +25,8 @@ const views: AdminDatasetDescriptor = {
   index: "sigilId",
   dimensions: {
     properties: { sigilId: {}, path: {}, country: {} },
-  } as never,
-  measures: { properties: { count: {}, engaged: {} } } as never,
+  },
+  measures: { properties: { count: {}, engaged: {} } },
   folds: { count: ["sum"], engaged: ["sum"] },
   resolution: "1h",
   retention: [
@@ -38,8 +38,8 @@ const views: AdminDatasetDescriptor = {
 const telemetry: AdminDatasetDescriptor = {
   name: "device_metrics",
   index: "deviceId",
-  dimensions: { properties: { deviceId: {} } } as never,
-  measures: { properties: { validations: {}, temperature: {} } } as never,
+  dimensions: { properties: { deviceId: {} } },
+  measures: { properties: { validations: {}, temperature: {} } },
   folds: { validations: ["sum"], temperature: ["min", "max", "last"] },
   resolution: "1m",
   retention: [
@@ -365,8 +365,8 @@ describe("labels", () => {
   it("keeps the count and its noun in agreement", () => {
     const single = {
       ...views,
-      dimensions: { properties: { sigilId: {} } } as never,
-      measures: { properties: { samples: {} } } as never,
+      dimensions: { properties: { sigilId: {} } },
+      measures: { properties: { samples: {} } },
     };
     expect(analyticsDatasetSummary(single)).toContain("1 dim · 1 measure ·");
   });

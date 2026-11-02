@@ -86,7 +86,7 @@ describe("node:sqlite raw queries keep their column names", () => {
     // keep working.
     const rows = await app.pets.findMany({
       with: { owner: { join: owners, on: ["ownerId", owners.cols.id] } },
-    } as never);
+    });
 
     expect(rows[0]).toMatchObject({ name: "Rex" });
 

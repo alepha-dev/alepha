@@ -161,7 +161,7 @@ const connect = (ctx: TestContext, secret: string): Promise<Client> =>
   new Promise((resolve, reject) => {
     const ws = new WebSocket(ctx.url, {
       headers: { authorization: `Bearer ${secret}` },
-    } as any);
+    });
     const client: Client = { ws, frames: [] };
     ws.on("message", (data: Buffer) => {
       client.frames.push(JSON.parse(data.toString("utf8")));
@@ -177,7 +177,7 @@ const refusal = (ctx: TestContext, secret: string): Promise<number> =>
   new Promise((resolve, reject) => {
     const ws = new WebSocket(ctx.url, {
       headers: { authorization: `Bearer ${secret}` },
-    } as any);
+    });
     ws.on("unexpected-response", (_req, res) => resolve(res.statusCode ?? 0));
     ws.on("open", () => reject(new Error("accepted a secret it must refuse")));
   });

@@ -103,7 +103,7 @@ export class AutomationTemplateBindings {
     if (
       slot.values &&
       !(Array.isArray(value) ? value : [value]).every((item) =>
-        slot.values!.includes(item as never),
+        slot.values!.includes(item),
       )
     )
       throw new AlephaError(`${path}: unsupported value`);

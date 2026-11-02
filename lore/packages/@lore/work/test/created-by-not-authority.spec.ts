@@ -64,7 +64,7 @@ describe("projects.createdBy decides nothing after an ownership transfer", () =>
     await createTestMemberByProjectId(alepha, projectId, heir.id);
 
     // A quest the founder wrote, before handing the project over.
-    const quest = await createTestQuest(alepha, created.data as never, {
+    const quest = await createTestQuest(alepha, created.data, {
       projectId,
       createdBy: founder.id,
     });
@@ -76,7 +76,7 @@ describe("projects.createdBy decides nothing after an ownership transfer", () =>
       {
         params: { projectId },
         body: { title: "It crashes", description: "x" },
-      } as never,
+      },
       { user: reporter },
     );
     const comment = await comments.createFeedbackComment.fetch(

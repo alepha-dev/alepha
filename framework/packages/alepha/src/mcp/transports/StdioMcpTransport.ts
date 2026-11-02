@@ -158,7 +158,7 @@ export class StdioMcpTransport {
     this.stdoutWrite = (chunk) => original(chunk);
 
     proc.stdout.write = ((chunk: any, ...rest: any[]) =>
-      (proc.stderr.write as any)(chunk, ...rest)) as typeof proc.stdout.write;
+      proc.stderr.write(chunk, ...rest)) as typeof proc.stdout.write;
 
     this.restoreStdout = () => {
       proc.stdout.write = original as typeof proc.stdout.write;

@@ -69,7 +69,7 @@ const Accueil = (props: AccueilProps) => {
             />
             <div className="absolute right-0 bottom-0">
               <Poincon
-                titre={String((first.attributes as any)?.titre ?? "—")}
+                titre={String(first.attributes?.titre ?? "—")}
                 size="lg"
                 className="text-muted-foreground"
               />

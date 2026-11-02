@@ -658,7 +658,7 @@ describe("ProjectReportsController", () => {
       };
       await ctx.repos.quests.updateById((await quest({})).id, {
         createdAt: iso(20),
-      } as never);
+      });
       return { owner, projectId: project.id, epic, quest, iso };
     };
 
@@ -711,7 +711,7 @@ describe("ProjectReportsController", () => {
             changes: [{ field: "epic", from: "#E7" }],
           },
         ],
-      } as never);
+      });
 
       const [epic] = (await planning(owner, projectId)).epics;
 
@@ -751,7 +751,7 @@ describe("ProjectReportsController", () => {
           tag,
           title: tag,
           ...patch,
-        } as never);
+        });
       await release(1, "1.0.0", { releasedAt: iso(30), total: 4 });
       await release(2, "1.1.0", {
         releasedAt: iso(10),
@@ -784,7 +784,7 @@ describe("ProjectReportsController", () => {
         number: 1,
         tag: "2.0.0",
         title: "2.0.0",
-      } as never);
+      });
       const open = await createTestQuest(ctx, owner, project.id);
       await ctx.repos.quests.updateById(open.id, { releaseId: release.id });
       const closed = await createTestQuest(ctx, owner, project.id);
@@ -945,7 +945,7 @@ describe("ProjectReportsController", () => {
           description: "d",
           status: "pending",
           ...patch,
-        } as never);
+        });
       return { owner, projectId: project.id, iso, report };
     };
 

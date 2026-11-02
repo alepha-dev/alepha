@@ -171,9 +171,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
         const items = Array.isArray(parsed) ? parsed : [parsed];
         const valid = items.filter(
           (it): it is { name: string; content: unknown } =>
-            !!it &&
-            typeof (it as any).name === "string" &&
-            "content" in (it as any),
+            !!it && typeof it.name === "string" && "content" in it,
         );
         if (valid.length === 0) {
           toast.error(

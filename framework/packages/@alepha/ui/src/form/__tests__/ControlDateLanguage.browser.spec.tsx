@@ -30,7 +30,7 @@ describe("date controls follow the i18n language", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {

@@ -47,7 +47,7 @@ describe("Alepha#parseEnv", () => {
 
     const alepha = Alepha.create({
       env: {
-        PORT: 3000 as any,
+        PORT: 3000,
         DEBUG: true as any,
         URL: "http://localhost:$PORT?debug=$DEBUG",
       },

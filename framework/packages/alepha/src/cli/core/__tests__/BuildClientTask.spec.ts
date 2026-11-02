@@ -56,10 +56,10 @@ describe("BuildClientTask", () => {
   ): BuildTaskContext =>
     ({
       alepha: Alepha.create(),
-      options: { output } as any,
+      options: { output },
       run: (task: any) => task.handler(),
       root: "/project",
-      entry: {} as any,
+      entry: {},
       hasClient: true,
       flags: {},
     }) as unknown as BuildTaskContext;

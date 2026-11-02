@@ -291,7 +291,7 @@ export const testGeneratedColumnSqlite = async (alepha: Alepha) => {
   const created = await app.repo.create({
     firstName: "John",
     lastName: "Doe",
-  } as any);
+  });
 
   expect(created.fullName).toBe("John Doe");
 
@@ -325,7 +325,7 @@ export const testGeneratedColumnPostgres = async (alepha: Alepha) => {
   const created = await app.repo.create({
     firstName: "Jane",
     lastName: "Smith",
-  } as any);
+  });
 
   expect(created.fullName).toBe("Jane Smith");
 

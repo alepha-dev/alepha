@@ -52,8 +52,8 @@ const setup = async () => {
 
   const owner = await users.createUser({ username: "owner" });
   const project = await alepha.context.run(() => {
-    alepha.store.set(currentUserAtom, { id: owner.id, roles: ["user"] } as any);
-    return projectApi.createProject({ body: { title: "Scoped" } } as any);
+    alepha.store.set(currentUserAtom, { id: owner.id, roles: ["user"] });
+    return projectApi.createProject({ body: { title: "Scoped" } });
   });
   const member = await probe.members.findOne({
     where: {

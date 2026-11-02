@@ -60,7 +60,7 @@ const setup = async () => {
   */
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -79,7 +79,7 @@ const setup = async () => {
           { key: "apps", options: { track: true } },
         ],
       },
-    } as any),
+    }),
   );
 
   const otherProject = await asUser(OWNER, () =>
@@ -91,7 +91,7 @@ const setup = async () => {
           { key: "apps", options: { track: true } },
         ],
       },
-    } as any),
+    }),
   );
 
   return {
@@ -132,7 +132,7 @@ describe("Lore MCP — blights", () => {
       firstSeenAt: "2026-08-01T10:00:00.000Z",
       lastSeenAt: "2026-08-01T10:05:00.000Z",
       ...over,
-    } as any);
+    });
 
   it("should list everything the row carries, not a subset", async () => {
     // A schema is what serializes: any field the tool result schema omits is
@@ -338,7 +338,7 @@ describe("Lore MCP — blights", () => {
           name: "Triager",
           permissions: ["project:read", "blight:read", "blight:triage"],
         },
-        { id: owner.id, roles: ["user"] } as any,
+        { id: owner.id, roles: ["user"] },
       );
       await createTestMemberByProjectId(alepha, project.id, triager.id, {
         rank: "triager",

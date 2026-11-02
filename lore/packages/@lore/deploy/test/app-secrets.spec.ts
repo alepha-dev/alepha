@@ -219,7 +219,7 @@ describe("a deployed copy's environment", () => {
           secrets: [{ name: "STRIPE_KEY", description: "Stripe API key" }],
           variables: [{ name: "PUBLIC_URL", description: "Public origin" }],
         }),
-      } as never);
+      });
       return w;
     };
 
@@ -278,7 +278,7 @@ describe("a deployed copy's environment", () => {
               secrets: [{ name: "PUBLIC_URL" }],
               variables: [],
             }),
-          } as never,
+          },
         );
 
       await set(w, "PUBLIC_URL", "https://other.example.test");
@@ -437,11 +437,11 @@ describe("a deployed copy's environment", () => {
         slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
         type: "bay",
         deployAllowed: true,
-      } as never);
+      });
       await rows.grants.create({
         estateId: estate.id,
         projectId: w.project.id,
-      } as never);
+      });
       await rows.instances.updateById(w.instance.id, { estateId: estate.id });
     };
 
@@ -608,11 +608,11 @@ describe("a deployed copy's environment", () => {
           .inject(CredentialSealService)
           .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
         credentialKeyVersion: CredentialSealService.KEY_VERSION,
-      } as never);
+      });
       await rows.grants.create({
         estateId: estate.id,
         projectId: w.project.id,
-      } as never);
+      });
       await rows.instances.updateById(w.instance.id, { estateId: estate.id });
       await rows.artifacts.create({
         projectId: w.project.id,
@@ -622,7 +622,7 @@ describe("a deployed copy's environment", () => {
         sha256: "a".repeat(64),
         size: 10,
         fileId: crypto.randomUUID(),
-      } as never);
+      });
     };
 
     const deploy = async (w: Awaited<ReturnType<typeof world>>) => {
@@ -689,7 +689,7 @@ describe("a deployed copy's environment", () => {
         tag: "latest",
         sha256: "b".repeat(64),
         status: "succeeded",
-      } as never);
+      });
       await alepha.inject(TestRows).instances.updateById(w.instance.id, {
         resources: JSON.stringify({
           worker: `${w.project.slug}-my-app-b14-preview`,
@@ -717,7 +717,7 @@ describe("a deployed copy's environment", () => {
       const w = await world();
       const apps = alepha.inject(AppService);
 
-      const result = await apps.provisionSigil(w.instance as never, {
+      const result = await apps.provisionSigil(w.instance, {
         createdBy: w.user.id,
       });
 
@@ -734,7 +734,7 @@ describe("a deployed copy's environment", () => {
       const w = await world();
       await alepha
         .inject(AppService)
-        .provisionSigil(w.instance as never, { createdBy: w.user.id });
+        .provisionSigil(w.instance, { createdBy: w.user.id });
 
       const rows = (await list(w)).items;
       const row = rows.find(
@@ -760,12 +760,12 @@ describe("a deployed copy's environment", () => {
     it("is a no-op for a copy already carrying its key", async ({ expect }) => {
       const w = await world();
       const apps = alepha.inject(AppService);
-      await apps.provisionSigil(w.instance as never, { createdBy: w.user.id });
+      await apps.provisionSigil(w.instance, { createdBy: w.user.id });
       const first = (await alepha.inject(AppSecretService).open(w.instance.id))
         .SIGIL_KEY;
 
       const again = await apps.provisionSigil(
-        { ...w.instance, sigilId: "set" } as never,
+        { ...w.instance, sigilId: "set" },
         { createdBy: w.user.id },
       );
 
@@ -786,11 +786,12 @@ describe("a deployed copy's environment", () => {
       const w = await world();
 
       await expect(
-        alepha
-          .inject(AppService)
-          .provisionSigil({ ...w.instance, sigilId: "already" } as never, {
+        alepha.inject(AppService).provisionSigil(
+          { ...w.instance, sigilId: "already" },
+          {
             createdBy: w.user.id,
-          }),
+          },
+        ),
       ).rejects.toThrow(/only a hash is kept/);
     });
   });
@@ -853,11 +854,11 @@ describe("a deployed copy's environment", () => {
           .inject(CredentialSealService)
           .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
         credentialKeyVersion: CredentialSealService.KEY_VERSION,
-      } as never);
+      });
       await rows.grants.create({
         estateId: estate.id,
         projectId: w.project.id,
-      } as never);
+      });
       await rows.instances.updateById(w.instance.id, { estateId: estate.id });
 
       await rows.artifacts.create({
@@ -870,7 +871,7 @@ describe("a deployed copy's environment", () => {
         // A file id nothing stored, so the run fails at the fetch - after the
         // gate has passed and after the secret set has been opened.
         fileId: crypto.randomUUID(),
-      } as never);
+      });
 
       const deploys = alepha.inject(DeployService);
       const queued = await deploys.queue({

@@ -18,7 +18,7 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
   const base = z.schema.unwrap(schema);
 
   if (z.schema.isArray(base) && Array.isArray(value)) {
-    const element = (base as any).element;
+    const element = base.element;
     return value.map((v) => coerceScalar(element, v));
   }
 

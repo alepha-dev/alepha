@@ -237,7 +237,7 @@ export class DrizzleKitProvider {
       return snapshot;
     }
 
-    const upgraded = (kit as any).up(snapshot);
+    const upgraded = kit.up(snapshot);
     return upgraded && typeof upgraded === "object" && "snapshot" in upgraded
       ? upgraded.snapshot
       : upgraded;
@@ -406,7 +406,7 @@ export class DrizzleKitProvider {
     const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
     return await postgres.pushSchema(
       models,
-      wrappedDb as any,
+      wrappedDb,
       {
         schemas: [provider.schema],
         tables: undefined,

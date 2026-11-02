@@ -54,7 +54,7 @@ const ReportsFlow = (props: ReportsFlowProps) => {
       {tr("reports.flow.empty")}
     </p>
   );
-  const bucket = (key: string) => tr(`reports.flow.bucket.${key}` as never);
+  const bucket = (key: string) => tr(`reports.flow.bucket.${key}`);
   const openQuest = (shortId: number) =>
     router.push("projectQuest", {
       params: {
@@ -332,7 +332,7 @@ const ReportsFlow = (props: ReportsFlowProps) => {
                   #{quest.shortId} {quest.title}
                 </button>
                 <span className="text-muted-foreground text-xs">
-                  {tr(`reports.flow.band.${quest.band}` as never)}
+                  {tr(`reports.flow.band.${quest.band}`)}
                 </span>
                 <span className="w-12 text-right tabular-nums">
                   {Math.round(quest.ageDays)}d
@@ -380,7 +380,7 @@ const ReportsFlow = (props: ReportsFlowProps) => {
         ) : (
           <ReportsKpiRow
             kpis={flow.sizes.map((row) => ({
-              label: tr(`reports.flow.size.${row.size}` as never),
+              label: tr(`reports.flow.size.${row.size}`),
               definition: tr("reports.flow.size.definition"),
               value: duration(row.medianHours),
               hint: tr("reports.flow.size.hint", {

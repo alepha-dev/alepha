@@ -103,7 +103,7 @@ const ReportsBacklog = (props: ReportsBacklogProps) => {
         >
           <ReportsComposition
             rows={backlog.byPriority}
-            label={(value) => tr(`dashboard.filterValue.${value}` as never)}
+            label={(value) => tr(`dashboard.filterValue.${value}`)}
           />
         </ReportsSection>
         <ReportsSection
@@ -113,7 +113,7 @@ const ReportsBacklog = (props: ReportsBacklogProps) => {
         >
           <ReportsComposition
             rows={backlog.bySize}
-            label={(value) => tr(`reports.flow.size.${value}` as never)}
+            label={(value) => tr(`reports.flow.size.${value}`)}
           />
         </ReportsSection>
       </div>
@@ -125,7 +125,7 @@ const ReportsBacklog = (props: ReportsBacklogProps) => {
       >
         <ReportsHistogram
           buckets={backlog.age.map((row) => ({
-            label: tr(`reports.backlog.age.${row.key}` as never),
+            label: tr(`reports.backlog.age.${row.key}`),
             count: row.count,
           }))}
           countLabel={tr("reports.flow.series.quests")}

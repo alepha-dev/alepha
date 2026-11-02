@@ -129,7 +129,7 @@ describe("QuestView", () => {
     alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     const fake = alepha.inject(FakeLinkProvider);
 
     render(

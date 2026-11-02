@@ -58,7 +58,7 @@ describe("useProjectUsers", () => {
       .with(AlephaReactI18n);
     configure(alepha.inject(FakeLinkProvider));
     await alepha.start();
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     const wrapper = ({ children }: { children: ReactNode }) => (
       <AlephaContext.Provider value={alepha}>
         <Toaster visibleToasts={20} />

@@ -235,7 +235,7 @@ const AdminCategorySheet = (props: AdminCategorySheetProps) => {
         published: category?.published ?? true,
       },
       handler: async (values) => {
-        const body = { ...values, parentId: values.parentId as any };
+        const body = { ...values, parentId: values.parentId };
         if (category) {
           await client.commerceAdminCategoryUpdate({
             params: { id: category.id },

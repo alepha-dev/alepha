@@ -91,7 +91,7 @@ describe("the sigil row's dropped-feedback notice", () => {
 
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: options.capabilities }) as never,
+      projectFixture({ capabilities: options.capabilities }),
     );
     // The full organization membership row: the atom validates against the entity schema,
     // so a convenient subset is refused rather than tolerated.
@@ -102,8 +102,8 @@ describe("the sigil row's dropped-feedback notice", () => {
       organizationId: projectFixture().organizationId,
       userId: "00000000-0000-4000-8000-000000000001",
       rank: "owner",
-    } as never);
-    alepha.store.set(currentInstanceAtom, anInstance(options.kinds) as never);
+    });
+    alepha.store.set(currentInstanceAtom, anInstance(options.kinds));
 
     // The delete row calls `useDialog`, which throws without its provider.
     // Mounted here rather than mocked: `CLAUDE.md` bans `vi.mock`, and the

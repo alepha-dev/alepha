@@ -187,9 +187,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
     // A locked address is the form's starting value, not a field the visitor
     // fills. It arrives before mount (the page resolves the token in its
     // loader), which is what lets `useForm` anchor it here.
-    initialValues: props.lockedEmail
-      ? ({ email: props.lockedEmail } as never)
-      : undefined,
+    initialValues: props.lockedEmail ? { email: props.lockedEmail } : undefined,
     // Handled here: every error this form throws is rendered by the page itself,
     // under its field or in the alert above the form. Without an `onError`,
     // a mounted `ActionErrorToaster` toasted the same sentence a second time.

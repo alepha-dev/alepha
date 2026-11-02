@@ -536,7 +536,7 @@ export class FileService {
             }
             controller.close();
           },
-        }) as never,
+        }),
     };
   }
 
@@ -593,7 +593,7 @@ export class FileService {
               controller.error(error);
             }
           },
-        }) as never;
+        });
       },
       arrayBuffer: async () => {
         throw new InvalidFileError(

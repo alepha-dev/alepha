@@ -203,7 +203,7 @@ describe("AccountRouter", () => {
       const alepha = Alepha.create().with(AlephaReactRouter);
       alepha.store.set(accountRouterOptionsAtom, {
         hide: ["connections", "sessions"],
-      } as never);
+      });
       const router = alepha.inject(AccountRouter);
       await alepha.start();
       // Keys is absent from the registry AND unnamed by `hide`: the two

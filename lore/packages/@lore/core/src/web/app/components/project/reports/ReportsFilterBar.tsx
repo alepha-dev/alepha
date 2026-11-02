@@ -77,16 +77,13 @@ const ReportsFilterBar = (props: ReportsFilterBarProps) => {
     keepDirty: false,
     handler: async () => {},
     onChange: (key, value) => {
-      void router.push(
-        route as never,
-        {
-          query: reportsUrl.patch(
-            props.url,
-            key as keyof ReportsUrl | "dates",
-            value as Parameters<typeof reportsUrl.patch>[2],
-          ),
-        } as never,
-      );
+      void router.push(route, {
+        query: reportsUrl.patch(
+          props.url,
+          key as keyof ReportsUrl | "dates",
+          value as Parameters<typeof reportsUrl.patch>[2],
+        ),
+      });
     },
   });
 
@@ -108,7 +105,7 @@ const ReportsFilterBar = (props: ReportsFilterBarProps) => {
         items={[
           ...reportsUrl.presets.map((value) => ({
             value,
-            label: tr(`reports.filter.range.${value}` as never),
+            label: tr(`reports.filter.range.${value}`),
           })),
           { value: "custom", label: tr("reports.filter.range.custom") },
         ]}

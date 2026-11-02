@@ -59,7 +59,7 @@ const setup = async () => {
   */
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -70,7 +70,7 @@ const setup = async () => {
   // membership record, and `resolveProjectId` looks the project up among the
   // ones the caller belongs to.
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({ body: { title: "Test" } }),
   );
 
   const push = async (over: {
@@ -97,7 +97,7 @@ const setup = async () => {
           commitSha: over.commitSha,
           file,
         },
-      } as any),
+      }),
     );
   };
 
@@ -118,7 +118,7 @@ const setup = async () => {
       artifactApi.pushImage({
         params: { projectId: project.id },
         body: { app, tag, reference: `ghcr.io/acme/${app}:${tag}` },
-      } as any),
+      }),
     );
   };
 

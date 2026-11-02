@@ -110,7 +110,7 @@ const call = async (
         id: 1,
         method: "tools/call",
         params: { name, arguments: args },
-      } as never,
+      },
       { data: ctx.user },
     )
     // A tool that refuses answers with a JSON-RPC error rather than throwing
@@ -175,7 +175,7 @@ describe("MCP call rates", () => {
         ctx.alepha.context.run(async () => {
           ctx.alepha.context.set(McpProjectScope.KEY, {});
           // What the transport leaves for a tool, below which this spec calls.
-          ctx.alepha.store.set(currentUserAtom, ctx.user as never);
+          ctx.alepha.store.set(currentUserAtom, ctx.user);
           await call(ctx, tool, params);
         });
 
@@ -247,9 +247,12 @@ describe("MCP call rates", () => {
       await call(ctx, "project_list", {});
       await call(ctx, "not_a_tool", {});
 
-      const page = await ctx.admin.readMcpCalls.fetch({}, {
-        user: adminUser,
-      } as never);
+      const page = await ctx.admin.readMcpCalls.fetch(
+        {},
+        {
+          user: adminUser,
+        },
+      );
 
       expect(page.data.days).toHaveLength(30);
 
@@ -273,9 +276,12 @@ describe("MCP call rates", () => {
     });
 
     it("answers an empty window rather than nothing", async ({ expect }) => {
-      const page = await ctx.admin.readMcpCalls.fetch({}, {
-        user: adminUser,
-      } as never);
+      const page = await ctx.admin.readMcpCalls.fetch(
+        {},
+        {
+          user: adminUser,
+        },
+      );
 
       expect(page.data.days).toHaveLength(30);
       expect(page.data.tools).toEqual([]);

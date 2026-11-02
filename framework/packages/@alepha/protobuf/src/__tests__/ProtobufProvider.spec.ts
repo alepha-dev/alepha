@@ -684,7 +684,7 @@ message User {
       const schema = z.object({ name: z.text() });
 
       expect(() =>
-        alepha.codec.decode(schema, 42 as any, { encoder: "protobuf" }),
+        alepha.codec.decode(schema, 42, { encoder: "protobuf" }),
       ).toThrow(/Unsupported value type/);
     });
   });

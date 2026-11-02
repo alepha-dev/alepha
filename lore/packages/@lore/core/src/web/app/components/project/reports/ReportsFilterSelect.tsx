@@ -23,8 +23,8 @@ const ReportsFilterSelect = (props: ReportsFilterSelectProps) => {
     <Control
       input={props.input}
       label=""
-      inputProps={{ "aria-label": tr(props.filter.labelKey as never) }}
-      placeholder={tr(props.filter.labelKey as never)}
+      inputProps={{ "aria-label": tr(props.filter.labelKey) }}
+      placeholder={tr(props.filter.labelKey)}
       clearable
       minimal
       size="xs"

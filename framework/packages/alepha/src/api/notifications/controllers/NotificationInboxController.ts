@@ -205,7 +205,7 @@ export class NotificationInboxController {
       where.or = [
         { createdAt: { lt: createdAt } },
         { createdAt: { eq: createdAt }, id: { lt: id } },
-      ] as any;
+      ];
     }
 
     return where;

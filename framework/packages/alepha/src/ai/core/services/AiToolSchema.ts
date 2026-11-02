@@ -23,10 +23,7 @@ export class AiToolSchema {
   public toJsonSchema(schema: ZType): Record<string, unknown> {
     let json: Record<string, unknown>;
     try {
-      json = z.toJSONSchema(schema as any, { io: "input" }) as Record<
-        string,
-        unknown
-      >;
+      json = z.toJSONSchema(schema, { io: "input" }) as Record<string, unknown>;
     } catch (error) {
       throw new AlephaError(
         "A tool input schema cannot be expressed as JSON Schema",

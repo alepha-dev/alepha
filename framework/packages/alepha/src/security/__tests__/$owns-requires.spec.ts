@@ -430,12 +430,12 @@ describe("$owns requires", () => {
     );
 
     expect(secure).toBeDefined();
-    expect((secure?.options as any)?.permissions).toEqual(["quest:create"]);
+    expect(secure?.options?.permissions).toEqual(["quest:create"]);
 
     const unrequired = app.readProject.middlewares.find(
       (m) => m?.name === "$secure",
     );
-    expect((unrequired?.options as any)?.permissions).toBeUndefined();
+    expect(unrequired?.options?.permissions).toBeUndefined();
   });
 
   it("reads the membership row once across a fan-out, requires or not", async ({
@@ -506,7 +506,7 @@ describe("$owns requires", () => {
       $owns({
         repository: () => app.projects as unknown as Repository<any>,
         param: "id",
-      } as never),
+      }),
     ).toThrow(AlephaError);
   });
 

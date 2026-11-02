@@ -90,7 +90,7 @@ export const AdminParametersEditorForm = (
     <div className="flex min-h-0 flex-col">
       <AutoForm
         form={form}
-        fields={props.fields as never}
+        fields={props.fields}
         fill
         card="rounded-none ring-0 border-y"
         // Two columns, not three: every field now carries help text under it,

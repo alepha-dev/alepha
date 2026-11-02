@@ -34,7 +34,7 @@ export const ActivityDetails = (props: ActivityDetailsProps) => {
             ? "activity.capability.enabled"
             : "activity.capability.disabled",
           {
-            args: [descriptor ? tr(descriptor.labelKey as never) : capability],
+            args: [descriptor ? tr(descriptor.labelKey) : capability],
           },
         )}
       </span>

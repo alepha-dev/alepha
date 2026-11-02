@@ -131,7 +131,7 @@ describe("ProjectEpic", () => {
     alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     const fake = alepha.inject(FakeLinkProvider);
     const app = alepha;
 
@@ -203,7 +203,7 @@ describe("ProjectEpic, the Edit button", () => {
     alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
 
     render(
       <AlephaContext.Provider value={alepha}>

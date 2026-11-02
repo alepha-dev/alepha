@@ -59,7 +59,7 @@ describe("estate MCP tools", () => {
 
   const stats = (user: { id: string }, params: Record<string, unknown>) =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, user as never);
+      alepha.store.set(currentUserAtom, user);
       return (
         alepha.inject(EstateTools).estate_stats as unknown as {
           execute: (p: unknown) => Promise<any>;

@@ -146,7 +146,7 @@ describe("tearing a copy's resources down", () => {
     await rows.grants.create({
       estateId: estate.id,
       projectId: project.id,
-    } as never);
+    });
     await rows.instances.updateById(instance.id, {
       estateId: estate.id,
       ...(resources === undefined

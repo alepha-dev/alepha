@@ -83,7 +83,7 @@ const setup = async (
   const alepha = Alepha.create({ env: { ...baseEnv, ...env } });
   const provider = alepha.inject(TestProvider);
   if (Object.keys(options).length > 0) {
-    alepha.store.mut(nodemailerEmailOptions, () => options as never);
+    alepha.store.mut(nodemailerEmailOptions, () => options);
   }
   await alepha.start();
   return { alepha, provider };

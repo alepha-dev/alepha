@@ -45,7 +45,7 @@ describe("ControlSelect searchable", () => {
     items?: (typeof SHORT)[number][] | string[];
   }) => {
     const form = useForm({
-      schema: z.object({ role: z.text().optional() as never }),
+      schema: z.object({ role: z.text().optional() }),
       handler: () => {},
     });
     return (

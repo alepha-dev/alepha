@@ -234,10 +234,10 @@ export class AdminProductController {
           // The same round-trip `api/parameters` and `api/analytics` use:
           // JSON Schema on the wire, rebuilt client-side with `jsonSchemaToZod`
           // and handed to `AutoForm`. A zod schema cannot be serialised.
-          schemas[kind] = z.toJSONSchema(configSchema as any);
+          schemas[kind] = z.toJSONSchema(configSchema);
         }
       }
-      return { kinds: this.kinds.kinds(), schemas } as any;
+      return { kinds: this.kinds.kinds(), schemas };
     },
   });
 

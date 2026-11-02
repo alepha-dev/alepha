@@ -144,7 +144,7 @@ describe("lore stack", () => {
       },
     });
     const run = async (sub: keyof StackCommand, argv: string) => {
-      await alepha.inject(CliProvider).run(command[sub] as never, { argv });
+      await alepha.inject(CliProvider).run(command[sub], { argv });
     };
     return { alepha, fs, run, printed, calls };
   };

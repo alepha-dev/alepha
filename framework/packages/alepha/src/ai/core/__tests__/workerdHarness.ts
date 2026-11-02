@@ -101,7 +101,7 @@ export const withWorkerd = async <T>(
             ...options.config,
           },
         },
-      ] as any,
+      ],
     });
     const mf = runtime;
     await options.setup?.(mf);
@@ -111,7 +111,7 @@ export const withWorkerd = async <T>(
         method: "POST",
         ...rest,
         body: JSON.stringify(body),
-      } as any) as unknown as Promise<Response>;
+      }) as unknown as Promise<Response>;
     });
   } finally {
     await runtime?.dispose();

@@ -116,7 +116,7 @@ export class DatabaseCacheProvider extends CacheProvider {
     }
 
     const row = await this.repository.findOne({
-      where: this.unexpiredWhere(name, key) as any,
+      where: this.unexpiredWhere(name, key),
     });
 
     if (!row) {
@@ -189,7 +189,7 @@ export class DatabaseCacheProvider extends CacheProvider {
 
   public async has(name: string, key: string): Promise<boolean> {
     const row = await this.repository.findOne({
-      where: this.unexpiredWhere(name, key) as any,
+      where: this.unexpiredWhere(name, key),
     });
     return row != null;
   }
@@ -204,7 +204,7 @@ export class DatabaseCacheProvider extends CacheProvider {
     }
 
     const rows = await this.repository.findMany({
-      where: { and: baseAnd } as any,
+      where: { and: baseAnd },
     });
 
     return rows.map((row) => row.cacheKey);
@@ -233,7 +233,7 @@ export class DatabaseCacheProvider extends CacheProvider {
       container: { eq: name },
       cacheKey: { eq: key },
       expiresAt: { lt: nowIso },
-    } as any);
+    });
 
     // Atomic upsert via `INSERT ... ON CONFLICT (container, cacheKey) DO UPDATE
     // SET count = COALESCE(cache_entries.count, 0) + excluded.count`.

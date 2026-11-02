@@ -6,7 +6,7 @@ import { FormModel } from "../services/FormModel.ts";
 
 describe("FormModel.props form method", () => {
   const makeForm = (alepha: Alepha) =>
-    alepha.inject(FormModel as any, {
+    alepha.inject(FormModel, {
       lifetime: "transient",
       args: [
         "f1",
@@ -49,7 +49,7 @@ describe("FormModel.props form method", () => {
       preventDefault: () => {
         defaultPrevented = true;
       },
-    } as any);
+    });
 
     expect(defaultPrevented).toBe(true);
   });

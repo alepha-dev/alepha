@@ -61,7 +61,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -70,7 +70,7 @@ const setup = async () => {
     asUser(userId, () => tool.execute(params));
 
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({ body: { title: "Test" } }),
   );
 
   const quest = await call(questTools.quest_create, {
@@ -96,7 +96,7 @@ const setup = async () => {
         // Re-wrapped so the part is an `ArrayBuffer`-backed view: a bare
         // `Buffer` is `ArrayBufferLike` and does not satisfy `BlobPart`.
         body: { file: new File([new Uint8Array(bytes)], name, { type }) },
-      } as any),
+      }),
     );
     await asUser(OWNER, () =>
       questApi.addAttachment({
@@ -271,7 +271,7 @@ describe("Lore MCP: quest attachments", () => {
       const other = await asUser(OWNER, () =>
         alepha
           .inject(ProjectController)
-          .createProject({ body: { title: "Second" } } as any),
+          .createProject({ body: { title: "Second" } }),
       );
       const quest = await call(questTools.quest_create, {
         project: other.id,
@@ -405,7 +405,7 @@ describe("listQuestAttachments", () => {
 
     counter.reset();
     const listed = await asUser(OWNER, () =>
-      questApi.listQuestAttachments({ params: { id: quest.id } } as any),
+      questApi.listQuestAttachments({ params: { id: quest.id } }),
     );
 
     expect(listed.map((it) => it.name)).toEqual([
@@ -431,7 +431,7 @@ describe("listQuestAttachments", () => {
     await alepha.inject(FileService).fileRepository.deleteById(doomed);
 
     const listed = await asUser(OWNER, () =>
-      questApi.listQuestAttachments({ params: { id: quest.id } } as any),
+      questApi.listQuestAttachments({ params: { id: quest.id } }),
     );
 
     // Absent from the batched result set has to mean exactly what the old
@@ -444,7 +444,7 @@ describe("listQuestAttachments", () => {
 
     counter.reset();
     const listed = await asUser(OWNER, () =>
-      questApi.listQuestAttachments({ params: { id: quest.id } } as any),
+      questApi.listQuestAttachments({ params: { id: quest.id } }),
     );
 
     // `inArray: []` throws, so a quest with no attachments must return

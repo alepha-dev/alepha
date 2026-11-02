@@ -57,7 +57,7 @@ const ProjectSettingsRanksPage = () => {
         );
         return granted ? undefined : "off";
       }}
-      label={(key, fallback) => (key ? tr(key as never) : fallback)}
+      label={(key, fallback) => (key ? tr(key) : fallback)}
     />
   );
 };

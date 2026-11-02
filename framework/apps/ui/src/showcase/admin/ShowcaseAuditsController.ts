@@ -36,7 +36,7 @@ export class ShowcaseAuditsController {
       query: auditQuerySchema,
       response: z.page(auditResourceSchema),
     },
-    handler: ({ query }) => this.audits.paginate(query as any),
+    handler: ({ query }) => this.audits.paginate(query),
   });
 
   /**
@@ -51,7 +51,7 @@ export class ShowcaseAuditsController {
     schema: {
       response: z.array(auditActionPairSchema),
     },
-    handler: () => this.audits.actionPairs() as any,
+    handler: () => this.audits.actionPairs(),
   });
 
   /**

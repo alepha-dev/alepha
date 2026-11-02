@@ -56,9 +56,9 @@ export class RequestOriginPolicy {
    * an app without the CORS module lists nothing.
    */
   public listedOrigins(): string[] {
-    const options = this.alepha.store.get(
-      "alepha.server.cors.options" as any,
-    ) as { origin?: string } | undefined;
+    const options = this.alepha.store.get("alepha.server.cors.options") as
+      | { origin?: string }
+      | undefined;
     const origin = options?.origin;
     if (!origin || origin === "*") {
       return [];

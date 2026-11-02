@@ -32,15 +32,12 @@ const ReportsEpicTimeline = (props: ReportsEpicTimelineProps) => {
             className="grid grid-cols-[minmax(0,14rem)_1fr_4rem] items-center gap-3 text-xs"
           >
             <a
-              {...router.anchor(
-                "projectEpic" as never,
-                {
-                  params: {
-                    projectSlug: router.state.params.projectSlug,
-                    epicNumber: String(epic.number),
-                  },
-                } as never,
-              )}
+              {...router.anchor("projectEpic", {
+                params: {
+                  projectSlug: router.state.params.projectSlug,
+                  epicNumber: String(epic.number),
+                },
+              })}
               className="truncate hover:underline"
             >
               {epic.title}

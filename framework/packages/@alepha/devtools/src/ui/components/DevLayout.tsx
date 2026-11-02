@@ -122,7 +122,7 @@ const DevLayout = () => {
   const envCount = useMemo(() => {
     const names = new Set<string>();
     for (const env of d?.envs ?? []) {
-      for (const name of Object.keys((env.schema as any)?.properties ?? {})) {
+      for (const name of Object.keys(env.schema?.properties ?? {})) {
         names.add(name);
       }
     }

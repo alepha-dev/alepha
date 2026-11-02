@@ -49,7 +49,7 @@ describe("ControlSelect multi", () => {
   }) => {
     const form = useForm({
       // An ARRAY field is the whole multi-select API — there is no `multi` prop.
-      schema: z.object({ status: z.array(z.text()).optional() as never }),
+      schema: z.object({ status: z.array(z.text()).optional() }),
       handler: () => {},
     });
     return (
@@ -81,7 +81,7 @@ describe("ControlSelect multi", () => {
    */
   const ServerProbe = () => {
     const form = useForm({
-      schema: z.object({ status: z.array(z.text()).optional() as never }),
+      schema: z.object({ status: z.array(z.text()).optional() }),
       handler: () => {},
     });
     return (

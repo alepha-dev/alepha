@@ -377,7 +377,7 @@ export class ArtifactController {
           hasMaps: Boolean(variant.mapsFileId),
         })),
         ...surroundings,
-      } as any;
+      };
     },
   });
 

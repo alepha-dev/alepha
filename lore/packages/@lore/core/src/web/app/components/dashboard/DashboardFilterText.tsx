@@ -40,7 +40,7 @@ const DashboardFilterText = (props: DashboardFilterTextProps) => {
       )}
       inputProps={{
         "data-testid": `dashboard-filter-text-${props.name}`,
-        "aria-label": tr(`dashboard.filterField.${props.name}` as never),
+        "aria-label": tr(`dashboard.filterField.${props.name}`),
       }}
     />
   );

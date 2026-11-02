@@ -56,7 +56,7 @@ describe("$page deferred values (server)", () => {
 
   const start = async () => {
     const alepha = Alepha.create({
-      env: { SERVER_PORT: 0 as never },
+      env: { SERVER_PORT: 0 },
     })
       .with(AlephaServer)
       .with(AlephaReactRouter)

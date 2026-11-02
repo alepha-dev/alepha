@@ -47,7 +47,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -60,7 +60,7 @@ const setup = async () => {
         title: "Test",
         capabilities: [{ key: "work" }, { key: "support" }],
       },
-    } as any),
+    }),
   );
 
   await alepha.inject(RankService).save(
@@ -76,7 +76,7 @@ const setup = async () => {
         "quest:create",
       ],
     },
-    { id: owner.id, roles: ["user"] } as any,
+    { id: owner.id, roles: ["user"] },
   );
   await createTestMemberByProjectId(alepha, project.id, triager.id, {
     rank: "triager",
@@ -88,7 +88,7 @@ const setup = async () => {
       feedbackApi.submitFeedback({
         params: { projectId: project.id },
         body: { title, description: "x" },
-      } as any),
+      }),
     );
 
   return {

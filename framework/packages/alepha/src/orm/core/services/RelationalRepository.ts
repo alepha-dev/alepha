@@ -201,7 +201,7 @@ export class RelationalRepository<
     if (!this.delegates(query)) {
       const page = await this.base.paginate(
         pagination,
-        this.toBaseQuery(query) as never,
+        this.toBaseQuery(query),
         options,
       );
 
@@ -228,7 +228,7 @@ export class RelationalRepository<
       ),
       options.count
         ? (this.assertCountable(args.where),
-          this.base.count(args.where as never, options))
+          this.base.count(args.where, options))
         : undefined,
     ]);
 
@@ -236,9 +236,7 @@ export class RelationalRepository<
       rows,
       limit,
       offset,
-      orderBy
-        ? this.queryManager.normalizeOrderBy(orderBy as never)
-        : undefined,
+      orderBy ? this.queryManager.normalizeOrderBy(orderBy) : undefined,
     );
 
     page.page.totalElements = total;
@@ -262,7 +260,7 @@ export class RelationalRepository<
     options: Omit<RelationalReadOptions, "now"> = {},
   ): Promise<number> {
     this.assertCountable(query.where);
-    return await this.base.count(query.where as never, options);
+    return await this.base.count(query.where, options);
   }
 
   protected assertCountable(where: unknown): void {
@@ -299,7 +297,7 @@ export class RelationalRepository<
     args: TArgs,
   ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = (await this.base.updateOne(
-      args.where as never,
+      args.where,
       args.data as never,
     )) as Record<string, any>;
 
@@ -364,7 +362,7 @@ export class RelationalRepository<
   public async delete(
     args: DeleteArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
-    return await this.base.deleteOne(args.where as never, {
+    return await this.base.deleteOne(args.where, {
       force: args.force,
     });
   }
@@ -385,7 +383,7 @@ export class RelationalRepository<
   public async deleteMany(
     args: DeleteArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
-    return await this.base.deleteMany(args.where as never, {
+    return await this.base.deleteMany(args.where, {
       force: args.force,
     });
   }
@@ -438,7 +436,7 @@ export class RelationalRepository<
     }
 
     return this.rqb.toSQL({
-      relations: this.relations as never,
+      relations: this.relations,
       entityKey: this.key,
       provider: this.base.provider,
       query: query as never,
@@ -520,7 +518,7 @@ export class RelationalRepository<
     entityKey: string,
     data: CreateInput,
   ): Promise<Record<string, any>> {
-    const declared = (this.relations.map as any)[entityKey] as
+    const declared = this.relations.map[entityKey] as
       | Record<string, ResolvedRelation>
       | undefined;
 
@@ -570,7 +568,7 @@ export class RelationalRepository<
 
     const row = (await this.repositories
       .getRepository(entity)
-      .create(scalars as never)) as Record<string, any>;
+      .create(scalars)) as Record<string, any>;
 
     for (const [relation, items] of toMany) {
       for (const item of items) {
@@ -624,7 +622,7 @@ export class RelationalRepository<
     await this.repositories.getRepository(junction).create({
       [through.fromColumn]: parent[relation.from],
       [through.toColumn]: child[relation.to],
-    } as never);
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -645,16 +643,16 @@ export class RelationalRepository<
     this.assertNoRootForce(query);
     if (this.delegates(query)) {
       return await this.rqb.findMany({
-        relations: this.relations as never,
+        relations: this.relations,
         entityKey: this.key,
         provider: this.base.provider,
-        query: { ...(query as object), force: options.force } as never,
+        query: { ...(query as object), force: options.force },
         tx: options.tx,
       });
     }
 
     return (await this.base.findMany(
-      this.toBaseQuery(query) as never,
+      this.toBaseQuery(query),
       options,
     )) as Array<Record<string, any>>;
   }
@@ -696,7 +694,7 @@ export class RelationalRepository<
    * translation explain itself.
    */
   protected namesRelation(node: unknown): boolean {
-    const declared = (this.relations.map as any)[this.key] as
+    const declared = this.relations.map[this.key] as
       | Record<string, unknown>
       | undefined;
     if (!declared) return false;

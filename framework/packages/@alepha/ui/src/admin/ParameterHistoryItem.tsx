@@ -178,9 +178,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
                   <button
                     type="button"
                     className="text-primary truncate hover:underline"
-                    onClick={() =>
-                      router.push(`/admin/users/${v.creatorId}` as never)
-                    }
+                    onClick={() => router.push(`/admin/users/${v.creatorId}`)}
                   >
                     {v.creator?.username ??
                       v.creator?.email ??

@@ -61,7 +61,7 @@ export const queryToFilters = (
       : raw;
 
     try {
-      out[key] = alepha.codec.decode(field as any, coerceScalar(field, input));
+      out[key] = alepha.codec.decode(field, coerceScalar(field, input));
     } catch {
       // A value this schema no longer accepts, from a link written against
       // an older shape. The rest of the link still applies.

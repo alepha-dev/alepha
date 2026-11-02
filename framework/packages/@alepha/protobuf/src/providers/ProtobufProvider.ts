@@ -75,7 +75,7 @@ export class ProtobufProvider {
       return cached;
     }
 
-    const json = z.toJSONSchema(schema as any, {
+    const json = z.toJSONSchema(schema, {
       reused: "inline",
     }) as JsonSchema;
     this.jsonSchemas.set(schema, json);

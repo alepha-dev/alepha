@@ -44,7 +44,7 @@ describe("alepha/api/users - RealmProvider", () => {
 
     const realmProvider = alepha.inject(RealmProvider);
     realmProvider.register("custom", {
-      settings: { registrationAllowed: false } as never,
+      settings: { registrationAllowed: false },
     });
 
     const realm = realmProvider.getRealm("custom");

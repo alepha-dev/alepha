@@ -174,8 +174,8 @@ describe("AnalyticsEntityFactory", () => {
       tables: [raw, rolled],
     } = AnalyticsEntityFactory.build(dataset);
 
-    database.registerEntity(raw as never);
-    database.registerEntity(rolled as never);
+    database.registerEntity(raw);
+    database.registerEntity(rolled);
     await alepha.start();
 
     try {
@@ -186,11 +186,11 @@ describe("AnalyticsEntityFactory", () => {
       // that puts a table into a migration snapshot in non-test mode.
       const rawRows = await database.db
         .select()
-        .from(database.table(raw as never))
+        .from(database.table(raw))
         .limit(0);
       const rolledRows = await database.db
         .select()
-        .from(database.table(rolled as never))
+        .from(database.table(rolled))
         .limit(0);
       expect(rawRows).toEqual([]);
       expect(rolledRows).toEqual([]);

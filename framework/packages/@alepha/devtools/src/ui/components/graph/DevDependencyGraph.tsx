@@ -221,9 +221,9 @@ export const DevDependencyGraph = () => {
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
-              onNodeClick={handleNodeClick as any}
+              onNodeClick={handleNodeClick}
               onPaneClick={handlePaneClick}
-              nodeTypes={nodeTypes as any}
+              nodeTypes={nodeTypes}
               fitView
               fitViewOptions={{ padding: 0.2 }}
               minZoom={0.1}

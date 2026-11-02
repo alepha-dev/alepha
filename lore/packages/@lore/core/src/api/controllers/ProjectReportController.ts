@@ -22,6 +22,6 @@ export class ProjectReportController {
       response: z.record(z.text(), z.any()),
     },
     handler: ({ params, query }) =>
-      this.reports.read(params.section, params.id, query) as any,
+      this.reports.read(params.section, params.id, query),
   });
 }

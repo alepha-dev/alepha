@@ -26,7 +26,7 @@ describe("HeadProvider global head merge", () => {
     ];
     const state = emptyState();
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head).toMatchObject({
       htmlAttributes: { lang: "fr", "data-theme": "portal" },
@@ -44,7 +44,7 @@ describe("HeadProvider global head merge", () => {
     ];
     const state = emptyState();
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect((state.head as any).htmlAttributes).toEqual({ lang: "es" });
   });
@@ -57,7 +57,7 @@ describe("HeadProvider global head merge", () => {
       layers: [{ route: { head: { description: "The page" } } }],
     };
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     const meta: any[] = (state.head as any).meta;
     const contents = (key: string) =>
@@ -78,7 +78,7 @@ describe("HeadProvider global head merge", () => {
     ];
     const state = emptyState();
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect((state.head as any).bodyAttributes).toEqual({
       class: "app",

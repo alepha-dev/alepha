@@ -242,7 +242,7 @@ describe("$storage", () => {
       const owner = randomUUID();
       const stored = await app.images.upload(
         fs.createFile({ text: "a", name: "a.txt" }),
-        { user: { id: owner, name: "Ada", realm: "default" } as never },
+        { user: { id: owner, name: "Ada", realm: "default" } },
       );
       expect(stored.creator).toBe(owner);
 

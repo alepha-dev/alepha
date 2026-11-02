@@ -29,7 +29,7 @@ export class ShowcaseFilesController {
       query: fileQuerySchema,
       response: z.page(fileResourceSchema),
     },
-    handler: ({ query }) => this.files.paginate(query as any),
+    handler: ({ query }) => this.files.paginate(query),
   });
 
   /**
@@ -53,7 +53,7 @@ export class ShowcaseFilesController {
       body: z.record(z.text(), z.any()),
       response: fileResourceSchema,
     },
-    handler: () => this.files.rows()[0] as any,
+    handler: () => this.files.rows()[0],
   });
 
   public readonly deleteFile = $action({

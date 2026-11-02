@@ -55,7 +55,7 @@ const setup = async () => {
       alepha.store.set(currentUserAtom, {
         id: owner.id,
         roles: ["user"],
-      } as never);
+      });
       return fn();
     });
 
@@ -77,7 +77,7 @@ const activity = (ctx: Ctx, projectId: number, type?: string) =>
     ctx.projectApi.getProjectActivity({
       params: { id: projectId },
       query: type ? { type } : {},
-    } as never),
+    }),
   );
 
 const setCapability = (
@@ -91,7 +91,7 @@ const setCapability = (
     ctx.capabilityApi.setCapability({
       params: { projectId, key },
       body: { enabled, ...(options ? { options } : {}) },
-    } as never),
+    }),
   );
 
 const offeredKinds = async (ctx: Ctx, projectId: number) =>
@@ -124,12 +124,12 @@ describe("the activity feed and capabilities", () => {
           area: "general",
           priority: "medium",
         },
-      } as never),
+      }),
     );
     await ctx.asUser(() =>
       ctx.folioApi.create({
         body: { projectId: project.id, title: "A folio", content: "body" },
-      } as never),
+      }),
     );
 
     const both = await activity(ctx, project.id);
@@ -197,7 +197,7 @@ describe("the activity feed and capabilities", () => {
     await ctx.asUser(() =>
       ctx.folioApi.create({
         body: { projectId: project.id, title: "A folio", content: "body" },
-      } as never),
+      }),
     );
 
     // ⚠️ The intersection is the load-bearing part: an empty `type` string
@@ -288,7 +288,7 @@ describe("the activity feed and capabilities", () => {
       ctx.epicApi.createEpic({
         params: { projectId: project.id },
         body: { title: "An epic" },
-      } as never),
+      }),
     );
 
     const before = await activity(ctx, project.id);

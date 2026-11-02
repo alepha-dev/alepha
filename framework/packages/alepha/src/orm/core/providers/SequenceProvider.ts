@@ -78,7 +78,7 @@ export class SequenceProvider {
       where: {
         name: { eq: name },
         scope: { eq: scope },
-      } as any,
+      },
     });
     return row ? Number(row.value) : null;
   }

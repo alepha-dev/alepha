@@ -23,15 +23,12 @@ const ReportsFolioList = (props: ReportsFolioListProps) => {
       {props.folios.map((folio) => (
         <li key={folio.shortId} className="flex items-center gap-3">
           <a
-            {...router.anchor(
-              "projectFoliosFolio" as never,
-              {
-                params: {
-                  projectSlug: router.state.params.projectSlug,
-                  shortId: String(folio.shortId),
-                },
-              } as never,
-            )}
+            {...router.anchor("projectFoliosFolio", {
+              params: {
+                projectSlug: router.state.params.projectSlug,
+                shortId: String(folio.shortId),
+              },
+            })}
             className="min-w-0 flex-1 truncate hover:underline"
           >
             {folio.title}

@@ -58,10 +58,10 @@ describe("WebVitalsCollector", () => {
 
   it("observe() is a no-op when PerformanceObserver is unavailable", () => {
     const v = new WebVitalsCollector(() => {});
-    const orig = (globalThis as any).PerformanceObserver;
+    const orig = globalThis.PerformanceObserver;
     (globalThis as any).PerformanceObserver = undefined;
     expect(() => v.observe()).not.toThrow();
-    (globalThis as any).PerformanceObserver = orig;
+    globalThis.PerformanceObserver = orig;
   });
 
   /**
@@ -172,7 +172,7 @@ describe("WebVitalsCollector path attribution", () => {
   let realPO: any;
 
   beforeEach(() => {
-    realPO = (globalThis as any).PerformanceObserver;
+    realPO = globalThis.PerformanceObserver;
     (globalThis as any).PerformanceObserver = FakePerformanceObserver;
     FakePerformanceObserver.byType.clear();
     Object.defineProperty(document, "visibilityState", {
@@ -182,7 +182,7 @@ describe("WebVitalsCollector path attribution", () => {
   });
 
   afterEach(() => {
-    (globalThis as any).PerformanceObserver = realPO;
+    globalThis.PerformanceObserver = realPO;
   });
 
   it("files LCP under the page that painted, not the one on screen at hidden", () => {

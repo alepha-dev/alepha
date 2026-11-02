@@ -83,7 +83,7 @@ const statementsFor = async (projectCount: number) => {
     // Letters, not numbers: a title that slugs to `project-0` is reserved.
     await projectApi.createProject.fetch(
       { body: { title: `Garden ${String.fromCharCode(97 + i)}` } },
-      { user } as never,
+      { user },
     );
   }
 
@@ -101,11 +101,9 @@ const statementsFor = async (projectCount: number) => {
 
   const result = {
     getHomeOverview: await count(() =>
-      projectApi.getHomeOverview.fetch({}, { user } as never),
+      projectApi.getHomeOverview.fetch({}, { user }),
     ),
-    getHomeBoard: await count(() =>
-      homeApi.getHomeBoard.fetch({}, { user } as never),
-    ),
+    getHomeBoard: await count(() => homeApi.getHomeBoard.fetch({}, { user })),
   };
   await alepha.stop();
   return result;

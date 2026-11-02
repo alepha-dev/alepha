@@ -175,7 +175,7 @@ export class R2FileStorageProvider implements FileStorageProvider {
     const second = await parts.next();
 
     if (second.done) {
-      await r2.put(key, head as never, metadata);
+      await r2.put(key, head, metadata);
       return fileId;
     }
 

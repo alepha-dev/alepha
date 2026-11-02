@@ -16,7 +16,7 @@ import { FormModel } from "../services/FormModel.ts";
  */
 describe("FormModel.submit loading pairing", () => {
   const makeForm = (alepha: Alepha) =>
-    alepha.inject(FormModel as any, {
+    alepha.inject(FormModel, {
       lifetime: "transient",
       args: [
         "f1",

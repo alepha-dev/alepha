@@ -133,7 +133,7 @@ describe("Lore domain audits", () => {
    * admin log reads through.
    */
   const rowsOf = async (type: string) => {
-    const page = await ctx.audits.find({ type } as never);
+    const page = await ctx.audits.find({ type });
     return page.content as unknown as Array<Record<string, any>>;
   };
 

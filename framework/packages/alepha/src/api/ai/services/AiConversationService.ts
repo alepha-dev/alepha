@@ -201,7 +201,7 @@ export class AiConversationService {
   public async purge(cutoff: string, limit = 1_000): Promise<number> {
     const stale = await this.conversations.findMany({
       where: { updatedAt: { lt: cutoff } },
-      columns: ["id"] as any,
+      columns: ["id"],
       limit,
     });
     if (stale.length === 0) {

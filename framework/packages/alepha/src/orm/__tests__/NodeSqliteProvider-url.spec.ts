@@ -14,7 +14,7 @@ import { NodeSqliteProvider } from "../core/providers/drivers/NodeSqliteProvider
  */
 describe("NodeSqliteProvider#url", () => {
   const provider = (env: Record<string, string>) =>
-    Alepha.create({ env }).with(AlephaOrm).inject(NodeSqliteProvider) as any;
+    Alepha.create({ env }).with(AlephaOrm).inject(NodeSqliteProvider);
 
   it("should use an in-memory database under test", ({ expect }) => {
     expect(provider({ DATABASE_URL: "" }).url).toBe(":memory:");

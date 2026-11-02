@@ -168,7 +168,7 @@ export const useKanbanColumnOps = (
     {
       handler: async (_ctx, name, color) => {
         const project = alepha.store.get(currentProjectAtom);
-        const current = (project as any)?.kanbanColumnConfig ?? {};
+        const current = project?.kanbanColumnConfig ?? {};
         const merged = { ...current[name] };
         // Absent rather than a stored default: "no colour chosen" is what an
         // empty entry means, so writing one would leave two encodings of the

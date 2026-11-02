@@ -67,10 +67,10 @@ if (process.env.FIXTURE_MODE !== "no-run") {
           : undefined,
     once: process.env.FIXTURE_MODE === "once",
     configure: (alepha) => {
-      alepha.store.set("fixture.configured" as any, true);
+      alepha.store.set("fixture.configured", true);
     },
     ready: (alepha) => {
-      if (!alepha.store.get("fixture.configured" as any)) {
+      if (!alepha.store.get("fixture.configured")) {
         throw new AlephaError("ready ran before configure");
       }
       if (!(globalThis as any).__fixtureWrapperDone) {

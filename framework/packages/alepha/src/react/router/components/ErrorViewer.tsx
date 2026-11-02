@@ -188,8 +188,8 @@ function buildErrorText(error: Error): string {
 }
 
 function getHttpStatus(error: Error): number | undefined {
-  if ("status" in error && typeof (error as any).status === "number") {
-    return (error as any).status;
+  if ("status" in error && typeof error.status === "number") {
+    return error.status;
   }
   return undefined;
 }

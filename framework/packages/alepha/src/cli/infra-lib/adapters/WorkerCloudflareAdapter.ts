@@ -329,7 +329,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       // is the whole environment, so this build cannot inherit Lore's own
       // `DATABASE_URL` for a database it never provisioned.
       env: this.provisioned,
-    } as never);
+    });
   }
 
   override async migrate(

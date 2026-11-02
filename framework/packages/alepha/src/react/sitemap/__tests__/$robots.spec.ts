@@ -9,7 +9,7 @@ describe("$robots", () => {
     App: new () => object,
     env: Record<string, string> = {},
   ) => {
-    const alepha = Alepha.create({ env: { SERVER_PORT: 0 as never, ...env } })
+    const alepha = Alepha.create({ env: { SERVER_PORT: 0, ...env } })
       .with(AlephaServer)
       .with(AlephaReactSitemap)
       .with(App);
@@ -153,7 +153,7 @@ describe("$manifest", () => {
   it("answers application/manifest+json in the manifest's spelling", async ({
     expect,
   }) => {
-    const alepha = Alepha.create({ env: { SERVER_PORT: 0 as never } })
+    const alepha = Alepha.create({ env: { SERVER_PORT: 0 } })
       .with(AlephaServer)
       .with(AlephaReactSitemap)
       .with(App);

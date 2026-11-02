@@ -39,12 +39,15 @@ const setup = async (username: string) => {
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
 const read = (ctx: Ctx) =>
-  ctx.controller.getMyProfile({}, { user: ctx.caller as never });
+  ctx.controller.getMyProfile({}, { user: ctx.caller });
 
 const update = (ctx: Ctx, body: Record<string, unknown>) =>
-  ctx.controller.updateMyProfile({ body } as never, {
-    user: ctx.caller as never,
-  });
+  ctx.controller.updateMyProfile(
+    { body },
+    {
+      user: ctx.caller,
+    },
+  );
 
 describe("alepha/api/users - MyProfileController", () => {
   it("should return the caller's own profile", async ({ expect }) => {

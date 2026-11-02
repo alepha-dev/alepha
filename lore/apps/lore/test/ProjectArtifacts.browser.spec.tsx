@@ -149,7 +149,7 @@ describe("ProjectArtifacts", () => {
     alepha.store.set(currentProjectAtom, {
       ...projectFixture({ title: "Alepha", slug: "alepha" }),
       repositoryUrl,
-    } as never);
+    });
     alepha.store.set(currentReleasesAtom, releases as never);
     alepha.store.set(currentInstancesAtom, options.instances ?? []);
 
@@ -618,7 +618,7 @@ describe("ProjectArtifacts", () => {
         observe() {}
         unobserve() {}
         disconnect() {}
-      } as never;
+      };
     });
 
     const rowOf = (tag: string) => {

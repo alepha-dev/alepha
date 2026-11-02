@@ -27,7 +27,7 @@ const setup = async (username: string) => {
   // an infrastructure panel, an internal tool — so that is what the tests
   // exercise.
   realmProvider.register("users", {
-    settings: { username: "required" } as never,
+    settings: { username: "required" },
   });
   const userService = alepha.inject(UserService);
   const crypto = alepha.inject(CryptoProvider);
@@ -77,7 +77,7 @@ const change = (
 ) =>
   ctx.controller.changeMyPassword(
     { body: { currentPassword, newPassword } },
-    { user: ctx.caller as never },
+    { user: ctx.caller },
   );
 
 describe("alepha/api/users - MyPasswordController", () => {

@@ -152,7 +152,7 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
     <form {...form.props} className="flex flex-col gap-5">
       <div className="bg-card flex flex-col gap-5 rounded-lg border p-4">
         {Object.entries(props.preset.slots).map(([name, slot]) => {
-          const label = tr(`automation.setup.${name}` as never, {
+          const label = tr(`automation.setup.${name}`, {
             default: name,
           });
           const mode = current[`mode_${name}`] ?? "literal";
@@ -195,7 +195,7 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
             choices ??
             slot.values?.map((value) => ({
               value: String(value),
-              label: tr(`automation.channel.${String(value)}` as never, {
+              label: tr(`automation.channel.${String(value)}`, {
                 default: String(value),
               }),
             }));

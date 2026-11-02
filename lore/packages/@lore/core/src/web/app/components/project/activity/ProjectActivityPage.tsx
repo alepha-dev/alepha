@@ -363,7 +363,7 @@ const ProjectActivityPage = ({
                   // a quest renamed after the fact must not rewrite what the
                   // feed says happened.
                   title={title}
-                  onClick={() => router.push(href as never)}
+                  onClick={() => router.push(href)}
                   className="hover:text-primary inline-flex max-w-[420px] items-center gap-1.5 truncate text-left text-sm underline-offset-2 hover:underline"
                 >
                   <span className="text-muted-foreground shrink-0 text-xs">

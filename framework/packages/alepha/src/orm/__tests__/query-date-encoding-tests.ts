@@ -153,7 +153,7 @@ export const testMixedDateFormats = async (alepha: Alepha) => {
 
   // With ISO string
   const withString = await app.repository.findMany({
-    where: { dueDate: { gte: "2024-06-01T00:00:00.000Z" as any } },
+    where: { dueDate: { gte: "2024-06-01T00:00:00.000Z" } },
   });
   expect(withString).toHaveLength(1);
   expect(withString[0].title).toBe("Task 2");

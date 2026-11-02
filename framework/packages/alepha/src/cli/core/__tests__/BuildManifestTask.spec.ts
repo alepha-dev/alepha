@@ -34,7 +34,7 @@ const fakeAlepha = {
   dump: () => {
     throw new AlephaError("not available in this fake");
   },
-} as any;
+};
 
 /**
  * Same fake, but with the primitive answers parameterized per name  -  for the
@@ -247,7 +247,7 @@ describe("BuildManifestTask", () => {
         run: async (_step: unknown) => {
           throw new AlephaError("run must not be called in prebuilt mode");
         },
-      } as any;
+      };
 
       await task.run(ctx);
 

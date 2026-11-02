@@ -575,7 +575,7 @@ describe("ReleaseController: publishing the default hands it on", () => {
 
     await publish(ctx, user, current.id);
 
-    const page = await ctx.audits.find({ type: "release" } as never);
+    const page = await ctx.audits.find({ type: "release" });
     const rows = page.content as unknown as Array<Record<string, any>>;
     const moved = rows.filter(
       (row) => row.action === "default" && row.resourceId === "0.30.0",

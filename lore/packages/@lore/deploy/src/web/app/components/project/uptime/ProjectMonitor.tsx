@@ -42,7 +42,7 @@ const ProjectMonitor = (props: ProjectMonitorProps) => {
           label={tr("uptime.windowLabel")}
           items={["24h", "7d", "30d"].map((value) => ({
             value,
-            label: tr(`uptime.window.${value}` as never),
+            label: tr(`uptime.window.${value}`),
           }))}
         />
       </div>

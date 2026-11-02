@@ -56,7 +56,7 @@ describe("AgentPromptsMenu", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, project as never);
-    alepha.store.set(projectPromptsAtom, {} as never);
+    alepha.store.set(projectPromptsAtom, {});
 
     return render(
       <AlephaContext.Provider value={alepha}>

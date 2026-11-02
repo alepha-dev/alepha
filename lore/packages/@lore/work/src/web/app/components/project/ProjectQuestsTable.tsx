@@ -677,7 +677,7 @@ const ProjectQuestsTable = () => {
               statusOp: f?.statusOp,
               tagOp: f?.tagOp,
               releaseId: list(f?.release),
-            } as any,
+            },
           });
         }}
         onRowHover={(quest) => {

@@ -15,9 +15,6 @@ export const useReportsDrillDown = (url: ReportsUrl) => {
   const drillDown = useInject(ReportsDrillDown);
 
   return (segment: ReportsSegment) => {
-    void router.push(
-      "projectQuests" as never,
-      { query: drillDown.query(url, segment) } as never,
-    );
+    void router.push("projectQuests", { query: drillDown.query(url, segment) });
   };
 };

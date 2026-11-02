@@ -50,7 +50,7 @@ const setup = async () => {
   */
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -69,7 +69,7 @@ const setup = async () => {
           { key: "apps", options: { track: true } },
         ],
       },
-    } as any),
+    }),
   );
 
   return { alepha, appTools, sigilTools, project, call, asUser, owner, users };
@@ -87,7 +87,7 @@ describe("Lore MCP — who may manage an app and its sigil", () => {
         name: "App manager",
         permissions: ["project:read", "app:read", "app:manage", "sigil:manage"],
       },
-      { id: owner.id, roles: ["user"] } as any,
+      { id: owner.id, roles: ["user"] },
     );
     await createTestMemberByProjectId(alepha, project.id, manager.id, {
       rank: "app-manager",

@@ -43,7 +43,7 @@ describe("OtaAdminRouter", () => {
   }) => {
     const { alepha } = await mount();
     const nav = alepha
-      .primitives("page" as never)
+      .primitives("page")
       .map((page: any) => page.options.nav)
       .find((it: any) => it?.labelKey === "ota.admin.nav");
     expect(nav).toMatchObject({

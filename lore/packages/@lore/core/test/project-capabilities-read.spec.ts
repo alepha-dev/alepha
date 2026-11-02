@@ -51,7 +51,7 @@ class CapabilityProbe {
       const sets = await Promise.all(
         Array.from({ length: 7 }, () => this.security.capabilitiesOf(id)),
       );
-      return { keys: sets.map((set) => Object.keys(set).sort()) } as any;
+      return { keys: sets.map((set) => Object.keys(set).sort()) };
     },
   });
 }

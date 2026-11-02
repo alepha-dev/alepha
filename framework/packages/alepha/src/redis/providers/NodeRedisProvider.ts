@@ -208,7 +208,7 @@ export class NodeRedisProvider extends RedisProvider {
     cursor: string,
     pattern: string,
   ): Promise<{ cursor: string; keys: string[] }> {
-    const reply = await this.publisher.scan(cursor as never, {
+    const reply = await this.publisher.scan(cursor, {
       MATCH: pattern,
       COUNT: NodeRedisProvider.SCAN_COUNT,
     });

@@ -213,7 +213,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         )}
         <h2 className="flex-1 text-base font-semibold">{feedback.title}</h2>
         <Badge variant="secondary" className="uppercase">
-          {tr(`feedback.filter.${feedback.status}` as never)}
+          {tr(`feedback.filter.${feedback.status}`)}
         </Badge>
       </div>
 

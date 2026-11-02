@@ -745,9 +745,9 @@ export class LinkProvider {
       this.batchCollector ??= this.alepha.inject(BatchCollector);
       return this.batchCollector.add({
         action: name,
-        params: config.params as any,
-        query: config.query as any,
-        body: config.body as any,
+        params: config.params,
+        query: config.query,
+        body: config.body,
         directCall: () =>
           this.followRemote(link, config, options).then((r) => r.data),
       });
@@ -809,7 +809,7 @@ export class LinkProvider {
       host,
       config,
       options: forwarded,
-      action: action as any,
+      action: action,
     });
     return new SseFetchResponse(response);
   }
@@ -927,7 +927,7 @@ export class LinkProvider {
       host,
       config,
       options: forwarded,
-      action: action as any, // schema.body ZodAny is not accepted
+      action: action, // schema.body ZodAny is not accepted
     });
   }
 

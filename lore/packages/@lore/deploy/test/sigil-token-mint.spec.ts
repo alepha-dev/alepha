@@ -38,7 +38,7 @@ describe("SigilTokenService.mint", () => {
       title: "Club",
       slug: "club",
       createdBy: "00000000-0000-4000-8000-000000000001",
-    } as any);
+    });
 
     const { token } = await tokens.mint(project.id);
 
@@ -52,7 +52,7 @@ describe("SigilTokenService.mint", () => {
     const project = await probe.projects.create({
       title: "Deleted",
       createdBy: "00000000-0000-4000-8000-000000000001",
-    } as any);
+    });
 
     await expect(tokens.mint(project.id)).rejects.toThrow("has no slug");
     await expect(tokens.mint(9999)).rejects.toThrow("has no slug");

@@ -24,15 +24,12 @@ const ReportsQuestList = (props: ReportsQuestListProps) => {
       {props.quests.map((quest) => (
         <li key={quest.shortId} className="flex items-center gap-3">
           <a
-            {...router.anchor(
-              "projectQuest" as never,
-              {
-                params: {
-                  projectSlug: router.state.params.projectSlug,
-                  shortId: String(quest.shortId),
-                },
-              } as never,
-            )}
+            {...router.anchor("projectQuest", {
+              params: {
+                projectSlug: router.state.params.projectSlug,
+                shortId: String(quest.shortId),
+              },
+            })}
             className="min-w-0 flex-1 truncate hover:underline"
           >
             #{quest.shortId} {quest.title}

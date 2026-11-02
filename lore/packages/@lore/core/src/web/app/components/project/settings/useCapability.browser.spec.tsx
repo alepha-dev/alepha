@@ -55,7 +55,7 @@ describe("useCapability", () => {
       .with(AlephaReactI18n);
     await alepha.start();
     const project = projectFixture();
-    alepha.store.set(currentProjectAtom, project as never);
+    alepha.store.set(currentProjectAtom, project);
     alepha.store.set(userProjectsAtom, {
       projects: [
         {
@@ -70,7 +70,7 @@ describe("useCapability", () => {
       ownedCount: 1,
       maxProjects: 10,
       canCreate: true,
-    } as never);
+    });
     const wrapper = (props: { children: ReactNode }) => (
       <AlephaContext.Provider value={alepha}>
         <Toaster visibleToasts={20} />

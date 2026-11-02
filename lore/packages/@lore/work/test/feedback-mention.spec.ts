@@ -71,14 +71,14 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
   const project = await asUser(owner.id, () =>
     projectApi.createProject({
       body: { title: "Feedback probe", capabilities: [{ key: "support" }] },
-    } as any),
+    }),
   );
   await createTestMemberByProjectId(alepha, project.id, member.id);
 
@@ -87,7 +87,7 @@ const setup = async () => {
       feedbackApi.submitFeedback({
         params: { projectId: project.id },
         body: { title, description: "x" },
-      } as any),
+      }),
     );
 
   const sendJobName = alepha.inject(NotificationJobs).sendNotification.name;

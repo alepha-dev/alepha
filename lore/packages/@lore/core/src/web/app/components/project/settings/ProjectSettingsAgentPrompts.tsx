@@ -168,7 +168,7 @@ const ProjectSettingsAgentPrompts = () => {
                   {`{{${name}}}`}
                 </dt>
                 <dd className="text-muted-foreground text-xs">
-                  {tr(`agentPrompts.settings.placeholder.${name}` as never)}
+                  {tr(`agentPrompts.settings.placeholder.${name}`)}
                 </dd>
               </div>
             ))}

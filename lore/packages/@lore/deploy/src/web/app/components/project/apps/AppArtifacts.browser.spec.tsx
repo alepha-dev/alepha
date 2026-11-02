@@ -82,14 +82,14 @@ describe("AppArtifacts", () => {
   ) => {
     cleanup();
     const alepha = await mount();
-    alepha.store.set(currentInstanceAtom, instance as never);
+    alepha.store.set(currentInstanceAtom, instance);
     // The list reads the project for its id and its slug, so without this it
     // would stay disabled and every case below would pass by not running the
     // code it is about.
     alepha.store.set(currentProjectAtom, {
       ...projectFixture({ title: "Alepha", slug: "alepha" }),
       repositoryUrl,
-    } as never);
+    });
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
     return {

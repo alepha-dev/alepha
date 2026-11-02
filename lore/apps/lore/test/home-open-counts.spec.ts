@@ -62,9 +62,12 @@ const setup = async () => {
 
   const create = async (title: string) =>
     (
-      await projectApi.createProject.fetch({ body: { title } }, {
-        user,
-      } as never)
+      await projectApi.createProject.fetch(
+        { body: { title } },
+        {
+          user,
+        },
+      )
     ).data;
 
   let sequence = 0;
@@ -95,8 +98,7 @@ const setup = async () => {
     });
 
   const openCounts = async () => {
-    const board = (await homeApi.getHomeBoard.fetch({}, { user } as never))
-      .data;
+    const board = (await homeApi.getHomeBoard.fetch({}, { user })).data;
     return new Map(board.openCounts.map((entry) => [entry.projectId, entry]));
   };
 

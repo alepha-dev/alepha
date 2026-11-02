@@ -89,7 +89,7 @@ describe("ProjectSwitcher", () => {
     ];
     alepha.store.set(
       currentProjectAtom,
-      projects.find((it) => it.id === currentId) as never,
+      projects.find((it) => it.id === currentId),
     );
     alepha.store.set(userProjectsAtom, {
       projects,
@@ -97,7 +97,7 @@ describe("ProjectSwitcher", () => {
       ownedCount: 3,
       maxProjects: 10,
       canCreate: true,
-    } as never);
+    });
 
     render(
       <AlephaContext.Provider value={alepha}>

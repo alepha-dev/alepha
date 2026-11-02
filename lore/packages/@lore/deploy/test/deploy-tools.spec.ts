@@ -71,7 +71,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -86,14 +86,14 @@ const setup = async () => {
         // project with telemetry on and deploys off must not reach them.
         capabilities: [{ key: "apps", options: { deploy: true } }],
       },
-    } as any),
+    }),
   );
 
   const instance = await asUser(OWNER, () =>
     appApi.createApp({
       params: { projectId: project.id },
       body: { app: "club", env: "production" },
-    } as any),
+    }),
   );
 
   return {
@@ -143,7 +143,7 @@ describe("Lore MCP - deploys", () => {
         sha256: "a".repeat(64),
         size: 10,
         fileId: crypto.randomUUID(),
-      } as never);
+      });
       const run = await probe.deployments.create({
         projectId: project.id,
         instanceId: instance.id,
@@ -151,7 +151,7 @@ describe("Lore MCP - deploys", () => {
         tag: "0.28.0",
         sha256: "a".repeat(64),
         status: "succeeded",
-      } as never);
+      });
 
       const shipper = await users.createUser({ username: "shipper" });
       await alepha.inject(RankService).save(
@@ -163,7 +163,7 @@ describe("Lore MCP - deploys", () => {
           name: "Shipper",
           permissions: ["project:read", "app:read", "deploy:manage"],
         },
-        { id: owner.id, roles: ["user"] } as any,
+        { id: owner.id, roles: ["user"] },
       );
       await createTestMemberByProjectId(alepha, project.id, shipper.id, {
         rank: "shipper",
@@ -276,9 +276,7 @@ describe("Lore MCP - deploys", () => {
       // omits the tag, deploys `latest`, and promotes whatever CI pushed last
       // rather than a version somebody chose.
       const { deployTools } = await setup();
-      const description = String(
-        (deployTools.deploy_start as any).options.description,
-      );
+      const description = String(deployTools.deploy_start.options.description);
 
       expect(description).toContain("latest");
       expect(description).toMatch(/bytes may be replaced/);
@@ -334,7 +332,7 @@ describe("Lore MCP - deploys", () => {
         sha256: "a".repeat(64),
         status: "succeeded",
         log: [{ at: "2026-09-07T00:00:00.000Z", text: "live" }],
-      } as never);
+      });
 
       const read: any = await call(deployTools.deploy_status, {
         project: project.id,

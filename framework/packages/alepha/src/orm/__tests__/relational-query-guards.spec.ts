@@ -91,7 +91,7 @@ describe("relational queries on sqlite", () => {
     await expect(
       app.posts.findMany({
         include: { author: true },
-        where: { author: undefined } as any,
+        where: { author: undefined },
       }),
     ).rejects.toThrow(/is undefined/);
   });

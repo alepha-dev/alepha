@@ -45,10 +45,7 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
   const content = more ? (
     <span className="text-primary-text text-[12px]">
       {tr("dashboard.more", {
-        args: [
-          String(row.value ?? 0),
-          tr(`dashboard.source.${row.title}` as never),
-        ],
+        args: [String(row.value ?? 0), tr(`dashboard.source.${row.title}`)],
       })}
     </span>
   ) : (
@@ -66,7 +63,7 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
             DASHBOARD_PILL_CLASS[row.state ?? "neutral"],
           )}
         >
-          {tr(`dashboard.badge.${row.badge}` as never)}
+          {tr(`dashboard.badge.${row.badge}`)}
         </span>
       )}
       {row.progress !== undefined && (
@@ -122,10 +119,10 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
         type="button"
         className="hover:bg-muted/60 -mx-1 block w-full rounded px-1"
         onClick={() =>
-          void router.push(
-            link.route as never,
-            { params: link.params, query: link.query } as never,
-          )
+          void router.push(link.route, {
+            params: link.params,
+            query: link.query,
+          })
         }
       >
         <span className={className}>{content}</span>

@@ -236,7 +236,7 @@ export class CheckoutController {
             : undefined,
         },
         downloads: owned ? confirmation.downloads : [],
-      } as any;
+      };
     },
   });
 
@@ -261,7 +261,7 @@ export class CheckoutController {
       const { session, handoff } = await this.checkout.pay(params.id, {
         returnUrl: this.resolveReturnUrl(body.returnUrl, requestUrl),
       });
-      return { session, handoff } as any;
+      return { session, handoff };
     },
   });
 

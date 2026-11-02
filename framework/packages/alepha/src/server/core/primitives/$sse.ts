@@ -429,10 +429,10 @@ export class SsePrimitive<
       const signal = this.handlerSignal(abortController);
 
       const context = {
-        body: body as any,
-        params: params as any,
-        query: query as any,
-        headers: headers as any,
+        body: body,
+        params: params,
+        query: query,
+        headers: headers,
         request: serverRequest as ServerRequest,
         // What a `use` middleware resolved (`$secure` writes the request's
         // `user`), read when the handler asks.
@@ -566,10 +566,10 @@ export class SsePrimitive<
               started = true;
               entered();
             },
-            body: request.body as any,
-            params: request.params as any,
-            query: request.query as any,
-            headers: request.headers as any,
+            body: request.body,
+            params: request.params,
+            query: request.query,
+            headers: request.headers,
             request,
             // `$secure` writes the HTTP request's `user`.
             get user() {

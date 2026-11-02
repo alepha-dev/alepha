@@ -247,7 +247,7 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
             key={picker.kind}
             className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]"
           >
-            {tr(picker.emptyKey as never)}
+            {tr(picker.emptyKey)}
           </div>
         ) : null,
       )}

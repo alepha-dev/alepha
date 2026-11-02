@@ -63,7 +63,7 @@ describe("ProjectReliabilityReportService", () => {
           firstSeenAt: iso(3),
           lastSeenAt: iso(3),
           ...patch,
-        } as never),
+        }),
       report: () =>
         alepha
           .inject(ProjectReliabilityReportService)

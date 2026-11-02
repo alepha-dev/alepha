@@ -76,7 +76,7 @@ describe("an app deploy inside a stack", () => {
     await w.rows.grants.create({
       estateId: minted.id,
       projectId: w.project.id,
-    } as never);
+    });
     const stack = await createStack(alepha, w, {
       name: "mcs",
       estateId: minted.id,
@@ -114,7 +114,7 @@ describe("an app deploy inside a stack", () => {
       {
         params: { projectId: w.project.id },
         body: { app: "mcs-api", tag: "1.0.0", file },
-      } as never,
+      },
       { user: w.user },
     );
     await alepha.inject(AppSecretController).setAppSecret.fetch(
@@ -234,7 +234,7 @@ describe("an app deploy inside a stack", () => {
             app: "mcs-api",
             env: "staging",
           },
-        } as never,
+        },
         { user: a.w.user },
       )
     ).data as {
@@ -254,7 +254,7 @@ describe("an app deploy inside a stack", () => {
         {
           params: { projectId: a.w.project.id, instanceId: a.instance.id },
           body: { tag: "1.0.0" },
-        } as never,
+        },
         { user: a.w.user },
       )
     ).data;

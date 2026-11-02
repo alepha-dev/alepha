@@ -20,11 +20,11 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
       <header>
         <h1 className="text-2xl font-semibold">{monitor.name}</h1>
         <p className="text-muted-foreground mt-1 text-sm break-all">
-          {tr(`uptime.kind.${monitor.kind}` as never)}
+          {tr(`uptime.kind.${monitor.kind}`)}
           {monitor.target ? `: ${monitor.target}` : ""}
         </p>
         <p className="mt-3 font-medium">
-          {tr(`uptime.status.${status}` as never)}{" "}
+          {tr(`uptime.status.${status}`)}{" "}
           <span className="text-muted-foreground text-sm font-normal">
             {tr("uptime.since", {
               args: [l(monitor.statusSince, { date: "lll" })],
@@ -59,7 +59,7 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
         {data.uptime.map((card) => (
           <div key={card.window} className="bg-card rounded-lg border p-4">
             <h2 className="text-muted-foreground text-sm">
-              {tr(`uptime.window.${card.window}` as never)}
+              {tr(`uptime.window.${card.window}`)}
             </h2>
             <p className="mt-2 text-2xl font-semibold tabular-nums">
               {card.uptimePct === null

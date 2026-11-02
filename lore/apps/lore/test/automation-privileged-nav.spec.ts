@@ -88,10 +88,10 @@ describe("automation permissions for a privileged identity", () => {
       claimed: data.permissions.filter((it) => it.startsWith("automation:")),
       allowed,
       nav: shell
-        .offeredNav(data as never, {
+        .offeredNav(data, {
           routeName: "projectQuests",
           params: {},
-          get: () => undefined as never,
+          get: () => undefined,
         })
         .map((entry) => entry.route),
       everythingElse: data.permissions.filter(

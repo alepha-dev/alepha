@@ -52,7 +52,7 @@ describe("ProjectQualityReportService", () => {
         testsFailed: 0,
         testsSkipped: 0,
         durationMs: 1000,
-      } as never);
+      });
     return { alepha, repos, project, run };
   };
 
@@ -63,7 +63,7 @@ describe("ProjectQualityReportService", () => {
   ) =>
     alepha
       .inject(ProjectQualityReportService)
-      .report(projectId, query, (row) => row as never);
+      .report(projectId, query, (row) => row);
 
   it("reads main unless asked, lists every branch and carries the target", async ({
     expect,
@@ -121,7 +121,7 @@ describe("ProjectQualityReportService", () => {
         runtime: "node",
         sha256: "0".repeat(64),
         commitSha: "abcdef1",
-      } as never);
+      });
 
       const data = await report(ctx.alepha, ctx.project.id, {});
 

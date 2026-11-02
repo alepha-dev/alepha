@@ -114,7 +114,7 @@ describe("$job retention: registration", () => {
           description: "A job under test.",
           name: "bad.work",
           schema: z.object({ v: z.integer() }),
-          retention: retention as any,
+          retention: retention,
           handler: async () => {},
         });
       }

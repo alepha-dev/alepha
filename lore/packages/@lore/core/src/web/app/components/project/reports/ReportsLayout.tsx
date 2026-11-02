@@ -46,12 +46,12 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
 
   const tabs: PlateTab[] = registered.map((tab) => ({
     key: tab.route,
-    label: tr(tab.labelKey as never),
+    label: tr(tab.labelKey),
     icon: tab.icon,
     // Each tab is its own route, so each is a link: middle-click, copy-link
     // and the back button all depend on it. It carries the query, so moving
     // between tabs keeps the period and the filters.
-    href: router.path(tab.route as never, { query: props.query } as never),
+    href: router.path(tab.route, { query: props.query }),
     // Each report is a heavy, pure read: `prefetch: true` on its page lets the
     // hover start it, and the click paints with no request.
     prefetch: "hover",
@@ -76,7 +76,7 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
       <div className="flex flex-col gap-8 p-4">
         {active?.descriptionKey ? (
           <p className="text-muted-foreground text-sm">
-            {tr(active.descriptionKey as never)}
+            {tr(active.descriptionKey)}
           </p>
         ) : null}
         <NestedView />

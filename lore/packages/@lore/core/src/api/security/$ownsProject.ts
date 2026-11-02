@@ -146,7 +146,7 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
   if (!options.capability) {
     const scoped = ((handler: any) =>
       gate(withScope(handler))) as never as Middleware;
-    (scoped as any)[OPTIONS] = (gate as any)[OPTIONS];
+    scoped[OPTIONS] = gate[OPTIONS];
     return scoped as SecureMiddleware;
   }
 
@@ -192,7 +192,7 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
   // this, then the handler.
   const composed = ((handler: any) =>
     gate(withScope(withCapability(handler)))) as never as Middleware;
-  (composed as any)[OPTIONS] = (gate as any)[OPTIONS];
+  composed[OPTIONS] = gate[OPTIONS];
   return composed as SecureMiddleware;
 };
 

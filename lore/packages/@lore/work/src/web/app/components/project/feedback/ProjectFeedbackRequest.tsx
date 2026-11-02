@@ -540,7 +540,7 @@ const ProjectFeedbackRequest = () => {
   }
 
   const userLabel = displayName(auth.user, "");
-  const userPicture = (auth.user as any).picture as string | undefined;
+  const userPicture = auth.user.picture as string | undefined;
 
   return (
     <>

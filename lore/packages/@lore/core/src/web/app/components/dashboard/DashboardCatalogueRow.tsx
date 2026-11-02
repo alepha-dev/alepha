@@ -44,12 +44,12 @@ const DashboardCatalogueRow = (props: DashboardCatalogueRowProps) => {
       <Icon className="text-muted-foreground size-3.5 shrink-0" />
       <span className="min-w-0 flex-1">
         <span className="block text-[12.5px] font-medium">
-          {tr(props.metric.labelKey as never)}
+          {tr(props.metric.labelKey)}
         </span>
         <span className="text-muted-foreground mt-px block text-[11.5px]">
           {props.unavailableKey
-            ? tr(props.unavailableKey as never)
-            : tr(props.metric.hintKey as never)}
+            ? tr(props.unavailableKey)
+            : tr(props.metric.hintKey)}
         </span>
       </span>
       <State className="text-muted-foreground size-3.5 shrink-0" />

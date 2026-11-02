@@ -96,7 +96,7 @@ describe("$sitemap", () => {
         return this;
       },
     };
-    const body = await route.handler.run({ reply } as any);
+    const body = await route.handler.run({ reply });
     expect(headers["content-type"]).toBe("application/xml");
     expect(String(body)).toContain("<urlset");
   });

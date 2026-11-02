@@ -41,12 +41,9 @@ const ProjectDashboardArchived = (props: ProjectDashboardArchivedProps) => {
       {props.destination && (
         <Link
           data-testid="dashboard-archived-link"
-          href={router.path(
-            props.destination as never,
-            {
-              params: { projectSlug: props.projectSlug },
-            } as never,
-          )}
+          href={router.path(props.destination, {
+            params: { projectSlug: props.projectSlug },
+          })}
           className="text-primary-text text-[13.5px] font-medium hover:underline"
         >
           {tr(

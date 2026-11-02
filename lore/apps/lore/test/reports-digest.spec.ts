@@ -40,7 +40,7 @@ describe("ReportsDigest", () => {
       alepha.store.set(currentUserAtom, {
         id: owner.id,
         roles: ["user"],
-      } as any);
+      });
       return projectApi.createProject({
         body: { title: "Digest", capabilities: [{ key: "work" }] },
       });

@@ -441,7 +441,7 @@ describe("StreamableHttpMcpTransport — context", () => {
         params: { name: "whoami", arguments: {} },
       }),
     });
-    return res.json() as any;
+    return res.json();
   };
 
   it("passes headers through to the handler over HTTP", async () => {

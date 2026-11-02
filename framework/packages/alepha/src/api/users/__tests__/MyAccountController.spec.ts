@@ -79,7 +79,7 @@ type Ctx = Awaited<ReturnType<typeof setup>>;
 
 const remove = (ctx: Ctx, body: Record<string, unknown>) =>
   ctx.controller.deleteMyAccount({ body } as never, {
-    user: ctx.caller as never,
+    user: ctx.caller,
   });
 
 const stillExists = async (ctx: Ctx) =>

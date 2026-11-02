@@ -61,7 +61,7 @@ const setup = async () => {
       alepha.store.set(currentUserAtom, {
         id: userId,
         roles: ["user"],
-      } as never);
+      });
       return fn();
     });
 
@@ -98,7 +98,7 @@ describe("the capability gate", () => {
             area: "general",
             priority: "medium",
           },
-        } as never),
+        }),
       ),
     ).rejects.toThrow(/Plan and track work.*Turn it on in Settings/s);
 
@@ -124,7 +124,7 @@ describe("the capability gate", () => {
           area: "general",
           priority: "medium",
         },
-      } as never),
+      }),
     );
 
     expect(quest.title).toBe("Real quest");
@@ -149,7 +149,7 @@ describe("the capability gate", () => {
           area: "general",
           priority: "medium",
         },
-      } as never),
+      }),
     );
 
     // Turn Work off the way Settings does: the row goes, and nothing else.
@@ -163,7 +163,7 @@ describe("the capability gate", () => {
       ctx.questApi.getQuests({
         params: { projectId: project.id },
         query: {},
-      } as never),
+      }),
     );
 
     // The whole "hides, never deletes" rule in one assertion: the read still
@@ -188,7 +188,7 @@ describe("the capability gate", () => {
       ctx.asUser(ctx.owner.id, () =>
         ctx.folioApi.create({
           body: { projectId: project.id, title: "Nope", content: "" },
-        } as never),
+        }),
       ),
     ).rejects.toThrow(/Write and keep knowledge/);
 
@@ -215,7 +215,7 @@ describe("the capability gate", () => {
           area: "general",
           description: "",
           priority: "medium",
-        } as never),
+        }),
       ),
     ).rejects.toThrow(/Plan and track work/);
 
@@ -247,7 +247,7 @@ describe("the capability gate", () => {
           tests: { total: 10, passed: 10, failed: 0, skipped: 0 },
           durationMs: 1234,
         },
-      } as never),
+      }),
     );
 
     expect(pushed).toBeTruthy();

@@ -115,14 +115,14 @@ describe("AppDashboard", () => {
     // deliberately render twice to compare two states.
     cleanup();
     const alepha = await mount();
-    alepha.store.set(currentInstanceAtom, instance as never);
+    alepha.store.set(currentInstanceAtom, instance);
     // The project is part of the page's context in production, so it is set
     // here too; nothing on this page reads it since Artifacts left for its own
     // tab, and a case that starts needing it must not pass by skipping the
     // code it is about.
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }) as never,
+      projectFixture({ title: "Alepha", slug: "alepha" }),
     );
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;

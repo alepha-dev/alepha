@@ -14,7 +14,7 @@ describe("DesktopDataDefaults", () => {
   }) => {
     const alepha = Alepha.create({ env: { DATABASE_URL: undefined } });
     defaults.apply(alepha, paths);
-    expect(alepha.store.get(key as any)).toEqual({
+    expect(alepha.store.get(key)).toEqual({
       path: `${paths.data}/app.db`,
     });
   });
@@ -31,15 +31,15 @@ describe("DesktopDataDefaults", () => {
     ]) {
       const alepha = Alepha.create({ env: { DATABASE_URL: url } });
       defaults.apply(alepha, paths);
-      expect(alepha.store.get(key as any)).toBeUndefined();
+      expect(alepha.store.get(key)).toBeUndefined();
     }
   });
 
   it("keeps a path the app gave the SQLite provider", ({ expect }) => {
     const alepha = Alepha.create({ env: { DATABASE_URL: undefined } });
-    alepha.store.set(key as any, { path: "/opt/app/data.db" });
+    alepha.store.set(key, { path: "/opt/app/data.db" });
     defaults.apply(alepha, paths);
-    expect(alepha.store.get(key as any)).toEqual({ path: "/opt/app/data.db" });
+    expect(alepha.store.get(key)).toEqual({ path: "/opt/app/data.db" });
   });
 
   it("refuses relative writable paths with the reason", ({ expect }) => {
@@ -50,7 +50,7 @@ describe("DesktopDataDefaults", () => {
       );
     }
     const store = Alepha.create({ env: { DATABASE_URL: undefined } });
-    store.store.set(key as any, { path: "data.db" });
+    store.store.set(key, { path: "data.db" });
     expect(() => defaults.apply(store, paths)).toThrow(
       /The SQLite path points at 'data\.db'/,
     );

@@ -398,7 +398,7 @@ describe("shipping rate codes", () => {
       code: "express-test",
       name: "Express test",
       price: 690,
-    } as never);
+    });
 
     // Same code, different zone. `code` is what lands on
     // the order, so two of them makes the order ambiguous about what was
@@ -409,7 +409,7 @@ describe("shipping rate codes", () => {
         code: "express-test",
         name: "Express test duplicate",
         price: 990,
-      } as never),
+      }),
     ).rejects.toThrow();
 
     await alepha.stop();

@@ -56,7 +56,7 @@ describe("the stack console", () => {
     await w.rows.grants.create({
       estateId: minted.id,
       projectId: w.project.id,
-    } as never);
+    });
     const stack = await createStack(alepha, w, {
       name: "umami",
       estateId: minted.id,

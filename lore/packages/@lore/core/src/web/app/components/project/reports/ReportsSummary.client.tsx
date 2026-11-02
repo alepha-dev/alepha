@@ -53,7 +53,7 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
     }
     return String(Math.round(value));
   };
-  const label = (key: string) => tr(`reports.summary.line.${key}` as never);
+  const label = (key: string) => tr(`reports.summary.line.${key}`);
 
   const copy = async () => {
     await navigator.clipboard.writeText(
@@ -94,7 +94,7 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
       {sections.map((capability) => (
         <ReportsSection
           key={capability}
-          title={tr(`reports.summary.section.${capability}` as never)}
+          title={tr(`reports.summary.section.${capability}`)}
           definition={tr("reports.summary.definition")}
         >
           <ReportsKpiRow
@@ -102,16 +102,11 @@ const ReportsSummary = (props: ReportsSummaryProps) => {
               .filter((line) => line.capability === capability)
               .map((line) => ({
                 label: label(line.key),
-                definition: tr(
-                  `reports.summary.line.${line.key}.definition` as never,
-                ),
+                definition: tr(`reports.summary.line.${line.key}.definition`),
                 value: format(line, line.value),
                 href:
                   line.tab && props.tabs.includes(line.tab)
-                    ? router.path(
-                        line.tab as never,
-                        { query: props.url } as never,
-                      )
+                    ? router.path(line.tab, { query: props.url })
                     : undefined,
                 delta:
                   line.previous === undefined

@@ -173,7 +173,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
               { key: "support" },
               { key: "apps", options: { track: true, deploy: true } },
             ],
-          } as any,
+          },
         },
         { user },
       );

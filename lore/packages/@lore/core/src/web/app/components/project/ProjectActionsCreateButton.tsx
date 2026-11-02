@@ -72,7 +72,7 @@ const ProjectActionsCreateButton = () => {
     if (item.dialog) {
       setOpenKey(item.key);
     } else if (item.route) {
-      void router.push(item.route as never, {
+      void router.push(item.route, {
         params: { projectSlug: project.slug },
       });
     }
@@ -81,7 +81,7 @@ const ProjectActionsCreateButton = () => {
   const row = (item: ProjectCreateItem) => (
     <DropdownMenuItem key={item.key} onClick={() => pick(item)}>
       <item.icon className="size-4" />
-      {tr(item.labelKey as never)}
+      {tr(item.labelKey)}
     </DropdownMenuItem>
   );
 

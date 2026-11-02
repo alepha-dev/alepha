@@ -51,7 +51,7 @@ describe("ControlSelect clear label", () => {
 
   const Probe = (props: { count: number; clearable?: boolean }) => {
     const form = useForm({
-      schema: z.object({ tag: z.text().optional() as never }),
+      schema: z.object({ tag: z.text().optional() }),
       handler: () => {},
     });
     return (

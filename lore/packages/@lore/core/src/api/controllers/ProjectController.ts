@@ -733,7 +733,7 @@ export class ProjectController {
       // and a `scopeId` alone would fall off them onto a scan.
       scopeType: "project",
       scopeId: String(projectId),
-    } as never);
+    });
 
     // One lookup for the whole page, and only when something needs a name.
     const actorIds = new Set(

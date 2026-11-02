@@ -243,7 +243,7 @@ describe("a deploy that finds no free slot", () => {
     await rows().grants.create({
       estateId: estate.id,
       projectId: project.id,
-    } as never);
+    });
     await rows().instances.updateById(instance.id, { estateId: estate.id });
 
     const sha256 = "a".repeat(64);
@@ -255,7 +255,7 @@ describe("a deploy that finds no free slot", () => {
       format: "archive",
       sha256,
       fileId: crypto.randomUUID(),
-    } as never);
+    });
 
     return { project, instance, sha256 };
   };
@@ -275,7 +275,7 @@ describe("a deploy that finds no free slot", () => {
       sha256: w.sha256,
       status: "queued",
       ...extra,
-    } as never);
+    });
     return row.id;
   };
 

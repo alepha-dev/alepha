@@ -42,11 +42,11 @@ describe("alepha/api/users - realm captcha provider", () => {
   it("refuses captchaRequired when no provider is registered", async ({
     expect,
   }) => {
-    const realmProvider = await container(UnconfiguredCaptchaProvider as never);
+    const realmProvider = await container(UnconfiguredCaptchaProvider);
 
     expect(() =>
       realmProvider.register("gated", {
-        settings: { captchaRequired: true } as never,
+        settings: { captchaRequired: true },
       }),
     ).toThrow(/captchaRequired but no CaptchaProvider is registered/);
   });
@@ -54,17 +54,17 @@ describe("alepha/api/users - realm captcha provider", () => {
   it("accepts captchaRequired when a provider is registered", async ({
     expect,
   }) => {
-    const realmProvider = await container(MemoryCaptchaProvider as never);
+    const realmProvider = await container(MemoryCaptchaProvider);
 
     expect(() =>
       realmProvider.register("gated", {
-        settings: { captchaRequired: true } as never,
+        settings: { captchaRequired: true },
       }),
     ).not.toThrow();
   });
 
   it("says nothing when captcha is not required", async ({ expect }) => {
-    const realmProvider = await container(UnconfiguredCaptchaProvider as never);
+    const realmProvider = await container(UnconfiguredCaptchaProvider);
 
     // Registering `alepha/captcha` without ever requiring a captcha is not a
     // misconfiguration, so this must still start.

@@ -117,11 +117,12 @@ describe("alepha/api/users - MyAvatarController", () => {
     */
     const ctx = await withAvatar("avatar-self");
 
-    const profile = await ctx.alepha
-      .inject(MyAvatarController)
-      .deleteMyAvatar({} as never, {
-        user: { id: ctx.user.id, realm: "default", sessionId: "s-1" } as never,
-      });
+    const profile = await ctx.alepha.inject(MyAvatarController).deleteMyAvatar(
+      {},
+      {
+        user: { id: ctx.user.id, realm: "default", sessionId: "s-1" },
+      },
+    );
 
     expect((await ctx.users.getById(ctx.user.id)).picture).toBeUndefined();
     expect(profile.picture).toBeUndefined();
@@ -193,9 +194,12 @@ describe("alepha/api/users - AdminAvatarController", () => {
 
     const target = await ctx.alepha
       .inject(AdminAvatarController)
-      .deleteUserAvatar({ params: { id: ctx.user.id } } as never, {
-        user: operator,
-      });
+      .deleteUserAvatar(
+        { params: { id: ctx.user.id } },
+        {
+          user: operator,
+        },
+      );
 
     expect((await ctx.users.getById(ctx.user.id)).picture).toBeUndefined();
     expect(target.picture).toBeUndefined();

@@ -1517,7 +1517,7 @@ describe("$job — dispatchMany (queue mode)", () => {
     await alepha.start();
 
     const provider = alepha.inject(JobProvider);
-    const dispatcher = (provider as any).dispatcher as {
+    const dispatcher = provider.dispatcher as {
       dispatchMany: (
         items: Array<{ jobName: string; executionId: string }>,
       ) => Promise<void>;

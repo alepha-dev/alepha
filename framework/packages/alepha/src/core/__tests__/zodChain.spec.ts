@@ -158,8 +158,8 @@ describe("zodChain", () => {
   });
 
   it("reads the tightest bound a schema declares", ({ expect }) => {
-    const number = z.number().min(1).min(3).max(9).max(7) as any;
-    const text = z.string().min(2).max(8) as any;
+    const number = z.number().min(1).min(3).max(9).max(7);
+    const text = z.string().min(2).max(8);
 
     expect([number.minValue, number.maxValue]).toEqual([3, 7]);
     expect([text.minLength, text.maxLength]).toEqual([2, 8]);

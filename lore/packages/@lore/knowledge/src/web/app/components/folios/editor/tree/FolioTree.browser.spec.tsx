@@ -75,7 +75,7 @@ class ReadOnlyLinkProvider extends FakeLinkProvider {
     const client = super.client();
     return new Proxy(client, {
       get: (target, prop: string) =>
-        Object.assign((target as any)[prop], { can: () => false }),
+        Object.assign(target[prop], { can: () => false }),
     });
   }
 }
@@ -120,7 +120,7 @@ describe("FolioTree", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {
@@ -191,11 +191,11 @@ describe("FolioTree", () => {
     alepha.store.set(projectDirectoriesAtom, [
       { id: DIR_A, shortId: 1, name: "Framework" },
       { id: DIR_B, shortId: 2, name: "Lore" },
-    ] as never);
+    ]);
     alepha.store.set(userFoliosAtom, [
       folioOf("33333333-3333-4333-8333-333333333333", "Inside A", DIR_A),
       folioOf("44444444-4444-4444-8444-444444444444", "At the root"),
-    ] as never);
+    ]);
 
     const view = renderTree(props);
     await screen.findByText("Framework");
@@ -577,7 +577,7 @@ describe("FolioTree", () => {
         alepha!.store.set(userFoliosAtom, [
           folioOf(INSIDE_A, "Inside A", DIR_A),
           folioOf(AT_ROOT, "Renamed at the root"),
-        ] as never);
+        ]);
       });
 
       expect(screen.queryByText("Inside A")).toBeNull();
@@ -637,10 +637,10 @@ describe("FolioTree", () => {
       alepha.inject(I18n);
       await alepha.start();
       await alepha.inject(I18nProvider).setLang("en");
-      alepha.store.set(projectDirectoriesAtom, [] as never);
+      alepha.store.set(projectDirectoriesAtom, []);
       alepha.store.set(userFoliosAtom, [
         { ...folioOf(AT_ROOT, "Already secret"), protected: true },
-      ] as never);
+      ]);
       renderTree();
       await screen.findByText("Already secret");
 

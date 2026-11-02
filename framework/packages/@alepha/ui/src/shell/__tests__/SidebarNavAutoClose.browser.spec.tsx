@@ -79,7 +79,7 @@ describe("SidebarNavAutoClose", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(() => {

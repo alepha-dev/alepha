@@ -97,7 +97,7 @@ describe("useKanbanMove", () => {
     alepha.inject(I18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     const app = alepha;
     const wrapper = (props: { children: ReactNode }) => (
       <AlephaContext.Provider value={app}>

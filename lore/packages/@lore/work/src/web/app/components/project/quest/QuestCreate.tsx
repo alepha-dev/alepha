@@ -305,7 +305,7 @@ const QuestCreate = (props: QuestCreateProps) => {
           description={tr("quest.create.description.helper")}
           input={form.input.description}
           icon={FileText}
-          custom={DescriptionEditor as never}
+          custom={DescriptionEditor}
         />
 
         {/* Below the description, because that is what an attachment is

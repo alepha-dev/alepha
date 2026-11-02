@@ -39,7 +39,7 @@ const visitorFor = async (env: Record<string, any>): Promise<string> => {
       "cf-connecting-ip": "1.2.3.4",
       "user-agent": "UA",
     },
-  } as any);
+  });
 
   return sink.ingested[0].stamp.visitor;
 };

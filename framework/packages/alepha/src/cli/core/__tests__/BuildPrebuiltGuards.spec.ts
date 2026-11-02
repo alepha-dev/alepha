@@ -13,7 +13,7 @@ describe("--prebuilt guards", () => {
   // named nothing the user could act on.
   const createCtx = (runtime: string): BuildTaskContext =>
     ({
-      alepha: null as any,
+      alepha: null,
       // ⚠️ A runtime, not a target. The build is described by what it
       // produces, and `static` is the declaration for "no server at all".
       options: { runtime } as BuildOptions,

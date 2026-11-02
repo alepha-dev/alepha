@@ -37,7 +37,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
   // Configure realm settings if provided (applies to default realm)
   if (realmSettings) {
     realmProvider.register("default", {
-      settings: realmSettings as never,
+      settings: realmSettings,
     });
   }
 
@@ -95,7 +95,7 @@ describe("alepha/api/users - RegistrationService", () => {
         },
         settings: {
           verifyEmailRequired: true,
-        } as never,
+        },
       });
 
       const result = await registrationService.createRegistrationIntent(
@@ -127,7 +127,7 @@ describe("alepha/api/users - RegistrationService", () => {
       realmProvider.register("no-registration-realm", {
         settings: {
           registrationAllowed: false,
-        } as never,
+        },
       });
 
       await expect(
@@ -157,7 +157,7 @@ describe("alepha/api/users - RegistrationService", () => {
 
       const asked: string[] = [];
       realmProvider.register("closed-refusing", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         isPreAuthorized: ({ email }) => {
           asked.push(email);
           return false;
@@ -185,7 +185,7 @@ describe("alepha/api/users - RegistrationService", () => {
       const { registrationService, realmProvider } = await setup();
 
       realmProvider.register("closed-inviting", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         isPreAuthorized: ({ email }) => email === "invited@example.com",
       });
 
@@ -218,7 +218,7 @@ describe("alepha/api/users - RegistrationService", () => {
 
       let consulted = 0;
       realmProvider.register("open-with-seam", {
-        settings: { registrationAllowed: true } as never,
+        settings: { registrationAllowed: true },
         isPreAuthorized: () => {
           consulted++;
           return false;
@@ -246,7 +246,7 @@ describe("alepha/api/users - RegistrationService", () => {
 
       let consulted = 0;
       realmProvider.register("closed-no-email", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         isPreAuthorized: () => {
           consulted++;
           return true;
@@ -281,7 +281,7 @@ describe("alepha/api/users - RegistrationService", () => {
         settings: {
           registrationAllowed: false,
           captchaRequired: true,
-        } as never,
+        },
         isPreAuthorized: () => true,
       });
 
@@ -303,7 +303,7 @@ describe("alepha/api/users - RegistrationService", () => {
 
       const seen: Array<Record<string, unknown>> = [];
       realmProvider.register("closed-token", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         isPreAuthorized: (context) => {
           seen.push({ ...context });
           return context.token === "the-secret";
@@ -353,7 +353,7 @@ describe("alepha/api/users - RegistrationService", () => {
         settings: {
           registrationAllowed: false,
           verifyEmailRequired: true,
-        } as never,
+        },
         isPreAuthorized: () => ({ emailVerified: true }),
       });
 
@@ -387,7 +387,7 @@ describe("alepha/api/users - RegistrationService", () => {
       realmProvider.register("username-required-realm", {
         settings: {
           username: "required",
-        } as never,
+        },
       });
 
       await expect(
@@ -422,7 +422,7 @@ describe("alepha/api/users - RegistrationService", () => {
         settings: {
           phoneNumber: "required",
           email: "optional",
-        } as never,
+        },
       });
 
       await expect(
@@ -482,7 +482,7 @@ describe("alepha/api/users - RegistrationService", () => {
         settings: {
           phoneNumber: "optional",
           email: "optional",
-        } as never,
+        },
       });
 
       // Create existing user with phone in the same realm
@@ -568,7 +568,7 @@ describe("alepha/api/users - RegistrationService", () => {
         },
         settings: {
           verifyEmailRequired: true,
-        } as never,
+        },
       });
 
       // Create intent (sends verification email)
@@ -637,7 +637,7 @@ describe("alepha/api/users - RegistrationService", () => {
         },
         settings: {
           verifyEmailRequired: true,
-        } as never,
+        },
       });
 
       const intent = await registrationService.createRegistrationIntent(
@@ -665,7 +665,7 @@ describe("alepha/api/users - RegistrationService", () => {
         },
         settings: {
           verifyEmailRequired: true,
-        } as never,
+        },
       });
 
       const intent = await registrationService.createRegistrationIntent(
@@ -715,7 +715,7 @@ describe("alepha/api/users - RegistrationService", () => {
       realmProvider.register("race-realm", {
         settings: {
           verifyEmailRequired: false,
-        } as never,
+        },
       });
 
       // Create intent
@@ -848,7 +848,7 @@ describe("alepha/api/users - RegistrationService", () => {
         },
         settings: {
           verifyEmailRequired: true,
-        } as never,
+        },
       });
 
       // Phase 1: Create intent
@@ -901,7 +901,7 @@ describe("alepha/api/users - RegistrationService", () => {
             requireNumbers: false,
             requireSpecialCharacters: false,
           },
-        } as never,
+        },
       });
 
       await expect(
@@ -929,7 +929,7 @@ describe("alepha/api/users - RegistrationService", () => {
             requireNumbers: false,
             requireSpecialCharacters: false,
           },
-        } as never,
+        },
       });
 
       const result = await registrationService.createRegistrationIntent(
@@ -1030,7 +1030,7 @@ describe("alepha/api/users - RegistrationService", () => {
       // A closure that says yes to everything: if the seam were a way past
       // the limiter, this realm would have no limiter at all.
       realmProvider.register("closed-ratelimited", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         isPreAuthorized: () => true,
       });
 
@@ -1071,7 +1071,7 @@ describe("alepha/api/users - RegistrationService", () => {
       realmProvider.register("custom-roles-realm", {
         settings: {
           defaultRoles: ["member", "viewer"],
-        } as never,
+        },
       });
 
       const intent = await registrationService.createRegistrationIntent(

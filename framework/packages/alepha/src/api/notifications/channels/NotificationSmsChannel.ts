@@ -54,7 +54,7 @@ export class NotificationSmsChannel extends NotificationChannel<
 
     const body =
       typeof sms.message === "function"
-        ? await sms.message(variables as any)
+        ? await sms.message(variables)
         : sms.message;
 
     return { recipient: contact, to: contact, body };

@@ -93,7 +93,7 @@ describe("HttpClient", () => {
         {},
         {
           query: {
-            hello: undefined as any,
+            hello: undefined,
             a: "b",
           },
         },

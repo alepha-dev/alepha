@@ -73,7 +73,7 @@ describe("lore registry", () => {
       },
     });
     const run = async (sub: "add" | "list" | "remove", argv: string) => {
-      await alepha.inject(CliProvider).run(command[sub] as never, { argv });
+      await alepha.inject(CliProvider).run(command[sub], { argv });
     };
     return { alepha, run, printed, sent };
   };

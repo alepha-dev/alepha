@@ -683,7 +683,7 @@ export class ViteDevServerProvider {
     const alepha = this.getLoadedAlepha();
 
     // Expose Vite server to Alepha for Logger SSR stack trace fixing
-    alepha.store.set("alepha.vite.server" as any, this.server);
+    alepha.store.set("alepha.vite.server", this.server);
 
     for (const hook of this.alephaLoadedHooks) {
       await hook(alepha, this.server);

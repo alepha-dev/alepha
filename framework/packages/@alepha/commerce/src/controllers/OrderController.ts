@@ -37,8 +37,7 @@ export class OrderController {
       }),
       response: db.page(publicOrderSchema),
     },
-    handler: async ({ query, user }) =>
-      this.orders.listForUser(user.id, query) as any,
+    handler: async ({ query, user }) => this.orders.listForUser(user.id, query),
   });
 
   public readonly commerceOrderDetail = $action({
@@ -56,7 +55,7 @@ export class OrderController {
     },
     handler: async ({ params, user }) => {
       const order = await this.ownOrder(params.id, user.id);
-      return { order, items: await this.orders.itemsOf(order.id) } as any;
+      return { order, items: await this.orders.itemsOf(order.id) };
     },
   });
 

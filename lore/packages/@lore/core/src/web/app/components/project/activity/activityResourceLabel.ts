@@ -13,8 +13,7 @@
 export const activityResourceLabel = (
   tr: (key: any, options?: any) => string,
   type: string,
-): string =>
-  tr(`activity.resource.${type}` as never, { default: capitalize(type) });
+): string => tr(`activity.resource.${type}`, { default: capitalize(type) });
 
 /**
  * The first letter uppercased, for values that are displayed as labels but

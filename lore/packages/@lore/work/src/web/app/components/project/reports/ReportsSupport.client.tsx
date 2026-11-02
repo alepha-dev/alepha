@@ -121,7 +121,7 @@ const ReportsSupport = (props: ReportsSupportProps) => {
         >
           <ReportsHistogram
             buckets={support.pendingAge.map((row) => ({
-              label: tr(`reports.backlog.age.${row.key}` as never),
+              label: tr(`reports.backlog.age.${row.key}`),
               count: row.count,
             }))}
             countLabel={tr("reports.support.reports")}

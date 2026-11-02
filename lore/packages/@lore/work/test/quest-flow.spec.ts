@@ -140,21 +140,21 @@ describe("QuestFlowService", () => {
       username: "owner",
       email: "owner@example.com",
       roles: ["user"],
-    } as never);
+    });
     const organization = await repos.organizations.create({
       name: "org",
-    } as never);
+    });
     const project = await repos.projects.create({
       title: "Flow",
       slug: "flow",
       organizationId: organization.id,
       createdBy: user.id,
-    } as never);
+    });
     await repos.capabilities.create({
       projectId: project.id,
       key: "work",
       options: {},
-    } as never);
+    });
 
     let shortId = 0;
     const quest = (overrides: Record<string, unknown>) =>

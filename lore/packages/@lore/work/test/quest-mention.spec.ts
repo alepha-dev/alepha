@@ -322,8 +322,8 @@ describe("a mention in a quest comment", () => {
       ctx.alepha.store.set(currentUserAtom, {
         id: author.id,
         roles: author.roles,
-      } as any);
-      return (ctx.questTools.quest_hold as any).execute({
+      });
+      return ctx.questTools.quest_hold.execute({
         id: questRowId,
         reason: "blocked until @fabrice picks a shape",
       });

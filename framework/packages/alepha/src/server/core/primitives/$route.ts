@@ -47,7 +47,7 @@ export class RoutePrimitive<
 
   protected onInit() {
     this.serverRouterProvider.createRoute({
-      ...(this.options as any),
+      ...this.options,
       handler: this.handler,
     } as ServerRoute<TConfig>);
   }

@@ -63,7 +63,7 @@ describe("registration and password reset during a counter outage", () => {
         registration.createRegistrationIntent({
           email: "outage@example.com",
           password: "Password123!",
-        } as never),
+        }),
       ),
     ).rejects.toMatchObject({ status: 503 });
   });

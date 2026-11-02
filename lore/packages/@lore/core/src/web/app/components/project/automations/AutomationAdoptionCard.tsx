@@ -160,7 +160,7 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
         <dd>
           {data.channels
             .map((channel) =>
-              tr(`automation.channel.${channel}` as never, {
+              tr(`automation.channel.${channel}`, {
                 default: channel,
               }),
             )

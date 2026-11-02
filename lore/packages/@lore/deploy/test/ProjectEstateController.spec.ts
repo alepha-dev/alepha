@@ -167,7 +167,7 @@ describe("ProjectEstateController, lending", () => {
         name: "Lender",
         permissions: ["project:read", "estate:read", "estate:lend"],
       },
-      ada as any,
+      ada,
     );
     await createTestMemberByProjectId(ctx.alepha, project.id, grace.id, {
       rank: "lender",

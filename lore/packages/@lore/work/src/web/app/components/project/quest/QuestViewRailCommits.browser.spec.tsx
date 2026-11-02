@@ -108,7 +108,7 @@ describe("QuestViewRail commits", () => {
         capabilities: [],
       }),
       ...(repositoryUrl ? { repositoryUrl } : {}),
-    } as never);
+    });
 
     const quest = alepha.inject(Links).quest(commits);
 

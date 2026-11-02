@@ -46,7 +46,7 @@ class FakeApi extends LoreApiClient {
     const route = this.routes[`${method} ${path}`];
     if (!route) {
       throw new AlephaError(`no route: ${method} ${path}`, {
-        cause: { status: 404 } as never,
+        cause: { status: 404 },
       });
     }
     return route(body) as T;
@@ -475,7 +475,7 @@ describe("deploying from another server", () => {
       const { api, service } = setup();
       api.routes["GET /api/projects/1/apps/club/wassup"] = () => {
         throw new AlephaError("Forbidden", {
-          cause: { status: 403 } as never,
+          cause: { status: 403 },
         });
       };
 

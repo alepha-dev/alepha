@@ -79,7 +79,7 @@ const setup = async () => {
               filler,
             }),
           },
-        } as any,
+        },
         { user },
       )
     ).data.artifact;

@@ -19,12 +19,12 @@ const boot = async (settings: Record<string, unknown>) => {
   alepha.with(AlephaApiUsers);
   await alepha.start();
   const realmProvider = alepha.inject(RealmProvider);
-  realmProvider.register("users", { settings: settings as never });
+  realmProvider.register("users", { settings: settings });
   return alepha;
 };
 
 const caller = (id: string) => ({
-  user: { id, realm: "users", sessionId: "s" } as never,
+  user: { id, realm: "users", sessionId: "s" },
 });
 
 describe("PATCH /users/me username", () => {
@@ -43,20 +43,20 @@ describe("PATCH /users/me username", () => {
 
     await expect(
       controller.updateMyProfile(
-        { body: { username: "root" } } as never,
+        { body: { username: "root" } },
         caller(user.id),
       ),
     ).rejects.toThrow(BadRequestError);
 
     await expect(
       controller.updateMyProfile(
-        { body: { username: "NOT_ALLOWED_123" } } as never,
+        { body: { username: "NOT_ALLOWED_123" } },
         caller(user.id),
       ),
     ).rejects.toThrow(BadRequestError);
 
     const renamed = await controller.updateMyProfile(
-      { body: { username: "fine" } } as never,
+      { body: { username: "fine" } },
       caller(user.id),
     );
     expect(renamed.username).toBe("fine");
@@ -80,7 +80,7 @@ describe("PATCH /users/me username", () => {
 
     await expect(
       controller.updateMyProfile(
-        { body: { username: `Alice${tag}` } } as never,
+        { body: { username: `Alice${tag}` } },
         caller(bob.id),
       ),
     ).rejects.toThrow(ConflictError);

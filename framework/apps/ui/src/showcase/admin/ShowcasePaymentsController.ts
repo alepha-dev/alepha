@@ -25,6 +25,6 @@ export class ShowcasePaymentsController {
       query: intentQuerySchema,
       response: z.page(intentResourceSchema),
     },
-    handler: ({ query }) => this.payments.paginate(query as any),
+    handler: ({ query }) => this.payments.paginate(query),
   });
 }

@@ -47,13 +47,10 @@ export const useAgentPromptSubject = () => {
       reference: formatReference(item.kind, item.number),
       title: item.title,
       url: absolute(
-        router.path(
-          item.route as never,
-          {
-            params: { projectSlug: project?.slug, ...item.params },
-            query: item.query,
-          } as never,
-        ),
+        router.path(item.route, {
+          params: { projectSlug: project?.slug, ...item.params },
+          query: item.query,
+        }),
       ),
     }),
 
@@ -61,12 +58,9 @@ export const useAgentPromptSubject = () => {
       project: project?.title ?? "",
       slug: project?.slug ?? "",
       url: absolute(
-        router.path(
-          route as never,
-          {
-            params: { projectSlug: project?.slug },
-          } as never,
-        ),
+        router.path(route, {
+          params: { projectSlug: project?.slug },
+        }),
       ),
     }),
   };

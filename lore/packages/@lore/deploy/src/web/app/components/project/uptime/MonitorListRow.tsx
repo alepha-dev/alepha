@@ -46,14 +46,14 @@ const MonitorListRow = (props: MonitorListRowProps) => {
           className="text-muted-foreground truncate text-xs"
           title={monitor.target}
         >
-          {tr(`uptime.kind.${monitor.kind}` as never)}
+          {tr(`uptime.kind.${monitor.kind}`)}
           {monitor.target ? `: ${monitor.target}` : ""}
         </div>
       </div>
       <span
         className={`w-fit rounded-full px-2 py-1 text-xs font-medium ${tone}`}
       >
-        {tr(`uptime.status.${status}` as never)}
+        {tr(`uptime.status.${status}`)}
       </span>
       <div>
         <div className="text-muted-foreground text-xs">
