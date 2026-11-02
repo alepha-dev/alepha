@@ -87,13 +87,13 @@ func notBackedUp(store *state.Store, app state.App) []string {
 }
 
 /*
-appPaths resolves the runtime the backup helper runs with, and the managed
-database path, for an app.
+appPaths resolves the runtime the backup helper runs with, and the app's
+data/ folder: every SQLite database in it is backed up, and nothing outside it.
 
 The helper runs in the app's own runtime image, so the SQLite that reads the
 database is the one that wrote it.
 */
-func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dbPath string, err error) {
+func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dataDir string, err error) {
 	if app.Image != "" {
 		return nil, "", fmt.Errorf("%s is an image app: Bay provisions no database for it, so there is nothing to back up", app.Key())
 	}
@@ -111,7 +111,7 @@ func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dbPath str
 		return nil, "", err
 	}
 	return &imageInterpreter{tasks: tasks, image: sel.Ref, command: m.Runtime,
-		scratch: filepath.Join(s.root, "tmp")}, filepath.Join(instance, "data", "app.db"), nil
+		scratch: filepath.Join(s.root, "tmp")}, filepath.Join(instance, "data"), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -210,6 +210,12 @@ sequential for its own reasons - it spawns a runtime per app on a 2-vCPU box).
 minutes, and holding that lock would queue an unrelated restart behind it.
 */
 func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutcome, error) {
+	return s.backupInstanceAs(ctx, app, "manual")
+}
+
+// backupInstanceAs is backupInstance saying what asked for it, which the
+// bundle's manifest records: "manual", "schedule", "console".
+func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger string) (backupOutcome, error) {
 	// A static site has nothing Bay can snapshot. Trying anyway used to record
 	// a failure that only a success can clear, so `bay status` reported the
 	// site as broken on every run, forever.
@@ -254,12 +260,13 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		}
 		notCovered = serviceNotBackedUp(app)
 	} else {
-		runtime, dbPath, err := s.appPaths(app)
+		runtime, dataDir, err := s.appPaths(app)
 		if err != nil {
 			s.recordBackupFailure(app.Key(), "resolve paths", err)
 			return backupOutcome{}, err
 		}
-		res, err = mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
+		res, _, err = mgr.BackupBundle(ctx, app.Name, app.Env, runtime, dataDir,
+			backup.BundleMeta{Release: app.Release, Trigger: trigger, Bay: version})
 		if err != nil {
 			s.recordBackupFailure(app.Key(), "backup", err)
 			return backupOutcome{}, err
@@ -395,6 +402,8 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		"rawBytes":    out.Result.RawBytes,
 		"storedBytes": out.Result.StoredBytes,
 		"tables":      out.Result.Tables,
+		"kind":        out.Result.Kind,
+		"files":       out.Result.Files,
 		"integrity":   "ok",
 		"pruned":      keys(out.Pruned),
 		"notBackedUp": out.NotBackedUp,
@@ -425,6 +434,7 @@ func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 	for _, e := range entries {
 		out = append(out, map[string]any{
 			"key": e.Key, "at": e.Timestamp.Format(time.RFC3339), "storedBytes": e.Size,
+			"kind": e.Kind, "files": e.Files,
 		})
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -449,13 +459,14 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
-	runtime, dbPath, err := s.appPaths(app)
+	runtime, dataDir, err := s.appPaths(app)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	dbPath := filepath.Join(dataDir, "app.db")
 
-	key := r.URL.Query().Get("key")
+	key, kind := r.URL.Query().Get("key"), ""
 	if key == "" {
 		latest, found, err := mgr.Latest(r.Context(), app.Name, app.Env)
 		if err != nil {
@@ -468,10 +479,14 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		}
 		key = latest.Key
 	}
+	if key, kind, err = backup.RestoreKey(app.Name, app.Env, key); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	// Verified before the app is touched: a corrupt backup must not cost the
 	// working database.
-	restored, cleanup, err := mgr.Fetch(r.Context(), key, runtime)
+	fetched, cleanup, err := fetchForRestore(r.Context(), mgr, key, kind, runtime)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -486,7 +501,8 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
 		return
 	}
-	if err := backup.Install(restored, dbPath); err != nil {
+	untouched, err := backup.InstallBundle(fetched, dataDir)
+	if err != nil {
 		// The app was stopped above; a refused install must not also be an
 		// outage. When the live database is still in place (setting it aside
 		// is the first step, and it is the one that failed) the app comes
@@ -515,12 +531,40 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("database restored", "app", app.Key(), "key", key)
 	// The backups the guard was protecting have done their job.
 	s.clearRestorePending(app.Key())
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"restored":    key,
 		"app":         app.Key(),
-		"previousDb":  "kept alongside as app.db.before-restore-*",
+		"files":       fetchedPaths(fetched),
+		"previousDb":  "each database replaced is kept alongside as <file>.before-restore-*",
 		"notRestored": []string{"storage/ (uploaded files)"},
-	})
+	}
+	if len(untouched) > 0 {
+		resp["untouched"] = untouched
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+/*
+fetchForRestore downloads and verifies a backup of either shape as a bundle:
+the older single-file snapshot is a bundle of one, app.db.
+*/
+func fetchForRestore(ctx context.Context, mgr *backup.Manager, key, kind string, runtime backup.Interpreter) (*backup.Fetched, func(), error) {
+	if kind == backup.KindBundle {
+		return mgr.FetchBundle(ctx, key, runtime)
+	}
+	restored, cleanup, err := mgr.Fetch(ctx, key, runtime)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &backup.Fetched{Files: []backup.FetchedFile{{Path: "app.db", Local: restored}}}, cleanup, nil
+}
+
+func fetchedPaths(f *backup.Fetched) []string {
+	out := make([]string, 0, len(f.Files))
+	for _, file := range f.Files {
+		out = append(out, file.Path)
+	}
+	return out
 }
 
 // maybeAutoRestore pulls the latest backup when Bay has just created an empty
@@ -557,14 +601,20 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	if err != nil {
 		return s.startedEmptyUnchecked(app, err.Error())
 	}
-	restored, cleanup, err := mgr.Fetch(ctx, latest.Key, runtime)
+	key, kind, err := backup.RestoreKey(app.Name, app.Env, latest.Key)
+	if err != nil {
+		return s.startedEmptyUnchecked(app, err.Error())
+	}
+	fetched, cleanup, err := fetchForRestore(ctx, mgr, key, kind, runtime)
 	if err != nil {
 		s.log.Error("auto-restore failed", "app", app.Key(), "key", latest.Key, "err", err)
 		return s.startedEmptyUnchecked(app, "restore failed: "+err.Error())
 	}
 	defer cleanup()
 
-	if err := backup.Install(restored, dbPath); err != nil {
+	// Into the folder of the database Bay just created: a bundle holds every
+	// database the app had there.
+	if _, err := backup.InstallBundle(fetched, filepath.Dir(dbPath)); err != nil {
 		s.log.Error("auto-restore install failed", "app", app.Key(), "err", err)
 		return s.startedEmptyUnchecked(app, "install failed: "+err.Error())
 	}
@@ -573,6 +623,7 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	return map[string]any{
 		"database":    "restored from " + latest.Key,
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
+		"files":       fetchedPaths(fetched),
 		"notRestored": []string{"storage/ (uploaded files)"},
 	}
 }
@@ -834,7 +885,7 @@ func (s *server) runDueBackups(ctx context.Context) {
 // a state `runDueBackups` filtered for and is worth one debug line, not a
 // stored failure.
 func (s *server) backupOne(ctx context.Context, app state.App) {
-	if _, err := s.backupInstance(ctx, app); err != nil {
+	if _, err := s.backupInstanceAs(ctx, app, "schedule"); err != nil {
 		var refused backupRefused
 		if errors.As(err, &refused) {
 			s.log.Debug("scheduled backup skipped", "app", app.Key(), "reason", refused.Error())

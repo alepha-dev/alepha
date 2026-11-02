@@ -38,7 +38,7 @@ The design notes live in the Lore project **Alepha** (`lore.alepha.dev/alepha`),
 | **Static headers** | the release's `dist/public/_headers` applied to every file served from disk, Cloudflare's way    |
 | **TLS**            | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)                |
 | **Provisioning**   | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`               |
-| **Backups**        | scheduled snapshot of the database, verified, compressed, uploaded, pruned                       |
+| **Backups**        | scheduled snapshot of every SQLite file in `data/`, verified, compressed, uploaded, pruned       |
 | **Control API**    | HTTP over a **unix socket**, authorized by the file mode. No port, no token                      |
 | **CLI**            | every command except `serve` is a thin client of that same API - one contract                    |
 
@@ -57,7 +57,7 @@ The Docker socket Bay drives is root-equivalent for the same reason, and gets
 the same treatment: reached as root, over a unix socket only (a `tcp://`
 `DOCKER_HOST` is refused), never exposed.
 
-**Backups cover the database and nothing else**, and every backup response says
+**Backups cover the databases and nothing else**, and every backup response says
 so in words. `storage/` (uploads) and `.env` are never archived - uploads are
 shared by putting them in a bucket (`bay config s3:apps`, a _second_ credential
 that is never the backup one) or they are not shared at all, and secrets come
@@ -71,6 +71,30 @@ invisible parts stay billed) — then checked with HEAD: it counts only when the
 bucket reports the size that was sent. A restore streams back through gunzip
 into a file, and a download cut short is an error, never a smaller database.
 The size of a database is bounded by the disk, not by Bay's RAM.
+
+**Every SQLite file in `data/` is backed up, together.** Bay finds them by
+their header, whatever they are called (an empty `.db`, `.sqlite` or
+`.sqlite3` counts too); `-wal`/`-shm`/`-journal`, the copies a restore sets
+aside and symbolic links are left out, the links named in the manifest. Each
+file is snapshotted with `VACUUM INTO` and integrity-checked in the app's own
+runtime, then uploaded as one bundle:
+
+```
+apps/<name>-<env>/db/<stamp>/files/<path>.gz
+apps/<name>-<env>/db/<stamp>/manifest.json   # uploaded last
+```
+
+The manifest is what makes a bundle exist. It records the release, what
+triggered the backup, and per file its sizes, sha256, integrity, page counts,
+journal mode, the row counts of its 50 biggest tables and its migration
+journals (`migrations_<schema>`, `__drizzle_migrations`). A bundle without one
+is a backup that died halfway: never listed, never restored, removed by
+retention once older than every backup kept. One file failing fails the whole
+bundle. A restore checks every file against its sha256 and SQLite before the
+app is stopped, then installs them all or none - a failure puts back the
+files already replaced. A restore key must belong to the app being restored.
+Backups taken before bundles (`<stamp>.sqlite.gz`, `app.db` only) stay
+listed and restorable.
 
 A deploy that creates the database restores the latest backup first. When it
 cannot find out whether there is one (no bucket configured yet, bucket

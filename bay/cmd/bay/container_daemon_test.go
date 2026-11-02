@@ -195,7 +195,7 @@ func TestContainerDeployDaemon(t *testing.T) {
 	})
 
 	t.Run("the SQLite backup reads the database through the app's runtime image", func(t *testing.T) {
-		interp, dbPath, err := s.appPaths(out.Result.App)
+		interp, dataDir, err := s.appPaths(out.Result.App)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -206,7 +206,7 @@ func TestContainerDeployDaemon(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got, err := backup.Snapshot(context.Background(), interp, dbPath, filepath.Join(snapDir, "app.db"))
+		got, err := backup.Snapshot(context.Background(), interp, filepath.Join(dataDir, "app.db"), filepath.Join(snapDir, "app.db"))
 		if err != nil {
 			t.Fatal(err)
 		}

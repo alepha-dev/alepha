@@ -332,7 +332,8 @@ func usageText() string {
                 # has not been set. e.g.
                 #    ssh HOST 'bay env set demo/production -' < .env.production
   bay env list <name/env>         # which variables are set, by NAME only
-  bay backup  <name/env>          # snapshot + verify + upload
+  bay backup  <name/env>          # every SQLite file of data/: snapshot + verify +
+                                  # upload, then a manifest that names them
   bay backup config <name/env> [--every 6h|inherit] [--keep N|inherit]
               [--on|--off|--inherit-enabled] [--reset]
               # the operator's override for one app. No flag shows every layer
@@ -341,8 +342,9 @@ func usageText() string {
               [--on|--off|--inherit-enabled] [--reset]
               # the host-wide default policy. Precedence, lowest first:
               # built-in (--backup-interval, keep 14) < global < app < operator
-  bay backups <name/env>          # list what is stored
-  bay restore <name/env> [--key K] # destructive; keeps the old db aside
+  bay backups <name/env>          # list what is stored, with kind and file count
+  bay restore <name/env> [--key K] # destructive; every database replaced is kept
+                                  # aside; K is a key or a stamp of THIS app
   bay restore <name/env> --dismiss # keep the empty db; resume pruning old backups
   bay backup list <stack>/<env> [service]   # a stack's service dumps
   bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]
