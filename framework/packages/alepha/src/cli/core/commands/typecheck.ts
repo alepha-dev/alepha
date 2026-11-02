@@ -22,9 +22,9 @@ export class TypecheckCommand {
       });
 
       // The compiler's own diagnostics, through the `tsgolint` binary that
-      // `alepha lint` already runs for type-aware rules: one embedded build of
-      // the TypeScript 7 checker instead of two (`typescript` was another
-      // 30 MB). Measured against `tsc --noEmit` on 4001 seeded errors across
+      // `alepha lint` already runs for type-aware rules. `typescript` stays a
+      // dependency regardless: `InfraConfigEditor` edits `alepha.config.ts`
+      // through its AST API, which spawns the native compiler. Measured against `tsc --noEmit` on 4001 seeded errors across
       // `packages/alepha` and Lore (#Q3073): the same file, line, column and
       // code for every one, as fast or faster, with less memory.
       //
