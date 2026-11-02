@@ -1,6 +1,8 @@
+import { existsSync, readFileSync } from "node:fs";
 import * as nodeModule from "node:module";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -932,7 +934,7 @@ export class DrizzleKitProvider {
     this.ensureDrizzleOrmResolvable(require);
 
     try {
-      return require(specifier);
+      return require(this.resolveVendoredPayload(dialect) ?? specifier);
     } catch (cause) {
       // Keep the cause. Reporting every failure as "not installed" sent us
       // hunting for a missing package that was sitting right there; the real
@@ -942,6 +944,32 @@ export class DrizzleKitProvider {
         { cause },
       );
     }
+  }
+
+  /**
+   * The payload file the build vendors into alepha's own
+   * `dist/vendor/drizzle-kit`, since drizzle-kit itself is a devDependency
+   * (#Q3088). Undefined when running from a checkout without a build, where
+   * the devDependency resolves instead.
+   */
+  protected resolveVendoredPayload(
+    dialect: "postgresql" | "sqlite",
+  ): string | undefined {
+    const file =
+      dialect === "sqlite" ? "payload-sqlite.cjs" : "payload-postgres.cjs";
+    let dir = dirname(fileURLToPath(import.meta.url));
+    while (dirname(dir) !== dir) {
+      const manifest = join(dir, "package.json");
+      if (existsSync(manifest)) {
+        if (JSON.parse(readFileSync(manifest, "utf8")).name !== "alepha") {
+          return undefined;
+        }
+        const vendored = join(dir, "dist", "vendor", "drizzle-kit", file);
+        return existsSync(vendored) ? vendored : undefined;
+      }
+      dir = dirname(dir);
+    }
+    return undefined;
   }
 
   /**

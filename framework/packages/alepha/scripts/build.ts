@@ -1,4 +1,5 @@
 #! /usr/bin/env node
+import { existsSync } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import * as os from "node:os";
@@ -393,6 +394,55 @@ class AlephaPackageBuilderCli {
           await this.fs.cp(
             vitestSetup,
             this.fs.join(root, this.dist, "testing/vitest/setup.ts"),
+          );
+        });
+      }
+
+      // drizzle-kit is a devDependency: its package is 105 MB, 18 copies of
+      // one ~5 MB bundle (9 entry points, CJS and ESM, every dialect), and
+      // alepha runs three of them (#Q3088). Those ship in `dist/vendor`, with
+      // a `vendor.json` naming the bin, so the CLI finds it the way it finds
+      // any embedded package. Not a `package.json`: Yarn's `packages/**/*`
+      // workspace glob would adopt it as a workspace named `drizzle-kit`.
+      // Each file is self-contained: it requires
+      // `drizzle-orm`, which alepha depends on, Node builtins, and database
+      // drivers only when a config names one.
+      if (packageName === "alepha") {
+        await run("vendored drizzle-kit", async () => {
+          const require = createRequire(join(root, "package.json"));
+          const source = (require.resolve.paths("drizzle-kit") ?? [])
+            .map((dir) => join(dir, "drizzle-kit"))
+            .find((dir) => existsSync(join(dir, "package.json")));
+          if (!source) {
+            throw new AlephaError("drizzle-kit is not installed");
+          }
+          const kit = JSON.parse(
+            await readFile(join(source, "package.json"), "utf8"),
+          );
+          const dest = this.fs.join(root, this.dist, "vendor/drizzle-kit");
+          await this.fs.mkdir(dest, { recursive: true });
+          // The payloads are CommonJS named `.js`, which alepha's
+          // `"type": "module"` would load as ESM: they ship as `.cjs`.
+          for (const [file, as] of [
+            ["bin.cjs", "bin.cjs"],
+            ["payload-postgres.js", "payload-postgres.cjs"],
+            ["payload-sqlite.js", "payload-sqlite.cjs"],
+          ]) {
+            await this.fs.cp(join(source, file), join(dest, as));
+          }
+          await this.fs.writeFile(
+            join(dest, "vendor.json"),
+            JSON.stringify(
+              {
+                name: "drizzle-kit",
+                version: kit.version,
+                license: kit.license,
+                homepage: kit.homepage,
+                bin: { "drizzle-kit": "./bin.cjs" },
+              },
+              null,
+              2,
+            ) + "\n",
           );
         });
       }
