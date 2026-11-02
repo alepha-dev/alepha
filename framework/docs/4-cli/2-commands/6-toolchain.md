@@ -1,6 +1,6 @@
 # Toolchain Commands
 
-Test, lint, typecheck, clean. The everyday commands, each backed by a tool that ships embedded in `alepha` - your project never declares Vitest, oxlint, oxfmt, or TypeScript as dependencies, and upgrading `alepha` moves the whole toolchain at once.
+Test, lint, typecheck, clean. The everyday commands, each backed by a tool that ships embedded in `alepha` - your project never declares Vitest, oxlint, oxfmt, or a TypeScript checker as dependencies, and upgrading `alepha` moves the whole toolchain at once.
 
 ## test
 
@@ -43,7 +43,9 @@ Lint findings in the `correctness` category are **errors**, so `alepha lint` exi
 
 ## typecheck
 
-Run TypeScript's type checker with no emit (`tsc --noEmit`). Alias: `alepha tc`.
+Run the TypeScript 7 type checker with no emit. Alias: `alepha tc`.
+
+It runs through `tsgolint`, the same embedded binary that runs `alepha lint`'s type-aware rules, so the toolchain carries one build of the checker instead of two. It reports the same diagnostics as `tsc --noEmit`. Each file is checked under its nearest `tsconfig.json`, and only files under the current directory are reported: in a monorepo, run it in each workspace or once at the root.
 
 ```bash
 alepha typecheck

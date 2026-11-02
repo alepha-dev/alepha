@@ -121,6 +121,32 @@ export class AlephaCliUtils {
   }
 
   /**
+   * Point oxlint at the native `tsgolint` binary embedded in `alepha`, the
+   * type-aware half that `alepha lint` (with `options.typeAware`) and
+   * `alepha typecheck` both run.
+   *
+   * oxlint looks for it in the project's `node_modules/.bin`, where an
+   * embedded dependency of `alepha` is not hoisted under pnpm or a global
+   * install. Resolved the way the `oxlint-tsgolint` bin shim does, without the
+   * node process the shim spawns. A value the user already set wins, and a
+   * platform with no binary leaves oxlint to its own lookup and its own error.
+   */
+  public useEmbeddedTsgolint(): void {
+    if (process.env.OXLINT_TSGOLINT_PATH) {
+      return;
+    }
+    try {
+      const dir = this.resolvePackageDir("oxlint-tsgolint");
+      const exe = process.platform === "win32" ? "tsgolint.exe" : "tsgolint";
+      process.env.OXLINT_TSGOLINT_PATH = createRequire(
+        join(dir, "package.json"),
+      ).resolve(`@oxlint-tsgolint/${process.platform}-${process.arch}/${exe}`);
+    } catch {
+      // no binary for this platform
+    }
+  }
+
+  /**
    * Write a configuration file to node_modules/.alepha directory.
    */
   public async writeConfigFile(
