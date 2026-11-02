@@ -189,6 +189,27 @@ each value, and judge staleness against the app's own interval. A legacy
 `bay config s3 --keep N` is the global keep until `bay config backup --keep`
 sets one.
 
+**Lore sees backups without asking the bucket.** Each backup leaves a record on
+the instance (key, trigger, tag, release, sizes, duration, and per database its
+sha256, integrity, table count, five biggest tables and migration journals) and
+is compared with the one before: a database that halves or disappears, a big
+table emptied, a failed integrity check are reported as anomalies, never
+refusals. The inventory carries it all in a `backup` block with one `state`
+word (`unconfigured`, `restore-pending`, `off`, `failing`, `never`, `stale`,
+`ok`), the bucket's health, the next scheduled run, the catalog counted at the
+last listing, the last restore test and the last restore. The bucket is probed
+every 5 minutes: three failures in a row is `down`, and a backup failure while
+the bucket does not answer is a `target` failure rather than the app's.
+What changes is also sent as events (`backup.*`: completed, failed,
+anomaly, pruned, policy-changed; `restore.*`: completed, failed, auto, pending,
+dismissed; `verify.passed|failed`; `target.down|up`), spooled in `connector-events.json`
+(500 newest) and sent only to a Lore whose welcome lists the `events` feature.
+The console's verbs are the CLI's, through the same functions:
+`backup` (with a tag), `backups-list`, `backup-verify`, `target-probe`,
+`backup-policy` (the operator layer) and `restore` (a reason, or a dry run).
+The two writes are refused while the estate's `deployAllowed` is off, and a
+restore and a deploy of one instance refuse each other with a 409.
+
 A stack service is data too, so it declares how to dump itself in
 `x-lore.backup`: `{postgres: {user, db}}` runs `pg_dump` in the service's
 container and verifies with `pg_restore --list`, and `{command, restore}` takes

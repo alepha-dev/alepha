@@ -64,11 +64,14 @@ type Config struct {
 // Welcome is what Lore says about the estate on every connect, cached for the
 // commands that run in another process.
 type Welcome struct {
-	EstateID             string    `json:"estateId"`
-	Slug                 string    `json:"slug"`
-	DeployAllowed        bool      `json:"deployAllowed"`
-	StatsIntervalSeconds int       `json:"statsIntervalSeconds"`
-	ReceivedAt           time.Time `json:"receivedAt"`
+	EstateID             string `json:"estateId"`
+	Slug                 string `json:"slug"`
+	DeployAllowed        bool   `json:"deployAllowed"`
+	StatsIntervalSeconds int    `json:"statsIntervalSeconds"`
+	// Features are what this Lore understands beyond protocol 1
+	// (EventsFeature). Absent from an older Lore, which means none.
+	Features   []string  `json:"features,omitempty"`
+	ReceivedAt time.Time `json:"receivedAt"`
 }
 
 // Store reads and writes the two files.

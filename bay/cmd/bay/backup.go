@@ -241,6 +241,8 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, t
 
 	unlock := s.lockBackup(app.Key())
 	defer unlock()
+	started := time.Now()
+	var manifest *backup.Manifest
 
 	// Recorded on the same terms as the scheduled path, success and failure
 	// alike. Before this, a backup taken by hand touched the store not at all:
@@ -263,28 +265,39 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, t
 		}
 		res, err = mgr.BackupDump(ctx, app.Name, app.Env, serviceDumper{container: runner.ContainerName(app.Key()), hook: *app.BackupHook})
 		if err != nil {
-			s.recordBackupFailure(app.Key(), "backup", err)
+			s.recordBackupFailure(ctx, app, "backup", err)
 			return backupOutcome{}, err
 		}
 		notCovered = serviceNotBackedUp(app)
 	} else {
 		runtime, dataDir, err := s.appPaths(app)
 		if err != nil {
-			s.recordBackupFailure(app.Key(), "resolve paths", err)
+			s.recordBackupFailure(ctx, app, "resolve paths", err)
 			return backupOutcome{}, err
 		}
-		res, _, err = mgr.BackupBundle(ctx, app.Name, app.Env, runtime, dataDir,
+		res, manifest, err = mgr.BackupBundle(ctx, app.Name, app.Env, runtime, dataDir,
 			backup.BundleMeta{Release: app.Release, Trigger: trigger, Tag: tag, Bay: version})
 		if err != nil {
-			s.recordBackupFailure(app.Key(), "backup", err)
+			s.recordBackupFailure(ctx, app, "backup", err)
 			return backupOutcome{}, err
 		}
 	}
-	if err := s.store.RecordBackupSuccess(app.Key(), res.Key, time.Now()); err != nil {
+	finished := time.Now()
+	rec := backupRecord(res, manifest, trigger, tag, app.Release, finished.Sub(started), finished)
+	var previous *state.BackupRecord
+	if current, ok := s.store.Get(app.Key()); ok {
+		previous = current.LastBackup
+	}
+	rec.Anomalies = backupAnomalies(previous, rec)
+	if err := s.store.RecordBackup(app.Key(), rec); err != nil {
 		// The bytes are in the bucket; only the bookkeeping failed. Reported as a
 		// successful backup, because refusing here would tell an operator their
 		// data is not safe when it is.
 		s.log.Error("backup succeeded but recording it failed", "app", app.Key(), "err", err)
+	}
+	// A backup that succeeds proves the bucket answers.
+	if s.targets != nil {
+		s.targets.set(s, "ok", "", "")
 	}
 
 	// Retention runs here and not on a schedule of its own: pruning is only
@@ -312,6 +325,26 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, t
 
 	s.log.Info("backup stored", "app", app.Key(), "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
+	s.refreshCatalog(ctx, mgr, app)
+
+	s.emit("backup.completed", &app, map[string]any{
+		"key": rec.Key, "kind": rec.Kind, "trigger": trigger, "tag": tag, "release": rec.Release,
+		"rawBytes": rec.RawBytes, "storedBytes": rec.StoredBytes, "durationMs": rec.DurationMs, "files": rec.Files,
+	})
+	if len(pruned) > 0 {
+		keys := make([]string, 0, len(pruned))
+		for i, p := range pruned {
+			if i == 50 {
+				break
+			}
+			keys = append(keys, p.Key)
+		}
+		s.emit("backup.pruned", &app, map[string]any{"count": len(pruned), "keys": keys})
+	}
+	if len(rec.Anomalies) > 0 {
+		s.log.Warn("backup looks unlike the previous one", "app", app.Key(), "anomalies", joinAnomalies(rec.Anomalies))
+		s.emit("backup.anomaly", &app, map[string]any{"key": rec.Key, "anomalies": rec.Anomalies})
+	}
 
 	return backupOutcome{
 		Result:         res,
@@ -572,6 +605,8 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	}
 	s.clearRestorePending(app.Key())
 	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key)
+	s.recordRestore(app, state.RestoreRecord{Key: latest.Key, Trigger: "deploy", Status: "done",
+		Reason: "empty database on deploy, latest backup restored"})
 	return map[string]any{
 		"database":    "restored from " + latest.Key,
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
@@ -596,6 +631,7 @@ func (s *server) startedEmptyUnchecked(app state.App, reason string) map[string]
 	if err := s.store.SetRestorePending(app.Key(), reason, time.Now()); err != nil {
 		s.log.Error("could not record the pending restore", "app", app.Key(), "err", err)
 	}
+	s.emit("restore.pending", &app, map[string]any{"reason": clip(reason)})
 	return map[string]any{
 		"database":       "empty (" + reason + ")",
 		"restorePending": true,
@@ -736,6 +772,7 @@ func (s *server) handleRestoreDismiss(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Warn("pending restore dismissed; retention resumes", "app", app.Key(), "since", app.RestorePending.Since)
+	s.emit("restore.dismissed", &app, map[string]any{"since": app.RestorePending.Since, "reason": clip(app.RestorePending.Reason)})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"app":            app.Key(),
 		"restorePending": false,
@@ -777,12 +814,23 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
+	// The bucket is asked first, so a target that is down at boot is reported
+	// as such before the first backup fails against it.
+	var probedAt time.Time
+	probe := func() {
+		if s.targets != nil && time.Since(probedAt) >= targetProbeEvery {
+			probedAt = time.Now()
+			s.targets.probe(ctx, s)
+		}
+	}
+	probe()
 	s.runDueBackups(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			probe()
 			s.runDueBackups(ctx)
 			s.runDueVerifies(ctx)
 		}
@@ -887,10 +935,22 @@ func (s *server) backupOne(ctx context.Context, app state.App, now time.Time) {
 // what failed and at which stage is the same question either way, and a line
 // saying "scheduled" about a backup someone just typed would send whoever reads
 // it looking for a timer that had nothing to do with it.
-func (s *server) recordBackupFailure(key, stage string, cause error) {
-	reason := stage + ": " + cause.Error()
+//
+// A failure while talking to the bucket is checked against it: when the probe
+// fails too, the stage is "target", which is what tells "the bucket is down"
+// apart from "this app's backup is broken".
+func (s *server) recordBackupFailure(ctx context.Context, app state.App, stage string, cause error) {
+	if stage == "backup" {
+		stage = s.failureStage(ctx, stage, cause)
+	}
+	key := app.Key()
 	s.log.Error("backup failed", "app", key, "stage", stage, "err", cause)
-	if err := s.store.RecordBackupFailure(key, reason, time.Now()); err != nil {
+	if err := s.store.RecordBackupFailureAt(key, stage, cause.Error(), time.Now()); err != nil {
 		s.log.Error("could not record the backup failure", "app", key, "err", err)
 	}
+	consecutive := 1
+	if current, ok := s.store.Get(key); ok && current.BackupFailure != nil {
+		consecutive = current.BackupFailure.Consecutive
+	}
+	s.emit("backup.failed", &app, map[string]any{"stage": stage, "error": clip(cause.Error()), "consecutive": consecutive})
 }

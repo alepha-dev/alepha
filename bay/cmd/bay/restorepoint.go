@@ -46,6 +46,8 @@ func parseInstance(s string) (restoreSource, error) {
 type restoreError struct {
 	status int
 	msg    string
+	// extra goes into the error body beside the message.
+	extra map[string]any
 }
 
 func (e restoreError) Error() string { return e.msg }
@@ -60,7 +62,7 @@ timezone, so the time typed is the time `bay backups` shows.
 func (s *server) resolveRestoreKey(ctx context.Context, mgr *backup.Manager, app state.App, src restoreSource, q neturl.Values) (key, kind string, err error) {
 	given, at := q.Get("key"), q.Get("at")
 	if given != "" && at != "" {
-		return "", "", restoreError{http.StatusBadRequest, "--key and --at both name a backup: give one"}
+		return "", "", restoreError{status: http.StatusBadRequest, msg: "--key and --at both name a backup: give one"}
 	}
 	if given != "" {
 		key, kind, err = backup.RestoreKey(src.name, src.env, given)
@@ -69,7 +71,7 @@ func (s *server) resolveRestoreKey(ctx context.Context, mgr *backup.Manager, app
 			if q.Get("from") == "" {
 				msg += "; restoring another instance's data takes --from <name/env>"
 			}
-			return "", "", restoreError{http.StatusBadRequest, msg}
+			return "", "", restoreError{status: http.StatusBadRequest, msg: msg}
 		}
 		return key, kind, nil
 	}
@@ -78,22 +80,22 @@ func (s *server) resolveRestoreKey(ctx context.Context, mgr *backup.Manager, app
 		loc := s.effectiveBackupPolicy(app).Location()
 		if tz := q.Get("tz"); tz != "" {
 			if loc, err = time.LoadLocation(tz); err != nil {
-				return "", "", restoreError{http.StatusBadRequest, fmt.Sprintf("--tz: %q is not an IANA timezone", tz)}
+				return "", "", restoreError{status: http.StatusBadRequest, msg: fmt.Sprintf("--tz: %q is not an IANA timezone", tz)}
 			}
 		}
 		if when, err = backup.ParseRestoreTime(at, loc); err != nil {
-			return "", "", restoreError{http.StatusBadRequest, "--at: " + err.Error()}
+			return "", "", restoreError{status: http.StatusBadRequest, msg: "--at: " + err.Error()}
 		}
 	}
 	entry, found, err := mgr.Before(ctx, src.name, src.env, when)
 	if err != nil {
-		return "", "", restoreError{http.StatusBadGateway, "list backups of " + src.key() + ": " + err.Error()}
+		return "", "", restoreError{status: http.StatusBadGateway, msg: "list backups of " + src.key() + ": " + err.Error()}
 	}
 	if !found {
 		if at != "" {
-			return "", "", restoreError{http.StatusNotFound, "no backup of " + src.key() + " at or before " + when.UTC().Format(time.RFC3339)}
+			return "", "", restoreError{status: http.StatusNotFound, msg: "no backup of " + src.key() + " at or before " + when.UTC().Format(time.RFC3339)}
 		}
-		return "", "", restoreError{http.StatusNotFound, "no backup found for " + src.key()}
+		return "", "", restoreError{status: http.StatusNotFound, msg: "no backup found for " + src.key()}
 	}
 	return backup.RestoreKey(src.name, src.env, entry.Key)
 }
@@ -110,40 +112,86 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionRequired, "restoring overwrites the live database; repeat with ?confirm=yes")
 		return
 	}
-	mgr, _, err := s.backupManager()
-	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
-		return
-	}
-	src := restoreSource{app.Name, app.Env}
-	if from := q.Get("from"); from != "" {
-		if src, err = parseInstance(from); err != nil {
-			writeError(w, http.StatusBadRequest, "--from: "+err.Error())
-			return
-		}
-	}
-	runtime, dataDir, err := s.appPaths(app)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	key, kind, err := s.resolveRestoreKey(r.Context(), mgr, app, src, q)
+	resp, err := s.restoreInstance(r.Context(), app, q, restoreOptions{DryRun: dryRun, Reason: q.Get("reason"), Trigger: "cli"})
 	if err != nil {
 		var re restoreError
 		if errors.As(err, &re) {
-			writeError(w, re.status, re.msg)
+			writeError(w, re.status, re.msg, re.extra)
 		} else {
 			writeError(w, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// restoreOptions is what a restore is asked to do beyond which backup.
+type restoreOptions struct {
+	DryRun bool
+	// Reason is why, recorded with the restore and sent to Lore.
+	Reason string
+	// Trigger is what asked: "cli" or "console".
+	Trigger string
+}
+
+/*
+restoreInstance is the one restore path, behind `bay restore` and the
+console's restore action alike, so both are recorded and reported the same
+way.
+
+q names the backup (key, at, tz, from: see resolveRestoreKey). A refusal is a
+restoreError carrying the HTTP status that says why; every failure after the
+backup has been chosen is recorded as a failed restore.
+*/
+func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Values, opts restoreOptions) (map[string]any, error) {
+	mgr, _, err := s.backupManager()
+	if err != nil || mgr == nil {
+		return nil, restoreError{status: http.StatusPreconditionFailed, msg: "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set"}
+	}
+	src := restoreSource{app.Name, app.Env}
+	if from := q.Get("from"); from != "" {
+		if src, err = parseInstance(from); err != nil {
+			return nil, restoreError{status: http.StatusBadRequest, msg: "--from: " + err.Error()}
+		}
+	}
+	runtime, dataDir, err := s.appPaths(app)
+	if err != nil {
+		return nil, restoreError{status: http.StatusInternalServerError, msg: err.Error()}
+	}
+	key, kind, err := s.resolveRestoreKey(ctx, mgr, app, src, q)
+	if err != nil {
+		return nil, err
+	}
+
+	// From here on the restore is about a named backup, and how it ends is
+	// recorded either way.
+	rec := state.RestoreRecord{Key: key, Reason: opts.Reason, Trigger: opts.Trigger}
+	if src.key() != app.Key() {
+		rec.From = src.key()
+	}
+	fail := func(status int, msg string, extra map[string]any) (map[string]any, error) {
+		if !opts.DryRun {
+			rec.Status, rec.Error = "failed", msg
+			s.recordRestore(app, rec)
+		}
+		return nil, restoreError{status: status, msg: msg, extra: extra}
+	}
+
+	// A deploy swapping the release under the restore, or the other way
+	// round, leaves an app nobody can describe. A dry run touches nothing.
+	if !opts.DryRun {
+		release, ok := s.claimInstance(app.Key(), "restore")
+		if !ok {
+			return nil, restoreError{status: http.StatusConflict, msg: app.Key() + " is busy (" + release + "): try again once it is done"}
+		}
+		defer s.releaseInstance(app.Key())
+	}
 
 	// Verified before the app is touched: a corrupt backup must not cost the
 	// working database.
-	fetched, cleanup, err := mgr.FetchAny(r.Context(), key, kind, runtime)
+	fetched, cleanup, err := mgr.FetchAny(ctx, key, kind, runtime)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, err.Error(), map[string]any{"key": key})
-		return
+		return fail(http.StatusBadGateway, err.Error(), map[string]any{"key": key})
 	}
 	defer cleanup()
 
@@ -156,7 +204,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 			"createdAt": man.CreatedAt, "release": man.Release, "trigger": man.Trigger, "tag": man.Tag,
 		}
 	}
-	if dryRun {
+	if opts.DryRun {
 		replaces, untouched, creates := restoreChanges(fetched, dataDir)
 		resp["dryRun"] = true
 		resp["wouldRestore"] = key
@@ -165,8 +213,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		if len(untouched) > 0 {
 			resp["untouched"] = untouched
 		}
-		writeJSON(w, http.StatusOK, resp)
-		return
+		return resp, nil
 	}
 
 	// The data about to be replaced goes to the bucket first, tagged, so a
@@ -174,14 +221,15 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	// only from the before-restore copies left on this disk. Best effort:
 	// those copies are still there when the bucket refuses.
 	if present, _, _ := backup.DiscoverSQLite(dataDir); len(present) > 0 && app.BackupHook == nil {
-		if out, err := s.backupInstanceAs(r.Context(), app, "restore", backup.TagPreRestore); err != nil {
+		if out, err := s.backupInstanceAs(ctx, app, "restore", backup.TagPreRestore); err != nil {
 			s.log.Warn("pre-restore backup failed; restoring anyway", "app", app.Key(), "err", err)
 			resp["preRestoreBackup"] = map[string]any{
 				"error": err.Error(),
 				"kept":  "each database replaced is still kept on this disk as <file>.before-restore-*",
 			}
 		} else {
-			resp["preRestoreBackup"] = map[string]any{"key": resultKey(out)}
+			rec.PreRestoreKey = resultKey(out)
+			resp["preRestoreBackup"] = map[string]any{"key": rec.PreRestoreKey}
 		}
 	}
 
@@ -192,8 +240,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	defer s.holdDuring(app.Key())()
 
 	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {
-		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
-		return
+		return fail(http.StatusInternalServerError, "stop app: "+err.Error(), nil)
 	}
 	untouched, err := backup.InstallBundle(fetched, dataDir)
 	if err != nil {
@@ -213,26 +260,24 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		} else {
 			msg += "; the app is left stopped, its database is set aside next to " + dbPath
 		}
-		writeError(w, http.StatusInternalServerError, msg)
-		return
+		return fail(http.StatusInternalServerError, msg, nil)
 	}
 	if err := s.start(app); err != nil {
-		writeError(w, http.StatusBadGateway,
-			"database restored but the app did not come back: "+err.Error(),
-			map[string]any{"restored": key},
-		)
-		return
+		return fail(http.StatusBadGateway, "database restored but the app did not come back: "+err.Error(),
+			map[string]any{"restored": key})
 	}
-	s.log.Info("database restored", "app", app.Key(), "key", key, "from", src.key())
+	s.log.Info("database restored", "app", app.Key(), "key", key, "from", src.key(), "by", opts.Trigger)
 	// The backups the guard was protecting have done their job.
 	s.clearRestorePending(app.Key())
+	rec.Status = "done"
+	s.recordRestore(app, rec)
 	resp["restored"] = key
 	resp["previousDb"] = "each database replaced is kept alongside as <file>.before-restore-*"
 	resp["notRestored"] = []string{"storage/ (uploaded files)"}
 	if len(untouched) > 0 {
 		resp["untouched"] = untouched
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return resp, nil
 }
 
 // restoreChanges says what installing a fetched backup into dataDir would do:
@@ -299,6 +344,11 @@ func (s *server) verifyInstance(ctx context.Context, app state.App, q neturl.Val
 	}
 	if recErr := s.store.RecordVerify(app.Key(), key, failure, time.Now()); recErr != nil {
 		s.log.Error("could not record the restore test", "app", app.Key(), "err", recErr)
+	}
+	if failure == "" {
+		s.emit("verify.passed", &app, map[string]any{"key": key})
+	} else {
+		s.emit("verify.failed", &app, map[string]any{"key": key, "error": clip(failure)})
 	}
 	if report == nil {
 		report = &backup.VerifyReport{Key: key, Kind: kind}

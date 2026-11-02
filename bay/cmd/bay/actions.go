@@ -69,6 +69,24 @@ const (
 	// verb whose result is a payload rather than an ack, uploaded over the
 	// pull seam.
 	actionLogs actionKind = "logs"
+
+	// The backup verbs below are each what a `bay` subcommand does, through
+	// the same function; see backupactions.go. Reads (list, verify, probe)
+	// answer a payload like `logs`; the two writes (policy, restore) are
+	// refused while deployAllowed is off, like a deploy.
+
+	// actionBackupsList answers the instance's backups, newest first.
+	actionBackupsList actionKind = "backups-list"
+	// actionBackupVerify test-restores one backup into a scratch directory.
+	actionBackupVerify actionKind = "backup-verify"
+	// actionTargetProbe asks whether the backup bucket answers right now.
+	actionTargetProbe actionKind = "target-probe"
+	// actionBackupPolicy sets or clears the instance's operator policy layer.
+	actionBackupPolicy actionKind = "backup-policy"
+	// actionRestore overwrites the live database with a backup, after taking
+	// a pre-restore backup of it. The most destructive verb here: it needs a
+	// reason, and a dry run says what it would replace without touching it.
+	actionRestore actionKind = "restore"
 )
 
 /*
@@ -138,12 +156,14 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	switch actionKind(cmd.Kind) {
-	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy:
+	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
+		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s and %s, nothing else",
-			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy)
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
+			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -172,6 +192,15 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		// Outside it too, and for a plainer reason: this is a READ. A tail
 		// asked for during a long deploy has to answer now, not after it.
 		status, step, reason = a.logs(ctx, cmd)
+	case actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy:
+		// Reads, or a one-field write the store serialises: none of them
+		// touches a running app, so none waits for a deploy elsewhere.
+		status, step, reason = a.backupAction(ctx, cmd)
+	case actionRestore:
+		// Not under the machine mutex for the minutes it takes: the instance
+		// claim refuses a restore during that app's deploy, which is the
+		// overlap that matters, without queueing other apps behind it.
+		status, step, reason = a.restore(ctx, cmd)
 	default:
 		status, step, reason = a.runExclusive(ctx, cmd, send)
 	}
@@ -322,7 +351,7 @@ func (a *actions) backup(ctx context.Context, cmd connector.Command) (status, st
 	if !ok {
 		return "failed", "", "unknown instance " + key + " on this bay"
 	}
-	out, err := a.s.backupInstanceAs(ctx, app, "console", "")
+	out, err := a.s.backupInstanceAs(ctx, app, "console", cmd.Tag)
 	if err != nil {
 		return "failed", "", err.Error()
 	}

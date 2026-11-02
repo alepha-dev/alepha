@@ -222,13 +222,26 @@ func (s *server) handleDeleteAppBackupPolicy(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *server) setAppPolicy(w http.ResponseWriter, app state.App, p *backuppolicy.Policy) {
-	if err := s.store.SetBackupOverride(app.Key(), p); err != nil {
+	app, err := s.applyOperatorPolicy(app, p, "cli")
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	app.BackupOverride = p
-	s.log.Info("backup policy set", "app", app.Key(), "operator", policyLog(p))
 	writeJSON(w, http.StatusOK, s.appPolicyView(app))
+}
+
+// applyOperatorPolicy stores (or, with nil, clears) the operator layer of an
+// instance's policy, logs it and tells Lore what changed, from what to what.
+func (s *server) applyOperatorPolicy(app state.App, p *backuppolicy.Policy, by string) (state.App, error) {
+	before := policyLine(s.effectiveBackupPolicy(app))
+	if err := s.store.SetBackupOverride(app.Key(), p); err != nil {
+		return app, err
+	}
+	app.BackupOverride = p
+	after := policyLine(s.effectiveBackupPolicy(app))
+	s.log.Info("backup policy set", "app", app.Key(), "operator", policyLog(p), "by", by)
+	s.emit("backup.policy-changed", &app, map[string]any{"by": by, "before": clip(before), "after": clip(after), "cleared": p == nil})
+	return app, nil
 }
 
 // policyLine is the policy as `bay status` prints it, each part with the

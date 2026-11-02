@@ -487,6 +487,15 @@ type server struct {
 	// where there is no loop to report on and none to wake.
 	connectorStatus *connector.Status
 	connectorReload chan struct{}
+	// events is the spool of what Lore should hear about (backups, restores,
+	// the bucket going down); targets watches the backup bucket. Both nil in
+	// the CLI paths, where emit and probes are no-ops.
+	events  *connector.EventSpool
+	targets *targetHealth
+	// busy is the instances a deploy or a restore is working on, so one is
+	// refused while the other runs (see claimInstance).
+	busyMu sync.Mutex
+	busy   map[string]string
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -619,7 +628,8 @@ func cmdServe(args []string) error {
 		isolated: isolated, log: log, controlSocket: controlSocket,
 		keepReleases: keepReleases, backupInterval: backupInterval,
 		probe:           &health.Probe{},
-		connectorStatus: connector.NewStatus(), connectorReload: make(chan struct{}, 1)}
+		connectorStatus: connector.NewStatus(), connectorReload: make(chan struct{}, 1),
+		events: connector.NewEventSpool(root, 0), targets: newTargetHealth()}
 
 	router := proxy.New(root, store, log)
 	srv.router = router
@@ -1382,6 +1392,16 @@ func (e *deployFailure) Unwrap() error { return e.Err }
 // and never answer a failure before putting the app back.
 func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions) (*deployOutcome, *deployFailure) {
 	key := opts.Name + "/" + opts.Env
+
+	// A restore swapping the database under this deploy would leave an app
+	// nobody can describe.
+	if holder, ok := s.claimInstance(key, "deploy"); !ok {
+		if opts.SecretsFile != "" {
+			_ = os.Remove(opts.SecretsFile)
+		}
+		return nil, &deployFailure{Status: http.StatusConflict, Err: fmt.Errorf("%s is busy (%s): deploy again once it is done", key, holder)}
+	}
+	defer s.releaseInstance(key)
 
 	// Consumed BEFORE anything moves: before the hold, before the running app
 	// is stopped, before a byte is unpacked. A secrets file that is a symlink,

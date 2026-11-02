@@ -99,6 +99,20 @@ type App struct {
 	// LastBackupError is when and why the most recent attempt failed. Cleared on
 	// the next success.
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// LastBackup is what the last successful backup was: its size, how long
+	// it took, what asked for it and what each database held. Reported to
+	// Lore; nil for a backup taken before Bay recorded it.
+	LastBackup *BackupRecord `json:"lastBackup,omitempty"`
+	// BackupFailure is the structured side of LastBackupError: the stage and
+	// how many attempts in a row have failed. Nil after a success.
+	BackupFailure *BackupFailure `json:"backupFailure,omitempty"`
+	// BackupCatalog is what the instance's prefix held the last time Bay
+	// listed it (after each backup, or when asked), so an inventory says how
+	// many backups exist without an S3 call per push.
+	BackupCatalog *BackupCatalog `json:"backupCatalog,omitempty"`
+	// LastRestore is the last restore into this instance, whatever asked for
+	// it and whether it worked.
+	LastRestore *RestoreRecord `json:"lastRestore,omitempty"`
 	// LastVerifyAt is when a restore test (`bay backup verify`, or the
 	// policy's verify.every) last ran, RFC3339 UTC, whatever its outcome;
 	// LastVerifyKey the backup it read; LastVerifyError why it failed, empty
@@ -228,6 +242,87 @@ type RestorePending struct {
 func (p RestorePending) SinceTime() time.Time {
 	t, _ := time.Parse(time.RFC3339, p.Since)
 	return t
+}
+
+// BackupRecord is one successful backup as Bay saw it happen.
+type BackupRecord struct {
+	At          string `json:"at"`
+	Key         string `json:"key"`
+	Kind        string `json:"kind,omitempty"`
+	Trigger     string `json:"trigger,omitempty"`
+	Tag         string `json:"tag,omitempty"`
+	Release     string `json:"release,omitempty"`
+	RawBytes    int64  `json:"rawBytes,omitempty"`
+	StoredBytes int64  `json:"storedBytes,omitempty"`
+	DurationMs  int64  `json:"durationMs,omitempty"`
+	Files       int    `json:"files,omitempty"`
+	// Databases is what each SQLite file held, from the bundle's manifest.
+	Databases []DatabaseRecord `json:"databases,omitempty"`
+	// Anomalies are what looked wrong compared with the backup before it
+	// (a database much smaller, one gone, a table emptied). The backup is
+	// stored all the same: a warning, never a refusal.
+	Anomalies []string `json:"anomalies,omitempty"`
+}
+
+// DatabaseRecord is one database of a backup: metadata only, never data.
+type DatabaseRecord struct {
+	Path        string            `json:"path"`
+	RawBytes    int64             `json:"rawBytes"`
+	StoredBytes int64             `json:"storedBytes"`
+	SHA256      string            `json:"sha256,omitempty"`
+	Integrity   string            `json:"integrity,omitempty"`
+	Tables      int               `json:"tables"`
+	PageSize    int64             `json:"pageSize,omitempty"`
+	Pages       int64             `json:"pages,omitempty"`
+	FreePages   int64             `json:"freePages,omitempty"`
+	JournalMode string            `json:"journalMode,omitempty"`
+	TopTables   []TableCount      `json:"topTables,omitempty"`
+	Migrations  []MigrationRecord `json:"migrations,omitempty"`
+}
+
+// TableCount is one table's row count.
+type TableCount struct {
+	Table string `json:"table"`
+	Rows  int64  `json:"rows"`
+}
+
+// MigrationRecord is a migration journal found in a database.
+type MigrationRecord struct {
+	Table string `json:"table"`
+	Count int64  `json:"count"`
+	Last  string `json:"last,omitempty"`
+}
+
+// BackupFailure is the last failed attempt, structured.
+type BackupFailure struct {
+	At          string `json:"at"`
+	Stage       string `json:"stage,omitempty"`
+	Message     string `json:"message"`
+	Consecutive int    `json:"consecutive"`
+}
+
+// BackupCatalog is a summary of an instance's backups prefix.
+type BackupCatalog struct {
+	ListedAt   string `json:"listedAt"`
+	Count      int    `json:"count"`
+	TotalBytes int64  `json:"totalBytes"`
+	OldestAt   string `json:"oldestAt,omitempty"`
+	NewestAt   string `json:"newestAt,omitempty"`
+}
+
+// RestoreRecord is one restore into an instance.
+type RestoreRecord struct {
+	At  string `json:"at"`
+	Key string `json:"key,omitempty"`
+	// From is the instance whose backup was read, when not this one.
+	From    string `json:"from,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Trigger string `json:"trigger,omitempty"`
+	// Status is "done" or "failed"; Error says why it failed.
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+	// PreRestoreKey is the backup taken of the data the restore replaced.
+	PreRestoreKey string `json:"preRestoreKey,omitempty"`
 }
 
 // BackupHook is one service's dump declaration: postgres, or a command.
@@ -429,6 +524,10 @@ func (s *Store) Upsert(app App) error {
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
+			app.LastBackup = a.LastBackup
+			app.BackupFailure = a.BackupFailure
+			app.BackupCatalog = a.BackupCatalog
+			app.LastRestore = a.LastRestore
 			app.LastVerifyAt = a.LastVerifyAt
 			app.LastVerifyKey = a.LastVerifyKey
 			app.LastVerifyError = a.LastVerifyError
@@ -506,11 +605,19 @@ func (s *Store) RecordLastRequest(key string, at time.Time) error {
 
 // RecordBackupSuccess stamps a completed backup.
 func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
+	return s.RecordBackup(key, BackupRecord{At: at.UTC().Format(time.RFC3339), Key: s3Key})
+}
+
+// RecordBackup stamps a completed backup with what is known about it.
+func (s *Store) RecordBackup(key string, rec BackupRecord) error {
 	return s.mutate(key, func(a *App) {
-		a.LastBackupAt = at.UTC().Format(time.RFC3339)
-		a.LastBackupKey = s3Key
+		a.LastBackupAt = rec.At
+		a.LastBackupKey = rec.Key
 		// Cleared on success so a stale reason never outlives the failure.
 		a.LastBackupError = ""
+		a.BackupFailure = nil
+		r := rec
+		a.LastBackup = &r
 	})
 }
 
@@ -522,9 +629,35 @@ func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
 // "backups are failing" from "the scheduler stopped" — without it the two look
 // identical from the outside.
 func (s *Store) RecordBackupFailure(key, reason string, at time.Time) error {
+	return s.RecordBackupFailureAt(key, "", reason, at)
+}
+
+// RecordBackupFailureAt is RecordBackupFailure with the stage that failed
+// kept apart, counting how many attempts in a row have now failed.
+func (s *Store) RecordBackupFailureAt(key, stage, message string, at time.Time) error {
 	return s.mutate(key, func(a *App) {
-		a.LastBackupError = at.UTC().Format(time.RFC3339) + ": " + reason
+		reason := message
+		if stage != "" {
+			reason = stage + ": " + message
+		}
+		stamp := at.UTC().Format(time.RFC3339)
+		a.LastBackupError = stamp + ": " + reason
+		consecutive := 1
+		if a.BackupFailure != nil {
+			consecutive = a.BackupFailure.Consecutive + 1
+		}
+		a.BackupFailure = &BackupFailure{At: stamp, Stage: stage, Message: message, Consecutive: consecutive}
 	})
+}
+
+// SetBackupCatalog records what the instance's backups prefix holds.
+func (s *Store) SetBackupCatalog(key string, c BackupCatalog) error {
+	return s.mutate(key, func(a *App) { a.BackupCatalog = &c })
+}
+
+// RecordRestore records a restore into the instance, done or failed.
+func (s *Store) RecordRestore(key string, r RestoreRecord) error {
+	return s.mutate(key, func(a *App) { a.LastRestore = &r })
 }
 
 // RecordVerify stores a restore test's outcome; failure is "" when it passed.
