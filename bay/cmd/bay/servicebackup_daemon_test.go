@@ -174,7 +174,8 @@ func TestServiceBackupDaemon(t *testing.T) {
 	})
 
 	t.Run("the schedule takes service members, and a stopped stack is skipped, not failed", func(t *testing.T) {
-		a.runDueBackups(context.Background(), time.Hour)
+		a.server.backupInterval = time.Hour
+		a.runDueBackups(context.Background())
 		if m := member("broken"); !strings.Contains(m.LastBackupError, "wrote nothing") {
 			t.Fatalf("broken = %+v", m)
 		}

@@ -141,6 +141,7 @@ func (s *server) registerBackupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /apps/{name}/{env}/backups", s.handleListBackups)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore", s.handleRestore)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore/dismiss", s.handleRestoreDismiss)
+	s.registerBackupPolicyRoutes(mux)
 }
 
 func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
@@ -222,7 +223,7 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		return backupOutcome{}, backupRefused{
 			app.Key() + " declares no database Bay provisioned, so there is nothing to snapshot"}
 	}
-	mgr, cfg, err := s.backupManager()
+	mgr, _, err := s.backupManager()
 	if err != nil || mgr == nil {
 		return backupOutcome{}, backupRefused{"backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set"}
 	}
@@ -276,13 +277,17 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 	// deleted is what keeps retention from being indistinguishable from backups
 	// quietly disappearing. A failed prune must not look like a failed backup:
 	// the data is safe.
+	//
+	// The count is the app's effective policy, not the bucket's: two apps on
+	// one bucket may keep different histories. 0 keeps everything.
 	var pruned []backup.Entry
 	suspended := ""
-	if cfg.Keep > 0 {
+	keep := s.effectiveBackupPolicy(app).Keep
+	if keep > 0 {
 		suspended = s.pruneSuspended(ctx, mgr, app.Key(), app.Name, app.Env)
 	}
-	if cfg.Keep > 0 && suspended == "" {
-		pruned, err = mgr.Prune(ctx, app.Name, app.Env, cfg.Keep)
+	if keep > 0 && suspended == "" {
+		pruned, err = mgr.Prune(ctx, app.Name, app.Env, keep)
 		if err != nil {
 			s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", err)
 		}
@@ -758,15 +763,20 @@ func (s *server) handleRestoreDismiss(w http.ResponseWriter, r *http.Request) {
 // process already owns and flushes atomically. With a timer, one invocation
 // would write the timestamp and another would read it, and "did it stop?" —
 // the question that actually protects data — would have two sources of truth.
+//
+// The interval is only the built-in default now: each app's effective policy
+// (global, app-declared, operator) decides its own, so the loop runs even when
+// `--backup-interval 0` turned the default off — an operator may still have
+// switched one app on.
 func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		// Loud, because silence here is indistinguishable from a working
 		// schedule right up until someone needs a backup.
-		s.log.Warn("scheduled backups are OFF (--backup-interval 0); " +
-			"nothing is backed up unless you run `bay backup`")
-		return
+		s.log.Warn("scheduled backups are OFF by default (--backup-interval 0); " +
+			"only apps whose backup policy turns them on are backed up")
+	} else {
+		s.log.Info("scheduled backups on", "default interval", interval)
 	}
-	s.log.Info("scheduled backups on", "interval", interval)
 
 	// The tick is only a prompt to re-examine state, never the schedule itself —
 	// that lives in `schedule.Due`, read from the recorded timestamp. So a run
@@ -775,13 +785,13 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	s.runDueBackups(ctx, interval)
+	s.runDueBackups(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			s.runDueBackups(ctx, interval)
+			s.runDueBackups(ctx)
 		}
 	}
 }
@@ -792,7 +802,7 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 // `VACUUM INTO`, then gzips and uploads. Doing several at once on a 2-vCPU box
 // would compete with the apps it is meant to protect. Being sequential also
 // makes overlapping runs impossible without a lock.
-func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
+func (s *server) runDueBackups(ctx context.Context) {
 	// Asked once per tick only to decide whether there is anything to do at
 	// all; `backupInstance` resolves its own manager per run, so a
 	// `bay config s3:backups` between two ticks takes effect on the next one.
@@ -810,7 +820,8 @@ func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
 		if !app.Backups {
 			continue
 		}
-		if !schedule.Due(app.LastBackupAt, now, interval) {
+		policy := s.effectiveBackupPolicy(app)
+		if !policy.Enabled || !schedule.Due(app.LastBackupAt, now, policy.Every) {
 			continue
 		}
 		s.backupOne(ctx, app)

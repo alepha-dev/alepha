@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/connector"
 	"github.com/alepha-dev/bay/internal/control"
 	"github.com/alepha-dev/bay/internal/deploy"
@@ -161,10 +162,12 @@ func main() {
 			err = cmdConfigStorage(os.Args[3:])
 		case len(os.Args) > 2 && os.Args[2] == "s3":
 			err = cmdConfigS3Both(os.Args[3:])
+		case len(os.Args) > 2 && os.Args[2] == "backup":
+			err = cmdConfigBackup(os.Args[3:])
 		case len(os.Args) > 2 && os.Args[2] == "registry-mirror":
 			err = cmdConfigMirror(os.Args[3:])
 		default:
-			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket … | bay config registry-mirror (HOST|--clear)")
+			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket … | bay config backup " + policyFlagsUsage + " | bay config registry-mirror (HOST|--clear)")
 		}
 	case "storage":
 		if len(os.Args) > 2 && os.Args[2] == "migrate" {
@@ -186,6 +189,8 @@ func main() {
 	case "backup":
 		if len(os.Args) > 2 && (os.Args[2] == "list" || os.Args[2] == "restore") {
 			err = cmdStackBackup(os.Args[2], os.Args[3:])
+		} else if len(os.Args) > 2 && os.Args[2] == "config" {
+			err = cmdBackupConfig(os.Args[3:])
 		} else {
 			err = cmdBackup(os.Args[2:])
 		}
@@ -258,6 +263,12 @@ func usageText() string {
               # apex + www are one site. The first is the canonical one.
               # -  reads the artifact from stdin, e.g.
               #    ssh HOST 'bay deploy - --name app' < app.tar.zst
+              [--backup-policy JSON|FILE]
+              # the app's own backup wishes, e.g. {"enabled":true,
+              # "schedule":{"every":"6h"},"retention":{"keep":30}}. Checked
+              # before anything is staged: an unknown field, every < 5m or
+              # > 31d, keep 0 or > 365 refuse the deploy. Replaced by each
+              # deploy; the operator's "bay backup config" still wins.
   bay deploy  <stack>/<env>/<service> (<app.tar.zst>|-|--image REF ...)
               # into a stack's app service: blue/green, only that service
   bay stack ...                   # stacks: see "bay stack" for the commands
@@ -322,6 +333,14 @@ func usageText() string {
                 #    ssh HOST 'bay env set demo/production -' < .env.production
   bay env list <name/env>         # which variables are set, by NAME only
   bay backup  <name/env>          # snapshot + verify + upload
+  bay backup config <name/env> [--every 6h|inherit] [--keep N|inherit]
+              [--on|--off|--inherit-enabled] [--reset]
+              # the operator's override for one app. No flag shows every layer
+              # and the effective policy; "inherit" hands a field back down.
+  bay config backup [--every 6h|inherit] [--keep N|inherit]
+              [--on|--off|--inherit-enabled] [--reset]
+              # the host-wide default policy. Precedence, lowest first:
+              # built-in (--backup-interval, keep 14) < global < app < operator
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
   bay restore <name/env> --dismiss # keep the empty db; resume pruning old backups
@@ -1117,6 +1136,10 @@ type listedApp struct {
 	// NotBackedUp names the stack volumes this member mounts that no backup
 	// hook covers, so a green status line never reads as covering them.
 	NotBackedUp []string `json:"notBackedUp,omitempty"`
+	// BackupPolicy is the app's effective backup policy, resolved here so
+	// `bay status`, the inventory and the scheduler read the same answer.
+	// Absent when Bay owns no database for the app.
+	BackupPolicy *backuppolicy.Effective `json:"backupPolicy,omitempty"`
 }
 
 func (s *server) listApps() []listedApp {
@@ -1130,6 +1153,10 @@ func (s *server) listApps() []listedApp {
 		}
 		if usage, ok := s.runner.Usage(app.Key()); ok {
 			entry.Usage = &usage
+		}
+		if app.Backups {
+			policy := s.effectiveBackupPolicy(app)
+			entry.BackupPolicy = &policy
 		}
 		out = append(out, entry)
 	}
@@ -1171,6 +1198,15 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The app's own backup policy, validated BEFORE the upload is staged: it is
+	// untrusted input written by whoever builds the app, and a deploy that
+	// would run with a policy Bay refuses must not start.
+	declared, err := declaredBackupPolicy(q.Get("backupPolicy"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	tmp, err := os.CreateTemp("", "bay-upload-*.tar.zst")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -1193,7 +1229,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	out, derr := s.deployArtifact(ctx, deployArtifactOptions{
 		Artifact: tmp.Name(), Name: name, Env: env, Domains: domains,
-		SecretsFile: secretsFile,
+		SecretsFile: secretsFile, BackupPolicy: declared,
 	})
 	if derr != nil {
 		writeError(w, derr.Status, derr.Error(), derr.Detail)
@@ -1228,6 +1264,9 @@ type deployArtifactOptions struct {
 	// process starts. Consumed — read and unlinked — before anything else
 	// happens. Empty for a deploy that carries no configuration.
 	SecretsFile string
+	// BackupPolicy is the app's declared backup policy, validated at the API
+	// boundary. Nil declares nothing.
+	BackupPolicy *backuppolicy.Policy
 }
 
 // deployOutcome is what a completed deploy has to say for itself.
@@ -1340,6 +1379,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		MigratedStorage: opts.MigratedStorage,
 		Secrets:         secrets,
 		StackVars:       stackVars,
+		BackupPolicy:    opts.BackupPolicy,
 	}, s.store)
 	if err != nil {
 		if blueGreen {
@@ -1794,11 +1834,11 @@ func cmdDeploy(args []string) error {
 	if err := checkFlags(args[1:],
 		map[string]bool{},
 		map[string]bool{"--name": true, "--env": true, "--domain": true,
-			"--secrets-file": true, "--control-socket": true}); err != nil {
+			"--secrets-file": true, "--control-socket": true, "--backup-policy": true}); err != nil {
 		return err
 	}
 	name, env := "", "production"
-	secretsFile := ""
+	secretsFile, backupPolicy := "", ""
 	var domains []string
 	for i := 1; i < len(args); i++ {
 		if i >= len(args)-1 {
@@ -1819,6 +1859,12 @@ func cmdDeploy(args []string) error {
 				return err
 			}
 			secretsFile = abs
+		case "--backup-policy":
+			raw, err := readBackupPolicyFlag(args[i+1])
+			if err != nil {
+				return err
+			}
+			backupPolicy = raw
 		case "--domain":
 			// Repeatable AND comma-separated, because both shapes turn up: a
 			// hand-typed apex plus www, and a value pasted out of a config file.
@@ -1843,6 +1889,9 @@ func cmdDeploy(args []string) error {
 	}
 	if secretsFile != "" {
 		query.Set("secretsFile", secretsFile)
+	}
+	if backupPolicy != "" {
+		query.Set("backupPolicy", backupPolicy)
 	}
 	url := controlHost + "/apps?" + query.Encode()
 	res, err := call(http.MethodPost, url, body)
@@ -2025,16 +2074,21 @@ func cmdStatus(args []string) error {
 			// never be something the reader infers from an absent line.
 			fmt.Printf("  backup   no Bay-managed database — nothing to snapshot\n")
 		default:
-			stale, age := schedule.Stale(a.LastBackupAt, now, interval)
+			every := backupIntervalFor(a, interval)
+			stale, _ := schedule.Stale(a.LastBackupAt, now, every)
+			age, _ := backupAge(a.LastBackupAt, now)
 			switch {
 			case a.LastBackupAt == "":
 				fmt.Printf("  backup   NEVER\n")
 			default:
 				fmt.Printf("  backup   %s (%s ago)\n", a.LastBackupAt, age.Round(time.Minute))
 			}
+			if p := a.BackupPolicy; p != nil {
+				fmt.Printf("           %s\n", policyLine(*p))
+			}
 			if stale {
 				problems++
-				fmt.Printf("           ⚠ stale — expected every %s\n", interval)
+				fmt.Printf("           ⚠ stale — expected every %s\n", backuppolicy.FormatDuration(every))
 			}
 		}
 		if a.LastBackupError != "" {

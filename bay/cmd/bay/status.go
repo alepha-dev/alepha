@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/schedule"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -45,6 +46,10 @@ type statusLine struct {
 	// NotBackedUp names the stack volumes this member mounts that no hook
 	// covers. Not a problem, a fact said every time.
 	NotBackedUp []string `json:"notBackedUp,omitempty"`
+	// BackupPolicy is the effective backup policy and which layer set each
+	// field. Absent for an app with no Bay-managed database, and from an older
+	// `serve` that has no policies.
+	BackupPolicy *backuppolicy.Effective `json:"backupPolicy,omitempty"`
 
 	// Problems is the same set the human view marks with a warning sign, in
 	// words. Present so a monitor never has to infer severity from the fields:
@@ -79,8 +84,10 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 		LastBackupAt:   a.LastBackupAt,
 		NotBackedUp:    a.NotBackedUp,
 		RestorePending: a.RestorePending,
+		BackupPolicy:   a.BackupPolicy,
 		Problems:       []string{},
 	}
+	interval = backupIntervalFor(a, interval)
 	if u := a.Usage; u != nil {
 		line.Restarts = u.Restarts
 		line.MemoryBytes = u.MemoryBytes
@@ -97,8 +104,8 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 		line.Problems = append(line.Problems, fmt.Sprintf("restarted %d time(s)", line.Restarts))
 	}
 	if a.Backups {
-		stale, age := schedule.Stale(a.LastBackupAt, now, interval)
-		if a.LastBackupAt != "" {
+		stale, _ := schedule.Stale(a.LastBackupAt, now, interval)
+		if age, ok := backupAge(a.LastBackupAt, now); ok {
 			line.BackupAge = age.Round(time.Minute).String()
 		}
 		line.BackupStale = stale
@@ -115,6 +122,33 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 		line.Problems = append(line.Problems, restorePendingProblem(a.Key(), *p))
 	}
 	return line
+}
+
+/*
+backupIntervalFor is what this app's staleness is judged against: its own
+effective policy when the server sent one, the host-wide interval otherwise (an
+older `serve`). Zero when the policy turns scheduled backups off, which
+`schedule.Stale` reads as "never stale": an app somebody switched off on purpose
+must not be flagged every run.
+*/
+func backupIntervalFor(a listedApp, fallback time.Duration) time.Duration {
+	if p := a.BackupPolicy; p != nil {
+		if !p.Enabled {
+			return 0
+		}
+		return p.Every
+	}
+	return fallback
+}
+
+// backupAge is how long ago the last backup ran, whatever the schedule: an app
+// whose policy turns scheduling off still has an age worth showing.
+func backupAge(last string, now time.Time) (time.Duration, bool) {
+	at, err := time.Parse(time.RFC3339, last)
+	if err != nil {
+		return 0, false
+	}
+	return now.Sub(at), true
 }
 
 func restorePendingProblem(key string, p state.RestorePending) string {

@@ -82,6 +82,27 @@ a problem in `bay status` and the inventory until `bay restore <name/env>`
 brings the data back or `bay restore <name/env> --dismiss` keeps the new
 database.
 
+**Each app has a backup policy**, resolved from four layers, lowest first:
+built-in (`serve --backup-interval`, keep 14) < global (`bay config backup`)
+< app (`bay deploy --backup-policy`, replaced by every deploy) < operator
+(`bay backup config <name/env>`, kept across deploys). A layer sets only what
+it names; the rest comes from below.
+
+```json
+{ "enabled": true, "schedule": { "every": "6h" }, "retention": { "keep": 30 } }
+```
+
+A field this Bay does not enforce is refused rather than stored, so a policy
+never reads as doing more than it does. The app layer is untrusted input: it
+is checked before the upload is staged (every 5m–31d, keep 1–365) and a bad one
+refuses the deploy. `--backup-interval 0` turns scheduling off by default, and
+any layer can turn it back on for one app; `enabled: false` stops the schedule
+only — `bay backup` still works, and the app is not reported stale.
+`bay status` and the inventory show the effective policy with the layer behind
+each value, and judge staleness against the app's own interval. A legacy
+`bay config s3 --keep N` is the global keep until `bay config backup --keep`
+sets one.
+
 A stack service is data too, so it declares how to dump itself in
 `x-lore.backup`: `{postgres: {user, db}}` runs `pg_dump` in the service's
 container and verifies with `pg_restore --list`, and `{command, restore}` takes

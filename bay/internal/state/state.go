@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/alepha-dev/bay/internal/backuppolicy"
 )
 
 // App is one deployed application instance (app + env).
@@ -107,6 +109,16 @@ type App struct {
 	// real ones, so `keep N` would delete the real data N runs later. While
 	// this is set and a backup older than `Since` exists, pruning is skipped.
 	RestorePending *RestorePending `json:"restorePending,omitempty"`
+
+	// BackupDeclared is the backup policy the app's deploy asked for
+	// (`--backup-policy`), already validated as untrusted input. Replaced on
+	// every deploy, like Crons: it describes the release, so a deploy that
+	// declares nothing drops it.
+	BackupDeclared *backuppolicy.Policy `json:"backupDeclared,omitempty"`
+	// BackupOverride is the operator's policy for this instance (`bay backup
+	// config`). Above the app's own declaration, and kept across deploys: it is
+	// a decision about the instance, not about one release.
+	BackupOverride *backuppolicy.Policy `json:"backupOverride,omitempty"`
 
 	// Crons is how many cron expressions the artifact declared. Derived from the
 	// manifest at deploy time, so it is replaced on every deploy rather than
@@ -312,6 +324,9 @@ type State struct {
 	// RegistryMirror is a pull-through mirror for Docker Hub images
 	// (`bay config registry-mirror`): rate limits, company policy.
 	RegistryMirror string `json:"registryMirror,omitempty"`
+	// Backup is the global backup policy (`bay config backup`), above the
+	// built-in defaults and below each app's own. Nil sets nothing.
+	Backup *backuppolicy.Policy `json:"backup,omitempty"`
 }
 
 // S3Target addresses an S3-compatible bucket (R2, MinIO, AWS).
@@ -410,6 +425,9 @@ func (s *Store) Upsert(app App) error {
 			// A redeploy onto the existing database changes nothing about
 			// whether the backups taken before it still need protecting.
 			app.RestorePending = a.RestorePending
+			// The operator's backup policy outlives releases; the app's own
+			// declaration (BackupDeclared) comes with each deploy instead.
+			app.BackupOverride = a.BackupOverride
 			// Traffic history belongs to the instance, not the release. Resetting
 			// it here would make every app read "no traffic ever" right after a
 			// deploy — so the staleness badge would be blank for exactly the apps
@@ -519,6 +537,27 @@ func (s *Store) SetRestorePending(key, reason string, at time.Time) error {
 // protect.
 func (s *Store) ClearRestorePending(key string) error {
 	return s.mutate(key, func(a *App) { a.RestorePending = nil })
+}
+
+// SetBackupOverride records (or, with nil, clears) the operator's backup
+// policy for one instance.
+func (s *Store) SetBackupOverride(key string, p *backuppolicy.Policy) error {
+	return s.mutate(key, func(a *App) { a.BackupOverride = p })
+}
+
+// BackupPolicy is the global backup layer, nil when nothing is set.
+func (s *Store) BackupPolicy() *backuppolicy.Policy {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.Backup
+}
+
+// SetBackupPolicy records (or, with nil, clears) the global backup layer.
+func (s *Store) SetBackupPolicy(p *backuppolicy.Policy) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state.Backup = p
+	return s.flush()
 }
 
 // SetStorageBackend records where an app's blobs live, after a migration has
