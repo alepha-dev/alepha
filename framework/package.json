@@ -31,7 +31,7 @@
     "e2e-cli": "yarn w e2e-cli test"
   },
   "devDependencies": {
-    "@alepha/lore": "npm:0.33.0",
+    "@alepha/lore": "workspace:*",
     "@playwright/test": "^1.64.1",
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",

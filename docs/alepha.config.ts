@@ -92,10 +92,8 @@ export default defineConfig({
       //
       // Lore mints the sigil on deploy (the manifest declares `SIGIL_KEY`),
       // keeps the copy's secrets, and archives each build as a versioned
-      // artifact with rollback. The cost: the adapter runs on this
-      // repository's `alepha/cli/infra-lib` while it was compiled against
-      // Lore's vendored framework, so an `infra-lib` change can break the
-      // docs deploy until `@alepha/lore` republishes.
+      // artifact with rollback. `@alepha/lore` is the workspace, so the
+      // adapter always runs on this repository's own `alepha/cli/infra-lib`.
       //
       // ⚠️ No infra-level `project` here: it would prefix the app name Lore
       // receives (`alepha-docs`), and Lore prefixes its own project slug on
