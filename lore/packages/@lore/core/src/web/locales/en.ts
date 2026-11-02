@@ -1378,6 +1378,7 @@ export default {
   "reports.knowledge.byDirectory.title": "By directory",
   "reports.knowledge.byDirectory.definition": "Folios per top-level directory.",
   "project.reports.nav.delivery": "Delivery",
+  "project.reports.nav.quality": "Quality",
   "reports.delivery.kpi.frequency": "Deploys per week",
   "reports.delivery.kpi.frequency.definition":
     "Successful deploys per week over the period.",

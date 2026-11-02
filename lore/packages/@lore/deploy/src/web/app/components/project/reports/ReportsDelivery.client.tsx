@@ -6,7 +6,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
-import type { ReportsUrl } from "@lore/core/schemas";
+import type { ReportsDelivery as ReportsDeliveryData } from "@lore/core/schemas";
 import { type I18n, ReportsKpiRow, ReportsSection } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -19,13 +19,10 @@ import {
   YAxis,
 } from "recharts";
 
-import type { DeliveryReport } from "../../../../../api/schemas/deliveryReportSchema.ts";
-import ReportsQuality from "./ReportsQuality.client.tsx";
 import ReportsReliability from "./ReportsReliability.client.tsx";
 
 export interface ReportsDeliveryProps {
-  delivery: DeliveryReport;
-  url: ReportsUrl;
+  delivery: ReportsDeliveryData;
 }
 
 /**
@@ -221,11 +218,6 @@ const ReportsDelivery = (props: ReportsDeliveryProps) => {
       </ReportsSection>
 
       <ReportsReliability reliability={delivery.reliability} />
-
-      {/* Quality is pushed by CI: nothing until a run exists. */}
-      {delivery.quality.branches.length > 0 ? (
-        <ReportsQuality quality={delivery.quality} url={props.url} />
-      ) : null}
     </>
   );
 };

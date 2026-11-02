@@ -1361,6 +1361,7 @@ export default {
   "reports.knowledge.byDirectory.definition":
     "Folios par dossier de premier niveau.",
   "project.reports.nav.delivery": "Livraison",
+  "project.reports.nav.quality": "Qualité",
   "reports.delivery.kpi.frequency": "Déploiements par semaine",
   "reports.delivery.kpi.frequency.definition":
     "Déploiements réussis par semaine sur la période.",

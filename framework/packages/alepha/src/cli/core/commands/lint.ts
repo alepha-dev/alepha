@@ -1,3 +1,6 @@
+import { createRequire } from "node:module";
+import { join } from "node:path";
+
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 
@@ -21,6 +24,16 @@ export class LintCommand {
       // alepha's own install, so the project never declares them.
       const oxlint = this.utils.resolveBin("oxlint");
       const oxfmt = this.utils.resolveBin("oxfmt");
+
+      // oxlint looks for `tsgolint` (the type-aware half, used when
+      // `.oxlintrc.json` sets `options.typeAware`) in the project's
+      // `node_modules/.bin`, where an embedded dependency of `alepha` is not
+      // hoisted under pnpm or a global install. Pointed at alepha's own copy
+      // instead, unless the user already chose one.
+      const tsgolint = this.resolveTsgolint();
+      if (tsgolint) {
+        process.env.OXLINT_TSGOLINT_PATH ??= tsgolint;
+      }
 
       // Lint first, format second, and the order matters: `oxlint --fix`
       // rewrites code (dropping an unused import, unwrapping a useless spread)
@@ -64,4 +77,22 @@ export class LintCommand {
       }
     },
   });
+
+  /**
+   * Resolve the native `tsgolint` binary of this platform, the way the
+   * `oxlint-tsgolint` bin shim does, but without the node process it spawns.
+   * Undefined on a platform it ships no binary for, which leaves oxlint to its
+   * own lookup and to its own error, raised only when type-aware rules are on.
+   */
+  protected resolveTsgolint(): string | undefined {
+    try {
+      const dir = this.utils.resolvePackageDir("oxlint-tsgolint");
+      const exe = process.platform === "win32" ? "tsgolint.exe" : "tsgolint";
+      return createRequire(join(dir, "package.json")).resolve(
+        `@oxlint-tsgolint/${process.platform}-${process.arch}/${exe}`,
+      );
+    } catch {
+      return undefined;
+    }
+  }
 }

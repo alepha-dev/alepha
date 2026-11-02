@@ -252,10 +252,10 @@ test.describe("Project capabilities", () => {
     await expect(
       page.locator(`a[href="/${slug}/reports/backlog"]`),
     ).toHaveCount(0);
-    // Delivery is Apps baseline. Its Quality section self-hides until a run
-    // exists, so nothing names it right up to the push below.
+    // Quality is Apps baseline, and its tab shows the push command until a
+    // run exists (#Q3070).
     await expect(
-      page.getByTestId("reports-tabs").getByRole("link", { name: "Delivery" }),
+      page.locator(`a[href="/${slug}/reports/quality"]`),
     ).toBeVisible();
 
     // ⚠️ Quality has no switch, and this is why an Apps-only project needs
@@ -287,9 +287,8 @@ test.describe("Project capabilities", () => {
     );
     expect(pushed).toBe(true);
 
-    // The old URL still lands, on the section that took it in (#Q3010).
     await page.goto(`/${slug}/reports/quality`);
-    await expect(page).toHaveURL(/\/reports\/delivery/);
+    await expect(page).toHaveURL(/\/reports\/quality/);
     await expect(page.getByText("Coverage over time")).toBeVisible({
       timeout: 15_000,
     });

@@ -18,7 +18,8 @@ the **`stats:read`** permission.
 | **Planning**  | Work      | Epics and releases: timeline, burn-up, scope change, forecast, slip         |
 | **Support**   | Support   | Feedback from intake to shipped                                             |
 | **Knowledge** | Knowledge | Folio activity, stale pages, orphans, the link graph                        |
-| **Delivery**  | Apps      | The four DORA keys, reliability, and the quality CI pushed                  |
+| **Delivery**  | Apps      | The four DORA keys and reliability: blights, errors, uptime                 |
+| **Quality**   | Apps      | Coverage and tests CI pushed, by branch, against a target, per release tag  |
 | **Team**      | -         | Load and contribution per member, how work arrives, agents, automations     |
 
 ## The filter bar
@@ -132,5 +133,5 @@ lore project report summary --days 7
 ```
 
 Sections are `summary`, `flow`, `backlog`, `planning`, `support`, `knowledge`,
-`delivery` and `team`. The **Write the weekly status** agent prompt on the Summary
+`delivery`, `quality` and `team`. The **Write the weekly status** agent prompt on the Summary
 tab builds on it; see [Agent prompts](/lore/docs/guides-agent-prompts).

@@ -67,7 +67,7 @@ const ReportsQuality = (props: ReportsQualityProps) => {
     handler: async () => {},
     onChange: (_key, value) => {
       void router.push(
-        "reportsDelivery" as never,
+        "reportsQuality" as never,
         {
           query: reportsUrl.patch(
             props.url,

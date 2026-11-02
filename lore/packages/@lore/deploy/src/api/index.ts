@@ -18,6 +18,7 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
+import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
@@ -233,6 +234,7 @@ export const LoreDeployApi = $module({
     ProjectQualityReportService,
     ProjectReliabilityReportService,
     QualityController,
+    QualityReportsController,
     ArtifactController,
     AppController,
     AppSecretController,
@@ -271,6 +273,7 @@ export { InsightsController } from "./controllers/InsightsController.ts";
 export { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 export { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
+export { QualityReportsController } from "./controllers/QualityReportsController.ts";
 export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 export { SigilController } from "./controllers/SigilController.ts";
 export { StackController } from "./controllers/StackController.ts";

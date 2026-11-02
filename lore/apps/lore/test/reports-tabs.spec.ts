@@ -30,17 +30,17 @@ const registry = (() => {
  * this epic got wrong - giving Reports to Work would have taken an Apps-only
  * project's Quality tab away with it.
  *
- * ⚠️ Quality no longer has a switch. It was gated on `features.quality`, an
- * optional key absent from every project that predated the module, and the
- * case that mattered was which way ABSENT read. The question now is whether a
- * run exists, which is the honest one: the tab appears once there is
- * something in it.
+ * ⚠️ Quality has no switch. It was gated on `features.quality`, an optional
+ * key absent from every project that predated the module, and the case that
+ * mattered was which way ABSENT read. It is Apps baseline now, and shows the
+ * push command until CI sends a run (#Q3070).
  */
 describe("reportsTabs", () => {
   it("declares the filters of each tab, and honours none on an unknown tab", () => {
     expect(registry.honours("reportsFlow")).toContain("area");
     expect(registry.honours("reportsBacklog")).not.toContain("grain");
-    expect(registry.honours("reportsDelivery")).toContain("branch");
+    expect(registry.honours("reportsQuality")).toContain("branch");
+    expect(registry.honours("reportsDelivery")).not.toContain("branch");
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
@@ -65,18 +65,19 @@ describe("reportsTabs", () => {
     expect(names([])).toEqual(["reportsSummary", "reportsTeam"]);
   });
 
-  it("keeps Delivery for an Apps-only project", () => {
+  it("keeps Delivery and Quality for an Apps-only project", () => {
     // The case that decided Reports is Core rather than Work: this project
-    // has no quests at all and still needs to reach what CI pushed, which is
-    // a section of Delivery since #Q3010.
+    // has no quests at all and still needs to reach what CI pushed.
     expect(names(["apps"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
+      "reportsQuality",
       "reportsTeam",
     ]);
   });
 
-  it("hides Delivery when Apps is off", () => {
+  it("hides Delivery and Quality when Apps is off", () => {
     expect(names(["work"])).not.toContain("reportsDelivery");
+    expect(names(["work"])).not.toContain("reportsQuality");
   });
 });

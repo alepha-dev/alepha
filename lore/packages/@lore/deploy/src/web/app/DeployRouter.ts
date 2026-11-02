@@ -21,6 +21,7 @@ import { createElement } from "react";
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
+import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
@@ -58,6 +59,7 @@ export class DeployRouter {
   core = $inject(CoreRouter);
   alepha = $inject(Alepha);
   deliveryApi = $client<DeliveryReportsController>();
+  qualityApi = $client<QualityReportsController>();
   reportsUrl = $inject(ReportsUrlQuery);
   reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
@@ -761,15 +763,8 @@ export class DeployRouter {
   }
 
   /**
-   * The one Reports tab whose data is INGESTED rather than derived.
-   *
-   * Deliberately not 404'd when the project has no Apps and no run, matching
-   * how the `projectKanban` route stays reachable while only its sidebar entry
-   * is gated: a link someone already holds should not break because a switch
-   * moved. What decides whether the tab is OFFERED is `reportsTabs`, which
-   * asks for Apps and for a run to exist - Quality lost its own flag when it
-   * joined the Apps baseline, since a tab that appears once there is something
-   * in it needs no switch.
+   * DORA metrics, blights, errors and uptime (#Q3008). Quality is its own tab,
+   * `reportsQuality` below (#Q3070).
    */
   reportsDelivery = $page({
     parent: this.core.projectReports,
@@ -780,7 +775,6 @@ export class DeployRouter {
     lazy: () =>
       import("./components/project/reports/ReportsDelivery.client.tsx"),
     loader: async ({ query }) => ({
-      url: query,
       delivery: await this.deliveryApi.getReportsDelivery({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
@@ -793,19 +787,30 @@ export class DeployRouter {
     }),
   });
 
+  /**
+   * Coverage and test totals pushed by CI, a tab of its own (#Q3070) after a
+   * day as the last section of Delivery (#Q3010). The one Reports tab whose
+   * data is INGESTED rather than derived, hence its empty state.
+   */
   reportsQuality = $page({
     parent: this.core.projectReports,
     name: "reportsQuality",
+    prefetch: true,
     path: "/quality",
-    // Quality is a section of Delivery since #Q3010. The route stays for the
-    // links people hold and the dashboard tiles that name it.
-    component: RedirectPage,
-    // Annotated `Promise<void>` because it always throws, like
-    // `projectAppRedirect`.
-    loader: async (): Promise<void> => {
-      throw new Redirection({
-        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/reports/delivery`,
-      });
-    },
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsQuality.client.tsx"),
+    loader: async ({ query }) => ({
+      url: query,
+      quality: await this.qualityApi.getReportsQuality({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsUrl.toQuery(
+          query,
+          this.reportsTabs.honours("reportsQuality"),
+        ),
+      }),
+    }),
   });
 }

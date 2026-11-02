@@ -240,6 +240,8 @@ The two halves of what `alepha lint` runs, written in Rust and fast enough that 
 
 `.oxlintrc.json` enables oxlint's `correctness` category as an **error** - code that is outright wrong, nothing about style - across the TypeScript, React, import, promise, unicorn and Vitest plugins. A handful of rules are turned off with the reason written next to each: the ones whose premise (React Compiler semantics, Jest's `expect` arity, a hook dependency the DI container guarantees is stable) does not hold in an Alepha app.
 
+It also turns on `typeAware`, so rules that need types (`no-floating-promises`, `unbound-method`) run through `tsgolint`, which ships embedded in `alepha` like oxlint itself. `unbound-method` is off in spec files, where reading a method without calling it is usually the point.
+
 `.oxfmtrc.json` is the formatter: two spaces at 80 columns, double quotes, semicolons, trailing commas, and `sortImports` for import organization. These are spelled out rather than left to oxfmt's defaults, because the defaults are Prettier's - and one of them (tabs) disagrees with the `.editorconfig` written next to it.
 
 ### package.json Scripts

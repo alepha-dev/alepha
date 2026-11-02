@@ -254,15 +254,21 @@ export class DeployShell {
       useLine: useOwnedEstatesDeletionLine,
     });
 
-    // Quality is a section of Delivery since #Q3010. It hides until a run
-    // exists, the honest question that replaced its switch: most projects will
-    // never push one.
     this.reports.register({
       route: "reportsDelivery",
       labelKey: "project.reports.nav.delivery",
       order: 9.8,
       needs: "apps",
-      filters: ["period", "grain", "branch"],
+      filters: ["period", "grain"],
+    });
+    // Quality is its own tab again (#Q3070), right after Delivery. It shows
+    // for every Apps project, with the push command until CI sends a run.
+    this.reports.register({
+      route: "reportsQuality",
+      labelKey: "project.reports.nav.quality",
+      order: 9.85,
+      needs: "apps",
+      filters: ["period", "branch"],
     });
   }
 }

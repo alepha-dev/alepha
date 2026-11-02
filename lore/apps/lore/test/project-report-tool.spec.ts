@@ -65,6 +65,7 @@ describe("project_report", () => {
     ["support", "intake"],
     ["knowledge", "activity"],
     ["delivery", "reliability"],
+    ["quality", "branches"],
     ["team", "members"],
   ])("answers %s", async (section, key) => {
     const ctx = await setup();
