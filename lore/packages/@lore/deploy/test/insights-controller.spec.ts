@@ -2942,13 +2942,15 @@ describe("InsightsController", () => {
         const chunk = store.scope({
           sigilIds: Array.from({ length: size }, () => crypto.randomUUID()),
         });
-        // Drizzle's own literal fragments carry a `string[]` value; every
-        // other chunk is a value on its way to becoming a bound parameter.
+        // Drizzle's own literal fragments carry a `string` value (a
+        // `string[]` before 1.0.0-rc.5); every other chunk is a value on its
+        // way to becoming a bound parameter.
         const literals = chunk.queryChunks.filter(
-          (part): part is { value: string[] } =>
+          (part): part is { value: string | string[] } =>
             typeof part === "object" &&
             part !== null &&
-            Array.isArray((part as { value?: unknown }).value),
+            (typeof (part as { value?: unknown }).value === "string" ||
+              Array.isArray((part as { value?: unknown }).value)),
         );
         const bound = chunk.queryChunks.length - literals.length;
 

@@ -23,6 +23,20 @@ export type DrizzleKitPayload =
   | typeof DrizzleKitSqlite;
 
 /**
+ * An answer to a question `pushSchema` cannot ask outside a terminal.
+ *
+ * @internal Driver plumbing, outside semver.
+ */
+export type DrizzleKitHint = DrizzleKitPostgres.Hint;
+
+/**
+ * A question `pushSchema` could not ask, carried by its `MissingHintsError`.
+ *
+ * @internal Driver plumbing, outside semver.
+ */
+export type DrizzleKitMissingHint = DrizzleKitPostgres.MissingHint;
+
+/**
  * What a development `synchronize()` did, so a caller (or a spec) can tell a
  * database that matches the entities from one the sync could only partly
  * repair. The boot log says the same thing; this is the same fact as a value.
@@ -376,23 +390,32 @@ export class DrizzleKitProvider {
     kit: DrizzleKitPayload,
     models: Record<string, unknown>,
     provider: DatabaseProvider,
+    hints: DrizzleKitHint[] = [],
   ): Promise<PushSchemaResult> {
     if (provider.dialect === "sqlite") {
       const sqlite = kit as typeof DrizzleKitSqlite;
       return await sqlite.pushSchema(
         models,
         this.sqliteDbForDrizzleKit(provider) as any,
+        undefined,
+        { hints },
       );
     }
 
     const postgres = kit as typeof DrizzleKitPostgres;
     const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
-    return await postgres.pushSchema(models, wrappedDb as any, {
-      schemas: [provider.schema],
-      tables: undefined,
-      entities: undefined,
-      extensions: undefined,
-    });
+    return await postgres.pushSchema(
+      models,
+      wrappedDb as any,
+      {
+        schemas: [provider.schema],
+        tables: undefined,
+        entities: undefined,
+        extensions: undefined,
+      },
+      undefined,
+      { hints },
+    );
   }
 
   /**
@@ -430,21 +453,20 @@ export class DrizzleKitProvider {
    *
    * `pushSchema` diffs the database against the entities and, for each
    * table with both an added and a removed column (or for a table added
-   * while another was removed), asks whether that is a rename. The asking
-   * is wired to its CLI's prompt, which needs a terminal, and outside one
-   * the programmatic call throws `resolver(column) was called without a
-   * HintsHandler` instead. There is no parameter to answer through: the
-   * `HintsHandler` it wants is built inside `pushSchema` itself. So one
-   * renamed column in a week of entity changes used to send the whole sync
-   * to the fallback, which can only create tables, and the boot log said
-   * "OK".
+   * while another was removed), asks whether that is a rename. Outside a
+   * terminal it cannot prompt, so it throws a `MissingHintsError` naming
+   * each question, and answers come back through its `hints` option. A
+   * change that loses data (a non-empty table dropped or recreated, a type
+   * change) is a question of the same kind, `confirm_data_loss`.
    *
-   * A development push means "make the database look like the entities",
-   * and a rename it cannot see is a drop and a create. So on exactly that
-   * error the columns and tables the entities no longer declare are dropped
-   * here, each one named in a warning, and the push runs again on a diff
-   * that only adds. Development data in a dropped column is lost, as it
-   * would have been had drizzle-kit's own prompt been answered "create".
+   * A development push means "make the database look like the entities".
+   * A rename it cannot see is a drop and a create, so the columns and
+   * tables the entities no longer declare are dropped here, each one named
+   * in a warning, and the push runs again on a diff that only adds. Each
+   * data-loss question is confirmed, and its statement is named by
+   * {@link reportPushRisks} before it runs. Development data is lost, as it
+   * would have been had drizzle-kit's own prompt been answered "create" and
+   * "yes".
    *
    * @internal Driver plumbing, outside semver.
    */
@@ -458,36 +480,73 @@ export class DrizzleKitProvider {
     }
 
     let dropped: string[] = [];
-    let result: PushSchemaResult;
-    try {
-      result = await this.callPushSchema(kit, models, provider);
-    } catch (error) {
-      if (!this.isRenameResolutionError(error)) {
-        throw error;
+    const hints: DrizzleKitHint[] = [];
+    let result: PushSchemaResult | undefined;
+    // A drop answers every rename question at once, and each confirmation
+    // answers one question, so a round that adds no answer cannot progress.
+    for (let round = 0; !result; round++) {
+      try {
+        result = await this.callPushSchema(kit, models, provider, hints);
+      } catch (error) {
+        const missing = this.missingHints(error);
+        if (!missing || round >= 3) {
+          throw error;
+        }
+        const confirmations = missing.flatMap((hint) =>
+          hint.type === "confirm_data_loss"
+            ? [
+                {
+                  type: "confirm_data_loss",
+                  kind: hint.kind,
+                  entity: hint.entity,
+                } as DrizzleKitHint,
+              ]
+            : [],
+        );
+        const renames = missing.length > confirmations.length;
+        if (renames && dropped.length > 0) {
+          throw error;
+        }
+        if (renames) {
+          this.log.warn(
+            "Schema push needs a rename decision. Columns and tables the entities no longer declare are dropped so the push can go through; development data in them is lost.",
+            { error },
+          );
+          dropped = await this.dropUndeclared(provider);
+        }
+        hints.push(...confirmations);
       }
-      this.log.warn(
-        "Schema push needs a rename decision drizzle-kit cannot ask for outside a terminal. Columns and tables the entities no longer declare are dropped so the push can go through; development data in them is lost.",
-        { error },
-      );
-      dropped = await this.dropUndeclared(provider);
-      result = await this.callPushSchema(kit, models, provider);
     }
 
     this.reportPushRisks(
       result.hints.map((h) => h.hint),
-      result.hints.length > 0,
+      result.hints.length > 0 || hints.length > 0,
     );
     await this.executeStatements(result.sqlStatements, provider);
     return dropped;
   }
 
   /**
-   * drizzle-kit's prompt-bound resolver refusing to run without a terminal.
-   * The text is its own, so the match is on the one fragment no other error
-   * carries.
+   * The questions drizzle-kit could not ask, when `error` is its
+   * `MissingHintsError`.
+   */
+  protected missingHints(error: unknown): DrizzleKitMissingHint[] | undefined {
+    const value = error as { code?: unknown; missingHints?: unknown };
+    return value?.code === "missing_hints" && Array.isArray(value.missingHints)
+      ? (value.missingHints as DrizzleKitMissingHint[])
+      : undefined;
+  }
+
+  /**
+   * drizzle-kit asking whether an added and a removed column (or table) are
+   * one rename, which it cannot ask outside a terminal.
    */
   protected isRenameResolutionError(error: unknown): boolean {
-    return this.errorMentions(error, "without a HintsHandler");
+    return (
+      this.missingHints(error)?.some(
+        (hint) => hint.type === "rename_or_create",
+      ) ?? false
+    );
   }
 
   /**

@@ -11,7 +11,7 @@
     "alepha": "^0.34.0"
   },
   "devDependencies": {
-    "drizzle-orm": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.5",
     "miniflare": "5.20261001.0-alpha"
   }
 }

@@ -72,15 +72,12 @@ export class PgRelationManager {
         if (chunk instanceof SQL) {
           return this.resolveColumns(provider, chunk);
         }
+        const ref = chunk as { entity?: unknown; name?: unknown };
         if (
-          typeof chunk === "object" &&
-          chunk !== null &&
-          "entity" in chunk &&
-          chunk.entity instanceof EntityPrimitive &&
-          "name" in chunk &&
-          typeof chunk.name === "string"
+          ref.entity instanceof EntityPrimitive &&
+          typeof ref.name === "string"
         ) {
-          return provider.table(chunk.entity)[chunk.name];
+          return provider.table(ref.entity)[ref.name];
         }
         return chunk;
       }),

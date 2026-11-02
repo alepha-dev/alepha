@@ -169,6 +169,26 @@ describe("development schema sync against an existing database", () => {
    * declares is dropped and the push runs again on a diff with only
    * additions in it.
    */
+  /**
+   * Since drizzle-kit 1.0.0-rc.5 a push that loses data (here a column of a
+   * table that has rows) throws a `confirm_data_loss` question instead of
+   * running with a warning. A development push answers it and applies.
+   */
+  it("drops a removed column from a table that has rows", async () => {
+    const first = await boot(AppV2);
+    await first.kit.synchronize(first.provider);
+    await first.provider.execute(
+      sql.raw("INSERT INTO widgets (id, name, size) VALUES ('1', 'one', 1)"),
+    );
+
+    const second = await boot(AppV1);
+    const result = await second.kit.synchronize(second.provider);
+
+    expect(result.complete).toBe(true);
+    expect(result.pushError).toBeUndefined();
+    expect(await columnsOf(second.provider, "widgets")).toEqual(["id", "name"]);
+  });
+
   it("resolves a renamed column as a drop and a create", async () => {
     const first = await boot(AppV2);
     await first.kit.synchronize(first.provider);

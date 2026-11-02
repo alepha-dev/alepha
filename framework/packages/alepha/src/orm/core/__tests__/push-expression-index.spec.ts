@@ -131,6 +131,10 @@ describe("push with a case-insensitive unique index", () => {
    * `LOWER()` index on disk in every database that already existed, still
    * unreadable, still breaking push. Renaming forces the `DROP INDEX` +
    * `CREATE UNIQUE INDEX` pair below, and that pair is what repairs them.
+   *
+   * Since drizzle-kit 1.0.0-rc.5 its sqlite introspection reads an
+   * expression index (drizzle #6237), so a push repairs such a database on
+   * its own, as the generated migration does.
    */
   it("recovers a database still carrying the old expression index", async () => {
     const { provider, kit } = await boot();
@@ -144,18 +148,16 @@ describe("push with a case-insensitive unique index", () => {
       ),
     );
 
-    await expect(kit.testPush(provider)).rejects.toThrow(/expression value/);
+    await expect(kit.testPush(provider)).resolves.toEqual([]);
 
-    // What the generated migration does, and nothing more.
-    await provider.execute(
-      sql.raw("DROP INDEX IF EXISTS `people_realm_username_lower_idx`"),
-    );
-    await provider.execute(
+    const indexes = (await provider.execute(
       sql.raw(
-        'CREATE UNIQUE INDEX `people_realm_username_ci_idx` ON `people` (`realm`,"username" COLLATE NOCASE)',
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'people' AND sql IS NOT NULL ORDER BY name",
       ),
-    );
-
+    )) as Array<{ name: string }>;
+    expect(indexes.map((index) => index.name)).toEqual([
+      "people_realm_username_ci_idx",
+    ]);
     await expect(kit.testPush(provider)).resolves.toEqual([]);
   });
 
