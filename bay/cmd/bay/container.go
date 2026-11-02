@@ -72,6 +72,14 @@ func (s *server) containerSpec(app state.App, m *manifest.Manifest, env map[stri
 	for _, p := range writable {
 		mounts = append(mounts, runner.Mount{Source: p, Target: p})
 	}
+	// Host paths an operator handed over with `bay harden --mount`: same path
+	// inside, never chowned, checked again here in case the state was edited.
+	for _, hm := range app.HostMounts {
+		if err := s.checkHostMount(app, hm.Path); err != nil {
+			return runner.Spec{}, runtimeChoice{}, err
+		}
+		mounts = append(mounts, runner.Mount{Source: hm.Path, Target: hm.Path, ReadOnly: hm.ReadOnly})
+	}
 
 	containerEnv := make(map[string]string, len(env)+1)
 	for k, v := range env {
@@ -91,7 +99,7 @@ func (s *server) containerSpec(app state.App, m *manifest.Manifest, env map[stri
 			Port:        app.Port,
 			HostPort:    app.UpstreamPort(),
 			MemoryBytes: memoryOf(app),
-			PidsLimit:   256,
+			PidsLimit:   int64(pidsOf(app)),
 			NanoCPUs:    nanoCPUsFor(runtime.NumCPU()),
 			StopGrace:   stopGrace,
 			// The defaults, each lifted only by `bay harden --relax`.

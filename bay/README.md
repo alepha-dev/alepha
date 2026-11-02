@@ -45,6 +45,16 @@ The design notes live in the Lore project **Alepha** (`lore.alepha.dev/alepha`),
 `bay` with no arguments prints the full command list, and that usage text is
 the reference for flags - this table is the map, not the manual.
 
+An archive app's container is hardened by default: read-only root, a 64 MB
+`/tmp`, no capabilities, its own uid, 512 MiB and 256 processes/threads, and no
+host path but its own `data/`, `scratch/` and `storage/`. An app that drives a
+browser needs more, and an operator grants exactly that per instance:
+`bay runtimes set <name/env> <image>` (an image with the browser in it),
+`bay harden <name/env> --memory 1g`, `bay harden <name/env> --pids 1024`, and
+`bay harden <name/env> --mount /tmp/.X11-unix` (a host path at the same path
+inside, read-only unless `:rw`; never Bay's root or socket, `/etc`, `/run`, the
+container engine, or another app's directory). `bay status` lists each one.
+
 ## Two things worth knowing before reading the code
 
 **There is no inbound control port and no bearer token.** The control API
