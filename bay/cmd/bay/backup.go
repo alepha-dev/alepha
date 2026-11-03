@@ -241,6 +241,13 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, t
 
 	unlock := s.lockBackup(app.Key())
 	defer unlock()
+	// Read again under the lock: the scheduler decided on a copy taken before
+	// it waited, and an auto-restore that failed meanwhile has held the
+	// instance. Backing the empty database up now would make it the latest.
+	if current, ok := s.store.Get(app.Key()); ok && current.BackupHold != "" && !takenDespiteHold(trigger) {
+		return backupOutcome{}, backupRefused{app.Key() + " is held (" + current.BackupHold + "): run `bay restore " +
+			app.Key() + "` or `bay restore " + app.Key() + " --dismiss` first"}
+	}
 	started := time.Now()
 	var manifest *backup.Manifest
 
@@ -576,7 +583,15 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 		return s.startedEmptyUnchecked(app, "no backup destination configured")
 	}
 
-	latest, found, err := mgr.Latest(ctx, app.Name, app.Env)
+	// An instance that already started empty once may have backed that empty
+	// database up since: the backup to restore is the latest before then, as
+	// for a `bay restore` without a key.
+	latest, found, err := backup.Entry{}, false, error(nil)
+	if current, ok := s.store.Get(app.Key()); ok && current.RestorePending != nil && !current.RestorePending.SinceTime().IsZero() {
+		latest, found, err = mgr.Before(ctx, app.Name, app.Env, current.RestorePending.SinceTime())
+	} else {
+		latest, found, err = mgr.Latest(ctx, app.Name, app.Env)
+	}
 	if err != nil {
 		s.log.Error("could not list backups", "app", app.Key(), "err", err)
 		return s.startedEmptyUnchecked(app, "could not reach the bucket")
@@ -659,6 +674,14 @@ func (s *server) startedEmptyUnchecked(app state.App, reason string) map[string]
 			app.Key(), reason),
 		"next": "old backups are kept (pruning paused); run `bay restore " + app.Key() + "` to recover them, or `bay restore " + app.Key() + " --dismiss` to keep the new database",
 	}
+}
+
+// takenDespiteHold says whether a backup for trigger runs on a held instance:
+// one someone asked for (which then lifts the hold), and the pre-restore copy,
+// which the restore that follows makes moot. Never the schedule's, nor a
+// deploy's: both would store the empty database as the newest snapshot.
+func takenDespiteHold(trigger string) bool {
+	return state.LiftsBackupHold(trigger) || trigger == "restore"
 }
 
 func (s *server) clearRestorePending(key string) {

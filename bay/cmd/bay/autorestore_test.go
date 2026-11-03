@@ -338,3 +338,47 @@ func TestARestoreThatDoesNotBootStillLiftsTheGuards(t *testing.T) {
 		t.Fatalf("still guarded after the data came back: hold = %q, pending = %v", a.BackupHold, a.RestorePending)
 	}
 }
+
+// The scheduler picks an instance, then waits for its lock while an
+// auto-restore fails and holds it. Its copy of the instance predates the hold:
+// the backup must read the hold again once it has the lock.
+func TestAScheduledBackupThatWaitedForTheLockSeesTheHold(t *testing.T) {
+	f := newBackupFixture(t)
+	bucket := newRecoveryBucket(t, f)
+	picked := f.app(t)
+
+	bucket.down.Store(true)
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	bucket.down.Store(false)
+	f.server.backupOne(t.Context(), picked, time.Now())
+
+	if got := bucket.uploads.Load(); got != 0 {
+		t.Fatalf("a scheduled backup decided before the hold uploaded %d object(s) of the empty database", got)
+	}
+	if f.app(t).BackupHold == "" {
+		t.Fatal("the hold was lifted")
+	}
+}
+
+// A second auto-restore on an instance that already started empty must not
+// pick the copy of the empty database taken since.
+func TestASecondAutoRestoreSkipsBackupsOfTheEmptyDatabase(t *testing.T) {
+	f := newBackupFixture(t)
+	bucket := newRecoveryBucket(t, f)
+	bucket.down.Store(true)
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	bucket.down.Store(false)
+	app := f.app(t)
+	app.RestorePending.Since = time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
+	if err := f.server.store.Upsert(app); err != nil {
+		t.Fatal(err)
+	}
+	bucket.newer.Store("apps/" + naming.Instance("demo", "production") + "/db/" +
+		time.Now().UTC().Add(-time.Minute).Format("20060102T150405Z") + ".sqlite.gz")
+
+	out := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+
+	if got, _ := out["database"].(string); !strings.Contains(got, "20260101T000000Z") {
+		t.Fatalf("want the snapshot from before the empty start, got %v", out)
+	}
+}

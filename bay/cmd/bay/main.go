@@ -1320,6 +1320,10 @@ func (s *server) preDeployBackup(ctx context.Context, key string, declared *back
 		}
 	}
 	out, err := s.backupInstanceAs(ctx, app, "deploy", backup.TagPreDeploy)
+	var refused backupRefused
+	if errors.As(err, &refused) {
+		return map[string]any{"skipped": refused.Error()}
+	}
 	if err != nil {
 		s.log.Warn("pre-deploy backup failed; deploying anyway", "app", key, "err", err)
 		return map[string]any{"error": err.Error(), "deployed": "anyway: a failed backup does not block a deploy"}
