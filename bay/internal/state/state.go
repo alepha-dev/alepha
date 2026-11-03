@@ -625,13 +625,20 @@ func (s *Store) RecordBackup(key string, rec BackupRecord) error {
 		a.BackupFailure = nil
 		r := rec
 		a.LastBackup = &r
-		// A backup somebody asked for says this database is the one. The
-		// safety copy a restore takes first says nothing of the kind, and
-		// lifting the hold on it would leave a failed restore unguarded.
-		if rec.Trigger != "restore" {
+		// Only a backup somebody asked for says this database is the one.
+		// The safety copies a restore or a deploy take first say nothing of
+		// the kind: lifting the hold on one would let the schedule save an
+		// empty database over the backups the hold protects.
+		if LiftsBackupHold(rec.Trigger) {
 			a.BackupHold = ""
 		}
 	})
+}
+
+// LiftsBackupHold says whether a backup taken for trigger vouches for the
+// database, and so gives the app back to the schedule.
+func LiftsBackupHold(trigger string) bool {
+	return trigger == "manual" || trigger == "console"
 }
 
 // HoldBackups keeps the schedule off an app. See `App.BackupHold`.

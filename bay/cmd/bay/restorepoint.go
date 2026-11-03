@@ -74,6 +74,13 @@ func (s *server) resolveRestoreKey(ctx context.Context, mgr *backup.Manager, app
 		return key, kind, nil
 	}
 	when := time.Now()
+	// An instance that started empty has backed that empty database up since,
+	// maybe: "the latest" then means the latest before it started empty.
+	if at == "" && src.key() == app.Key() && app.RestorePending != nil {
+		if since := app.RestorePending.SinceTime(); !since.IsZero() {
+			when = since
+		}
+	}
 	if at != "" {
 		loc := s.effectiveBackupPolicy(app).Location()
 		if tz := q.Get("tz"); tz != "" {

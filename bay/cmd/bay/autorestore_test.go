@@ -26,6 +26,9 @@ type recoveryBucket struct {
 	// sizes is what each upload weighed, so the size check after a PUT reads
 	// back what was sent.
 	sizes sync.Map
+	// newer is a key listed after the snapshot, taken since: what an empty
+	// database backed up would look like.
+	newer atomic.Value
 }
 
 func newRecoveryBucket(t *testing.T, f *deployFixture) *recoveryBucket {
@@ -53,7 +56,11 @@ func newRecoveryBucket(t *testing.T, f *deployFixture) *recoveryBucket {
 			w.Header().Set("Content-Length", strconv.FormatInt(n.(int64), 10))
 		case r.Method == http.MethodGet && strings.Contains(r.URL.RawQuery, "list-type"):
 			w.Header().Set("Content-Type", "application/xml")
-			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>` + key + `</Key><Size>10</Size><LastModified>2026-01-01T00:00:00.000Z</LastModified></Contents></ListBucketResult>`))
+			contents := `<Contents><Key>` + key + `</Key><Size>10</Size><LastModified>2026-01-01T00:00:00.000Z</LastModified></Contents>`
+			if newer, _ := bucket.newer.Load().(string); newer != "" {
+				contents += `<Contents><Key>` + newer + `</Key><Size>10</Size><LastModified>2026-01-01T00:00:00.000Z</LastModified></Contents>`
+			}
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?><ListBucketResult><IsTruncated>false</IsTruncated>` + contents + `</ListBucketResult>`))
 		case r.Method == http.MethodGet:
 			_, _ = w.Write(packed.Bytes())
 		}
@@ -208,5 +215,56 @@ func TestAnUncheckedEmptyStartHoldsUntilDismissed(t *testing.T) {
 	}
 	if a := f.app(t); a.BackupHold != "" || a.RestorePending != nil {
 		t.Fatalf("still guarded after a dismiss: hold = %q, pending = %v", a.BackupHold, a.RestorePending)
+	}
+}
+
+// The safety copy a deploy takes first says nothing about which database is
+// the right one: after a failed recovery it is a copy of the empty one, and
+// lifting the hold on it would give the empty database back to the schedule.
+func TestAPreDeployBackupKeepsTheHold(t *testing.T) {
+	f := newBackupFixture(t)
+	bucket := newRecoveryBucket(t, f)
+	bucket.down.Store(true)
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	bucket.down.Store(false)
+
+	for _, trigger := range []string{"deploy", "restore", "schedule"} {
+		if err := f.server.store.RecordBackup("demo/production", state.BackupRecord{
+			At: time.Now().UTC().Format(time.RFC3339), Key: "k", Trigger: trigger}); err != nil {
+			t.Fatal(err)
+		}
+		if f.app(t).BackupHold == "" {
+			t.Fatalf("a %s backup lifted the hold", trigger)
+		}
+	}
+}
+
+// Whatever was backed up after the instance started empty is a copy of the
+// empty database: "the latest backup" skips it.
+func TestARestoreWithoutAKeyIgnoresBackupsOfTheEmptyDatabase(t *testing.T) {
+	f := newBackupFixture(t)
+	bucket := newRecoveryBucket(t, f)
+	bucket.down.Store(true)
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	bucket.down.Store(false)
+	app := f.app(t)
+	app.RestorePending.Since = time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
+	if err := f.server.store.Upsert(app); err != nil {
+		t.Fatal(err)
+	}
+	bucket.newer.Store("apps/" + naming.Instance("demo", "production") + "/db/" +
+		time.Now().UTC().Add(-time.Minute).Format("20060102T150405Z") + ".sqlite.gz")
+
+	req := httptest.NewRequest(http.MethodPost, "/apps/demo/production/restore?dryRun=1", nil)
+	req.SetPathValue("name", "demo")
+	req.SetPathValue("env", "production")
+	rec := httptest.NewRecorder()
+	f.server.handleRestore(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restore: %d %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), "20260101T000000Z") {
+		t.Fatalf("want the snapshot from before the empty start, got %s", rec.Body)
 	}
 }
