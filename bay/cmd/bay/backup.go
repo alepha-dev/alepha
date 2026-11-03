@@ -561,6 +561,9 @@ func fetchedPaths(f *backup.Fetched) []string {
 // A failure does not fail the deploy: the app starts on the empty database. See
 // `startedEmptyUnchecked` for what keeps that from costing the snapshot it missed.
 func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string) map[string]any {
+	// The scheduler takes the same lock: without it, it could back the empty
+	// database up between its creation and the restore.
+	defer s.lockBackup(app.Key())()
 	mgr, _, err := s.backupManager()
 	if err != nil {
 		s.log.Error("backup config unusable, skipping auto-restore", "err", err)

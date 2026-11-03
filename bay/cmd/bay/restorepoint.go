@@ -117,7 +117,11 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionRequired, "restoring overwrites the live database; repeat with ?confirm=yes")
 		return
 	}
-	resp, err := s.restoreInstance(r.Context(), app, q, restoreOptions{DryRun: dryRun, Reason: q.Get("reason"), Trigger: "cli"})
+	// Detached from the request, like a deploy: a client that hangs up once
+	// the app is stopped must not leave it stopped half way through.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), deployTimeout)
+	defer cancel()
+	resp, err := s.restoreInstance(ctx, app, q, restoreOptions{DryRun: dryRun, Reason: q.Get("reason"), Trigger: "cli"})
 	if err != nil {
 		var re restoreError
 		if errors.As(err, &re) {

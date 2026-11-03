@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -266,5 +267,49 @@ func TestARestoreWithoutAKeyIgnoresBackupsOfTheEmptyDatabase(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "20260101T000000Z") {
 		t.Fatalf("want the snapshot from before the empty start, got %s", rec.Body)
+	}
+}
+
+// The scheduler and the auto-restore take the same per-instance lock, so a
+// scheduled backup can never land between the empty database and its restore.
+func TestTheAutoRestoreWaitsForTheBackupLock(t *testing.T) {
+	f := newBackupFixture(t)
+	newRecoveryBucket(t, f)
+	unlock := f.server.lockBackup("demo/production")
+
+	done := make(chan struct{})
+	go func() {
+		f.server.maybeAutoRestore(context.Background(), f.app(t), f.databasePath())
+		close(done)
+	}()
+	select {
+	case <-done:
+		unlock()
+		t.Fatal("the auto-restore ran while a backup held the lock")
+	case <-time.After(200 * time.Millisecond):
+	}
+	unlock()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the auto-restore never ran once the lock was free")
+	}
+}
+
+// A client that hangs up mid-restore must not leave the app stopped half way.
+func TestARestoreOutlivesItsRequest(t *testing.T) {
+	f := newBackupFixture(t)
+	newRecoveryBucket(t, f)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest(http.MethodPost, "/apps/demo/production/restore?confirm=yes", nil).WithContext(ctx)
+	req.SetPathValue("name", "demo")
+	req.SetPathValue("env", "production")
+	rec := httptest.NewRecorder()
+	f.server.handleRestore(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restore: %d %s", rec.Code, rec.Body)
 	}
 }
