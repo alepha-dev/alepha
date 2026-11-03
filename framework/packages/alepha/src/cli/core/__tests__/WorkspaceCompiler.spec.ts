@@ -184,7 +184,7 @@ describe("WorkspaceCompiler", () => {
     const calls = shell.getCallsMatching(/^bun build/);
     expect(calls).toHaveLength(1);
     expect(calls[0].command).toMatch(
-      /^bun build --compile --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=loom index\.bun\.js$/,
+      /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=loom index\.bun\.js$/,
     );
     expect(calls[0].command).not.toContain("musl");
     expect(calls[0].options.root).toBe(
@@ -208,7 +208,7 @@ describe("WorkspaceCompiler", () => {
 
     expect(
       shell.wasCalledMatching(
-        /^bun build --compile --target=bun-linux-(x64|arm64)-musl --minify --outfile=loom index\.bun\.js$/,
+        /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-(x64|arm64)-musl --minify --outfile=loom index\.bun\.js$/,
       ),
     ).toBe(true);
   });
@@ -220,7 +220,7 @@ describe("WorkspaceCompiler", () => {
 
     expect(
       shell.wasCalled(
-        "bun build --compile --target=bun-linux-x64 --outfile=loom index.bun.js",
+        "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-x64 --outfile=loom index.bun.js",
       ),
     ).toBe(true);
   });
@@ -309,7 +309,7 @@ describe("WorkspaceCompiler", () => {
     const before = fs.getFileContent(entry);
     const command = [...shell.calls];
     shell.errors.set(
-      `bun build --compile --target=${task.defaultBunTarget()} --minify --outfile=loom index.bun.js`,
+      `bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=${task.defaultBunTarget()} --minify --outfile=loom index.bun.js`,
       "bun build failed",
     );
 
