@@ -53,6 +53,7 @@ const AppBackups = () => {
       online: data.estate.online,
       deployAllowed: data.estate.deployAllowed,
       canManage: can("deploy:manage"),
+      canRestoreFrom: false,
       send: (body) => api.sendAppBackupCommand({ params: scope, body }),
       poll: (commandId) =>
         api.getAppBackupCommand({ params: { ...scope, commandId } }),

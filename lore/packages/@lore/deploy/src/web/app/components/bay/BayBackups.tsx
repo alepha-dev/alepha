@@ -57,6 +57,7 @@ const BayBackups = (props: BayBackupsProps) => {
       deployAllowed: estate.deployAllowed,
       // The owner's console; the enqueue refuses anyone else server-side.
       canManage: true,
+      canRestoreFrom: true,
       send: (body) =>
         commandApi.enqueueEstateCommand({
           params: { estateId: estate.id },

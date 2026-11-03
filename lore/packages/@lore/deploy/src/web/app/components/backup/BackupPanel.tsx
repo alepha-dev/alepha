@@ -48,6 +48,12 @@ export interface BackupSource {
   online: boolean;
   deployAllowed: boolean;
   canManage: boolean;
+  /**
+   * Whether a restore may name another instance's backups (`from`). Only the
+   * estate owner's route accepts it, so the project's Backups tab hides the
+   * field rather than offer one the server always refuses.
+   */
+  canRestoreFrom: boolean;
   send: (body: EstateBackupCommandBody) => Promise<EstateCommandResource>;
   poll: (id: string) => Promise<EstateCommandResource | undefined>;
   /** The uploaded result, parsed; `undefined` while there is none yet. */
@@ -84,7 +90,9 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
   const point = {
     ...(restoreKey ? { key: restoreKey } : {}),
     ...(!restoreKey && restoreAt.trim() ? { at: restoreAt.trim() } : {}),
-    ...(restoreFrom.trim() ? { from: restoreFrom.trim() } : {}),
+    ...(source.canRestoreFrom && restoreFrom.trim()
+      ? { from: restoreFrom.trim() }
+      : {}),
   };
   const pointId = JSON.stringify(point);
 
@@ -576,14 +584,16 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
                 disabled={!writable || busy || !!restoreKey}
                 data-testid="backup-restore-at"
               />
-              <Input
-                placeholder={tr("backup.restore.from")}
-                value={restoreFrom}
-                maxLength={200}
-                onChange={(event) => setRestoreFrom(event.target.value)}
-                disabled={!writable || busy}
-                data-testid="backup-restore-from"
-              />
+              {source.canRestoreFrom && (
+                <Input
+                  placeholder={tr("backup.restore.from")}
+                  value={restoreFrom}
+                  maxLength={200}
+                  onChange={(event) => setRestoreFrom(event.target.value)}
+                  disabled={!writable || busy}
+                  data-testid="backup-restore-from"
+                />
+              )}
             </div>
             <Input
               placeholder={tr("backup.restore.reason")}
