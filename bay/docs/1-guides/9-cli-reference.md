@@ -26,7 +26,7 @@ stack's service is the instance `stack.service/env`, as in
 |             | `--acme-http-port N`, `--acme-tls-port N` challenge ports, default 80 and 443                               |
 |             | `--control-socket PATH`, `--control-group bay-control`                                                      |
 |             | `--backup-interval 24h` (`0` disables), `--keep-releases 2` (minimum 2; per app, and stack revisions too)   |
-| `bay doctor [--root /opt/bay/data] [--control-socket PATH]` | can this host run Bay; exits 1 on a failed check. On a live host pass the socket, or ports 80 and 443 fail |
+| `bay doctor [--root /opt/bay/data] [--control-socket PATH] [--probe-keys]` | can this host run Bay; exits 1 on a failed check, not on a `WARN`. On a live host pass the socket, or ports 80 and 443 fail. Read-only on S3 unless `--probe-keys`, which writes probe objects to re-prove each app key |
 | `bay version`              | the binary's version (`dev` for a local build)                                               |
 
 ## Apps

@@ -158,6 +158,13 @@ host it needs the socket, which it dials: if no Bay answers there, ports 80 and
 443 read as held by another program, and both checks fail. Before the first
 start, `sudo bay doctor` is enough.
 
+With S3 configured it also reaches each bucket and reads its versioning. It
+writes nothing there: keys shared between apps, or the backup key also held by
+the apps, show as `WARN` lines that do not change the exit status.
+`--probe-keys` re-proves every key with write probes: each app's own key, which
+fails if it is no longer isolated, and the host-wide apps key, tried against
+every app's backups, which warns.
+
 ## Troubleshooting
 
 | Symptom                                                        | Cause and fix                                                                                         |

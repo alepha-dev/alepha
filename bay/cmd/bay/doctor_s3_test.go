@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -41,24 +42,30 @@ func TestDoctorReportsAnUnreachableBackupBucket(t *testing.T) {
 	down := httptest.NewServer(nil)
 	down.Close()
 	st := &state.State{S3: &state.S3Config{S3Target: *target(down.URL, "backups", "backup-key")}}
-	c := findCheck(t, storageChecksFor(context.Background(), st), "s3 backups")
+	c := findCheck(t, storageChecksFor(context.Background(), st, false), "s3 backups")
 	if c.OK || !strings.Contains(c.Detail, "unreachable") {
 		t.Fatalf("a bucket that is down must fail and say so: %+v", c)
 	}
 }
 
-func TestDoctorFailsASharedBackupKey(t *testing.T) {
+// Shared keys are every host from before per-app keys: warned, not failed.
+func TestDoctorWarnsASharedBackupKey(t *testing.T) {
 	p := doctorPolicy(t)
 	st := &state.State{
 		S3:      &state.S3Config{S3Target: *target(p.srv.URL, "backups", "backup-key")},
 		Storage: target(p.srv.URL, "bay-blobs", "backup-key"),
 	}
-	if c := findCheck(t, storageChecksFor(context.Background(), st), "s3 separate keys"); c.OK {
-		t.Fatalf("one key for both must fail: %+v", c)
+	checks := storageChecksFor(context.Background(), st, false)
+	c := findCheck(t, checks, "s3 separate keys")
+	if c.OK || !c.Warn {
+		t.Fatalf("one key for both must be a warning: %+v", c)
+	}
+	if failed := printChecks(io.Discard, []check{c}); failed != 0 {
+		t.Fatalf("a warning must not fail doctor, %d failed", failed)
 	}
 }
 
-func TestDoctorFailsAppsSharingTheHostWideKey(t *testing.T) {
+func TestDoctorWarnsAppsSharingTheHostWideKey(t *testing.T) {
 	p := doctorPolicy(t)
 	st := &state.State{
 		S3:      &state.S3Config{S3Target: *target(p.srv.URL, "backups", "backup-key")},
@@ -68,12 +75,12 @@ func TestDoctorFailsAppsSharingTheHostWideKey(t *testing.T) {
 			{Name: "other", Env: "production", StorageBackend: deploy.BackendS3},
 		},
 	}
-	if c := findCheck(t, storageChecksFor(context.Background(), st), "s3 app isolation"); c.OK {
-		t.Fatalf("two apps on one key must fail: %+v", c)
+	if c := findCheck(t, storageChecksFor(context.Background(), st, false), "s3 app isolation"); c.OK || !c.Warn {
+		t.Fatalf("two apps on one key must be a warning: %+v", c)
 	}
 
 	st.InstanceStorage = map[string]*state.S3Target{"demo/production": target(p.srv.URL, "bay-blobs", "demo-key")}
-	checks := storageChecksFor(context.Background(), st)
+	checks := storageChecksFor(context.Background(), st, true)
 	if c := findCheck(t, checks, "s3 app isolation"); !c.OK {
 		t.Fatalf("one app left on the host-wide key shares it with nobody: %+v", c)
 	}
@@ -88,8 +95,8 @@ func TestDoctorFailsAnInstanceKeyThatIsNotIsolated(t *testing.T) {
 		S3:              &state.S3Config{S3Target: *target(p.srv.URL, "backups", "backup-key")},
 		InstanceStorage: map[string]*state.S3Target{"demo/production": target(p.srv.URL, "bay-blobs", "wide-key")},
 	}
-	c := findCheck(t, storageChecksFor(context.Background(), st), "s3 key demo/production")
-	if c.OK || !strings.Contains(c.Detail, "the backups") {
+	c := findCheck(t, storageChecksFor(context.Background(), st, true), "s3 key demo/production")
+	if c.OK || c.Warn || !strings.Contains(c.Detail, "the backups") {
 		t.Fatalf("a key reaching the backups must fail and name them: %+v", c)
 	}
 }
@@ -103,23 +110,23 @@ func TestDoctorVersioningOnTheBlobBucket(t *testing.T) {
 	}
 	for status, ok := range map[string]bool{"Enabled": true, "Suspended": false} {
 		p.versioning = map[string]string{"bay-blobs": status}
-		if c := findCheck(t, storageChecksFor(context.Background(), st), "s3 apps"); c.OK != ok {
+		if c := findCheck(t, storageChecksFor(context.Background(), st, false), "s3 apps"); c.OK != ok {
 			t.Fatalf("versioning %s: %+v", status, c)
 		}
 	}
 	p.versioning = nil
-	if c := findCheck(t, storageChecksFor(context.Background(), st), "s3 apps"); !c.OK || !strings.Contains(c.Detail, "unknown") {
+	if c := findCheck(t, storageChecksFor(context.Background(), st, false), "s3 apps"); !c.OK || !strings.Contains(c.Detail, "unknown") {
 		t.Fatalf("an unanswered versioning call is unknown, not a failure: %+v", c)
 	}
 	p.versioning = map[string]string{"backups": "Suspended"}
-	if c := findCheck(t, storageChecksFor(context.Background(), st), "s3 backups"); !c.OK {
+	if c := findCheck(t, storageChecksFor(context.Background(), st, false), "s3 backups"); !c.OK {
 		t.Fatalf("a backup bucket without versioning is reported, not failed: %+v", c)
 	}
 }
 
 func TestDoctorReadsStateWithoutWritingIt(t *testing.T) {
 	root := t.TempDir()
-	if got := storageChecks(root); got != nil {
+	if got := storageChecks(root, false); got != nil {
 		t.Fatalf("a fresh host has nothing to check: %+v", got)
 	}
 	p := doctorPolicy(t)
@@ -128,11 +135,63 @@ func TestDoctorReadsStateWithoutWritingIt(t *testing.T) {
 	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if c := findCheck(t, storageChecks(root), "s3 backups"); !c.OK {
+	if c := findCheck(t, storageChecks(root, false), "s3 backups"); !c.OK {
 		t.Fatalf("got %+v", c)
 	}
 	after, _ := os.ReadFile(path)
 	if string(after) != raw {
 		t.Fatal("doctor must not rewrite state.json under a running bay serve")
 	}
+}
+
+// Proving isolation writes probe objects; plain `bay doctor` must not.
+func TestDoctorWritesNothingWithoutProbeKeys(t *testing.T) {
+	p := doctorPolicy(t)
+	st := &state.State{
+		S3:              &state.S3Config{S3Target: *target(p.srv.URL, "backups", "backup-key")},
+		Storage:         target(p.srv.URL, "bay-blobs", "global-key"),
+		InstanceStorage: map[string]*state.S3Target{"demo/production": target(p.srv.URL, "bay-blobs", "wide-key")},
+	}
+	checks := storageChecksFor(context.Background(), st, false)
+	if n := p.writes; n != 0 {
+		t.Fatalf("doctor without --probe-keys sent %d PUT/DELETE", n)
+	}
+	if c := findCheck(t, checks, "s3 key demo/production"); !c.OK || !strings.Contains(c.Detail, "--probe-keys") {
+		t.Fatalf("an unprobed key must say how to probe it: %+v", c)
+	}
+	if _, found := findCheckOK(checks, "s3 apps key"); found {
+		t.Fatal("the host-wide key must not be probed without --probe-keys")
+	}
+}
+
+// Apps without a key of their own hold the host-wide one: tried against each
+// app's backup prefix, since a refusal on apps/ says nothing below it.
+func TestDoctorProbesTheHostWideKeyAgainstTheBackups(t *testing.T) {
+	p := newPolicyS3(t, map[string][]string{
+		"backup-key": {"bay-blobs/"},
+		"global-key": {"bay-blobs/apps/demo-production/"},
+	})
+	st := &state.State{
+		S3:      &state.S3Config{S3Target: *target(p.srv.URL, "bay-blobs", "backup-key")},
+		Storage: target(p.srv.URL, "bay-blobs", "global-key"),
+		Apps:    []state.App{{Name: "demo", Env: "production", StorageBackend: deploy.BackendS3}},
+	}
+	c := findCheck(t, storageChecksFor(context.Background(), st, true), "s3 apps key")
+	if c.OK || !c.Warn || !strings.Contains(c.Detail, "backups of demo/production") {
+		t.Fatalf("a host-wide key reaching an app's backups must be warned, naming them: %+v", c)
+	}
+
+	p.grants["global-key"] = []string{"bay-blobs/apps/demo-production/blobs/"}
+	if c := findCheck(t, storageChecksFor(context.Background(), st, true), "s3 apps key"); !c.OK {
+		t.Fatalf("a key scoped to the blobs is refused on the backups: %+v", c)
+	}
+}
+
+func findCheckOK(checks []check, name string) (check, bool) {
+	for _, c := range checks {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return check{}, false
 }

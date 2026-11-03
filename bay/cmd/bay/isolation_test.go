@@ -38,7 +38,9 @@ type policyS3 struct {
 	broken string
 	// maxKeys records the max-keys of every listing, "" when unbounded.
 	maxKeys []string
-	srv     *httptest.Server
+	// writes counts every PUT and DELETE that reached the service.
+	writes int
+	srv    *httptest.Server
 }
 
 var credentialRe = regexp.MustCompile(`Credential=([^/]+)/`)
@@ -63,6 +65,9 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 			}
 			_, _ = w.Write([]byte("<VersioningConfiguration><Status>" + status + "</Status></VersioningConfiguration>"))
 			return
+		}
+		if r.Method == http.MethodPut || r.Method == http.MethodDelete {
+			p.writes++
 		}
 		listing := r.Method == http.MethodGet && key == ""
 		if listing {

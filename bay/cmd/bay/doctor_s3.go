@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/s3"
 	"github.com/alepha-dev/bay/internal/state"
@@ -26,8 +27,14 @@ beside a live `bay serve`, and opening the store may write it.
 
 Every check talks to the bucket, so a bucket that is down shows here, before a
 deploy finds out by starting an app on an empty database.
+
+Read-only by default: proving a key isolated means trying to write where it
+must not, so the key probes run only with `--probe-keys`. Keys shared between
+apps are warnings - a risk on a host that works, and the state of every host
+that predates per-app keys. The one failure is a per-app key that was stored
+as isolated and no longer is.
 */
-func storageChecks(root string) []check {
+func storageChecks(root string, probeKeys bool) []check {
 	raw, err := os.ReadFile(filepath.Join(root, "state.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil // nothing configured yet: a fresh host, before `bay serve`.
@@ -41,10 +48,10 @@ func storageChecks(root string) []check {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	return storageChecksFor(ctx, &st)
+	return storageChecksFor(ctx, &st, probeKeys)
 }
 
-func storageChecksFor(ctx context.Context, st *state.State) []check {
+func storageChecksFor(ctx context.Context, st *state.State, probeKeys bool) []check {
 	var checks []check
 	if st.S3 == nil {
 		// Not a failure on a host that has not got there yet, but said, since
@@ -69,12 +76,12 @@ func storageChecksFor(ctx context.Context, st *state.State) []check {
 	if st.S3 != nil {
 		shared := check{Name: "s3 separate keys", OK: true, Detail: "the backup key is held by no app"}
 		if state.SameCredential(&st.S3.S3Target, st.Storage) {
-			shared = check{Name: "s3 separate keys",
+			shared = check{Name: "s3 separate keys", Warn: true,
 				Detail: "the backup key is also the s3:apps key: any hosted app can delete every backup. Mint two keys (bay config s3:backups / s3:apps)"}
 		}
 		for k, t := range instances {
 			if state.SameCredential(&st.S3.S3Target, &t) {
-				shared = check{Name: "s3 separate keys",
+				shared = check{Name: "s3 separate keys", Warn: true,
 					Detail: "the backup key is also " + k + "'s upload key: that app can delete every backup"}
 			}
 		}
@@ -90,11 +97,15 @@ func storageChecksFor(ctx context.Context, st *state.State) []check {
 	}
 	sort.Strings(onWide)
 	if len(onWide) > 1 {
-		checks = append(checks, check{Name: "s3 app isolation", Detail: strings.Join(onWide, ", ") +
+		checks = append(checks, check{Name: "s3 app isolation", Warn: true, Detail: strings.Join(onWide, ", ") +
 			" share the host-wide s3:apps key: each can read and delete the others' uploads. Give each its own (bay config s3:apps <name/env>)"})
 	} else {
 		checks = append(checks, check{Name: "s3 app isolation", OK: true,
 			Detail: fmt.Sprintf("%d app(s) on their own key, %d on the host-wide one", len(instances), len(onWide))})
+	}
+
+	if probeKeys && st.Storage != nil && st.S3 != nil && !state.SameCredential(&st.S3.S3Target, st.Storage) {
+		checks = append(checks, hostWideKeyCheck(ctx, st))
 	}
 
 	holders := storageHolders{backups: st.S3, storage: st.Storage, instances: instances}
@@ -104,9 +115,53 @@ func storageChecksFor(ctx context.Context, st *state.State) []check {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
+		if !probeKeys {
+			checks = append(checks, check{Name: "s3 key " + k, OK: true,
+				Detail: "own key stored; not re-proved (bay doctor --probe-keys writes a probe object to verify it)"})
+			continue
+		}
 		checks = append(checks, instanceKeyCheck(ctx, holders, k, instances[k]))
 	}
 	return checks
+}
+
+/*
+hostWideKeyCheck tries the host-wide s3:apps key, which every app without its
+own key holds, against the backups: the bucket's apps/ and each app's db/
+prefix, tried one by one since a refusal on apps/ says nothing below it.
+
+A warning, not a failure: the key was configured knowingly, and the fix (a
+narrower key, or a bucket of its own for backups) is the operator's.
+*/
+func hostWideKeyCheck(ctx context.Context, st *state.State) check {
+	c := check{Name: "s3 apps key"}
+	b := st.S3.S3Target
+	if strings.TrimRight(b.Endpoint, "/") != strings.TrimRight(st.Storage.Endpoint, "/") {
+		c.OK, c.Detail = true, "backups are on another S3 service: the apps key cannot reach them"
+		return c
+	}
+	locs := []foreignLocation{{what: "the backups", target: b, prefix: "apps/"}}
+	for _, a := range st.Apps {
+		locs = append(locs, foreignLocation{what: "backups of " + a.Key(), target: b, prefix: backup.DBPrefix(a.Name, a.Env)})
+	}
+	probe, cancel := context.WithTimeout(ctx, storageProbeTimeout)
+	defer cancel()
+	results, isolated := probeLocations(probe, *st.Storage, locs)
+	if isolated {
+		c.OK = true
+		c.Detail = fmt.Sprintf("refused on the backups (%d location(s))", len(results))
+		return c
+	}
+	var bad []string
+	for _, r := range results {
+		if r.Result != "denied" {
+			bad = append(bad, r.Result+": "+r.What)
+		}
+	}
+	c.Warn = true
+	c.Detail = "the key every app without its own holds is not refused on the backups (" + strings.Join(bad, "; ") +
+		"): scope it to the blob prefixes, or move backups to a bucket it cannot reach"
+	return c
 }
 
 /*
@@ -127,7 +182,7 @@ func bucketCheck(ctx context.Context, name string, t state.S3Target, needsVersio
 	}
 	probe, cancel := context.WithTimeout(ctx, storageProbeTimeout)
 	defer cancel()
-	if _, err := client.List(probe, "apps/"); err != nil {
+	if _, err := client.ListPage(probe, "apps/", 1); err != nil {
 		if s3.IsDenied(err) {
 			c.Detail = t.Bucket + ": the key is refused (" + err.Error() + ")"
 		} else {
