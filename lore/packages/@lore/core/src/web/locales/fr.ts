@@ -1934,7 +1934,7 @@ export default {
     "Cette copie n\u2019a pas encore de domaine, donc il n\u2019y a nulle part où la déployer. Choisissez-en un dans son onglet Paramètres.",
   "app.deploy.noEstate.action": "Ouvrir les paramètres",
   "app.tab.environment": "Environnement",
-  "app.environment": "Variables d\u2019environnement",
+  "app.environment": "Variables et secrets",
   "app.environment.description":
     "Ce avec quoi cette copie tourne. Une variable (déclarée `secret: false` par l'app) affiche sa valeur ; un secret est chiffré et n'est plus jamais affiché - remplacez-le plutôt que de le lire. DATABASE_URL, R2_BUCKET_NAME et les noms CLOUDFLARE_* sont définis par le déploiement lui-même.",
   "app.environment.loading": "Chargement...",
@@ -1942,15 +1942,15 @@ export default {
     "Impossible de lire l\u2019environnement de cette copie.",
   "app.environment.empty":
     "Rien de défini pour l\u2019instant. Cette copie se déploie très bien sans variable.",
-  "app.environment.masked": "Commence par $1",
-  "app.environment.masked.short": "Définie",
+  "app.environment.encrypted": "Valeur chiffrée",
+  "app.environment.masked": "commence par $1",
   "app.environment.remove": "Supprimer",
   "app.environment.remove.title": "Supprimer cette variable ?",
   "app.environment.remove.description":
     "$1 disparaîtra du prochain déploiement. La valeur ne pourra pas être récupérée.",
   "app.environment.remove.confirm": "Supprimer",
   "app.environment.removed": "Variable supprimée",
-  "app.environment.add": "Définir une variable",
+  "app.environment.add": "Ajouter une variable",
   "app.environment.add.description":
     "Choisissez un nom déclaré par l'app, ou tapez-en un autre. Définir un nom existant remplace sa valeur.",
   "app.environment.key": "Nom",

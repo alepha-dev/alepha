@@ -202,7 +202,9 @@ test.describe("deploying through Lore", () => {
       // The name is a combobox that autocompletes from the app's declared
       // keys (#Q2467) and still takes any other through its create-new row.
       // The popup is a portal, and both the trigger and its search field carry
-      // `role="combobox"`, so the search is reached as an input.
+      // `role="combobox"`, so the search is reached as an input. The form is
+      // a dialog, opened from the table's "Add variable" button.
+      await page.getByTestId("app-environment-add").click();
       await page
         .getByTestId("app-environment-key")
         .getByRole("combobox")
