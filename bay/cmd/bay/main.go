@@ -1348,6 +1348,10 @@ type deployArtifactOptions struct {
 	// BackupPolicy is the app's declared backup policy, validated at the API
 	// boundary. Nil declares nothing.
 	BackupPolicy *backuppolicy.Policy
+	// KeepBackupPolicy is a deploy whose source cannot carry a policy (an
+	// artifact pushed from the Lore console): it keeps the one the last
+	// deploy declared instead of reading its silence as "none".
+	KeepBackupPolicy bool
 }
 
 // deployOutcome is what a completed deploy has to say for itself.
@@ -1441,6 +1445,12 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 			return nil, &deployFailure{Status: http.StatusInternalServerError, Err: err}
 		}
 		stackVars = vars
+	}
+
+	if opts.KeepBackupPolicy && opts.BackupPolicy == nil {
+		if current, ok := s.store.Get(key); ok {
+			opts.BackupPolicy = current.BackupDeclared
+		}
 	}
 
 	// Before anything moves, so it holds exactly what the outgoing release

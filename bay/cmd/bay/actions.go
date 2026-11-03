@@ -457,6 +457,8 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	out, derr := a.s.deployArtifact(ctx, deployArtifactOptions{
 		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
 		SecretsFile: secretsFile,
+		// A console deploy pushes an artifact, which carries no backup policy.
+		KeepBackupPolicy: true,
 	})
 	if derr != nil {
 		return "failed", "deploying", derr.Error()

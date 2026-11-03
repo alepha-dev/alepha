@@ -270,3 +270,26 @@ func TestPolicyFlagsEditOnlyWhatTheyName(t *testing.T) {
 		t.Fatalf("inherit: %+v %+v", p.Schedule, p.Retention)
 	}
 }
+
+// An artifact pushed from the Lore console carries no policy: its silence is
+// not a declaration, so the policy the last CLI deploy declared stays.
+func TestAConsoleDeployKeepsTheDeclaredPolicy(t *testing.T) {
+	f := newDeployFixture(t)
+	if _, failure := f.server.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: deployableArtifact(t), Name: "demo", Env: "production",
+		BackupPolicy: &backuppolicy.Policy{Schedule: &backuppolicy.Schedule{Every: "6h"}},
+	}); failure != nil {
+		t.Fatal(failure)
+	}
+
+	if _, failure := f.server.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: deployableArtifact(t), Name: "demo", Env: "production", KeepBackupPolicy: true,
+	}); failure != nil {
+		t.Fatal(failure)
+	}
+
+	app := f.app(t)
+	if app.BackupDeclared == nil || app.BackupDeclared.Schedule == nil || app.BackupDeclared.Schedule.Every != "6h" {
+		t.Fatalf("the console deploy wiped the declared policy, got %+v", app.BackupDeclared)
+	}
+}
