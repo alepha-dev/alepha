@@ -3,6 +3,7 @@ package backup
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -274,5 +275,34 @@ func TestInstallBundlePutsEverythingBackWhenOneFails(t *testing.T) {
 	}
 	if matches, _ := filepath.Glob(filepath.Join(data, "app.db.before-restore-*")); len(matches) != 0 {
 		t.Fatalf("nothing set aside may be left after a rollback, got %v", matches)
+	}
+}
+
+func TestAFailedCopyLeavesTheLiveDatabaseAsItWas(t *testing.T) {
+	data := t.TempDir()
+	write(t, filepath.Join(data, "app.db"), "live app")
+	write(t, filepath.Join(data, "app.db-wal"), "live wal")
+
+	// The staged copy is gone: the copy fails before anything is replaced,
+	// the way a full disk would.
+	_, err := InstallBundle(&Fetched{Files: []FetchedFile{
+		{Path: "app.db", Local: filepath.Join(t.TempDir(), "missing")},
+	}}, data)
+	if err == nil {
+		t.Fatal("want the install refused")
+	}
+	var notBack *NotRolledBackError
+	if errors.As(err, &notBack) {
+		t.Fatalf("a refused copy put everything back, so it must not ask to keep the app stopped: %v", err)
+	}
+	if got := read(t, filepath.Join(data, "app.db")); got != "live app" {
+		t.Fatalf("app.db must be untouched, reads %q", got)
+	}
+	if got := read(t, filepath.Join(data, "app.db-wal")); got != "live wal" {
+		t.Fatalf("its WAL must be untouched, reads %q", got)
+	}
+	left, _ := filepath.Glob(filepath.Join(data, "app.db.*"))
+	if len(left) != 0 {
+		t.Fatalf("no temporary or set-aside file may be left, got %v", left)
 	}
 }

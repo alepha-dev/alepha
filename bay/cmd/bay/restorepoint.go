@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	neturl "net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -245,20 +243,17 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 	untouched, err := backup.InstallBundle(fetched, dataDir)
 	if err != nil {
 		// The app was stopped above; a refused install must not also be an
-		// outage. InstallBundle put back what it had already replaced, so the
-		// app comes back on its own data when its main database is in place;
-		// otherwise it stays stopped rather than booting on a half-written
-		// file.
+		// outage. InstallBundle puts back what it had already replaced, and
+		// says when it could not: only then does the app stay stopped rather
+		// than boot on a half-restored directory.
 		msg := "install: " + err.Error()
-		dbPath := filepath.Join(dataDir, "app.db")
-		if _, statErr := os.Stat(dbPath); statErr == nil {
-			if startErr := s.start(app); startErr != nil {
-				msg += "; and the app did not come back: " + startErr.Error()
-			} else {
-				msg += "; the app is back on its current database"
-			}
+		var notBack *backup.NotRolledBackError
+		if errors.As(err, &notBack) {
+			msg += "; the app is left stopped: its data directory is half restored, the databases replaced are kept as <file>.before-restore-*"
+		} else if startErr := s.start(app); startErr != nil {
+			msg += "; and the app did not come back: " + startErr.Error()
 		} else {
-			msg += "; the app is left stopped, its database is set aside next to " + dbPath
+			msg += "; the app is back on its current database"
 		}
 		return fail(http.StatusInternalServerError, msg, nil)
 	}

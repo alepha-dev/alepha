@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -244,12 +245,21 @@ func install(restored, livePath string) (aside string, err error) {
 		return "", err
 	}
 
+	// The copy goes to a file of its own first: a copy that fails half way
+	// (disk full) must never leave a truncated database where the app looks.
+	tmp := livePath + ".restoring"
+	if err := copyFileSync(restored, tmp); err != nil {
+		os.Remove(tmp)
+		return "", err
+	}
+
 	// Keep whatever was there. A restore is a destructive act and the operator
 	// may have picked the wrong timestamp.
 	if _, err := os.Stat(livePath); err == nil {
 		aside = livePath + ".before-restore-" + time.Now().UTC().Format(timeLayout)
 		if err := os.Rename(livePath, aside); err != nil {
-			return aside, fmt.Errorf("set aside existing database: %w", err)
+			os.Remove(tmp)
+			return "", fmt.Errorf("set aside existing database: %w", err)
 		}
 		// The WAL and SHM belong to the database just set aside: an app killed
 		// at the end of its grace period leaves committed frames in the WAL,
@@ -257,7 +267,7 @@ func install(restored, livePath string) (aside string, err error) {
 		// the file under its new name, where SQLite looks for them.
 		for _, suffix := range []string{"-wal", "-shm"} {
 			if err := os.Rename(livePath+suffix, aside+suffix); err != nil && !os.IsNotExist(err) {
-				return aside, fmt.Errorf("set aside %s: %w", livePath+suffix, err)
+				return "", undoInstall(tmp, aside, livePath, fmt.Errorf("set aside %s: %w", livePath+suffix, err))
 			}
 		}
 	}
@@ -266,24 +276,63 @@ func install(restored, livePath string) (aside string, err error) {
 	// alone: SQLite would replay it onto pages it does not belong to.
 	for _, sidecar := range []string{livePath + "-wal", livePath + "-shm"} {
 		if err := os.Remove(sidecar); err != nil && !os.IsNotExist(err) {
-			return aside, fmt.Errorf("remove %s: %w", sidecar, err)
+			return "", undoInstall(tmp, aside, livePath, fmt.Errorf("remove %s: %w", sidecar, err))
 		}
 	}
+	if err := os.Rename(tmp, livePath); err != nil {
+		return "", undoInstall(tmp, aside, livePath, err)
+	}
+	return aside, nil
+}
 
-	in, err := os.Open(restored)
+// undoInstall puts back what install had set aside, so a refused install
+// leaves the data directory as it found it. The error says when it could not.
+func undoInstall(tmp, aside, livePath string, cause error) error {
+	os.Remove(tmp)
+	if aside == "" {
+		return cause
+	}
+	var errs []error
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if err := os.Rename(aside+suffix, livePath+suffix); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		return &NotRolledBackError{Err: fmt.Errorf("%w; and putting the database back failed: %v", cause, err)}
+	}
+	return cause
+}
+
+/*
+NotRolledBackError is an install that failed and could not put back what it
+had already replaced: the data directory is in neither state, so the app must
+not be started on it.
+*/
+type NotRolledBackError struct{ Err error }
+
+func (e *NotRolledBackError) Error() string { return e.Err.Error() }
+func (e *NotRolledBackError) Unwrap() error { return e.Err }
+
+func copyFileSync(src, dst string) error {
+	in, err := os.Open(src)
 	if err != nil {
-		return aside, err
+		return err
 	}
 	defer in.Close()
-	out, err := os.OpenFile(livePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
-		return aside, err
+		return err
 	}
-	defer out.Close()
 	if _, err := io.Copy(out, in); err != nil {
-		return aside, err
+		out.Close()
+		return err
 	}
-	return aside, out.Sync()
+	if err := out.Sync(); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 /*

@@ -417,8 +417,13 @@ func InstallBundle(f *Fetched, dataDir string) (untouched []string, err error) {
 		live := filepath.Join(dataDir, filepath.FromSlash(file.Path))
 		aside, err := install(file.Local, live)
 		if err != nil {
-			if rbErr := rollback(installed); rbErr != nil {
-				return nil, fmt.Errorf("%s: %w; and putting back the databases already restored failed: %v", file.Path, err, rbErr)
+			rbErr := rollback(installed)
+			var notBack *NotRolledBackError
+			if rbErr != nil {
+				return nil, &NotRolledBackError{Err: fmt.Errorf("%s: %w; and putting back the databases already restored failed: %v", file.Path, err, rbErr)}
+			}
+			if errors.As(err, &notBack) {
+				return nil, &NotRolledBackError{Err: fmt.Errorf("%s: %w", file.Path, err)}
 			}
 			return nil, fmt.Errorf("%s: %w", file.Path, err)
 		}
