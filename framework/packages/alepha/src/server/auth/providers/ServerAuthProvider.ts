@@ -28,6 +28,7 @@ import {
   buildAuthorizationUrl,
   buildEndSessionUrl,
   calculatePKCECodeChallenge,
+  type Configuration,
   randomPKCECodeVerifier,
   randomState,
 } from "openid-client";
@@ -663,7 +664,7 @@ export class ServerAuthProvider {
         provider: query.provider,
         realm: query.realm,
       });
-      const oauth = await provider.getOAuth();
+      const oauth = (await provider.getOAuth()) as Configuration | undefined;
       if (!oauth) {
         throw new SecurityError(
           `Auth provider '${query.provider}' does not support OAuth2`,
@@ -870,7 +871,7 @@ export class ServerAuthProvider {
     }
 
     const provider = this.provider(authorizationCode);
-    const oauth = await provider.getOAuth();
+    const oauth = (await provider.getOAuth()) as Configuration | undefined;
     if (!oauth) {
       throw new SecurityError(
         `Auth provider '${provider.name}' does not support OAuth2`,
@@ -1047,7 +1048,7 @@ export class ServerAuthProvider {
         }
       }
 
-      const oauth = await provider.getOAuth();
+      const oauth = (await provider.getOAuth()) as Configuration | undefined;
       if (!oauth) {
         reply.redirect(redirect, 302);
         return;

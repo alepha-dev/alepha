@@ -15,28 +15,61 @@ import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
 /**
  * drizzle-kit v1 splits its programmatic API per dialect. Both modules
- * export the same names, but their `pushSchema` arities differ — postgres
- * takes an extra `EntitiesFilterConfig` — so call sites still narrow.
+ * export the same names, but their `pushSchema` arities differ (postgres
+ * takes an extra `EntitiesFilterConfig`), so call sites still narrow.
+ *
+ * Declared here rather than as `typeof import("drizzle-kit/payload/...")`:
+ * drizzle-kit is a devDependency vendored into `dist` (#Q3088), so a
+ * consumer has no `drizzle-kit` for a declaration file to import from.
  *
  * @internal Driver plumbing, outside semver.
  */
-export type DrizzleKitPayload =
-  | typeof DrizzleKitPostgres
-  | typeof DrizzleKitSqlite;
+export interface DrizzleKitPayload {
+  generateDrizzleJson(imports: Record<string, unknown>): Promise<unknown>;
+  generateMigration(prev: unknown, cur: unknown): Promise<string[]>;
+  up(snapshot: unknown): unknown;
+  pushSchema(...args: never[]): Promise<PushSchemaResult>;
+}
+
+/**
+ * The entity a hint names, as drizzle-kit identifies it: `[schema]`,
+ * `[schema, table]` or `[schema, table, column]`, by kind.
+ *
+ * @internal Driver plumbing, outside semver.
+ */
+export type DrizzleKitEntityId = readonly string[];
 
 /**
  * An answer to a question `pushSchema` cannot ask outside a terminal.
  *
  * @internal Driver plumbing, outside semver.
  */
-export type DrizzleKitHint = DrizzleKitPostgres.Hint;
+export type DrizzleKitHint =
+  | {
+      type: "rename";
+      kind: string;
+      from: DrizzleKitEntityId;
+      to: DrizzleKitEntityId;
+    }
+  | { type: "create"; kind: string; entity: DrizzleKitEntityId }
+  | { type: "confirm_data_loss"; kind: string; entity: DrizzleKitEntityId };
 
 /**
  * A question `pushSchema` could not ask, carried by its `MissingHintsError`.
  *
  * @internal Driver plumbing, outside semver.
  */
-export type DrizzleKitMissingHint = DrizzleKitPostgres.MissingHint;
+export type DrizzleKitMissingHint =
+  | { type: "rename_or_create"; kind: string; entity: DrizzleKitEntityId }
+  | ({
+      type: "confirm_data_loss";
+      kind: string;
+      entity: DrizzleKitEntityId;
+    } & (
+      | { reason: "non_empty" }
+      | { reason: "table_recreate" }
+      | { reason: "type_change"; reason_details: { from: string; to: string } }
+    ));
 
 /**
  * What a development `synchronize()` did, so a caller (or a spec) can tell a
@@ -395,16 +428,16 @@ export class DrizzleKitProvider {
     hints: DrizzleKitHint[] = [],
   ): Promise<PushSchemaResult> {
     if (provider.dialect === "sqlite") {
-      const sqlite = kit as typeof DrizzleKitSqlite;
+      const sqlite = kit as unknown as typeof DrizzleKitSqlite;
       return await sqlite.pushSchema(
         models,
         this.sqliteDbForDrizzleKit(provider) as any,
         undefined,
-        { hints },
+        { hints: hints as unknown as DrizzleKitSqlite.Hint[] },
       );
     }
 
-    const postgres = kit as typeof DrizzleKitPostgres;
+    const postgres = kit as unknown as typeof DrizzleKitPostgres;
     const wrappedDb = this.wrapDbForDrizzleKit(provider.db);
     return await postgres.pushSchema(
       models,
@@ -416,7 +449,7 @@ export class DrizzleKitProvider {
         extensions: undefined,
       },
       undefined,
-      { hints },
+      { hints: hints as unknown as DrizzleKitPostgres.Hint[] },
     );
   }
 

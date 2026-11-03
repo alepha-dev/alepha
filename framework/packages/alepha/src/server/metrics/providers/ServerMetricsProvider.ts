@@ -8,7 +8,10 @@ import { $logger } from "alepha/logger";
 import { $route, HttpError } from "alepha/server";
 
 export class ServerMetricsProvider {
-  protected readonly register: Registry = new Registry();
+  // `private`, not `protected`: @prometheus-io/client is bundled into alepha,
+  // so a protected member's type would make the declaration import a package
+  // consumers do not have.
+  private readonly register: Registry = new Registry();
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly env = $env(
@@ -21,7 +24,7 @@ export class ServerMetricsProvider {
       METRICS_TOKEN: z.string().optional(),
     }),
   );
-  protected httpRequestDuration?: Histogram<string>;
+  private httpRequestDuration?: Histogram<string>;
 
   public readonly options: ServerMetricsProviderOptions = {};
 
