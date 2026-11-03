@@ -9,7 +9,7 @@ class RecordingHttpClient extends HttpClient {
 
   async fetch(url: string, opts: any): Promise<any> {
     this.calls.push({ url, body: opts?.body });
-    return { data: {}, status: 204 } as any;
+    return { data: {}, status: 204 };
   }
 }
 

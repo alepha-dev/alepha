@@ -557,6 +557,9 @@ func fetchedPaths(f *backup.Fetched) []string {
 //
 // It never runs against an existing database. That single condition is what
 // separates "recovery" from "a redeploy silently reverted my data".
+//
+// A failure does not fail the deploy: the app starts on the empty database. See
+// `startedEmptyUnchecked` for what keeps that from costing the snapshot it missed.
 func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string) map[string]any {
 	mgr, _, err := s.backupManager()
 	if err != nil {
@@ -620,28 +623,48 @@ startedEmptyUnchecked is the deploy going ahead on an empty database when Bay
 could not find out whether a backup should have been restored into it.
 
 The deploy is not refused: an app that cannot start because a bucket is down
-is an outage of its own. But the instance is marked `RestorePending`, and that
-is what stops retention from deleting the real backups once the empty
-database starts being backed up in their place.
+is an outage of its own. Two guards keep the real backups instead:
+
+  - the schedule is held (`BackupHold`): `LastBackupAt` is empty on a new
+    host, so within a minute the schedule would snapshot the empty database
+    and make it the latest, which is what the next plain `bay restore`
+    installs;
+  - the instance is marked `RestorePending`, which stops retention from
+    deleting the backups taken before it, should anything back it up.
+
+`warning` is what `alepha deploy` prints: it keeps nothing else of this answer.
 */
 func (s *server) startedEmptyUnchecked(app state.App, reason string) map[string]any {
 	s.log.Warn("app started on an EMPTY database, its backups were not checked; "+
-		"pruning is paused for it until `bay restore` or `bay restore --dismiss`",
+		"scheduled backups are held and pruning is paused for it until `bay restore` or `bay restore --dismiss`",
 		"app", app.Key(), "reason", reason)
-	if err := s.store.SetRestorePending(app.Key(), reason, time.Now()); err != nil {
+	now := time.Now()
+	if err := s.store.HoldBackups(app.Key(), reason, now); err != nil {
+		s.log.Error("could not hold the backups of an unrestored app", "app", app.Key(), "err", err)
+	}
+	if err := s.store.SetRestorePending(app.Key(), reason, now); err != nil {
 		s.log.Error("could not record the pending restore", "app", app.Key(), "err", err)
 	}
 	s.emit("restore.pending", &app, map[string]any{"reason": clip(reason)})
 	return map[string]any{
 		"database":       "empty (" + reason + ")",
 		"restorePending": true,
-		"next":           "old backups are kept (pruning paused); run `bay restore " + app.Key() + "` to recover them, or `bay restore " + app.Key() + " --dismiss` to keep the new database",
+		"warning": fmt.Sprintf(
+			"%[1]s started on an EMPTY database: no backup was restored (%[2]s). Scheduled backups are held "+
+				"and old backups are kept, so the last snapshot stays the latest: run `bay restore %[1]s` to bring it back, "+
+				"or `bay restore %[1]s --dismiss` to keep this database and resume them",
+			app.Key(), reason),
+		"next": "old backups are kept (pruning paused); run `bay restore " + app.Key() + "` to recover them, or `bay restore " + app.Key() + " --dismiss` to keep the new database",
 	}
 }
 
 func (s *server) clearRestorePending(key string) {
 	if err := s.store.ClearRestorePending(key); err != nil {
 		s.log.Error("could not clear the pending restore", "app", key, "err", err)
+	}
+	// Restored or dismissed: either way somebody decided, so the schedule resumes.
+	if err := s.store.ClearBackupHold(key); err != nil {
+		s.log.Error("could not give the app back to the schedule", "app", key, "err", err)
 	}
 }
 
@@ -771,6 +794,10 @@ func (s *server) handleRestoreDismiss(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// Keeping this database is the decision the hold was waiting for.
+	if err := s.store.ClearBackupHold(app.Key()); err != nil {
+		s.log.Error("could not give the app back to the schedule", "app", app.Key(), "err", err)
+	}
 	s.log.Warn("pending restore dismissed; retention resumes", "app", app.Key(), "since", app.RestorePending.Since)
 	s.emit("restore.dismissed", &app, map[string]any{"since": app.RestorePending.Since, "reason": clip(app.RestorePending.Reason)})
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -859,6 +886,10 @@ func (s *server) runDueBackups(ctx context.Context) {
 		// no database Bay owns costs nothing per tick rather than a refusal
 		// per tick.
 		if !app.Backups {
+			continue
+		}
+		// `bay status` says so: see `startedEmptyUnchecked`.
+		if app.BackupHold != "" {
 			continue
 		}
 		policy := s.effectiveBackupPolicy(app)

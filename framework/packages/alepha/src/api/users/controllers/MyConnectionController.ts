@@ -119,7 +119,7 @@ export class MyConnectionController {
             expiresAt: session.expiresAt,
             sessionCount: 1,
             ip: session.ip,
-            userAgent: session.userAgent as never,
+            userAgent: session.userAgent,
             current: session.id === user.sessionId,
           });
           continue;

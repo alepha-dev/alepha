@@ -189,7 +189,7 @@ describe("projectViewRoutes", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "projectReports",
-        "reportsOverview",
+        "reportsFlow",
         "reportsQuests",
         "reportsMembers",
         "reportsQuality",

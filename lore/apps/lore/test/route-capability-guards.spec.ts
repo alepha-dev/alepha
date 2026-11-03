@@ -63,7 +63,7 @@ describe("route guards on a capability", () => {
     const alepha = await bootRouter();
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["work", "knowledge"] }) as never,
+      projectFixture({ capabilities: ["work", "knowledge"] }),
     );
 
     const loader = loaderOf(alepha, "projectApps");
@@ -74,7 +74,7 @@ describe("route guards on a capability", () => {
     const alepha = await bootRouter();
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["knowledge", "apps"] }) as never,
+      projectFixture({ capabilities: ["knowledge", "apps"] }),
     );
 
     const loader = loaderOf(alepha, "projectApps");
@@ -89,7 +89,7 @@ describe("route guards on a capability", () => {
     // project does not have.
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["apps"] }) as never,
+      projectFixture({ capabilities: ["apps"] }),
     );
 
     for (const name of ["projectQuests", "projectFolios", "projectFeedback"]) {
@@ -102,7 +102,7 @@ describe("route guards on a capability", () => {
     const alepha = await bootRouter();
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["work"] }) as never,
+      projectFixture({ capabilities: ["work"] }),
     );
 
     // The pair again: `projectQuests`'s loader fetches nothing, so a guard
@@ -122,7 +122,7 @@ describe("route guards on a capability", () => {
       projectFixture({
         capabilities: ["work"],
         options: { work: { automations: false } },
-      }) as never,
+      }),
     );
     await expect(loader?.({} as never)).rejects.toThrow("Automations");
     alepha.store.set(
@@ -131,7 +131,7 @@ describe("route guards on a capability", () => {
         capabilities: ["work"],
         options: { work: { automations: true } },
         permissions: ["project:read"],
-      }) as never,
+      }),
     );
     await expect(loader?.({} as never)).rejects.toThrow("Automations");
     alepha.store.set(
@@ -140,9 +140,38 @@ describe("route guards on a capability", () => {
         capabilities: ["work"],
         options: { work: { automations: true } },
         permissions: ["project:read", "automation:read"],
-      }) as never,
+      }),
     );
     await expect(loader?.({} as never)).resolves.toBeUndefined();
+  });
+
+  it("answers a 404 on every automation route without automation:read", async ({
+    expect,
+  }) => {
+    const alepha = await bootRouter();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: true } },
+        permissions: ["project:read", "project:delete"],
+      }),
+    );
+
+    // What a privileged identity outside the project is sent since #Q3022:
+    // a NotFoundError, so the project layout draws its 404 and never a page
+    // whose reads are all refused.
+    for (const [name, args] of [
+      ["projectAutomations", {}],
+      ["projectAutomationGallery", {}],
+      ["projectAutomationVariables", { query: {} }],
+      ["projectAutomationRun", { params: { runId: "x" } }],
+      ["projectAutomationAdoption", {}],
+      ["projectAutomationDetail", { params: { automationId: "x" } }],
+    ] as const) {
+      const run = async () => loaderOf(alepha, name)?.(args as never);
+      await expect(run(), name).rejects.toMatchObject({ status: 404 });
+    }
   });
 
   it("requires both read and write permission for the automation gallery", async ({
@@ -161,7 +190,7 @@ describe("route guards on a capability", () => {
           capabilities: ["work"],
           options: { work: { automations: true } },
           permissions,
-        }) as never,
+        }),
       );
       await expect(loader?.({} as never)).rejects.toThrow("Automation presets");
     }
@@ -171,7 +200,7 @@ describe("route guards on a capability", () => {
         capabilities: ["work"],
         options: { work: { automations: true } },
         permissions: ["project:read", "automation:read", "automation:write"],
-      }) as never,
+      }),
     );
     await expect(loader?.({} as never)).resolves.toBeUndefined();
     alepha.store.set(
@@ -180,7 +209,7 @@ describe("route guards on a capability", () => {
         capabilities: ["work"],
         options: { work: { automations: false } },
         permissions: ["project:read", "automation:read", "automation:write"],
-      }) as never,
+      }),
     );
     await expect(loader?.({} as never)).rejects.toThrow("Automation presets");
   });

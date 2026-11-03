@@ -133,6 +133,7 @@ export * from "./providers/ServerMultipartProvider.ts";
 export * from "./providers/ServerNotReadyProvider.ts";
 export * from "./providers/ServerProvider.ts";
 export * from "./providers/ServerRouterProvider.ts";
+export * from "./helpers/staticPage.ts";
 export * from "./providers/ServerTimingProvider.ts";
 export * from "./services/RequestOriginPolicy.ts";
 export * from "./services/UserAgentParser.ts";

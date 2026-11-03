@@ -35,7 +35,7 @@ describe("CloudflareD1Provider sessions", () => {
     const { alepha, binding, provider } = await boot();
 
     await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
     });
 
     // Default is `primary`: opting an app into a different consistency model
@@ -49,7 +49,7 @@ describe("CloudflareD1Provider sessions", () => {
     });
 
     await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
     });
 
     expect(binding.sessions).toHaveLength(1);
@@ -61,7 +61,7 @@ describe("CloudflareD1Provider sessions", () => {
     });
 
     await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
     });
 
     // With no bookmark to anchor at, any replica will do and the fastest one
@@ -77,7 +77,7 @@ describe("CloudflareD1Provider sessions", () => {
 
     await alepha.fork(async () => {
       provider.openSession("bm-from-last-response");
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
     });
 
     // This is what makes a read after a write correct across two requests:
@@ -99,7 +99,7 @@ describe("CloudflareD1Provider sessions", () => {
       alepha.store.set("alepha.orm.d1.bookmark", "bm-from-cookie", {
         skipEvents: true,
       });
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
     });
 
     expect(binding.sessions).toEqual(["bm-from-cookie"]);
@@ -127,7 +127,7 @@ describe("CloudflareD1Provider sessions", () => {
       // Mutating a holder the outer scope already owns is how the framework
       // solves this elsewhere (see `alepha.orm.afterCommit`).
       await alepha.context.nest(async () => {
-        await provider.execute("select 1" as never);
+        await provider.execute("select 1");
       });
     });
 
@@ -140,9 +140,9 @@ describe("CloudflareD1Provider sessions", () => {
     });
 
     await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
-      await provider.execute("select 2" as never);
-      await provider.execute("select 3" as never);
+      await provider.execute("select 1");
+      await provider.execute("select 2");
+      await provider.execute("select 3");
     });
 
     // One session per request, not per query: a fresh session per query
@@ -157,10 +157,10 @@ describe("CloudflareD1Provider sessions", () => {
     });
 
     await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
     });
     await alepha.fork(async () => {
-      await provider.execute("select 2" as never);
+      await provider.execute("select 2");
     });
 
     expect(binding.sessions).toHaveLength(2);
@@ -175,7 +175,7 @@ describe("CloudflareD1Provider sessions", () => {
     );
 
     const bookmark = await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
       return provider.sessionBookmark();
     });
 
@@ -186,7 +186,7 @@ describe("CloudflareD1Provider sessions", () => {
     const { alepha, provider } = await boot();
 
     const bookmark = await alepha.fork(async () => {
-      await provider.execute("select 1" as never);
+      await provider.execute("select 1");
       return provider.sessionBookmark();
     });
 
@@ -204,7 +204,7 @@ describe("CloudflareD1Provider sessions", () => {
     // the app serving; throwing would turn a missing optimisation into an
     // outage.
     await alepha.fork(async () => {
-      await expect(provider.execute("select 1" as never)).resolves.toEqual([]);
+      await expect(provider.execute("select 1")).resolves.toEqual([]);
     });
 
     expect(binding.sessions).toEqual([]);

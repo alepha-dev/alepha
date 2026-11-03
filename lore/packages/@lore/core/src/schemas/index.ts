@@ -68,8 +68,49 @@ export {
   releaseTagSchema,
 } from "../api/schemas/releaseTagSchema.ts";
 export {
-  reportsMembersSchema,
+  type ReportsBacklog,
+  reportsBacklogSchema,
+} from "../api/schemas/reportsBacklogSchema.ts";
+export {
+  type ReportsFlow,
+  reportsFlowSchema,
+} from "../api/schemas/reportsFlowSchema.ts";
+export {
+  type ReportsPlanning,
+  reportsPlanningSchema,
+} from "../api/schemas/reportsPlanningSchema.ts";
+export {
+  type ReportsSupport,
+  reportsSupportSchema,
+} from "../api/schemas/reportsSupportSchema.ts";
+export {
+  type ReportsKnowledge,
+  reportsKnowledgeSchema,
+} from "../api/schemas/reportsKnowledgeSchema.ts";
+export {
+  type ReportsDelivery,
+  reportsDeliverySchema,
+} from "../api/schemas/reportsDeliverySchema.ts";
+export {
+  type ReportsTeam,
+  reportsTeamSchema,
+} from "../api/schemas/reportsTeamSchema.ts";
+export {
+  type ReportsSummaryLine,
+  reportsSummaryLineSchema,
+  reportsSummarySchema,
+} from "../api/schemas/reportsSummarySchema.ts";
+export {
+  type ReportsUrl,
+  reportsUrlSchema,
+} from "../api/schemas/reportsUrlSchema.ts";
+export {
+  type ReportsQuery,
+  reportsQuerySchema,
+} from "../api/schemas/reportsQuerySchema.ts";
+export {
   reportsOverviewSchema,
+  reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "../api/schemas/reportsSchemas.ts";
 export { type RoadmapVisibility } from "../api/schemas/roadmapVisibilitySchema.ts";

@@ -61,7 +61,7 @@ describe("an app deploy to a Bay estate", () => {
     await w.rows.grants.create({
       estateId: minted.id,
       projectId: w.project.id,
-    } as never);
+    });
     const instance = await createInstance(
       alepha,
       w,
@@ -76,7 +76,7 @@ describe("an app deploy to a Bay estate", () => {
           env: "production",
         },
         body: { estateId: minted.id },
-      } as never,
+      },
       { user: w.user },
     );
     const file = await packedArtifact({
@@ -86,7 +86,7 @@ describe("an app deploy to a Bay estate", () => {
       {
         params: { projectId: w.project.id },
         body: { app: "minpricing", tag: "latest", file },
-      } as never,
+      },
       { user: w.user },
     );
     await alepha.inject(AppSecretController).setAppSecret.fetch(
@@ -186,7 +186,7 @@ describe("an app deploy to a Bay estate", () => {
         {
           params: { projectId: a.w.project.id, instanceId: a.instance.id },
           body: { tag: "latest" },
-        } as never,
+        },
         { user: a.w.user },
       )
     ).data;

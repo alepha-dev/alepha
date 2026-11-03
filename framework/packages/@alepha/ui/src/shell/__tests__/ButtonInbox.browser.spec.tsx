@@ -147,7 +147,7 @@ describe("ButtonInbox", () => {
             action.can = () => true;
             return action;
           },
-        }) as any;
+        });
     });
 
     await waitFor(() =>

@@ -56,7 +56,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -64,10 +64,10 @@ const setup = async () => {
     asUser(owner.id, () => tool.execute(params));
 
   const project = await asUser(owner.id, () =>
-    projectApi.createProject({ body: { title: "Insights" } } as any),
+    projectApi.createProject({ body: { title: "Insights" } }),
   );
   const otherProject = await asUser(owner.id, () =>
-    projectApi.createProject({ body: { title: "Elsewhere" } } as any),
+    projectApi.createProject({ body: { title: "Elsewhere" } }),
   );
 
   const enrol = async (name: string) => {
@@ -100,7 +100,7 @@ const setup = async () => {
       firstSeenAt: new Date().toISOString(),
       lastSeenAt: new Date().toISOString(),
       ...over,
-    } as any);
+    });
 
   return {
     alepha,
@@ -184,7 +184,7 @@ describe("Lore MCP — insights", () => {
         alepha.store.set(currentUserAtom, {
           id: stranger.id,
           roles: ["user"],
-        } as any);
+        });
         return insightsTools.insights_read.execute({
           project: otherProject.id,
         });

@@ -44,8 +44,8 @@ describe("Control size and minimal on a select", () => {
     clearable?: boolean;
   }) => {
     const form = useForm({
-      schema: z.object({ tag: z.text().optional() as never }),
-      initialValues: props.clearable ? ({ tag: "one" } as never) : undefined,
+      schema: z.object({ tag: z.text().optional() }),
+      initialValues: props.clearable ? { tag: "one" } : undefined,
       handler: () => {},
     });
     return (

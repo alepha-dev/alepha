@@ -33,21 +33,21 @@ describe("audit filter options", () => {
       resourceType: "campaign",
       userRealm: "tenant-a",
       success: true,
-    } as never);
+    });
     await audits.create({
       type: "security",
       action: "login",
       resourceType: "invoice",
       userRealm: "tenant-b",
       success: true,
-    } as never);
+    });
     await audits.create({
       type: "security",
       action: "login",
       resourceType: "campaign",
       userRealm: "tenant-a",
       success: true,
-    } as never);
+    });
 
     const options = await audits.getDistinctFilterValues();
 
@@ -79,7 +79,7 @@ describe("audit filter options", () => {
       type: "security",
       action: "login",
       success: true,
-    } as never);
+    });
 
     const options = await audits.getDistinctFilterValues();
 

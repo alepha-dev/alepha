@@ -664,6 +664,16 @@ const ProjectEpics = () => {
         refreshSignal={reload}
         filters={{ fields: filterFields }}
         fetch={fetchEpics}
+        onRowHover={(epic) => {
+          if (epic) {
+            router.prefetch("projectEpic", {
+              params: {
+                projectSlug: router.state.params.projectSlug,
+                epicNumber: String(epic.number),
+              },
+            });
+          }
+        }}
         onRowClick={(epic) =>
           router.push("projectEpic", {
             params: {

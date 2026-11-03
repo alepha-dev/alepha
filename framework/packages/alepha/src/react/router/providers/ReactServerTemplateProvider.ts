@@ -6,6 +6,7 @@ import { createElement, type ReactNode } from "react";
 
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import { Redirection } from "../errors/Redirection.ts";
+import { ReactDeferred } from "../services/ReactDeferred.ts";
 import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
 import type { PageCacheSink } from "./ReactPageCacheProvider.ts";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
@@ -20,6 +21,14 @@ export class ReactServerTemplateProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly reactDomServer = $inject(ReactDomServerProvider);
+  protected readonly deferred = $inject(ReactDeferred);
+
+  /**
+   * What React is told to write as its bootstrap script on a page with a
+   * deferred value: the one point in its stream that is right after the
+   * shell, and between two tags. Replaced on the way out by the payload.
+   */
+  public readonly shellMarker = "/*alepha:shell*/";
 
   /**
    * Shared TextEncoder - reused across all requests.
@@ -46,6 +55,9 @@ export class ReactServerTemplateProvider {
     HYDRATION_SUFFIX: this.encoder.encode("</script>"),
     PRIVATE_PREFIX: this.encoder.encode(
       '<script id="__ssr_private" type="application/json">',
+    ),
+    BOOT_SIGNAL: this.encoder.encode(
+      '<script>self.__alephaBoot=1;document.dispatchEvent(new Event("alepha:boot"))</script>',
     ),
   } as const;
 
@@ -249,14 +261,14 @@ export class ReactServerTemplateProvider {
    * of the same URL, and the only payload a page cache may store.
    */
   public buildHydrationData(state: ReactRouterState): HydrationData {
-    const layers = state.layers.map((layer) => ({
+    const layers = state.layers.map((layer, index) => ({
       part: layer.part,
       name: layer.name,
       // Hydration's reuse check compares identities: without it every layer
       // would re-run its loader on first load.
       key: layer.key,
       config: layer.config,
-      props: layer.props,
+      props: this.deferred.serialize(layer.props, index + 1),
       error: layer.error
         ? {
             // Deliberately flattening an Error for the SSR payload: `name` and `message`
@@ -313,8 +325,12 @@ export class ReactServerTemplateProvider {
     controller: ReadableStreamDefaultController<Uint8Array>,
     reactStream: ReadableStream<Uint8Array>,
     state: ReactRouterState,
+    onShell?: () => void,
   ): Promise<boolean> {
     const reader = reactStream.getReader();
+    const scanner = onShell
+      ? this.shellScanner(onShell, (chunk) => controller.enqueue(chunk))
+      : undefined;
 
     try {
       while (true) {
@@ -325,7 +341,16 @@ export class ReactServerTemplateProvider {
         // ReadableStream does not expose to us.
         const { done, value } = await reader.read();
         if (done) break;
-        controller.enqueue(value);
+        if (scanner) {
+          for (const chunk of scanner.scan(value)) {
+            controller.enqueue(chunk);
+          }
+        } else {
+          controller.enqueue(value);
+        }
+      }
+      for (const chunk of scanner?.flush() ?? []) {
+        controller.enqueue(chunk);
       }
       return true;
     } catch (error) {
@@ -342,6 +367,53 @@ export class ReactServerTemplateProvider {
     } finally {
       reader.releaseLock();
     }
+  }
+
+  /**
+   * Finds React's bootstrap script in its stream and calls `onShell` in its
+   * place, ahead of whatever follows. The marker can straddle two chunks, so
+   * the end of each is held back until the next.
+   */
+  protected shellScanner(
+    onShell: () => void,
+    onChunk: (chunk: Uint8Array) => void,
+  ) {
+    const decoder = new TextDecoder("latin1");
+    // React writes the tag with an id of its own, so the match starts at the
+    // last `<script` before the marker.
+    const marker = `${this.shellMarker}</script>`;
+    const longest = marker.length + '<script id="_R_">'.length;
+    let held = new Uint8Array();
+    let found = false;
+
+    return {
+      scan: (chunk: Uint8Array): Uint8Array[] => {
+        if (found) {
+          return [chunk];
+        }
+
+        const joined = new Uint8Array(held.length + chunk.length);
+        joined.set(held);
+        joined.set(chunk, held.length);
+
+        // latin1 keeps one character per byte, so an index is a byte offset.
+        const text = decoder.decode(joined);
+        const end = text.indexOf(marker);
+        if (end !== -1) {
+          found = true;
+          held = new Uint8Array();
+          const at = text.lastIndexOf("<script", end);
+          onChunk(joined.subarray(0, at));
+          onShell();
+          return [joined.subarray(end + marker.length)];
+        }
+
+        const keep = Math.min(joined.length, longest);
+        held = joined.slice(joined.length - keep);
+        return [joined.subarray(0, joined.length - keep)];
+      },
+      flush: (): Uint8Array[] => [held],
+    };
   }
 
   /**
@@ -363,20 +435,41 @@ export class ReactServerTemplateProvider {
     );
     controller.enqueue(slots.BODY_CLOSE);
 
-    // Root + React content
-    controller.enqueue(slots.ROOT_OPEN);
-    const ok = await this.pipeReactStream(controller, reactStream, state);
-    controller.enqueue(slots.ROOT_CLOSE);
-
-    // Hydration
-    if (hydration) {
+    // A page with a deferred value writes its payload right after the shell,
+    // which is what lets hydration start before the stream ends. Any other
+    // writes it after the root, at the end of the document.
+    let payloadWritten = false;
+    const writePayload = () => {
+      if (payloadWritten || !hydration) {
+        return;
+      }
+      payloadWritten = true;
       controller.enqueue(slots.HYDRATION_PREFIX);
       controller.enqueue(
         encoder.encode(this.safeJsonSerialize(this.buildHydrationData(state))),
       );
       controller.enqueue(slots.HYDRATION_SUFFIX);
       this.enqueuePrivateScript(controller);
-    }
+    };
+
+    // Root + React content
+    controller.enqueue(slots.ROOT_OPEN);
+    const ok = await this.pipeReactStream(
+      controller,
+      reactStream,
+      state,
+      this.deferred.has(state.layers)
+        ? () => {
+            writePayload();
+            if (payloadWritten) {
+              controller.enqueue(slots.BOOT_SIGNAL);
+            }
+          }
+        : undefined,
+    );
+    controller.enqueue(slots.ROOT_CLOSE);
+
+    writePayload();
 
     controller.enqueue(slots.BODY_HTML_CLOSE);
     return ok;

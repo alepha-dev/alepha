@@ -201,7 +201,7 @@ export class ServerProvider {
       const asked = ["1", "true"].includes(
         String(this.alepha.env.ALEPHA_INSPECT ?? "").toLowerCase(),
       );
-      if (asked && !this.alepha.store.get("alepha.inspector.bundled" as any)) {
+      if (asked && !this.alepha.store.get("alepha.inspector.bundled")) {
         this.log.warn(
           "ALEPHA_INSPECT is set, but this build carries no inspector: rebuild with `alepha build --inspect`.",
         );

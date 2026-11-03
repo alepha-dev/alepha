@@ -133,7 +133,7 @@ describe("getQuests with multi-value filters", () => {
 
     const titles = async (query: Record<string, unknown>) => {
       const page = await ctx.quests.getQuests.fetch(
-        { params: { projectId }, query: query as never },
+        { params: { projectId }, query: query },
         { user: owner },
       );
       return page.data.content.map((quest) => quest.title).sort();

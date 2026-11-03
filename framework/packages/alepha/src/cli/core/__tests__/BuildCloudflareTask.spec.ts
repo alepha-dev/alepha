@@ -22,6 +22,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
   public testEnhanceCron = this.enhanceCron.bind(this);
   public testEnhanceDomain = this.enhanceDomain.bind(this);
+  public testEnhanceRequestSignal = this.enhanceRequestSignal.bind(this);
   public testEnhanceEmail = this.enhanceEmail.bind(this);
   public testEnhanceAi = this.enhanceAi.bind(this);
   public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
@@ -165,6 +166,44 @@ describe("BuildCloudflareTask", () => {
         /wildcard/,
       );
       expect(wrangler.routes).toBeUndefined();
+    });
+  });
+
+  describe("enhanceRequestSignal", () => {
+    it("adds the flag below the date that made it the default", () => {
+      const wrangler: Record<string, any> = {
+        compatibility_date: "2025-11-17",
+        compatibility_flags: ["nodejs_compat"],
+      };
+      createTask().testEnhanceRequestSignal(wrangler);
+
+      expect(wrangler.compatibility_flags).toEqual([
+        "nodejs_compat",
+        "enable_request_signal",
+      ]);
+    });
+
+    it("leaves it out from 2026-11-17, where workerd would refuse it as redundant", () => {
+      const wrangler: Record<string, any> = {
+        compatibility_date: "2026-11-17",
+        compatibility_flags: ["nodejs_compat"],
+      };
+      createTask().testEnhanceRequestSignal(wrangler);
+
+      expect(wrangler.compatibility_flags).toEqual(["nodejs_compat"]);
+    });
+
+    it("never adds it next to the app's own opt-out", () => {
+      const wrangler: Record<string, any> = {
+        compatibility_date: "2025-11-17",
+        compatibility_flags: ["nodejs_compat", "disable_request_signal"],
+      };
+      createTask().testEnhanceRequestSignal(wrangler);
+
+      expect(wrangler.compatibility_flags).toEqual([
+        "nodejs_compat",
+        "disable_request_signal",
+      ]);
     });
   });
 
@@ -754,6 +793,33 @@ describe("BuildCloudflareTask", () => {
         expect(
           d1AnchorFor(new Request("https://x.test/api/quests")),
         ).toBeUndefined();
+      });
+
+      it("opens a GET with a credential and no bookmark on the primary", async () => {
+        const d1AnchorFor = await loadAnchor();
+        // The CLI keeps no cookie: the GET following its own POST must not
+        // reach a replica that missed the row it just created.
+        for (const method of ["GET", "HEAD"]) {
+          expect(
+            d1AnchorFor(
+              new Request("https://x.test/api/deployments/1", {
+                method,
+                headers: { authorization: "Bearer key" },
+              }),
+            ),
+          ).toBe("first-primary");
+        }
+      });
+
+      it("prefers the bookmark over the primary for a GET with a credential", async () => {
+        const d1AnchorFor = await loadAnchor();
+        expect(
+          d1AnchorFor(
+            new Request("https://x.test/api/quests", {
+              headers: { ...COOKIE, authorization: "Bearer key" },
+            }),
+          ),
+        ).toBe("bm-42");
       });
     });
 

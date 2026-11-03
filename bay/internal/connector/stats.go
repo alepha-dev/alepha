@@ -38,21 +38,30 @@ func (c *Client) statsLoop(ctx context.Context) {
 	if c.Gauge == nil && c.Handler == nil {
 		return
 	}
+	// One timer for the whole session, re-armed only by a stats push. A
+	// `time.After` in the select restarted the wait on every pass, so each
+	// finished command pushed the next reading another interval away: an
+	// estate deploying every few minutes never reported again.
+	tick := time.NewTimer(c.statsInterval())
+	defer tick.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-c.statsKick:
-			// A welcome or config just landed: push now, then re-arm below
-			// at whatever interval it named.
+			// A welcome or config just landed: push now, then re-arm at
+			// whatever interval it named.
 			c.pushStats(ctx)
+			tick.Reset(c.statsInterval())
 		case <-c.inventoryKick:
 			// A command finished, or Lore asked. No series sample: that is
-			// the whole reason this is a channel of its own.
+			// the whole reason this is a channel of its own. The timer runs
+			// on untouched.
 			c.pushInventory(ctx)
-		case <-time.After(c.statsInterval()):
+		case <-tick.C:
 			c.pushStats(ctx)
 			c.pushInventory(ctx)
+			tick.Reset(c.statsInterval())
 		}
 	}
 }

@@ -6,6 +6,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { LogIn, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 
+import type { HomeBoardResource } from "../../../../api/schemas/homeBoardSchema.ts";
 import { realmSettingsAtom } from "../../atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -13,7 +14,15 @@ import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
 import HomeBoard from "./HomeBoard.tsx";
 
-const Home = () => {
+export interface HomeProps {
+  /**
+   * Deferred, and only for a signed-in visitor. The `home` loader catches its
+   * failure, so it never reaches `errorHandler`.
+   */
+  board?: Promise<HomeBoardResource | undefined>;
+}
+
+const Home = (props: HomeProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
   const [realmSettings] = useStore(realmSettingsAtom);
@@ -77,8 +86,8 @@ const Home = () => {
   // visitor and a brand-new account still get. A table with no rows is a
   // worse first run than a welcome, and the hero is also the only place that
   // explains what this app is.
-  if (hasProjects) {
-    return <HomeBoard />;
+  if (hasProjects && props.board) {
+    return <HomeBoard board={props.board} />;
   }
 
   return (

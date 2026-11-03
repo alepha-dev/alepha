@@ -41,7 +41,7 @@ export const setupJsdomMocks = (): void => {
 
   // Absent from jsdom. Any component that measures itself reaches for it.
   if (typeof window !== "undefined" && !window.ResizeObserver) {
-    (window as any).ResizeObserver = class ResizeObserver {
+    window.ResizeObserver = class ResizeObserver {
       protected callback: ResizeObserverCallback;
 
       constructor(callback: ResizeObserverCallback) {

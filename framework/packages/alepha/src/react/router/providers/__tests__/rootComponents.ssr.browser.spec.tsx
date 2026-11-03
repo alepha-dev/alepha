@@ -51,11 +51,11 @@ describe("rootComponents in ReactPageProvider.root", () => {
     const state: ReactRouterState = {
       layers: [{ element: null } as any],
       url: new URL("http://localhost/"),
-      onError: () => undefined as any,
+      onError: () => undefined,
       params: {},
       query: {},
       meta: {},
-      head: {} as any,
+      head: {},
     };
 
     const element: any = page.root(state);

@@ -173,7 +173,7 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
         );
       }
       const { migrate } = await import("drizzle-orm/postgres-js/migrator");
-      await migrate(this.db as any, {
+      await migrate(this.db, {
         migrationsFolder,
         migrationsTable: this.migrationsTable,
       });

@@ -12,6 +12,7 @@ import { Ban } from "lucide-react";
 import { useState } from "react";
 
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
+import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
 
 /**
  * Two blocks: the module switch and the ignore rules.
@@ -69,6 +70,8 @@ const ProjectSettingsAppsPage = () => {
         master={false}
         options={shell.settingsOptions("apps")}
       />
+
+      {enabled && <ProjectSettingsCoverageTarget />}
 
       {enabled && (
         <div className="flex flex-col gap-2">

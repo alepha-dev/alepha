@@ -1,6 +1,6 @@
 {
   "name": "@alepha/commerce",
-  "private": true,
+  "version": "0.34.0",
   "description": "Headless commerce for Alepha apps: catalog, cart, checkout. Extended by product-kind handlers.",
   "keywords": [
     "alepha",
@@ -20,7 +20,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "docs"
   ],
   "type": "module",
   "main": "./src/index.ts",
@@ -31,10 +32,12 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./vat": "./src/services/VatCalculator.ts",
+    "./vat": "./src/vat/index.ts",
     "./cart": "./src/cart/index.ts",
     "./checkout": "./src/checkout/index.ts",
     "./shipping": "./src/shipping/index.ts",
+    "./promotions": "./src/promotions/index.ts",
+    "./downloads": "./src/downloads/index.ts",
     "./invoicing": "./src/invoicing/index.ts",
     "./notifications": "./src/notifications/index.ts",
     "./settlement": "./src/settlement/index.ts",
@@ -43,29 +46,105 @@
     "./lib/*": "./src/lib/*.ts",
     "./styles.css": "./src/styles.css",
     "./admin/components/*": "./src/admin/components/*.tsx",
-    "./checkout/components/*": "./src/checkout/components/*",
-    "./shipping/components/*": "./src/shipping/components/*.tsx"
+    "./shipping/components/*": "./src/shipping/components/*.tsx",
+    "./promotions/components/*": "./src/promotions/components/*.tsx",
+    "./checkout/components/*": "./src/checkout/components/*.tsx"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./cart": {
+        "types": "./dist/cart/index.d.ts",
+        "default": "./dist/cart/index.js"
+      },
+      "./checkout": {
+        "types": "./dist/checkout/index.d.ts",
+        "default": "./dist/checkout/index.js"
+      },
+      "./shipping": {
+        "types": "./dist/shipping/index.d.ts",
+        "default": "./dist/shipping/index.js"
+      },
+      "./invoicing": {
+        "types": "./dist/invoicing/index.d.ts",
+        "default": "./dist/invoicing/index.js"
+      },
+      "./notifications": {
+        "types": "./dist/notifications/index.d.ts",
+        "default": "./dist/notifications/index.js"
+      },
+      "./settlement": {
+        "types": "./dist/settlement/index.d.ts",
+        "default": "./dist/settlement/index.js"
+      },
+      "./recovery": {
+        "types": "./dist/recovery/index.d.ts",
+        "default": "./dist/recovery/index.js"
+      },
+      "./admin": {
+        "types": "./dist/admin/index.d.ts",
+        "default": "./dist/admin/index.js"
+      },
+      "./promotions": {
+        "types": "./dist/promotions/index.d.ts",
+        "default": "./dist/promotions/index.js"
+      },
+      "./downloads": {
+        "types": "./dist/downloads/index.d.ts",
+        "default": "./dist/downloads/index.js"
+      },
+      "./vat": {
+        "types": "./dist/vat/index.d.ts",
+        "default": "./dist/vat/index.js"
+      },
+      "./lib/*": {
+        "types": "./dist/lib/*.d.ts",
+        "default": "./dist/lib/*.js"
+      },
+      "./styles.css": "./src/styles.css",
+      "./admin/components/*": {
+        "types": "./dist/admin/components/*.d.ts",
+        "default": "./dist/admin/components/*.js"
+      },
+      "./checkout/components/*": {
+        "types": "./dist/checkout/components/*.d.ts",
+        "default": "./dist/checkout/components/*.js"
+      },
+      "./shipping/components/*": {
+        "types": "./dist/shipping/components/*.d.ts",
+        "default": "./dist/shipping/components/*.js"
+      },
+      "./promotions/components/*": {
+        "types": "./dist/promotions/components/*.d.ts",
+        "default": "./dist/promotions/components/*.js"
+      }
+    }
   },
   "scripts": {
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "tsdown"
+    "build": "tsdown && tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@alepha/ui": "workspace:*",
-    "lucide-react": "^1.52.0"
+    "lucide-react": "^1.66.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.4",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "alepha": "0.34.0",
-    "react": "^19.3.0",
-    "tsdown": "^0.23.0",
+    "react": "^19.3.1",
+    "tsdown": "^0.23.4",
     "typescript": "^7.0.2",
-    "vite": "^8.3.3",
-    "vitest": "^5.0.3"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "peerDependencies": {
     "alepha": "^0.34.0",

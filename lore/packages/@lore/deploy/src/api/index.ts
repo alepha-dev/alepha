@@ -9,6 +9,7 @@ import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BackupController } from "./controllers/BackupController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
+import { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
@@ -18,6 +19,7 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
+import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
@@ -38,6 +40,7 @@ import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
+import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BlightQuestHandBack } from "./services/BlightQuestHandBack.ts";
@@ -53,11 +56,13 @@ import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
+import { DeployedBuildService } from "./services/DeployedBuildService.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
 import { DeployProjectMerge } from "./services/DeployProjectMerge.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
+import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
@@ -69,6 +74,9 @@ import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
+import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
+import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
+import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityService } from "./services/QualityService.ts";
@@ -115,6 +123,7 @@ export const LoreDeployApi = $module({
     AlephaRateLimit,
   ],
   services: [
+    DeployReportsSummary,
     DeployAutomationEventSubjects,
     DeployAutomationReferences,
     DeployDashboardMetrics,
@@ -146,7 +155,9 @@ export const LoreDeployApi = $module({
     EstateNotifications,
     QualityService,
     ArtifactTarReader,
+    ArtifactDetailService,
     ArtifactService,
+    DeployedBuildService,
     // Deploying a stored artifact to an estate (epic #1). `DeployRegistry` is
     // the seam #1201 replaces with the `deployments` table; the runner is what
     // writes through it.
@@ -219,7 +230,12 @@ export const LoreDeployApi = $module({
     // The real transport, substituted for `EstateCommandTransport` in
     // `main.server.ts`. Listed so DI scanning sees the class.
     WebSocketEstateCommandTransport,
+    DeliveryReportsController,
+    ProjectDeliveryReportService,
+    ProjectQualityReportService,
+    ProjectReliabilityReportService,
     QualityController,
+    QualityReportsController,
     ArtifactController,
     AppController,
     AppSecretController,
@@ -258,7 +274,9 @@ export { EstateController } from "./controllers/EstateController.ts";
 export { EstateSocketController } from "./controllers/EstateSocketController.ts";
 export { InsightsController } from "./controllers/InsightsController.ts";
 export { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
+export { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
+export { QualityReportsController } from "./controllers/QualityReportsController.ts";
 export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 export { SigilController } from "./controllers/SigilController.ts";
 export { StackController } from "./controllers/StackController.ts";
@@ -280,6 +298,7 @@ export { StackTargets } from "./services/StackTargets.ts";
 export { StackVariableService } from "./services/StackVariableService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";
+export { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 export { ArtifactService } from "./services/ArtifactService.ts";
 export { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 export { BlightRuleService } from "./services/BlightRuleService.ts";

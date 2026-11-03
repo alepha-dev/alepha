@@ -1,13 +1,18 @@
 import type { ArtifactController } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
-import { $command } from "alepha/command";
+import { $command, UsageError } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
 
 import { GitContextService } from "../services/GitContextService.ts";
 import { LoreArtifactPusher } from "../services/LoreArtifactPusher.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
+import {
+  type LoreRefusalContext,
+  LoreRefusals,
+} from "../services/LoreRefusals.ts";
 
 /**
  * `lore artifacts push` - store what CI just built.
@@ -60,6 +65,17 @@ export class ArtifactCommand {
    * that will answer it, with no hand-maintained wire contract to drift.
    */
   protected readonly api = $client<ArtifactController>(this.client.scope());
+  protected readonly refusals = $inject(LoreRefusals);
+  protected readonly render = $inject(LoreOutput);
+
+  protected static readonly READ_PROJECT_FLAG = {
+    project: z
+      .text({
+        aliases: ["p"],
+        description: "The project, by slug or id. Defaults to LORE_PROJECT.",
+      })
+      .optional(),
+  };
 
   /**
    * The tag a push carries when nobody names one.
@@ -239,10 +255,155 @@ export class ArtifactCommand {
     },
   });
 
+  public readonly list = $command({
+    name: "list",
+    description:
+      "What a project has built, newest push first, one line per tag. Never the bytes",
+    flags: z.object({
+      ...ArtifactCommand.READ_PROJECT_FLAG,
+      app: z.text({ description: "Only this app." }).optional(),
+      tag: z.text({ description: "Only this tag." }).optional(),
+      limit: z.integer().min(1).describe("How many tags.").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const result = await this.api.listArtifacts({
+          params: { projectId },
+          query: { app: flags.app, tag: flags.tag, limit: flags.limit },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, result);
+          return;
+        }
+
+        this.render.list(
+          print,
+          result.groups.map((group) => ({
+            handle: `${group.app}@${group.tag}`,
+            title: group.variants
+              .map((v) => `${v.runtimes.join("+")} ${v.format}`)
+              .join(", "),
+            fields: [group.pushedAt],
+          })),
+          undefined,
+          "No artifacts.",
+        );
+        if (result.truncated) {
+          print(
+            "There are more: narrow with --app or --tag, or raise --limit.",
+          );
+        }
+      });
+    },
+  });
+
+  public readonly get = $command({
+    name: "get",
+    description:
+      "One tag's builds: runtimes, formats, sizes, digests and commits",
+    flags: z.object({
+      ...ArtifactCommand.READ_PROJECT_FLAG,
+      app: z.text({ description: "Which app." }),
+      tag: z.text({ aliases: ["t"], description: "Which tag." }),
+      runtime: z
+        .text({ description: "Only the builds carrying this runtime." })
+        .optional(),
+      format: z
+        .enum(["archive", "image"])
+        .describe("Only this format.")
+        .optional(),
+      manifest: z
+        .boolean()
+        .describe("Include each build's manifest.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const { groups } = await this.api.listArtifacts({
+          params: { projectId },
+          query: { app: flags.app, tag: flags.tag },
+        });
+        const [listed] = groups;
+        // The listing answers a missing tag with no group and the action below
+        // with a 404, so it is read second, and only when it was asked for.
+        const group =
+          listed && flags.manifest
+            ? await this.api.getArtifact({
+                params: { projectId, app: flags.app, tag: flags.tag },
+              })
+            : listed;
+        if (!group) {
+          throw new UsageError(
+            `No artifact tagged "${flags.tag}" for app "${flags.app}" in this project.`,
+          );
+        }
+
+        const variants = group.variants.filter(
+          (variant) =>
+            (!flags.runtime || variant.runtimes.includes(flags.runtime)) &&
+            (!flags.format || variant.format === flags.format),
+        );
+        if (variants.length === 0) {
+          throw new UsageError(
+            `"${flags.tag}" has no such build of "${flags.app}". It has: ${group.variants
+              .map((v) => `${v.runtimes.join("+")} ${v.format}`)
+              .join(", ")}.`,
+          );
+        }
+
+        if (flags.output === "json") {
+          this.render.json(print, { ...group, variants });
+          return;
+        }
+
+        this.render.entity(print, {
+          fields: [
+            ["App", group.app],
+            ["Tag", group.tag],
+            ["Pushed", group.pushedAt],
+          ],
+          sections: [
+            {
+              title: "Variants",
+              lines: variants.map((v) =>
+                [
+                  v.runtimes.join("+"),
+                  v.format,
+                  v.sha256,
+                  v.size === undefined ? undefined : `${v.size} bytes`,
+                  v.reference,
+                ]
+                  .filter(Boolean)
+                  .join("  "),
+              ),
+            },
+            ...(flags.manifest
+              ? variants.map((v) => ({
+                  title: `Manifest (${v.runtimes.join("+")} ${v.format})`,
+                  lines: JSON.stringify(v.manifest ?? null, null, 2).split(
+                    "\n",
+                  ),
+                }))
+              : []),
+          ],
+        });
+      });
+    },
+  });
+
   public readonly artifacts = $command({
     name: "artifacts",
     description: "Builds this project has kept",
-    children: [this.push, this.pushImage],
+    children: [this.push, this.pushImage, this.list, this.get],
     handler: async ({ help }) => {
       help();
     },

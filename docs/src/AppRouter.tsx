@@ -13,6 +13,7 @@ import BayHome from "./components/product/BayHome.tsx";
 import LoreHome from "./components/product/LoreHome.tsx";
 import type { DocProduct } from "./config/docs.ts";
 import { changelog, docs, docsHref, docsOf } from "./config/docs.ts";
+import { isLatestSite } from "./config/site.ts";
 
 /**
  * `<link rel="alternate">` to a doc set's `llms.txt`, the index an agent
@@ -108,6 +109,9 @@ export class AppRouter {
           content: "#010409",
           media: "(prefers-color-scheme: dark)",
         },
+        // The search results belong to the release: `main` is a working copy
+        // of the same pages, for projects that vendor Alepha.
+        ...(isLatestSite() ? [{ name: "robots", content: "noindex" }] : []),
       ],
     };
 
@@ -178,8 +182,11 @@ export class AppRouter {
 
   /**
    * The framework docs, and the ONLY one of the three whose URLs are frozen.
-   * 378 pages live under `/docs/:slug` and every link to them, internal and
-   * external, would break if this moved (quest #1603).
+   * Every page lives under `/docs/:slug` and every link to them, internal and
+   * external, would break if this moved (quest #1603). The guides were
+   * regrouped once before v1.0.0 (`server` split into `security`,
+   * `realtime`, `features` and `ai`) without redirects; from v1.0.0 a slug
+   * that changes needs one here.
    *
    * It also carries the redirects for the two doc sets that DID move: a slug
    * beginning `bay-` or `lore-` was a Bay or Lore page under this route until
@@ -286,6 +293,7 @@ export class AppRouter {
     product: DocProduct;
     slug: string;
     name: string;
+    description?: string;
     keywords?: string[];
   }): Head {
     const title = args.slug.startsWith("packages")
@@ -306,6 +314,9 @@ export class AppRouter {
 
     return {
       title,
+      // The page's first paragraph, from `gen-tree`: the same note its entry
+      // carries in `llms.txt`, and what a search result quotes.
+      description: args.description || undefined,
       link,
       meta: keywords
         ? [

@@ -1,13 +1,23 @@
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, type SQL } from "alepha/orm";
 
 import { type ProductEntity, products } from "../../entities/products.ts";
-import { CommerceError } from "../../errors/CommerceError.ts";
+import type { ProductVariantEntity } from "../../entities/productVariants.ts";
+import {
+  CommerceError,
+  PromotionRefusedError,
+} from "../../errors/CommerceError.ts";
 import { LineConfigService } from "../../services/LineConfigService.ts";
+import { PriceListService } from "../../services/PriceListService.ts";
+import { VariantService } from "../../services/VariantService.ts";
 import { type CartItemEntity, cartItems } from "../entities/cartItems.ts";
 import { type CartEntity, carts } from "../entities/carts.ts";
+import {
+  type CartDiscount,
+  CartDiscountProvider,
+} from "../providers/CartDiscountProvider.ts";
 
 /**
  * A cart priced against the catalog as it stands right now.
@@ -16,10 +26,41 @@ export interface PricedCart {
   cart: CartEntity;
   lines: PricedCartLine[];
   /**
-   * Sum of the lines, in the smallest currency unit.
+   * What the lines come to before any discount.
+   */
+  itemsTotal: number;
+  /**
+   * Taken off the items, tax included. `0` without a discount.
+   */
+  discountTotal: number;
+  /**
+   * Sum of the lines: what the items cost the buyer, after the discount.
+   * Everything downstream reads this one, delivery thresholds included, since
+   * VAT is owed on what is paid.
    */
   subtotal: number;
   currency: string;
+  /**
+   * What the parcel weighs: a delivery rate's band reads it.
+   */
+  weightGrams: number;
+  /**
+   * The discount this cart earned.
+   */
+  discount?: CartDiscount;
+  /**
+   * What the buyer reads for it.
+   */
+  discountLabel?: string;
+  /**
+   * The code at work, when the discount came from one.
+   */
+  promotionCode?: string;
+  /**
+   * Why the applied code stopped applying. The cart prices without it, and
+   * `pay()` refuses rather than charge a figure the buyer did not see.
+   */
+  codeRefusal?: PromotionRefusedError;
 }
 
 export interface PricedCartLine {
@@ -31,11 +72,20 @@ export interface PricedCartLine {
   lineId: string;
   productId: string;
   /**
+   * The variant chosen, on a product sold by variant.
+   */
+  variantId?: string;
+  /**
    * What this line chooses beyond the product (the court and the interval),
    * as validated when it was added.
    */
   lineConfig?: Record<string, any>;
   name: string;
+  /**
+   * The variant's option values as a buyer reads them: `Bleu / M`.
+   */
+  variantLabel?: string;
+  sku?: string;
   kind: string;
   unitPrice: number;
   /**
@@ -44,12 +94,23 @@ export interface PricedCartLine {
   rateBps?: number;
   quantity: number;
   /**
-   * `unitPrice * quantity`. The unit price comes from the kind's `unitPrice`
-   * hook when it has one, else from the catalogue, and never from the client.
+   * What one unit weighs, the variant's over the product's, `0` when nobody
+   * said.
+   */
+  weightGrams: number;
+  /**
+   * This line's share of the cart's discount.
+   */
+  discount: number;
+  /**
+   * `unitPrice * quantity - discount`. The unit price comes from the kind's
+   * `unitPrice` hook when it has one, else from the catalogue, and never from
+   * the client.
    */
   lineTotal: number;
   /**
-   * First product image, so a cart can show a thumbnail without a second query.
+   * The variant's image, else the first product image, so a cart can show a
+   * thumbnail without a second query.
    */
   image?: string;
 }
@@ -73,6 +134,9 @@ export class CartService {
   protected readonly productRepo = $repository(products);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly lines = $inject(LineConfigService);
+  protected readonly variants = $inject(VariantService);
+  protected readonly prices = $inject(PriceListService);
+  protected readonly discounts = $inject(CartDiscountProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -85,14 +149,27 @@ export class CartService {
     const existing = await this.cartRepo.findOne({
       where: { token: { eq: token } },
     });
-    if (existing) {
+    if (existing && existing.expiresAt >= this.dateTime.nowISOString()) {
       return existing;
+    }
+    // Past its expiry a cart is gone, whether or not the sweep has been: a
+    // visitor back after a month gets an empty basket under the same cookie.
+    if (existing) {
+      await this.cartRepo.deleteById(existing.id);
     }
     return this.cartRepo.create({
       token,
       userId: options.userId,
       expiresAt: this.expiry(),
     });
+  }
+
+  /**
+   * The cart behind a token, if there is one. A read: unlike {@link resolve} it
+   * mints nothing.
+   */
+  public async findByToken(token: string): Promise<CartEntity | undefined> {
+    return this.cartRepo.findOne({ where: { token: { eq: token } } });
   }
 
   /**
@@ -107,7 +184,10 @@ export class CartService {
     // order is the point: without it "the user's cart" is whichever row the
     // database happened to return.
     const [cart] = await this.cartRepo.findMany({
-      where: { userId: { eq: userId } },
+      where: {
+        userId: { eq: userId },
+        expiresAt: { gte: this.dateTime.nowISOString() },
+      },
       orderBy: { column: "updatedAt", direction: "desc" },
       limit: 1,
     });
@@ -127,7 +207,7 @@ export class CartService {
 
   /**
    * Mint a token for a visitor who has none. The caller is responsible for
-   * putting it in a signed cookie — this service never touches HTTP.
+   * putting it in a signed cookie - this service never touches HTTP.
    */
   public newToken(): string {
     return this.crypto.randomText(32);
@@ -142,13 +222,18 @@ export class CartService {
    * outright for a kind that takes none. Adding holds nothing, whatever the
    * kind: the hold is taken at `pay()`.
    *
-   * @throws InvalidLineError when the handler refuses the line.
+   * On a product sold by variant, `variantId` is required and must be on sale.
+   *
+   * @throws InvalidLineError when the handler refuses the line, or the variant
+   *   is missing, foreign or switched off.
+   * @throws CommerceError when it has no price in the cart's currency.
    */
   public async add(
     cartId: string,
     productId: string,
     quantity = 1,
     lineConfig?: unknown,
+    variantId?: string,
   ): Promise<CartItemEntity> {
     if (quantity < 1) {
       throw new CommerceError(`Quantity must be at least 1, got ${quantity}.`);
@@ -161,8 +246,15 @@ export class CartService {
       throw new CommerceError(`Product is not purchasable: ${productId}`);
     }
 
+    const variant = await this.variants.resolve(product, variantId);
+    const { currency } = await this.cartRepo.getById(cartId);
+    const list = await this.prices.forCurrency([productId], currency);
+    if (list.of(product, variant) === undefined) {
+      throw new CommerceError(`${product.name} is not sold in ${currency}.`);
+    }
+
     const config = await this.lines.accept(product, lineConfig, quantity);
-    const lineKey = await this.lineKey(config);
+    const lineKey = await this.lineKey(config, variant?.id);
 
     const line = await this.itemRepo.findOne({
       where: {
@@ -186,10 +278,62 @@ export class CartService {
     return this.itemRepo.create({
       cartId,
       productId,
+      variantId: variant?.id,
       quantity,
       lineConfig: config,
       lineKey,
     });
+  }
+
+  /**
+   * Choose what this cart pays in.
+   *
+   * Refused rather than dropping a line the buyer put there: they can take it
+   * out themselves, knowing why.
+   *
+   * @throws CommerceError in a currency the shop does not sell in, or when a
+   *   line has no price in it.
+   */
+  public async setCurrency(
+    cartId: string,
+    currency: string,
+  ): Promise<CartEntity> {
+    const wanted = currency.toUpperCase();
+    if (!this.prices.currencies.includes(wanted)) {
+      throw new CommerceError(`This shop does not sell in ${wanted}.`);
+    }
+
+    const items = await this.itemRepo.findMany({
+      where: { cartId: { eq: cartId } },
+    });
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    const found =
+      productIds.length > 0
+        ? await this.productRepo.findMany({
+            where: { id: { inArray: productIds } },
+          })
+        : [];
+    const variants = await this.variants.listForProducts(productIds);
+    const list = await this.prices.forCurrency(productIds, wanted);
+
+    const unpriced = found.filter((product) =>
+      items.some(
+        (item) =>
+          item.productId === product.id &&
+          list.of(
+            product,
+            variants.find((it) => it.id === item.variantId),
+          ) === undefined,
+      ),
+    );
+    if (unpriced.length > 0) {
+      throw new CommerceError(
+        `Not sold in ${wanted}: ${unpriced.map((it) => it.name).join(", ")}.`,
+      );
+    }
+
+    await this.touch(cartId);
+    return this.cartRepo.updateById(cartId, { currency: wanted });
   }
 
   /**
@@ -230,12 +374,51 @@ export class CartService {
   }
 
   public async clear(cartId: string): Promise<void> {
-    const lines = await this.itemRepo.findMany({
-      where: { cartId: { eq: cartId } },
+    await this.itemRepo.deleteMany({ cartId: { eq: cartId } });
+    // `updateMany`: a settlement can reach a cart the sweep has already removed.
+    await this.cartRepo.updateMany(
+      { id: { eq: cartId } },
+      { promotionCode: null },
+    );
+  }
+
+  /**
+   * Delete the carts past their expiry, their lines with them. `keep` lists the
+   * ids to leave, a subquery: what a live checkout still points at, which this
+   * module cannot know.
+   */
+  public async deleteExpired(keep: SQL): Promise<number> {
+    const deleted = await this.cartRepo.deleteMany({
+      expiresAt: { lt: this.dateTime.nowISOString() },
+      id: { notInArray: keep },
     });
-    for (const line of lines) {
-      await this.itemRepo.deleteById(line.id);
+    return deleted.length;
+  }
+
+  /**
+   * Apply a discount code to the cart, refusing with the reason when it does
+   * not apply to this basket.
+   *
+   * @throws PromotionRefusedError
+   */
+  public async applyCode(cartId: string, code: string): Promise<CartEntity> {
+    const normalised = code.trim().toUpperCase();
+    const { cart, itemsTotal } = await this.price(cartId);
+    const discount = await this.discounts.evaluate({
+      cart,
+      itemsTotal,
+      code: normalised,
+    });
+    if (!discount) {
+      throw new PromotionRefusedError({ code: normalised, reason: "invalid" });
     }
+    await this.touch(cartId);
+    return this.cartRepo.updateById(cartId, { promotionCode: normalised });
+  }
+
+  public async removeCode(cartId: string): Promise<CartEntity> {
+    await this.touch(cartId);
+    return this.cartRepo.updateById(cartId, { promotionCode: null });
   }
 
   /**
@@ -243,9 +426,10 @@ export class CartService {
    *
    * A line that can no longer be sold is dropped from the result, silently,
    * because the alternative is a storefront that cannot render a cart at all:
-   * a product unpublished or deleted since it was added, and a line its kind
-   * now refuses (a slot whose start has passed). That is also what keeps cart
-   * recovery, which mails these lines, from offering last week's slot.
+   * a product unpublished or deleted since it was added, a line its kind now
+   * refuses (a slot whose start has passed), and one whose price in the cart's
+   * currency was taken off. That is also what keeps cart recovery, which mails
+   * these lines, from offering last week's slot.
    */
   public async price(cartId: string): Promise<PricedCart> {
     const cart = await this.cartRepo.getById(cartId);
@@ -261,13 +445,24 @@ export class CartService {
     });
 
     if (items.length === 0) {
-      return { cart, lines: [], subtotal: 0, currency: "EUR" };
+      return {
+        cart,
+        lines: [],
+        itemsTotal: 0,
+        discountTotal: 0,
+        subtotal: 0,
+        currency: cart.currency ?? this.prices.baseCurrency,
+        weightGrams: 0,
+      };
     }
 
+    const productIds = [...new Set(items.map((i) => i.productId))];
     const found = await this.productRepo.findMany({
-      where: { id: { inArray: [...new Set(items.map((i) => i.productId))] } },
+      where: { id: { inArray: productIds } },
     });
     const byId = new Map(found.map((p) => [p.id, p]));
+    const variants = await this.variants.listForProducts(productIds);
+    const list = await this.prices.forCurrency(productIds, cart.currency);
 
     const lines: PricedCartLine[] = [];
     for (const item of items) {
@@ -275,32 +470,130 @@ export class CartService {
       if (!product?.published) {
         continue;
       }
-      const lineConfig = await this.stillSellable(product, item);
-      if (lineConfig === false) {
+      const sellable = await this.stillSellable(
+        product,
+        item,
+        variants.filter((it) => it.productId === product.id),
+      );
+      if (sellable === false) {
         continue;
       }
-      const unitPrice = await this.lines.unitPrice(product, lineConfig);
+      const { lineConfig, variant } = sellable;
+      const listPrice = list.of(product, variant);
+      if (listPrice === undefined) {
+        continue;
+      }
+      const unitPrice = await this.lines.unitPrice(
+        product,
+        lineConfig,
+        variant,
+        listPrice,
+      );
       lines.push({
         item,
         lineId: item.id,
         productId: product.id,
+        variantId: variant?.id,
         lineConfig,
         name: product.name,
+        variantLabel: variant && this.variants.label(product, variant),
+        sku: variant?.sku,
         kind: product.kind,
         unitPrice,
         rateBps: product.vatRateBps,
         quantity: item.quantity,
+        weightGrams: variant?.weightGrams ?? product.weightGrams ?? 0,
+        discount: 0,
         lineTotal: unitPrice * item.quantity,
-        image: product.images[0],
+        image: variant?.image ?? product.images[0],
       });
     }
+
+    const itemsTotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+    const { discount, codeRefusal } = await this.earned(cart, itemsTotal);
+    this.applyDiscount(lines, discount?.amount ?? 0);
 
     return {
       cart,
       lines,
+      itemsTotal,
+      discountTotal: discount?.amount ?? 0,
       subtotal: lines.reduce((sum, l) => sum + l.lineTotal, 0),
-      currency: lines[0] ? byId.get(lines[0].productId)!.currency : "EUR",
+      weightGrams: lines.reduce(
+        (sum, l) => sum + l.weightGrams * l.quantity,
+        0,
+      ),
+      currency:
+        cart.currency ??
+        (lines[0]
+          ? byId.get(lines[0].productId)!.currency
+          : this.prices.baseCurrency),
+      discount,
+      discountLabel: discount?.label,
+      promotionCode: discount?.code,
+      codeRefusal,
     };
+  }
+
+  /**
+   * What this cart earns. A code that stopped applying is not a failure to
+   * price: the cart still renders, without it, and says why.
+   */
+  protected async earned(
+    cart: CartEntity,
+    itemsTotal: number,
+  ): Promise<{
+    discount?: CartDiscount;
+    codeRefusal?: PromotionRefusedError;
+  }> {
+    if (itemsTotal === 0) {
+      return {};
+    }
+    try {
+      return {
+        discount: await this.discounts.evaluate({
+          cart,
+          itemsTotal,
+          code: cart.promotionCode,
+        }),
+      };
+    } catch (error) {
+      if (!(error instanceof PromotionRefusedError) || !cart.promotionCode) {
+        throw error;
+      }
+      return {
+        discount: await this.discounts.evaluate({ cart, itemsTotal }),
+        codeRefusal: error,
+      };
+    }
+  }
+
+  /**
+   * Take the discount off the tax-inclusive lines, in proportion to what each
+   * comes to, so VAT is computed on what is actually paid, rate by rate.
+   *
+   * Whole cents: every line takes the floor of its share, and what that leaves
+   * goes one cent at a time to the lines with the largest remainders, so the
+   * shares add up to the discount exactly.
+   */
+  protected applyDiscount(lines: PricedCartLine[], amount: number): void {
+    const total = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+    if (amount <= 0 || total <= 0) {
+      return;
+    }
+
+    const shares = lines.map((line, index) => {
+      const exact = (line.lineTotal * amount) / total;
+      return { index, floor: Math.floor(exact), rest: exact % 1 };
+    });
+    let left = amount - shares.reduce((sum, s) => sum + s.floor, 0);
+    for (const share of [...shares].sort((a, b) => b.rest - a.rest)) {
+      const extra = left > 0 ? 1 : 0;
+      left -= extra;
+      const line = lines[share.index]!;
+      line.discount = share.floor + extra;
+      line.lineTotal -= line.discount;
+    }
   }
 
   /**
@@ -309,12 +602,19 @@ export class CartService {
    * Each line goes through {@link add}, line config included, so it is judged
    * again. A line that can no longer be sold (a product unpublished, a slot
    * already past) is left behind rather than failing the sign-in that
-   * triggered the merge.
+   * triggered the merge, and so is one with no price in the cart's currency.
+   * That is the anonymous cart's when the other was empty: the buyer chose it
+   * a moment ago.
    */
   public async merge(fromCartId: string, toCartId: string): Promise<void> {
     const lines = await this.itemRepo.findMany({
       where: { cartId: { eq: fromCartId } },
     });
+    const from = await this.cartRepo.getById(fromCartId);
+    const held = await this.itemRepo.count({ cartId: { eq: toCartId } });
+    if (from.currency && held === 0) {
+      await this.cartRepo.updateById(toCartId, { currency: from.currency });
+    }
     for (const line of lines) {
       try {
         await this.add(
@@ -322,6 +622,7 @@ export class CartService {
           line.productId,
           line.quantity,
           line.lineConfig,
+          line.variantId,
         );
       } catch (error) {
         if (!(error instanceof CommerceError)) {
@@ -333,17 +634,23 @@ export class CartService {
   }
 
   /**
-   * The line key of a validated line config: `""` without one, else the
-   * sha-256 of its canonical JSON (keys sorted at every depth), so the same
-   * choice written in a different key order is the same line.
+   * The line key of a validated line config and its variant: `""` with
+   * neither, else the sha-256 of their canonical JSON (keys sorted at every
+   * depth), so the same choice written in a different key order is the same
+   * line and two variants of a product are two.
    */
   public async lineKey(
     lineConfig: Record<string, any> | undefined,
+    variantId?: string,
   ): Promise<string> {
-    if (lineConfig === undefined) {
+    if (lineConfig === undefined && variantId === undefined) {
       return "";
     }
-    return this.crypto.hash(JSON.stringify(this.canonical(lineConfig)));
+    return this.crypto.hash(
+      JSON.stringify(
+        this.canonical(variantId ? { lineConfig, variantId } : lineConfig),
+      ),
+    );
   }
 
   protected canonical(value: unknown): unknown {
@@ -361,16 +668,31 @@ export class CartService {
   }
 
   /**
-   * The line's config if its kind still sells it, `false` when the kind now
-   * refuses it. Only a refusal (a `CommerceError`) drops the line; any other
-   * failure is a fault and propagates.
+   * The line's config and variant if they still sell, `false` when the kind
+   * refuses it now or the variant was switched off. Only a refusal (a
+   * `CommerceError`) drops the line; any other failure is a fault and
+   * propagates.
    */
   protected async stillSellable(
     product: ProductEntity,
     item: CartItemEntity,
-  ): Promise<Record<string, any> | undefined | false> {
+    variants: ProductVariantEntity[],
+  ): Promise<
+    | {
+        lineConfig: Record<string, any> | undefined;
+        variant: ProductVariantEntity | undefined;
+      }
+    | false
+  > {
     try {
-      return await this.lines.accept(product, item.lineConfig, item.quantity);
+      return {
+        variant: this.variants.pick(product, variants, item.variantId),
+        lineConfig: await this.lines.accept(
+          product,
+          item.lineConfig,
+          item.quantity,
+        ),
+      };
     } catch (error) {
       if (error instanceof CommerceError) {
         return false;

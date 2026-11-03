@@ -137,7 +137,7 @@ export class EpicVisibilityService {
    *
    * This answers only "is this quest outside every draft epic". Whether
    * that is the right question for a given aggregate is the caller's policy
-   * decision, not this method's: see `ProjectReportsController.questInScope`,
+   * decision, not this method's: see `ProjectReportsService.questScope`,
    * which exempts completed quests from it.
    */
   draftEpicSqlPredicate(draftEpicIds: number[]) {

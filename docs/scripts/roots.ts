@@ -61,6 +61,13 @@ export class DocsRoots {
   }
 
   /**
+   * Whether this build mixes two trees: the release tag, and Lore at `main`.
+   */
+  public static pinned(): boolean {
+    return DocsRoots.release() !== undefined;
+  }
+
+  /**
    * The release checkout `DOCS_RELEASE_ROOT` names, or nothing when it is
    * unset or was never checked out.
    */

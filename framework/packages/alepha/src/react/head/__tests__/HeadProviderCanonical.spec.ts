@@ -32,7 +32,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider();
     const state = stateFor("/docs/getting-started");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBe("https://alepha.dev/docs/getting-started");
     expect(linksOf(state)).toEqual([
@@ -49,7 +49,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider();
     const state = stateFor("");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBe("https://alepha.dev/");
   });
@@ -58,7 +58,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider({ PUBLIC_URL: "https://alepha.dev/" });
     const state = stateFor("/changelog");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBe("https://alepha.dev/changelog");
   });
@@ -72,7 +72,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider();
     const state = stateFor("/changelog");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).not.toContain("?");
   });
@@ -90,7 +90,7 @@ describe("HeadProvider canonical URL", () => {
       ],
     };
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBe("https://alepha.dev/docs/new-slug");
     expect(linksOf(state)).toEqual([
@@ -102,7 +102,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider();
     const state = stateFor("/*");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBeUndefined();
     expect(linksOf(state)).toEqual([]);
@@ -112,7 +112,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider();
     const state = stateFor("/404");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBeUndefined();
   });
@@ -131,7 +131,7 @@ describe("HeadProvider canonical URL", () => {
       ],
     };
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBeUndefined();
   });
@@ -144,7 +144,7 @@ describe("HeadProvider canonical URL", () => {
     const provider = createProvider({ PUBLIC_URL: "" });
     const state = stateFor("/changelog");
 
-    provider.fillHead(state as any);
+    provider.fillHead(state);
 
     expect(state.head.url).toBeUndefined();
     expect(linksOf(state)).toEqual([]);

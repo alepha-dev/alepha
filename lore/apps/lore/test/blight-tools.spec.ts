@@ -1,8 +1,9 @@
-import { ProjectController } from "@lore/core/api";
+import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { BlightTools } from "@lore/deploy/mcp";
 import { blights } from "@lore/deploy/schemas";
 import { QuestTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -13,6 +14,7 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * The blights inbox over MCP: triage happens in a conversation, and the
@@ -58,7 +60,7 @@ const setup = async () => {
   */
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -77,7 +79,7 @@ const setup = async () => {
           { key: "apps", options: { track: true } },
         ],
       },
-    } as any),
+    }),
   );
 
   const otherProject = await asUser(OWNER, () =>
@@ -89,7 +91,7 @@ const setup = async () => {
           { key: "apps", options: { track: true } },
         ],
       },
-    } as any),
+    }),
   );
 
   return {
@@ -100,6 +102,8 @@ const setup = async () => {
     project,
     otherProject,
     call,
+    owner,
+    users,
   };
 };
 
@@ -128,7 +132,7 @@ describe("Lore MCP — blights", () => {
       firstSeenAt: "2026-08-01T10:00:00.000Z",
       lastSeenAt: "2026-08-01T10:05:00.000Z",
       ...over,
-    } as any);
+    });
 
   it("should list everything the row carries, not a subset", async () => {
     // A schema is what serializes: any field the tool result schema omits is
@@ -317,5 +321,80 @@ describe("Lore MCP — blights", () => {
     });
 
     expect((await probe.blights.findById(filed.id))?.status).toBe(held);
+  });
+
+  describe("who may triage", () => {
+    const withRanks = async () => {
+      const world = await setup();
+      const { alepha, project, owner, users } = world;
+
+      const triager = await users.createUser({ username: "triager" });
+      await alepha.inject(RankService).save(
+        await alepha
+          .inject(ProjectSecurityService)
+          .organizationIdOf(project.id),
+        {
+          key: "triager",
+          name: "Triager",
+          permissions: ["project:read", "blight:read", "blight:triage"],
+        },
+        { id: owner.id, roles: ["user"] },
+      );
+      await createTestMemberByProjectId(alepha, project.id, triager.id, {
+        rank: "triager",
+      });
+      const member = await users.createUser({ username: "member" });
+      await createTestMemberByProjectId(alepha, project.id, member.id);
+
+      return { ...world, triager, member };
+    };
+
+    it("is whoever holds blight:triage, not only the owner", async () => {
+      const { probe, blightTools, project, call, triager } = await withRanks();
+      const resolved = await fileBlight(probe, project.id);
+      const forwarded = await fileBlight(probe, project.id, {
+        fingerprint: "fp-2",
+      });
+
+      const res = await call(
+        blightTools.blight_resolve,
+        { project: project.id, blight_id: resolved.id },
+        triager.id,
+      );
+      expect(res.ok).toBe(true);
+
+      const quest = await call(
+        blightTools.blight_forward,
+        { project: project.id, blight_id: forwarded.id },
+        triager.id,
+      );
+      expect(quest.questShortId).toBeGreaterThan(0);
+    });
+
+    it("refuses a rank without it", async () => {
+      const { probe, blightTools, project, call, member } = await withRanks();
+      const filed = await fileBlight(probe, project.id);
+
+      for (const tool of [
+        blightTools.blight_resolve,
+        blightTools.blight_forward,
+      ]) {
+        await expect(
+          call(tool, { project: project.id, blight_id: filed.id }, member.id),
+        ).rejects.toThrow(/blight:triage/);
+      }
+    });
+
+    it("is what the tools tell an agent", async () => {
+      const { blightTools } = await setup();
+
+      for (const tool of [
+        blightTools.blight_resolve,
+        blightTools.blight_forward,
+      ]) {
+        expect(tool.options.description).toContain("Needs `blight:triage`");
+        expect(tool.options.description).not.toContain("owner only");
+      }
+    });
   });
 });

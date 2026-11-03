@@ -10,6 +10,7 @@ import {
 } from "alepha/security";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
+import { McpProjectScope } from "../services/McpProjectScope.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -125,8 +126,28 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
     key: "organizationId",
   });
 
+  // Reports the project the gate passed on, for `mcp_calls` (#Q3012).
+  const withScope = createMiddleware({
+    name: "$ownsProject.scope",
+    options: {},
+    handler: ({ alepha: container, next }) => {
+      return (async (...args: any[]) => {
+        const authority = container.store.get(currentAuthorityAtom) as
+          | { id?: number }
+          | undefined;
+        if (typeof authority?.id === "number") {
+          container.inject(McpProjectScope).resolved(authority.id);
+        }
+        return next(...args);
+      }) as any;
+    },
+  });
+
   if (!options.capability) {
-    return gate;
+    const scoped = ((handler: any) =>
+      gate(withScope(handler))) as never as Middleware;
+    scoped[OPTIONS] = gate[OPTIONS];
+    return scoped as SecureMiddleware;
   }
 
   const capability = options.capability;
@@ -170,8 +191,8 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
   // outermost-first, so `gate(withCapability(handler))` runs membership, then
   // this, then the handler.
   const composed = ((handler: any) =>
-    gate(withCapability(handler))) as never as Middleware;
-  (composed as any)[OPTIONS] = (gate as any)[OPTIONS];
+    gate(withScope(withCapability(handler)))) as never as Middleware;
+  composed[OPTIONS] = gate[OPTIONS];
   return composed as SecureMiddleware;
 };
 

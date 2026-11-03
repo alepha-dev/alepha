@@ -9,7 +9,7 @@ import { carts } from "./carts.ts";
  *
  * Note what is *not* here: a price. A cart line is a reference plus a quantity,
  * and the price is read from the catalog every time the cart is priced. The
- * alternative — snapshotting the price at add-time — means a visitor who left a
+ * alternative - snapshotting the price at add-time - means a visitor who left a
  * tab open for a week pays last week's price, and the merchant discovers it
  * from their margin report. The price snapshot belongs on the *order* line,
  * where it is a record of what was actually agreed.
@@ -46,6 +46,12 @@ export const cartItems = $entity({
      */
     productId: z.uuid(),
 
+    /**
+     * The variant chosen, on a product sold by variant. Part of
+     * {@link lineKey}, so two variants of a product are two lines.
+     */
+    variantId: z.uuid().optional(),
+
     quantity: z.integer().min(1),
 
     /**
@@ -56,8 +62,9 @@ export const cartItems = $entity({
     lineConfig: z.json().optional(),
 
     /**
-     * The sha-256 of the canonical JSON of {@link lineConfig}, or `""` when
-     * there is none: the third column of the unique index.
+     * The sha-256 of the canonical JSON of {@link lineConfig} and
+     * {@link variantId}, or `""` when there is neither: the third column of
+     * the unique index.
      *
      * Never NULL, because SQLite treats NULLs as distinct in a UNIQUE index
      * and two adds of one `good` would make two lines. A hash rather than the

@@ -18,7 +18,8 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 /**
  * `lore estate add` and `list` (#Q2699): the estate is created and lent to
  * the current project, and the connector command is printed once with its
- * secret; deploys stay off unless asked for.
+ * secret; deploys stay off unless asked for. `stats` (#Q3047) reads one of
+ * the caller's own estates by slug.
  */
 describe("lore estate", () => {
   const create = () => {
@@ -58,6 +59,8 @@ describe("lore estate", () => {
               online: true,
               deployAllowed: false,
               lastSeenAt: "2026-10-25T10:00:00Z",
+              cpuPercent: 34.4,
+              memoryPercent: 61.6,
             },
           ],
         }),
@@ -67,9 +70,35 @@ describe("lore estate", () => {
           calls.push({ name: "update", request });
           return {};
         },
+        listMyEstates: async () => ({
+          items: [
+            {
+              id: "e1",
+              slug: "vps-ovh",
+              cpuPercent: 34.4,
+              memoryPercent: 61.6,
+              statsAt: "2026-11-02T10:00:00Z",
+            },
+          ],
+        }),
+        getEstateStats: async (request: unknown) => {
+          calls.push({ name: "stats", request });
+          return {
+            collecting: true,
+            estimated: false,
+            points: [
+              {
+                day: "2026-11-01",
+                cpuPercent: 20.2,
+                memoryPercent: 55,
+                samples: 288,
+              },
+            ],
+          };
+        },
       },
     });
-    const run = async (sub: "add" | "list", argv: string) => {
+    const run = async (sub: "add" | "list" | "stats", argv: string) => {
       await alepha.inject(CliProvider).run(command[sub] as never, { argv });
     };
     return { run, printed, calls };
@@ -107,7 +136,33 @@ describe("lore estate", () => {
     const { run, printed } = create();
     await run("list", "");
     expect(printed.join("\n")).toMatch(
-      /vps-ovh[\s\S]*online[\s\S]*deploys off/,
+      /vps-ovh[\s\S]*online CPU 34% RAM 62%[\s\S]*deploys off/,
     );
+  });
+
+  it("prints an estate's current reading and its daily means", async ({
+    expect,
+  }) => {
+    const { run, printed, calls } = create();
+    await run("stats", "vps-ovh --since 2026-10-01");
+    expect(calls).toEqual([
+      {
+        name: "stats",
+        request: { params: { estateId: "e1" }, query: { since: "2026-10-01" } },
+      },
+    ]);
+    const out = printed.join("\n");
+    expect(out).toContain("CPU 34%  RAM 62%");
+    expect(out).toContain("2026-11-01  CPU  20%  RAM  55%  288 samples");
+  });
+
+  it("refuses an estate the caller does not own, and reads nothing", async ({
+    expect,
+  }) => {
+    const { run, calls } = create();
+    await expect(run("stats", "someone-elses")).rejects.toThrow(
+      "You own no estate named someone-elses",
+    );
+    expect(calls).toEqual([]);
   });
 });

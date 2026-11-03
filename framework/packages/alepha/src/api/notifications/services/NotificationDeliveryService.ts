@@ -178,7 +178,7 @@ export class NotificationDeliveryService {
   public async purge(cutoff: string, limit = 5_000): Promise<number> {
     const expired = await this.repo.findMany({
       where: { createdAt: { lt: cutoff } },
-      columns: ["id"] as any,
+      columns: ["id"],
       limit,
     });
 

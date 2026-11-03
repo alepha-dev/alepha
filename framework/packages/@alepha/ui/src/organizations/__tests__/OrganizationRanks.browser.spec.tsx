@@ -82,7 +82,7 @@ describe("OrganizationRanks", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {

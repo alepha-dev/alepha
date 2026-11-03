@@ -136,7 +136,7 @@ const MyFeedback = () => {
               // repeated key would keep only the last value.
               status: f?.status?.length ? f.status.join(",") : undefined,
               projectId: f?.projectId ? Number(f.projectId) : undefined,
-            } as any,
+            },
           })
         }
         onRowClick={(p) => setEditing(p)}

@@ -35,7 +35,7 @@ export class BrowserHeadProvider {
       return;
     }
 
-    this.headProvider.fillHead(state as any);
+    this.headProvider.fillHead(state);
     if (state.head) {
       // `reconcile`: a navigation replaces the page's head wholesale, so tags
       // the previous page declared and this one does not must go. Hydration

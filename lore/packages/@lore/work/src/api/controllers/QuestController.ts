@@ -1416,7 +1416,7 @@ export class QuestController {
       }
 
       if (groups.length > 0) {
-        where.and = groups as any;
+        where.and = groups;
       }
 
       // Quests of a `draft` epic are specified but not released into the
@@ -3025,8 +3025,8 @@ export class QuestController {
           patch.dependsOn = body.dependsOn;
         }
       }
-      // Link / unlink a feedback item. Same guard as `createQuest`: only the
-      // project owner may link, and only to a feedback item that exists in
+      // Link / unlink a feedback item. Same guard as `createQuest`: linking
+      // needs `feedback:triage`, and only to a feedback item that exists in
       // this project and is already accepted. `null` clears the link.
       if (body.feedbackId !== undefined) {
         if (body.feedbackId === null) {

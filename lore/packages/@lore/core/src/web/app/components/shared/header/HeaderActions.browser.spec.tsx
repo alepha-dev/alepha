@@ -42,7 +42,7 @@ describe("HeaderActions' account avatar", () => {
       id: "u-1",
       email: "ada@example.com",
       picture,
-    } as never);
+    });
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 

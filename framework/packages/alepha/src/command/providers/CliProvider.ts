@@ -949,7 +949,7 @@ export class CliProvider {
    */
   protected schemaMeta(schema: ZType | undefined): Record<string, any> {
     if (!schema) return {};
-    const base = z.schema.unwrap(schema) as any;
+    const base = z.schema.unwrap(schema);
     return (typeof base?.meta === "function" ? base.meta() : undefined) ?? {};
   }
 

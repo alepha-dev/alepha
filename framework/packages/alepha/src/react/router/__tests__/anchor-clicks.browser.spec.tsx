@@ -60,7 +60,7 @@ describe("anchor click semantics", () => {
       { button: 1 },
     ]) {
       const ev = clickEvent(init);
-      props.onClick?.(ev as never);
+      props.onClick?.(ev);
       expect(ev.preventDefault).not.toHaveBeenCalled();
     }
   });
@@ -70,7 +70,7 @@ describe("anchor click semantics", () => {
     const props = router.anchor("/about");
 
     const ev = clickEvent();
-    props.onClick?.(ev as never);
+    props.onClick?.(ev);
     expect(ev.preventDefault).toHaveBeenCalled();
   });
 
@@ -81,7 +81,7 @@ describe("anchor click semantics", () => {
     const ev = clickEvent({
       currentTarget: { target: "_blank" } as never,
     });
-    props.onClick?.(ev as never);
+    props.onClick?.(ev);
     expect(ev.preventDefault).not.toHaveBeenCalled();
   });
 
@@ -120,7 +120,7 @@ describe("anchor click semantics", () => {
     const { result } = renderHook(() => useActive("/about"), { wrapper });
 
     const ev = clickEvent({ metaKey: true });
-    result.current.anchorProps.onClick?.(ev as never);
+    result.current.anchorProps.onClick?.(ev);
     expect(ev.preventDefault).not.toHaveBeenCalled();
   });
 });

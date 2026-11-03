@@ -86,13 +86,14 @@
     "webview-bun": "2.4.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.4",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
     "alepha": "0.34.0",
-    "rolldown": "~1.2.12",
-    "tsdown": "^0.23.0",
+    "rolldown": "~1.2.16",
+    "tsdown": "^0.23.4",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "peerDependencies": {
     "alepha": "^0.34.0"

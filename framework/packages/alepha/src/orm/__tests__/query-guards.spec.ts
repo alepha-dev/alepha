@@ -99,7 +99,7 @@ describe("query guards", () => {
 
       await expect(
         app.repository.findMany({
-          where: { tags: { arrayContains: ["x"] } as any },
+          where: { tags: { arrayContains: ["x"] } },
         }),
       ).rejects.toThrow(/not supported on sqlite/i);
     });
@@ -111,7 +111,7 @@ describe("query guards", () => {
 
       await expect(
         app.repository.findMany({
-          where: { tags: { arrayContains: ["x"] } as any },
+          where: { tags: { arrayContains: ["x"] } },
         }),
       ).resolves.toBeDefined();
     });
@@ -148,9 +148,7 @@ describe("text primary key insert schema", () => {
     // the point of the framework is that this never compiles.
     expect(z.schema.requiredInputKeys(slugged.insertSchema)).toContain("id");
 
-    await expect(
-      app.repository.create({ label: "Hello" } as any),
-    ).rejects.toThrow();
+    await expect(app.repository.create({ label: "Hello" })).rejects.toThrow();
   });
 });
 

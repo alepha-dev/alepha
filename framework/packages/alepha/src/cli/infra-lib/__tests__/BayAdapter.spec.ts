@@ -337,6 +337,40 @@ describe("BayAdapter  -  the deploy it composes", () => {
     ).toBe(true);
   });
 
+  it("warns when Bay started the app on an empty database", async () => {
+    // A failed auto-restore does not fail the deploy, and the URL is all this
+    // keeps of the answer: without this, `up` finishes green on a recovered
+    // host whose data never came back.
+    const { alepha, adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        [[
+          "ssh",
+          "-o",
+          "BatchMode=yes",
+          "deploy@bay.example.com",
+          "bay deploy - --name demo --env production",
+        ].join(" ")]: JSON.stringify({
+          url: "https://demo.bay.example.com/",
+          restore: {
+            database: "empty (could not reach the bucket)",
+            warning: "demo/production started on an EMPTY database",
+          },
+        }),
+      },
+    });
+    const warnings: string[] = [];
+    alepha.events.on("log:entry", (e) => {
+      if (e.entry.level === "WARN") {
+        warnings.push(e.entry.message);
+      }
+    });
+
+    await adapter.deploy(context(), run);
+
+    expect(warnings).toContain("demo/production started on an EMPTY database");
+  });
+
   it("returns the URL Bay reported", async () => {
     const { adapter, shell } = await setup();
     shell.configure({

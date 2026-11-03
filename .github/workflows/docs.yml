@@ -138,3 +138,42 @@ jobs:
         run: yarn alepha deploy --env production --prebuilt
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # latest.alepha.dev from `main`, with no pin: every section is the working
+  # tree, for projects that vendor Alepha rather than install a release
+  # (#Q3028). ⚠️ It shares `docs-deploy` with the job above because Lore keeps
+  # one `latest` tag per app: two deploys at once could ship one build to the
+  # other's copy.
+  deploy-latest:
+    needs: check
+    if: >-
+      github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Each page's last-modified date.
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build for workerd
+        env:
+          PUBLIC_URL: https://latest.alepha.dev
+          VITE_DOCS_SITE: latest
+        run: |
+          yarn alepha gen:tree
+          yarn alepha build --runtime=workerd
+          yarn alepha gen:llms
+
+      - name: Deploy docs
+        run: yarn alepha deploy --env latest --prebuilt
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

@@ -103,7 +103,7 @@ describe("bounce and complaint ingestion", () => {
 
     await alepha.events.emit(
       "cloudflare:queue:received",
-      cloudflareEvent("bounced", messageId, "hard") as never,
+      cloudflareEvent("bounced", messageId, "hard"),
     );
 
     const rows = await suppressions.list({});
@@ -123,7 +123,7 @@ describe("bounce and complaint ingestion", () => {
 
     await alepha.events.emit(
       "cloudflare:queue:received",
-      cloudflareEvent("bounced", messageId, "soft") as never,
+      cloudflareEvent("bounced", messageId, "soft"),
     );
 
     expect(await suppressions.list({})).toHaveLength(0);
@@ -137,11 +137,11 @@ describe("bounce and complaint ingestion", () => {
 
     await alepha.events.emit(
       "cloudflare:queue:received",
-      cloudflareEvent("delivered", messageId) as never,
+      cloudflareEvent("delivered", messageId),
     );
     await alepha.events.emit(
       "cloudflare:queue:received",
-      cloudflareEvent("deferred", messageId) as never,
+      cloudflareEvent("deferred", messageId),
     );
 
     expect(await suppressions.list({})).toHaveLength(0);
@@ -155,7 +155,7 @@ describe("bounce and complaint ingestion", () => {
 
     await alepha.events.emit(
       "cloudflare:queue:received",
-      cloudflareEvent("complained", messageId) as never,
+      cloudflareEvent("complained", messageId),
     );
 
     const before = mail.records.length;
@@ -181,8 +181,8 @@ describe("bounce and complaint ingestion", () => {
     const messageId = await sendAndCapture("ing-5");
     const event = cloudflareEvent("bounced", messageId, "hard");
 
-    await alepha.events.emit("cloudflare:queue:received", event as never);
-    await alepha.events.emit("cloudflare:queue:received", event as never);
+    await alepha.events.emit("cloudflare:queue:received", event);
+    await alepha.events.emit("cloudflare:queue:received", event);
 
     expect(await suppressions.list({})).toHaveLength(1);
 
@@ -196,7 +196,7 @@ describe("bounce and complaint ingestion", () => {
 
     await alepha.events.emit(
       "cloudflare:queue:received",
-      cloudflareEvent("bounced", "never-issued", "hard") as never,
+      cloudflareEvent("bounced", "never-issued", "hard"),
     );
 
     expect(await suppressions.list({})).toHaveLength(1);
@@ -210,7 +210,7 @@ describe("bounce and complaint ingestion", () => {
     await alepha.events.emit("cloudflare:queue:received", {
       queue: "jobs",
       message: "whatever",
-    } as never);
+    });
 
     expect(await suppressions.list({})).toHaveLength(0);
 

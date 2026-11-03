@@ -2,19 +2,21 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
+
 /**
  * A sellable catalog row.
  *
  * ### Why `kind` is free text and not an enum
  *
  * An add-on module cannot extend a `z.enum` declared here, and it cannot add a
- * column to this table either — entities are code, migrations are per-app. So
+ * column to this table either - entities are code, migrations are per-app. So
  * the set of kinds is open, and each module *registers* the kinds it
  * understands with `ProductKindRegistry`, supplying a config schema and a
  * `fulfil` implementation.
  *
  * Core ships `good` and `digital`. A point-of-sale module adds `wallet_topup`,
- * a ticketing module adds `seat` — neither has to touch this file.
+ * a ticketing module adds `seat` - neither has to touch this file.
  *
  * `config` is the per-kind payload, validated by the registered handler and
  * opaque to the core. It is deliberately not queryable in SQL: when a query
@@ -45,10 +47,33 @@ export const products = $entity({
     price: z.integer().min(0),
     currency: db.default(z.text({ minLength: 3, maxLength: 3 }), "EUR"),
 
+    /**
+     * What it sold for before, struck through beside `price`. Shown only when
+     * higher. EU law (the Omnibus directive) wants this to be the lowest price
+     * of the last 30 days: nothing here checks that, it is the merchant's claim.
+     */
+    compareAtPrice: z.integer().min(0).optional(),
+
+    /**
+     * What a search engine reads, instead of the name and the description.
+     */
+    metaTitle: z.text({ maxLength: 200 }).optional(),
+    metaDescription: z.text({ maxLength: 500 }).optional(),
+
+    /**
+     * The parcel it makes: a weight is what a delivery rate's band reads. A line
+     * with none weighs nothing, which is right for a download and undercharges
+     * a good someone forgot to weigh.
+     */
+    weightGrams: z.integer().min(0).optional(),
+    lengthMm: z.integer().min(0).optional(),
+    widthMm: z.integer().min(0).optional(),
+    heightMm: z.integer().min(0).optional(),
+
     categoryId: z.uuid().optional(),
 
     /**
-     * Images, first one first — that is the one a listing shows.
+     * Images, first one first - that is the one a listing shows.
      *
      * Each entry is either a file id from `alepha/api/files` (served by that
      * module at `/public/files/{id}`) or an absolute URL. Kept as plain text
@@ -63,8 +88,8 @@ export const products = $entity({
      * default from `TaxService`.
      *
      * A real column rather than a `config` field because a catalog is routinely
-     * mixed-rate — books and food sit at a reduced rate beside goods at the
-     * standard one — and the tax on a sale is not a per-kind concern that a
+     * mixed-rate - books and food sit at a reduced rate beside goods at the
+     * standard one - and the tax on a sale is not a per-kind concern that a
      * handler could own. Without it, a shop's invoice showed one bucket at the
      * seller's default rate whatever it had actually sold: the per-rate
      * breakdown the invoicing module promises, and the law requires, could
@@ -76,6 +101,12 @@ export const products = $entity({
     vatRateBps: z.integer().min(0).max(10000).optional(),
 
     /**
+     * The choices this product offers (`Taille`, `Couleur`): what a storefront
+     * draws as pickers and what the admin multiplies out into variants.
+     */
+    optionGroups: db.default(z.array(optionGroupSchema), []),
+
+    /**
      * Kind-specific payload. Validated by the registered handler.
      */
     config: z.json().optional(),
@@ -85,7 +116,7 @@ export const products = $entity({
      * dimensions, care instructions.
      *
      * Separate from {@link config} because config is *validated by the kind's
-     * handler*, which strips anything the handler does not declare — the first
+     * handler*, which strips anything the handler does not declare - the first
      * version of this shop put its spec sheet in `config` and watched it vanish
      * on write. That stripping is correct for a payload `fulfil` relies on, and
      * wrong for free-form copy, so the two live apart.
@@ -96,6 +127,14 @@ export const products = $entity({
     attributes: z.json().optional(),
 
     /**
+     * Whether the ledger counts this product. Asked of the kind's handler on
+     * every write, and a real column for the reason the note above gives: "in
+     * stock only" has to be answered in SQL, and a download or a made-to-order
+     * piece has no ledger to answer with.
+     */
+    tracksStock: db.default(z.boolean(), true),
+
+    /**
      * Draft rows are invisible to the public catalog.
      */
     published: db.default(z.boolean(), false),
@@ -104,6 +143,7 @@ export const products = $entity({
     { columns: ["slug"], unique: true },
     { columns: ["kind"] },
     { columns: ["published"] },
+    { columns: ["categoryId"] },
   ],
 });
 

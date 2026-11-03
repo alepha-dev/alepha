@@ -111,7 +111,7 @@ const setup = async (options?: {
     realmProvider.register("users", {
       settings: {
         username: options.username,
-      } as never,
+      },
     });
   }
 
@@ -946,7 +946,7 @@ describe("alepha/api/users - SessionService.link", () => {
     realmProvider.register("closed", {
       settings: {
         registrationAllowed: false,
-      } as never,
+      },
     });
 
     await expect(
@@ -975,7 +975,7 @@ describe("alepha/api/users - SessionService.link", () => {
     const realmProvider = alepha.inject(RealmProvider);
     const seen: Array<Record<string, unknown>> = [];
     realmProvider.register("closed-oauth-refusing", {
-      settings: { registrationAllowed: false } as never,
+      settings: { registrationAllowed: false },
       isPreAuthorized: (context) => {
         seen.push({ ...context });
         return false;
@@ -1011,7 +1011,7 @@ describe("alepha/api/users - SessionService.link", () => {
 
     const realmProvider = alepha.inject(RealmProvider);
     realmProvider.register("closed-oauth-inviting", {
-      settings: { registrationAllowed: false } as never,
+      settings: { registrationAllowed: false },
       isPreAuthorized: ({ email }) => email === "invited@example.com",
     });
 
@@ -1048,7 +1048,7 @@ describe("alepha/api/users - SessionService.link", () => {
     const realmProvider = alepha.inject(RealmProvider);
     let consulted = 0;
     realmProvider.register("open-oauth-with-seam", {
-      settings: { registrationAllowed: true } as never,
+      settings: { registrationAllowed: true },
       isPreAuthorized: () => {
         consulted++;
         return false;
@@ -1078,7 +1078,7 @@ describe("alepha/api/users - SessionService.link", () => {
     realmProvider.register("closed", {
       settings: {
         registrationAllowed: false,
-      } as never,
+      },
     });
 
     // Create existing user and identity
@@ -1180,7 +1180,7 @@ describe("alepha/api/users - SessionService.link", () => {
       settings: {
         registrationAllowed: true,
         defaultRoles: ["member", "viewer"],
-      } as never,
+      },
     });
 
     const result = await sessionService.link(
@@ -1252,7 +1252,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
       realmProvider.register("idle-ok", {
         settings: {
           refreshToken: { expirationIdle: 60 * 60 * 1000 }, // 1 hour
-        } as never,
+        },
       });
 
       const user = await userService.users("idle-ok").create({
@@ -1287,7 +1287,7 @@ describe("alepha/api/users - SessionService.refreshSession", () => {
       realmProvider.register("idle-strict", {
         settings: {
           refreshToken: { expirationIdle: 5 * 60 * 1000 }, // 5 minutes
-        } as never,
+        },
       });
 
       const user = await userService.users("idle-strict").create({

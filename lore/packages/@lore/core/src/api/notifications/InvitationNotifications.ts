@@ -1,16 +1,28 @@
 import { $hook, $inject, Alepha, z } from "alepha";
-import { $notification } from "alepha/api/notifications";
+import {
+  $notification,
+  notificationInboxEntity,
+  NotificationInboxRecipientProvider,
+} from "alepha/api/notifications";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
+import { BestEffort } from "../services/BestEffort.ts";
+import { LoreInboxNotifications } from "./LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./NotificationHtmlEscaper.ts";
 
 export class InvitationNotifications {
   protected readonly html = $inject(NotificationHtmlEscaper);
+  protected readonly inbox = $inject(LoreInboxNotifications);
+  protected readonly recipients = $inject(NotificationInboxRecipientProvider);
+  protected readonly bestEffort = $inject(BestEffort);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly projects = $repository(projects);
+  protected readonly inboxEntries = $repository(notificationInboxEntity);
 
   /**
    * The invitation mail. One link, and the link does the work.
@@ -66,6 +78,50 @@ export class InvitationNotifications {
     }),
   });
 
+  /**
+   * The same invitation in the header bell, for an address that has an account
+   * (#Q2947).
+   *
+   * ⚠️ **A sibling, not an `inbox` block on {@link invitationInvite}.** One
+   * template is one category, so one switch would mute the email and the bell
+   * together. Its own category is what lets somebody mute the bell and keep the
+   * mail, and the mail stays exactly what it was.
+   *
+   * ⚠️ **Never the token.** `acceptUrl` is the email's secret, and an inbox row
+   * is stored and rendered. The bell links to the account's invitations page,
+   * where the signed-in user accepts or declines.
+   */
+  public readonly invitationInbox = $notification({
+    name: "lore:invitation:received",
+    category: "invitations",
+    description:
+      "Filed in the header bell of an existing account when a project invites its address. Links to the account's invitations, never to the email's one-time link.",
+    schema: z.object({
+      projectTitle: z.text(),
+      inviterName: z.text(),
+      href: z.text(),
+      scope: z.text(),
+    }),
+    inbox: {
+      title: (it) => `Invitation to join ${it.projectTitle}`,
+      body: (it) => `${it.inviterName} invited you to ${it.projectTitle}`,
+      href: (it) => it.href,
+      scope: (it) => it.scope,
+      scopeLabel: (it) => it.projectTitle,
+    },
+    translations: {
+      fr: {
+        inbox: {
+          title: (it) => `Invitation à rejoindre ${it.projectTitle}`,
+          body: (it) => `${it.inviterName} vous invite à ${it.projectTitle}`,
+          href: (it) => it.href,
+          scope: (it) => it.scope,
+          scopeLabel: (it) => it.projectTitle,
+        },
+      },
+    },
+  });
+
   protected onInvitationCreated = $hook({
     on: "organization:invitation:created",
     handler: async ({ invitation, inviter, token }) => {
@@ -111,6 +167,11 @@ export class InvitationNotifications {
             expiresInDays,
           },
         });
+
+        // After the email, and apart from it: the bell never costs the mail.
+        await this.bestEffort.run("Failed to file invitation inbox entry", () =>
+          this.fileInInbox(invitation.email, project, inviterName),
+        );
       } catch (error) {
         this.log.warn("Failed to enqueue invitation email", {
           invitationId: invitation.id,
@@ -119,4 +180,60 @@ export class InvitationNotifications {
       }
     },
   });
+
+  /**
+   * The bell's entry is settled by the accept (#Q3026): left unread, it would
+   * point at a page that no longer lists the invitation. Only this entry: the
+   * invitee's other messages stay as they are, and the accept never pays for a
+   * failure here.
+   */
+  protected onInvitationAccepted = $hook({
+    on: "organization:invitation:accepted",
+    handler: async ({ invitation, acceptedBy }) => {
+      await this.bestEffort.run(
+        "Failed to mark invitation inbox entry read",
+        async () => {
+          const project = await this.projects.findOne({
+            where: { organizationId: { eq: invitation.organizationId } },
+          });
+          if (!project) return;
+
+          await this.inboxEntries.updateMany(
+            {
+              userId: { eq: acceptedBy.id },
+              template: { eq: this.invitationInbox.name },
+              scope: { eq: `project:${project.id}` },
+              readAt: { isNull: true },
+            },
+            { readAt: this.dateTime.nowISOString() },
+          );
+        },
+      );
+    },
+  });
+
+  /**
+   * An address with no account has no bell, so nothing is pushed for it rather
+   * than a skipped receipt per stranger. The contact is the account, not the
+   * address: a bounced mailbox is suppressed, and that must not silence a bell.
+   */
+  protected async fileInInbox(
+    email: string,
+    project: { id: number; title: string },
+    inviterName: string,
+  ): Promise<void> {
+    const recipient = await this.recipients.resolve(email);
+    if (!recipient) return;
+
+    await this.invitationInbox.push({
+      contact: `lore-user:${recipient.userId}`,
+      lang: this.inbox.lang,
+      variables: {
+        projectTitle: project.title,
+        inviterName,
+        href: "/account/invitations",
+        scope: `project:${project.id}`,
+      },
+    });
+  }
 }

@@ -124,7 +124,7 @@ describe("ProjectFeedback - Show more", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(() => {
@@ -166,7 +166,7 @@ describe("ProjectFeedback - Show more", () => {
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     return alepha;
   };
 

@@ -5,6 +5,7 @@ import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
+import AppDashboardRunning from "./AppDashboardRunning.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 
 /**
@@ -116,6 +117,8 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
             </span>
           </>
         )}
+
+        {instance.deployed && <AppDashboardRunning instance={instance} />}
 
         {/* The name the estate knows this copy by, once a deploy has fixed
             it. Worth a row because it can differ from what the page shows: a

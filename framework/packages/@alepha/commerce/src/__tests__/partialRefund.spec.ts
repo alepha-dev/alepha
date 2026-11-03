@@ -62,6 +62,20 @@ const setup = async () => {
   return ctx;
 };
 
+const waitForInvoices = async (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  orderId: string,
+  count: number,
+) => {
+  const deadline = Date.now() + 5_000;
+  let issued = await ctx.invoices.listForOrder(orderId);
+  while (issued.length < count && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    issued = await ctx.invoices.listForOrder(orderId);
+  }
+  return issued;
+};
+
 const aRing = (catalog: CatalogService) =>
   catalog.create({
     slug: `ring-${randomUUID()}`,
@@ -171,26 +185,24 @@ describe("partial refund", () => {
     });
   });
 
-  it("issues no credit note until the refund is complete", async ({
+  it("credits each refund for its own amount, up to the whole invoice", async ({
     expect,
   }) => {
     const ctx = await setup();
     const { order, intentId } = await buy(ctx);
 
     await ctx.payments.refund(intentId, 890);
-
-    /*
-     * A credit note credits the WHOLE invoice. Issuing one for a partial
-     * refund would put a document on the books saying the customer owes
-     * nothing - the accounting version of the same bug.
-     */
-    expect(await ctx.invoices.listForOrder(order.id)).toHaveLength(1);
-
     await ctx.payments.refund(intentId, order.total - 890);
 
-    const issued = await ctx.invoices.listForOrder(order.id);
-    expect(issued).toHaveLength(2);
-    expect(issued[1]!.creditsInvoiceId).toBe(issued[0]!.id);
+    const issued = await waitForInvoices(ctx, order.id, 3);
+    const [invoice, ...notes] = issued;
+    expect(notes.map((it) => it.creditsInvoiceId)).toEqual([
+      invoice!.id,
+      invoice!.id,
+    ]);
+    expect(notes.reduce((sum, it) => sum + it.grandTotal, 0)).toBe(
+      -invoice!.grandTotal,
+    );
   });
 });
 

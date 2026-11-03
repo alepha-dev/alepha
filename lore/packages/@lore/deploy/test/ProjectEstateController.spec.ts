@@ -1,4 +1,6 @@
+import { ProjectSecurityService } from "@lore/core/api";
 import { Alepha } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -148,6 +150,48 @@ describe("ProjectEstateController, lending", () => {
         { user: ada },
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("is whoever holds estate:lend, not only the project owner", async ({
+    expect,
+  }) => {
+    const ada = await createUser(ctx, "ada");
+    const grace = await createUser(ctx, "grace");
+    const project = await createProject(ctx, ada);
+    await ctx.alepha.inject(RankService).save(
+      await ctx.alepha
+        .inject(ProjectSecurityService)
+        .organizationIdOf(project.id),
+      {
+        key: "lender",
+        name: "Lender",
+        permissions: ["project:read", "estate:read", "estate:lend"],
+      },
+      ada,
+    );
+    await createTestMemberByProjectId(ctx.alepha, project.id, grace.id, {
+      rank: "lender",
+    });
+    const hers = await mintEstate(ctx, grace, "hetzner-1");
+    const adas = await mintEstate(ctx, ada, "ovh-1");
+    const params = { projectId: project.id };
+
+    const lent = await ctx.controller.attachEstate(
+      { params, body: { estateId: hers.id } },
+      { user: grace },
+    );
+    expect(lent.slug).toBe("hetzner-1");
+
+    // Taking back an estate somebody else lent is the same permission.
+    await ctx.controller.attachEstate(
+      { params, body: { estateId: adas.id } },
+      { user: ada },
+    );
+    await ctx.controller.detachEstate(
+      { params: { ...params, estateId: adas.id } },
+      { user: grace },
+    );
+    expect(await ctx.repos.grants.count({ estateId: { eq: adas.id } })).toBe(0);
   });
 
   it("refuses lending the same estate twice", async ({ expect }) => {

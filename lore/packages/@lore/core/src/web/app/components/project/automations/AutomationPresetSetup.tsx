@@ -65,7 +65,7 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
         )
         .map((channel) => ({
           value: channel.key,
-          label: tr(`automation.channel.${channel.key}` as never, {
+          label: tr(`automation.channel.${channel.key}`, {
             default: channel.key,
           }),
         }));

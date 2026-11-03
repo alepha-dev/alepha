@@ -48,7 +48,7 @@ describe("ButtonUser.AccountMenuItem", () => {
     alepha.store.set("alepha.security.user", {
       id: "u-1",
       email: "ada@example.com",
-    } as never);
+    });
     await alepha.start();
 
     // `DropdownMenuItem` needs a menu ancestor (Base UI throws without one),

@@ -44,6 +44,54 @@ describe("D1TimeoutProvider", () => {
     await settled;
   });
 
+  it("names a full-row read by its WHERE clause, not its columns", async () => {
+    const { timeouts, time } = await boot();
+    const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
+    const columns = Array.from({ length: 30 }, (_, i) => `"column_${i}"`);
+
+    const pending = wrapped
+      .prepare(
+        `select ${columns.join(", ")} from "job_executions" where "job_executions"."id" = ? limit ?`,
+      )
+      .all();
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(
+      'D1 query timed out: select ... from "job_executions" where "job_executions"."id" = ? limit ?',
+    );
+
+    await time.travel([6, "seconds"]);
+    await settled;
+  });
+
+  it("still bounds a statement whose WHERE clause runs long", async () => {
+    const { timeouts, time } = await boot();
+    const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
+    const ids = Array.from({ length: 200 }, () => "?").join(", ");
+
+    const pending = wrapped
+      .prepare(`select "id" from "job_executions" where "id" in (${ids})`)
+      .all();
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(/in \(\?, .*\.\.\.$/);
+
+    await time.travel([6, "seconds"]);
+    await settled;
+  });
+
+  it("leaves a statement within the budget as written", async () => {
+    const { timeouts, time } = await boot();
+    const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
+
+    const pending = wrapped.prepare('select "id", "slug" from "club"').all();
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(
+      'D1 query timed out: select "id", "slug" from "club"',
+    );
+
+    await time.travel([6, "seconds"]);
+    await settled;
+  });
+
   it("rejects a stalled batch, not just a stalled statement", async () => {
     const { timeouts, time } = await boot();
     const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);

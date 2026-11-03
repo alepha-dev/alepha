@@ -1,16 +1,26 @@
 import type { ProductController } from "@alepha/commerce";
 import type {
+  AdminCategoryController,
   AdminOrderController,
   AdminProductController,
+  AdminReturnController,
 } from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
+import type { AdminPromotionController } from "@alepha/commerce/promotions";
 import type { AdminShippingController } from "@alepha/commerce/shipping";
 import { $pageAdmin } from "@alepha/ui/admin";
 import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import { Gem, Package, Truck } from "lucide-react";
+import {
+  BadgePercent,
+  FolderTree,
+  Gem,
+  Package,
+  PackageOpen,
+  Truck,
+} from "lucide-react";
 
 import { Layout } from "./Layout.tsx";
 
@@ -64,6 +74,9 @@ export class AppRouter {
   protected readonly productApi = $client<AdminProductController>();
   protected readonly orderApi = $client<AdminOrderController>();
   protected readonly shippingApi = $client<AdminShippingController>();
+  protected readonly promotionApi = $client<AdminPromotionController>();
+  protected readonly categoryApi = $client<AdminCategoryController>();
+  protected readonly returnApi = $client<AdminReturnController>();
 
   // ── Storefront ───────────────────────────────────────────────────────
 
@@ -188,8 +201,9 @@ export class AppRouter {
     // `head` receives the loader's props directly — destructuring `{ props }`
     // silently yields undefined and the page falls back to the default title.
     head: (props: any) => ({
-      title: `${props.produit.name} · Atelier Aurore`,
-      description: props.produit.description,
+      title:
+        props.produit.metaTitle ?? `${props.produit.name} · Atelier Aurore`,
+      description: props.produit.metaDescription ?? props.produit.description,
     }),
     lazy: () => import("./pages/Produit.tsx"),
   });
@@ -350,5 +364,44 @@ export class AppRouter {
     },
     can: () => this.shippingApi.commerceAdminShippingRates.can(),
     lazy: () => import("./pages/admin/AdminLivraison.tsx"),
+  });
+
+  adminPromotions = $pageAdmin({
+    path: "/promotions",
+    head: { title: "Promotions" },
+    nav: {
+      label: <Tr k="admin.promotions" />,
+      icon: <BadgePercent />,
+      group: "Commerce",
+      order: 103,
+    },
+    can: () => this.promotionApi.commerceAdminPromotionList.can(),
+    lazy: () => import("./pages/admin/AdminPromotionsPage.tsx"),
+  });
+
+  adminCategories = $pageAdmin({
+    path: "/categories",
+    head: { title: "Catégories" },
+    nav: {
+      label: <Tr k="admin.categories" />,
+      icon: <FolderTree />,
+      group: "Commerce",
+      order: 104,
+    },
+    can: () => this.categoryApi.commerceAdminCategoryList.can(),
+    lazy: () => import("./pages/admin/AdminCategoriesPage.tsx"),
+  });
+
+  adminRetours = $pageAdmin({
+    path: "/retours",
+    head: { title: "Retours" },
+    nav: {
+      label: <Tr k="admin.returns" />,
+      icon: <PackageOpen />,
+      group: "Commerce",
+      order: 105,
+    },
+    can: () => this.returnApi.commerceAdminReturnList.can(),
+    lazy: () => import("./pages/admin/AdminRetours.tsx"),
   });
 }

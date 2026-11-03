@@ -2,7 +2,7 @@
 
 > Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe full-stack applications.
 
-**Working in a project that already installs Alepha? Run `npx alepha docs` instead of reading this site.** This site documents the latest release; `npx alepha docs` prints the same pages for the version the project installed, word for word and offline, from `node_modules/alepha/docs/`. `npx alepha docs <slug>` prints a page (the slug is each URL below without `https://alepha.dev/docs/` and `.md`), and `npx alepha docs --grep <text>` searches every page.
+**Working in a project that already installs Alepha? Run `npx alepha docs` instead of reading this site.** alepha.dev documents the latest release and latest.alepha.dev documents `main`, for a project that vendors Alepha; `npx alepha docs` prints the same pages for the version the project installed, word for word and offline, from `node_modules/alepha/docs/`. `npx alepha docs <slug>` prints a page (the slug is what follows `/docs/` in each URL below, without `.md`), and `npx alepha docs --grep <text>` searches every page.
 
 ## Overview
 
@@ -319,5 +319,7 @@ React hooks:
 ## Docs
 
 Every page listed below is plain markdown: the HTML page at `https://alepha.dev/docs/<slug>` is served as markdown at `https://alepha.dev/docs/<slug>.md`. Fetch only the pages you need.
+
+Each section of the guides and of the CLI opens with an `llms-full.txt`: all of its pages in one file, for when you need the whole topic. A page listed directly under Guides or CLI, outside any section, has none. The reference and package pages are too many to list here; each kind has its own index, linked under "API reference" at the end.
 
 - [Examples](https://github.com/alepha-dev/alepha/tree/main/framework/apps): Example applications

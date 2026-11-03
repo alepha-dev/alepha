@@ -5,5 +5,9 @@
   "at": "2026-11-01T03:00:12Z",
   "app": "lore",
   "env": "production",
-  "data": { "stage": "upload", "error": "s3: connection refused", "consecutive": 2 }
+  "data": {
+    "stage": "upload",
+    "error": "s3: connection refused",
+    "consecutive": 2
+  }
 }

@@ -1,8 +1,9 @@
 import type { DirectoryController } from "@lore/knowledge/api";
+import type { FolioAttachmentController } from "@lore/knowledge/api";
 import type { FolioController } from "@lore/knowledge/api";
 import type { EpicController } from "@lore/work/api";
 import { $inject, z } from "alepha";
-import { $command, CommandError } from "alepha/command";
+import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
@@ -15,12 +16,15 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore folio list | get | create`: a project's shared memory, from a shell.
+ * `lore folio list | search | get | create | update | history | revert |
+ * delete | attachment list | rename | delete`: a project's shared memory, from
+ * a shell.
  *
  * ```bash
  * lore folio list -p alepha --search "exit codes"
  * lore folio get F1264 -p alepha --links
  * lore folio create -p alepha --title "Lore CLI plan" --summary "The plan." --content @plan.md --epic 45
+ * lore folio update F1264 -p alepha --content @plan.md --summary "The plan, revised."
  * ```
  *
  * ## Deliberately not here
@@ -52,6 +56,9 @@ export class FolioCommand {
     this.client.scope(),
   );
   protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly attachmentApi = $client<FolioAttachmentController>(
+    this.client.scope(),
+  );
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -61,6 +68,18 @@ export class FolioCommand {
       })
       .optional(),
   };
+
+  protected static readonly REF_ARG = z.text({
+    title: "ref",
+    description:
+      "The folio: 12, F12 or '#F12'. Quote #F12: unquoted, a shell reads # as a comment.",
+  });
+
+  protected static readonly ATTACHMENT_ARG = z.text({
+    title: "ref",
+    description:
+      "The attachment: 12 or A12, the number lore folio attachment list prints.",
+  });
 
   public readonly list = $command({
     name: "list",
@@ -135,11 +154,7 @@ export class FolioCommand {
   public readonly get = $command({
     name: "get",
     description: "Show one folio: its summary and its Markdown content",
-    args: z.text({
-      title: "ref",
-      description:
-        "The folio: 12, F12 or '#F12'. Quote #F12: unquoted, a shell reads # as a comment.",
-    }),
+    args: FolioCommand.REF_ARG,
     flags: z.object({
       ...FolioCommand.PROJECT_FLAG,
       links: z
@@ -234,6 +249,12 @@ export class FolioCommand {
       epic: z
         .text({ description: "File it under this epic: 45 or E45." })
         .optional(),
+      pinned: z
+        .boolean()
+        .describe(
+          "Pin it: its whole content reaches every lore project context. Use sparingly.",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
@@ -261,6 +282,7 @@ export class FolioCommand {
             summary: flags.summary,
             content: flags.content,
             ...(directory ? { directoryId: directory.id } : {}),
+            ...(flags.pinned !== undefined ? { pinned: flags.pinned } : {}),
           },
         });
         const line = `Created F${created.shortId} ${created.title}`;
@@ -293,6 +315,378 @@ export class FolioCommand {
     },
   });
 
+  public readonly update = $command({
+    name: "update",
+    description:
+      "Change a folio's title, summary, content, directory, pin or epic",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      title: z.text({ maxLength: 200, description: "A new title." }).optional(),
+      summary: z
+        .text({
+          maxLength: 500,
+          description: "A new summary: refresh it when the content moves on.",
+        })
+        .optional(),
+      content: z
+        .text({
+          size: "rich",
+          maxLength: 1_000_000,
+          atFile: true,
+          description: "New content, in Markdown. Replaces the old one.",
+        })
+        .optional(),
+      directory: z
+        .integer()
+        .min(0)
+        .describe("Move it into this directory, by its shortId; 0 is the root.")
+        .optional(),
+      pinned: z
+        .boolean()
+        .describe(
+          "Pin it, or unpin it with --no-pinned. Pinned folios open lore project context.",
+        )
+        .optional(),
+      epic: z
+        .text({
+          description: "File it under this epic, 45 or E45; 0 takes it out.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.folio(args);
+        const changed = (
+          [
+            "title",
+            "summary",
+            "content",
+            "directory",
+            "pinned",
+            "epic",
+          ] as const
+        ).filter((key) => flags[key] !== undefined);
+        if (changed.length === 0) {
+          throw new UsageError(
+            "Nothing to update: pass at least one of --title, --summary, --content, --directory, --pinned or --epic.",
+          );
+        }
+
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const folio = await this.folioApi.getByShortId({
+          params: { projectId, shortId },
+          query: {},
+        });
+
+        const directoryId = flags.directory
+          ? (
+              await this.directoryApi.getDirectoryByShortId({
+                params: { projectId, shortId: flags.directory },
+              })
+            ).id
+          : flags.directory === 0
+            ? null
+            : undefined;
+
+        // The epic first, as `folio_update` does: it is a separate call that
+        // can be refused on its own, and a refusal here writes nothing else.
+        if (flags.epic === "0") {
+          if (folio.epicId != null) {
+            await this.epicApi.detachFolio({
+              params: { id: folio.epicId, folioId: folio.id },
+            });
+          }
+        } else if (flags.epic !== undefined) {
+          const epic = await this.epicApi.getEpicByNumber({
+            params: { projectId, number: this.refs.epic(flags.epic) },
+          });
+          await this.epicApi.attachFolio({
+            params: { id: epic.id },
+            body: { folioId: folio.id },
+          });
+        }
+
+        // An epic move alone is not an edit: no revision for it.
+        const updated = changed.some((key) => key !== "epic")
+          ? await this.folioApi.update({
+              params: { id: folio.id },
+              body: {
+                title: flags.title,
+                summary: flags.summary,
+                content: flags.content,
+                directoryId,
+                pinned: flags.pinned,
+              },
+            })
+          : folio;
+
+        this.printWrite(
+          print,
+          flags.output,
+          updated,
+          `Updated F${shortId}: ${changed.join(", ")}`,
+        );
+      });
+    },
+  });
+
+  public readonly search = $command({
+    name: "search",
+    description: "Search a project's folios, with a snippet around each match",
+    args: z.text({ title: "query", description: "The text to look for." }),
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      limit: z
+        .integer()
+        .min(1)
+        .max(50)
+        .describe("How many folios to print, at most 50. Defaults to 10.")
+        .default(10),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const folios = await this.folioApi.list({
+          query: { projectId, q: args, limit: flags.limit },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, folios);
+          return;
+        }
+
+        if (folios.length === 0) {
+          print("No folios match.");
+          return;
+        }
+        folios.forEach((folio, index) => {
+          if (index > 0) print("");
+          print(`F${folio.shortId}  ${folio.title}`);
+          // A protected folio's content is ciphertext, never a snippet.
+          if (!folio.protected) {
+            print(this.snippet(folio.content, args));
+          }
+        });
+      });
+    },
+  });
+
+  public readonly history = $command({
+    name: "history",
+    description:
+      "List a folio's revisions, newest first; --output json carries their content",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({ ...FolioCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const id = await this.idOf(args, flags.project, context);
+
+        const revisions = await this.folioApi.listHistory({ params: { id } });
+
+        if (flags.output === "json") {
+          this.render.json(print, revisions);
+          return;
+        }
+
+        this.render.list(
+          print,
+          revisions.map((revision) => ({
+            handle: revision.id,
+            title: revision.titleSnapshot,
+            fields: [revision.action, revision.at.slice(0, 16)],
+          })),
+          undefined,
+          "This folio has no revisions.",
+        );
+      });
+    },
+  });
+
+  public readonly revert = $command({
+    name: "revert",
+    description:
+      "Put a folio back to a revision; what it replaces stays in the history",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      revision: z
+        .uuid()
+        .describe("The revision's id, from lore folio history."),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const id = await this.idOf(args, flags.project, context);
+
+        const folio = await this.folioApi.revertHistory({
+          params: { id, revisionId: flags.revision },
+        });
+
+        this.printWrite(
+          print,
+          flags.output,
+          folio,
+          `Reverted F${folio.shortId} ${folio.title}`,
+        );
+      });
+    },
+  });
+
+  public readonly delete = $command({
+    name: "delete",
+    description: "Delete a folio for good",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      yes: z
+        .boolean()
+        .describe("Required: a delete cannot be undone.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.folio(args);
+        if (!flags.yes) {
+          throw new UsageError(
+            `Nothing deleted: F${shortId} would go for good. Pass --yes to delete it.`,
+          );
+        }
+
+        const id = await this.idOf(args, flags.project, context);
+        const result = await this.folioApi.delete({ params: { id } });
+
+        this.printWrite(print, flags.output, result, `Deleted F${shortId}`);
+      });
+    },
+  });
+
+  public readonly attachmentList = $command({
+    name: "list",
+    description: "List a folio's attachments",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({ ...FolioCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const folioId = await this.idOf(args, flags.project, context);
+
+        const attachments = await this.attachmentApi.listAttachments({
+          params: { folioId },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, attachments);
+          return;
+        }
+
+        this.render.list(
+          print,
+          attachments.map((attachment) => ({
+            handle: `A${attachment.shortId}`,
+            title: attachment.name,
+            fields: [attachment.mimeType, `${attachment.size} bytes`],
+          })),
+          undefined,
+          "This folio has no attachments.",
+        );
+      });
+    },
+  });
+
+  public readonly attachmentRename = $command({
+    name: "rename",
+    description: "Rename a folio's attachment; a name taken gets a suffix",
+    args: FolioCommand.ATTACHMENT_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      name: z.text({ maxLength: 200, description: "The new name." }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.attachment(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const attachment = await this.attachmentApi.getAttachmentByShortId({
+          params: { projectId, shortId },
+        });
+        const updated = await this.attachmentApi.renameAttachment({
+          params: { id: attachment.id },
+          body: { name: flags.name },
+        });
+
+        this.printWrite(
+          print,
+          flags.output,
+          updated,
+          `Renamed A${shortId} to ${updated.name}`,
+        );
+      });
+    },
+  });
+
+  public readonly attachmentDelete = $command({
+    name: "delete",
+    description: "Delete a folio's attachment and reclaim its storage",
+    args: FolioCommand.ATTACHMENT_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      yes: z
+        .boolean()
+        .describe("Required: a delete cannot be undone.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.attachment(args);
+        if (!flags.yes) {
+          throw new UsageError(
+            `Nothing deleted: A${shortId} would go for good. Pass --yes to delete it.`,
+          );
+        }
+
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const attachment = await this.attachmentApi.getAttachmentByShortId({
+          params: { projectId, shortId },
+        });
+        const result = await this.attachmentApi.deleteAttachment({
+          params: { id: attachment.id },
+        });
+
+        this.printWrite(print, flags.output, result, `Deleted A${shortId}`);
+      });
+    },
+  });
+
+  public readonly attachment = $command({
+    name: "attachment",
+    description:
+      "A folio's files: list, rename and delete them. lore attachments push adds them",
+    children: [
+      this.attachmentList,
+      this.attachmentRename,
+      this.attachmentDelete,
+    ],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
    * `findLast`, so a second class declaring `folio` would shadow this one
@@ -301,12 +695,53 @@ export class FolioCommand {
   public readonly folio = $command({
     name: "folio",
     description:
-      "A project's folios, its shared memory: list, read and create them",
-    children: [this.list, this.get, this.create],
+      "A project's folios, its shared memory: list, search, read, create, update, revert and delete them",
+    children: [
+      this.list,
+      this.search,
+      this.get,
+      this.create,
+      this.update,
+      this.history,
+      this.revert,
+      this.delete,
+      this.attachment,
+    ],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  /**
+   * A folio's id from a reference. Its project goes into `context` first, so
+   * a refusal names it.
+   */
+  protected async idOf(
+    ref: string,
+    project: string | undefined,
+    context: LoreRefusalContext,
+  ): Promise<string> {
+    const shortId = this.refs.folio(ref);
+    const { projectId } = await this.projects.named(project, context);
+    const folio = await this.folioApi.getByShortId({
+      params: { projectId, shortId },
+      query: {},
+    });
+    return folio.id;
+  }
+
+  /**
+   * About a hundred characters either side of the first match, as
+   * `folio_search` cuts it.
+   */
+  protected snippet(text: string, query: string): string {
+    const radius = 100;
+    const index = text.toLowerCase().indexOf(query.toLowerCase());
+    if (index === -1) return text.slice(0, 240);
+    const start = Math.max(0, index - radius);
+    const end = Math.min(text.length, index + query.length + radius);
+    return `${start > 0 ? "…" : ""}${text.slice(start, end)}${end < text.length ? "…" : ""}`;
+  }
 
   protected printWrite(
     print: (message?: string) => void,

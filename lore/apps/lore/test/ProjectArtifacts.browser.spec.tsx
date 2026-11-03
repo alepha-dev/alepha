@@ -18,7 +18,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { $page, AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -55,8 +55,18 @@ class RecordingLinkProvider extends LinkProvider {
 }
 
 /**
- * The routes the page links into. `projectRelease` is the one that matters:
- * the tag column links there only when a release with that tag exists.
+ * What the row asked for, since a jsdom render has no browser to navigate.
+ */
+class RecordingRouter extends ReactRouter<object> {
+  public pushed: string[] = [];
+
+  public override async push(target: any): Promise<void> {
+    this.pushed.push(target);
+  }
+}
+
+/**
+ * The routes the page links into.
  */
 class Routes {
   projectAppRedirect = $page({
@@ -123,6 +133,7 @@ describe("ProjectArtifacts", () => {
       // Before anything that instantiates it: a substitution after that is
       // too late.
       .with({ provide: LinkProvider, use: RecordingLinkProvider })
+      .with({ provide: ReactRouter, use: RecordingRouter })
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
@@ -138,7 +149,7 @@ describe("ProjectArtifacts", () => {
     alepha.store.set(currentProjectAtom, {
       ...projectFixture({ title: "Alepha", slug: "alepha" }),
       repositoryUrl,
-    } as never);
+    });
     alepha.store.set(currentReleasesAtom, releases as never);
     alepha.store.set(currentInstancesAtom, options.instances ?? []);
 
@@ -147,6 +158,7 @@ describe("ProjectArtifacts", () => {
     for (const name of options.denied ?? []) links.denied.add(name);
     return {
       links,
+      router: alepha.inject(ReactRouter) as RecordingRouter,
       ...render(
         <AlephaContext.Provider value={alepha}>
           {/* The delete confirm is `useDialog`, which requires one. */}
@@ -533,33 +545,43 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
-   * Tag equality is the whole join - no join table, no foreign key - and an
-   * artifact whose tag names no release is a normal state, so the cell has to
-   * read as text rather than as a link that goes nowhere.
+   * The tag opens the build's own page, with this row's variant selected. The
+   * release link moved there: a table row flattens a tag into its variants,
+   * and the page is where they are one thing again.
    */
-  it("links a tag to its release only when one exists", async ({ expect }) => {
-    const withRelease = await show(listing([group()]), [
-      {
-        id: 1,
-        projectId: 1,
-        number: 1,
-        tag: "1.0.0",
-        title: "1.0.0",
-        description: "",
-        createdAt: "2026-08-26T10:00:00.000Z",
-        updatedAt: "2026-08-26T10:00:00.000Z",
-        progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
-      },
-    ]);
-    const tagged = await withRelease.findByText("1.0.0");
-    expect(tagged.closest("a")?.getAttribute("href")).toBe(
-      "/alepha/releases/1.0.0",
-    );
+  it("links a tag to its build, on this row's variant", async ({ expect }) => {
+    const view = await show(listing([group()]));
 
-    const withoutRelease = await show(listing([group()]), []);
-    const plain = await withoutRelease.findByText("1.0.0");
-    expect(plain.closest("a")).toBeNull();
+    const tagged = await view.findByText("1.0.0");
+
+    expect(tagged.closest("a")?.getAttribute("href")).toMatch(
+      /^\/alepha\/artifacts\/docs\/1\.0\.0\?variant=[a-z]+-[a-z]+$/,
+    );
   });
+
+  /**
+   * A row is the item, as on the Apps table. A tag alone was too small a
+   * target, and it looked like plain text: the page seemed to link nothing.
+   */
+  it("opens the build from anywhere on its row", async ({ expect }) => {
+    const view = await show(listing([group()]));
+
+    fireEvent.click(await view.findByText("docs"));
+
+    expect(view.router.pushed).toHaveLength(1);
+    expect(view.router.pushed[0]).toMatch(
+      /^\/alepha\/artifacts\/docs\/1\.0\.0\?variant=[a-z]+-[a-z]+$/,
+    );
+  });
+
+  it("does not open the build twice from its tag", async ({ expect }) => {
+    const view = await show(listing([group()]));
+
+    fireEvent.click(await view.findByText("1.0.0"));
+
+    expect(view.router.pushed).toEqual([]);
+  });
+
   /**
    * ⚠️ The App cell is TEXT, and the point is what it stopped doing.
    *
@@ -571,7 +593,7 @@ describe("ProjectArtifacts", () => {
    * running something else entirely (#P2162).
    *
    * Pinned beside the Tag case above because the two look alike and are not:
-   * a tag link is a real relationship, an app link was a resolved guess.
+   * a tag names one build, an app link was a resolved guess.
    */
   it("does not link the app to a copy the artifact says nothing about", async ({
     expect,
@@ -596,7 +618,7 @@ describe("ProjectArtifacts", () => {
         observe() {}
         unobserve() {}
         disconnect() {}
-      } as never;
+      };
     });
 
     const rowOf = (tag: string) => {

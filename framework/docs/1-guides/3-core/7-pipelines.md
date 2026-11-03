@@ -51,15 +51,15 @@ Only one is what you meant.
 A middleware is a function that takes the next handler and returns a wrapped one. `createMiddleware` builds it with the container already resolved, and attaches the `name` and `options` that tooling reads back from `primitive.middlewares`:
 
 ```typescript check
-import { $pipeline, createMiddleware, type Middleware } from "alepha";
+import { $inject, $pipeline, createMiddleware, type Middleware } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 
-const $timed = (label: string): Middleware =>
-  createMiddleware({
+const $timed = (label: string): Middleware => {
+  const time = $inject(DateTimeProvider);
+  return createMiddleware({
     name: "$timed",
     options: { label },
-    handler: ({ alepha, next }) => {
-      const time = alepha.inject(DateTimeProvider);
+    handler: ({ next }) => {
       return async (...args) => {
         const start = time.nowMillis();
         try {
@@ -70,6 +70,7 @@ const $timed = (label: string): Middleware =>
       };
     },
   });
+};
 
 class ReportService {
   build = $pipeline({
@@ -79,7 +80,7 @@ class ReportService {
 }
 ```
 
-`createMiddleware` calls [`$context()`](/docs/guides-core-alepha-instance#writing-your-own-primitive-with-context), so it must run where a primitive would: inside a property initializer, which is where a `use` array is written. A `meta` record of free-form capability flags can be attached as well, for consumers that react to what a middleware does without knowing which one it is.
+`createMiddleware` calls [`$context()`](/docs/guides-core-alepha-instance#writing-your-own-primitive-with-context), so it must run where a primitive would: inside a property initializer, which is where a `use` array is written. The `handler` itself runs later, the first time the pipeline is called, once the app has started and the container is locked. Resolve the services a middleware needs in the factory with `$inject`, as above, rather than with `alepha.inject()` inside `handler`. A `meta` record of free-form capability flags can be attached as well, for consumers that react to what a middleware does without knowing which one it is.
 
 ## `$scope`
 
@@ -100,14 +101,15 @@ class OrderService {
 }
 ```
 
-Adding `$scope()` to an `$action`, `$job` or `$page` throws, on purpose: you are
-already inside a scope, and nesting one would give you a second, empty context
-that silently loses everything the outer one held.
+`$scope()` throws when a scope already exists, on purpose: nesting one would
+give you a second, empty context that silently loses everything the outer one
+held. That rules it out of an `$action`, `$job` or `$page`, and out of a
+pipeline called from inside a request.
 
 ## See also
 
 - [Middlewares](/docs/guides-server-middlewares) for the server-side middleware
   that ships with `AlephaServer`
 - [Caching](/docs/guides-persistence-caching) for `$cache`
-- [Background Jobs](/docs/guides-server-background-jobs) for work that has to
+- [Background Jobs](/docs/guides-features-background-jobs) for work that has to
   survive the process, with its own durable retries

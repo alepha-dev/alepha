@@ -357,9 +357,9 @@ export class NotificationSenderService {
   ): Record<string, any> | undefined {
     if (!lang || !options.translations) return undefined;
     const exact = options.translations[lang];
-    if (exact) return exact as any;
+    if (exact) return exact;
     const base = lang.split("-")[0]?.toLowerCase();
-    return base ? (options.translations[base] as any) : undefined;
+    return base ? options.translations[base] : undefined;
   }
 
   /**

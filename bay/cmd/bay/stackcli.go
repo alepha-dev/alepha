@@ -397,6 +397,10 @@ a service's container, for an operator on the host.
 It never goes through the control API, on purpose: an exec is arbitrary
 command execution, and the control API's verbs are what Lore's connector may
 ask for. Reaching a container takes Docker access on this host, which is SSH.
+
+So it has no use for `--control-socket`, and `cmdStack` still takes the flag off
+the command: a wrapper adds it to everything it runs. A container command that
+needs a flag of that name goes through `sh -c`.
 */
 func cmdStackExec(args []string) error {
 	if len(args) < 3 {

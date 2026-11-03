@@ -35,24 +35,25 @@ The design notes live in the Lore project **Alepha** (`lore.alepha.dev/alepha`),
 | **Deployment**     | untar under guard, provision, atomic `current` switch, health-gated rollback watch               |
 | **Supervision**    | a Docker container per instance: the archive runs in the runtime image its manifest names        |
 | **Reverse proxy**  | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`         |
-| **Static headers** | the release's `dist/public/_headers` applied to every file served from disk, Cloudflare's way    |
+| **Static headers** | the release's `public/_headers` applied to every file served from disk, Cloudflare's way         |
 | **TLS**            | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)                |
 | **Provisioning**   | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`               |
 | **Backups**        | scheduled snapshot of every SQLite file in `data/`, verified, compressed, uploaded, pruned       |
 | **Control API**    | HTTP over a **unix socket**, authorized by the file mode. No port, no token                      |
-| **CLI**            | every command except `serve` is a thin client of that same API - one contract                    |
+| **CLI**            | apart from `serve` and a few host-side commands, a thin client of that same API - one contract   |
 
 `bay` with no arguments prints the full command list, and that usage text is
 the reference for flags - this table is the map, not the manual.
 
 ## Two things worth knowing before reading the code
 
-**There is no inbound control port and no bearer token.** The control API can
-create users, read every app's secrets and delete every backup, so it is
-root-equivalent. A loopback port with a shared secret is the wrong shape for
-that: any process on the host can reach the port, the secret ends up in a shell
-history, and a bind-address typo publishes it. The socket's authorization is
-the file mode, enforced by the kernel. Remote access is SSH and nothing else.
+**There is no inbound control port and no bearer token.** The control API
+deploys code, and a stack it deploys runs containers with the devices and
+capabilities they ask for, so it is root-equivalent. A loopback port with a
+shared secret is the wrong shape for that: any process on the host can reach the
+port, the secret ends up in a shell history, and a bind-address typo publishes
+it. The socket's authorization is the file mode, enforced by the kernel. Remote
+access is SSH and nothing else.
 The Docker socket Bay drives is root-equivalent for the same reason, and gets
 the same treatment: reached as root, over a unix socket only (a `tcp://`
 `DOCKER_HOST` is refused), never exposed.
@@ -325,7 +326,7 @@ hosts hold artifacts pulled before the change, and the compression is detected
 from the stream's own first bytes rather than from the file name.
 
 `manifest.json` is the contract between the build and all of its
-consumers - `alepha platform up --prebuilt`, Lore Deploy, and Bay. Declaring
+consumers - `alepha deploy --prebuilt`, Lore Deploy, and Bay. Declaring
 `$repository` is what puts `hasDatabase: true` in it, and that `true` is what
 provisions the database **and** grants write access in the sandbox. Nobody
 writes the same fact twice, so code ↔ infra drift is impossible by
@@ -360,9 +361,9 @@ bay logs lore/production --since 15m --grep 'ECONN' --json
 `--since` and `--grep` (a regular expression). Entries come from the app
 container's log, capped at three files of 10 MB.
 
-⚠️ `--since` **keeps** lines with no timestamp and says so at the end of the
-output. An app writing plain text to stdout produces none, and hiding them
-would suppress exactly the `console.log` you just added.
+⚠️ `--since` filters every line: one with no timestamp of its own takes Docker's.
+Both filters run on the client over the last `-n` lines (200 by default, 2000 at
+most), so widen `-n` for a longer window.
 
 ### The same two answers, on a page
 

@@ -22,6 +22,9 @@ export class LintCommand {
       const oxlint = this.utils.resolveBin("oxlint");
       const oxfmt = this.utils.resolveBin("oxfmt");
 
+      // The type-aware rules, on when `.oxlintrc.json` sets `typeAware`.
+      this.utils.useEmbeddedTsgolint();
+
       // Lint first, format second, and the order matters: `oxlint --fix`
       // rewrites code (dropping an unused import, unwrapping a useless spread)
       // with no regard for line width, so the formatter has to run afterwards

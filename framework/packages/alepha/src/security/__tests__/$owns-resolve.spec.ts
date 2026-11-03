@@ -171,7 +171,7 @@ describe("$owns resolve", () => {
               $owns({
                 repository: () => this.clubs,
                 owner: "createdBy",
-              } as any),
+              }),
             ],
             handler: async () => true,
           });

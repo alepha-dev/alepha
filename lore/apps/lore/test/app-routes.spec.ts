@@ -41,7 +41,6 @@ const NAV_ROUTE_NAMES = [
   // Sidebar entry + the view bar's two links — ProjectView.tsx
   "projectKanban",
   // Opening a card — KanbanBoard.tsx
-  "projectKanbanCard",
   "projectEpics",
   "projectEpic",
   "projectBlights",
@@ -64,6 +63,7 @@ const NAV_ROUTE_NAMES = [
   "appVitals",
   "appExplore",
   "appArtifacts",
+  "projectArtifact",
   "appSettings",
   // Settings sections and tabs — projectSettingsSections.ts, read by the
   // sidebar group and the tab bar. The heir of the nav array that broke.
@@ -87,7 +87,6 @@ const NAV_ROUTE_NAMES = [
   "bayCommands",
   "baySettings",
   // Reports tab bar — ReportsLayout.tsx
-  "reportsOverview",
   "reportsQuests",
   "reportsMembers",
   "reportsQuality",
@@ -278,6 +277,7 @@ describe("the route table", () => {
       shortId: "3",
       epicNumber: "7",
       releaseTag: "0.28.0",
+      artifactTag: "0.28.0",
       areaId: 1,
       analyticsDimension: "path",
       monitorId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",

@@ -140,7 +140,7 @@ describe("AtomCookiePersistence (browser)", () => {
     // exactly what `StateManager.del()` does internally, and is the only
     // way to drive the atom back to "no value", which is what triggers the
     // `value === undefined` branch under test.
-    alepha.store.set(prefs.key as any, undefined);
+    alepha.store.set(prefs.key, undefined);
 
     // Must be gone entirely — never the literal string "undefined", which
     // would make the next register()'s `JSON.parse("undefined")` throw.

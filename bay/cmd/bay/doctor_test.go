@@ -3,6 +3,10 @@ package main
 import (
 	"bytes"
 	"errors"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -76,4 +80,86 @@ func TestDoctor(t *testing.T) {
 			t.Fatalf("check = %+v", c)
 		}
 	})
+}
+
+// heldPort holds a port as any other program would, and returns it.
+func heldPort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	return ln.Addr().(*net.TCPAddr).Port
+}
+
+// controlSocket points the client at a socket in a directory short enough for
+// sun_path, which os.MkdirTemp gives and t.TempDir, on a long test name, does not.
+func controlSocket(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "bay")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	path := filepath.Join(dir, "control.sock")
+	t.Setenv("BAY_SOCKET", path)
+	return path
+}
+
+func serveSocket(t *testing.T, path string, handler http.Handler) {
+	t.Helper()
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &http.Server{Handler: handler}
+	go srv.Serve(ln)
+	t.Cleanup(func() { srv.Close() })
+}
+
+// Being told where a socket is says nothing about what holds the port: the path
+// is whatever was typed, and it used to be enough to pass ports 80 and 443 on a
+// host where nginx had them and no Bay had ever run.
+func TestPortHeldByAnotherProgram(t *testing.T) {
+	t.Run("fails when the socket does not exist", func(t *testing.T) {
+		controlSocket(t)
+
+		if c := portFree(heldPort(t)); c.OK {
+			t.Fatalf("check = %+v", c)
+		}
+	})
+
+	t.Run("fails when a stale socket file is left behind", func(t *testing.T) {
+		path := controlSocket(t)
+		ln, err := net.Listen("unix", path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ln.(*net.UnixListener).SetUnlinkOnClose(false)
+		ln.Close()
+
+		if c := portFree(heldPort(t)); c.OK {
+			t.Fatalf("check = %+v", c)
+		}
+	})
+
+	t.Run("fails when what answers is not a Bay", func(t *testing.T) {
+		serveSocket(t, controlSocket(t), http.NotFoundHandler())
+
+		if c := portFree(heldPort(t)); c.OK {
+			t.Fatalf("check = %+v", c)
+		}
+	})
+}
+
+func TestPortHeldByBayItself(t *testing.T) {
+	f := newDeployFixture(t)
+	serveSocket(t, controlSocket(t), f.server.controlMux())
+
+	c := portFree(heldPort(t))
+
+	if !c.OK || !strings.Contains(c.Detail, "a Bay answers") {
+		t.Fatalf("check = %+v", c)
+	}
 }

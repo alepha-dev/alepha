@@ -125,8 +125,7 @@ jobs:
       # workspace declares a `version` if and only if it is published. Private
       # workspaces (the docs, the showcase, the examples) never ship as an npm
       # package, so a number in their manifest is decoration, and decoration
-      # drifts. `@alepha/commerce`,
-      # `payments-mollie` and `sigil` sat at 0.1.0, 0.20.6 and 0.20.1 while
+      # drifts. `payments-mollie` and `sigil` sat at 0.20.6 and 0.20.1 while
       # `alepha` reached 0.26.0. They now carry no version at all.
       #
       # Dropping the flag to bump them anyway is what broke the first 0.27.0
@@ -410,7 +409,7 @@ jobs:
       #  -  and a release that is born complete never exists in a half state.
       - name: Log in to GitHub Container Registry
         if: inputs.dry_run != true
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

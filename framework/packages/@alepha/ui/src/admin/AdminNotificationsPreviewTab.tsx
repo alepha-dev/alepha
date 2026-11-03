@@ -38,10 +38,10 @@ export const AdminNotificationsPreviewTab = (
     {
       handler: ({ signal }) =>
         props.active && props.notificationId
-          ? (client.previewNotification(
+          ? client.previewNotification(
               { params: { id: props.notificationId } },
               { request: { signal } },
-            ) as any)
+            )
           : Promise.resolve(null),
       onError: () => {},
     },

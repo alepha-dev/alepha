@@ -79,7 +79,7 @@ describe("MyProjects", () => {
       ownedCount: 2,
       maxProjects: 10,
       canCreate: true,
-    } as never);
+    });
 
     render(
       <AlephaContext.Provider value={alepha}>

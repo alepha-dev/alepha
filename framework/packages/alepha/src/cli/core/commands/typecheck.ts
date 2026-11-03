@@ -21,10 +21,31 @@ export class TypecheckCommand {
         checkWorkspace: true,
       });
 
-      // TypeScript ships embedded in `alepha` — resolve and run its `tsc`
-      // from alepha's own install, so the project never declares it.
-      const tsc = this.utils.resolveBin("typescript", "tsc");
-      await run(`node "${tsc}" --noEmit`);
+      // The compiler's own diagnostics, through the `tsgolint` binary that
+      // `alepha lint` already runs for type-aware rules: one embedded build of
+      // the TypeScript 7 checker instead of two (#Q3085 removed the last other
+      // user of `typescript`, about 30 MB). Measured against `tsc --noEmit` on 4001 seeded errors across
+      // `packages/alepha` and Lore (#Q3073): the same file, line, column and
+      // code for every one, as fast or faster, with less memory.
+      //
+      // One difference, by design: each file is checked under its nearest
+      // `tsconfig.json` and reported only when it sits under the directory
+      // being checked. `tsc -p` also reports files of other workspaces it
+      // reaches through imports, which their own `typecheck` reports anyway.
+      //
+      // An empty rule set, so that typecheck reports types and nothing else:
+      // lint findings are `alepha lint`'s.
+      this.utils.useEmbeddedTsgolint();
+      const oxlint = this.utils.resolveBin("oxlint");
+      const config = await this.utils.writeConfigFile(
+        "oxlint-typecheck.json",
+        JSON.stringify({ plugins: [], categories: {}, rules: {} }),
+        root,
+      );
+      await run(
+        `node "${oxlint}" -c "${config}" --type-aware --type-check --ignore-pattern node_modules`,
+        { alias: "typecheck" },
+      );
     },
   });
 }

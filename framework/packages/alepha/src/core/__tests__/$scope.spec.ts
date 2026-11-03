@@ -304,6 +304,6 @@ describe("$scope composition", () => {
     const ctrl = alepha.inject(TestController);
     const result = await ctrl.action.run("hello", "world");
     expect(result).toBe("world");
-    expect(alepha.store.get("hello" as any)).toBe(undefined);
+    expect(alepha.store.get("hello")).toBe(undefined);
   });
 });

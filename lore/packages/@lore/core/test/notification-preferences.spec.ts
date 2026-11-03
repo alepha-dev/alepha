@@ -60,7 +60,7 @@ const setup = async () => {
       alepha.store.set(currentUserAtom, {
         id: user.id,
         roles: ["user"],
-      } as any);
+      });
       return fn();
     });
 
@@ -85,7 +85,7 @@ const ask = (
     template: "lore:inbox:mention",
     category: "mentions",
     ...options,
-  } as never);
+  });
 
 describe("Lore's notification preferences", () => {
   it("allows everything when there is no row", async ({ expect }) => {
@@ -106,9 +106,10 @@ describe("Lore's notification preferences", () => {
   });
 
   /**
-   * Axis one. Email off is off for every category on that channel, and the
-   * inbox is untouched by it: there is no `inbox` channel switch, because a
-   * bell you have silenced is a feature you have deleted.
+   * Axis one. Email off is off for every category on that channel, a critical
+   * template aside, and the inbox is untouched by it: there is no `inbox`
+   * channel switch, because a bell you have silenced is a feature you have
+   * deleted.
    */
   it("honours the email channel switch, and leaves the inbox alone", async ({
     expect,
@@ -117,7 +118,7 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       emailEnabled: false,
-    } as never);
+    });
 
     expect(await ask(ctx, { channel: "email" })).toBe(false);
     expect(await ask(ctx, { channel: "inbox" })).toBe(true);
@@ -134,7 +135,7 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       mutedCategories: ["releases"],
-    } as never);
+    });
 
     expect(await ask(ctx, { category: "releases" })).toBe(false);
     expect(await ask(ctx, { category: "releases", channel: "inbox" })).toBe(
@@ -155,10 +156,33 @@ describe("Lore's notification preferences", () => {
     await ctx.probe.prefs.create({
       userId: ctx.user.id,
       mutedCategories: ["security"],
-    } as never);
+    });
 
     expect(await ask(ctx, { category: "security" })).toBe(false);
     expect(await ask(ctx, { category: "security", critical: true })).toBe(true);
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * The same account, reached through the broader switch: the Email switch
+   * promises that sign-in codes and password resets are not affected.
+   */
+  it("never lets the email switch stop a critical template", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.probe.prefs.create({
+      userId: ctx.user.id,
+      emailEnabled: false,
+    });
+
+    expect(await ask(ctx, { category: "security", critical: true })).toBe(true);
+    // `critical` is what earns it, not the category.
+    expect(await ask(ctx, { category: "security" })).toBe(false);
+    expect(await ask(ctx, { category: "security", critical: false })).toBe(
+      false,
+    );
 
     await ctx.alepha.stop();
   });
@@ -196,7 +220,7 @@ describe("Lore's notification preferences", () => {
     const ctx = await setup();
 
     const initial = await ctx.asUser(() =>
-      ctx.controller.getMyNotificationPreferences({} as never),
+      ctx.controller.getMyNotificationPreferences({}),
     );
     expect(initial.emailEnabled).toBe(true);
     expect(initial.mutedCategories).toEqual([]);
@@ -210,7 +234,7 @@ describe("Lore's notification preferences", () => {
     const updated = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { emailEnabled: false, mutedCategories: ["releases"] },
-      } as never),
+      }),
     );
     expect(updated.emailEnabled).toBe(false);
     expect(updated.mutedCategories).toEqual(["releases"]);
@@ -229,12 +253,12 @@ describe("Lore's notification preferences", () => {
     await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { mutedCategories: ["releases"] },
-      } as never),
+      }),
     );
     const after = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { emailEnabled: false },
-      } as never),
+      }),
     );
 
     expect(after.emailEnabled).toBe(false);
@@ -249,7 +273,7 @@ describe("Lore's notification preferences", () => {
     const after = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
         body: { mutedCategories: ["releases", "made-up"] },
-      } as never),
+      }),
     );
 
     expect(after.mutedCategories).toEqual(["releases"]);

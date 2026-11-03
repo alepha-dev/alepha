@@ -69,21 +69,33 @@ const boot = async (engine: (typeof ENGINES)[number]) => {
     controller,
     me: { id: ME, realm: "default", sessionId: "s-1" },
     list: (query: Record<string, unknown> = {}, user = ME) =>
-      controller.listInbox({ query } as never, {
-        user: { id: user, realm: "default", sessionId: "s-1" } as never,
-      }),
+      controller.listInbox(
+        { query },
+        {
+          user: { id: user, realm: "default", sessionId: "s-1" },
+        },
+      ),
     count: (query: Record<string, unknown> = {}, user = ME) =>
-      controller.countInbox({ query } as never, {
-        user: { id: user, realm: "default", sessionId: "s-1" } as never,
-      }),
+      controller.countInbox(
+        { query },
+        {
+          user: { id: user, realm: "default", sessionId: "s-1" },
+        },
+      ),
     markRead: (id: string, user = ME) =>
-      controller.markInboxRead({ params: { id } } as never, {
-        user: { id: user, realm: "default", sessionId: "s-1" } as never,
-      }),
+      controller.markInboxRead(
+        { params: { id } },
+        {
+          user: { id: user, realm: "default", sessionId: "s-1" },
+        },
+      ),
     markAllRead: (query: Record<string, unknown> = {}, user = ME) =>
-      controller.markAllInboxRead({ query } as never, {
-        user: { id: user, realm: "default", sessionId: "s-1" } as never,
-      }),
+      controller.markAllInboxRead(
+        { query },
+        {
+          user: { id: user, realm: "default", sessionId: "s-1" },
+        },
+      ),
   };
 };
 
@@ -99,7 +111,7 @@ const seed = async (
     title: "You are mentioned",
     href: "/quests/Q1",
     ...overrides,
-  } as never);
+  });
 
 for (const engine of ENGINES) {
   describe(`the inbox controller (${engine.name})`, () => {

@@ -196,7 +196,7 @@ const run = (
         ? {
             width: label.width + EDGE_LABEL_PAD * 2,
             height: label.height + EDGE_LABEL_PAD,
-            labelpos: "c" as never,
+            labelpos: "c",
           }
         : {},
     );

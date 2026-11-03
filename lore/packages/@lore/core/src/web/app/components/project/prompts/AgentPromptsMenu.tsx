@@ -109,7 +109,7 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
               onClick={() => agentPrompt.copy(item.kind, item.subject())}
             >
               <meta.icon />
-              {tr(meta.labelKey as never)}
+              {tr(meta.labelKey)}
             </DropdownMenuItem>
           );
         })}

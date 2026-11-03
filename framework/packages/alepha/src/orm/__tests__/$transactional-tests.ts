@@ -230,9 +230,9 @@ export const testRepositoryTransactionAsyncRollback = async (
   // finishes, making rollback impossible.
   await expect(
     app.repo.transaction(async (tx) => {
-      await app.repo.create({ name: "will-rollback" }, { tx: tx as any });
+      await app.repo.create({ name: "will-rollback" }, { tx: tx });
       await new Promise((resolve) => setTimeout(resolve, 10));
-      await app.repo.create({ name: "will-rollback-too" }, { tx: tx as any });
+      await app.repo.create({ name: "will-rollback-too" }, { tx: tx });
       throw new Error("boom");
     }),
   ).rejects.toThrow("boom");

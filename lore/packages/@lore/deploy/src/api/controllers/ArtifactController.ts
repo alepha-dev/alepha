@@ -7,9 +7,11 @@ import type { UserAccountToken } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
+import { artifactDetailSchema } from "../schemas/artifactDetailSchema.ts";
 import { artifactListSchema } from "../schemas/artifactListSchema.ts";
 import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
 import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
+import { ArtifactDetailService } from "../services/ArtifactDetailService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 
 /**
@@ -35,6 +37,7 @@ import { ArtifactService } from "../services/ArtifactService.ts";
  */
 export class ArtifactController {
   protected readonly artifacts = $inject(ArtifactService);
+  protected readonly details = $inject(ArtifactDetailService);
   protected readonly files = $inject(FileService);
   protected readonly ranks = $inject(RankService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
@@ -320,6 +323,65 @@ export class ArtifactController {
   });
 
   /**
+   * One tag on its own page: its variants with their manifests, every copy of
+   * the app, and the runs that shipped the tag.
+   *
+   * ⚠️ `by-tag` is load-bearing in the path. `/artifacts/:app/:tag` would also
+   * match `/artifacts/:artifactId/download` and `/maps`, and `download` is a
+   * legal tag.
+   *
+   * ⚠️ Every variant of the tag, then the manifest of each. The listing stays
+   * manifest-free: the column is 3 KB a row and nothing that lists wants it.
+   */
+  getArtifact = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "GET",
+    path: "/projects/:projectId/artifacts/by-tag/:app/:tag",
+    description:
+      "One tag's builds with their manifests, the copies of its app and the runs that shipped it.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        app: appNameSchema,
+        tag: releaseTagSchema,
+      }),
+      response: artifactDetailSchema,
+    },
+    handler: async ({ params }) => {
+      const { groups } = await this.artifacts.listGrouped({
+        projectId: params.projectId,
+        app: params.app,
+        tag: params.tag,
+      });
+      const [group] = groups;
+      if (!group) {
+        throw new NotFoundError(
+          `No artifact tagged "${params.tag}" for app "${params.app}" in this project.`,
+        );
+      }
+
+      const surroundings = await this.details.surroundings(
+        params.projectId,
+        group.app,
+        group.tag,
+      );
+
+      return {
+        app: group.app,
+        tag: group.tag,
+        pushedAt: group.pushedAt,
+        commitSha: group.commitSha,
+        variants: group.variants.map((variant) => ({
+          ...this.resource(variant),
+          manifest: this.manifestOf(variant),
+          hasMaps: Boolean(variant.mapsFileId),
+        })),
+        ...surroundings,
+      };
+    },
+  });
+
+  /**
    * Download a stored tarball through the project's read permission.
    * Image artifacts hold registry references, so they have no local bytes.
    */
@@ -457,6 +519,22 @@ export class ArtifactController {
       return { ok: true };
     },
   });
+
+  /**
+   * The stored document, parsed. A row that does not parse reads as absent,
+   * which every reader already renders as "unknown", rather than failing the
+   * page over a column the push wrote itself.
+   */
+  protected manifestOf(artifact: Artifact): Record<string, any> | undefined {
+    if (!artifact.manifest) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(artifact.manifest);
+    } catch {
+      return undefined;
+    }
+  }
 
   /**
    * The row, flattened to what the API returns. `fileId` deliberately stays

@@ -142,7 +142,7 @@ export abstract class WebSocketServerProvider {
   }): Promise<string | undefined> {
     let security: { resolveUserFromServerRequest: Function } | undefined;
     try {
-      security = this.alepha.inject("alepha.security.SecurityProvider") as any;
+      security = this.alepha.inject("alepha.security.SecurityProvider");
     } catch {
       return undefined;
     }
@@ -156,7 +156,7 @@ export abstract class WebSocketServerProvider {
     const user = await security.resolveUserFromServerRequest({
       url: handshake.url,
       headers: handshake.headers,
-    } as any);
+    });
 
     return user?.id;
   }

@@ -646,9 +646,7 @@ export class FormModel<T extends ZObject> {
     const chainMeta = z.schema.meta(rawField);
     const unwrapped = z.schema.unwrap(rawField) as typeof rawField;
     const field = (
-      Object.keys(chainMeta).length
-        ? (unwrapped as any).meta(chainMeta)
-        : unwrapped
+      Object.keys(chainMeta).length ? unwrapped.meta(chainMeta) : unwrapped
     ) as typeof rawField;
 
     const isRequired =

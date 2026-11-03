@@ -164,7 +164,7 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
               description={monitor ? tr("uptime.kindImmutable") : undefined}
               items={["http", "tcp", "cert", "push"].map((value) => ({
                 value,
-                label: tr(`uptime.kind.${value}` as never),
+                label: tr(`uptime.kind.${value}`),
               }))}
             />
             {kind !== "push" ? (

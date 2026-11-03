@@ -559,7 +559,7 @@ describe("changelog", () => {
     ) => {
       const alepha = Alepha.create();
       if (options) {
-        alepha.set(changelogOptions, options as any);
+        alepha.set(changelogOptions, options);
       }
       const command = alepha.inject(TestChangelogCommand);
       await alepha.start();

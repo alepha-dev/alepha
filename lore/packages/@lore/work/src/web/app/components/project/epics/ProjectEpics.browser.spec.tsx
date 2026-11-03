@@ -127,7 +127,7 @@ describe("ProjectEpics - the status filter", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {

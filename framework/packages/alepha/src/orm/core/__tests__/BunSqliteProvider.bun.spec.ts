@@ -145,7 +145,7 @@ describe("BunSqliteProvider", () => {
 
     expect(
       app.userRepo.transaction(async (tx) => {
-        await app.userRepo.create({ name: "will-rollback" }, { tx: tx as any });
+        await app.userRepo.create({ name: "will-rollback" }, { tx: tx });
         await new Promise((resolve) => setTimeout(resolve, 10));
         throw new Error("boom");
       }),

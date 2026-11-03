@@ -61,7 +61,7 @@ export const AdminFiles = () => {
   const { data: stats } = useQuery(
     {
       handler: ({ signal }) =>
-        statsClient.getFileStats({} as never, { request: { signal } }),
+        statsClient.getFileStats({}, { request: { signal } }),
       onError: () => {},
     },
     [statsClient, refreshKey],

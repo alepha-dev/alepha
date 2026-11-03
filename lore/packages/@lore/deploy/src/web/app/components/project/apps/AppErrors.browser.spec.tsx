@@ -89,10 +89,10 @@ describe("AppErrors", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 
-    alepha.store.set(currentInstanceAtom, INSTANCE as never);
+    alepha.store.set(currentInstanceAtom, INSTANCE);
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }) as never,
+      projectFixture({ title: "Alepha", slug: "alepha" }),
     );
 
     const links = alepha.inject(LinkProvider) as FakeLinkProvider;

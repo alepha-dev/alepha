@@ -65,7 +65,7 @@ describe("distinct combined with joins", () => {
         with: {
           author: { join: authors, on: ["authorId", authors.cols.id] },
         },
-      } as never),
+      }),
     ).rejects.toThrow(/distinct/i);
 
     await alepha.stop();
@@ -93,7 +93,7 @@ describe("distinct combined with joins", () => {
 
     const rows = await app.books.findMany({
       with: { author: { join: authors, on: ["authorId", authors.cols.id] } },
-    } as never);
+    });
     expect(rows[0]).toMatchObject({ title: "A" });
 
     await alepha.stop();

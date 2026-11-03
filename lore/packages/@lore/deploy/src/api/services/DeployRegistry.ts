@@ -214,7 +214,7 @@ export class DeployRegistry {
     try {
       if (values.status === "succeeded" || values.status === "failed")
         return await this.automationSources.terminal(deploymentId, values);
-      await this.rows.updateById(deploymentId, values as never);
+      await this.rows.updateById(deploymentId, values);
       return true;
     } catch (error) {
       this.log.warn(

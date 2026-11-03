@@ -3,8 +3,17 @@ import { db } from "alepha/orm";
 import { $action, NotFoundError } from "alepha/server";
 
 import type { ProductEntity } from "../entities/products.ts";
+import type { ProductVariantEntity } from "../entities/productVariants.ts";
+import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
+import { publicVariantSchema } from "../schemas/publicVariantSchema.ts";
 import { CatalogService } from "../services/CatalogService.ts";
-import { StockService } from "../services/StockService.ts";
+import { CategoryService } from "../services/CategoryService.ts";
+import {
+  type PriceList,
+  PriceListService,
+} from "../services/PriceListService.ts";
+import { type StockFigures, StockService } from "../services/StockService.ts";
+import { VariantService } from "../services/VariantService.ts";
 
 /**
  * A product as a storefront needs it.
@@ -25,15 +34,36 @@ export const publicProductSchema = z.object({
   description: z.text().optional(),
   price: z.integer(),
   currency: z.text(),
+  /**
+   * Struck through beside the price: only ever higher than it, and only in the
+   * product's own currency.
+   */
+  compareAtPrice: z.integer().optional(),
+  metaTitle: z.text().optional(),
+  metaDescription: z.text().optional(),
+  weightGrams: z.integer().optional(),
+  lengthMm: z.integer().optional(),
+  widthMm: z.integer().optional(),
+  heightMm: z.integer().optional(),
   images: z.array(z.text()),
   attributes: z.record(z.text(), z.any()).optional(),
   available: z.integer(),
+  optionGroups: z.array(optionGroupSchema),
+  /**
+   * The lowest price on sale, on a product whose variants differ: what a
+   * listing says after "from".
+   */
+  priceFrom: z.integer().optional(),
+  /**
+   * On the detail only: a listing draws no picker.
+   */
+  variants: z.array(publicVariantSchema).optional(),
 });
 
 export type PublicProduct = Infer<typeof publicProductSchema>;
 
 /**
- * Public catalog. No authentication — a storefront is readable by anyone, and
+ * Public catalog. No authentication - a storefront is readable by anyone, and
  * only published rows are ever returned.
  */
 export class ProductController {
@@ -41,6 +71,9 @@ export class ProductController {
   protected readonly group = "commerce:catalog";
   protected readonly catalog = $inject(CatalogService);
   protected readonly stock = $inject(StockService);
+  protected readonly variants = $inject(VariantService);
+  protected readonly categories = $inject(CategoryService);
+  protected readonly prices = $inject(PriceListService);
 
   public readonly commerceProductList = $action({
     method: "GET",
@@ -52,19 +85,70 @@ export class ProductController {
         size: z.integer().min(1).max(100).optional(),
         page: z.integer().min(0).optional(),
         kind: z.text({ maxLength: 64 }).optional(),
+        /**
+         * A category's slug: it and everything under it.
+         */
+        category: z.text({ maxLength: 200 }).optional(),
+        /**
+         * Words in the name or the description.
+         */
+        q: z.text({ maxLength: 200 }).optional(),
+        minPrice: z.integer().min(0).optional(),
+        maxPrice: z.integer().min(0).optional(),
+        /**
+         * Prices in this currency, and only what sells in it.
+         */
+        currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+        /**
+         * Only what can be bought now.
+         */
+        available: z.boolean().optional(),
+        sort: z
+          .enum(["name", "-name", "price", "-price", "createdAt", "-createdAt"])
+          .optional(),
       }),
       response: db.page(publicProductSchema),
     },
     handler: async ({ query }) => {
-      const page = await this.catalog.list(query);
+      const { category, ...filters } = query;
+      const page = await this.catalog.list({
+        ...filters,
+        ...(category ? { categoryId: await this.categoryId(category) } : {}),
+      });
+      const ids = page.content.map((product) => product.id);
+      const variants = await this.variants.listForProducts(ids);
       // Availability per row, so a listing can grey out what is gone without a
-      // second request per product.
-      const content = await Promise.all(
-        page.content.map(async (product) => ({
-          ...this.publicView(product),
-          available: await this.stock.available(product.id),
-        })),
-      );
+      // second request per product, and for the whole page in two queries.
+      const stock = await this.stock.figuresFor(ids);
+      const list = await this.prices.forCurrency(ids, query.currency);
+      const content = page.content.flatMap((product) => {
+        const onSale = this.onSale(product, variants, list);
+        const { priceFrom, available, perVariant } = this.figures(
+          product,
+          onSale,
+          stock,
+          list,
+          query.currency,
+        );
+        // Priced through a variant nobody can pick: not on sale after all.
+        const price = this.priceOf(product, list, perVariant);
+        return price === undefined
+          ? []
+          : [
+              {
+                ...this.publicView(product, query.currency),
+                price,
+                compareAtPrice: this.struck(
+                  product,
+                  product.compareAtPrice,
+                  price,
+                  query.currency,
+                ),
+                priceFrom,
+                available,
+              },
+            ];
+      });
       return { ...page, content };
     },
   });
@@ -76,35 +160,177 @@ export class ProductController {
     description: "Get a published product by slug, with its availability",
     schema: {
       params: z.object({ slug: z.text({ minLength: 1, maxLength: 200 }) }),
+      query: z.object({
+        /**
+         * Prices in this currency. A product not on sale in it is not found.
+         */
+        currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+      }),
       response: publicProductSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, query }) => {
       const product = await this.catalog.findBySlug(params.slug);
       if (!product?.published) {
         throw new NotFoundError(`No such product: ${params.slug}`);
       }
+      const list = await this.prices.forCurrency([product.id], query.currency);
+      const onSale = this.onSale(
+        product,
+        await this.variants.listOf(product.id),
+        list,
+      );
+      const { priceFrom, available, perVariant } = this.figures(
+        product,
+        onSale,
+        await this.stock.figuresFor([product.id]),
+        list,
+        query.currency,
+      );
+      const price = this.priceOf(product, list, perVariant);
+      if (price === undefined) {
+        throw new NotFoundError(`No such product: ${params.slug}`);
+      }
       return {
-        ...this.publicView(product),
-        available: await this.stock.available(product.id),
+        ...this.publicView(product, query.currency),
+        price,
+        compareAtPrice: this.struck(
+          product,
+          product.compareAtPrice,
+          price,
+          query.currency,
+        ),
+        priceFrom,
+        available,
+        variants: onSale.length > 0 ? perVariant : undefined,
       };
     },
   });
 
   /**
+   * The published category behind a slug. A draft shelf reads as no shelf.
+   */
+  protected async categoryId(slug: string): Promise<string> {
+    const category = await this.categories.findBySlug(slug);
+    if (!category?.published) {
+      throw new NotFoundError(`No such category: ${slug}`);
+    }
+    return category.id;
+  }
+
+  /**
+   * The variants of a product a buyer can pick, at a price they have.
+   */
+  protected onSale(
+    product: ProductEntity,
+    variants: ProductVariantEntity[],
+    list: PriceList,
+  ): ProductVariantEntity[] {
+    return variants.filter(
+      (it) =>
+        it.productId === product.id &&
+        it.active &&
+        list.of(product, it) !== undefined,
+    );
+  }
+
+  /**
+   * The product's price in the list, else its cheapest variant's: a product
+   * may be on sale in a currency through its variants alone.
+   */
+  protected priceOf(
+    product: ProductEntity,
+    list: PriceList,
+    perVariant: Array<{ price: number }>,
+  ): number | undefined {
+    return (
+      list.of(product) ??
+      (perVariant.length > 0
+        ? Math.min(...perVariant.map((it) => it.price))
+        : undefined)
+    );
+  }
+
+  /**
+   * What the catalogue says about a product's stock and price. With variants,
+   * availability is the sum of those on sale: stock under a variant nobody can
+   * pick cannot be sold.
+   */
+  protected figures(
+    product: ProductEntity,
+    onSale: ProductVariantEntity[],
+    stock: StockFigures,
+    list: PriceList,
+    currency?: string,
+  ) {
+    if (onSale.length === 0) {
+      return {
+        priceFrom: undefined,
+        available: stock.of(product.id).available,
+        perVariant: [],
+      };
+    }
+
+    const perVariant = onSale.map((variant) => {
+      const price = list.of(product, variant)!;
+      return {
+        id: variant.id,
+        options: variant.options as Record<string, string>,
+        price,
+        compareAtPrice: this.struck(
+          product,
+          variant.compareAtPrice ?? product.compareAtPrice,
+          price,
+          currency,
+        ),
+        image: variant.image,
+        available: stock.of(product.id, variant.id).available,
+      };
+    });
+    const prices = perVariant.map((it) => it.price);
+    return {
+      priceFrom: new Set(prices).size > 1 ? Math.min(...prices) : undefined,
+      available: perVariant.reduce((sum, it) => sum + it.available, 0),
+      perVariant,
+    };
+  }
+
+  /**
+   * The compare-at price, when there is something to compare. It is in the
+   * product's own currency, so it says nothing beside a price in another.
+   */
+  protected struck(
+    product: ProductEntity,
+    compareAtPrice: number | undefined,
+    price: number,
+    currency?: string,
+  ): number | undefined {
+    const comparable = !currency || currency === product.currency;
+    return comparable && compareAtPrice !== undefined && compareAtPrice > price
+      ? compareAtPrice
+      : undefined;
+  }
+
+  /**
    * Narrow a catalog row to what a storefront may see. One place, so a new
    * internal column cannot leak by being forgotten here.
    */
-  protected publicView(product: ProductEntity) {
+  protected publicView(product: ProductEntity, currency?: string) {
     return {
       id: product.id,
       kind: product.kind,
       slug: product.slug,
       name: product.name,
       description: product.description,
-      price: product.price,
-      currency: product.currency,
+      currency: currency ?? product.currency,
+      metaTitle: product.metaTitle,
+      metaDescription: product.metaDescription,
+      weightGrams: product.weightGrams,
+      lengthMm: product.lengthMm,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
       images: product.images,
       attributes: product.attributes,
+      optionGroups: product.optionGroups,
     };
   }
 }

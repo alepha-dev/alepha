@@ -7,9 +7,9 @@ import { AlephaReactHead } from "alepha/react/head";
 import { AlephaServer, type ServerRequest } from "alepha/server";
 import { AlephaServerEtag } from "alepha/server/etag";
 import { AlephaServerLinks } from "alepha/server/links";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
-import { $page, type PageAnimation } from "./primitives/$page.ts";
+import { $page } from "./primitives/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactDomServerProvider } from "./providers/ReactDomServerProvider.ts";
 import {
@@ -26,9 +26,12 @@ import { ReactServerProvider } from "./providers/ReactServerProvider.ts";
 import { ReactServerTemplateProvider } from "./providers/ReactServerTemplateProvider.ts";
 import { RouterLocaleProvider } from "./providers/RouterLocaleProvider.ts";
 import { SSRManifestProvider } from "./providers/SSRManifestProvider.ts";
+import { ReactDeferred } from "./services/ReactDeferred.ts";
 import { ReactPageServerService } from "./services/ReactPageServerService.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
+import { ReactPrefetchCache } from "./services/ReactPrefetchCache.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
+import { ReactViewTransition } from "./services/ReactViewTransition.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -144,7 +147,18 @@ declare module "alepha" {
     "react:transition:begin": {
       previous: ReactRouterState;
       state: ReactRouterState;
-      animation?: PageAnimation;
+    };
+    /**
+     * The first layer of a navigation that will not be the page on screen,
+     * announced before its loader runs. `index` is the `NestedView` it lands
+     * in, `loading` what the page declared, and `delay` how long to wait
+     * before showing it. Never on a query change, an invalidation or a first
+     * screen, where the page stays or there is none.
+     */
+    "react:layer:requested": {
+      index: number;
+      loading?: ComponentType;
+      delay: number;
     };
     /**
      * Fires when a route transition has succeeded.
@@ -165,6 +179,14 @@ declare module "alepha" {
     "react:transition:end": {
       state: ReactRouterState;
     };
+    /**
+     * Fires once the views of a navigation are in the DOM. They commit in a
+     * transition, so this comes after `react:transition:end`, which only says
+     * the router has decided.
+     */
+    "react:transition:committed": {
+      state: ReactRouterState;
+    };
   }
 }
 
@@ -179,7 +201,7 @@ declare module "alepha" {
  * - Type-safe URL parameter and query string validation
  * - Server-side data fetching with the `loader` function
  * - Lazy loading and code splitting
- * - Page animations and error handling
+ * - View transitions and error handling
  *
  * @see {@link $page}
  * @module alepha.react.router
@@ -193,6 +215,9 @@ export const AlephaReactRouter = $module({
     ReactPageService,
     ReactPreloadProvider,
     ReactRouter,
+    ReactViewTransition,
+    ReactPrefetchCache,
+    ReactDeferred,
     ReactServerErrorProvider,
     ReactServerProvider,
     ReactServerTemplateProvider,

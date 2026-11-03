@@ -59,7 +59,7 @@ describe("admin shell labels follow the language", () => {
         "admin:session:read",
         "admin:job:read",
       ],
-    } as any);
+    });
 
     const i18n = alepha.inject(I18nProvider);
     await i18n.setLang("en");

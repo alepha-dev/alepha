@@ -110,6 +110,24 @@ export class AutomationVocabulary {
       operators: [],
     });
     this.register({
+      key: "reports.summary",
+      type: "selection",
+      result: "collection",
+      fields: {
+        ...this.common,
+        summary: "text",
+        total: "number",
+        total_is_exact: "boolean",
+        selected_count: "number",
+        truncated: "boolean",
+      },
+      itemFields: { key: "text", value: "text", previous: "text" },
+      slots: {},
+      permissions: ["stats:read"],
+      needs: [],
+      operators: [],
+    });
+    this.register({
       key: "quests.remindersDue",
       type: "selection",
       result: "rows",

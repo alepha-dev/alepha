@@ -37,12 +37,12 @@
     "build": "tsdown"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.4",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
     "alepha": "0.34.0",
-    "tsdown": "^0.23.0",
-    "vite": "^8.3.3",
-    "vitest": "^5.0.3"
+    "tsdown": "^0.23.4",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "engines": {
     "node": ">=24.0.0"

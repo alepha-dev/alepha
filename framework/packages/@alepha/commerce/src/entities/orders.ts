@@ -23,15 +23,24 @@ export const orders = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
+
     /**
-     * Buyer. Optional — a walk-in sale is anonymous.
+     * What a person says on the phone: `CMD-2026-000123`. Unique and in
+     * sequence, per year. Not gapless, and it does not need to be: the legal
+     * numbering is the invoice's, and an abandoned checkout may burn a number.
+     * Unset on an order older than the column.
+     */
+    number: z.text({ minLength: 1, maxLength: 40 }).optional(),
+
+    /**
+     * Buyer. Optional - a walk-in sale is anonymous.
      */
     userId: z.uuid().optional(),
 
     status: orderStatusEnum,
 
     /**
-     * **What the customer pays** — items plus delivery, in the smallest currency
+     * **What the customer pays** - items plus delivery, in the smallest currency
      * unit. Not the line-item sum.
      *
      * The distinction is not pedantic: an order whose `total` excluded delivery
@@ -40,6 +49,18 @@ export const orders = $entity({
      * pinned here so it cannot come back.
      */
     total: z.integer().min(0),
+
+    /**
+     * Taken off the items, tax included, already deducted from {@link total}.
+     * Spread over the lines on `orderItems.discount`.
+     */
+    discountTotal: db.default(z.integer().min(0), 0),
+
+    /**
+     * The code that earned it, as typed. A snapshot, not a reference: the
+     * promotion can change or go, and this order keeps saying what it had.
+     */
+    promotionCode: z.text({ maxLength: 64 }).optional(),
 
     /**
      * Delivery charged, already included in {@link total}.
@@ -71,8 +92,26 @@ export const orders = $entity({
     refundedTotal: db.default(z.integer().min(0), 0),
 
     /**
+     * The country whose VAT applied, when it was not simply the shop's own:
+     * what a distance sale is reported under.
+     */
+    taxCountry: z.text({ minLength: 2, maxLength: 2 }).optional(),
+
+    /**
+     * The rate delivery was taxed at, frozen like a line's. Unset takes the
+     * seller's default.
+     */
+    shippingRateBps: z.integer().min(0).max(10000).optional(),
+
+    /**
+     * The buyer's VAT number, on a sale under reverse charge. Set means no VAT
+     * was charged, every line is net, and the invoice has to say why.
+     */
+    vatNumber: z.text({ maxLength: 32 }).optional(),
+
+    /**
      * Set once the payment rail hands back a reference. Plain text, not a
-     * `db.ref` to `paymentIntents` — a ref would make this module depend on
+     * `db.ref` to `paymentIntents` - a ref would make this module depend on
      * `alepha/api/payments` at the schema level, and the payment rail is
      * substitutable.
      */
@@ -96,7 +135,7 @@ export const orders = $entity({
     deliveredAt: z.text().optional(),
 
     /**
-     * Address shape varies by region — kept opaque on purpose.
+     * Address shape varies by region - kept opaque on purpose.
      */
     shippingAddress: z.json().optional(),
 
@@ -118,6 +157,7 @@ export const orders = $entity({
     strayCaptures: z.array(z.json()).optional(),
   }),
   indexes: [
+    { columns: ["number"], unique: true },
     { columns: ["status"] },
     { columns: ["userId"] },
     { columns: ["createdAt"] },

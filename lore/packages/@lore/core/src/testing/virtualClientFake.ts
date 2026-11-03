@@ -44,7 +44,7 @@ export const virtualClientFake = <T extends Record<string, unknown>>(
   return new Proxy(actions, {
     get: (target, prop: string | symbol) => {
       if (typeof prop !== "string") {
-        return (target as Record<string | symbol, unknown>)[prop as never];
+        return (target as Record<string | symbol, unknown>)[prop];
       }
       const own = (target as Record<string, unknown>)[prop];
       if (own !== undefined) return decorate(own);

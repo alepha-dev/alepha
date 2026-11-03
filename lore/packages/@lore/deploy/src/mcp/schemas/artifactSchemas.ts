@@ -81,6 +81,12 @@ export const artifactGetParamsSchema = projectParamsSchema.extend({
       "Narrow to one KIND of build: `archive` for a packed tarball Lore stores, `image` for a container image Lore records the reference of and holds no bytes for. A tag may carry both of one runtime - Lore's own `node` build is packed AND published to ghcr - so `runtime` alone no longer names a single variant. Omit to get both, which is usually what you want. Only an `archive` can be deployed.",
     )
     .optional(),
+  manifest: z
+    .boolean()
+    .describe(
+      "Include each variant's manifest: what an archive needs (resources, crons, secret and variable NAMES, never a value), or an image's OCI index. Around 3 KB a variant, so leave it off unless you mean to read it. Absent from a variant means unknown, never that it declares nothing.",
+    )
+    .optional(),
 });
 
 export const artifactGetResultSchema = z.object({

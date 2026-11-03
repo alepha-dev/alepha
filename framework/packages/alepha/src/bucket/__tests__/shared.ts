@@ -342,7 +342,7 @@ export const testKeepsTheStatusOfAStreamRefusal = async (
         start(controller) {
           controller.error(refusal);
         },
-      }) as never,
+      }),
     arrayBuffer: async () => {
       throw new Error("a streamed upload is not buffered");
     },

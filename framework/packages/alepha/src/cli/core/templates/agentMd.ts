@@ -178,8 +178,9 @@ Secrets are selected from declared keys and the selected environment files.
 \`alepha infra deploy\` authenticates and deploys an existing artifact only;
 Bay's remote provisioning and startup migrations still happen.
 
-\`alepha init --infra cf\` can add a canonical Cloudflare production config
-without credentials, or pass it when creating the project. Omit it for local-only
+\`alepha init --infra cf\` writes a Cloudflare production config, without
+credentials, when the project has no \`alepha.config.ts\` yet; on an existing
+one it refuses and prints the snippet to add. Omit it for local-only
 development. Plain \`alepha build --runtime workerd\` is credential-free, while
 \`alepha infra build\` may look up cloud bindings.
 

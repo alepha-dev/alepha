@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils } from "alepha/command";
@@ -72,9 +73,14 @@ export class AlephaCliUtils {
   public resolveBin(pkg: string, binName?: string): string {
     const pkgDir = this.resolvePackageDir(pkg);
 
-    const meta = JSON.parse(
-      readFileSync(join(pkgDir, "package.json"), "utf8"),
-    ) as { bin?: string | Record<string, string> };
+    // A vendored copy carries `vendor.json`, not `package.json`: see
+    // resolveVendoredPackageDir.
+    const manifest = existsSync(join(pkgDir, "package.json"))
+      ? join(pkgDir, "package.json")
+      : join(pkgDir, "vendor.json");
+    const meta = JSON.parse(readFileSync(manifest, "utf8")) as {
+      bin?: string | Record<string, string>;
+    };
     const bin = meta.bin;
     if (!bin) {
       throw new AlephaError(`Package '${pkg}' declares no 'bin' entry`);
@@ -102,6 +108,11 @@ export class AlephaCliUtils {
    * @param pkg - npm package name (e.g. `"drizzle-orm"`)
    */
   public resolvePackageDir(pkg: string): string {
+    const vendored = this.resolveVendoredPackageDir(pkg);
+    if (vendored) {
+      return vendored;
+    }
+
     const require = createRequire(import.meta.url);
 
     // Locate the package root by scanning the `node_modules` directories
@@ -118,6 +129,58 @@ export class AlephaCliUtils {
     throw new AlephaError(
       `Cannot locate package '${pkg}' — is it installed alongside alepha?`,
     );
+  }
+
+  /**
+   * The copy of an embedded package that the build vendors into alepha's own
+   * `dist/vendor/<pkg>`, when there is one (drizzle-kit, #Q3088). Found by
+   * walking up to alepha's `package.json`, which holds from both `src` and
+   * the bundled `dist`.
+   *
+   * Its manifest is `vendor.json`: a `package.json` under `packages/` is a
+   * workspace to Yarn, and one named `drizzle-kit` would take over every
+   * resolution of the real package.
+   */
+  protected resolveVendoredPackageDir(pkg: string): string | undefined {
+    let dir = dirname(fileURLToPath(import.meta.url));
+    while (dirname(dir) !== dir) {
+      const manifest = join(dir, "package.json");
+      if (existsSync(manifest)) {
+        if (JSON.parse(readFileSync(manifest, "utf8")).name !== "alepha") {
+          return undefined;
+        }
+        const vendored = join(dir, "dist", "vendor", pkg);
+        return existsSync(join(vendored, "vendor.json")) ? vendored : undefined;
+      }
+      dir = dirname(dir);
+    }
+    return undefined;
+  }
+
+  /**
+   * Point oxlint at the native `tsgolint` binary embedded in `alepha`, the
+   * type-aware half that `alepha lint` (with `options.typeAware`) and
+   * `alepha typecheck` both run.
+   *
+   * oxlint looks for it in the project's `node_modules/.bin`, where an
+   * embedded dependency of `alepha` is not hoisted under pnpm or a global
+   * install. Resolved the way the `oxlint-tsgolint` bin shim does, without the
+   * node process the shim spawns. A value the user already set wins, and a
+   * platform with no binary leaves oxlint to its own lookup and its own error.
+   */
+  public useEmbeddedTsgolint(): void {
+    if (process.env.OXLINT_TSGOLINT_PATH) {
+      return;
+    }
+    try {
+      const dir = this.resolvePackageDir("oxlint-tsgolint");
+      const exe = process.platform === "win32" ? "tsgolint.exe" : "tsgolint";
+      process.env.OXLINT_TSGOLINT_PATH = createRequire(
+        join(dir, "package.json"),
+      ).resolve(`@oxlint-tsgolint/${process.platform}-${process.arch}/${exe}`);
+    } catch {
+      // no binary for this platform
+    }
   }
 
   /**

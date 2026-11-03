@@ -139,7 +139,7 @@ const staticSchema = z.object({
     .describe("Type something absent and pick the Create row."),
   asyncCountry: z
     .string()
-    .meta({ title: "Async", $control: { items: fakeSearch as never } })
+    .meta({ title: "Async", $control: { items: fakeSearch } })
     .describe("Fetched as you type, debounced.")
     .optional(),
 });
@@ -172,7 +172,7 @@ const SelectPage = () => {
             <Control
               input={v.multiple ? live.input.many : live.input.one}
               label={v.multiple ? "Pick several" : "Pick one"}
-              items={itemsFor(v.itemCount, v.rich) as never}
+              items={itemsFor(v.itemCount, v.rich)}
               segmented={v.segmented}
               searchable={v.searchable}
               clearable={v.clearable}

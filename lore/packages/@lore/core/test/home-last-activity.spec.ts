@@ -63,9 +63,12 @@ const setup = async () => {
 
   const create = async (title: string) =>
     (
-      await projectApi.createProject.fetch({ body: { title } }, {
-        user,
-      } as never)
+      await projectApi.createProject.fetch(
+        { body: { title } },
+        {
+          user,
+        },
+      )
     ).data;
 
   /**
@@ -97,8 +100,7 @@ const setup = async () => {
    * The board's last activity, by project id, in milliseconds.
    */
   const lastActivity = async () => {
-    const board = (await homeApi.getHomeBoard.fetch({}, { user } as never))
-      .data;
+    const board = (await homeApi.getHomeBoard.fetch({}, { user })).data;
     return new Map(
       board.lastActivity.map((entry) => [
         entry.projectId,

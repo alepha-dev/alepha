@@ -41,7 +41,7 @@ export class ShowcaseJobsController {
       query: jobExecutionQuerySchema,
       response: z.page(jobExecutionRowSchema),
     },
-    handler: ({ params, query }) => this.jobs.page(params.name, query) as any,
+    handler: ({ params, query }) => this.jobs.page(params.name, query),
   });
 
   public readonly getExecution = $action({
@@ -56,7 +56,7 @@ export class ShowcaseJobsController {
       if (!execution) {
         throw new NotFoundError(`Execution not found: ${params.id}`);
       }
-      return execution as any;
+      return execution;
     },
   });
 

@@ -91,6 +91,48 @@ describe("SigilBrowserProvider", () => {
     expect(provider.debugPendingViews()).toContain("/dash");
   });
 
+  it("hands the sink integers: CLS scaled, milliseconds rounded", async () => {
+    const { sent, restore } = recordIngests("/vitals-scale");
+    try {
+      const alepha = Alepha.create({
+        env: {
+          NODE_ENV: "production",
+          APP_SECRET: "test-secret",
+          SERVER_PORT: 0,
+        },
+      });
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors: true, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+
+      for (const [metric, value] of [
+        ["cls", 0.123],
+        ["lcp", 2345.6],
+      ] as const) {
+        await alepha.events.emit("react:vital:measured", {
+          metric,
+          value,
+          path: "/vitals-scale",
+        });
+      }
+      await (provider as any).queue.flush();
+
+      const vitals = sent().flatMap((env: any) => env.vitals ?? []);
+      expect(
+        vitals.map(({ metric, value, path }: any) => ({ metric, value, path })),
+      ).toEqual([
+        { metric: "cls", value: 123, path: "/vitals-scale" },
+        { metric: "lcp", value: 2346, path: "/vitals-scale" },
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
   /**
    * jsdom's `document.referrer` is a getter with no setter, and the value is
    * fixed at document creation. Redefining the property is the only way to

@@ -154,7 +154,7 @@ describe("editing a completed quest", () => {
     user: { id: string; roles: string[] },
   ) =>
     ctx.questController.updateQuestById.fetch(
-      { params: { id }, body: body as never },
+      { params: { id }, body: body },
       { user },
     );
 

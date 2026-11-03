@@ -7,7 +7,9 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
+import { DocsMarkdown } from "./DocsMarkdown.ts";
 import { DocsCommand } from "./gen-docs.ts";
+import type { DocProduct } from "./interfaces.ts";
 import { DocsRoots } from "./roots.ts";
 import { snippets } from "./snippets.ts";
 
@@ -69,7 +71,7 @@ export class CheckDocsCommand {
     "packages/alepha/assets/agents-template.md",
     // The llms.txt preamble: the page assistants read first, and the one
     // whose entry-point sample passed a module as `run()` options unnoticed.
-    "apps/docs/public/llms-index.md",
+    "../docs/public/llms-index.md",
     // Private, so not under the scoped-package root below.
     "packages/create-alepha/README.md",
   ];
@@ -147,7 +149,26 @@ export class CheckDocsCommand {
       });
 
       await run("internal links", async () => {
-        const dangling = await this.danglingLinks(files, root);
+        const index = await this.pageIndex();
+        const dangling: string[] = [];
+        for (const file of files) {
+          dangling.push(
+            ...this.danglingLinks(
+              file.replace(`${root}/`, ""),
+              await this.fs.readTextFile(file),
+              index,
+            ),
+          );
+        }
+        for (const file of await this.productPages()) {
+          dangling.push(
+            ...this.danglingLinks(
+              file.replace(`${DocsRoots.repo}/`, ""),
+              await this.fs.readTextFile(file),
+              index,
+            ),
+          );
+        }
         for (const it of dangling) {
           this.log.error(it);
         }
@@ -497,44 +518,114 @@ export class CheckDocsCommand {
       }));
   }
 
-  protected async danglingLinks(
-    files: string[],
-    root: string,
-  ): Promise<string[]> {
-    const slugs = new Set<string>();
-    const sources: Array<[string, string]> = [
-      ["1-primitives", "reference-primitives-"],
-      ["2-react-hooks", "reference-react-hooks-"],
-      ["3-providers", "reference-providers-"],
-    ];
+  /**
+   * Where each product's pages are read from, by the product's URL prefix:
+   * `/docs/x`, `/bay/docs/x`, `/lore/docs/x`.
+   */
+  protected readonly productDocs: Array<[DocProduct, string]> = [
+    ["", join(DocsRoots.framework, "docs")],
+    ["bay", join(DocsRoots.repo, "bay/docs")],
+    ["lore", join(DocsRoots.repo, "lore/docs")],
+  ];
 
-    for (const [dir, prefix] of sources) {
-      const from = join(root, "docs/2-reference", dir);
-      if (!(await this.fs.exists(from))) continue;
-      for (const name of await this.fs.ls(from)) {
-        if (name.endsWith(".md")) {
-          slugs.add(`${prefix}${name.replace(/\.md$/, "")}`.toLowerCase());
-        }
+  /**
+   * Every page the site serves, keyed `product:slug`, with the ids of its
+   * headings. Walked the way `gen:tree` walks (`scanDocsDir`): three folders
+   * deep at most, `plans/` and `superpowers/` left out, and the slug and the
+   * heading ids from the same `DocsMarkdown` rules, so a link this check
+   * accepts is a link the site resolves.
+   */
+  protected async pageIndex(): Promise<Map<string, Set<string>>> {
+    const index = new Map<string, Set<string>>();
+    for (const [product, dir] of this.productDocs) {
+      for (const entry of await this.pageEntries(dir)) {
+        const parts = entry.split("/");
+        const slug = DocsMarkdown.slug(
+          parts.slice(0, -1).join("/"),
+          parts[parts.length - 1],
+        );
+        const content = await this.fs.readTextFile(join(dir, entry));
+        index.set(`${product}:${slug}`, DocsMarkdown.headingIds(content));
+      }
+    }
+    return index;
+  }
+
+  /**
+   * The Bay and Lore pages, as absolute paths. The rest of this check is
+   * framework-only (banned symbols, compiled snippets), but their links point
+   * at the same site, so they are held to the same "internal links" step.
+   */
+  protected async productPages(): Promise<string[]> {
+    const pages: string[] = [];
+    for (const [product, dir] of this.productDocs) {
+      if (!product) continue;
+      for (const entry of await this.pageEntries(dir)) {
+        pages.push(join(dir, entry));
+      }
+    }
+    return pages.sort();
+  }
+
+  /** The markdown files under `dir` that `gen:tree` turns into pages. */
+  protected async pageEntries(dir: string): Promise<string[]> {
+    if (!(await this.fs.exists(dir))) return [];
+    return (await this.fs.ls(dir, { recursive: true })).filter((entry) => {
+      const parts = entry.split("/");
+      return (
+        entry.endsWith(".md") &&
+        parts.length <= 4 &&
+        !parts.some((it) => it === "plans" || it === "superpowers")
+      );
+    });
+  }
+
+  /**
+   * Doc links whose page or heading does not exist: `/docs/x`,
+   * `/bay/docs/x#y`, `https://alepha.dev/lore/docs/x.md`, and `#y` within
+   * the page. A heading renamed or a page moved breaks every link to it
+   * silently on the site; here it fails the check.
+   */
+  protected danglingLinks(
+    file: string,
+    content: string,
+    index: Map<string, Set<string>>,
+  ): string[] {
+    const problems: string[] = [];
+    const url = (product: string, slug: string) =>
+      `${product ? `/${product}` : ""}/docs/${slug}`;
+
+    for (const link of DocsMarkdown.docLinks(content)) {
+      const ids = index.get(`${link.product}:${link.slug}`);
+      const target = url(link.product, link.slug);
+      if (!ids) {
+        problems.push(
+          `${file}:${link.line} - ${target} is linked but no page generates it`,
+        );
+      } else if (link.anchor && !ids.has(this.anchor(link.anchor))) {
+        problems.push(
+          `${file}:${link.line} - ${target}#${link.anchor} is linked but that page has no such heading`,
+        );
       }
     }
 
-    const problems: string[] = [];
-    const link =
-      /\]\((?:https:\/\/alepha\.dev)?\/docs\/(reference-[a-z0-9$@.-]+)\)/gi;
-
-    for (const file of files) {
-      const content = await this.fs.readTextFile(file);
-      for (const [index, line] of content.split("\n").entries()) {
-        for (const match of line.matchAll(link)) {
-          if (!slugs.has(match[1].toLowerCase())) {
-            problems.push(
-              `${file.replace(`${root}/`, "")}:${index + 1} - /docs/${match[1]} is linked but no reference page generates it`,
-            );
-          }
-        }
+    const own = DocsMarkdown.headingIds(content);
+    for (const link of DocsMarkdown.anchorLinks(content)) {
+      if (!own.has(this.anchor(link.anchor))) {
+        problems.push(
+          `${file}:${link.line} - #${link.anchor} is linked but this page has no such heading`,
+        );
       }
     }
     return problems;
+  }
+
+  protected anchor(anchor: string): string {
+    try {
+      return decodeURIComponent(anchor);
+    } catch {
+      return anchor;
+    }
   }
 
   protected async listMarkdown(dir: string): Promise<string[]> {

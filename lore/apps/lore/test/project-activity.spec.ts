@@ -56,7 +56,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -74,7 +74,7 @@ const setup = async () => {
           { key: "support" },
         ],
       },
-    } as any),
+    }),
   );
 
   // The second account has to be a member before it can act on the project.
@@ -227,7 +227,7 @@ describe("Lore MCP: project_activity", () => {
             { key: "support" },
           ],
         },
-      } as any),
+      }),
     );
     await createTestMemberByProjectId(alepha, other.id, MATE);
 
@@ -390,7 +390,7 @@ describe("Project activity table", () => {
       projectApi.getProjectActivity({
         params: { id: project.id },
         query: {},
-      } as any),
+      }),
     );
     expect(
       all.content
@@ -405,7 +405,7 @@ describe("Project activity table", () => {
           resourceType: "epic",
           resourceId: String(first.number),
         },
-      } as any),
+      }),
     );
 
     expect(page.content).toHaveLength(1);
@@ -438,14 +438,14 @@ describe("Project activity table", () => {
       projectApi.updateProjectById({
         params: { id: project.id },
         body: { title: "Renamed" },
-      } as any),
+      }),
     );
 
     const all = await asUser(OWNER, () =>
       projectApi.getProjectActivity({
         params: { id: project.id },
         query: {},
-      } as any),
+      }),
     );
     // Newest first without asking, which is the question somebody opening
     // the page is holding.
@@ -456,7 +456,7 @@ describe("Project activity table", () => {
       projectApi.getProjectActivity({
         params: { id: project.id },
         query: { type: "quest" },
-      } as any),
+      }),
     );
     expect(byResource.content.every((row: any) => row.type === "quest")).toBe(
       true,
@@ -466,7 +466,7 @@ describe("Project activity table", () => {
       projectApi.getProjectActivity({
         params: { id: project.id },
         query: { userId: MATE },
-      } as any),
+      }),
     );
     expect(byWho.content.every((row: any) => row.userId === MATE)).toBe(true);
     expect(byWho.content.length).toBeGreaterThan(0);
@@ -475,7 +475,7 @@ describe("Project activity table", () => {
       projectApi.getProjectActivity({
         params: { id: project.id },
         query: { action: "accept" },
-      } as any),
+      }),
     );
     expect(pairsOf(byAction.content)).toEqual(["quest:accept"]);
   });
@@ -520,7 +520,7 @@ describe("Project activity table", () => {
         projectApi.getProjectActivity({
           params: { id: project.id },
           query: {},
-        } as any),
+        }),
       );
       const day = String(all.content[0].createdAt).slice(0, 10);
 
@@ -528,7 +528,7 @@ describe("Project activity table", () => {
         projectApi.getProjectActivity({
           params: { id: project.id },
           query: { createdAt: [day, day] },
-        } as any),
+        }),
       );
 
       expect(page.content.length).toBeGreaterThan(0);
@@ -560,7 +560,7 @@ describe("Project activity table", () => {
         projectApi.getProjectActivity({
           params: { id: project.id },
           query: { createdAt: ["2020-01-01", "2020-01-02"] },
-        } as any),
+        }),
       );
 
       expect(page.content).toHaveLength(0);
@@ -587,7 +587,7 @@ describe("Project activity table", () => {
           projectApi.getProjectActivity({
             params: { id: project.id },
             query: { createdAt: ["2026-01-01"] },
-          } as any),
+          }),
         ),
       ).rejects.toThrow();
     });
@@ -615,7 +615,7 @@ describe("Project activity table", () => {
       projectApi.getProjectActivity({
         params: { id: project.id },
         query: { userId: MATE },
-      } as any),
+      }),
     );
 
     expect(page.content[0].actor).toBe("mate");

@@ -1,13 +1,27 @@
 import { DateTimeProvider } from "alepha/datetime";
 import { ErrorBoundary, useAlepha, useEvents, useInject } from "alepha/react";
-import { memo, type ReactNode, use, useRef, useState } from "react";
+import {
+  addTransitionType,
+  type ComponentType,
+  memo,
+  type ReactNode,
+  startTransition,
+  Suspense,
+  use,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  ViewTransition,
+} from "react";
 
 import { RouterLayerContext } from "../contexts/RouterLayerContext.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import { useRouterState } from "../hooks/useRouterState.ts";
-import type { PageAnimation } from "../primitives/$page.ts";
 import type { ReactRouterState } from "../providers/ReactPageProvider.ts";
+import { ReactViewTransition } from "../services/ReactViewTransition.ts";
 import ErrorViewer from "./ErrorViewer.tsx";
+import OverlayView from "./OverlayView.tsx";
 
 export interface NestedViewProps {
   children?: ReactNode;
@@ -41,6 +55,7 @@ const NestedView = (props: NestedViewProps) => {
   const onError = routerLayer?.onError;
   const state = useRouterState();
   const alepha = useAlepha();
+  const viewTransition = useInject(ReactViewTransition);
   const dateTime = useInject(DateTimeProvider);
 
   // Navigating away from a page that threw must clear the boundary — otherwise
@@ -49,133 +64,143 @@ const NestedView = (props: NestedViewProps) => {
   // `key`) recovers without tearing down the children on every navigation.
   const boundaryResetKeys = [state.url.pathname];
 
-  const [view, setView] = useState<ReactNode | undefined>(
-    state.layers[index]?.element,
-  );
+  const [view, setView] = useState<NestedViewSlot>({
+    element: state.layers[index]?.element,
+    slot: 0,
+    loading: state.layers[index]?.route?.loading,
+  });
 
-  const [animation, setAnimation] = useState("");
-  const animationExitDuration = useRef<number>(0);
-  const animationExitNow = useRef<number>(0);
+  // The component in the slot while its navigation runs. In a ref as well, for
+  // the handlers below, which close over the first render.
+  const [skeleton, setSkeleton] = useState<ComponentType>();
+  const skeletonShown = useRef(false);
+  const skeletonTimer = useRef<{ clear: () => void }>(undefined);
 
-  // Every `react:transition:end` claims the next number. A handler that has to
-  // sleep out an exit animation re-checks it on waking: if a later transition
-  // claimed one meanwhile, that transition has already committed its view and
-  // this one is showing a page the user navigated away from.
-  const commitGeneration = useRef<number>(0);
+  useEffect(() => () => skeletonTimer.current?.clear(), []);
 
+  // Only the root view reports the commit: it is always mounted, and a
+  // navigation that reuses every layer changes no view at all.
+  const [committed, setCommitted] = useState<ReactRouterState>();
+
+  const route = useRef(state.layers[index]?.route);
+
+  // The class of the view that is leaving. React reads it at the commit, from
+  // the props that view last rendered with, so a page whose exit depends on
+  // the target can only answer through an object read that late.
+  const exitClass = useRef({ default: "none" });
+
+  // A new slot is what makes a navigation an exit and an enter rather than an
+  // update. It only moves when a page asked for one: React starts a view
+  // transition, a snapshot of the whole document, for every `<ViewTransition>`
+  // it places, whatever its class.
+  const slot = useRef(0);
+
+  // ⚠️ Stays synchronous. All the views of a navigation must land in one
+  // commit, and so one view transition: `startTransition` calls share a commit
+  // when they run in the same tick, which an `await` here would break.
   useEvents(
     {
-      "react:transition:begin": async ({ previous, state }) => {
-        // --------- Animations Begin ---------
-        const layer = previous.layers[index];
-        if (!layer) {
-          return;
-        }
+      "react:layer:requested": ({ index: requested, loading, delay }) => {
+        skeletonTimer.current?.clear();
 
-        if (`${state.url.pathname}/`.startsWith(`${layer.path}/`)) {
-          return;
-        }
+        const show = () => {
+          skeletonShown.current = true;
+          setSkeleton(() => loading);
+        };
 
-        const animationExit = parseAnimation(
-          layer.route?.animation,
+        if (requested !== index || !loading) {
+          skeletonShown.current = false;
+          setSkeleton(undefined);
+        } else if (skeletonShown.current) {
+          // A navigation superseding another: the slot is already waiting.
+          show();
+        } else {
+          skeletonTimer.current = dateTime.createTimeout(show, delay);
+        }
+      },
+      "react:transition:end": ({ state }) => {
+        const layer = state.layers[index];
+
+        // Every exit lands here: a page, an error, a redirect's follow-up, and
+        // a return to the page on screen, which reuses its layer and so sets
+        // no view. Undoing the skeleton is not tied to a view changing.
+        skeletonTimer.current?.clear();
+        skeletonShown.current = false;
+
+        const classes = viewTransition.resolve(
+          layer?.route?.viewTransition,
           state,
-          "exit",
         );
 
-        if (animationExit) {
-          const duration = animationExit.duration || 200;
-          animationExitNow.current = dateTime.nowMillis();
-          animationExitDuration.current = duration;
-          setAnimation(animationExit.animation);
-        } else {
-          animationExitNow.current = 0;
-          animationExitDuration.current = 0;
-          setAnimation("");
-        }
-        // --------- Animations End ---------
-      },
-      "react:transition:end": async ({ state }) => {
-        const layer = state.layers[index];
-        const generation = ++commitGeneration.current;
-
-        // --------- Animations Begin ---------
-        if (animationExitNow.current) {
-          const duration = animationExitDuration.current;
-          const diff = dateTime.nowMillis() - animationExitNow.current;
-          if (diff < duration) {
-            await new Promise((resolve) =>
-              dateTime.createTimeout(resolve as () => void, duration - diff),
-            );
-          }
-        }
-
-        if (generation !== commitGeneration.current) {
-          // Superseded while we slept — the newer transition owns the view
-          // and its animation state. Committing here would put the old page
-          // back on screen.
-          return;
-        }
-        // --------- Animations End ---------
-
         if (!layer?.cache) {
-          setView(layer?.element);
-
-          // --------- Animations Begin ---------
-          const animationEnter = parseAnimation(
-            layer?.route?.animation,
+          const exit = viewTransition.resolve(
+            route.current?.viewTransition,
             state,
-            "enter",
-          );
-
-          if (animationEnter) {
-            setAnimation(animationEnter.animation);
-          } else {
-            setAnimation("");
+          ).exit;
+          exitClass.current.default = exit ?? "none";
+          route.current = layer?.route;
+          if (exit || classes.enter) {
+            slot.current += 1;
           }
-          // --------- Animations End ---------
         }
+
+        startTransition(() => {
+          setSkeleton(undefined);
+          if (state.name) {
+            addTransitionType(state.name);
+          }
+          if (!routerLayer) {
+            setCommitted(state);
+          }
+          if (!layer?.cache) {
+            setView({
+              element: layer?.element,
+              slot: slot.current,
+              enter: classes.enter,
+              update: classes.update,
+              loading: layer?.route?.loading,
+            });
+          }
+        });
       },
     },
     [],
   );
 
-  let element = view ?? props.children ?? null;
+  useLayoutEffect(() => {
+    if (committed) {
+      void alepha.events.emit("react:transition:committed", {
+        state: committed,
+      });
+    }
+  }, [committed]);
 
-  // --------- Animations Begin ---------
-  if (animation) {
-    element = (
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          height: "100%",
-          width: "100%",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* A COLUMN, so the wrapper lays the page out the way a page's
-            usual parent does (a full-height column shell): full width,
-            and full height for a root with `h-full` or `flex-1`. It was a
-            row, and a row sizes a child's width to its content: a page
-            root with a height but no width (Lore's Home, `flex h-svh
-            flex-col`) shrank to about half the screen for the length of
-            its exit animation and snapped back when the wrapper went. */}
-        <div
-          style={{
-            height: "100%",
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            animation,
-          }}
-        >
-          {element}
-        </div>
-      </div>
-    );
+  const Skeleton = skeleton;
+  const Loading = view.loading;
+
+  let content = view.element ?? props.children ?? null;
+  if (Skeleton) {
+    content = <Skeleton />;
+  } else if (Loading) {
+    content = <Suspense fallback={<Loading />}>{content}</Suspense>;
   }
-  // --------- Animations End ---------
+
+  // `default="none"`: a page that asks for nothing gets no view transition
+  // name at all, so it never animates.
+  const element = (
+    <>
+      <ViewTransition
+        key={view.slot}
+        default="none"
+        enter={view.enter}
+        exit={exitClass.current}
+        update={view.update}
+      >
+        {content}
+      </ViewTransition>
+      <OverlayView index={index} />
+    </>
+  );
 
   if (props.errorBoundary === false) {
     return <>{element}</>;
@@ -193,7 +218,9 @@ const NestedView = (props: NestedViewProps) => {
   }
 
   const fallback = (error: Error) => {
-    const result = onError?.(error, state) ?? (
+    // The state's handler first: it is the page's own, then its parents', where
+    // `onError` is the layer above this slot's, and nothing at all at the root.
+    const result = state.onError?.(error, state) ?? onError?.(error, state) ?? (
       <ErrorViewer error={error} alepha={alepha} />
     );
     if (result instanceof Redirection) {
@@ -211,49 +238,10 @@ const NestedView = (props: NestedViewProps) => {
 
 export default memo(NestedView);
 
-function parseAnimation(
-  animationLike: PageAnimation | undefined,
-  state: ReactRouterState,
-  type: "enter" | "exit" = "enter",
-):
-  | {
-      duration: number;
-      animation: string;
-    }
-  | undefined {
-  if (!animationLike) {
-    return undefined;
-  }
-
-  const DEFAULT_DURATION = 300;
-
-  const animation =
-    typeof animationLike === "function" ? animationLike(state) : animationLike;
-
-  if (typeof animation === "string") {
-    if (type === "exit") {
-      return;
-    }
-    return {
-      duration: DEFAULT_DURATION,
-      animation: `${DEFAULT_DURATION}ms ${animation}`,
-    };
-  }
-
-  if (typeof animation === "object") {
-    const anim = animation[type];
-    const duration =
-      typeof anim === "object"
-        ? (anim.duration ?? DEFAULT_DURATION)
-        : DEFAULT_DURATION;
-    const name = typeof anim === "object" ? anim.name : anim;
-    const timing = typeof anim === "object" ? (anim.timing ?? "") : "";
-
-    return {
-      duration,
-      animation: `${duration}ms ${timing} ${name}`,
-    };
-  }
-
-  return undefined;
+interface NestedViewSlot {
+  element: ReactNode;
+  slot: number;
+  enter?: string;
+  update?: string;
+  loading?: ComponentType;
 }

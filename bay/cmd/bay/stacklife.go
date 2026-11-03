@@ -49,6 +49,7 @@ func (s *server) stopStack(name, env string) error {
 		if err := s.store.SetStopped(m.Key(), true); err != nil {
 			return err
 		}
+		s.cancelWatch(m.Key())
 		if err := s.runner.Park(m.Key(), stopGrace); err != nil {
 			return err
 		}

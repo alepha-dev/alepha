@@ -3,6 +3,7 @@ import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
+import { $manifest, $robots } from "alepha/react/sitemap";
 import { $secure, currentUserAtom } from "alepha/security";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -12,10 +13,11 @@ import type { HomeController } from "../../api/controllers/HomeController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
+import type { ReportsSummaryController } from "../../api/controllers/ReportsSummaryController.ts";
+import { reportsUrlSchema } from "../../api/schemas/reportsUrlSchema.ts";
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { dashboardWindowAtom } from "./atoms/dashboardWindowAtom.ts";
-import { homeBoardAtom } from "./atoms/homeBoardAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
@@ -23,6 +25,10 @@ import { isOAuthReturnTarget } from "./components/auth/oauthReturnTarget.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
+import { ReportsCsv } from "./services/ReportsCsv.ts";
+import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
+import { ReportsSummaryMarkdown } from "./services/ReportsSummaryMarkdown.ts";
+import { ReportsUrlQuery } from "./services/ReportsUrlQuery.ts";
 
 /**
  * Core's pages (#E75, #Q2611): the root layout and the pages every Lore has
@@ -43,6 +49,22 @@ export class CoreRouter {
   dateTime = $inject(DateTimeProvider);
 
   reportsTabs = $inject(ReportsTabRegistry);
+  // Read by components through `useInject`, which cannot construct a service
+  // once the container is locked, so the module's boot has to.
+  reportsUrl = $inject(ReportsUrlQuery);
+  reportsCsv = $inject(ReportsCsv);
+  reportsDrillDown = $inject(ReportsDrillDown);
+  reportsMarkdown = $inject(ReportsSummaryMarkdown);
+  reportsSummaryApi = $client<ReportsSummaryController>();
+
+  constructor() {
+    this.reportsTabs.register({
+      route: "reportsSummary",
+      labelKey: "project.reports.nav.summary",
+      order: 5,
+      filters: ["period"],
+    });
+  }
 
   head = $head(() => {
     const head: Head = {
@@ -64,7 +86,6 @@ export class CoreRouter {
         type: "image/png",
         media: "(prefers-color-scheme: light)",
       },
-      { rel: "manifest", href: "/manifest.json" },
     ];
 
     head.meta = [
@@ -77,6 +98,42 @@ export class CoreRouter {
     ];
 
     return head;
+  });
+
+  /**
+   * A self-hosted Lore has its own `PUBLIC_URL`, or none, and answers for its
+   * own host. `/auth` and `/account` are worth no crawler's time: every unknown
+   * URL leads to the login page.
+   */
+  robots = $robots({ disallow: ["/auth", "/account"] });
+
+  manifest = $manifest({
+    name: "Lore",
+    shortName: "Lore",
+    description:
+      "Alepha Lore: planning memory, telemetry and deployments for Alepha applications.",
+    display: "standalone",
+    startUrl: "/",
+    backgroundColor: "#010409",
+    themeColor: "#010409",
+    orientation: "portrait",
+    icons: [{ src: "/logo-512x512.png", sizes: "512x512", type: "image/png" }],
+    screenshots: [
+      {
+        src: "/screenshot-1.png",
+        type: "image/png",
+        sizes: "1280x605",
+        formFactor: "wide",
+        label: "App Overview",
+      },
+      {
+        src: "/screenshot-2.png",
+        type: "image/png",
+        sizes: "365x800",
+        formFactor: "narrow",
+        label: "Quest Detail",
+      },
+    ],
   });
 
   layout = $page({
@@ -244,55 +301,19 @@ export class CoreRouter {
     },
   });
 
-  /**
-   * How long the `home` loader waits for the board before painting without
-   * it. Enough for the database half and a healthy Analytics Engine read, and
-   * short enough that a slow one costs a pop-in rather than a slow page.
-   */
-  protected static readonly HOME_BOARD_BUDGET_MS = 300;
-
-  /**
-   * The board within its budget, or `undefined` past it or on a failure.
-   */
-  protected async readHomeBoard() {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const late = new Promise<undefined>((resolve) => {
-      timer = setTimeout(
-        () => resolve(undefined),
-        CoreRouter.HOME_BOARD_BUDGET_MS,
-      );
-    });
-    try {
-      return await Promise.race([
-        this.homeApi.getHomeBoard().catch(() => undefined),
-        late,
-      ]);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
   home = $page({
     path: "/",
-    animation: (state) => {
-      if (state.url.pathname === "/new-project") {
-        return {
-          exit: { name: "fadeScaleOut", duration: 700, timing: "ease-in" },
-        };
-      }
-    },
+    viewTransition: ({ url }) =>
+      url.pathname === "/new-project" ? { exit: "fade-scale-out" } : undefined,
     lazy: () => import("./components/home/Home.tsx"),
     /**
-     * What the first paint needs: the realm's signup switch for an anonymous
-     * visitor, the board for a signed-in one.
+     * The realm's signup switch for an anonymous visitor, the board for a
+     * signed-in one.
      *
-     * The board (bars, last activity, open counts) used to be fetched by
-     * `HomeBoard` after mount, so the rows painted alone and the rest popped
-     * in a second later. It is read here now, within
-     * `HOME_BOARD_BUDGET_MS`: the momentum half is an HTTP call into
-     * Analytics Engine, and a slow one must not hold the page. Past the
-     * budget, or on a failure, `homeBoardAtom` stays empty and `HomeBoard`
-     * fetches it itself, as it always did.
+     * The board (bars, last activity, open counts) is deferred: the momentum
+     * half is an HTTP call into Analytics Engine, and a slow one must not hold
+     * the page. `.catch` because a board that failed costs those three and
+     * must not reach `errorHandler`: `HomeBoard` then fetches it itself.
      *
      * ⚠️ It runs on ENTRY only, and whatever is added here must keep that
      * shape: a loader that revalidates on its own dependencies is the
@@ -300,8 +321,7 @@ export class CoreRouter {
      */
     loader: async ({ user }) => {
       if (user) {
-        this.alepha.store.set(homeBoardAtom, await this.readHomeBoard());
-        return;
+        return { board: this.homeApi.getHomeBoard().catch(() => undefined) };
       }
       // An anonymous visitor gets the hero, whose primary button is the
       // only thing on the page. Which button that should be depends on
@@ -316,6 +336,7 @@ export class CoreRouter {
         registrationAllowed:
           realmConfig?.settings.registrationAllowed !== false,
       });
+      return {};
     },
   });
 
@@ -323,9 +344,7 @@ export class CoreRouter {
     path: "/new-project",
     use: [$secure()],
     head: { title: "New project › Alepha Lore" },
-    animation: {
-      enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
-    },
+    viewTransition: { enter: "fade-in" },
     lazy: () => import("./components/project/ProjectCreate.tsx"),
   });
 
@@ -422,26 +441,43 @@ export class CoreRouter {
 
   projectReports = $pageProject({
     path: "/reports",
+    schema: { query: reportsUrlSchema },
     // Each tab is its module's page, mounted with `parent: core.projectReports`
     // and offered by `ReportsTabRegistry` (#E75, #Q2611).
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Reports`,
     }),
     lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
-    /**
-     * Which registered tabs have something to show, for a tab whose gate needs
-     * a request (Quality: whether any run exists).
-     *
-     * ⚠️ Read HERE and not on the `project` loader. That one already runs its
-     * parallel reads on every project navigation, and most projects will never
-     * push a run - so this is paid when Reports opens, by the one page that
-     * needs the answer. A failed read hides a tab, never the page.
-     */
-    loader: async () => ({
-      available: await this.reportsTabs.availability(
-        this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-      ),
-    }),
+    loader: async ({ query }) => ({ query }),
+  });
+
+  /**
+   * The first tab (#Q2999): every enabled capability's period, against the
+   * previous one, so it always compares.
+   */
+  reportsSummary = $page({
+    parent: this.projectReports,
+    name: "reportsSummary",
+    prefetch: true,
+    path: "/",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsSummary.client.tsx"),
+    loader: async ({ query }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      const projectId = project?.id ?? -1;
+      return {
+        url: query,
+        tabs: this.reportsTabs.tabs(project).map((tab) => tab.route),
+        summary: await this.reportsSummaryApi.getReportsSummary({
+          params: { id: projectId },
+          query: this.reportsUrl.toQuery(
+            query,
+            this.reportsTabs.honours("reportsSummary"),
+          ),
+        }),
+      };
+    },
   });
 
   // -------------------------------------------------------------------------------------------------------------------

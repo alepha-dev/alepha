@@ -22,7 +22,7 @@ const setup = async (username: string) => {
 
   const realmProvider = alepha.inject(RealmProvider);
   realmProvider.register("users", {
-    settings: { username: "required" } as never,
+    settings: { username: "required" },
   });
   await realmProvider.userRepository().deleteMany({});
 
@@ -70,19 +70,16 @@ const addTotpIdentity = async (ctx: Ctx) =>
   });
 
 const list = (ctx: Ctx) =>
-  ctx.controller.listMyIdentities({}, { user: ctx.caller as never });
+  ctx.controller.listMyIdentities({}, { user: ctx.caller });
 
 const setFirstPassword = (ctx: Ctx, password: string) =>
   ctx.controller.setMyFirstPassword(
     { body: { password } },
-    { user: ctx.caller as never },
+    { user: ctx.caller },
   );
 
 const unlink = (ctx: Ctx, id: string) =>
-  ctx.controller.unlinkMyIdentity(
-    { params: { id } },
-    { user: ctx.caller as never },
-  );
+  ctx.controller.unlinkMyIdentity({ params: { id } }, { user: ctx.caller });
 
 describe("alepha/api/users - MyIdentityController", () => {
   it("should list the caller's sign-in methods", async ({ expect }) => {

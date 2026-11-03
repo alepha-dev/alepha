@@ -28,6 +28,11 @@ export const oxlintrc = () =>
   "categories": {
     "correctness": "error"
   },
+  "options": {
+    // Rules that read types, such as \`no-floating-promises\`, through the
+    // \`tsgolint\` binary that ships embedded in \`alepha\`.
+    "typeAware": true
+  },
   "ignorePatterns": ["node_modules", "dist", ".gen"],
   "plugins": [
     "typescript",
@@ -66,6 +71,17 @@ export const oxlintrc = () =>
     // counts assertions by identifier — so it reports tests full of assertions
     // as having none.
     "vitest/expect-expect": "off"
-  }
+  },
+  "overrides": [
+    {
+      // A test reads a method without calling it on purpose, as in
+      // \`expect(alepha.inject).toBeTypeOf("function")\`, which the type-aware
+      // rule cannot tell from the bug it hunts. It stays on for the source.
+      "files": ["**/*.spec.ts", "**/*.spec.tsx", "**/test/**"],
+      "rules": {
+        "typescript/unbound-method": "off"
+      }
+    }
+  ]
 }
 `.trim() + "\n";

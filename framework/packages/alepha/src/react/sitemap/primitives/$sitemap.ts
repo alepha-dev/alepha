@@ -7,10 +7,12 @@ import { type ServerRequest, ServerRouterProvider } from "alepha/server";
 /**
  * Expose a `sitemap.xml` generated from the application's `$page` primitives.
  *
- * Registers a `GET /sitemap.xml` route that reads every registered page at
- * request time and emits a standard XML sitemap. Marked `static` by default, so
- * the build prerenders it to `dist/public/sitemap.xml` for static deployments -
- * while SSR runtimes also serve it live.
+ * Registers a `GET /sitemap.xml` route that reads every registered page and
+ * emits a standard XML sitemap. Marked `static` by default, so the build
+ * prerenders it to `dist/public/sitemap.xml`. That file is what a built server
+ * answers with too, because static files mount over the route, so its
+ * `hostname` and `<lastmod>` are the build's. `alepha dev` answers live, and so
+ * does a built server with `static: false`.
  *
  * The hostname comes from `options.hostname`, falling back to `PUBLIC_URL`, then
  * to `""` (relative URLs). URLs that no page answers, a feed or an
@@ -59,6 +61,9 @@ export interface SitemapPrimitiveOptions {
 
   /**
    * Prerender the sitemap to a static file at build time.
+   *
+   * With `false` the build writes no file, so a built server generates the
+   * sitemap per request, and a static site, having no server, has none.
    *
    * @default true
    */

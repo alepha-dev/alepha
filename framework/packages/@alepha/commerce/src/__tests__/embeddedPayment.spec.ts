@@ -19,12 +19,12 @@ import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
 
 /**
- * A provider with no embedded card field — the Mollie-shaped case, and the one
+ * A provider with no embedded card field - the Mollie-shaped case, and the one
  * the capability declaration exists for.
  */
 class RedirectOnlyProvider extends MemoryPaymentProvider {
   /**
-   * Shadow the inherited method with an own property that is not a function —
+   * Shadow the inherited method with an own property that is not a function -
    * which is exactly what `supportsEmbeddedPayment()` inspects. `as never` is
    * assignable to the base signature, so this stays type-safe.
    */
@@ -129,7 +129,7 @@ describe("embedded payment", () => {
     const ctx = await setup();
     const { ring, session } = await reachPayment(ctx);
 
-    // The order exists and is pending — the browser has not confirmed anything.
+    // The order exists and is pending - the browser has not confirmed anything.
     const order = await ctx.orders.getById(session.orderId!);
     expect(order.status).toBe("pending");
     // And the unit is held, exactly as in the redirect flow.

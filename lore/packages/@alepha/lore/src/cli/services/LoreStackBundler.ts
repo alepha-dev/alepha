@@ -2,7 +2,7 @@ import { gzipSync } from "node:zlib";
 
 import { $inject, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
-import { load as parseYaml } from "js-yaml";
+import { CORE_SCHEMA, mergeTag, load as parseYaml } from "js-yaml";
 
 /**
  * A stack revision bundle, ready to upload.
@@ -39,6 +39,12 @@ export class LoreStackBundler {
     "docker-compose.yaml",
     "docker-compose.yml",
   ];
+
+  /**
+   * YAML 1.2 scalars plus merge keys (`<<`), as Compose reads a file. Since
+   * js-yaml 5 the default schema has no merge tag.
+   */
+  public static readonly YAML_SCHEMA = CORE_SCHEMA.withTags(mergeTag);
 
   /**
    * The compose file in `root`, by the names Compose looks for, if any.
@@ -110,7 +116,7 @@ export class LoreStackBundler {
   public references(text: string): string[] {
     let doc: unknown;
     try {
-      doc = parseYaml(text);
+      doc = parseYaml(text, { schema: LoreStackBundler.YAML_SCHEMA });
     } catch (error) {
       throw new AlephaError(
         `The compose file is not valid YAML: ${error instanceof Error ? error.message : String(error)}`,

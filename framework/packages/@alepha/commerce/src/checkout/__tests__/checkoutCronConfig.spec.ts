@@ -8,7 +8,7 @@ import { AlephaCommerceCheckout, checkoutConfig } from "../index.ts";
  * Guards the declaration-order hazard: `HoldSweeper.config` must
  * stay declared above the `$job` that reads it. Class fields initialize in
  * order, so moving it below leaves `this.config` undefined at `$job`
- * construction — a crash at inject time, not a type error.
+ * construction - a crash at inject time, not a type error.
  */
 describe("checkout cron configuration", () => {
   const expressionOf = (alepha: Alepha) =>

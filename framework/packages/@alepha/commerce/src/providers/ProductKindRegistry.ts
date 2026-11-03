@@ -22,7 +22,7 @@ import type { ProductKindHandler } from "../interfaces/ProductKindHandler.ts";
  * });
  * ```
  *
- * Same shape as `RootComponentsProvider` in `alepha/react/router` — a plain
+ * Same shape as `RootComponentsProvider` in `alepha/react/router` - a plain
  * collection that modules contribute to, resolved at use time.
  */
 export class ProductKindRegistry {
@@ -41,7 +41,7 @@ export class ProductKindRegistry {
   }
 
   /**
-   * Resolve a kind, or throw naming every kind that *is* registered — the
+   * Resolve a kind, or throw naming every kind that *is* registered - the
    * error a developer gets when they forgot to import the module that owns it.
    */
   public get(kind: string): ProductKindHandler {

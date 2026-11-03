@@ -597,6 +597,43 @@ func TestClientPushesTheGaugeAfterTheWelcomeAndOnTheInterval(t *testing.T) {
 	}
 }
 
+// Commands finish all the time on a busy estate, and each one kicks an
+// inventory push. None of them may push the next gauge reading back: the
+// interval runs from the last reading, not from the last command.
+func TestInventoryKicksDoNotDelayTheNextGaugePush(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{
+		configured: true,
+		gauge:      fixedGauge{ok: true, reading: Reading{CPUPercent: 1, MemoryPercent: 2}},
+		inventory:  sampleInventory(),
+	})
+	s := f.lore.session(t)
+	_ = s.frame(t)
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 1
+	s.send(t, w)
+	if _, ok := s.statsFrame(t, 2*time.Second); !ok {
+		t.Fatal("the welcome must push the gauge")
+	}
+
+	// A kick every 200 ms, well inside the 1 s interval.
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(200 * time.Millisecond):
+				f.client.KickInventory()
+			}
+		}
+	}()
+
+	if _, ok := s.statsFrame(t, 3*time.Second); !ok {
+		t.Fatal("inventory kicks must not hold back the gauge's interval")
+	}
+}
+
 func TestClientPushesNothingWhenTheGaugeHasNothing(t *testing.T) {
 	f := newClientFixture(t, fixtureOptions{configured: true, gauge: fixedGauge{ok: false}})
 	s := f.lore.session(t)

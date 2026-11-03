@@ -15,8 +15,8 @@ import { StockService } from "../services/StockService.ts";
 import { AlephaCommerceSettlement } from "../settlement/index.ts";
 
 /**
- * Poll until the mailbox holds `count` mails — the confirmation now
- * arrives through the settlement job, a beat after the webhook.
+ * Poll until the mailbox holds `count` mails: both arrive through a job, a
+ * beat after what triggered them.
  */
 const waitForMail = async (mail: MemoryEmailProvider, count: number) => {
   const deadline = Date.now() + 5_000;
@@ -27,8 +27,7 @@ const waitForMail = async (mail: MemoryEmailProvider, count: number) => {
 };
 
 const setup = async () => {
-  // Settlement drives the confirmation email since the paid-path moved
-  // onto the job; notifications alone only covers the shipped mail.
+  // Settlement drives both emails: they are its jobs.
   const alepha = Alepha.create()
     .with(AlephaOrmPostgres)
     .with(AlephaCommerceNotifications)
@@ -243,6 +242,7 @@ describe("order emails", () => {
       trackingUrl: "https://laposte.fr/suivi/6A12345678901",
     });
 
+    await waitForMail(ctx.mail, 2);
     const notice = ctx.mail.records.at(-1)!;
     expect(notice.subject).toContain("en route");
     expect(notice.body).toContain("6A12345678901");

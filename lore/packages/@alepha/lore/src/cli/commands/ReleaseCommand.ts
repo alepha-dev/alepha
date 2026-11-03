@@ -1,13 +1,23 @@
-import type { ReleaseController } from "@lore/work/api";
+import type {
+  EpicController,
+  QuestController,
+  ReleaseController,
+} from "@lore/work/api";
 import { $inject, AlephaError, z } from "alepha";
-import { $command } from "alepha/command";
+import { $command, UsageError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
+import { LoreReferences } from "../services/LoreReferences.ts";
+import {
+  type LoreRefusalContext,
+  LoreRefusals,
+} from "../services/LoreRefusals.ts";
 
 /**
  * `lore releases` - the release job's side of a Lore release.
@@ -89,6 +99,32 @@ export class ReleaseCommand {
    * `--help` has to work there.
    */
   protected readonly api = $client<ReleaseController>(this.client.scope());
+  protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly questApi = $client<QuestController>(this.client.scope());
+  protected readonly refs = $inject(LoreReferences);
+  protected readonly refusals = $inject(LoreRefusals);
+  protected readonly render = $inject(LoreOutput);
+
+  protected static readonly PROJECT_FLAG = {
+    project: z
+      .text({
+        aliases: ["p"],
+        description: "The project, by slug or id. Defaults to LORE_PROJECT.",
+      })
+      .optional(),
+  };
+
+  protected static readonly TARGET_FLAGS = {
+    epic: z.text({ description: "An epic: 45 or E45." }).optional(),
+    quest: z.text({ description: "A quest: 12 or Q12." }).optional(),
+  };
+
+  protected static readonly TAG_FLAG = {
+    tag: z.text({
+      aliases: ["t"],
+      description: "The release's tag, byte for byte: `0.28.0`.",
+    }),
+  };
 
   public readonly publish = $command({
     name: "publish",
@@ -107,6 +143,7 @@ export class ReleaseCommand {
         description:
           "The release's tag, byte for byte: `0.28.0`, the version the job just shipped.",
       }),
+      title: z.text({ description: "A title to publish it under." }).optional(),
     }),
     handler: async ({ flags }) => {
       const project = this.client.resolveProject(flags.project);
@@ -133,7 +170,7 @@ export class ReleaseCommand {
 
       const published = await this.api.publishRelease({
         params: { id: release.id },
-        body: {},
+        body: { title: flags.title },
       });
       this.log.info(`Published release ${published.tag} in ${project}`, {
         releasedAt: published.releasedAt,
@@ -288,8 +325,29 @@ export class ReleaseCommand {
         aliases: ["t"],
         description: "The release's tag, byte for byte: `0.28.0`.",
       }),
+      frozen: z
+        .boolean()
+        .describe(
+          "Print the release's changelog as Lore holds it, open or published, instead of the notes a release job takes. An incomplete release is not refused.",
+        )
+        .optional(),
     }),
     handler: async ({ flags, print }) => {
+      if (flags.frozen) {
+        const context: LoreRefusalContext = {};
+        await this.refusals.guard(context, async () => {
+          const { release } = await this.byTag(
+            flags.tag,
+            flags.project,
+            context,
+          );
+          const { markdown } = await this.api.getReleaseChangelog({
+            params: { id: release.id },
+          });
+          print(markdown);
+        });
+        return;
+      }
       print(await this.notes(flags.tag, flags.project));
     },
   });
@@ -412,12 +470,471 @@ export class ReleaseCommand {
     },
   });
 
-  public readonly releases = $command({
-    name: "releases",
-    description: "The releases of a Lore project",
-    children: [this.check, this.cut, this.changelog, this.publish],
+  public readonly list = $command({
+    name: "list",
+    description: "List every release in a project, open and published",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const releases = await this.api.getReleases({ params: { projectId } });
+        const sorted = [...releases].sort((a, b) => a.number - b.number);
+
+        if (flags.output === "json") {
+          this.render.json(print, sorted);
+          return;
+        }
+
+        this.render.list(
+          print,
+          sorted.map((release) => ({
+            handle: release.tag ?? `R${release.number}`,
+            title: release.title,
+            fields: [
+              `${release.progress.completed}/${release.progress.total}`,
+              release.releasedAt
+                ? `released ${release.releasedAt}`
+                : release.defaultSince
+                  ? "open, default"
+                  : "open",
+            ],
+          })),
+          undefined,
+          "This project has no releases.",
+        );
+      });
+    },
+  });
+
+  public readonly get = $command({
+    name: "get",
+    description: "One release, with the epics and quests attached to it",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { release } = await this.byTag(flags.tag, flags.project, context);
+        const contents = await this.api.getReleaseContents({
+          params: { id: release.id },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, { ...release, ...contents });
+          return;
+        }
+
+        this.render.entity(print, {
+          fields: [
+            ["Release", release.tag ?? undefined],
+            ["Title", release.title],
+            [
+              "Progress",
+              `${release.progress.completed}/${release.progress.total}`,
+            ],
+            ["Target", release.targetDate],
+            ["Released", release.releasedAt],
+            ["Default since", release.defaultSince],
+          ],
+          body: release.description ?? undefined,
+          sections: [
+            ...(contents.epics.length
+              ? [
+                  {
+                    title: "Epics",
+                    lines: contents.epics.map(
+                      (epic) =>
+                        `E${epic.number}  ${epic.title}  ${epic.status}  ${epic.completed}/${epic.total}`,
+                    ),
+                  },
+                ]
+              : []),
+            ...(contents.looseQuests.length
+              ? [
+                  {
+                    title: "Loose quests",
+                    lines: contents.looseQuests.map(
+                      (quest) =>
+                        `Q${quest.shortId}  ${quest.title}  ${quest.completedAt ? "completed" : "open"}`,
+                    ),
+                  },
+                ]
+              : []),
+          ],
+        });
+      });
+    },
+  });
+
+  public readonly create = $command({
+    name: "create",
+    description:
+      "Create a release. Any number may be open at once, and a new one is never the default",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      title: z
+        .text({ description: "A display title. Defaults to the tag." })
+        .optional(),
+      description: z
+        .text({
+          size: "rich",
+          atFile: true,
+          description: "What it is for, in Markdown.",
+        })
+        .optional(),
+      "target-date": z
+        .datetime()
+        .describe("When it is meant to ship: an estimate nothing enforces.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const created = await this.api.createRelease({
+          params: { projectId },
+          body: {
+            tag: flags.tag,
+            title: flags.title,
+            description: flags.description,
+            targetDate: flags["target-date"],
+          },
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          created,
+          `Created release ${created.tag}`,
+        );
+      });
+    },
+  });
+
+  public readonly update = $command({
+    name: "update",
+    description:
+      "Edit an open release. --new-tag moves its URL and breaks every shared link",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      "new-tag": z
+        .text({
+          description:
+            "Retag it. The tag is the URL: there is no redirect and no history.",
+        })
+        .optional(),
+      title: z.text({ description: "A new display title." }).optional(),
+      description: z
+        .text({
+          size: "rich",
+          atFile: true,
+          description: "A new description, in Markdown.",
+        })
+        .optional(),
+      "target-date": z
+        .text({
+          description:
+            "A new target date, ISO 8601. An empty string clears it.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const date = flags["target-date"];
+        const body = {
+          ...(flags["new-tag"] === undefined ? {} : { tag: flags["new-tag"] }),
+          ...(flags.title === undefined ? {} : { title: flags.title }),
+          ...(flags.description === undefined
+            ? {}
+            : { description: flags.description }),
+          ...(date === undefined ? {} : { targetDate: date || null }),
+        };
+        const changed = Object.keys(body);
+        if (changed.length === 0) {
+          throw new UsageError(
+            "Nothing to update: pass at least one of --new-tag, --title, --description or --target-date.",
+          );
+        }
+
+        const { release } = await this.byTag(flags.tag, flags.project, context);
+        const updated = await this.api.updateRelease({
+          params: { id: release.id },
+          body,
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Updated release ${updated.tag}: ${changed.join(", ")}`,
+        );
+      });
+    },
+  });
+
+  public readonly reopen = $command({
+    name: "reopen",
+    description:
+      "Undo a publication: the date, the frozen changelog and counts go. A fix is a new release instead",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { release } = await this.byTag(flags.tag, flags.project, context);
+        const reopened = await this.api.reopenRelease({
+          params: { id: release.id },
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          reopened,
+          `Reopened release ${flags.tag}`,
+        );
+      });
+    },
+  });
+
+  public readonly attach = $command({
+    name: "attach",
+    description:
+      "Put an epic or a quest in a release. An epic carries its quests with it",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      ...ReleaseCommand.TARGET_FLAGS,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId, release } = await this.byTag(
+          flags.tag,
+          flags.project,
+          context,
+        );
+        await this.move(projectId, flags, release.id);
+
+        this.render.written(
+          print,
+          flags.output,
+          { ok: true, tag: flags.tag },
+          `Attached to ${flags.tag}`,
+        );
+      });
+    },
+  });
+
+  public readonly detach = $command({
+    name: "detach",
+    description:
+      "Take an epic or a quest out of a release. An epic takes the quests following it",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      ...ReleaseCommand.TARGET_FLAGS,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.byTag(
+          flags.tag,
+          flags.project,
+          context,
+        );
+        await this.move(projectId, flags, null);
+
+        this.render.written(
+          print,
+          flags.output,
+          { ok: true, tag: flags.tag },
+          `Detached from ${flags.tag}`,
+        );
+      });
+    },
+  });
+
+  public readonly delete = $command({
+    name: "delete",
+    description:
+      "Delete a release. What is in it is detached, and a published one's frozen record goes",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      ...ReleaseCommand.TAG_FLAG,
+      yes: z
+        .boolean()
+        .describe("Required: a published release's record exists nowhere else.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        if (!flags.yes) {
+          throw new UsageError(
+            `Nothing deleted: ${flags.tag} would go for good. Pass --yes to delete it.`,
+          );
+        }
+
+        const { release } = await this.byTag(flags.tag, flags.project, context);
+        await this.api.deleteRelease({ params: { id: release.id } });
+
+        this.render.written(
+          print,
+          flags.output,
+          { ok: true },
+          `Deleted release ${flags.tag}`,
+        );
+      });
+    },
+  });
+
+  public readonly setDefault = $command({
+    name: "default",
+    description:
+      "Point the project's intake at a release, or --clear it. A published one is refused",
+    flags: z.object({
+      ...ReleaseCommand.PROJECT_FLAG,
+      tag: ReleaseCommand.TAG_FLAG.tag.optional(),
+      clear: z
+        .boolean()
+        .describe("Leave the project with no default.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        if (!flags.tag === !flags.clear) {
+          throw new UsageError("Pass --tag, or --clear to clear the default.");
+        }
+
+        const { projectId } = await this.projects.named(flags.project, context);
+        const release = flags.tag
+          ? (await this.byTag(flags.tag, flags.project, context)).release
+          : undefined;
+
+        const releases = await this.api.setDefaultRelease({
+          params: { projectId },
+          body: { releaseId: release?.id ?? null },
+        });
+
+        const current = releases.find((it) => it.defaultSince);
+        this.render.written(
+          print,
+          flags.output,
+          current ? { tag: current.tag } : {},
+          current
+            ? `${current.tag} is now the default release`
+            : "This project now has no default release",
+        );
+      });
+    },
+  });
+
+  /**
+   * `lore releases set default`, named by the rule the help teaches:
+   * `release_set_default`. Declared after its child.
+   */
+  public readonly set = $command({
+    name: "set",
+    description: "A project's default release: set or clear it",
+    children: [this.setDefault],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  public readonly releases = $command({
+    name: "releases",
+    description: "The releases of a Lore project",
+    children: [
+      this.check,
+      this.cut,
+      this.changelog,
+      this.publish,
+      this.list,
+      this.get,
+      this.create,
+      this.update,
+      this.reopen,
+      this.attach,
+      this.detach,
+      this.delete,
+      this.set,
+    ],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  /**
+   * The release a tag names, which `getReleases` is the only way to reach: see
+   * "Why the release is found client-side".
+   */
+  protected async byTag(
+    tag: string,
+    project: string | undefined,
+    context: LoreRefusalContext,
+  ) {
+    const { projectId } = await this.projects.named(project, context);
+    const releases = await this.api.getReleases({ params: { projectId } });
+    const release = releases.find((it) => it.tag === tag);
+    if (!release) {
+      throw new UsageError(`Release '${tag}' not found in this project`);
+    }
+    return { projectId, release };
+  }
+
+  /**
+   * Attach (a release id) or detach (`null`) what `--epic` and `--quest` name.
+   */
+  protected async move(
+    projectId: number,
+    flags: { epic?: string; quest?: string },
+    releaseId: number | null,
+  ): Promise<void> {
+    if (flags.epic === undefined && flags.quest === undefined) {
+      throw new UsageError("Pass --epic or --quest to say what to move.");
+    }
+
+    if (flags.epic !== undefined) {
+      const epic = await this.epicApi.getEpicByNumber({
+        params: { projectId, number: this.refs.epic(flags.epic) },
+      });
+      await this.epicApi.updateEpic({
+        params: { id: epic.id },
+        body: { releaseId },
+      });
+    }
+
+    if (flags.quest !== undefined) {
+      const quest = await this.questApi.getQuestByShortId({
+        params: { projectId, shortId: this.refs.quest(flags.quest) },
+      });
+      await this.questApi.updateQuestById({
+        params: { id: quest.id },
+        body: { releaseId },
+      });
+    }
+  }
 }

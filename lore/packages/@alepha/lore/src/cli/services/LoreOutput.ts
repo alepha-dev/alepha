@@ -190,6 +190,22 @@ export class LoreOutput {
   }
 
   /**
+   * A write, in the format asked for: its subject as JSON, or one line.
+   */
+  public written(
+    print: LorePrint,
+    output: string,
+    subject: unknown,
+    line: string,
+  ): void {
+    if (output === "json") {
+      this.json(print, subject);
+      return;
+    }
+    this.write(print, line);
+  }
+
+  /**
    * An objective with the id `lore quest objective set` and `--waive` take:
    * `[x] 0  Title`, `[ ] 1  Title`, `[-] 2  Title (waived: reason)`.
    */

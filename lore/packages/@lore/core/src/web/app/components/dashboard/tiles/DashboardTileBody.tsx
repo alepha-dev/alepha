@@ -88,7 +88,7 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
         data-testid="tile-empty"
         data-reason={value.empty}
       >
-        {tr(`dashboard.empty.${value.empty}` as never)}
+        {tr(`dashboard.empty.${value.empty}`)}
       </div>
     );
   }

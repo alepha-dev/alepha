@@ -29,10 +29,12 @@ variant with typed fields, no action takes a free-form path, a shell command
 or an argument list, and a name that is not here is refused and reported,
 never passed through to anything.
 
-`deploy` is already code execution as the app user, so the vocabulary bounds
-the blast radius without making it small. It does bound it: a compromised
-Lore can restart or redeploy the apps this machine already hosts, from
-artifacts it already accepts, and can do nothing else here.
+`deploy` is already code execution as the app user, and `stack-deploy` runs
+what a compose file asks for, devices and capabilities included, so on a
+machine that accepts deploys a compromised Lore can reach the host. The
+vocabulary bounds the rest: on one that does not (`DeployAllowed`, read from the
+welcome frame), it can restart, stop, start and back up the instances this
+machine already runs and read their logs, and can do nothing else here.
 
 Adding a variant is a decision about what a remote party may make this host
 do. It belongs in this file, beside this comment, and nowhere else.
@@ -447,6 +449,11 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	if err != nil {
 		return "failed", "deploying", err.Error()
 	}
+	if secretsFile != "" {
+		// Ours, and plaintext. The deploy consumes a file it can read as secrets;
+		// one it refuses unread is left for whoever wrote it.
+		defer os.Remove(secretsFile)
+	}
 	out, derr := a.s.deployArtifact(ctx, deployArtifactOptions{
 		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
 		SecretsFile: secretsFile,
@@ -467,8 +474,9 @@ const keepArtifacts = 5
 /*
 writeSecretsFile stages the pulled set the way the deploying user stages
 `--secrets-file`: a 0600 regular file under the Bay root, which
-`deploy.ConsumeSecretsFile` reads, validates and unlinks on every path out.
-Nothing else ever holds the values: not this function's error, not a log.
+`deploy.ConsumeSecretsFile` reads, validates and unlinks, and which the caller
+removes if that refused it unread. Nothing else ever holds the values: not this
+function's error, not a log.
 
 Values are written literally, one per line, which is what ParseAssignments
 reads; a value with a line break cannot be carried that way and is refused by

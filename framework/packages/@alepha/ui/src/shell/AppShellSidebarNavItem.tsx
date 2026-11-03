@@ -152,6 +152,9 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
         render={
           <Link
             href={item.href ?? "#"}
+            prefetch={
+              item.prefetch === false ? undefined : (item.prefetch ?? "hover")
+            }
             aria-current={item.active ? "page" : undefined}
           />
         }
@@ -282,6 +285,11 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
                   render={
                     <Link
                       href={child.href ?? "#"}
+                      prefetch={
+                        child.prefetch === false
+                          ? undefined
+                          : (child.prefetch ?? "hover")
+                      }
                       aria-current={child.active ? "page" : undefined}
                     />
                   }

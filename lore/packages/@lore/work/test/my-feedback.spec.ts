@@ -150,6 +150,43 @@ describe("FeedbackController — reporter-scoped /me endpoints", () => {
     expect(accepted.data.content.length).toBe(0);
   });
 
+  /**
+   * #Q3005. The stamp is for the project; a reporter need not be a member, so
+   * they learn when it was decided and never by whom.
+   */
+  it("stamps a triage decision, and keeps who decided from the reporter", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const reporter = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const id = await submit(ctx, projectId, reporter, {
+      title: "Triaged",
+      description: "body",
+    });
+
+    await ctx.feedbackController.rejectFeedback.fetch(
+      { params: { projectId, feedbackId: id } },
+      { user: owner },
+    );
+
+    const inbox = await ctx.feedbackController.listFeedback.fetch(
+      { params: { projectId }, query: { status: "all" } },
+      { user: owner },
+    );
+    const [row] = inbox.data.items;
+    expect(row?.triagedBy).toBe(owner.id);
+    expect(row?.triagedAt).toBeDefined();
+
+    const mine = await ctx.feedbackController.listMyFeedback.fetch(
+      { query: {} },
+      { user: reporter },
+    );
+    const [own] = mine.data.content;
+    expect(own?.triagedAt).toBeDefined();
+    expect(own).not.toHaveProperty("triagedBy");
+  });
+
   it("edits a pending feedback (title, description, tags)", async ({
     expect,
   }) => {

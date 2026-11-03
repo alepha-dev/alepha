@@ -132,12 +132,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     const wanted = query.trim().toLowerCase();
     const byGroup = new Map<string, DashboardMetricDescriptor[]>();
     for (const metric of catalog.on(props.board)) {
-      if (
-        wanted &&
-        !tr(metric.labelKey as never)
-          .toLowerCase()
-          .includes(wanted)
-      ) {
+      if (wanted && !tr(metric.labelKey).toLowerCase().includes(wanted)) {
         continue;
       }
       byGroup.set(metric.group, [...(byGroup.get(metric.group) ?? []), metric]);
@@ -264,9 +259,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
             </button>
           )}
           <DrawerTitle className="cn-font-sans text-sm font-medium">
-            {picked
-              ? tr(picked.labelKey as never)
-              : tr("dashboard.catalogue.title")}
+            {picked ? tr(picked.labelKey) : tr("dashboard.catalogue.title")}
           </DrawerTitle>
           <span className="flex-1" />
           <DrawerClose
@@ -295,7 +288,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
               {groups.map(([group, metrics]) => (
                 <div key={group}>
                   <div className="text-muted-foreground px-0 pt-3.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] uppercase">
-                    {tr(`dashboard.group.${group}` as never)}
+                    {tr(`dashboard.group.${group}`)}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     {metrics.map((metric) => (

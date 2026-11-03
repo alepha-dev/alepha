@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,11 +134,29 @@ func TestLoad(t *testing.T) {
 	t.Run("tags are pinned to digests, a digest is kept", func(t *testing.T) {
 		dir := bundleDir(t, map[string]string{"compose.yml": "services:\n  a:\n    image: nginx:1\n  b:\n    image: busybox@sha256:abc\n"})
 		l, _ := Load(dir, "p-production", nil)
-		pinned, err := l.PinImages(func(image string) (string, error) { return image + "@sha256:pinned", nil })
+		pinned, err := l.PinImages(func(image string) (string, error) { return image + "@sha256:pinned", nil }, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if pinned["a"] != "nginx:1@sha256:pinned" || pinned["b"] != "busybox@sha256:abc" {
+			t.Fatalf("pinned = %v", pinned)
+		}
+	})
+
+	t.Run("pull_policy never pins what the host holds, and pulls nothing", func(t *testing.T) {
+		dir := bundleDir(t, map[string]string{"compose.yml": "services:\n  a:\n    image: nginx:1\n    pull_policy: never\n"})
+		l, err := Load(dir, "p-production", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pinned, err := l.PinImages(
+			func(image string) (string, error) { return "", fmt.Errorf("%s was pulled", image) },
+			func(string) (string, error) { return "sha256:local", nil },
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pinned["a"] != "sha256:local" {
 			t.Fatalf("pinned = %v", pinned)
 		}
 	})
@@ -200,6 +219,111 @@ func TestLoad(t *testing.T) {
 		}
 		if err := l.Validate(); err != nil {
 			t.Fatal(err)
+		}
+	})
+
+	t.Run("a named volume keeps the name Compose gives it, however the file spells another", func(t *testing.T) {
+		requireCompose(t)
+		service := "services:\n  web:\n    image: nginx\n    volumes: [\"data:/data\"]\n"
+		for _, c := range []struct{ name, top, refused string }{
+			{name: "no name", top: "volumes:\n  data: {}\n"},
+			{name: "external false", top: "volumes:\n  data: {external: false}\n"},
+			{name: "the default spelled out", top: "volumes:\n  data: {name: p-staging_data}\n"},
+			{name: "another environment's", top: "volumes:\n  data: {name: p-production_data}\n", refused: "volume data: name is not allowed"},
+			{name: "from a default value", top: "volumes:\n  data: {name: \"${V:-p-production_data}\"}\n", refused: "volume data: name is not allowed"},
+			{name: "external", top: "volumes:\n  data: {external: true}\n", refused: "volume data: external is not allowed"},
+			{name: "external through the old spelling", top: "volumes:\n  data: {external: {name: p-production_data}}\n", refused: "volume data: external is not allowed"},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				l, err := Load(bundleDir(t, map[string]string{"compose.yml": service + c.top}), "p-staging", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = l.Validate()
+				if c.refused == "" {
+					if err != nil {
+						t.Fatal(err)
+					}
+					return
+				}
+				if err == nil || !strings.Contains(err.Error(), c.refused) {
+					t.Fatalf("err = %v, want %q", err, c.refused)
+				}
+				if strings.Count(err.Error(), "volume data:") != 1 {
+					t.Fatalf("one volume, one refusal: %v", err)
+				}
+			})
+		}
+	})
+
+	t.Run("a stack names its own services, networks and the files it carries", func(t *testing.T) {
+		requireCompose(t)
+		dir := bundleDir(t, map[string]string{
+			"compose.yml": `services:
+  db: {image: nginx, networks: [backend]}
+  sidecar:
+    image: nginx
+    network_mode: "service:db"
+    pid: "service:db"
+    ipc: "service:db"
+  web:
+    image: nginx
+    networks: [backend]
+    volumes_from: [db]
+    env_file:
+      - ./app.env
+      - {path: ./optional.env, required: false}
+    secrets: [key, fromenv]
+    configs: [conf, inline]
+networks:
+  backend: {driver: bridge}
+secrets:
+  key: {file: ./key.txt}
+  fromenv: {environment: SECRET}
+configs:
+  conf: {file: ./conf.txt}
+  inline: {content: hello}
+`,
+			"app.env": "A=1\n", "key.txt": "k\n", "conf.txt": "c\n",
+		})
+		l, err := Load(dir, "p-production", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := l.Validate(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("a variable cannot configure Compose itself", func(t *testing.T) {
+		dir := bundleDir(t, map[string]string{"compose.yml": "services:\n  web: {image: nginx}\n"})
+		_, err := Load(dir, "p-staging", map[string]string{"COMPOSE_ENV_FILES": "/opt/bay/data/stacks/p-production/.env"})
+		if err == nil || !strings.Contains(err.Error(), "variable COMPOSE_ENV_FILES is not allowed") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
+	t.Run("an env_file is refused before Compose can read it", func(t *testing.T) {
+		secret := filepath.Join(t.TempDir(), "other-env", ".env")
+		_ = os.MkdirAll(filepath.Dir(secret), 0o755)
+		_ = os.WriteFile(secret, []byte("DB_PASSWORD=production\n"), 0o600)
+		outside := "service web: env_file " + secret + " is outside the bundle"
+		for _, c := range []struct{ name, service, refused string }{
+			{"as one path", "env_file: " + secret, outside},
+			{"in a list", "env_file: [" + secret + "]", outside},
+			{"optional", "env_file:\n      - {path: " + secret + ", required: false}", outside},
+			{"up from the bundle", "env_file: [../x.env]", "service web: env_file ../x.env is outside the bundle"},
+			{"from the home directory", "env_file:\n      - {path: ~/x.env, required: false}", "service web: env_file ~/x.env is outside the bundle"},
+			{"through a variable", "env_file: [\"${F:-" + secret + "}\"]", "cannot use a variable"},
+			{"through an anchor", "env_file: *f", outside},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				dir := bundleDir(t, map[string]string{
+					"compose.yml": "x-f: &f [" + secret + "]\nservices:\n  web:\n    image: nginx\n    " + c.service + "\n"})
+				if _, err := Load(dir, "p-staging", nil); err == nil || !strings.Contains(err.Error(), c.refused) {
+					t.Fatalf("err = %v, want %q", err, c.refused)
+				}
+			})
 		}
 	})
 }

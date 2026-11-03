@@ -6,7 +6,7 @@ Alepha's link system provides type-safe cross-service communication through `$cl
 
 `$client<T>()` creates a proxy object that mirrors the actions of a controller class. Property access on the proxy returns virtual actions that can be called like functions.
 
-```typescript
+```typescript check
 import { z } from "alepha";
 import { $action } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -20,7 +20,7 @@ class ProductController {
       response: z.object({ id: z.uuid(), name: z.text(), price: z.number() }),
     },
     handler: async ({ params }) => {
-      return await this.repo.findById(params.id);
+      return { id: params.id, name: "Keyboard", price: 49 };
     },
   });
 }
@@ -33,6 +33,7 @@ class OrderService {
     path: "/orders",
     schema: {
       body: z.object({ productId: z.uuid(), quantity: z.integer() }),
+      response: z.object({ product: z.text(), total: z.number() }),
     },
     handler: async ({ body }) => {
       // Type-safe call: params type is inferred from ProductController.getProduct
@@ -151,19 +152,19 @@ Alepha does not and will not generate API clients. The type-safe path is `import
 
 Each property on a `$client` proxy returns a `VirtualAction` with these methods:
 
-| Method                 | Description                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| `action(config)`       | Default call. Local-first - calls the handler directly if available, otherwise HTTP. |
-| `action.run(config)`   | Same as calling the action directly. Local-first.                                    |
-| `action.fetch(config)` | Always makes an HTTP request, even if the action is local.                           |
-| `action.can()`         | Returns `true` if the current user has permission to call this action.               |
+| Method                 | Description                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `action(config)`       | Default call. Local-first - calls the handler directly if available, otherwise HTTP.                                                       |
+| `action.run(config)`   | Same as calling the action directly. Local-first.                                                                                          |
+| `action.fetch(config)` | Always makes an HTTP request, even if the action is local. Resolves to `{ data, status, statusText, headers }` rather than the data alone. |
+| `action.can()`         | Returns `true` if the current user has permission to call this action.                                                                     |
 
 ```typescript
 // Direct call (local-first)
 const product = await this.products.getProduct({ params: { id } });
 
 // Force HTTP
-const response = await this.products.getProduct.fetch({ params: { id } });
+const { data } = await this.products.getProduct.fetch({ params: { id } });
 
 // Permission check
 if (this.products.getProduct.can()) {
@@ -183,7 +184,10 @@ the question, and the missing half is the one that decides whether a button
 renders. `ScopeGrantsProvider` is where the other half goes:
 
 ```typescript
+import { $inject, Alepha } from "alepha";
 import { ScopeGrantsProvider } from "alepha/server/links";
+
+import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 
 class ProjectScopeGrants extends ScopeGrantsProvider {
   protected readonly alepha = $inject(Alepha);
@@ -278,7 +282,7 @@ payments = $remote({
 // Remote endpoints are now accessible via this server
 ```
 
-This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API.
+This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API. A proxied request never carries the `serviceAccount`: it forwards the caller's request as is, so the remote authenticates the caller.
 
 `proxy` also accepts an object form - `proxy: { noInternal: true }` makes the remote reachable only through the proxy, not via internal `$client` calls - and `$remote` takes a `name` to label the link (defaults to the class member's name).
 
@@ -319,7 +323,20 @@ The `LinkProvider` maintains a registry of all available actions (local and remo
 
 1. It looks up the action by name in the link registry.
 2. If the action has a local handler (same process), it calls the handler directly.
-3. If the action is remote (has a `host`), it makes an HTTP request via `HttpClient`.
+3. Otherwise it makes an HTTP request via `HttpClient`: an `$sse` link opens a stream, and a browser call to its own origin joins the [batch](#batching).
 4. Authorization headers from the current request context are forwarded automatically.
+
+```mermaid
+flowchart TD
+  C[Virtual action called] --> L{In the registry?}
+  L -->|no| E[403 if pruned for this user, else 401]
+  L -->|yes| H{Local handler?}
+  H -->|yes| R[Handler runs in process]
+  H -->|no| S{An $sse link?}
+  S -->|yes| T[Event stream over HTTP]
+  S -->|no| B{Browser with batching on?}
+  B -->|yes| Q[Queued for POST /api/_batch]
+  B -->|no| F[HttpClient request]
+```
 
 The proxy is built using JavaScript `Proxy`, so property access is intercepted at runtime and mapped to link lookups.

@@ -130,8 +130,8 @@ func main() {
 		}
 	}
 	var err error
-	// Every command except `serve` is a client of the control API, reached over
-	// the unix socket. `--control-socket` is the only thing to resolve.
+	// `serve` binds the socket; for every other command it is the one thing to
+	// resolve, and the few that are no client of the control API ignore it.
 	if os.Args[1] != "serve" {
 		readControlFlag(os.Args[2:])
 	}
@@ -258,8 +258,9 @@ func usageText() string {
               # BEFORE the release is swapped in, so the app boots with its
               # secrets — there is no window where it runs without them.
               # Bay CONSUMES it: the file is unlinked whether the deploy
-              # succeeds or fails. A symlink or a group/world-readable file is
-              # refused, as are keys Bay owns.
+              # succeeds or fails. Keys Bay owns are refused. A symlink, a
+              # group/world-readable file or a line that is not an assignment
+              # is refused too, and the file is left where it is.
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
               # --domain is repeatable and accepts a comma-separated list —
@@ -374,20 +375,22 @@ func usageText() string {
                 # them. The secret is stored 0600 beside state.json and never
                 # printed again; http:// is accepted for a loopback host only.
                 # Takes effect without restarting "bay serve". Edits the file
-                # directly, so it takes --root (or $BAY_ROOT), not the socket.
+                # directly, so it takes --root (or $BAY_ROOT); the socket only
+                # tells a running Bay to re-read it.
   bay connector show              # sink, estate, connection state; never the secret
   bay connector clear             # forget the sink and the secret: dials nobody
 
-Every command except "serve" is a thin client of the control API. There is no
-second code path.
+Every command except "serve", "doctor", "version", "connector" and "stack exec"
+is a thin client of the control API. There is no second code path.
 
-That API listens on a unix socket and nothing else. It can create users, read
-every app's secrets and delete every backup, so it is root-equivalent, and a
-loopback TCP port with a shared secret is the wrong shape for that: any process
-on the host can reach the port, the secret ends up in a shell history and an
-environment variable, and a bind-address typo publishes it to the internet. The
-socket's authorization is the file mode, enforced by the kernel — reaching it
-already requires being root or in the control group.
+That API listens on a unix socket and nothing else. It deploys code, and a stack
+it deploys runs containers with the devices and capabilities they ask for, so it
+is root-equivalent, and a loopback TCP port with a shared secret is the wrong
+shape for that: any process on the host can reach the port, the secret ends up
+in a shell history and an environment variable, and a bind-address typo
+publishes it to the internet. The socket's authorization is the file mode,
+enforced by the kernel: reaching it already requires being root or in the
+control group.
 
 Remote access is SSH, and nothing else: reach the host that way and run bay
 commands there directly, e.g. "ssh host ./bay deploy app.tar.zst --name app".
@@ -449,7 +452,11 @@ type server struct {
 	// readyWait overrides readyTimeout for a blue/green candidate when set:
 	// tests waiting for a release that never comes up need not wait a minute.
 	readyWait time.Duration
-	tls       *tlsconf.Manager
+	// watchWindow and watchEvery override rollbackWindow and rollbackInterval
+	// when set: tests of the rollback watch need not sit through two minutes.
+	watchWindow time.Duration
+	watchEvery  time.Duration
+	tls         *tlsconf.Manager
 	// tcp holds the raw TCP ports stack services opted into (x-lore.tcp).
 	tcp *proxy.TCP
 	// probe answers "is this app serving?", which is a different question from
@@ -497,7 +504,8 @@ type server struct {
 	busyMu sync.Mutex
 	busy   map[string]string
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
-	// deploy can supersede the previous one's. See beginWatch.
+	// deploy can supersede the previous one's and a stop can end it. See
+	// beginWatch and cancelWatch.
 	watchMu sync.Mutex
 	watches map[string]context.CancelFunc
 	// repoint rewrites an instance's `.env` for blob storage; nil means
@@ -702,7 +710,8 @@ func cmdServe(args []string) error {
 	proxySrv := &http.Server{Addr: addr, Handler: portEighty(router, challenge, store, tlsAddr)}
 	// The control API listens on a unix socket and nowhere else.
 	//
-	// It can create users, read every app's secrets and delete every backup.
+	// It deploys code, and a stack it deploys runs containers with the devices
+	// and capabilities they ask for, so it is root-equivalent.
 	// A loopback TCP port with a shared secret was the wrong shape for that:
 	// every process on the host could reach the port, the secret had to live in
 	// a shell history and an environment variable to be usable, and a typo in
@@ -914,6 +923,7 @@ func (s *server) stopInstance(key string) error {
 	if err := s.store.SetStopped(key, true); err != nil {
 		return err
 	}
+	s.cancelWatch(key)
 	return s.runner.Park(key, stopGrace)
 }
 
@@ -1409,9 +1419,9 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// — refusing it here costs the caller nothing, while refusing it after the
 	// stop would be an outage caused by a validation.
 	//
-	// The file is gone either way. `ConsumeSecretsFile` unlinks it on every
-	// path out, so a refusal does not leave plaintext credentials on the disk
-	// of the host somebody is about to go and debug.
+	// A file that reads as secrets is gone either way, so a refused key does not
+	// leave plaintext credentials on the disk of the host somebody is about to go
+	// and debug. One that does not is left alone: see `ConsumeSecretsFile`.
 	var secrets map[string]string
 	if opts.SecretsFile != "" {
 		parsed, err := deploy.ConsumeSecretsFile(opts.SecretsFile)
@@ -1719,19 +1729,34 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	}
 
 	ctx := s.beginWatch(app.Key())
-	defer s.endWatch(app.Key())
+	defer s.endWatch(ctx, app.Key())
 
+	window, every := rollbackWindow, rollbackInterval
+	if s.watchWindow > 0 {
+		window = s.watchWindow
+	}
+	if s.watchEvery > 0 {
+		every = s.watchEvery
+	}
 	verdict := (&health.Watch{
-		Probe:     s.probe,
-		Port:      app.UpstreamPort(),
-		Window:    rollbackWindow,
-		Interval:  rollbackInterval,
+		Probe: s.probe,
+		// Read from the store, as the proxy reads it for every request. `app`
+		// is the copy the deploy held before its switch, and even a fresh one
+		// would go stale: a restart inside the window moves the host port
+		// again, and the port it left is closed.
+		Port: func() int {
+			current, _ := s.store.Get(app.Key())
+			return current.UpstreamPort()
+		},
+		Window:    window,
+		Interval:  every,
 		Threshold: rollbackThreshold,
 	}).Run(ctx)
 
 	if ctx.Err() != nil {
-		// Superseded by a newer deploy. Its watch owns this app now.
-		s.log.Info("watch cancelled by a newer deploy",
+		// Superseded by a newer deploy, whose watch owns this app now, or ended
+		// by a stop or a restore (see cancelWatch).
+		s.log.Info("watch cancelled by a newer deploy, a stop or a restore",
 			"app", app.Key(), "release", app.Release)
 		return
 	}
@@ -1745,9 +1770,18 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	// this line an operator may have deployed or rolled back by hand, and
 	// reverting their release to one they never asked for is worse than leaving
 	// a bad one running — they are standing right there.
-	if current, ok := s.store.Get(app.Key()); !ok || current.Release != app.Release {
+	current, ok := s.store.Get(app.Key())
+	if !ok || current.Release != app.Release {
 		s.log.Warn("release failed, but the app has already moved on — not rolling back",
 			"app", app.Key(), "watched", app.Release, "reason", verdict.Reason)
+		return
+	}
+	// Down on purpose. A stop ends the watch, but it can land just after this
+	// verdict was reached, and a rollback ends in a start, which would undo the
+	// stop on a release nobody asked for.
+	if current.Stopped {
+		s.log.Info("app stopped during its watch, not rolling back",
+			"app", app.Key(), "release", app.Release)
 		return
 	}
 
@@ -1755,7 +1789,9 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 		"app", app.Key(), "bad", app.Release, "to", previous,
 		"reason", verdict.Reason, "checks", verdict.Checks)
 
-	if err := s.rollbackTo(app, previous); err != nil {
+	// From `current`, not `app`: a container that is down is started again on
+	// the host port it is given, and only the store's is the one the proxy dials.
+	if err := s.rollbackTo(current, previous); err != nil {
 		// Nothing left to try automatically. Said loudly rather than retried:
 		// an app stuck between two releases needs a human, and a loop here
 		// would bury the one line that says so. What went wrong is in the
@@ -1787,11 +1823,48 @@ func (s *server) beginWatch(key string) context.Context {
 	return ctx
 }
 
-// endWatch drops this app's entry, unless a newer watch has already claimed it.
-func (s *server) endWatch(key string) {
+/*
+stopForMaintenance takes an app down for a job that brings it back itself: a
+restore, a storage migration.
+*/
+func (s *server) stopForMaintenance(key string) error {
+	s.cancelWatch(key)
+	return s.runner.Stop(key, stopGrace)
+}
+
+/*
+cancelWatch ends the app's rollback watch, if it has one, before somebody takes
+the app down on purpose: a stop, a restore, a storage migration.
+
+From the outside each of those is a release that died. Left running, the watch
+would start the previous release in the middle of a job, on a database being
+swapped, or after a `bay start` whose boot outlasts the threshold, when nothing
+says stopped any more. Not armed again afterwards: what comes back is not what
+the watch was judging, and somebody is at the controls, so a bad release
+restarted inside its window stays theirs to deal with.
+*/
+func (s *server) cancelWatch(key string) {
 	s.watchMu.Lock()
 	defer s.watchMu.Unlock()
-	delete(s.watches, key)
+	if cancel, ok := s.watches[key]; ok {
+		cancel()
+		delete(s.watches, key)
+	}
+}
+
+/*
+endWatch drops the entry of a watch that ran its course.
+
+⚠️ A cancelled watch has no entry left to drop: whoever cancelled it replaced or
+removed it. What is under the key now is a newer watch, and deleting it would
+leave that one running where no deploy and no stop can reach it.
+*/
+func (s *server) endWatch(ctx context.Context, key string) {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	if ctx.Err() == nil {
+		delete(s.watches, key)
+	}
 }
 
 // handleRemove stops an app and unregisters it.
@@ -2194,6 +2267,10 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ %s\n", restorePendingProblem(a.Key(), *p))
 		}
+		if a.BackupHold != "" {
+			problems++
+			fmt.Printf("           ⚠ scheduled backups are held after a failed restore: %s\n", a.BackupHold)
+		}
 		// Named, not counted as a problem: an unhooked volume is a choice the
 		// stack's author made, and a status that always fails is one nobody
 		// reads. It is still said on every run.
@@ -2367,6 +2444,20 @@ func readControlFlag(args []string) {
 	}
 }
 
+// dropControlFlag takes `--control-socket PATH`, which readControlFlag has already
+// read, out of the arguments of a command that reads them by position.
+func dropControlFlag(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--control-socket" && i < len(args)-1 {
+			i++
+			continue
+		}
+		out = append(out, args[i])
+	}
+	return out
+}
+
 // controlSocketPath returns the socket to prefer, if one is reachable.
 //
 // On the host itself the socket is both the simpler path and the safer one:
@@ -2391,6 +2482,17 @@ func controlSocketPath() string {
 // socketFlag holds --control-socket for client commands.
 var socketFlag string
 
+// controlTransport dials the socket instead of the network. The URL's host is
+// ignored by the transport but still has to parse, so callers keep composing
+// http://bay/path exactly as before.
+func controlTransport(sock string) *http.Transport {
+	return &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}
+}
+
 func call(method, url string, body io.Reader) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 
@@ -2402,14 +2504,7 @@ func call(method, url string, body io.Reader) (string, error) {
 				"(see --control-socket / $BAY_SOCKET). " +
 				"For remote deploys, ssh into the Bay host and run bay there.")
 	}
-	// Dial the socket instead of the network. The URL's host is ignored by the
-	// transport but still has to parse, so callers keep composing
-	// http://bay/path exactly as before.
-	client.Transport = &http.Transport{
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
-		},
-	}
+	client.Transport = controlTransport(sock)
 
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {

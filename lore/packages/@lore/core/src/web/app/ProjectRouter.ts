@@ -72,17 +72,8 @@ export class ProjectRouter {
         ?.project;
       return { title: project?.title ?? "Project" };
     },
-    animation: ({ meta }) => {
-      if (meta.firstOpen) {
-        return {
-          enter: {
-            name: "projectOpen",
-            duration: 500,
-            timing: "cubic-bezier(0.16, 1, 0.3, 1)",
-          },
-        };
-      }
-    },
+    viewTransition: ({ meta }) =>
+      meta.firstOpen ? { enter: "project-open" } : undefined,
     lazy: () => import("./components/project/ProjectView.tsx"),
     loader: async ({ params }) => {
       // The one slug→id resolution in the app. Every fetch below — and every

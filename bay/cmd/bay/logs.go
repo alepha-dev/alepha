@@ -71,7 +71,7 @@ func cmdLogs(args []string) error {
 		return err
 	}
 
-	kept, undated := filterLogs(response.Lines, since, grep)
+	kept := filterLogs(response.Lines, since, grep)
 	if asJSON {
 		encoded, err := json.MarshalIndent(kept, "", "  ")
 		if err != nil {
@@ -80,7 +80,7 @@ func cmdLogs(args []string) error {
 		fmt.Println(string(encoded))
 		return nil
 	}
-	fmt.Print(renderLogs(kept, undated, since))
+	fmt.Print(renderLogs(kept))
 	return nil
 }
 
@@ -108,39 +108,31 @@ func logsUnavailable(name, env string, response logsResponse) error {
 	return fmt.Errorf("%s/%s is not supervised by this Bay — nothing to read", name, env)
 }
 
-// filterLogs applies --since and --grep, and counts what --since could not
-// judge.
+// filterLogs applies --since and --grep.
 //
-// Entries with no timestamp are KEPT rather than dropped. An app that writes
-// plain text to stdout produces no timestamps at all, and silently hiding
-// exactly those lines would make `--since` delete the output of the
-// `console.log` someone just added — the one line they are looking for.
-func filterLogs(lines []runner.LogLine, since time.Duration, grep *regexp.Regexp) ([]runner.LogLine, int) {
+// Every entry carries a time, so --since can judge them all: Bay asks Docker for
+// timestamps, and Docker stamps each line it stored, whatever the app wrote.
+func filterLogs(lines []runner.LogLine, since time.Duration, grep *regexp.Regexp) []runner.LogLine {
 	if since == 0 && grep == nil {
-		return lines, 0
+		return lines
 	}
 	cutoff := time.Now().Add(-since)
 	kept := make([]runner.LogLine, 0, len(lines))
-	undated := 0
 	for _, line := range lines {
 		if grep != nil && !grep.MatchString(line.Raw) {
 			continue
 		}
-		if since > 0 {
-			if line.At.IsZero() {
-				undated++
-			} else if line.At.Before(cutoff) {
-				continue
-			}
+		if since > 0 && line.At.Before(cutoff) {
+			continue
 		}
 		kept = append(kept, line)
 	}
-	return kept, undated
+	return kept
 }
 
 // renderLogs prints one line per entry, timestamp and level first when they
 // were recoverable and the raw line otherwise.
-func renderLogs(lines []runner.LogLine, undated int, since time.Duration) string {
+func renderLogs(lines []runner.LogLine) string {
 	var b strings.Builder
 	if len(lines) == 0 {
 		// Supervised and silent. Said in words, because an empty screen looks
@@ -156,12 +148,6 @@ func renderLogs(lines []runner.LogLine, undated int, since time.Duration) string
 		default:
 			fmt.Fprintf(&b, "%s %-5s %s\n", stamp(line.At), line.Level, line.Text)
 		}
-	}
-	if undated > 0 && since > 0 {
-		// Said out loud rather than left to be inferred: the filter did not
-		// apply to these, and a reader who thinks it did will draw the wrong
-		// conclusion from what is on screen.
-		fmt.Fprintf(&b, "\n(%d line(s) carried no timestamp and were kept regardless of --since)\n", undated)
 	}
 	return b.String()
 }

@@ -47,7 +47,7 @@ export const createPresetRanks = async (
           name: await presets.nameFor(preset),
           permissions: preset.permissions,
         },
-        { id: owner.userId } as never,
+        { id: owner.userId },
       );
     }
   });

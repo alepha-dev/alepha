@@ -13,6 +13,12 @@ export interface NavItem {
    */
   href?: string;
   /**
+   * When to fetch the page's code ahead of the click. `false` turns it off.
+   *
+   * @default "hover"
+   */
+  prefetch?: "hover" | "visible" | false;
+  /**
    * Either an icon *component* (e.g. a lucide `Users`) which is instantiated
    * with the row's sizing className, or an already-rendered ReactNode element
    * (e.g. `<Users />`). The latter lets nav metadata declared on a `$page`

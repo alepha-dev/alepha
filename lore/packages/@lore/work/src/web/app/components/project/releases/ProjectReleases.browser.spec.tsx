@@ -121,7 +121,7 @@ describe("ProjectReleases - the row menu and the deletes", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {
@@ -152,7 +152,7 @@ describe("ProjectReleases - the row menu and the deletes", () => {
     fake.releases = releases;
     for (const name of options.denied ?? []) fake.denied.add(name);
 
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     alepha.store.set(currentReleasesAtom, releases);
 
     render(

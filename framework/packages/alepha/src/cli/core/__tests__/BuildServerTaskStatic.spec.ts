@@ -77,7 +77,7 @@ describe("BuildServerTask, for a static build", () => {
 
     await task.run(ctx);
 
-    expect(app.store.get("alepha.react.ssr.manifest" as any)).toEqual({
+    expect(app.store.get("alepha.react.ssr.manifest")).toEqual({
       favicon: "image/svg+xml:/favicon.svg",
     });
     expect(await fs.exists("/project/dist/public/index.html")).toBe(false);

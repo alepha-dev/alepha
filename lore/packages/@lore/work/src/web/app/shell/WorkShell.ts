@@ -7,6 +7,7 @@ import {
   DashboardPickerRegistry,
   ElementReferenceRegistry,
   ProjectShellRegistry,
+  type ReportsFilter,
   ReportsTabRegistry,
   capabilityOption,
   hasCapability,
@@ -22,6 +23,7 @@ import {
   Layers,
   ListChecks,
   ListTodo,
+  Newspaper,
   MessageSquarePlus,
   ScrollText,
   Swords,
@@ -43,12 +45,21 @@ import { useQuestElementImageUpload } from "../components/project/quest/useQuest
 import { useQuestReferences } from "../components/project/quest/useQuestReferences.ts";
 import { useDashboardReleaseOptions } from "../components/project/releases/useDashboardReleaseOptions.ts";
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
+import {
+  useReportAreaOptions,
+  useReportEpicOptions,
+  useReportMemberOptions,
+  useReportPriorityOptions,
+  useReportReleaseOptions,
+  useReportTagOptions,
+} from "../components/project/reports/useReportFilterOptions.ts";
 import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
 import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
 import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
 import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
+import { weeklyStatusPromptDefault } from "../prompts/weeklyStatusPrompt.ts";
 
 /**
  * Work's part of the project shell, registered on core's
@@ -443,6 +454,12 @@ export class WorkShell {
       icon: ListTodo,
       labelKey: "agentPrompts.workLooseQuests",
     });
+    this.prompts.register({
+      kind: "weeklyStatus",
+      template: weeklyStatusPromptDefault,
+      icon: Newspaper,
+      labelKey: "agentPrompts.weeklyStatus",
+    });
 
     this.pickers.registerTags({ useTags: useDashboardQuestTags });
     this.pickers.registerSubject({
@@ -473,23 +490,70 @@ export class WorkShell {
     // Overview and Quests are derived from quests, so they belong to Work.
     // Members is too (completed quests per member), but it needs no switch:
     // the leaderboard exists for every project that has members.
+    const workFilters = [
+      "area",
+      "epicId",
+      "releaseId",
+      "tag",
+      "priority",
+      "memberId",
+    ] as const;
     this.reports.register({
-      route: "reportsOverview",
-      labelKey: "project.reports.nav.overview",
-      order: 10,
+      route: "reportsFlow",
+      labelKey: "project.reports.nav.flow",
+      order: 8,
       needs: "work",
+      filters: ["period", "grain", "compare", ...workFilters],
     });
     this.reports.register({
-      route: "reportsQuests",
-      labelKey: "project.reports.nav.quests",
-      order: 20,
+      route: "reportsBacklog",
+      labelKey: "project.reports.nav.backlog",
+      order: 9,
       needs: "work",
+      filters: ["period", ...workFilters],
     });
     this.reports.register({
-      route: "reportsMembers",
-      labelKey: "project.reports.nav.members",
-      order: 30,
+      route: "reportsPlanning",
+      labelKey: "project.reports.nav.planning",
+      order: 9.5,
+      needs: "work",
+      filters: ["period", "grain", "epicId", "releaseId"],
     });
+    this.reports.register({
+      route: "reportsSupport",
+      labelKey: "project.reports.nav.support",
+      order: 9.6,
+      needs: "support",
+      filters: ["period", "grain"],
+    });
+    // No `needs`: the contribution is core's `project_activity`, so a project
+    // with Work off still has a team.
+    this.reports.register({
+      route: "reportsTeam",
+      labelKey: "project.reports.nav.team",
+      order: 9.9,
+      filters: ["period"],
+    });
+    this.registerReportFilters();
+  }
+
+  /**
+   * The bar's Work filters: their options are this module's atoms, and core
+   * names none of them.
+   */
+  protected registerReportFilters(): void {
+    const filter = (
+      key: ReportsFilter["key"],
+      labelKey: string,
+      useOptions: ReportsFilter["useOptions"],
+    ) =>
+      this.reports.registerFilter({ key, labelKey, needs: "work", useOptions });
+    filter("area", "reports.filter.area", useReportAreaOptions);
+    filter("epicId", "reports.filter.epic", useReportEpicOptions);
+    filter("releaseId", "reports.filter.release", useReportReleaseOptions);
+    filter("tag", "reports.filter.tag", useReportTagOptions);
+    filter("priority", "reports.filter.priority", useReportPriorityOptions);
+    filter("memberId", "reports.filter.member", useReportMemberOptions);
   }
 
   /**

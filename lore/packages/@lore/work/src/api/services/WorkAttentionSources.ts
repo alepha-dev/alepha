@@ -64,8 +64,8 @@ export class WorkAttentionSources {
     const [held, overdueRows, overview, report] = await Promise.all([
       open({ heldAt: { isNotNull: true } }),
       open({ dueAt: { lt: now } }),
-      this.reports.overview(project.id),
-      this.reports.questsReport(project.id),
+      this.reports.overview(project.id, this.reports.fixedQuery),
+      this.reports.questsReport(project.id, this.reports.fixedQuery),
     ]);
     const unassigned = await this.quests.findMany({
       where: {
@@ -128,7 +128,7 @@ export class WorkAttentionSources {
       total:
         overdueOrHeld +
         overview.attention.staleQuests +
-        Math.min(unassigned.length, overview.attention.unassignedQuests),
+        Math.min(unassigned.length, overview.attention.notStartedQuests),
       link: { route: "projectQuests", params: { projectSlug: slug } },
     };
   }

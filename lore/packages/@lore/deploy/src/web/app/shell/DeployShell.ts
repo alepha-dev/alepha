@@ -13,10 +13,8 @@ import {
   currentProjectAtom,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { $client } from "alepha/server/links";
 import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
 
-import type { QualityController } from "../../../api/controllers/QualityController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
@@ -39,7 +37,6 @@ export class DeployShell {
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
-  protected readonly qualityApi = $client<QualityController>();
 
   constructor() {
     this.shell.registerNav("apps", [
@@ -257,20 +254,21 @@ export class DeployShell {
       useLine: useOwnedEstatesDeletionLine,
     });
 
-    // Quality is INGESTED from CI, under a CI credential, and most projects
-    // will never push a run: a permanently empty tab on everyone's Reports
-    // page is worse than no tab. It lost its switch and joined the Apps
-    // baseline, and what replaced the flag is the honest question: the tab
-    // exists once there is something in it. Asked when Reports opens, not on
-    // the `project` loader, which every project navigation pays.
+    this.reports.register({
+      route: "reportsDelivery",
+      labelKey: "project.reports.nav.delivery",
+      order: 9.8,
+      needs: "apps",
+      filters: ["period", "grain"],
+    });
+    // Quality is its own tab again (#Q3070), right after Delivery. It shows
+    // for every Apps project, with the push command until CI sends a run.
     this.reports.register({
       route: "reportsQuality",
       labelKey: "project.reports.nav.quality",
-      order: 40,
+      order: 9.85,
       needs: "apps",
-      available: async (projectId) =>
-        (await this.qualityApi.getQualityRuns({ params: { projectId } })).runs
-          .length > 0,
+      filters: ["period", "branch"],
     });
   }
 }

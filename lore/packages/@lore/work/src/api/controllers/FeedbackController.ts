@@ -9,6 +9,7 @@ import { type Project, projects, type User } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
@@ -94,6 +95,7 @@ export class FeedbackController {
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
   protected audits = $inject(LoreAudits);
+  protected dateTime = $inject(DateTimeProvider);
   protected reporterNotifier = $inject(FeedbackNotifier);
   protected security = $inject(ProjectSecurityService);
   protected fileService = $inject(FileService);
@@ -655,7 +657,11 @@ export class FeedbackController {
         throw new BadRequestError("Feedback already triaged");
       }
 
-      await this.feedback.updateById(feedback.id, { status: "accepted" });
+      await this.feedback.updateById(feedback.id, {
+        status: "accepted",
+        triagedAt: this.dateTime.nowISOString(),
+        triagedBy: user.id,
+      });
 
       // A triage decision, which is the owner's judgement rather than a data
       // change: the row survives either way, and what is worth recording is
@@ -712,7 +718,17 @@ export class FeedbackController {
         params.feedbackId,
       );
 
-      await this.feedback.updateById(feedback.id, { status: "rejected" });
+      // The same refusal as `acceptFeedback`. Rejecting an accepted item would
+      // strand its linked quests, which the panel hides on a rejected one.
+      if (feedback.status !== "pending") {
+        throw new BadRequestError("Feedback already triaged");
+      }
+
+      await this.feedback.updateById(feedback.id, {
+        status: "rejected",
+        triagedAt: this.dateTime.nowISOString(),
+        triagedBy: user.id,
+      });
 
       await this.audits.feedback.logSuccess("reject", {
         ...this.audits.actor(user),

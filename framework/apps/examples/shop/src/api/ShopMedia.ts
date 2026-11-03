@@ -26,6 +26,22 @@ export class ShopMedia {
   });
 
   /**
+   * What digital products deliver. `ShopFileAccess` leaves this bucket closed:
+   * the only way out is a download link on a paid order.
+   */
+  public readonly downloads = $storage({ name: "downloads", maxSize: 10 });
+
+  /**
+   * Store a digital product's file and return the id for its config.
+   */
+  public async storeDownload(name: string, text: string): Promise<string> {
+    const stored = await this.downloads.upload(
+      this.fs.createFile({ text, name, type: "text/plain" }),
+    );
+    return stored.id;
+  }
+
+  /**
    * Store a drawing and return the file id to put on the product.
    */
   public async storeDrawing(name: string, svg: string): Promise<string> {

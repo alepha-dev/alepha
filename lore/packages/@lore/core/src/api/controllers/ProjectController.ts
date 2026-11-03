@@ -733,7 +733,7 @@ export class ProjectController {
       // and a `scopeId` alone would fall off them onto a scan.
       scopeType: "project",
       scopeId: String(projectId),
-    } as never);
+    });
 
     // One lookup for the whole page, and only when something needs a name.
     const actorIds = new Set(
@@ -925,6 +925,8 @@ export class ProjectController {
         // Blights retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
+        // The coverage line on the Delivery tab. `null` clears it.
+        coverageTarget: z.integer().min(0).max(100).nullable().optional(),
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
@@ -970,6 +972,10 @@ export class ProjectController {
 
       if ("retentionDays" in body) {
         project.retentionDays = body.retentionDays ?? undefined;
+      }
+
+      if ("coverageTarget" in body) {
+        project.coverageTarget = body.coverageTarget ?? undefined;
       }
 
       if ("roadmapVisibility" in body) {

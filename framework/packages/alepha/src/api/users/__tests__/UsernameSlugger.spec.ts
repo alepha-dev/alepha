@@ -16,7 +16,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
 
   if (realmSettings) {
     alepha.inject(RealmProvider).register("default", {
-      settings: realmSettings as never,
+      settings: realmSettings,
     });
   }
 

@@ -34,10 +34,10 @@ describe("fork", () => {
     // writing `null` ("logged out" for a nullable session atom) read the
     // app-level value back instead of its own.
     const alepha = new Alepha();
-    alepha.set("test", "app-value" as any);
+    alepha.set("test", "app-value");
 
     alepha.fork(() => {
-      alepha.set("test", null as any);
+      alepha.set("test", null);
       expect(alepha.get("test")).toBeNull();
     });
 
@@ -46,10 +46,10 @@ describe("fork", () => {
 
   it("should shadow the app value when a fork sets undefined", () => {
     const alepha = new Alepha();
-    alepha.set("test", "app-value" as any);
+    alepha.set("test", "app-value");
 
     alepha.fork(() => {
-      alepha.set("test", undefined as any);
+      alepha.set("test", undefined);
       expect(alepha.get("test")).toBeUndefined();
     });
 
@@ -160,8 +160,8 @@ describe("the fork scope", () => {
       () => {
         alepha.context.nest(() => {
           alepha.context.nest(() => {
-            expect(alepha.get("unit" as any, "current")).toBeUndefined();
-            expect(alepha.get("unit" as any, "fork")).toBe("mine");
+            expect(alepha.get("unit", "current")).toBeUndefined();
+            expect(alepha.get("unit", "fork")).toBe("mine");
             expect(alepha.context.has("unit", "fork")).toBe(true);
           });
         });
@@ -177,10 +177,10 @@ describe("the fork scope", () => {
       () => {
         alepha.fork(() => {
           alepha.context.nest(() => {
-            expect(alepha.get("unit" as any, "fork")).toBeUndefined();
+            expect(alepha.get("unit", "fork")).toBeUndefined();
             // The default walk still reaches it, which is exactly the leak
             // the scope exists to avoid.
-            expect(alepha.get("unit" as any)).toBe("outer");
+            expect(alepha.get("unit")).toBe("outer");
           });
         });
       },
@@ -216,10 +216,10 @@ describe("nest", () => {
     // and a write would otherwise land in the app-wide store where every
     // concurrent caller shares it.
     const alepha = new Alepha();
-    alepha.set("test", "app-value" as any);
+    alepha.set("test", "app-value");
 
     alepha.context.nest(() => {
-      alepha.set("test", "mine" as any);
+      alepha.set("test", "mine");
       expect(alepha.get("test")).toBe("mine");
     });
 
@@ -262,7 +262,7 @@ describe("nest", () => {
 
     await alepha.context.nest(async () => {
       alepha.set("test", "fast");
-      alepha.set("test", undefined as any);
+      alepha.set("test", undefined);
     });
 
     releaseSlow();

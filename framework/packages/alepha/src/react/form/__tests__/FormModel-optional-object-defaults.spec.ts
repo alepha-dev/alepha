@@ -32,7 +32,7 @@ describe("FormModel defaults on nested objects", () => {
     alepha: Alepha,
     initialValues?: Record<string, any>,
   ): FormModel<any> =>
-    alepha.inject(FormModel as any, {
+    alepha.inject(FormModel, {
       lifetime: "transient",
       args: ["f1", { id: "f1", schema, handler: () => {}, initialValues }],
     }) as FormModel<any>;

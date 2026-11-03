@@ -5,17 +5,12 @@ import {
   type DataTableFilterFields,
   type RowActionContext,
 } from "@alepha/ui/table";
-import {
-  currentProjectAtom,
-  type I18n,
-  CommitLink,
-  useKindReferences,
-} from "@lore/core/web";
+import { currentProjectAtom, type I18n, CommitLink } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   AppWindow,
   Container,
@@ -32,6 +27,7 @@ import { useMemo } from "react";
 import type { ArtifactController } from "../../../../../api/controllers/ArtifactController.ts";
 import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
+import { artifactHref, artifactVariantKey } from "./artifactView.ts";
 import { useDeleteArtifact } from "./useDeleteArtifact.ts";
 
 /**
@@ -117,14 +113,8 @@ const ProjectArtifacts = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const artifactApi = useClient<ArtifactController>();
   const [project] = useStore(currentProjectAtom);
-  // The project's releases, through the `release` reference kind rather
-  // than Work's atom (#E75, #Q2624).
-  const releases = useKindReferences("release", {
-    kind: "artifacts",
-    projectId: project?.id ?? 0,
-    projectSlug: project?.slug ?? "",
-  });
   const deleteArtifact = useDeleteArtifact();
+  const router = useRouter();
 
   // ⚠️ No `loading`. It existed to keep the page-level empty panel off screen
   // while the first read was in flight; the table owns the empty state now
@@ -201,15 +191,6 @@ const ProjectArtifacts = () => {
     [rows],
   );
 
-  // Tag equality, which is the whole join: there is no join table and no
-  // foreign key, and an artifact whose tag names no release is normal.
-  const releaseHrefs = new Map(
-    releases.refs.flatMap((release) => {
-      const href = release.tag ? releases.href(release) : undefined;
-      return release.tag && href ? [[release.tag, href] as const] : [];
-    }),
-  );
-
   if (!project) {
     return null;
   }
@@ -229,6 +210,13 @@ const ProjectArtifacts = () => {
    * release filter: a multi-select offering one option that matches
    * everything is a control with nothing to do.
    */
+  const buildHref = (row: ArtifactRow) =>
+    artifactHref(project.slug, {
+      app: row.app,
+      tag: row.tag,
+      variant: artifactVariantKey(row),
+    });
+
   const filterFields = {
     search: {
       preset: "search",
@@ -339,6 +327,7 @@ const ProjectArtifacts = () => {
             bulkActions={bulkActions}
             data={rows}
             rowKey={(row) => row.key}
+            onRowClick={(row) => void router.push(buildHref(row))}
             defaultSort={{ field: "pushedAt", direction: "desc" }}
             /*
              * ⚠️ Two states, never `emptyMessage`. That prop is the one-line
@@ -458,20 +447,19 @@ const ProjectArtifacts = () => {
               tag: {
                 label: tr("artifacts.table.tag"),
                 sortable: true,
-                cell: (row) =>
-                  // A link only where the release exists. An artifact tagged
-                  // with something no release names is normal, and a dead
-                  // link would say otherwise.
-                  releaseHrefs.has(row.tag) ? (
-                    <Link
-                      href={releaseHrefs.get(row.tag) ?? ""}
-                      className="font-mono text-xs"
-                    >
-                      {row.tag}
-                    </Link>
-                  ) : (
-                    <span className="font-mono text-xs">{row.tag}</span>
-                  ),
+                // The row and the tag open this build's page, with this row's
+                // variant selected. The tag stays a real anchor, for a new tab
+                // and a copied link. The release it may belong to is linked
+                // from the page.
+                cell: (row) => (
+                  <Link
+                    href={buildHref(row)}
+                    onClick={(event) => event.stopPropagation()}
+                    className="font-mono text-xs underline-offset-2 hover:underline"
+                  >
+                    {row.tag}
+                  </Link>
+                ),
               },
               runtime: {
                 label: tr("artifacts.table.runtime"),

@@ -34,11 +34,13 @@ import {
  * must survive every case here.
  */
 const navHrefs = async (page: Page, slug: string): Promise<string[]> => {
-  const hrefs = await page
-    .locator(`[data-slot="sidebar"] a[href^="/${slug}"]`)
-    .evaluateAll((nodes) =>
-      nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")!),
-    );
+  const links = page.locator(`[data-slot="sidebar"] a[href^="/${slug}"]`);
+  // Views commit in a transition (#Q3029): on a project's first open the URL
+  // is already there a frame before the sidebar.
+  await expect(links.first()).toBeAttached({ timeout: 10_000 });
+  const hrefs = await links.evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")!),
+  );
   return [
     ...new Set(
       hrefs
@@ -239,22 +241,22 @@ test.describe("Project capabilities", () => {
       timeout: 15_000,
     });
 
-    // Reports is Core and its tabs declare their own capability: Members
-    // comes from a core table and survives with no capability at all.
+    // Reports is Core and its tabs declare their own capability: Team reads
+    // core's activity dataset and survives with no capability at all.
     await page.goto(`/${slug}/reports`);
     await page.waitForLoadState("networkidle");
+    await expect(page.locator(`a[href="/${slug}/reports/team"]`)).toBeVisible({
+      timeout: 15_000,
+    });
+    // Flow and Backlog belong to Work, which is off.
     await expect(
-      page.locator(`a[href="/${slug}/reports/members"]`),
-    ).toBeVisible({ timeout: 15_000 });
-    // Overview and Quests belong to Work, which is off.
-    await expect(page.locator(`a[href="/${slug}/reports/quests"]`)).toHaveCount(
-      0,
-    );
-    // Quality is Apps baseline and self-hides until a run exists, so it is
-    // absent right up to the push below.
+      page.locator(`a[href="/${slug}/reports/backlog"]`),
+    ).toHaveCount(0);
+    // Quality is Apps baseline, and its tab shows the push command until a
+    // run exists (#Q3070).
     await expect(
       page.locator(`a[href="/${slug}/reports/quality"]`),
-    ).toHaveCount(0);
+    ).toBeVisible();
 
     // ⚠️ Quality has no switch, and this is why an Apps-only project needs
     // Reports to stay Core: pushed by CI under a CI credential, its tab is the
@@ -285,11 +287,11 @@ test.describe("Project capabilities", () => {
     );
     expect(pushed).toBe(true);
 
-    await page.goto(`/${slug}/reports`);
-    await page.waitForLoadState("networkidle");
-    await expect(
-      page.locator(`a[href="/${slug}/reports/quality"]`),
-    ).toBeVisible({ timeout: 15_000 });
+    await page.goto(`/${slug}/reports/quality`);
+    await expect(page).toHaveURL(/\/reports\/quality/);
+    await expect(page.getByText("Coverage over time")).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("everything off leaves a project that still works, and gives it all back", async ({

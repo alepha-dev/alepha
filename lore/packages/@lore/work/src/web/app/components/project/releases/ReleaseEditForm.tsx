@@ -162,10 +162,10 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
                       it.tab.retagKeys && (it.count ?? 0) > 0 ? (
                         <span key={it.tab.key}>
                           {it.count === 1
-                            ? tr(it.tab.retagKeys.one as never, {
+                            ? tr(it.tab.retagKeys.one, {
                                 args: [savedTag],
                               })
-                            : tr(it.tab.retagKeys.many as never, {
+                            : tr(it.tab.retagKeys.many, {
                                 args: [String(it.count), savedTag],
                               })}{" "}
                         </span>
@@ -207,7 +207,7 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
           description={tr("release.edit.descriptionHint")}
           input={form.input.description}
           icon={FileText}
-          custom={ReleaseDescriptionEditor as never}
+          custom={ReleaseDescriptionEditor}
         />
       </div>
 

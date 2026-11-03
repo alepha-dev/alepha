@@ -87,7 +87,7 @@ describe("quest history records what changed", () => {
       const after = await quests.updateQuestById.fetch(
         {
           params: { id: quest.data.id },
-          body: { expectedUpdatedAt: before.data.updatedAt, ...body } as never,
+          body: { expectedUpdatedAt: before.data.updatedAt, ...body },
         },
         { user: owner },
       );

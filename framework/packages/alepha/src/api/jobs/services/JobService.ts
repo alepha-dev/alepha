@@ -310,7 +310,7 @@ export class JobService {
     });
 
     if (execution.payload) {
-      await job.push(execution.payload as any, {
+      await job.push(execution.payload, {
         triggeredBy: context?.triggeredBy,
         triggeredByName: context?.triggeredByName,
       });

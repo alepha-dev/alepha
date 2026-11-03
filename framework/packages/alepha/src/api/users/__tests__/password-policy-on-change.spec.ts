@@ -32,7 +32,7 @@ describe("password policy on change", () => {
 
     const controller = alepha.inject(MyPasswordController);
     const session = {
-      user: { id: user.id, realm: "users", sessionId: "s" } as never,
+      user: { id: user.id, realm: "users", sessionId: "s" },
     };
 
     // The default policy requires upper case, lower case and digits;
@@ -41,7 +41,7 @@ describe("password policy on change", () => {
       controller.changeMyPassword(
         {
           body: { currentPassword: "Valid1Pass!", newPassword: "alllowercase" },
-        } as never,
+        },
         session,
       ),
     ).rejects.toThrow(BadRequestError);
@@ -49,7 +49,7 @@ describe("password policy on change", () => {
     const ok = await controller.changeMyPassword(
       {
         body: { currentPassword: "Valid1Pass!", newPassword: "Another1Pass!" },
-      } as never,
+      },
       session,
     );
     expect(ok.otherSessionsRevoked).toBe(0);

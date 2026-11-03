@@ -262,7 +262,7 @@ export class FeedbackCommentController {
       projectTitle: project?.title ?? "",
       reference: formatReference("feedback", row.shortId),
       title: row.title,
-      href: `/${slug}/feedback?item=${row.shortId}`,
+      href: `/${slug}/feedback?feedback=${row.shortId}`,
     };
   }
 

@@ -154,7 +154,7 @@ func (s *server) handleStackRestore(w http.ResponseWriter, r *http.Request) {
 		}
 		release := s.holdDuring(m.Key())
 		defer release()
-		if err := s.runner.Stop(m.Key(), stopGrace); err != nil {
+		if err := s.stopForMaintenance(m.Key()); err != nil {
 			writeError(w, http.StatusInternalServerError, "stop "+m.Service+": "+err.Error())
 			return
 		}
@@ -183,6 +183,7 @@ func (s *server) handleStackRestore(w http.ResponseWriter, r *http.Request) {
 // cmdStackBackup is `bay backup list|restore <stack>/<env> ...`.
 func cmdStackBackup(verb string, args []string) error {
 	const usage = "usage: bay backup list <stack>/<env> [service]\n       bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]"
+	args = dropControlFlag(args)
 	if len(args) < 1 {
 		return errors.New(usage)
 	}
@@ -192,6 +193,9 @@ func cmdStackBackup(verb string, args []string) error {
 	}
 	base := controlHost + "/stacks/" + name + "/" + env
 	if verb == "list" {
+		if err := checkFlags(args[1:], nil, nil); err != nil {
+			return err
+		}
 		query := ""
 		if len(args) > 1 {
 			query = "?service=" + neturl.QueryEscape(args[1])

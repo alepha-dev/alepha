@@ -54,8 +54,7 @@ export const AdminFilesUsage = (props: AdminFilesUsageProps) => {
     {
       key: STATS_KEY,
       staleTime: [10, "minutes"],
-      handler: ({ signal }) =>
-        client.getFileStats({} as never, { request: { signal } }),
+      handler: ({ signal }) => client.getFileStats({}, { request: { signal } }),
       onError: () => {},
     },
     [client],

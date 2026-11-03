@@ -41,7 +41,7 @@ describe("alepha/api/users - realm notification contradictions", () => {
 
       expect(() =>
         realmProvider.register("contradictory", {
-          settings: { [setting]: true } as never,
+          settings: { [setting]: true },
         }),
       ).toThrow(new RegExp(`${setting}.*features\\.notifications is off`));
     });
@@ -52,7 +52,7 @@ describe("alepha/api/users - realm notification contradictions", () => {
       expect(() =>
         realmProvider.register("coherent", {
           features: { notifications: true },
-          settings: { [setting]: true } as never,
+          settings: { [setting]: true },
         }),
       ).not.toThrow();
     });
@@ -88,7 +88,7 @@ describe("alepha/api/users - realm notification contradictions", () => {
           verifyEmailRequired: true,
           verifyPhoneRequired: true,
           resetPasswordAllowed: true,
-        } as never,
+        },
       }),
     ).toThrow(/verifyEmailRequired, verifyPhoneRequired, resetPasswordAllowed/);
   });
@@ -106,7 +106,7 @@ describe("alepha/api/users - realm notification contradictions", () => {
 
     expect(() =>
       alepha.with(() => ({
-        realm: $realm({ settings: { resetPasswordAllowed: true } as never }),
+        realm: $realm({ settings: { resetPasswordAllowed: true } }),
       })),
     ).toThrow(/features\.notifications is off/);
   });

@@ -89,7 +89,7 @@ describe("server rendering keeps the caller's realm in the auth context", () => 
 
     await beginRender(alepha, user);
 
-    const stored = alepha.store.get(currentUserAtom) as any;
+    const stored = alepha.store.get(currentUserAtom);
     expect(stored?.id).toBe(user.id);
     expect(stored?.realm).toBe("staff");
     // `token` is absent whatever is handed to the atom: `userAccountInfoSchema`

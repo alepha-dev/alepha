@@ -163,7 +163,7 @@ describe("login on $rateLimit", () => {
       InvalidCredentialsError,
     );
     expect(
-      (await locks()).filter((row) => (row.metadata as any)?.ip === ip),
+      (await locks()).filter((row) => row.metadata?.ip === ip),
     ).toHaveLength(1);
     // Another address is unaffected.
     expect((await login("10.32.0.1", valid.email, "correct")).id).toBe(

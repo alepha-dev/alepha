@@ -311,7 +311,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
       },
     );
 
-    this.gateSyncSession(session as never);
+    this.gateSyncSession(session);
     this.drizzleDb = new SQLiteAsyncDatabase<"sync", NodeSQLiteRunResult, {}>(
       "sync",
       dialect,
@@ -346,7 +346,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     // recipe prescribes.
     const sqlite = this.requireSqlite();
     const foreignKeysWereOn =
-      (sqlite.prepare("PRAGMA foreign_keys").get() as any)?.foreign_keys === 1;
+      sqlite.prepare("PRAGMA foreign_keys").get()?.foreign_keys === 1;
 
     if (foreignKeysWereOn) sqlite.exec("PRAGMA foreign_keys=OFF");
     try {

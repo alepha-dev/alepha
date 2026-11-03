@@ -184,8 +184,9 @@ export class QueryManager {
             joins, // Pass joins through recursively
             dialect: options.dialect,
           });
-          if (where) {
-            conditions.push(not(where));
+          const negated = not(where);
+          if (negated) {
+            conditions.push(negated);
           }
           continue;
         }

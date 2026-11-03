@@ -100,9 +100,9 @@ const ProjectView = () => {
   // every capability off still renders a clean sidebar: Activity, Reports and
   // Settings.
   const toItem = (entry: CapabilityNavEntry): NavGroup["items"][number] => ({
-    label: tr(entry.labelKey as never),
+    label: tr(entry.labelKey),
     icon: entry.icon,
-    href: router.path(entry.route as never, { params: { projectSlug } }),
+    href: router.path(entry.route, { params: { projectSlug } }),
     active: entry.activeOn ? entry.activeOn(name) : name === entry.route,
     badge: entry.badge?.(context),
   });
@@ -134,7 +134,7 @@ const ProjectView = () => {
       if (!first) return [];
       return [
         {
-          label: tr(section.labelKey as never),
+          label: tr(section.labelKey),
           icon: section.icon,
           href: router.path(first.route, { params: { projectSlug } }),
           active: activeSettings?.section.key === section.key,
@@ -170,14 +170,14 @@ const ProjectView = () => {
       ? router.path(sectionRoute, { params: { projectSlug } })
       : undefined;
     breadcrumbs.push({
-      label: tr(sectionKey as never),
+      label: tr(sectionKey),
       href: sectionHref,
     });
   }
   // A settings page adds its section, "Project › Settings › Quests", since
   // the sidebar group is now the only other thing naming it (#Q2565).
   if (activeSettings) {
-    breadcrumbs.push({ label: tr(activeSettings.section.labelKey as never) });
+    breadcrumbs.push({ label: tr(activeSettings.section.labelKey) });
   }
   // A detail page's own leaf (an instance, `#2`, `#1208`, a release tag,
   // `#F12`), each contributed by the module that owns the page.
@@ -186,7 +186,7 @@ const ProjectView = () => {
       ...context,
       projectSlug,
       path: (route, params) =>
-        router.path(route as never, { params: { projectSlug, ...params } }),
+        router.path(route, { params: { projectSlug, ...params } }),
     });
     if (crumb) breadcrumbs.push(crumb);
   }

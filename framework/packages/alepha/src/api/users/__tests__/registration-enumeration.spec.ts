@@ -33,7 +33,7 @@ const setup = async (realmSettings?: Record<string, unknown>) => {
     realmProvider.register("default", {
       // Verification and the owner-warning both go out as notifications.
       features: { notifications: true },
-      settings: realmSettings as never,
+      settings: realmSettings,
     });
   }
 

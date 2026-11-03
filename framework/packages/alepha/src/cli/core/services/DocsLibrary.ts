@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
@@ -34,9 +36,19 @@ export interface DocsPage {
  * project root, then in each parent directory, the closest copy of a package
  * winning. That is what makes it work in a workspace app whose dependencies
  * are hoisted to the repository root.
+ *
+ * When the project installs no `alepha` carrying docs, the pages of the
+ * `alepha` running the command are read instead, so `npx alepha docs` works
+ * from any folder, for the version npx resolved.
  */
 export class DocsLibrary {
   protected readonly fs = $inject(FileSystemProvider);
+
+  /**
+   * This module's own file, where the walk up to the running `alepha`
+   * package starts. A spec overrides it.
+   */
+  protected readonly selfPath: string = fileURLToPath(import.meta.url);
 
   /**
    * Every installed page, `alepha` first, then the scoped packages by name;
@@ -163,6 +175,9 @@ export class DocsLibrary {
    * project's install, and anything above it belongs to someone else. A
    * project inside another checkout (the CLI's own e2e project sits inside
    * this repository) would otherwise list the outer checkout's packages.
+   *
+   * With no `alepha` found, the running one comes first, alone: its sibling
+   * `@alepha/*` packages are not the project's.
    */
   protected async packageDirs(root: string): Promise<string[]> {
     const found = new Map<string, string>();
@@ -190,7 +205,31 @@ export class DocsLibrary {
       if (found.has("alepha") || parent === dir) break;
       dir = parent;
     }
+    if (!found.has("alepha")) {
+      const own = await this.ownPackageDir();
+      if (own && (await this.fs.exists(this.fs.join(own, "docs")))) {
+        return [own, ...found.values()];
+      }
+    }
     return [...found.values()];
+  }
+
+  /**
+   * The root of the `alepha` package this code runs from: the closest
+   * directory above {@link selfPath} whose `package.json` is named `alepha`.
+   */
+  protected async ownPackageDir(): Promise<string | undefined> {
+    let dir = this.fs.resolve(this.selfPath, "..");
+    while (true) {
+      if ((await this.packageName(dir)) === "alepha") {
+        return dir;
+      }
+      const parent = this.fs.resolve(dir, "..");
+      if (parent === dir) {
+        return undefined;
+      }
+      dir = parent;
+    }
   }
 
   protected async packageName(dir: string): Promise<string | undefined> {

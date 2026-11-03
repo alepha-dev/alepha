@@ -119,7 +119,7 @@ describe("useQuestMutations", () => {
     await alepha.inject(I18nProvider).setLang("en");
 
     const fake = alepha.inject(FakeLinkProvider);
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
     alepha.store.set(
       currentAssignedQuestsAtom,
       assignedIds.map((id) => fake.quest(id)),

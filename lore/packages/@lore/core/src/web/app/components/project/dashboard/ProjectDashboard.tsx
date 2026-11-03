@@ -328,7 +328,7 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const made = await boardApi.addProjectDashboardCard({
           params: { projectId },
-          body: input as never,
+          body: input,
         });
         setCatalogueOpen(false);
         apply([...currentCards(), made]);
@@ -352,7 +352,7 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const updated = await boardApi.updateProjectDashboardCard({
           params: { projectId, cardId: card.id },
-          body: input as never,
+          body: input,
         });
         setCatalogueOpen(false);
         apply(currentCards().map((it) => (it.id === card.id ? updated : it)));

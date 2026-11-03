@@ -43,7 +43,7 @@ describe("SecretsCommand", () => {
       name: "my-app",
       environments: { production: cloudflare() },
       ...config,
-    } as any);
+    });
 
     // Seed package.json. `void` rather than `await` because the enclosing
     // helper is sync and MemoryFileSystemProvider's body runs to completion

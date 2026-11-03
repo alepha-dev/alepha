@@ -42,7 +42,7 @@ describe("stack MCP tools", () => {
       alepha.store.set(currentUserAtom, {
         id: user.id,
         roles: ["user"],
-      } as never);
+      });
       return fn();
     });
 
@@ -73,7 +73,7 @@ describe("stack MCP tools", () => {
     await w.rows.grants.create({
       estateId: minted.id,
       projectId: w.project.id,
-    } as never);
+    });
     const stack = await createStack(alepha, w, {
       name: "umami",
       estateId: minted.id,

@@ -77,8 +77,8 @@ describe("what the palette is offered", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 
-    alepha.store.set(currentProjectAtom, aProject as never);
-    alepha.store.set(currentInstancesAtom, instances as never);
+    alepha.store.set(currentProjectAtom, aProject);
+    alepha.store.set(currentInstancesAtom, instances);
 
     render(
       <AlephaContext.Provider value={alepha}>

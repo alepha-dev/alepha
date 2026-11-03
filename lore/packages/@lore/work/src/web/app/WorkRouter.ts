@@ -1,3 +1,4 @@
+import { type ReportsUrl, reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
   $pageProjectSettings,
@@ -5,6 +6,10 @@ import {
   CoreRouter,
   hasCapability,
   canInProject,
+  ProjectPageSkeleton,
+  RedirectPage,
+  ReportsTabRegistry,
+  ReportsUrlQuery,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { $page, NotFound, Redirection } from "alepha/react/router";
@@ -33,6 +38,8 @@ export class WorkRouter {
   alepha = $inject(Alepha);
   questApi = $client<QuestController>();
   projectReportsApi = $client<ProjectReportsController>();
+  reportsUrl = $inject(ReportsUrlQuery);
+  reportsTabs = $inject(ReportsTabRegistry);
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
@@ -143,6 +150,7 @@ export class WorkRouter {
   });
 
   projectQuest = $pageProject({
+    loading: ProjectPageSkeleton,
     path: "/quests/:shortId",
     schema: {
       params: z.object({
@@ -156,30 +164,21 @@ export class WorkRouter {
         title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
       };
     },
-    animation: ({ meta }) => {
-      if (meta.transition) {
-        return meta.transition;
-      }
-
-      if (meta.completed) {
-        return {
-          exit: {
-            name: "zoomOutUp",
-            duration: 800,
-          },
-        };
-      }
-
-      if (meta.deleted) {
-        return {
-          exit: {
-            name: "zoomOut",
-            duration: 400,
-          },
-        };
-      }
-    },
     lazy: () => import("./components/project/quest/QuestView.tsx"),
+    /**
+     * A card opens as a sheet over the board, which stays mounted and does not
+     * refetch, and a reload of it is this page. It used to be a local
+     * `setSelectedQuest`, which had no URL and, the part that actually bit, no
+     * refetch: a long-lived board edited whatever `getBoard` returned however
+     * long ago. The loader below gets fresh data on open for free.
+     *
+     * The board reads `currentQuestAtom`, which that loader seeds, to patch its
+     * own row.
+     */
+    overlay: {
+      over: () => [this.projectKanban],
+      lazy: () => import("./components/project/ProjectKanbanCard.tsx"),
+    },
     loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
@@ -286,6 +285,7 @@ export class WorkRouter {
   });
 
   projectEpic = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectEpic",
     // `epicNumber`, NOT `number`: route params must be unique across the
     // whole route table, or two routes with different param names at the
@@ -494,20 +494,11 @@ export class WorkRouter {
   });
 
   /**
-   * One card, open over the board.
+   * Where a card opened on the board used to live, for the links people hold.
+   * A card is `projectQuest` now, as a sheet over the board.
    *
-   * A child route rather than local state: clicking a card used to be
-   * `setSelectedQuest(quest)`, which had no URL and — the part that
-   * actually bit — **no refetch**, so a long-lived board edited whatever
-   * `getBoard` returned however long ago. A loader gets fresh data on open
-   * for free, and the card becomes linkable.
-   *
-   * ⚠️ The param is `shortId`, the SAME name `projectQuest` uses at the
-   * same position. That is deliberate: the router keeps one param name per
-   * path position, so two routes naming it DIFFERENTLY are what silently
-   * lose the inner value (the trap `projectEpic`'s `epicNumber` documents).
-   * Sharing the name is the safe side of that rule, as `projectSlug` does
-   * across the whole tree.
+   * From a loader, because `redirect:` is a static string and cannot carry
+   * `:shortId`.
    */
   projectKanbanCard = $page({
     name: "projectKanbanCard",
@@ -517,82 +508,137 @@ export class WorkRouter {
         shortId: z.integer(),
       }),
     },
-    head: (props, previous) => {
-      const questTitle = (props as { quest?: { title?: string } } | undefined)
-        ?.quest?.title;
-      return {
-        title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
-      };
-    },
-    lazy: () => import("./components/project/ProjectKanbanCard.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const quest = await this.questApi.getQuestByShortId({
-        params: {
-          projectId: project.id,
-          shortId: params.shortId,
-        },
+    component: RedirectPage,
+    // Annotated `Promise<void>` because it always throws.
+    loader: async ({ params }): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/quests/${params.shortId}`,
       });
-      // The board watches this atom to patch its own row, which is how an
-      // edit in the sheet moves the card behind it without a refetch.
-      this.alepha.store.set(currentQuestAtom, quest);
-      return { quest };
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentQuestAtom, undefined);
-    },
-    errorHandler: (error) => {
-      if (isHttpError(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
     },
   });
 
-  reportsOverview = $page({
+  /**
+   * The query `route` reads: the URL, narrowed to the filters the tab declares.
+   */
+  protected reportsQuery(route: string, url: ReportsUrl) {
+    return this.reportsUrl.toQuery(url, this.reportsTabs.honours(route));
+  }
+
+  reportsFlow = $page({
     parent: this.core.projectReports,
-    name: "reportsOverview",
-    path: "/",
-    lazy: () =>
-      import("./components/project/reports/ReportsOverview.client.tsx"),
-    loader: async () => ({
-      overview: await this.projectReportsApi.getReportsOverview({
+    name: "reportsFlow",
+    prefetch: true,
+    path: "/flow",
+    schema: { query: reportsUrlSchema },
+    lazy: () => import("./components/project/reports/ReportsFlow.client.tsx"),
+    loader: async ({ query }) => ({
+      url: query,
+      flow: await this.projectReportsApi.getReportsFlow({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
+        query: this.reportsQuery("reportsFlow", query),
       }),
     }),
   });
 
+  reportsBacklog = $page({
+    parent: this.core.projectReports,
+    name: "reportsBacklog",
+    prefetch: true,
+    path: "/backlog",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsBacklog.client.tsx"),
+    loader: async ({ query }) => ({
+      url: query,
+      backlog: await this.projectReportsApi.getReportsBacklog({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsQuery("reportsBacklog", query),
+      }),
+    }),
+  });
+
+  reportsPlanning = $page({
+    parent: this.core.projectReports,
+    name: "reportsPlanning",
+    prefetch: true,
+    path: "/planning",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsPlanning.client.tsx"),
+    loader: async ({ query }) => ({
+      planning: await this.projectReportsApi.getReportsPlanning({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsQuery("reportsPlanning", query),
+      }),
+    }),
+  });
+
+  reportsSupport = $page({
+    parent: this.core.projectReports,
+    name: "reportsSupport",
+    prefetch: true,
+    path: "/support",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsSupport.client.tsx"),
+    loader: async ({ query }) => ({
+      support: await this.projectReportsApi.getReportsSupport({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsQuery("reportsSupport", query),
+      }),
+    }),
+  });
+
+  reportsTeam = $page({
+    parent: this.core.projectReports,
+    name: "reportsTeam",
+    prefetch: true,
+    path: "/team",
+    schema: { query: reportsUrlSchema },
+    lazy: () => import("./components/project/reports/ReportsTeam.client.tsx"),
+    loader: async ({ query }) => ({
+      team: await this.projectReportsApi.getReportsTeam({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsQuery("reportsTeam", query),
+      }),
+    }),
+  });
+
+  // The Quests and Members tabs became Backlog and Team (#Q3016). The routes
+  // stay for the links people hold, like `reportsQuality`.
   reportsQuests = $page({
     parent: this.core.projectReports,
     name: "reportsQuests",
     path: "/quests",
-    lazy: () => import("./components/project/reports/ReportsQuests.client.tsx"),
-    loader: async () => ({
-      quests: await this.projectReportsApi.getReportsQuests({
-        params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-      }),
-    }),
+    component: RedirectPage,
+    // Annotated `Promise<void>` because it always throws.
+    loader: async (): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/reports/backlog`,
+      });
+    },
   });
 
   reportsMembers = $page({
     parent: this.core.projectReports,
     name: "reportsMembers",
     path: "/members",
-    lazy: () =>
-      import("./components/project/reports/ReportsMembers.client.tsx"),
-    loader: async () => ({
-      members: await this.projectReportsApi.getReportsMembers({
-        params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-      }),
-    }),
+    component: RedirectPage,
+    loader: async (): Promise<void> => {
+      throw new Redirection({
+        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/reports/team`,
+      });
+    },
   });
 
   projectFeedbackRequest = $page({

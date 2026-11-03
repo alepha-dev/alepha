@@ -1,4 +1,8 @@
-import { AdminMcpController } from "@lore/core/api";
+import {
+  AdminMcpController,
+  McpProjectScope,
+  ProjectController,
+} from "@lore/core/api";
 import { ProjectAnalytics } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -6,6 +10,7 @@ import { AlephaEmail } from "alepha/email";
 import { $tool, AlephaMcp, McpServerProvider } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
+import { currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -105,7 +110,7 @@ const call = async (
         id: 1,
         method: "tools/call",
         params: { name, arguments: args },
-      } as never,
+      },
       { data: ctx.user },
     )
     // A tool that refuses answers with a JSON-RPC error rather than throwing
@@ -153,6 +158,44 @@ describe("MCP call rates", () => {
       const listed = points.find((point) => point.tool === "project_list");
       expect(listed?.count).toBe(2);
       expect(listed?.actor).toBe(ctx.user.id);
+    });
+
+    /**
+     * #Q3012. Seeded by hand as the `server:request:before` hook seeds it on
+     * the MCP path: `handleMessage` is below the transport.
+     */
+    it("records the project the call resolved, and none when it resolved none", async ({
+      expect,
+    }) => {
+      const project = await ctx.alepha
+        .inject(ProjectController)
+        .createProject.fetch({ body: { title: "Scoped" } }, { user: ctx.user });
+
+      const scoped = (tool: string, params: Record<string, unknown>) =>
+        ctx.alepha.context.run(async () => {
+          ctx.alepha.context.set(McpProjectScope.KEY, {});
+          // What the transport leaves for a tool, below which this spec calls.
+          ctx.alepha.store.set(currentUserAtom, ctx.user);
+          await call(ctx, tool, params);
+        });
+
+      await scoped("project_info", { project: project.data.id });
+      await scoped("project_list", {});
+      await scoped("project_info", { project: 999_999 });
+
+      const result = await ctx.datasets.mcpCalls.query({
+        since: "2000-01-01",
+        groupBy: ["tool", "outcome", "project"],
+        select: { count: "sum" },
+      });
+      const projectOf = (tool: string, outcome: string) =>
+        result.rows.find((row) => row.tool === tool && row.outcome === outcome)
+          ?.project;
+
+      expect(projectOf("project_info", "ok")).toBe(String(project.data.id));
+      expect(projectOf("project_list", "ok")).toBe("none");
+      // A refusal names no project: a stranger's probe reads on no page.
+      expect(projectOf("project_info", "refused")).toBe("none");
     });
 
     it("keeps a refusal apart from an error", async ({ expect }) => {
@@ -204,9 +247,12 @@ describe("MCP call rates", () => {
       await call(ctx, "project_list", {});
       await call(ctx, "not_a_tool", {});
 
-      const page = await ctx.admin.readMcpCalls.fetch({}, {
-        user: adminUser,
-      } as never);
+      const page = await ctx.admin.readMcpCalls.fetch(
+        {},
+        {
+          user: adminUser,
+        },
+      );
 
       expect(page.data.days).toHaveLength(30);
 
@@ -230,9 +276,12 @@ describe("MCP call rates", () => {
     });
 
     it("answers an empty window rather than nothing", async ({ expect }) => {
-      const page = await ctx.admin.readMcpCalls.fetch({}, {
-        user: adminUser,
-      } as never);
+      const page = await ctx.admin.readMcpCalls.fetch(
+        {},
+        {
+          user: adminUser,
+        },
+      );
 
       expect(page.data.days).toHaveLength(30);
       expect(page.data.tools).toEqual([]);

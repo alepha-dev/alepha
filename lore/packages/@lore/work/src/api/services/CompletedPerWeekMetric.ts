@@ -46,7 +46,10 @@ export class CompletedPerWeekMetric implements DashboardMetricResolver {
         out.set(entry.card.id, { empty: "noData", detail: {} });
         continue;
       }
-      const completed = await this.reports.completedByDay(project.id);
+      const completed = await this.reports.completedByDay(
+        project.id,
+        this.reports.fixedQuery,
+      );
       const weeks = this.series.weekly(completed, 8);
       const total = weeks.reduce((sum, week) => sum + week.value, 0);
       out.set(entry.card.id, {

@@ -100,6 +100,11 @@ export default {
   "automation.preset.feedback-created.title": "Nouveau retour",
   "automation.preset.feedback-created.description":
     "Notifier un membre lors de la création d’un retour, sans divulguer les coordonnées de son auteur.",
+  "automation.preset.weekly-report-digest.title": "Rapport hebdomadaire",
+  "automation.preset.weekly-report-digest.description":
+    "Envoie le résumé des rapports des sept derniers jours à un membre, chaque lundi à 08:00 UTC. Il peut s'en désabonner dans ses réglages de notification.",
+  "automation.source.reports.summary":
+    "Le résumé des rapports des sept derniers jours",
   "automation.preset.tagged-quest-digest.title":
     "Récapitulatif nocturne des quêtes",
   "automation.preset.tagged-quest-digest.description":
@@ -450,6 +455,57 @@ export default {
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
   "project.menu.artifacts": "Artefacts",
+  "artifact.notFound": "Aucun build de $1 avec le tag $2 dans ce projet.",
+  "artifact.back": "Retour aux artefacts",
+  "artifact.tab.overview": "Vue d'ensemble",
+  "artifact.tab.manifest": "Manifeste",
+  "artifact.tab.deployments": "Déploiements",
+  "artifact.meta.release": "Release $1",
+  "artifact.stat.size": "Taille",
+  "artifact.stat.running": "Tourne sur",
+  "artifact.stat.runningHint": "sur $1 copies",
+  "artifact.stat.deploys": "Déploiements",
+  "artifact.stat.deploysHint": "$1 réussis",
+  "artifact.stat.secrets": "Secrets",
+  "artifact.stat.secretsHint": "$1 variables, $2 crons",
+  "artifact.copies.title": "Où il tourne",
+  "artifact.copies.empty": "Cette app n'a pas encore de copie.",
+  "artifact.copies.running": "Tourne sur ce build",
+  "artifact.copies.superseded": "A tourné dessus, depuis remplacé",
+  "artifact.copies.on": "Sur $1 depuis le $2",
+  "artifact.copies.never": "Jamais déployée",
+  "artifact.needs.title": "Ce dont il a besoin",
+  "artifact.needs.unknown":
+    "Ce build n'a pas de manifeste : ses besoins sont inconnus.",
+  "artifact.needs.platforms": "Plateformes",
+  "artifact.needs.resources": "Ressources",
+  "artifact.needs.slices": "Runtimes",
+  "artifact.needs.crons": "Crons",
+  "artifact.needs.secrets": "Secrets",
+  "artifact.needs.variables": "Variables",
+  "artifact.needs.websockets": "WebSockets",
+  "artifact.builds.title": "Builds de $1",
+  "artifact.builds.this": "$1 (ce build)",
+  "artifact.deployments.empty": "Ce tag n'a pas été déployé.",
+  "artifact.deploy.action": "Déployer",
+  "artifact.deploy.newCopy": "Nouvelle copie",
+  "artifact.newCopy.title": "Nouvelle copie depuis $1",
+  "artifact.newCopy.description":
+    "Une nouvelle copie de $1. Le build fixe l'app : seul son environnement est à nommer ici.",
+  "artifact.newCopy.estate": "Estate",
+  "artifact.newCopy.noEstate":
+    "Aucun estate prêté à ce projet ne peut exécuter ce build.",
+  "artifact.newCopy.ephemeral": "Éphémère",
+  "artifact.newCopy.ephemeralHint":
+    "Sa base de données et son bucket partent avec elle à sa destruction. Ce choix est définitif.",
+  "artifact.newCopy.deployNow": "Déployer $1 maintenant",
+  "artifact.newCopy.secrets":
+    "Ce build requiert $1 secrets. Un déploiement avant de les définir peut échouer.",
+  "artifact.newCopy.submit": "Créer la copie",
+  "app.dashboard.running": "En cours",
+  "app.dashboard.running.at": "déployé le $1",
+  "app.dashboard.running.moved": "octets plus récents sur $1",
+  "app.dashboard.running.gone": "build supprimé",
   "artifacts.list.empty": "Aucun artefact ne correspond à ces filtres.",
   "artifacts.noMatch": "Aucun résultat",
   "artifacts.empty.title": "Aucun artefact pour l\u2019instant",
@@ -843,7 +899,7 @@ export default {
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
   "project.capability.support.description":
-    "Un formulaire public et une boîte de tri.",
+    "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
@@ -876,10 +932,93 @@ export default {
   "project.settings.areas.delete.blocked":
     "Ce domaine contient encore des quêtes. Fusionnez-le vers un autre domaine.",
   "project.settings.nav.estates": "Domaines",
-  "project.reports.nav.overview": "Vue d'ensemble",
-  "project.reports.nav.quests": "Quêtes",
-  "project.reports.nav.members": "Groupe",
-  "project.reports.nav.quality": "Qualité",
+  "project.reports.nav.team": "Équipe",
+  "reports.team.kpi.wip": "En cours",
+  "reports.team.kpi.wip.definition":
+    "Quêtes ouvertes prises par un membre, hors mises en attente. État actuel, quelle que soit la période.",
+  "reports.team.kpi.held": "En attente",
+  "reports.team.kpi.held.definition":
+    "Quêtes ouvertes prises par un membre et mises en attente. État actuel.",
+  "reports.team.kpi.overdue": "En retard",
+  "reports.team.kpi.overdue.definition":
+    "Quêtes ouvertes prises par un membre et dont l'échéance est dépassée. État actuel.",
+  "reports.team.kpi.agents": "Via des agents",
+  "reports.team.kpi.agents.definition":
+    "Part des écritures de la période arrivées par MCP. Les écritures antérieures au canal sont exclues.",
+  "reports.team.members.title": "Membres",
+  "reports.team.members.definition":
+    "Ce que chaque membre porte aujourd'hui et ce qu'il a fait sur la période. Trié par nom ou par charge, jamais par production : les colonnes diffèrent parce que le travail diffère.",
+  "reports.team.members.empty": "Aucun membre pour le moment.",
+  "reports.team.sort.name": "Par nom",
+  "reports.team.sort.wip": "Par charge",
+  "reports.team.column.member": "Membre",
+  "reports.team.column.wip": "En cours",
+  "reports.team.column.held": "En attente",
+  "reports.team.column.overdue": "En retard",
+  "reports.team.column.created": "Créées",
+  "reports.team.column.completed": "Terminées",
+  "reports.team.column.comments": "Commentaires",
+  "reports.team.column.folios": "Modifs de folios",
+  "reports.team.column.triaged": "Triés",
+  "reports.team.column.deploys": "Déploiements",
+  "reports.team.column.agents": "Agents",
+  "reports.team.channels.title": "Comment le travail arrive",
+  "reports.team.channels.definition":
+    "Écritures de la période selon leur chemin vers Lore. Un agent écrit au nom du propriétaire de sa clé d'API : MCP est donc ce qui distingue son travail du leur.",
+  "reports.team.channels.writes": "écritures",
+  "reports.team.estimated":
+    "Ces chiffres sont estimés à partir de données échantillonnées.",
+  "reports.team.channel.web": "Web",
+  "reports.team.channel.mcp": "MCP (agents)",
+  "reports.team.channel.cli": "CLI",
+  "reports.team.channel.api": "API",
+  "reports.team.channel.automation": "Automatisations",
+  "reports.team.channel.system": "Système",
+  "reports.team.channel.unknown": "Non enregistré",
+  "reports.team.heatmap.title": "Quand le travail se fait",
+  "reports.team.heatmap.definition":
+    "Écritures par jour de la semaine et par heure, en UTC, sur les 30 derniers jours de la période au plus : l'activité plus ancienne est conservée par jour.",
+  "reports.team.heatmap.cell": "$1 $2:00, $3 écritures",
+  "reports.team.automations.title": "Automatisations",
+  "reports.team.automations.definition":
+    "Comment les automatisations du projet se sont exécutées sur la période. Le détail des exécutions est conservé 30 jours.",
+  "reports.team.automations.success": "Taux de réussite",
+  "reports.team.automations.success.definition":
+    "Exécutions terminées qui ont réussi. Celles en file, en cours ou ignorées sont exclues.",
+  "reports.team.automations.duration": "Durée médiane",
+  "reports.team.automations.duration.definition":
+    "Du déclenchement à la fin de l'exécution, sur les exécutions terminées.",
+  "reports.team.automations.broken": "Cassées",
+  "reports.team.automations.broken.definition":
+    "Règles qui ont perdu une dépendance et ne peuvent plus s'exécuter tant qu'elle n'est pas revenue.",
+  "reports.team.automations.runs": "exécutions",
+  "reports.team.mcp.title": "Outils MCP",
+  "reports.team.mcp.definition":
+    "Appels d'outils ayant résolu ce projet sur la période. Un appel refusé avant un contrôle de permission n'appartient à aucun projet : il n'apparaît pas ici.",
+  "reports.team.mcp.tool": "Outil",
+  "reports.team.mcp.ok": "OK",
+  "reports.team.mcp.refused": "Refusés",
+  "reports.team.mcp.error": "Erreurs",
+  "reports.team.mcp.empty":
+    "Aucun appel MCP n'a atteint ce projet sur la période.",
+  "reports.team.explorer.title": "Explorer",
+  "reports.team.explorer.definition":
+    "Interrogez vous-même l'activité et les appels MCP de ce projet : grouper, filtrer, tracer.",
+  "reports.team.day.0": "lun.",
+  "reports.team.day.1": "mar.",
+  "reports.team.day.2": "mer.",
+  "reports.team.day.3": "jeu.",
+  "reports.team.day.4": "ven.",
+  "reports.team.day.5": "sam.",
+  "reports.team.day.6": "dim.",
+  "reports.team.run.queued": "En file",
+  "reports.team.run.running": "En cours",
+  "reports.team.run.succeeded": "Réussie",
+  "reports.team.run.skipped": "Ignorée",
+  "reports.team.run.refused": "Refusée",
+  "reports.team.run.partial": "Partielle",
+  "reports.team.run.failed": "Échouée",
+  "reports.team.run.unknown": "Inconnue",
   "reports.quality.section.coverage": "Couverture",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Couverture dans le temps",
@@ -899,51 +1038,424 @@ export default {
     "Cet onglet affiche ce qu'une exécution de tests a mesuré. Lancez ces deux commandes dans votre CI, et les chiffres apparaîtront ici au prochain envoi.",
   "reports.quality.empty.credential":
     "L'envoi nécessite LORE_API_KEY, une clé d'API créée depuis la page des clés de votre compte.",
-  "reports.overview.kpi.completion": "Avancement",
-  "reports.overview.kpi.open": "En cours",
-  "reports.overview.kpi.completedThisWeek": "Terminées cette semaine",
-  "reports.overview.kpi.cycleTime": "Temps de cycle moyen",
-  "reports.overview.kpi.activeMembers": "Membres actifs",
-  "reports.overview.kpi.completionHint": "$1/$2 quêtes",
-  "reports.overview.kpi.weekDeltaHint": "$1 par rapport à la semaine dernière",
-  "reports.overview.burnup.title": "Burn-up",
-  "reports.overview.completionRate.title": "Taux d'achèvement",
-  "reports.overview.chart.created": "Créées",
-  "reports.overview.chart.completed": "Terminées",
-  "reports.overview.chart.completionRate": "Taux d'achèvement",
-  "reports.overview.empty": "Aucune donnée pour le moment",
-  "reports.overview.attention.none": "Rien ne requiert d'attention.",
-  "reports.overview.attention.stale": "en attente",
-  "reports.overview.attention.unassigned": "non assignées",
-  "reports.overview.attention.blocked": "bloquées",
-  "reports.quests.status.title": "Statut",
-  "reports.quests.status.todo": "À faire",
-  "reports.quests.status.inProgress": "En cours",
-  "reports.quests.status.completed": "Terminées",
-  "reports.quests.status.empty": "Aucune quête pour le moment",
-  "reports.quests.byArea.title": "Par domaine",
-  "reports.quests.byTag.title": "Par étiquette",
-  "reports.quests.byTag.description":
-    "Une quête apparaît sous chacune de ses étiquettes : ces barres se recoupent.",
-  "reports.quests.byTag.empty": "Aucune quête n'a encore d'étiquette",
-  "reports.quests.byPriority.title": "Par priorité",
-  "reports.quests.cycleTime.title": "Temps de cycle par priorité",
-  "reports.quests.cycleTime.avgHours": "Heures moy.",
-  "reports.quests.aging.title": "Quêtes ouvertes les plus anciennes",
-  "reports.quests.aging.empty": "Aucune quête ouverte",
-  "reports.quests.completed": "Terminées",
-  "reports.quests.remaining": "Restantes",
-  "reports.quests.empty": "Aucune donnée pour le moment",
-  "reports.members.leaderboard.title": "Classement",
-  "reports.members.leaderboard.empty":
-    "Aucun membre dans le groupe pour le moment.",
-  "reports.members.label.quests": "quêtes",
-  "reports.members.contribution.title": "Contribution",
-  "reports.members.contribution.empty": "Pas assez d'activité pour le moment.",
-  "reports.members.idle.title": "Membres inactifs",
-  "reports.members.idle.empty": "Tout le monde a été actif.",
-  "reports.members.idle.lastCompleted": "dernière quête terminée $1",
-  "reports.members.idle.never": "jamais",
+  "reports.csv": "CSV",
+  "reports.delta": "$1 par rapport à avant",
+  "reports.quality.lines.definition":
+    "Part des lignes exécutées par le dernier passage.",
+  "reports.quality.statements.definition":
+    "Part des instructions exécutées par le dernier passage.",
+  "reports.quality.functions.definition":
+    "Part des fonctions appelées par le dernier passage.",
+  "reports.quality.branches.definition":
+    "Part des branches prises par le dernier passage.",
+  "reports.quality.total.definition": "Tests du dernier passage.",
+  "reports.quality.passed.definition": "Tests réussis au dernier passage.",
+  "reports.quality.failed.definition": "Tests échoués au dernier passage.",
+  "reports.quality.duration.definition": "Durée réelle du dernier passage.",
+  "reports.quality.section.coverage.definition":
+    "Couverture du dernier passage.",
+  "reports.quality.section.tests.definition":
+    "Nombre de tests du dernier passage.",
+  "reports.quality.section.coverageOverTime.definition":
+    "Couverture du dernier passage de chaque jour.",
+  "reports.quality.section.testsOverTime.definition":
+    "Tests réussis et échoués du dernier passage de chaque jour.",
+  "project.reports.nav.summary": "Résumé",
+  "reports.summary.copy": "Copier comme point d’avancement",
+  "reports.summary.copied": "Point d’avancement copié",
+  "reports.summary.empty": "Aucune capacité à présenter.",
+  "reports.summary.definition":
+    "Chaque chiffre sur la période, face à la période de même durée qui la précède.",
+  "reports.summary.section.work": "Travail",
+  "reports.summary.section.support": "Support",
+  "reports.summary.section.knowledge": "Connaissance",
+  "reports.summary.section.apps": "Livraison",
+  "reports.summary.line.throughput": "Quêtes terminées",
+  "reports.summary.line.throughput.definition":
+    "Quêtes terminées sur la période.",
+  "reports.summary.line.cycleTime": "Temps de cycle médian",
+  "reports.summary.line.cycleTime.definition":
+    "Temps médian entre acceptation et fin, attente exclue.",
+  "reports.summary.line.wip": "En cours",
+  "reports.summary.line.wip.definition":
+    "Quêtes acceptées et non terminées, hors quêtes en attente.",
+  "reports.summary.line.epicsShipped": "Épopées livrées",
+  "reports.summary.line.epicsShipped.definition":
+    "Épopées terminées sur la période.",
+  "reports.summary.line.releasesShipped": "Versions publiées",
+  "reports.summary.line.releasesShipped.definition":
+    "Versions publiées sur la période.",
+  "reports.summary.line.feedbackIn": "Retours reçus",
+  "reports.summary.line.feedbackIn.definition": "Retours reçus sur la période.",
+  "reports.summary.line.feedbackPending": "En attente de tri",
+  "reports.summary.line.feedbackPending.definition":
+    "Retours à trier aujourd’hui.",
+  "reports.summary.line.foliosCreated": "Folios créés",
+  "reports.summary.line.foliosCreated.definition":
+    "Folios créés sur la période.",
+  "reports.summary.line.foliosRevised": "Révisions de folios",
+  "reports.summary.line.foliosRevised.definition":
+    "Révisions enregistrées sur la période, tous folios confondus.",
+  "reports.summary.line.deploys": "Déploiements",
+  "reports.summary.line.deploys.definition":
+    "Déploiements terminés sur la période, échecs compris.",
+  "reports.summary.line.deploySuccess": "Réussite des déploiements",
+  "reports.summary.line.deploySuccess.definition":
+    "Déploiements réussis sur déploiements terminés, hors annulés.",
+  "reports.summary.line.openBlights": "Blights ouverts",
+  "reports.summary.line.openBlights.definition": "Blights ouverts aujourd’hui.",
+  "reports.summary.line.uptime": "Disponibilité",
+  "reports.summary.line.uptime.definition":
+    "Temps de surveillance hors incident, sur la période.",
+  "reports.summary.line.coverage": "Couverture",
+  "reports.summary.line.coverage.definition":
+    "Couverture de lignes du dernier passage qualité de la période.",
+  "project.reports.nav.flow": "Flux",
+  "reports.flow.empty": "Rien n’a bougé sur cette période.",
+  "reports.flow.kpi.throughput": "Débit",
+  "reports.flow.kpi.throughput.definition": "Quêtes terminées sur la période.",
+  "reports.flow.kpi.cycle": "Temps de cycle médian",
+  "reports.flow.kpi.cycle.definition":
+    "Temps médian entre acceptation et fin, attente exclue.",
+  "reports.flow.kpi.lead": "Délai médian",
+  "reports.flow.kpi.lead.definition":
+    "Temps médian entre création et fin. L’attente est incluse : c’est ce qu’a attendu le demandeur.",
+  "reports.flow.kpi.net": "Croissance nette du backlog",
+  "reports.flow.kpi.net.definition":
+    "Quêtes créées moins quêtes terminées sur la période.",
+  "reports.flow.kpi.wip": "En cours",
+  "reports.flow.kpi.wip.definition":
+    "Quêtes acceptées et non terminées, hors quêtes en attente.",
+  "reports.flow.series.completed": "Terminées",
+  "reports.flow.series.created": "Créées",
+  "reports.flow.series.rollingMedian": "Médiane glissante",
+  "reports.flow.series.hours": "Heures",
+  "reports.flow.series.quests": "Quêtes",
+  "reports.flow.throughput.title": "Débit et arrivées",
+  "reports.flow.throughput.definition":
+    "Quêtes créées et terminées par intervalle, avec la médiane des quatre derniers points. La croissance nette est créées moins terminées.",
+  "reports.flow.cumulative.title": "Flux cumulé",
+  "reports.flow.cumulative.definition":
+    "Quêtes dans chaque état à la fin de chaque intervalle. Le passé est reconstruit depuis les horodatages et l’historique ; les relevés nocturnes sont exacts depuis leur début.",
+  "reports.flow.state.todo": "À faire",
+  "reports.flow.state.inProgress": "En cours",
+  "reports.flow.state.onHold": "En attente",
+  "reports.flow.state.done": "Terminées",
+  "reports.flow.wip.title": "Travail en cours dans le temps",
+  "reports.flow.wip.definition":
+    "Quêtes en cours à la fin de chaque intervalle, hors quêtes en attente.",
+  "reports.flow.scatter.title": "Temps de cycle",
+  "reports.flow.scatter.definition":
+    "Un point par quête terminée sur la période, attente exclue, avec les lignes p50 et p85. Cliquez un point pour ouvrir sa quête.",
+  "reports.flow.cycleHistogram.title": "Distribution du temps de cycle",
+  "reports.flow.cycleHistogram.definition":
+    "Quêtes terminées sur la période, par temps entre acceptation et fin.",
+  "reports.flow.leadHistogram.title": "Distribution du délai",
+  "reports.flow.leadHistogram.definition":
+    "Quêtes terminées sur la période, par temps entre création et fin.",
+  "reports.flow.bucket.under1h": "< 1 h",
+  "reports.flow.bucket.under4h": "< 4 h",
+  "reports.flow.bucket.under1d": "< 1 j",
+  "reports.flow.bucket.under3d": "< 3 j",
+  "reports.flow.bucket.under1w": "< 1 sem.",
+  "reports.flow.bucket.under2w": "< 2 sem.",
+  "reports.flow.bucket.under4w": "< 4 sem.",
+  "reports.flow.bucket.over4w": "4 sem. et plus",
+  "reports.flow.aging.title": "Ancienneté du travail en cours",
+  "reports.flow.aging.definition":
+    "Les plus anciennes quêtes en cours, en jours depuis l’acceptation, face aux p50 et p85 du temps de cycle des quêtes terminées, hors quêtes en attente.",
+  "reports.flow.band.under_p50": "sous p50",
+  "reports.flow.band.under_p85": "sous p85",
+  "reports.flow.band.over_p85": "au-delà de p85",
+  "reports.flow.time.title": "Temps en attente et par colonne",
+  "reports.flow.time.definition": "Là où les quêtes ont attendu.",
+  "reports.flow.time.hold": "En attente",
+  "reports.flow.time.hold.definition":
+    "Temps d’attente médian des quêtes terminées sur la période et mises en attente au moins une fois.",
+  "reports.flow.time.holdHint": "$1 quêtes, p85 $2",
+  "reports.flow.time.column.definition":
+    "Temps médian passé par une quête dans cette colonne, d’après ses déplacements.",
+  "reports.flow.sizes.title": "Temps de cycle par taille",
+  "reports.flow.sizes.definition":
+    "Temps de cycle médian et p85 par taille, pour les quêtes terminées sur la période.",
+  "reports.flow.size.1": "XS",
+  "reports.flow.size.2": "S",
+  "reports.flow.size.3": "M",
+  "reports.flow.size.4": "L",
+  "reports.flow.size.5": "XL",
+  "reports.flow.size.definition":
+    "Temps de cycle médian des quêtes de cette taille.",
+  "reports.flow.size.hint": "$1 quêtes, p85 $2",
+  "reports.flow.estimates.title": "Estimations et réalisé",
+  "reports.flow.estimates.definition":
+    "Quêtes terminées sur la période qui portent une estimation. Le réalisé est le temps chronométré, ou le temps de cycle sinon, qui mesure le temps écoulé et non l’effort.",
+  "reports.flow.estimates.tracked": "$1 estimé, $2 chronométré",
+  "reports.flow.estimates.cycle": "$1 estimé, $2 écoulé",
+  "reports.flow.due.title": "Échéances",
+  "reports.flow.due.definition":
+    "Quêtes terminées sur la période avant leur échéance, sur celles qui en avaient une.",
+  "reports.flow.due.rate": "Taux de respect",
+  "reports.flow.due.hint": "$1 sur $2 à l’heure",
+  "project.reports.nav.backlog": "Backlog",
+  "reports.backlog.empty": "Rien ici.",
+  "reports.backlog.days": "$1 j",
+  "reports.backlog.kpi.open": "Quêtes ouvertes",
+  "reports.backlog.kpi.open.definition":
+    "Quêtes non terminées, en attente comprises, hors quêtes mises de côté et quêtes des épopées en brouillon.",
+  "reports.backlog.kpi.overdue": "En retard",
+  "reports.backlog.kpi.overdue.definition":
+    "Quêtes ouvertes dont l’échéance est passée.",
+  "reports.backlog.kpi.shelved": "Taux de mise de côté",
+  "reports.backlog.kpi.shelved.definition":
+    "Quêtes mises de côté sur toutes les quêtes du projet, quels que soient les filtres.",
+  "reports.backlog.kpi.waived": "Objectifs abandonnés",
+  "reports.backlog.kpi.waived.definition":
+    "Objectifs abandonnés sur objectifs tranchés, pour les quêtes terminées sur la période.",
+  "reports.backlog.kpi.waivedHint": "$1 atteints, $2 abandonnés",
+  "reports.backlog.byArea.title": "Par domaine",
+  "reports.backlog.byArea.definition":
+    "Quêtes ouvertes par domaine, tous domaines, empilées par état.",
+  "reports.backlog.byTag.title": "Par tag",
+  "reports.backlog.byTag.definition":
+    "Quêtes ouvertes par tag, empilées par état. Une quête compte une fois par tag : les barres se recoupent.",
+  "reports.backlog.byPriority.title": "Par priorité",
+  "reports.backlog.byPriority.definition":
+    "Quêtes ouvertes par priorité, empilées par état.",
+  "reports.backlog.bySize.title": "Par taille",
+  "reports.backlog.bySize.definition":
+    "Quêtes ouvertes par taille, empilées par état.",
+  "reports.backlog.age.title": "Ancienneté du backlog",
+  "reports.backlog.age.definition":
+    "Quêtes ouvertes par temps écoulé depuis leur création.",
+  "reports.backlog.age.under1w": "< 1 semaine",
+  "reports.backlog.age.under1m": "< 1 mois",
+  "reports.backlog.age.under3m": "< 3 mois",
+  "reports.backlog.age.under6m": "< 6 mois",
+  "reports.backlog.age.under1y": "< 1 an",
+  "reports.backlog.age.over1y": "1 an et plus",
+  "reports.backlog.blocked.title": "Chaînes bloquées",
+  "reports.backlog.blocked.definition":
+    "Quêtes ouvertes qui attendent une autre quête ouverte, par quête en tête de chaîne.",
+  "reports.backlog.blocked.detail": "bloque $1, profondeur $2",
+  "reports.backlog.held.title": "En attente",
+  "reports.backlog.held.definition":
+    "Quêtes en attente, par qui et depuis combien de temps.",
+  "reports.backlog.overdue.title": "En retard",
+  "reports.backlog.overdue.definition":
+    "Quêtes ouvertes dont l’échéance est passée, par jours de retard.",
+  "reports.backlog.dueSoon.title": "Échéance sous 7 jours",
+  "reports.backlog.dueSoon.definition":
+    "Quêtes ouvertes à échéance dans les sept prochains jours.",
+  "reports.backlog.hygiene.title": "Hygiène",
+  "reports.backlog.hygiene.definition":
+    "Quêtes ouvertes sans objectifs ou sans description.",
+  "reports.backlog.hygiene.noObjectives": "sans objectifs",
+  "reports.backlog.hygiene.noDescription": "sans description",
+  "project.reports.nav.planning": "Planification",
+  "reports.planning.empty": "Aucune épopée démarrée sur cette période.",
+  "reports.planning.scope": "Périmètre",
+  "reports.planning.done": "Terminées",
+  "reports.planning.timeline.title": "Chronologie des épopées",
+  "reports.planning.timeline.definition":
+    "Chaque épopée démarrée, de sa première quête acceptée à sa dernière quête close. Une épopée en cours court jusqu’à aujourd’hui, en pointillés.",
+  "reports.planning.burnup.title": "Burn-up de l’épopée",
+  "reports.planning.burnup.titleOf": "Burn-up : $1",
+  "reports.planning.burnup.definition":
+    "Quêtes terminées face au périmètre de l’épopée, jour par jour. Le filtre d’épopée choisit laquelle, sinon la dernière en cours.",
+  "reports.planning.table.title": "Épopées",
+  "reports.planning.table.definition":
+    "Terminées sur total exclut les quêtes mises de côté. Le changement de périmètre est les quêtes ajoutées ou retirées après le démarrage, sur le périmètre de départ.",
+  "reports.planning.table.epic": "Épopée",
+  "reports.planning.table.done": "Terminées",
+  "reports.planning.table.cycle": "Cycle médian",
+  "reports.planning.table.days": "Jours en cours",
+  "reports.planning.table.scope": "Changement de périmètre",
+  "reports.planning.target": "Cible",
+  "reports.planning.release.title": "Version $1",
+  "reports.planning.release.definition":
+    "Quêtes terminées face au périmètre de la version, avec sa date cible et la prévision.",
+  "reports.planning.release.progress": "Terminées",
+  "reports.planning.release.progress.definition":
+    "Quêtes rattachées à la version et terminées, sur toutes les quêtes rattachées, hors quêtes mises de côté.",
+  "reports.planning.release.forecast": "Date de sortie prévue",
+  "reports.planning.release.forecast.definition":
+    "La moitié des futurs simulés finissent avant cette date. Un Monte Carlo sur le débit des douze dernières semaines.",
+  "reports.planning.release.forecastHint": "p85 $1",
+  "reports.planning.published.title": "Versions publiées",
+  "reports.planning.published.definition":
+    "Le glissement est le nombre de jours après la cible. La cadence est le nombre de jours depuis la version précédente. Taille et report sont figés à la publication.",
+  "reports.planning.published.empty": "Aucune version publiée.",
+  "reports.planning.published.release": "Version",
+  "reports.planning.published.slip": "Glissement (jours)",
+  "reports.planning.published.size": "Taille",
+  "reports.planning.published.cadence": "Cadence (jours)",
+  "reports.planning.published.carried": "Reportées",
+  "project.reports.nav.support": "Support",
+  "reports.summary.line.feedbackTriaged": "Triés",
+  "reports.summary.line.feedbackTriaged.definition":
+    "Retours acceptés ou rejetés sur la période.",
+  "reports.support.reports": "Retours",
+  "reports.support.none": "Aucune",
+  "reports.support.kpi.triage": "Délai médian de tri",
+  "reports.support.kpi.triage.definition":
+    "Temps médian entre réception et décision, pour les retours reçus sur la période. Les retours triés avant cet enregistrement et sans audit restant sont exclus.",
+  "reports.support.kpi.accepted": "Acceptés",
+  "reports.support.kpi.accepted.definition":
+    "Acceptés sur acceptés et rejetés, pour les retours reçus sur la période.",
+  "reports.support.kpi.acceptedHint": "$1 acceptés, $2 rejetés, $3 en attente",
+  "reports.support.kpi.conversion": "Retours livrés",
+  "reports.support.kpi.conversion.definition":
+    "Retours acceptés dont toutes les quêtes sont terminées, sur les retours acceptés.",
+  "reports.support.kpi.conversionHint": "$1 avec une quête, $2 livrés",
+  "reports.support.kpi.resolution": "Délai médian de résolution",
+  "reports.support.kpi.resolution.definition":
+    "Temps médian entre réception et la fin de sa dernière quête.",
+  "reports.support.intake.title": "Arrivées",
+  "reports.support.intake.definition":
+    "Retours reçus par intervalle, selon leur tag de type. Sans tag de type, ils comptent dans Autre.",
+  "reports.support.type.bug": "Bug",
+  "reports.support.type.feature": "Fonctionnalité",
+  "reports.support.type.other": "Autre",
+  "reports.support.severity.title": "Par gravité",
+  "reports.support.severity.definition":
+    "Retours reçus sur la période, selon leur tag de gravité.",
+  "reports.support.pending.title": "En attente par ancienneté",
+  "reports.support.pending.definition":
+    "Retours à trier aujourd’hui, par temps depuis leur réception.",
+  "reports.support.sources.title": "D’où viennent les retours",
+  "reports.support.sources.definition":
+    "Les tags d’hôte et de chemin les plus fréquents sur la période. Un retour compte une fois par tag.",
+  "reports.support.sources.empty": "Aucun retour ne porte d’hôte ni de chemin.",
+  "project.reports.nav.knowledge": "Connaissance",
+  "reports.knowledge.empty": "Rien ici.",
+  "reports.knowledge.pinned": "épinglé",
+  "reports.knowledge.kpi.total": "Folios",
+  "reports.knowledge.kpi.total.definition": "Tous les folios du projet.",
+  "reports.knowledge.kpi.stale": "Périmés",
+  "reports.knowledge.kpi.stale.definition":
+    "Folios non modifiés depuis $1 jours, épinglés d’abord.",
+  "reports.knowledge.kpi.orphans": "Orphelins",
+  "reports.knowledge.kpi.orphans.definition":
+    "Folios vers lesquels rien ne pointe. Les folios épinglés sont exclus : épingler est un chemin d’accès.",
+  "reports.knowledge.kpi.links": "Liens médians par folio",
+  "reports.knowledge.kpi.links.definition":
+    "Liens entrants par folio, médiane, depuis les folios et les quêtes.",
+  "reports.knowledge.kpi.reverts": "Retours arrière",
+  "reports.knowledge.kpi.reverts.definition":
+    "Révisions ramenant un folio à une version antérieure, sur la période.",
+  "reports.knowledge.activity.title": "Activité",
+  "reports.knowledge.activity.definition":
+    "Folios créés et révisions enregistrées par intervalle.",
+  "reports.knowledge.series.created": "Créés",
+  "reports.knowledge.series.revised": "Révisés",
+  "reports.knowledge.series.folios": "Folios",
+  "reports.knowledge.mostRevised.title": "Les plus révisés",
+  "reports.knowledge.mostRevised.definition":
+    "Les folios ayant le plus de révisions sur la période.",
+  "reports.knowledge.mostLinked.title": "Les plus liés",
+  "reports.knowledge.mostLinked.definition":
+    "Les folios ayant le plus de liens entrants.",
+  "reports.knowledge.stale.title": "Folios périmés",
+  "reports.knowledge.orphans.title": "Folios orphelins",
+  "reports.knowledge.byDirectory.title": "Par dossier",
+  "reports.knowledge.byDirectory.definition":
+    "Folios par dossier de premier niveau.",
+  "project.reports.nav.delivery": "Livraison",
+  "project.reports.nav.quality": "Qualité",
+  "reports.delivery.kpi.frequency": "Déploiements par semaine",
+  "reports.delivery.kpi.frequency.definition":
+    "Déploiements réussis par semaine sur la période.",
+  "reports.delivery.kpi.lead": "Délai de livraison",
+  "reports.delivery.kpi.lead.definition":
+    "Temps médian entre une quête terminée et le premier déploiement réussi de son tag de version ou de ses commits.",
+  "reports.delivery.kpi.leadHint": "p85 $1, $2 non rattachées",
+  "reports.delivery.kpi.failure": "Taux d’échec des changements",
+  "reports.delivery.kpi.failure.definition":
+    "Déploiements échoués et retours arrière, sur tous les déploiements terminés. Un retour arrière redéploie un tag déjà lancé sur l’instance.",
+  "reports.delivery.kpi.failureHint": "$1 échoués, $2 retours arrière",
+  "reports.delivery.kpi.restore": "Temps de rétablissement",
+  "reports.delivery.kpi.restore.definition":
+    "Temps médian entre le début et la fin d’un incident, d’après les moniteurs.",
+  "reports.delivery.kpi.restoreHint": "p85 $1, $2 incidents",
+  "reports.delivery.series.succeeded": "Réussis",
+  "reports.delivery.series.failed": "Échoués",
+  "reports.delivery.series.duration": "Durée médiane",
+  "reports.delivery.deploys.title": "Déploiements et réussite",
+  "reports.delivery.deploys.definition":
+    "Déploiements terminés par intervalle, hors annulés.",
+  "reports.delivery.duration.title": "Durée des déploiements",
+  "reports.delivery.duration.definition":
+    "Temps médian entre le début et la fin d’un déploiement, par intervalle, en minutes.",
+  "reports.delivery.apps.title": "Par application et environnement",
+  "reports.delivery.apps.definition":
+    "Déploiements terminés de chaque copie déployée sur la période.",
+  "reports.delivery.apps.empty": "Aucun déploiement terminé sur cette période.",
+  "reports.delivery.apps.app": "Application",
+  "reports.delivery.apps.rollbacks": "Retours arrière",
+  "reports.reliability.blights.title": "Blights",
+  "reports.reliability.blights.definition":
+    "Nouveaux blights et blights résolus par intervalle, et combien restaient ouverts. Un blight résolu est placé au jour de sa dernière occurrence : rien n’enregistre sa résolution.",
+  "reports.reliability.series.opened": "Nouveaux",
+  "reports.reliability.series.resolved": "Résolus",
+  "reports.reliability.series.open": "Ouverts",
+  "reports.reliability.series.errors": "Erreurs",
+  "reports.reliability.top.title": "Principaux blights",
+  "reports.reliability.top.definition":
+    "Les blights aux occurrences les plus nombreuses, quelle que soit leur date.",
+  "reports.reliability.top.empty": "Aucun blight signalé.",
+  "reports.reliability.forwarded": "Transmis à une quête",
+  "reports.reliability.forwarded.definition":
+    "Blights transformés en quête, et combien de ces quêtes sont terminées.",
+  "reports.reliability.forwarded.hint": "$1 corrigés",
+  "reports.reliability.fix": "Délai médian de correction",
+  "reports.reliability.fix.definition":
+    "De la première occurrence d’un blight transmis à la fin de sa quête.",
+  "reports.reliability.fix.hint": "p85 $1",
+  "reports.reliability.errors.title": "Erreurs",
+  "reports.reliability.errors.definition":
+    "Occurrences d’erreurs par intervalle, sur les applications du projet. Une ligne pointillée marque un intervalle avec un déploiement réussi.",
+  "reports.reliability.uptime.title": "Disponibilité",
+  "reports.reliability.uptime.definition":
+    "Part de sondes réussies, incidents commencés et temps médian de rétablissement, par moniteur sur la période.",
+  "reports.reliability.uptime.empty": "Aucun moniteur dans ce projet.",
+  "reports.reliability.uptime.monitor": "Moniteur",
+  "reports.reliability.uptime.uptime": "Disponibilité",
+  "reports.reliability.uptime.incidents": "Incidents",
+  "reports.reliability.uptime.mttr": "Temps de rétablissement",
+  "reports.quality.branch": "Branche",
+  "reports.quality.target": "Cible",
+  "reports.quality.section.duration": "Durée des tests",
+  "reports.quality.section.duration.definition":
+    "Durée réelle du dernier passage de chaque jour, en secondes.",
+  "reports.quality.section.byTag": "Couverture par tag de version",
+  "reports.quality.section.byTag.definition":
+    "Couverture de lignes du passage dont le commit a produit un artefact de ce tag.",
+  "reports.quality.section.byTag.empty":
+    "Aucun passage ne correspond au commit d’un artefact.",
+  "project.settings.coverageTarget": "Cible de couverture (%)",
+  "project.settings.coverageTarget.hint":
+    "Tracée en ligne sur le graphique de couverture des rapports. Laisser vide pour aucune.",
+  "project.settings.coverageTarget.save": "Enregistrer la cible",
+  "reports.filter.period": "Période",
+  "reports.filter.range.7d": "7 derniers jours",
+  "reports.filter.range.30d": "30 derniers jours",
+  "reports.filter.range.90d": "90 derniers jours",
+  "reports.filter.range.6m": "6 derniers mois",
+  "reports.filter.range.1y": "Dernière année",
+  "reports.filter.range.all": "Depuis le début",
+  "reports.filter.range.custom": "Période personnalisée",
+  "reports.filter.grain": "Granularité",
+  "reports.filter.grain.day": "Par jour",
+  "reports.filter.grain.week": "Par semaine",
+  "reports.filter.grain.month": "Par mois",
+  "reports.filter.compare": "Comparer à la période précédente",
+  "reports.filter.area": "Domaine",
+  "reports.filter.epic": "Épopée",
+  "reports.filter.release": "Version",
+  "reports.filter.tag": "Tag",
+  "reports.filter.priority": "Priorité",
+  "reports.filter.member": "Membre",
+  "reports.overview.kpi.cycleTimeHint": "p85 $1",
   "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
   "project.settings.kanban.tagColors.description":
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
@@ -1473,8 +1985,8 @@ export default {
   "app.environment.import.cancel": "Annuler",
   "app.environment.import.submit": "Importer $1",
   "app.environment.import.done": "$1 importés",
-  "app.environment.ownerOnly":
-    "Seul le propriétaire du projet peut changer ce avec quoi cette copie s\u2019exécute.",
+  "app.environment.notAllowed":
+    "Votre rang ne permet pas de changer ce avec quoi cette copie s\u2019exécute.",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
   "app.dashboard.identity": "Identité",
@@ -1603,9 +2115,8 @@ export default {
   "app.settings.sigil.create": "Créer un sigil",
   "app.settings.sigil.remove.title": "Retirer le sigil",
   "app.settings.sigil.remove.description":
-    "Arrête les remontées de cette copie et efface ce qu’elle a remonté. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
-  "app.settings.ownerOnly":
-    "Seul le propriétaire du projet peut effectuer cette action.",
+    "Arrête les remontées de cette copie et retire du projet ce qu’elle a remonté. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+  "app.settings.notAllowed": "Votre rang ne permet pas cette action.",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
@@ -1760,7 +2271,7 @@ export default {
   "sigils.rotate.confirm": "Renouveler",
   "sigils.delete.confirmTitle": "Supprimer $1 ?",
   "sigils.delete.confirmDescription":
-    "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Cela retire du projet tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
   "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",
@@ -1773,8 +2284,8 @@ export default {
   "estates.project.empty":
     "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
-  "estates.project.ownerOnly":
-    "Seul le propriétaire du projet peut ajouter un domaine.",
+  "estates.project.notAllowed":
+    "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
@@ -1902,8 +2413,6 @@ export default {
   "bay.logs.static":
     "Un site statique n'a pas de processus, donc pas de journal.",
   "bay.logs.truncated": "$1 ligne(s) plus ancienne(s) ont été écartées.",
-  "bay.logs.undated":
-    "$1 ligne(s) sans horodatage ont été conservées malgré la fenêtre demandée.",
   "bay.logs.empty": "Supervisée, et elle n'a rien dit.",
   "bay.commands.empty": "Rien n'a été demandé à cette machine",
   "bay.commands.empty.description":
@@ -2092,6 +2601,9 @@ export default {
   "account.notifications.category.feedback": "Vos demandes",
   "account.notifications.category.feedback.description":
     "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",
+  "account.notifications.category.invitations": "Invitations à un projet",
+  "account.notifications.category.invitations.description":
+    "Un projet vous invite, dans la cloche uniquement : l'e-mail d'invitation arrive quand même.",
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Quelqu'un écrit votre nom dans un commentaire de quête ou de retour.",
@@ -2295,6 +2807,11 @@ export default {
   "agentPrompts.settings.blightTriage.title": "Anomalies : traiter",
   "agentPrompts.settings.blightTriage.description":
     "Proposée sur la boîte des anomalies. Crée une quête pour chaque vrai défaut et résout le bruit.",
+  "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
+  "agentPrompts.settings.weeklyStatus.title":
+    "Rapports : rédiger le point hebdomadaire",
+  "agentPrompts.settings.weeklyStatus.description":
+    "Sur l'onglet Résumé des rapports : la semaine face à la précédente, et ce qui l'explique.",
   "agentPrompts.settings.questLoop.title": "Quêtes : traiter les quêtes libres",
   "agentPrompts.settings.questLoop.description":
     "Proposée sur la page Quêtes. Traite une à une chaque quête à faire qui n’appartient à aucune épopée, en une seule session.",

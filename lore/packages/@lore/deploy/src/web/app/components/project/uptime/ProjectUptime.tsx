@@ -148,7 +148,7 @@ const ProjectUptime = () => {
             disabled={busy}
             items={["24h", "7d", "30d"].map((value) => ({
               value,
-              label: tr(`uptime.window.${value}` as never),
+              label: tr(`uptime.window.${value}`),
             }))}
           />
           {canManage && (

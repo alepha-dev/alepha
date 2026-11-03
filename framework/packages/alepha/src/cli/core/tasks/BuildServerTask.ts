@@ -197,7 +197,7 @@ export class BuildServerTask extends BuildTask {
           base: resolved.base,
           allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
         });
-        ctx.alepha.store.set("alepha.react.ssr.manifest" as any, ssr.data);
+        ctx.alepha.store.set("alepha.react.ssr.manifest", ssr.data);
         await this.fs.rm(
           this.fs.join(ctx.root, distDir, publicDir, "index.html"),
         );
@@ -453,7 +453,7 @@ export class BuildServerTask extends BuildTask {
     }
 
     if (ssr?.data) {
-      opts.alepha.store.set("alepha.react.ssr.manifest" as any, ssr.data);
+      opts.alepha.store.set("alepha.react.ssr.manifest", ssr.data);
     }
 
     const warning =

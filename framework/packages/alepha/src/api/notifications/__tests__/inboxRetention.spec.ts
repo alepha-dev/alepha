@@ -52,7 +52,7 @@ const seed = async (
     title: "You are mentioned",
     href: "/quests/Q1",
     ...overrides,
-  } as never);
+  });
 
 describe("inbox retention", () => {
   /**

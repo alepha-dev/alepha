@@ -1,3 +1,4 @@
+import { type ReportsGrain, ReportStatistics } from "@lore/core/api";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 
@@ -19,6 +20,7 @@ export interface DailyCount {
  */
 export class DashboardFlowSeries {
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly stats = $inject(ReportStatistics);
 
   /**
    * The last `days` days, oldest first, ending today.
@@ -44,13 +46,52 @@ export class DashboardFlowSeries {
   }
 
   /**
+   * {@link ReportStatistics.between}, kept here for the callers holding this
+   * service.
+   */
+  between(from: string, to: string): string[] {
+    return this.stats.between(from, to);
+  }
+
+  grainFor(days: number): ReportsGrain {
+    return this.stats.grainFor(days);
+  }
+
+  bucket(day: string, grain: ReportsGrain): string {
+    return this.stats.bucket(day, grain);
+  }
+
+  /**
+   * The last point of each bucket, for a cumulative series.
+   */
+  sampled<T extends { at: string }>(points: T[], grain: ReportsGrain): T[] {
+    const last = new Map<string, T>();
+    for (const point of points) {
+      last.set(this.bucket(point.at, grain), point);
+    }
+    return [...last.values()];
+  }
+
+  /**
    * The running total at each day of the window, history before it included.
    */
   cumulative(
     rows: DailyCount[],
     days: number,
   ): Array<{ at: string; value: number }> {
-    const axis = this.days(days);
+    return this.cumulativeOver(rows, this.days(days));
+  }
+
+  /**
+   * The running total at each day of `axis`, history before it included.
+   */
+  cumulativeOver(
+    rows: DailyCount[],
+    axis: string[],
+  ): Array<{ at: string; value: number }> {
+    if (axis.length === 0) {
+      return [];
+    }
     let running = rows
       .filter((row) => row.date < axis[0]!)
       .reduce((sum, row) => sum + Number(row.count), 0);

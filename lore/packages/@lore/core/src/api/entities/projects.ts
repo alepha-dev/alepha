@@ -83,6 +83,14 @@ export const projects = $entity({
      */
     retentionDays: z.integer().min(1).max(3_650).optional(),
     /**
+     * The coverage the project aims for, in percent, drawn as a line on the
+     * Delivery tab (#Q3010). Absent means no target.
+     *
+     * A plain column rather than a capability option because options are
+     * booleans. Optional with no `db.default(...)`, for the reason above.
+     */
+    coverageTarget: z.integer().min(0).max(100).optional(),
+    /**
      * The Kanban board's configurable column NAMES, in order. Only
      * meaningful when the `work.board` option is on. Capped at 5 by the
      * controller. Default is a single "In Progress" lane so existing

@@ -93,7 +93,7 @@ describe("CloudflareKVProvider", () => {
       // and nothing anywhere said so.
       const { alepha, app } = await boot();
 
-      await app.short.set("k", "v" as any);
+      await app.short.set("k", "v");
 
       expect(kv.puts.at(-1)?.options?.expirationTtl).toBe(60);
       const warned = warnings(alepha);
@@ -105,7 +105,7 @@ describe("CloudflareKVProvider", () => {
     it("should leave a TTL above the floor alone and stay quiet", async () => {
       const { alepha, app } = await boot();
 
-      await app.long.set("k", "v" as any);
+      await app.long.set("k", "v");
 
       expect(kv.puts.at(-1)?.options?.expirationTtl).toBe(600);
       expect(warnings(alepha)).toHaveLength(0);
@@ -116,9 +116,9 @@ describe("CloudflareKVProvider", () => {
       // per write would drown the log on a hot cache.
       const { alepha, app } = await boot();
 
-      await app.short.set("a", "v" as any);
-      await app.short.set("b", "v" as any);
-      await app.short.set("c", "v" as any);
+      await app.short.set("a", "v");
+      await app.short.set("b", "v");
+      await app.short.set("c", "v");
 
       expect(kv.puts).toHaveLength(3);
       expect(warnings(alepha)).toHaveLength(1);

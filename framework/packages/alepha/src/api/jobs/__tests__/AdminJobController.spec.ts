@@ -131,7 +131,7 @@ const boot = async () => {
           service: "test",
           module: "test",
           timestamp: created.valueOf(),
-        } as any,
+        },
       ],
       createdAt: created.toISOString(),
       updatedAt: created.toISOString(),

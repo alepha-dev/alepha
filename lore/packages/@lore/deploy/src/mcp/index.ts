@@ -5,6 +5,7 @@ import { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 import { ArtifactTools } from "./tools/ArtifactTools.ts";
 import { BlightTools } from "./tools/BlightTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
+import { EstateTools } from "./tools/EstateTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 import { StackTools } from "./tools/StackTools.ts";
@@ -28,6 +29,8 @@ export const LoreDeployMcp = $module({
     InsightsTools,
     // Stacks for agents (#Q2697).
     StackTools,
+    // An estate's stats, read-only and owner-only (#Q3047).
+    EstateTools,
   ],
 });
 
@@ -37,6 +40,7 @@ export { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 export { ArtifactTools } from "./tools/ArtifactTools.ts";
 export { BlightTools } from "./tools/BlightTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
+export { EstateTools } from "./tools/EstateTools.ts";
 export { InsightsTools } from "./tools/InsightsTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";
 export { StackTools } from "./tools/StackTools.ts";

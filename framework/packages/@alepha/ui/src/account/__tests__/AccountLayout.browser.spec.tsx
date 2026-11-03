@@ -82,7 +82,7 @@ describe("AccountLayout", () => {
       id: "u-1",
       name: "Ada Lovelace",
       email: "ada@example.com",
-    } as never);
+    });
     await alepha.start();
 
     // Every page gates on its backing action; name them so all show.
@@ -95,7 +95,7 @@ describe("AccountLayout", () => {
         listMyConnections: { path: "/users/me/connections" },
       },
       permissions: [],
-    } as any);
+    });
 
     await alepha.inject(I18nProvider).setLang(lang);
 

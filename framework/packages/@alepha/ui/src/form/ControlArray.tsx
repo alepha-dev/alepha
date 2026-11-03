@@ -510,7 +510,7 @@ export const ControlArray = (props: ControlArrayProps) => {
           const fieldProps = {
             ...props.controlProps?.[name],
             ...resolveFieldI18n(
-              tr as never,
+              tr,
               props.i18nPrefix,
               name,
               props.controlProps?.[name] ?? {},

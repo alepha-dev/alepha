@@ -114,7 +114,7 @@ const EpicCreate = (props: EpicCreateProps) => {
           description={tr("epic.create.description.helper")}
           input={form.input.description}
           icon={FileText}
-          custom={DescriptionEditor as never}
+          custom={DescriptionEditor}
         />
       </div>
 

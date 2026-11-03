@@ -57,7 +57,7 @@ const setup = async () => {
       alepha.store.set(currentUserAtom, {
         id: owner.id,
         roles: ["user"],
-      } as never);
+      });
       return fn();
     });
 
@@ -135,7 +135,7 @@ describe("project_context and capabilities", () => {
           description: "",
           area: "general",
           priority: "medium",
-        } as never),
+        }),
       ),
     ).rejects.toThrow(/Plan and track work.*Turn it on in Settings/s);
 
@@ -154,7 +154,7 @@ describe("project_context and capabilities", () => {
     const folio = await ctx.asUser(() =>
       ctx.folioApi.create({
         body: { projectId: project.id, title: "Kept", content: "body" },
-      } as never),
+      }),
     );
 
     // Turn Knowledge off the way Settings does.
@@ -174,7 +174,7 @@ describe("project_context and capabilities", () => {
     // project that turns Knowledge back on has to find every folio untouched,
     // and a read refused here would make that impossible to verify.
     const kept = await ctx.asUser(() =>
-      ctx.folioApi.get({ params: { id: folio.id } } as never),
+      ctx.folioApi.get({ params: { id: folio.id } }),
     );
     expect(kept.title).toBe("Kept");
 
@@ -199,7 +199,7 @@ describe("project_context and capabilities", () => {
             summary: "A short orientation line, about this long in practice.",
             content: "x".repeat(2_000),
           },
-        } as never),
+        }),
       );
     }
 

@@ -135,7 +135,7 @@ describe("filtering quests by release", () => {
     releaseId: string,
   ) => {
     const page = await ctx.questController.getQuests.fetch(
-      { params: { projectId }, query: { releaseId } as never },
+      { params: { projectId }, query: { releaseId } },
       { user },
     );
     return page.data.content
@@ -185,7 +185,7 @@ describe("filtering quests by release", () => {
     const { user, project } = await world();
 
     const page = await ctx.questController.getQuests.fetch(
-      { params: { projectId: project.id }, query: {} as never },
+      { params: { projectId: project.id }, query: {} },
       { user },
     );
     expect(page.data.content.length).toBe(3);

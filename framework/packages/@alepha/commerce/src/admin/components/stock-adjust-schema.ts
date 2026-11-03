@@ -12,10 +12,13 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * `quantity` allows negatives, which is the whole difference between this and
  * the list's one-click `+1` restock: a real correction goes both ways. The
  * server refuses zero, and treats `intake` / `return` as additions whatever
- * sign arrives — only `adjustment` may subtract.
+ * sign arrives - only `adjustment` may subtract.
  */
-export const stockAdjustSchema = (tr: TrFunction) =>
-  z.object({
+export const stockAdjustSchema = (
+  tr: TrFunction,
+  variants: Array<{ value: string; label: string }> = [],
+) => {
+  const base = z.object({
     quantity: z
       .integer()
       .min(-100000)
@@ -58,3 +61,23 @@ export const stockAdjustSchema = (tr: TrFunction) =>
       })
       .optional(),
   });
+
+  // Only on a product sold by variant, where the server refuses a movement
+  // that names none. Typed as the base: what the form submits is a body, and
+  // the field is optional on it.
+  return (
+    variants.length > 0
+      ? base.extend({
+          variantId: z
+            .text()
+            .meta({
+              title: tr("commerce.admin.stock.fVariant", {
+                default: "Variant",
+              }),
+              $control: { width: 100, items: variants },
+            })
+            .optional(),
+        })
+      : base
+  ) as typeof base;
+};

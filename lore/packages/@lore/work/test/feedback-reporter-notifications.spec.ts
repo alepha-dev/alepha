@@ -99,14 +99,14 @@ describe("telling a reporter what happened to their report", () => {
         alepha.store.set(currentUserAtom, {
           id: userId,
           roles: ["user"],
-        } as any);
+        });
         return fn();
       });
 
     const project = await asUser(owner.id, () =>
       projectApi.createProject({
         body: { title: "Feedback probe", capabilities: [{ key: "support" }] },
-      } as any),
+      }),
     );
 
     const report = (title: string, reporterId: string) =>
@@ -114,7 +114,7 @@ describe("telling a reporter what happened to their report", () => {
         feedbackApi.submitFeedback({
           params: { projectId: project.id },
           body: { title, description: "x" },
-        } as any),
+        }),
       );
 
     const sendJobName = alepha.inject(NotificationJobs).sendNotification.name;
@@ -158,10 +158,10 @@ describe("telling a reporter what happened to their report", () => {
       outcome === "accept"
         ? ctx.feedbackApi.acceptFeedback({
             params: { projectId: ctx.project.id, feedbackId },
-          } as any)
+          })
         : ctx.feedbackApi.rejectFeedback({
             params: { projectId: ctx.project.id, feedbackId },
-          } as any),
+          }),
     );
 
   it("tells a reporter who is not a project member that it was accepted", async ({
@@ -208,6 +208,48 @@ describe("telling a reporter what happened to their report", () => {
     // what makes a single mute cover both halves of a triage decision.
     expect(rows[0].template).toBe("lore:feedback:triaged");
     expect(rows[0].title).toContain("rejected");
+
+    await ctx.alepha.stop();
+  });
+
+  it("refuses to reject a report already accepted, and tells nobody", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const item = await ctx.report("It crashes", ctx.reporter.id);
+    await triage(ctx, item.id, "accept");
+    await ctx.deliver();
+
+    await expect(triage(ctx, item.id, "reject")).rejects.toThrow(
+      "already triaged",
+    );
+    await ctx.deliver();
+
+    // The panel hides a rejected report's linked quests, so the status is
+    // what this protects, and the one message is the accept's.
+    const row = await ctx.asUser(ctx.owner.id, () =>
+      ctx.feedbackApi.getFeedback({
+        params: { projectId: ctx.project.id, feedbackId: item.id },
+      }),
+    );
+    expect(row.status).toBe("accepted");
+    expect(await ctx.probe.inbox.findMany({})).toHaveLength(1);
+
+    await ctx.alepha.stop();
+  });
+
+  it("refuses to reject a report twice", async ({ expect }) => {
+    const ctx = await setup();
+    const item = await ctx.report("Please add dark mode", ctx.reporter.id);
+    await triage(ctx, item.id, "reject");
+    await ctx.deliver();
+
+    await expect(triage(ctx, item.id, "reject")).rejects.toThrow(
+      "already triaged",
+    );
+    await ctx.deliver();
+
+    expect(await ctx.probe.inbox.findMany({})).toHaveLength(1);
 
     await ctx.alepha.stop();
   });

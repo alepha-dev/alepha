@@ -9,6 +9,16 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
 import { DocsCommand } from "../commands/docs.ts";
+import { DocsLibrary } from "../services/DocsLibrary.ts";
+
+/**
+ * The CLI as npx installs it: running from its own package, outside the
+ * project.
+ */
+class NpxDocsLibrary extends DocsLibrary {
+  protected override readonly selfPath =
+    "/npx/node_modules/alepha/dist/bin/index.js";
+}
 
 /**
  * A page as `package:docs` writes it: JSON-quoted front matter, a blank line,
@@ -36,10 +46,14 @@ const page = (meta: {
 
 describe("alepha docs", () => {
   const createTestEnv = async (
-    options: { modules?: string; withUi?: boolean } = {},
+    options: { modules?: string; withUi?: boolean; npx?: boolean } = {},
   ) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "silent" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({
+        provide: DocsLibrary,
+        use: options.npx ? NpxDocsLibrary : DocsLibrary,
+      })
       .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider });
     const fs = alepha.inject(MemoryFileSystemProvider);
     const modules = options.modules ?? "/project/node_modules";
@@ -174,6 +188,38 @@ describe("alepha docs", () => {
       await cli.run(cmd.docs, { root: "/project" });
 
       expect(output.text).not.toContain("@alepha/ui");
+    });
+
+    it("falls back to the running alepha's docs when the project installs none", async () => {
+      const { cli, cmd, output } = await createTestEnv({
+        modules: "/npx/node_modules",
+        npx: true,
+      });
+
+      await cli.run(cmd.docs, { root: "/home/user" });
+
+      expect(output.text).toContain("## alepha@0.40.0 - guides");
+      expect(output.text).toContain("- reference-primitives-$entity");
+    });
+
+    it("prefers the project's alepha over the running one", async () => {
+      const { cli, cmd, output, fs } = await createTestEnv({
+        modules: "/npx/node_modules",
+        npx: true,
+      });
+      await fs.writeFile(
+        "/project/node_modules/alepha/package.json",
+        JSON.stringify({ name: "alepha", version: "0.39.0" }),
+      );
+      await fs.writeFile(
+        "/project/node_modules/alepha/docs/guides-old.md",
+        '---\nslug: "guides-old"\nsection: "guides"\n---\n\n# Old\n',
+      );
+
+      await cli.run(cmd.docs, { root: "/project" });
+
+      expect(output.text).toContain("## alepha@0.39.0 - guides");
+      expect(output.text).not.toContain("0.40.0");
     });
 
     it("says where it looked when no package ships docs", async () => {

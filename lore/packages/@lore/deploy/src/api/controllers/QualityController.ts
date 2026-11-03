@@ -137,7 +137,7 @@ export class QualityController {
   /**
    * The row, flattened to what the API returns.
    */
-  protected resource(run: QualityRun) {
+  resource(run: QualityRun) {
     return {
       id: run.id,
       projectId: run.projectId,

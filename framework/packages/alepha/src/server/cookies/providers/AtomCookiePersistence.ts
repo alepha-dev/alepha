@@ -82,10 +82,13 @@ export class AtomCookiePersistence {
       } catch (error) {
         // Outside a request cycle there is no response to attach the
         // Set-Cookie header to; browser-side writes are handled by the
-        // browser variant of this provider.
-        this.log.debug(`Cannot persist atom "${atom.key}" to cookie`, {
-          error,
-        });
+        // browser variant of this provider. Inside one, the value is too large
+        // for a cookie, and nothing else would ever say so.
+        const inRequest = this.alepha.store.getUntracked("alepha.http.request");
+        this.log[inRequest ? "warn" : "debug"](
+          `Cannot persist atom "${atom.key}" to cookie`,
+          { error },
+        );
       }
     },
   });

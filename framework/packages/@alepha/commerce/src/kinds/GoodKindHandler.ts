@@ -22,7 +22,7 @@ export const goodConfigSchema = z.object({
 /**
  * A tangible item handed over to the buyer. The default kind.
  *
- * Fulfilment is a stock decrement — and, for a product with
+ * Fulfilment is a stock decrement - and, for a product with
  * `trackStock: false`, nothing at all. That second case is why this is a
  * handler and not a hard-coded branch in `OrderService`.
  */
@@ -32,14 +32,20 @@ export class GoodKindHandler extends ProductKindHandler {
 
   protected readonly stock = $inject(StockService);
 
+  public override tracksStock(
+    config: Record<string, any> | undefined,
+  ): boolean {
+    return config?.trackStock !== false;
+  }
+
   /**
    * The product's stock lock, unless the product sells without the ledger.
    */
   public lockKeys(item: OrderItemEntity): ClaimLockKey[] {
-    if (!this.tracksStock(item)) {
+    if (!this.lineTracksStock(item)) {
       return [];
     }
-    return [{ namespace: StockService.LOCK_NAMESPACE, key: item.productId }];
+    return [StockService.lockKey(item.productId, item.variantId)];
   }
 
   /**
@@ -47,25 +53,27 @@ export class GoodKindHandler extends ProductKindHandler {
    * reach the payment page for the same last one.
    */
   public async reserve(item: OrderItemEntity): Promise<void> {
-    if (!this.tracksStock(item)) {
+    if (!this.lineTracksStock(item)) {
       return;
     }
     await this.stock.reserve(item.productId, item.quantity, {
       orderId: item.orderId,
+      variantId: item.variantId,
     });
   }
 
   public async fulfil(item: OrderItemEntity): Promise<void> {
-    if (!this.tracksStock(item)) {
+    if (!this.lineTracksStock(item)) {
       return;
     }
     await this.stock.recordSale(item.productId, item.quantity, {
       orderId: item.orderId,
+      orderItemId: item.id,
+      variantId: item.variantId,
     });
   }
 
-  protected tracksStock(item: OrderItemEntity): boolean {
-    const config = item.config as { trackStock?: boolean } | undefined;
-    return config?.trackStock !== false;
+  protected lineTracksStock(item: OrderItemEntity): boolean {
+    return this.tracksStock(item.config as Record<string, any> | undefined);
   }
 }

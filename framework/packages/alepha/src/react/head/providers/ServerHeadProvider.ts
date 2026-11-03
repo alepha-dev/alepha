@@ -35,6 +35,6 @@ export class ServerHeadProvider {
    * Delegates to HeadProvider to merge head data from all route layers.
    */
   public fillHead(state: { head: SimpleHead; layers: Array<any> }): void {
-    this.headProvider.fillHead(state as any);
+    this.headProvider.fillHead(state);
   }
 }

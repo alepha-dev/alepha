@@ -17,7 +17,7 @@ export interface AdminProductDetailOrdersTabProps {
  * What this product has actually sold.
  *
  * Lines rather than orders: one order can hold the same product twice at
- * different prices, and each line carries the price it was sold at — a
+ * different prices, and each line carries the price it was sold at - a
  * snapshot, deliberately, so editing the catalogue never rewrites history.
  * That is why the amounts here can disagree with the product's current price,
  * and why they should.
@@ -56,7 +56,9 @@ export const AdminProductDetailOrdersTab = (
           orderId: {
             label: tr("commerce.admin.orders.colOrder", { default: "Order" }),
             cell: (line) => (
-              <code className="text-xs">#{line.orderId.slice(0, 8)}</code>
+              <code className="text-xs">
+                {line.orderNumber ?? `#${line.orderId.slice(0, 8)}`}
+              </code>
             ),
           },
           orderStatus: {
@@ -91,7 +93,10 @@ export const AdminProductDetailOrdersTab = (
             align: "right",
             cell: (line) => (
               <span className="font-medium tabular-nums">
-                {money(line.unitPrice * line.quantity, line.orderCurrency)}
+                {money(
+                  line.unitPrice * line.quantity - line.discount,
+                  line.orderCurrency,
+                )}
               </span>
             ),
           },

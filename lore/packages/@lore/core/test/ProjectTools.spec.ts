@@ -67,7 +67,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -75,7 +75,7 @@ const setup = async () => {
     asUser(userId, () => tool.execute(params));
 
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({ body: { title: "Test" } }),
   );
 
   const addNonOwnerMember = async (): Promise<string> => {
@@ -88,7 +88,7 @@ const setup = async () => {
 
   const createProject = (title: string) =>
     asUser(OWNER, () =>
-      projectApi.createProject({ body: { title } } as any),
+      projectApi.createProject({ body: { title } }),
     ) as Promise<{ id: number }>;
 
   /**
@@ -156,8 +156,8 @@ describe("Lore MCP - projects", () => {
         alepha.store.set(currentUserAtom, {
           id: OWNER,
           roles: ["user"],
-        } as any);
-        return api.archiveProject({ params: { id: project.id } } as any);
+        });
+        return api.archiveProject({ params: { id: project.id } });
       });
 
       const result = await call(projectTools.project_list, {});

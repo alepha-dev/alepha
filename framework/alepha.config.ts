@@ -74,6 +74,7 @@ export default defineConfig({
         "verifications",
         // published packages
         "capacitor",
+        "commerce",
         "desktop",
         "devtools",
         "mqtt",

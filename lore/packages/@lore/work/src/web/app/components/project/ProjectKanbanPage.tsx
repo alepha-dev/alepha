@@ -1,6 +1,5 @@
 import { currentProjectAtom } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
-import { NestedView } from "alepha/react/router";
 import { useEffect } from "react";
 
 import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
@@ -72,14 +71,6 @@ const ProjectKanbanPage = () => {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <KanbanBoard project={project} quests={quests} />
-      {/*
-        The open card, when there is one (`projectKanbanCard` at
-        `/kanban/:shortId`). It renders a sheet over this board, and the
-        board stays mounted underneath — which is the reason the card is a
-        CHILD route rather than a sibling: a sibling would remount and
-        refetch the whole board every time a card opened.
-      */}
-      <NestedView />
     </div>
   );
 };

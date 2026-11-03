@@ -70,7 +70,7 @@ describe("queued notification compatibility", () => {
         variables: { what: "legacy" },
         [["organization", "Id"].join("")]:
           "55555555-5555-4555-8555-555555555555",
-      } as any,
+      },
       { inline: true },
     );
 

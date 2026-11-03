@@ -48,7 +48,10 @@ export class QuestBreakdownMetric implements DashboardMetricResolver {
         continue;
       }
       const { by } = entry.filters as QuestBreakdownFilters;
-      const report = await this.reports.questsReport(project.id);
+      const report = await this.reports.questsReport(
+        project.id,
+        this.reports.fixedQuery,
+      );
       const groups =
         by === "tag"
           ? report.byTag.map((row) => ({ ...row, label: row.tag }))

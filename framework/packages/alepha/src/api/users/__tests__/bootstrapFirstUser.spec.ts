@@ -183,7 +183,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
     }) => {
       const { registrationService, realmProvider } = await setup();
       realmProvider.register("closed-bootstrap", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         bootstrapFirstUser: true,
       });
 
@@ -203,7 +203,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
     }) => {
       const { registrationService, realmProvider } = await setup();
       realmProvider.register("closed-bootstrap-second", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         bootstrapFirstUser: true,
       });
 
@@ -226,7 +226,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
     }) => {
       const { registrationService, realmProvider } = await setup();
       realmProvider.register("closed-no-bootstrap", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
       });
 
       await expect(
@@ -242,7 +242,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
     }) => {
       const { sessionService, realmProvider } = await setup();
       realmProvider.register("closed-oauth-bootstrap", {
-        settings: { registrationAllowed: false } as never,
+        settings: { registrationAllowed: false },
         bootstrapFirstUser: true,
       });
 

@@ -677,8 +677,18 @@ const ProjectQuestsTable = () => {
               statusOp: f?.statusOp,
               tagOp: f?.tagOp,
               releaseId: list(f?.release),
-            } as any,
+            },
           });
+        }}
+        onRowHover={(quest) => {
+          if (quest) {
+            router.prefetch("projectQuest", {
+              params: {
+                projectSlug: router.state.params.projectSlug,
+                shortId: String(quest.shortId),
+              },
+            });
+          }
         }}
         onRowClick={(quest) =>
           router.push("projectQuest", {

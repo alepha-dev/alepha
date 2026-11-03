@@ -1,8 +1,10 @@
 import { AlephaError } from "alepha";
+import type { LucideIcon } from "lucide-react";
 
 import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../api/schemas/projectResourceSchema.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
+import type { ReportsFilterKey } from "../services/ReportsUrlQuery.ts";
 
 /**
  * The tabs of the Reports page, as each module registers them (#E75,
@@ -16,6 +18,31 @@ import { hasCapability } from "../services/projectCapabilities.ts";
  */
 export class ReportsTabRegistry {
   protected readonly entries: ReportsTab[] = [];
+  protected readonly filterEntries: ReportsFilter[] = [];
+
+  /**
+   * A filter of the bar that core cannot draw: its options are a module's.
+   */
+  public registerFilter(filter: ReportsFilter): void {
+    if (this.filterEntries.some((it) => it.key === filter.key)) {
+      throw new AlephaError(
+        `Reports filter '${filter.key}' is registered twice`,
+      );
+    }
+    this.filterEntries.push(filter);
+  }
+
+  public filters(): ReportsFilter[] {
+    return this.filterEntries;
+  }
+
+  /**
+   * The filters `route` declares. A tab with none honours none, and the report
+   * behind it is read with the empty query.
+   */
+  public honours(route: string): readonly ReportsFilterKey[] {
+    return this.entries.find((it) => it.route === route)?.filters ?? [];
+  }
 
   public register(tab: ReportsTab): void {
     if (this.entries.some((it) => it.route === tab.route)) {
@@ -26,33 +53,13 @@ export class ReportsTabRegistry {
   }
 
   /**
-   * Which tabs a project has wants to know something only a request can
-   * answer (whether a quality run exists): each such tab's `available` runs
-   * here, in parallel, when Reports opens. A failure hides the tab, never the
-   * page.
-   */
-  public async availability(projectId: number): Promise<string[]> {
-    const answers = await Promise.all(
-      this.entries.map(async (tab) =>
-        !tab.available || (await tab.available(projectId).catch(() => false))
-          ? tab.route
-          : undefined,
-      ),
-    );
-    return answers.filter((it): it is string => !!it);
-  }
-
-  /**
-   * Which Reports tabs this project has, given what `availability` answered.
+   * Which Reports tabs this project has.
    */
   public tabs(
     project: Pick<ProjectResource, "capabilities"> | undefined,
-    available: readonly string[],
   ): ReportsTab[] {
     return this.entries.filter(
-      (tab) =>
-        (!tab.needs || hasCapability(project, tab.needs)) &&
-        available.includes(tab.route),
+      (tab) => !tab.needs || hasCapability(project, tab.needs),
     );
   }
 }
@@ -63,14 +70,30 @@ export interface ReportsTab {
    */
   route: string;
   labelKey: string;
+  /**
+   * What the tab answers, in a line under the bar.
+   */
+  descriptionKey?: string;
+  icon?: LucideIcon;
   order: number;
   /**
    * The capability this tab's data source belongs to.
    */
   needs?: CapabilityKey;
   /**
-   * A last say that needs a request, run when Reports opens. Only Quality
-   * has one: the tab exists once there is something in it.
+   * The filters this tab honours: its loader reads only these, and the bar
+   * shows the others disabled (#Q2996).
    */
-  available?: (projectId: number) => Promise<boolean>;
+  filters?: readonly ReportsFilterKey[];
+}
+
+export interface ReportsFilter {
+  key: Exclude<ReportsFilterKey, "period" | "grain" | "compare" | "branch">;
+  labelKey: string;
+  needs?: CapabilityKey;
+  /**
+   * The filter's values. A hook, called once by the component drawing this
+   * filter.
+   */
+  useOptions: () => Array<{ value: string; label: string }>;
 }

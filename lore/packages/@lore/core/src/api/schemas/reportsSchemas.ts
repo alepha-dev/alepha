@@ -1,21 +1,43 @@
 import { z } from "alepha";
 
 /**
- * Response schemas for the three Reports dashboard endpoints. Shared by
- * `ProjectReportsController`, its tests, and the frontend page loaders.
+ * What `ProjectReportsService` answers, for Flow, the Summary and the dashboard
+ * tiles.
  */
+
+/**
+ * What one period adds up to: returned for the period asked for, and for the
+ * one before it when the query says `compare` (#Q2995).
+ */
+export const reportsPeriodFiguresSchema = z.object({
+  created: z.integer(),
+  completed: z.integer(),
+  medianCycleTimeHours: z.number(),
+  p85CycleTimeHours: z.number(),
+  activeMembers: z.integer(),
+});
 
 export const reportsOverviewSchema = z.object({
   kpis: z.object({
     totalQuests: z.integer(),
     completedQuests: z.integer(),
+    // Accepted and not completed. A held quest is its own state, not open.
     openQuests: z.integer(),
+    heldQuests: z.integer(),
     completedThisWeek: z.integer(),
     completedLastWeek: z.integer(),
-    avgCycleTimeHours: z.number(),
+    // Accepted to completed, hold time taken out.
+    medianCycleTimeHours: z.number(),
+    p85CycleTimeHours: z.number(),
+    // Members who created, accepted, completed or commented on a quest lately.
     activeMembers: z.integer(),
   }),
-  // Cumulative created vs completed, one point per day, oldest first.
+  period: reportsPeriodFiguresSchema,
+  // Absent without `compare`, or when the period has no start.
+  previous: reportsPeriodFiguresSchema.optional(),
+  // Cumulative created vs completed, one point per grain over the period (the
+  // last 90 days without a `from`), oldest first. The totals include everything
+  // before it.
   burnup: z.array(
     z.object({
       date: z.string(),
@@ -23,11 +45,9 @@ export const reportsOverviewSchema = z.object({
       completed: z.integer(),
     }),
   ),
-  // Weekly completion rate (cumulative completed / cumulative created * 100).
-  completionTrend: z.array(z.object({ date: z.string(), rate: z.number() })),
   attention: z.object({
     staleQuests: z.integer(),
-    unassignedQuests: z.integer(),
+    notStartedQuests: z.integer(),
     blockedQuests: z.integer(),
   }),
 });
@@ -36,6 +56,7 @@ export const reportsQuestsSchema = z.object({
   funnel: z.object({
     todo: z.integer(),
     inProgress: z.integer(),
+    held: z.integer(),
     completed: z.integer(),
   }),
   byArea: z.array(
@@ -70,8 +91,20 @@ export const reportsQuestsSchema = z.object({
     }),
   ),
   cycleTimeByPriority: z.array(
-    z.object({ priority: z.string(), avgHours: z.number() }),
+    z.object({
+      priority: z.string(),
+      medianHours: z.number(),
+      p85Hours: z.number(),
+    }),
   ),
+  // Absent without `compare`, or when the period has no start.
+  previous: z
+    .object({
+      completed: z.integer(),
+      medianCycleTimeHours: z.number(),
+      p85CycleTimeHours: z.number(),
+    })
+    .optional(),
   // Oldest still-open (accepted, not completed) quests — actionable list.
   aging: z.array(
     z.object({
@@ -80,34 +113,6 @@ export const reportsQuestsSchema = z.object({
       area: z.string(),
       priority: z.string(),
       ageDays: z.integer(),
-    }),
-  ),
-});
-
-export const reportsMembersSchema = z.object({
-  leaderboard: z.array(
-    z.object({
-      userId: z.string(),
-      name: z.string(),
-      picture: z.string().optional(),
-      questsCompleted: z.integer(),
-    }),
-  ),
-  // Top contributors' names — drives the dynamic stacked-area ChartConfig.
-  contributors: z.array(z.string()),
-  // Weekly completions; `counts` keyed by contributor name (from `contributors`).
-  contribution: z.array(
-    z.object({
-      date: z.string(),
-      counts: z.record(z.text(), z.integer()),
-    }),
-  ),
-  idle: z.array(
-    z.object({
-      userId: z.string(),
-      name: z.string(),
-      picture: z.string().optional(),
-      lastCompletedAt: z.string().optional(),
     }),
   ),
 });

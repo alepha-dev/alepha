@@ -239,7 +239,7 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 	// wait rather than fail for the length of it.
 	defer s.holdDuring(app.Key())()
 
-	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {
+	if err := s.stopForMaintenance(app.Key()); err != nil {
 		return fail(http.StatusInternalServerError, "stop app: "+err.Error(), nil)
 	}
 	untouched, err := backup.InstallBundle(fetched, dataDir)

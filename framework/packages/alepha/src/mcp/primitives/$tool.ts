@@ -272,7 +272,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         user: this.currentUser(),
       } as never),
     this.options.use,
-    (run) => this.dateTime.deadline(run, this.timeout),
+    (run, args) => this.withDeadline(run, args),
   );
 
   /**
@@ -288,13 +288,29 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   }
 
   /**
+   * Run the composed pipeline under the tool's deadline, when it has one, with
+   * the deadline's signal as `context.signal`.
+   */
+  protected withDeadline(run: (...args: any[]) => any, args: any[]): any {
+    const timeout = this.timeout;
+    if (timeout === undefined) {
+      return run(...args);
+    }
+    const [params, context] = args as [unknown, McpContext | undefined];
+    return this.dateTime.deadline(
+      (signal) => run(params, context && { ...context, signal }),
+      timeout,
+    );
+  }
+
+  /**
    * The user a `$secure` in `use` resolved: it publishes it in the
    * `alepha.security.user` slot, and on the HTTP request it ran against.
    */
   protected currentUser(): unknown {
     return (
       this.alepha.store.get("alepha.http.request")?.user ??
-      this.alepha.store.get("alepha.security.user" as never)
+      this.alepha.store.get("alepha.security.user")
     );
   }
 
@@ -473,7 +489,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       // is described by its input type; the output mode (zod's default)
       // marked the first as required and the second by what the handler
       // receives, so clients rejected calls the server would have accepted.
-      json = z.toJSONSchema(schema as any, { io: "input" });
+      json = z.toJSONSchema(schema, { io: "input" });
     } catch (error) {
       this.log.warn(
         `Tool '${this.name}': params schema cannot be expressed as JSON Schema, advertising an open object`,
@@ -492,7 +508,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
    */
   protected propertyToJsonSchema(schema: ZType): Record<string, unknown> {
     try {
-      const json: any = z.toJSONSchema(schema as any);
+      const json: any = z.toJSONSchema(schema);
       json.$schema = undefined;
       return json;
     } catch (error) {

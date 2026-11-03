@@ -358,7 +358,7 @@ export class AuditService {
     // several rows can be open at once when a burst spans a window boundary,
     // and the newest is the one still accepting events.
     const [open] = await this.repo.findMany({
-      where: where as never,
+      where: where,
       orderBy: { column: "createdAt", direction: "desc" },
       limit: 1,
     });
@@ -376,7 +376,7 @@ export class AuditService {
       // `description` keeps the FIRST value on purpose: it is a write-time
       // snapshot (see `projectActivityRowSchema`), and a burst's identity was
       // fixed when its first event landed.
-    } as never);
+    });
   }
 
   /**

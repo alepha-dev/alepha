@@ -101,7 +101,7 @@ describe("$websocket authorize", () => {
     // The client asks for somebody else's room. The credential says otherwise.
     const ws = new WebSocket(wsUrl(alepha, "/ws/authorize-room?roomId=other"), {
       headers: { authorization: SECRET },
-    } as any);
+    });
     const received: string[] = [];
     ws.on("message", (data: Buffer) => received.push(data.toString("utf8")));
     await waitForOpen(ws);
@@ -219,7 +219,7 @@ describe("$room authorize", () => {
       wsUrl(alepha, "/ws/authorize-world?roomId=forged"),
       {
         headers: { authorization: SECRET },
-      } as any,
+      },
     );
     await waitForOpen(ws);
     await delay(100);

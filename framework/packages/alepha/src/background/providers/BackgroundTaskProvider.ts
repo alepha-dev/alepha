@@ -27,10 +27,11 @@ export class BackgroundTaskProvider {
   protected readonly pending = new Set<Promise<void>>();
 
   /**
-   * Schedule `task` to run in the background. Returns immediately — the task is
-   * detached onto a microtask, so the caller (e.g. an HTTP handler) is never
-   * blocked and a synchronous throw inside `task` can't escape into it. Errors
-   * are caught and logged.
+   * Schedule `task` to run in the background. Returns immediately: the task is
+   * detached onto a microtask, so it starts at the caller's next `await`, often
+   * before the response is sent, and a synchronous throw inside `task` can't
+   * escape into the caller. It shares the thread with everything else, so CPU
+   * work in `task` blocks until it yields. Errors are caught and logged.
    */
   public defer(task: () => unknown): void {
     const promise = Promise.resolve()

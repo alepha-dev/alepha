@@ -92,9 +92,7 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
 
     it("reads the captured plugin requests", async ({ expect }) => {
       const ctx = await createOtaTestApp(dialect);
-      const answer = await ctx.check(
-        otaWireFixtures.updateRequestIos.body as never,
-      );
+      const answer = await ctx.check(otaWireFixtures.updateRequestIos.body);
       expect(answer.body).toMatchObject({
         kind: "blocked",
         error: "unknown_app",

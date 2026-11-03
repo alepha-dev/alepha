@@ -89,14 +89,14 @@ const AutomationValueControl = (props: AutomationValueControlProps) => {
   const options =
     props.slot.values?.map((value) => ({
       value: String(value),
-      label: tr(`automation.channel.${String(value)}` as never, {
+      label: tr(`automation.channel.${String(value)}`, {
         default: String(value),
       }),
     })) ??
     (resource === "channel"
       ? props.channels?.map((value) => ({
           value,
-          label: tr(`automation.channel.${value}` as never, { default: value }),
+          label: tr(`automation.channel.${value}`, { default: value }),
         }))
       : undefined);
   const isPicker = !!options?.length || remote || resource === "channel";

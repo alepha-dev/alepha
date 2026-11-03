@@ -58,7 +58,7 @@ const setup = async () => {
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
 const caller = (ctx: Ctx, sessionId: string) => ({
-  user: { id: ctx.user.id, realm: "default", sessionId } as never,
+  user: { id: ctx.user.id, realm: "default", sessionId },
 });
 
 const list = (ctx: Ctx, sessionId: string) =>

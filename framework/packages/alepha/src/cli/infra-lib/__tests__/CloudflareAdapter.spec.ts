@@ -112,7 +112,7 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
   }
 
   public override async listD1() {
-    return this.d1Databases as never;
+    return this.d1Databases;
   }
 
   public override async ensureD1(
@@ -120,11 +120,11 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
     options: { locationHint?: string } = {},
   ) {
     const existing = this.d1Databases.find((db) => db.name === name);
-    if (existing) return existing as never;
+    if (existing) return existing;
     const db = { uuid: `d1-${name}-uuid`, name };
     this.d1Databases.push(db);
     this.d1Hints[name] = options.locationHint;
-    return db as never;
+    return db;
   }
 
   public override async deleteD1(databaseId: string) {
@@ -132,15 +132,15 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
   }
 
   public override async listKV() {
-    return this.kvNamespaces as never;
+    return this.kvNamespaces;
   }
 
   public override async ensureKV(title: string) {
     const existing = this.kvNamespaces.find((ns) => ns.title === title);
-    if (existing) return existing as never;
+    if (existing) return existing;
     const ns = { id: `kv-${title}-id`, title };
     this.kvNamespaces.push(ns);
-    return ns as never;
+    return ns;
   }
 
   public override async deleteKV(namespaceId: string) {
@@ -148,7 +148,7 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
   }
 
   public override async listR2() {
-    return this.r2Buckets as never;
+    return this.r2Buckets;
   }
 
   public override async ensureR2(
@@ -166,15 +166,15 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
   }
 
   public override async listQueues() {
-    return this.queues as never;
+    return this.queues;
   }
 
   public override async ensureQueue(name: string) {
     const existing = this.queues.find((q) => q.queue_name === name);
-    if (existing) return existing as never;
+    if (existing) return existing;
     const queue = { queue_id: `q-${name}-id`, queue_name: name };
     this.queues.push(queue);
-    return queue as never;
+    return queue;
   }
 
   public override async deleteQueue(name: string) {
@@ -186,15 +186,15 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
   }
 
   public override async listHyperdrive() {
-    return this.hyperdriveConfigs as never;
+    return this.hyperdriveConfigs;
   }
 
   public override async ensureHyperdrive(name: string) {
     const existing = this.hyperdriveConfigs.find((c) => c.name === name);
-    if (existing) return existing as never;
+    if (existing) return existing;
     const config = { id: `hd-${name}-id`, name, origin: { host: "localhost" } };
     this.hyperdriveConfigs.push(config);
-    return config as never;
+    return config;
   }
 
   public override async deleteHyperdrive(configId: string) {
@@ -858,7 +858,7 @@ describe("CloudflareAdapter", () => {
       alepha.set(infraOptions, {
         secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID", "EMAIL_FROM"] },
         environments: { production: cloudflare() },
-      } as any);
+      });
 
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
@@ -898,7 +898,7 @@ describe("CloudflareAdapter", () => {
       alepha.set(infraOptions, {
         secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID"] },
         environments: { production: cloudflare() },
-      } as any);
+      });
 
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
@@ -1064,7 +1064,7 @@ describe("CloudflareAdapter", () => {
       alepha.set(infraOptions, {
         secrets: { keys: ["APP_SECRET"] }, // narrow override
         environments: { production: cloudflare() },
-      } as any);
+      });
 
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },

@@ -25,7 +25,7 @@ export class ShowcaseSessionsController {
       }),
       response: z.page(sessionResourceSchema),
     },
-    handler: ({ query }) => this.sessions.paginate(query as any),
+    handler: ({ query }) => this.sessions.paginate(query),
   });
 
   /**

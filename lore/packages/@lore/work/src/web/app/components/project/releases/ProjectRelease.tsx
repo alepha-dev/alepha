@@ -309,7 +309,7 @@ const ProjectRelease = () => {
     },
     ...linked.map((it) => ({
       key: it.tab.key,
-      label: tr(it.tab.labelKey as never),
+      label: tr(it.tab.labelKey),
       icon: it.tab.icon,
       count: it.count,
     })),

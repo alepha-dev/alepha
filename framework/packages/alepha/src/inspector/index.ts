@@ -57,7 +57,7 @@ export const AlephaInspector = $module({
     // Says "this process carries the inspector", whether or not it turns on:
     // `run()` reads it to explain an `ALEPHA_INSPECT=1` given to a build
     // that has none.
-    alepha.store.set("alepha.inspector.bundled" as any, true);
+    alepha.store.set("alepha.inspector.bundled", true);
 
     const asked = String(alepha.env.ALEPHA_INSPECT ?? "").toLowerCase();
     const explicit = ["1", "true"].includes(asked);

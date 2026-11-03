@@ -1,4 +1,4 @@
-import type { OrderEntity, OrderItemEntity } from "@alepha/commerce";
+import type { PublicOrder, PublicOrderItem } from "@alepha/commerce";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import type { DurationLike } from "alepha/datetime";
 import { useClient, useQuery } from "alepha/react";
@@ -10,12 +10,16 @@ import { Poincon } from "../components/Poincon.tsx";
 import { Prix } from "../components/Prix.tsx";
 
 export interface MerciProps {
-  order: OrderEntity;
-  items: OrderItemEntity[];
+  order: PublicOrder;
+  items: PublicOrderItem[];
   /**
    * Invoice numbers issued for this order, oldest first.
    */
   factures: string[];
+  /**
+   * What the buyer can collect now. Empty for anybody but the buyer.
+   */
+  downloads: Array<{ name: string; url: string }>;
   /**
    * The checkout session this page is showing - its own `:sessionId`.
    *
@@ -93,7 +97,7 @@ const Merci = (props: MerciProps) => {
     [props.sessionId],
   );
 
-  const { order, items, factures } = current;
+  const { order, items, factures, downloads } = current;
   const attente = order.status === "pending";
 
   return (
@@ -105,7 +109,9 @@ const Merci = (props: MerciProps) => {
             {attente ? tr("thanks.pending") : tr("thanks.title")}
           </h1>
           <p className="mesure text-muted-foreground mt-2">
-            {tr("thanks.order", { args: [order.id.slice(0, 8).toUpperCase()] })}
+            {tr("thanks.order", {
+              args: [order.number ?? order.id.slice(0, 8).toUpperCase()],
+            })}
           </p>
         </div>
       </div>
@@ -122,6 +128,11 @@ const Merci = (props: MerciProps) => {
           >
             <span>
               <span className="estampe text-xs">{item.name}</span>
+              {item.variantLabel ? (
+                <span className="mesure text-muted-foreground ml-2">
+                  {item.variantLabel}
+                </span>
+              ) : null}
               {item.quantity > 1 ? (
                 <span className="mesure text-muted-foreground ml-2">
                   × {item.quantity}
@@ -129,7 +140,7 @@ const Merci = (props: MerciProps) => {
               ) : null}
             </span>
             <Prix
-              cents={item.unitPrice * item.quantity}
+              cents={item.unitPrice * item.quantity - item.discount}
               currency={order.currency}
             />
           </li>
@@ -137,6 +148,17 @@ const Merci = (props: MerciProps) => {
       </ul>
 
       <dl className="trait mt-2 space-y-2 border-t pt-5 text-sm">
+        {order.discountTotal > 0 ? (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">
+              {tr("thanks.discount")}
+              {order.promotionCode ? ` · ${order.promotionCode}` : ""}
+            </dt>
+            <dd>
+              <Prix cents={-order.discountTotal} currency={order.currency} />
+            </dd>
+          </div>
+        ) : null}
         {order.shippingTotal > 0 ? (
           <div className="flex justify-between">
             <dt className="text-muted-foreground">
@@ -165,6 +187,21 @@ const Merci = (props: MerciProps) => {
           </dd>
         </div>
       </dl>
+
+      {downloads.length > 0 ? (
+        <ul className="mt-10 space-y-2">
+          {downloads.map((download) => (
+            <li key={download.url}>
+              <a
+                href={download.url}
+                className="estampe text-xs underline transition-colors"
+              >
+                {tr("thanks.download", { args: [download.name] })}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {factures.length > 0 ? (
         <div className="mt-10 flex flex-wrap gap-3">

@@ -418,28 +418,11 @@ for (const path of ["alepha/cli/platform", "alepha/cli/platform-lib"]) {
     }
   });
 
-  it("edits aliases, preserves canonical reruns, refuses conflicts before install and honors force", async () => {
+  it("refuses an existing config before install, and honors force", async () => {
     const root = join(WORK, "default-app");
-    const original = await configAt(root);
-    const aliased = original
-      .replace("defineConfig }", "defineConfig as config }")
-      .replace("export default defineConfig(", "export default config(")
-      .replace("cloudflare, infra }", "cloudflare as cf, infra as setup }")
-      .replace("    infra({", "    setup({")
-      .replace(
-        "production: cloudflare()",
-        'production: cf({ domain: "example.test" })',
-      );
-    await writeFile(join(root, "alepha.config.ts"), aliased);
-    await success(CLI, ["init", "--infra=cloudflare", "--pm=npm"], root);
-    const canonical = await configAt(root);
-    await success(CLI, ["init", "--infra", "cf", "--pm", "npm"], root);
-    expect(await configAt(root)).toBe(canonical);
-    expect(canonical).toContain('domain: "example.test"');
     for (const config of [
-      'import { defineConfig } from "alepha/cli/config"; import { platform } from "alepha/cli/platform"; export default defineConfig({ plugins: [platform({})] });',
-      'import { defineConfig } from "alepha/cli/config"; const options = {}; export default defineConfig(options);',
-      'import { defineConfig } from "alepha/cli/config"; import { infra, bay } from "alepha/cli/infra"; export default defineConfig({ plugins: [infra({ environments: { production: bay() } })] });',
+      await configAt(root),
+      'import { defineConfig } from "alepha/cli/config"; export default defineConfig({ plugins: [] });',
     ]) {
       await writeFile(join(root, "alepha.config.ts"), config);
       const installs = await readFile(

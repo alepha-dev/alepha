@@ -301,6 +301,31 @@ export const projectContextResultSchema = z.object({
 // project_activity
 // -----------------------------------------------------------------------------
 
+export const projectReportParamsSchema = projectParamsSchema.extend({
+  section: z
+    .string()
+    .default("summary")
+    .describe(
+      "Which report: `summary` (every enabled capability against the previous period, the place to start), `flow` (throughput, cycle time, aging), `backlog`, `planning` (epics and releases), `support`, `knowledge`, `delivery` (the four DORA keys, reliability, quality) or `team` (load, contribution, channels, MCP use).",
+    ),
+  days: z
+    .integer()
+    .min(1)
+    .max(400)
+    .default(30)
+    .describe("The period: the last N days, 30 by default. 7 for a weekly."),
+});
+
+export const projectReportResultSchema = z.object({
+  section: z.string(),
+  from: z.string(),
+  to: z.string(),
+  /**
+   * The figures the tab draws, keys as the tab reads them.
+   */
+  report: z.record(z.string(), z.any()),
+});
+
 export const projectActivityParamsSchema = projectParamsSchema.extend({
   since: z
     .datetime()

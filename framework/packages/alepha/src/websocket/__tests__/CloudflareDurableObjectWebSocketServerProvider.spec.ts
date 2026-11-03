@@ -31,7 +31,7 @@ describe("CloudflareDurableObjectWebSocketServerProvider.emit", () => {
     const ns = fakeNamespace();
     alepha.store.set("cloudflare.env", {
       [WEBSOCKET_DEFAULT_BINDING]: ns,
-    } as any);
+    });
     return { provider, ns };
   };
 

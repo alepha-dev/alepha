@@ -62,7 +62,7 @@ describe("cart ownership", () => {
         ctx.alepha.set("alepha.http.request", request);
         ctx.alepha.store.set(
           currentUserAtom,
-          userId ? ({ id: userId, roles: [] } as any) : undefined,
+          userId ? { id: userId, roles: [] } : undefined,
         );
         return await fn();
       });
@@ -115,7 +115,7 @@ describe("cart ownership", () => {
     expect(cart.userId).toBe(userId);
 
     const session = await visit(userId, () =>
-      ctx.checkoutController.commerceCheckoutStart.run({ body: {} } as never),
+      ctx.checkoutController.commerceCheckoutStart.run({ body: {} }),
     );
     // Read back from the store, not from the response: `sessionSchema` does
     // not expose `userId` to the storefront, and a response schema is what

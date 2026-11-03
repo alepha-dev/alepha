@@ -19,6 +19,15 @@ export const capacitorOptions = $atom({
       platforms: z.array(z.enum(["ios", "android"])).optional(),
 
       /**
+       * The iOS app talks to devices on the local network and ships
+       * `NSAllowsLocalNetworking` on purpose, so a build lets that key
+       * through. Without this it is refused as development residue, since
+       * `alepha capacitor dev` adds the same key. This declares the key and
+       * does not write it: `Info.plist` is the app's to edit.
+       */
+      iosLocalNetworking: z.boolean().optional(),
+
+      /**
        * Extra Capacitor configuration merged into the generated
        * `capacitor.config.ts`, typically plugin settings. `appId`, `appName`
        * and `webDir` are the plugin's and cannot be set here, and neither can

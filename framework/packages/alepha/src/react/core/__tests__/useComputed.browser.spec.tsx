@@ -88,7 +88,7 @@ describe("useComputed", () => {
 
     const before = renders;
     await act(async () => {
-      alepha.store.set("test.useComputed.unrelated" as any, 42 as any);
+      alepha.store.set("test.useComputed.unrelated", 42);
     });
 
     expect(renders).toBe(before);

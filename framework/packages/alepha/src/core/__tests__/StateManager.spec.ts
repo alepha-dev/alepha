@@ -46,7 +46,7 @@ describe("StateManager", () => {
     });
 
     it("should return undefined for non-existent keys", () => {
-      expect(stateManager.get("nonExistent" as any)).toBeUndefined();
+      expect(stateManager.get("nonExistent")).toBeUndefined();
     });
 
     it("should check if keys exist", () => {
@@ -330,23 +330,27 @@ describe("StateManager", () => {
       const alepha = Alepha.create();
       alepha.store.get(prefs); // registers the atom
       expect(() =>
-        alepha.store.set("test.validation.prefs" as any, { theme: 1 } as any),
+        alepha.store.set("test.validation.prefs", { theme: 1 }),
       ).toThrow();
     });
 
     it("skips validation when skipValidation is set", () => {
       const alepha = Alepha.create();
       alepha.store.get(prefs);
-      alepha.store.set("test.validation.prefs" as any, { theme: 1 } as any, {
-        skipValidation: true,
-      });
-      expect((alepha.store.get(prefs) as any).theme).toBe(1);
+      alepha.store.set(
+        "test.validation.prefs",
+        { theme: 1 },
+        {
+          skipValidation: true,
+        },
+      );
+      expect(alepha.store.get(prefs).theme).toBe(1);
     });
 
     it("falls back to the default when a pre-seeded value is invalid", () => {
       const alepha = Alepha.create({
         "test.validation.prefs": { theme: 42 },
-      } as any);
+      });
       expect(alepha.store.get(prefs)).toEqual({ theme: "light", count: 0 });
     });
 
@@ -361,7 +365,7 @@ describe("StateManager", () => {
           warn,
           error: vi.fn(),
         },
-      } as any);
+      });
 
       expect(alepha.store.get(prefs)).toEqual({ theme: "light", count: 0 });
       expect(warn).toHaveBeenCalledTimes(1);
@@ -371,7 +375,7 @@ describe("StateManager", () => {
     it("decodes a valid pre-seeded value through the schema", () => {
       const alepha = Alepha.create({
         "test.validation.prefs": { theme: "dark", count: 2, junk: 1 },
-      } as any);
+      });
       expect(alepha.store.get(prefs)).toEqual({ theme: "dark", count: 2 });
     });
 
@@ -398,14 +402,11 @@ describe("StateManager", () => {
           // Simulate a fork-scoped write landing ahead of the atom's first
           // access (e.g. $cookie mirroring a cookie value into the store
           // during server:request:before, before anything reads the atom).
-          alepha.store.set(
-            settings.key as any,
-            {
-              theme: "dark",
-              count: 1,
-              extra: true,
-            } as any,
-          );
+          alepha.store.set(settings.key, {
+            theme: "dark",
+            count: 1,
+            extra: true,
+          });
           return alepha.store.get(settings);
         },
         { context: "req-1" },
@@ -433,13 +434,10 @@ describe("StateManager", () => {
 
       alepha.context.run(
         () => {
-          alepha.store.set(
-            settings.key as any,
-            {
-              theme: "dark",
-              count: 1,
-            } as any,
-          );
+          alepha.store.set(settings.key, {
+            theme: "dark",
+            count: 1,
+          });
           // First registration happens here, inside the fork.
           alepha.store.get(settings);
         },
@@ -466,11 +464,11 @@ describe("StateManager", () => {
           warn,
           error: vi.fn(),
         },
-      } as any);
+      });
 
       const result = alepha.context.run(
         () => {
-          alepha.store.set(settings.key as any, { theme: 42 } as any);
+          alepha.store.set(settings.key, { theme: 42 });
           return alepha.store.get(settings);
         },
         { context: "req-1" },
@@ -491,7 +489,7 @@ describe("StateManager", () => {
 
       const result = alepha.context.run(
         () => {
-          alepha.store.set(settings.key as any, { theme: 42 } as any);
+          alepha.store.set(settings.key, { theme: 42 });
           return alepha.store.get(settings);
         },
         { context: "req-1" },
@@ -516,13 +514,10 @@ describe("StateManager", () => {
 
       const result = alepha.context.run(
         () => {
-          alepha.store.set(
-            settings.key as any,
-            {
-              theme: "dark",
-              count: 5,
-            } as any,
-          );
+          alepha.store.set(settings.key, {
+            theme: "dark",
+            count: 5,
+          });
 
           // A nested fork (e.g. a batched sub-request) is the one that
           // first accesses the atom — the raw value lives one layer up.
@@ -772,7 +767,7 @@ describe("StateManager", () => {
   describe("del", () => {
     it("should remove the key from the app-level store", () => {
       const alepha = new Alepha();
-      alepha.store.set("foo", 1 as any);
+      alepha.store.set("foo", 1);
       expect(alepha.store.has("foo")).toBe(true);
 
       alepha.store.del("foo");
@@ -783,7 +778,7 @@ describe("StateManager", () => {
 
     it("should shadow the app-level value inside a fork", () => {
       const alepha = new Alepha();
-      alepha.store.set("foo", "app" as any);
+      alepha.store.set("foo", "app");
 
       alepha.fork(() => {
         alepha.store.del("foo");

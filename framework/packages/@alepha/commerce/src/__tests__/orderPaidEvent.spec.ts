@@ -19,7 +19,7 @@ import { StockService } from "../services/StockService.ts";
  * `txAtEmit` is the ambient transaction marker: anything but `undefined` means
  * the subscriber's queries would join a still-open transaction. `statusSeen`
  * is read through `DatabaseProvider.execute`, which goes straight to the
- * connection pool and never joins that marker — so it reports what any other
+ * connection pool and never joins that marker - so it reports what any other
  * connection (another request, another process) sees at that instant. Only a
  * committed order can show up as `paid` there.
  */
@@ -66,8 +66,8 @@ describe("commerce:order:paid", () => {
    * `CheckoutService.settle`'s own transaction (payments:captured →
    * CheckoutSettlementListener → settle). markPaid's inner `transactional()`
    * joins that outer transaction, so an emit placed merely "after markPaid's
-   * block" still fires while the outer transaction — and its row locks on
-   * orders and stock — is open. Subscribers (invoice issue, confirmation
+   * block" still fires while the outer transaction - and its row locks on
+   * orders and stock - is open. Subscribers (invoice issue, confirmation
    * email over SMTP) would then hold those locks for as long as they run.
    */
   it("fires after the outermost transaction commits in the webhook path", async ({

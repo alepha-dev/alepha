@@ -6,7 +6,7 @@ import { z } from "alepha";
  *
  * Its own form rather than a field on the product editor because `ControlUpload`
  * writes as files finish uploading, and sharing the editor's form would leave
- * that form dirty — and its Reset button able to discard an upload that already
+ * that form dirty - and its Reset button able to discard an upload that already
  * happened.
  *
  * `products.images` is `string[]` of file ids **or** absolute URLs, so nothing

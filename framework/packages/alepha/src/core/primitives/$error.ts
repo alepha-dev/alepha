@@ -48,7 +48,7 @@ export const $error = <
 >(
   options: ErrorPrimitiveOptions<SchemaData<S>, S, D>,
 ): ErrorClass<Simplify<SchemaData<S>>, keyof D> =>
-  DeclaredError.extend(options as any) as unknown as ErrorClass<
+  DeclaredError.extend(options) as unknown as ErrorClass<
     Simplify<SchemaData<S>>,
     keyof D
   >;

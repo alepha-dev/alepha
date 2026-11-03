@@ -41,7 +41,7 @@ describe("i18n and the html lang attribute", () => {
     alepha.store.set("alepha.react.i18n.lang", "fr");
 
     const state = { head: {}, layers: [] };
-    head.fillHead(state as any);
+    head.fillHead(state);
 
     expect(state.head).toMatchObject({ htmlAttributes: { lang: "fr" } });
   });

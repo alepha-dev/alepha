@@ -95,6 +95,11 @@ export default {
   "automation.preset.feedback-created.title": "New feedback",
   "automation.preset.feedback-created.description":
     "Notify one member when feedback is created. Reporter contact details are excluded.",
+  "automation.preset.weekly-report-digest.title": "Weekly report",
+  "automation.preset.weekly-report-digest.description":
+    "Send the Reports summary of the last seven days to one member, every Monday at 08:00 UTC. They opt out in their notification settings.",
+  "automation.source.reports.summary":
+    "The Reports summary of the last seven days",
   "automation.preset.tagged-quest-digest.title": "Nightly tagged quests",
   "automation.preset.tagged-quest-digest.description":
     "Send one digest of open quests with a chosen tag at 00:00 UTC. Empty digests are skipped.",
@@ -504,6 +509,57 @@ export default {
   // #P2130 reported: a reader with a stale filter was told they had no
   // artifacts at all. `artifacts.list.empty` is the NO-MATCH one; the
   // nothing-here-yet one is `artifacts.empty.*` below.
+  "artifact.notFound": "No build of $1 tagged $2 in this project.",
+  "artifact.back": "Back to artifacts",
+  "artifact.tab.overview": "Overview",
+  "artifact.tab.manifest": "Manifest",
+  "artifact.tab.deployments": "Deployments",
+  "artifact.meta.release": "Release $1",
+  "artifact.stat.size": "Size",
+  "artifact.stat.running": "Running on",
+  "artifact.stat.runningHint": "of $1 copies",
+  "artifact.stat.deploys": "Deploys",
+  "artifact.stat.deploysHint": "$1 succeeded",
+  "artifact.stat.secrets": "Secrets",
+  "artifact.stat.secretsHint": "$1 variables, $2 crons",
+  "artifact.copies.title": "Where it runs",
+  "artifact.copies.empty": "This app has no copy yet.",
+  "artifact.copies.running": "Running this",
+  "artifact.copies.superseded": "Ran this, moved on",
+  "artifact.copies.on": "On $1 since $2",
+  "artifact.copies.never": "Never deployed",
+  "artifact.needs.title": "What it needs",
+  "artifact.needs.unknown":
+    "This build carries no manifest, so what it needs is unknown.",
+  "artifact.needs.platforms": "Platforms",
+  "artifact.needs.resources": "Resources",
+  "artifact.needs.slices": "Runtimes",
+  "artifact.needs.crons": "Crons",
+  "artifact.needs.secrets": "Secrets",
+  "artifact.needs.variables": "Variables",
+  "artifact.needs.websockets": "WebSockets",
+  "artifact.builds.title": "Builds of $1",
+  "artifact.builds.this": "$1 (this build)",
+  "artifact.deployments.empty": "This tag has not been deployed.",
+  "artifact.deploy.action": "Deploy",
+  "artifact.deploy.newCopy": "New copy",
+  "artifact.newCopy.title": "New copy from $1",
+  "artifact.newCopy.description":
+    "A new copy of $1. The build fixes the app, so only its environment is named here.",
+  "artifact.newCopy.estate": "Estate",
+  "artifact.newCopy.noEstate":
+    "No estate lent to this project can run this build.",
+  "artifact.newCopy.ephemeral": "Ephemeral",
+  "artifact.newCopy.ephemeralHint":
+    "Its database and bucket go with it when it is destroyed. This cannot be changed later.",
+  "artifact.newCopy.deployNow": "Deploy $1 now",
+  "artifact.newCopy.secrets":
+    "This build needs $1 secrets. A deploy before they are set may fail.",
+  "artifact.newCopy.submit": "Create copy",
+  "app.dashboard.running": "Running",
+  "app.dashboard.running.at": "deployed $1",
+  "app.dashboard.running.moved": "newer bytes on $1",
+  "app.dashboard.running.gone": "build deleted",
   "artifacts.list.empty": "No artifact matches these filters.",
   "artifacts.noMatch": "No match",
   "artifacts.empty.title": "No artifact yet",
@@ -865,7 +921,7 @@ export default {
     "Push a build to a machine you own.",
   "project.capability.support.label": "Collect feedback",
   "project.capability.support.description":
-    "A public request form and a triage inbox.",
+    "A request form for any signed-in Lore account, and a triage inbox.",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
     "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
@@ -898,10 +954,91 @@ export default {
   "project.settings.areas.delete.blocked":
     "This area still holds quests. Merge it into another area instead.",
   "project.settings.nav.estates": "Estates",
-  "project.reports.nav.overview": "Overview",
-  "project.reports.nav.quests": "Quests",
-  "project.reports.nav.members": "Members",
-  "project.reports.nav.quality": "Quality",
+  "project.reports.nav.team": "Team",
+  "reports.team.kpi.wip": "In progress",
+  "reports.team.kpi.wip.definition":
+    "Open quests a member took, on hold excluded. As it stands today, whatever the period.",
+  "reports.team.kpi.held": "On hold",
+  "reports.team.kpi.held.definition":
+    "Open quests a member took that are on hold. As it stands today.",
+  "reports.team.kpi.overdue": "Overdue",
+  "reports.team.kpi.overdue.definition":
+    "Open quests a member took that are past their due date. As it stands today.",
+  "reports.team.kpi.agents": "Through agents",
+  "reports.team.kpi.agents.definition":
+    "The share of the writes in the period that came over MCP. Writes older than the channel are left out.",
+  "reports.team.members.title": "Members",
+  "reports.team.members.definition":
+    "What each member carries now, and what they did in the period. Sorted by name or load, never by output: the columns differ because the work does.",
+  "reports.team.members.empty": "No members yet.",
+  "reports.team.sort.name": "By name",
+  "reports.team.sort.wip": "By load",
+  "reports.team.column.member": "Member",
+  "reports.team.column.wip": "In progress",
+  "reports.team.column.held": "Held",
+  "reports.team.column.overdue": "Overdue",
+  "reports.team.column.created": "Created",
+  "reports.team.column.completed": "Completed",
+  "reports.team.column.comments": "Comments",
+  "reports.team.column.folios": "Folio edits",
+  "reports.team.column.triaged": "Triaged",
+  "reports.team.column.deploys": "Deploys",
+  "reports.team.column.agents": "Agents",
+  "reports.team.channels.title": "How work arrives",
+  "reports.team.channels.definition":
+    "Writes in the period by the way they reached Lore. An agent writes as the owner of its API key, so MCP is what tells its work from theirs.",
+  "reports.team.channels.writes": "writes",
+  "reports.team.estimated": "These figures are estimated from sampled data.",
+  "reports.team.channel.web": "Web",
+  "reports.team.channel.mcp": "MCP (agents)",
+  "reports.team.channel.cli": "CLI",
+  "reports.team.channel.api": "API",
+  "reports.team.channel.automation": "Automations",
+  "reports.team.channel.system": "System",
+  "reports.team.channel.unknown": "Not recorded",
+  "reports.team.heatmap.title": "When work happens",
+  "reports.team.heatmap.definition":
+    "Writes per weekday and hour, in UTC, over the last 30 days of the period at most: older activity is kept per day.",
+  "reports.team.heatmap.cell": "$1 $2:00, $3 writes",
+  "reports.team.automations.title": "Automations",
+  "reports.team.automations.definition":
+    "How the project's automations ran in the period. Run detail is kept 30 days.",
+  "reports.team.automations.success": "Success rate",
+  "reports.team.automations.success.definition":
+    "Finished runs that succeeded. Queued, running and skipped runs are left out.",
+  "reports.team.automations.duration": "Median duration",
+  "reports.team.automations.duration.definition":
+    "From the trigger to the end of the run, over finished runs.",
+  "reports.team.automations.broken": "Broken",
+  "reports.team.automations.broken.definition":
+    "Rules that lost something they depend on and cannot run until it comes back.",
+  "reports.team.automations.runs": "runs",
+  "reports.team.mcp.title": "MCP tools",
+  "reports.team.mcp.definition":
+    "Tool calls that resolved this project, in the period. A call refused before a permission check belongs to no project, so it is not here.",
+  "reports.team.mcp.tool": "Tool",
+  "reports.team.mcp.ok": "OK",
+  "reports.team.mcp.refused": "Refused",
+  "reports.team.mcp.error": "Errors",
+  "reports.team.mcp.empty": "No MCP call reached this project in the period.",
+  "reports.team.explorer.title": "Explore",
+  "reports.team.explorer.definition":
+    "Query this project's activity and MCP calls yourself: group, filter, chart.",
+  "reports.team.day.0": "Mon",
+  "reports.team.day.1": "Tue",
+  "reports.team.day.2": "Wed",
+  "reports.team.day.3": "Thu",
+  "reports.team.day.4": "Fri",
+  "reports.team.day.5": "Sat",
+  "reports.team.day.6": "Sun",
+  "reports.team.run.queued": "Queued",
+  "reports.team.run.running": "Running",
+  "reports.team.run.succeeded": "Succeeded",
+  "reports.team.run.skipped": "Skipped",
+  "reports.team.run.refused": "Refused",
+  "reports.team.run.partial": "Partial",
+  "reports.team.run.failed": "Failed",
+  "reports.team.run.unknown": "Unknown",
   "reports.quality.section.coverage": "Coverage",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Coverage over time",
@@ -921,53 +1058,420 @@ export default {
     "This tab shows what a test run measured. Run these two commands in CI, and the figures appear here on the next push.",
   "reports.quality.empty.credential":
     "The push needs LORE_API_KEY, an API key from your account's keys page.",
-  "reports.overview.kpi.completion": "Completion",
-  "reports.overview.kpi.open": "Open",
-  "reports.overview.kpi.completedThisWeek": "Completed this week",
-  "reports.overview.kpi.cycleTime": "Avg cycle time",
-  "reports.overview.kpi.activeMembers": "Active members",
-  "reports.overview.kpi.completionHint": "$1/$2 quests",
-  "reports.overview.kpi.weekDeltaHint": "$1 vs last week",
-  "reports.overview.burnup.title": "Burn-up",
-  "reports.overview.completionRate.title": "Completion rate",
-  "reports.overview.chart.created": "Created",
-  "reports.overview.chart.completed": "Completed",
-  "reports.overview.chart.completionRate": "Completion %",
-  "reports.overview.empty": "No data yet",
-  "reports.overview.attention.none": "Nothing needs attention.",
-  "reports.overview.attention.stale": "stale",
-  "reports.overview.attention.unassigned": "unassigned",
-  "reports.overview.attention.blocked": "blocked",
-  "reports.quests.status.title": "Status",
-  "reports.quests.status.todo": "To do",
-  "reports.quests.status.inProgress": "In progress",
-  "reports.quests.status.completed": "Completed",
-  "reports.quests.status.empty": "No quests yet",
-  "reports.quests.byArea.title": "By area",
-  "reports.quests.byTag.title": "By tag",
-  // ⚠️ Said out loud because every other breakdown on this page
-  // partitions the project. A reader who assumes this one does too will
-  // add the bars up and find more quests than exist.
-  "reports.quests.byTag.description":
-    "A quest appears under each of its tags, so these bars overlap.",
-  "reports.quests.byTag.empty": "No quest carries a tag yet",
-  "reports.quests.byPriority.title": "By priority",
-  "reports.quests.cycleTime.title": "Cycle time by priority",
-  "reports.quests.cycleTime.avgHours": "Avg hours",
-  "reports.quests.aging.title": "Oldest open quests",
-  "reports.quests.aging.empty": "No open quests",
-  "reports.quests.completed": "Completed",
-  "reports.quests.remaining": "Remaining",
-  "reports.quests.empty": "No data yet",
-  "reports.members.leaderboard.title": "Leaderboard",
-  "reports.members.leaderboard.empty": "No members yet.",
-  "reports.members.label.quests": "quests",
-  "reports.members.contribution.title": "Contribution",
-  "reports.members.contribution.empty": "Not enough activity yet.",
-  "reports.members.idle.title": "Idle members",
-  "reports.members.idle.empty": "Everyone's been active.",
-  "reports.members.idle.lastCompleted": "last completed $1",
-  "reports.members.idle.never": "never",
+  "reports.csv": "CSV",
+  "reports.delta": "$1 vs previous",
+  "reports.quality.lines.definition":
+    "Share of lines executed by the latest run.",
+  "reports.quality.statements.definition":
+    "Share of statements executed by the latest run.",
+  "reports.quality.functions.definition":
+    "Share of functions called by the latest run.",
+  "reports.quality.branches.definition":
+    "Share of branches taken by the latest run.",
+  "reports.quality.total.definition": "Tests in the latest run.",
+  "reports.quality.passed.definition": "Tests that passed in the latest run.",
+  "reports.quality.failed.definition": "Tests that failed in the latest run.",
+  "reports.quality.duration.definition": "Wall-clock time of the latest run.",
+  "reports.quality.section.coverage.definition": "Coverage of the latest run.",
+  "reports.quality.section.tests.definition": "Test counts of the latest run.",
+  "reports.quality.section.coverageOverTime.definition":
+    "Coverage of the last run of each day.",
+  "reports.quality.section.testsOverTime.definition":
+    "Passed and failed tests of the last run of each day.",
+  "project.reports.nav.summary": "Summary",
+  "reports.summary.copy": "Copy as status update",
+  "reports.summary.copied": "Status update copied",
+  "reports.summary.empty": "No capability to report on.",
+  "reports.summary.definition":
+    "Each figure over the period, against the period of the same length before it.",
+  "reports.summary.section.work": "Work",
+  "reports.summary.section.support": "Support",
+  "reports.summary.section.knowledge": "Knowledge",
+  "reports.summary.section.apps": "Delivery",
+  "reports.summary.line.throughput": "Quests completed",
+  "reports.summary.line.throughput.definition":
+    "Quests completed in the period.",
+  "reports.summary.line.cycleTime": "Median cycle time",
+  "reports.summary.line.cycleTime.definition":
+    "Median time from accepted to completed, hold time excluded.",
+  "reports.summary.line.wip": "In progress",
+  "reports.summary.line.wip.definition":
+    "Quests accepted and not completed now. Held quests are left out.",
+  "reports.summary.line.epicsShipped": "Epics shipped",
+  "reports.summary.line.epicsShipped.definition":
+    "Epics completed in the period.",
+  "reports.summary.line.releasesShipped": "Releases shipped",
+  "reports.summary.line.releasesShipped.definition":
+    "Releases published in the period.",
+  "reports.summary.line.feedbackIn": "Feedback in",
+  "reports.summary.line.feedbackIn.definition":
+    "Reports received in the period.",
+  "reports.summary.line.feedbackPending": "Pending",
+  "reports.summary.line.feedbackPending.definition":
+    "Reports waiting for triage now.",
+  "reports.summary.line.foliosCreated": "Folios created",
+  "reports.summary.line.foliosCreated.definition":
+    "Folios created in the period.",
+  "reports.summary.line.foliosRevised": "Folio revisions",
+  "reports.summary.line.foliosRevised.definition":
+    "Revisions recorded in the period, on every folio.",
+  "reports.summary.line.deploys": "Deploys",
+  "reports.summary.line.deploys.definition":
+    "Deployments that finished in the period, failed ones included.",
+  "reports.summary.line.deploySuccess": "Deploy success",
+  "reports.summary.line.deploySuccess.definition":
+    "Succeeded deployments over finished ones. Cancelled ones are left out.",
+  "reports.summary.line.openBlights": "Open blights",
+  "reports.summary.line.openBlights.definition": "Blights open now.",
+  "reports.summary.line.uptime": "Uptime",
+  "reports.summary.line.uptime.definition":
+    "Monitor time outside an incident, over the period.",
+  "reports.summary.line.coverage": "Coverage",
+  "reports.summary.line.coverage.definition":
+    "Line coverage of the latest quality run in the period.",
+  "project.reports.nav.flow": "Flow",
+  "reports.flow.empty": "Nothing moved in this period.",
+  "reports.flow.kpi.throughput": "Throughput",
+  "reports.flow.kpi.throughput.definition": "Quests completed in the period.",
+  "reports.flow.kpi.cycle": "Median cycle time",
+  "reports.flow.kpi.cycle.definition":
+    "Median time from accepted to completed, hold time excluded.",
+  "reports.flow.kpi.lead": "Median lead time",
+  "reports.flow.kpi.lead.definition":
+    "Median time from created to completed. Hold time is included: it is what the requester waited.",
+  "reports.flow.kpi.net": "Net backlog growth",
+  "reports.flow.kpi.net.definition":
+    "Quests created minus quests completed over the period.",
+  "reports.flow.kpi.wip": "In progress",
+  "reports.flow.kpi.wip.definition":
+    "Quests accepted and not completed now. Held quests are left out.",
+  "reports.flow.series.completed": "Completed",
+  "reports.flow.series.created": "Created",
+  "reports.flow.series.rollingMedian": "Rolling median",
+  "reports.flow.series.hours": "Hours",
+  "reports.flow.series.quests": "Quests",
+  "reports.flow.throughput.title": "Throughput and arrivals",
+  "reports.flow.throughput.definition":
+    "Quests created and completed per grain, with the median of the last four points. Net growth is created minus completed.",
+  "reports.flow.cumulative.title": "Cumulative flow",
+  "reports.flow.cumulative.definition":
+    "Quests in each state at the end of each grain. Past days are rebuilt from timestamps and history; nightly snapshots are exact from when they started.",
+  "reports.flow.state.todo": "To do",
+  "reports.flow.state.inProgress": "In progress",
+  "reports.flow.state.onHold": "On hold",
+  "reports.flow.state.done": "Done",
+  "reports.flow.wip.title": "Work in progress over time",
+  "reports.flow.wip.definition":
+    "Quests in progress at the end of each grain, held quests left out.",
+  "reports.flow.scatter.title": "Cycle time",
+  "reports.flow.scatter.definition":
+    "One dot per quest completed in the period, hold time excluded, with the p50 and p85 lines. Click a dot to open its quest.",
+  "reports.flow.cycleHistogram.title": "Cycle time distribution",
+  "reports.flow.cycleHistogram.definition":
+    "Quests completed in the period, by time from accepted to completed.",
+  "reports.flow.leadHistogram.title": "Lead time distribution",
+  "reports.flow.leadHistogram.definition":
+    "Quests completed in the period, by time from created to completed.",
+  "reports.flow.bucket.under1h": "< 1h",
+  "reports.flow.bucket.under4h": "< 4h",
+  "reports.flow.bucket.under1d": "< 1d",
+  "reports.flow.bucket.under3d": "< 3d",
+  "reports.flow.bucket.under1w": "< 1w",
+  "reports.flow.bucket.under2w": "< 2w",
+  "reports.flow.bucket.under4w": "< 4w",
+  "reports.flow.bucket.over4w": "4w+",
+  "reports.flow.aging.title": "Aging work in progress",
+  "reports.flow.aging.definition":
+    "The oldest quests in progress, in days since accepted, against the p50 and p85 cycle time of completed quests. Held quests are left out.",
+  "reports.flow.band.under_p50": "under p50",
+  "reports.flow.band.under_p85": "under p85",
+  "reports.flow.band.over_p85": "over p85",
+  "reports.flow.time.title": "Time on hold and per board column",
+  "reports.flow.time.definition": "Where quests waited.",
+  "reports.flow.time.hold": "On hold",
+  "reports.flow.time.hold.definition":
+    "Median hold time of the quests completed in the period that were ever held.",
+  "reports.flow.time.holdHint": "$1 quests, p85 $2",
+  "reports.flow.time.column.definition":
+    "Median time a quest spent in this column, from its moved events.",
+  "reports.flow.sizes.title": "Cycle time by size",
+  "reports.flow.sizes.definition":
+    "Median and p85 cycle time per size, for quests completed in the period.",
+  "reports.flow.size.1": "XS",
+  "reports.flow.size.2": "S",
+  "reports.flow.size.3": "M",
+  "reports.flow.size.4": "L",
+  "reports.flow.size.5": "XL",
+  "reports.flow.size.definition":
+    "Median cycle time of the quests of this size.",
+  "reports.flow.size.hint": "$1 quests, p85 $2",
+  "reports.flow.estimates.title": "Estimates against actuals",
+  "reports.flow.estimates.definition":
+    "Quests completed in the period that carry an estimate. Actual is the time on their timer, or their cycle time when nothing was tracked, which is elapsed time rather than effort.",
+  "reports.flow.estimates.tracked": "$1 estimated, $2 tracked",
+  "reports.flow.estimates.cycle": "$1 estimated, $2 elapsed",
+  "reports.flow.due.title": "Due dates",
+  "reports.flow.due.definition":
+    "Quests completed in the period before their due date, over the ones that had one.",
+  "reports.flow.due.rate": "Hit rate",
+  "reports.flow.due.hint": "$1 of $2 on time",
+  "project.reports.nav.backlog": "Backlog",
+  "reports.backlog.empty": "Nothing here.",
+  "reports.backlog.days": "$1 d",
+  "reports.backlog.kpi.open": "Open quests",
+  "reports.backlog.kpi.open.definition":
+    "Quests not completed, held ones included. Shelved quests and quests of draft epics are left out.",
+  "reports.backlog.kpi.overdue": "Overdue",
+  "reports.backlog.kpi.overdue.definition": "Open quests past their due date.",
+  "reports.backlog.kpi.shelved": "Shelved rate",
+  "reports.backlog.kpi.shelved.definition":
+    "Shelved quests over every quest of the project, whatever the filters.",
+  "reports.backlog.kpi.waived": "Objectives waived",
+  "reports.backlog.kpi.waived.definition":
+    "Objectives waived over objectives decided, on the quests completed in the period.",
+  "reports.backlog.kpi.waivedHint": "$1 completed, $2 waived",
+  "reports.backlog.byArea.title": "By area",
+  "reports.backlog.byArea.definition":
+    "Open quests per area, every area, stacked by state.",
+  "reports.backlog.byTag.title": "By tag",
+  "reports.backlog.byTag.definition":
+    "Open quests per tag, stacked by state. A quest counts once per tag it holds, so the bars overlap.",
+  "reports.backlog.byPriority.title": "By priority",
+  "reports.backlog.byPriority.definition":
+    "Open quests per priority, stacked by state.",
+  "reports.backlog.bySize.title": "By size",
+  "reports.backlog.bySize.definition":
+    "Open quests per size, stacked by state.",
+  "reports.backlog.age.title": "Backlog age",
+  "reports.backlog.age.definition":
+    "Open quests by time since they were created.",
+  "reports.backlog.age.under1w": "< 1 week",
+  "reports.backlog.age.under1m": "< 1 month",
+  "reports.backlog.age.under3m": "< 3 months",
+  "reports.backlog.age.under6m": "< 6 months",
+  "reports.backlog.age.under1y": "< 1 year",
+  "reports.backlog.age.over1y": "1 year +",
+  "reports.backlog.blocked.title": "Blocked chains",
+  "reports.backlog.blocked.definition":
+    "Open quests waiting on another open quest, by the quest at the head of the chain.",
+  "reports.backlog.blocked.detail": "blocks $1, $2 deep",
+  "reports.backlog.held.title": "On hold",
+  "reports.backlog.held.definition":
+    "Held quests, who held them and for how long.",
+  "reports.backlog.overdue.title": "Overdue",
+  "reports.backlog.overdue.definition":
+    "Open quests past their due date, by days late.",
+  "reports.backlog.dueSoon.title": "Due within 7 days",
+  "reports.backlog.dueSoon.definition":
+    "Open quests due in the next seven days.",
+  "reports.backlog.hygiene.title": "Hygiene",
+  "reports.backlog.hygiene.definition":
+    "Open quests with no objectives or an empty description.",
+  "reports.backlog.hygiene.noObjectives": "no objectives",
+  "reports.backlog.hygiene.noDescription": "no description",
+  "project.reports.nav.planning": "Planning",
+  "reports.planning.empty": "No epic has started in this period.",
+  "reports.planning.scope": "Scope",
+  "reports.planning.done": "Done",
+  "reports.planning.timeline.title": "Epic timeline",
+  "reports.planning.timeline.definition":
+    "Each started epic from its first accepted quest to its last closed one. An epic in flight runs up to today, dashed.",
+  "reports.planning.burnup.title": "Epic burn-up",
+  "reports.planning.burnup.titleOf": "Burn-up: $1",
+  "reports.planning.burnup.definition":
+    "Quests done against the epic’s scope, day by day. The epic filter picks which one; otherwise the latest in progress.",
+  "reports.planning.table.title": "Epics",
+  "reports.planning.table.definition":
+    "Done over total leaves shelved quests out. Scope change is quests added or cut after the epic started, over what it started with.",
+  "reports.planning.table.epic": "Epic",
+  "reports.planning.table.done": "Done",
+  "reports.planning.table.cycle": "Median cycle",
+  "reports.planning.table.days": "Days in progress",
+  "reports.planning.table.scope": "Scope change",
+  "reports.planning.target": "Target",
+  "reports.planning.release.title": "Release $1",
+  "reports.planning.release.definition":
+    "Quests done against the release’s scope, with its target date and the forecast.",
+  "reports.planning.release.progress": "Done",
+  "reports.planning.release.progress.definition":
+    "Quests attached to the release and completed, over all of them. Shelved quests are left out.",
+  "reports.planning.release.forecast": "Forecast ship date",
+  "reports.planning.release.forecast.definition":
+    "Half the simulated futures finish by this date. A Monte Carlo over the last twelve weeks of throughput.",
+  "reports.planning.release.forecastHint": "p85 $1",
+  "reports.planning.published.title": "Published releases",
+  "reports.planning.published.definition":
+    "Slip is days past the target. Cadence is days since the release before. Size and carry-over are the counts frozen at publish.",
+  "reports.planning.published.empty": "No release published yet.",
+  "reports.planning.published.release": "Release",
+  "reports.planning.published.slip": "Slip (days)",
+  "reports.planning.published.size": "Size",
+  "reports.planning.published.cadence": "Cadence (days)",
+  "reports.planning.published.carried": "Carried over",
+  "project.reports.nav.support": "Support",
+  "reports.summary.line.feedbackTriaged": "Triaged",
+  "reports.summary.line.feedbackTriaged.definition":
+    "Reports accepted or rejected in the period.",
+  "reports.support.reports": "Reports",
+  "reports.support.none": "None",
+  "reports.support.kpi.triage": "Median time to triage",
+  "reports.support.kpi.triage.definition":
+    "Median time from received to accepted or rejected, for the reports received in the period. Reports triaged before this was recorded, with no audit left, are left out.",
+  "reports.support.kpi.accepted": "Accepted",
+  "reports.support.kpi.accepted.definition":
+    "Accepted over accepted and rejected, for the reports received in the period.",
+  "reports.support.kpi.acceptedHint": "$1 accepted, $2 rejected, $3 pending",
+  "reports.support.kpi.conversion": "Feedback shipped",
+  "reports.support.kpi.conversion.definition":
+    "Accepted reports whose quests are all completed, over accepted reports.",
+  "reports.support.kpi.conversionHint": "$1 with a quest, $2 shipped",
+  "reports.support.kpi.resolution": "Median time to resolution",
+  "reports.support.kpi.resolution.definition":
+    "Median time from received to the last of its quests completed.",
+  "reports.support.intake.title": "Intake",
+  "reports.support.intake.definition":
+    "Reports received per grain, by their type tag. One with no type tag is Other.",
+  "reports.support.type.bug": "Bug",
+  "reports.support.type.feature": "Feature",
+  "reports.support.type.other": "Other",
+  "reports.support.severity.title": "By severity",
+  "reports.support.severity.definition":
+    "Reports received in the period, by their severity tag.",
+  "reports.support.pending.title": "Pending by age",
+  "reports.support.pending.definition":
+    "Reports waiting for triage now, by time since received.",
+  "reports.support.sources.title": "Where reports come from",
+  "reports.support.sources.definition":
+    "The busiest host and path tags of the reports received in the period. A report counts once per tag.",
+  "reports.support.sources.empty": "No report carries a host or path.",
+  "project.reports.nav.knowledge": "Knowledge",
+  "reports.knowledge.empty": "Nothing here.",
+  "reports.knowledge.pinned": "pinned",
+  "reports.knowledge.kpi.total": "Folios",
+  "reports.knowledge.kpi.total.definition": "Every folio of the project.",
+  "reports.knowledge.kpi.stale": "Stale",
+  "reports.knowledge.kpi.stale.definition":
+    "Folios not updated for $1 days, pinned ones first.",
+  "reports.knowledge.kpi.orphans": "Orphans",
+  "reports.knowledge.kpi.orphans.definition":
+    "Folios nothing links to. Pinned folios are left out: pinning is a way in.",
+  "reports.knowledge.kpi.links": "Median links per folio",
+  "reports.knowledge.kpi.links.definition":
+    "Inbound links per folio, median, from folios and from quests.",
+  "reports.knowledge.kpi.reverts": "Reverts",
+  "reports.knowledge.kpi.reverts.definition":
+    "Revisions that put a folio back to an older one, in the period.",
+  "reports.knowledge.activity.title": "Activity",
+  "reports.knowledge.activity.definition":
+    "Folios created and revisions recorded per grain.",
+  "reports.knowledge.series.created": "Created",
+  "reports.knowledge.series.revised": "Revised",
+  "reports.knowledge.series.folios": "Folios",
+  "reports.knowledge.mostRevised.title": "Most revised",
+  "reports.knowledge.mostRevised.definition":
+    "The folios with the most revisions in the period.",
+  "reports.knowledge.mostLinked.title": "Most linked",
+  "reports.knowledge.mostLinked.definition":
+    "The folios with the most inbound links.",
+  "reports.knowledge.stale.title": "Stale folios",
+  "reports.knowledge.orphans.title": "Orphan folios",
+  "reports.knowledge.byDirectory.title": "By directory",
+  "reports.knowledge.byDirectory.definition": "Folios per top-level directory.",
+  "project.reports.nav.delivery": "Delivery",
+  "project.reports.nav.quality": "Quality",
+  "reports.delivery.kpi.frequency": "Deploys per week",
+  "reports.delivery.kpi.frequency.definition":
+    "Successful deploys per week over the period.",
+  "reports.delivery.kpi.lead": "Lead time for changes",
+  "reports.delivery.kpi.lead.definition":
+    "Median time from a quest completed to the first successful deploy of its release tag or its commits.",
+  "reports.delivery.kpi.leadHint": "p85 $1, $2 not placed",
+  "reports.delivery.kpi.failure": "Change failure rate",
+  "reports.delivery.kpi.failure.definition":
+    "Failed deploys and rollbacks, over all finished deploys. A rollback is a deploy back to a tag the instance already ran.",
+  "reports.delivery.kpi.failureHint": "$1 failed, $2 rolled back",
+  "reports.delivery.kpi.restore": "Time to restore",
+  "reports.delivery.kpi.restore.definition":
+    "Median time from an incident starting to it ending, from monitors.",
+  "reports.delivery.kpi.restoreHint": "p85 $1, $2 incidents",
+  "reports.delivery.series.succeeded": "Succeeded",
+  "reports.delivery.series.failed": "Failed",
+  "reports.delivery.series.duration": "Median duration",
+  "reports.delivery.deploys.title": "Deploys and success",
+  "reports.delivery.deploys.definition":
+    "Finished deploys per grain. Cancelled ones are left out.",
+  "reports.delivery.duration.title": "Deploy duration",
+  "reports.delivery.duration.definition":
+    "Median time from a deploy starting to it finishing, per grain, in minutes.",
+  "reports.delivery.apps.title": "By app and environment",
+  "reports.delivery.apps.definition":
+    "Finished deploys of each deployed copy over the period.",
+  "reports.delivery.apps.empty": "No deploy finished in this period.",
+  "reports.delivery.apps.app": "App",
+  "reports.delivery.apps.rollbacks": "Rollbacks",
+  "reports.reliability.blights.title": "Blights",
+  "reports.reliability.blights.definition":
+    "New blights and resolved ones per grain, and how many stood open. A resolved blight sits on the day it was last seen: nothing records when it was resolved.",
+  "reports.reliability.series.opened": "New",
+  "reports.reliability.series.resolved": "Resolved",
+  "reports.reliability.series.open": "Open",
+  "reports.reliability.series.errors": "Errors",
+  "reports.reliability.top.title": "Top blights",
+  "reports.reliability.top.definition":
+    "The blights with the most occurrences, whenever they happened.",
+  "reports.reliability.top.empty": "No blight reported.",
+  "reports.reliability.forwarded": "Forwarded to a quest",
+  "reports.reliability.forwarded.definition":
+    "Blights turned into a quest, and how many of those quests are done.",
+  "reports.reliability.forwarded.hint": "$1 fixed",
+  "reports.reliability.fix": "Median time to fix",
+  "reports.reliability.fix.definition":
+    "From a forwarded blight first seen to its quest completed.",
+  "reports.reliability.fix.hint": "p85 $1",
+  "reports.reliability.errors.title": "Errors",
+  "reports.reliability.errors.definition":
+    "Error occurrences per grain, across the project’s apps. A dashed line marks a grain with a successful deploy.",
+  "reports.reliability.uptime.title": "Uptime",
+  "reports.reliability.uptime.definition":
+    "Share of probes up, incidents started and median time to recover, per monitor over the period.",
+  "reports.reliability.uptime.empty": "No monitor in this project.",
+  "reports.reliability.uptime.monitor": "Monitor",
+  "reports.reliability.uptime.uptime": "Uptime",
+  "reports.reliability.uptime.incidents": "Incidents",
+  "reports.reliability.uptime.mttr": "MTTR",
+  "reports.quality.branch": "Branch",
+  "reports.quality.target": "Target",
+  "reports.quality.section.duration": "Test duration",
+  "reports.quality.section.duration.definition":
+    "Wall-clock time of the last run of each day, in seconds.",
+  "reports.quality.section.byTag": "Coverage by release tag",
+  "reports.quality.section.byTag.definition":
+    "Line coverage of the run whose commit an artifact of that tag was built from.",
+  "reports.quality.section.byTag.empty": "No run matches an artifact’s commit.",
+  "project.settings.coverageTarget": "Coverage target (%)",
+  "project.settings.coverageTarget.hint":
+    "Drawn as a line on the coverage chart in Reports. Leave empty for none.",
+  "project.settings.coverageTarget.save": "Save target",
+  "reports.filter.period": "Period",
+  "reports.filter.range.7d": "Last 7 days",
+  "reports.filter.range.30d": "Last 30 days",
+  "reports.filter.range.90d": "Last 90 days",
+  "reports.filter.range.6m": "Last 6 months",
+  "reports.filter.range.1y": "Last year",
+  "reports.filter.range.all": "All time",
+  "reports.filter.range.custom": "Custom range",
+  "reports.filter.grain": "Grain",
+  "reports.filter.grain.day": "Daily",
+  "reports.filter.grain.week": "Weekly",
+  "reports.filter.grain.month": "Monthly",
+  "reports.filter.compare": "Compare to previous",
+  "reports.filter.area": "Area",
+  "reports.filter.epic": "Epic",
+  "reports.filter.release": "Release",
+  "reports.filter.tag": "Tag",
+  "reports.filter.priority": "Priority",
+  "reports.filter.member": "Member",
+  "reports.overview.kpi.cycleTimeHint": "p85 $1",
   "project.settings.kanban.tagColors.title": "Tag colours",
   "project.settings.kanban.tagColors.description":
     "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
@@ -1493,8 +1997,8 @@ export default {
   "app.environment.import.cancel": "Cancel",
   "app.environment.import.submit": "Import $1",
   "app.environment.import.done": "$1 imported",
-  "app.environment.ownerOnly":
-    "Only the project owner can change what this copy runs with.",
+  "app.environment.notAllowed":
+    "Your rank does not allow changing what this copy runs with.",
   "app.tab.settings": "Settings",
   "app.dashboard.token": "Token",
   "app.dashboard.token.none": "No sigil yet",
@@ -1622,8 +2126,8 @@ export default {
   "app.settings.sigil.create": "Create a sigil",
   "app.settings.sigil.remove.title": "Remove the sigil",
   "app.settings.sigil.remove.description":
-    "Stops this copy reporting and erases what it has reported. The app itself stays. To revoke a leaked token without losing the history, rotate it instead.",
-  "app.settings.ownerOnly": "Only the project owner can do this.",
+    "Stops this copy reporting and removes what it has reported from the project. Raw rows in Analytics Engine stay until they expire, unread. The app itself stays. To revoke a leaked token without losing the history, rotate it instead.",
+  "app.settings.notAllowed": "Your rank does not allow this.",
 
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
@@ -1774,7 +2278,7 @@ export default {
   "sigils.rotate.confirm": "Rotate",
   "sigils.delete.confirmTitle": "Delete $1?",
   "sigils.delete.confirmDescription":
-    "This erases everything this app ever reported (page views, web vitals, unique visitors and its error budget) along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+    "This removes everything this app ever reported (page views, web vitals, unique visitors and its error budget) from the project, along with its token. Raw rows in Analytics Engine stay until they expire, unread. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
   "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",
@@ -1787,7 +2291,7 @@ export default {
   "estates.project.empty":
     "No estate lent yet. Until one is, this project has nowhere to deploy.",
   "estates.project.add": "Add an estate",
-  "estates.project.ownerOnly": "Only the project owner can add an estate.",
+  "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
@@ -1912,8 +2416,6 @@ export default {
     "This Bay does not supervise this instance, so it has no journal for it.",
   "bay.logs.static": "A static site has no process, and therefore no log.",
   "bay.logs.truncated": "$1 older line(s) were dropped to fit.",
-  "bay.logs.undated":
-    "$1 line(s) carried no timestamp and were kept regardless of the window.",
   "bay.logs.empty": "Supervised, and it has said nothing.",
   "bay.commands.empty": "Nothing has been asked of this machine",
   "bay.commands.empty.description":
@@ -2101,6 +2603,9 @@ export default {
   "account.notifications.category.feedback": "Your reports",
   "account.notifications.category.feedback.description":
     "When a project accepts, rejects or answers a report you submitted.",
+  "account.notifications.category.invitations": "Project invitations",
+  "account.notifications.category.invitations.description":
+    "A project invites you, in the bell only: the invitation email still arrives.",
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Somebody writes your name in a quest or feedback comment.",
@@ -2307,6 +2812,11 @@ export default {
   "agentPrompts.settings.blightTriage.title": "Blights: Triage",
   "agentPrompts.settings.blightTriage.description":
     "Offered on the blights inbox. Files a quest for each real defect and resolves the noise.",
+  "agentPrompts.weeklyStatus": "Write the weekly status",
+  "agentPrompts.settings.weeklyStatus.title":
+    "Reports: Write the weekly status",
+  "agentPrompts.settings.weeklyStatus.description":
+    "On the Reports Summary tab: the week against the one before, and what explains it.",
   "agentPrompts.settings.questLoop.title": "Quests: Work the loose quests",
   "agentPrompts.settings.questLoop.description":
     "Offered on the Quests page. Works every to-do quest that belongs to no epic, one by one, in one run.",
@@ -2464,7 +2974,7 @@ export default {
   "dashboard.metric.completedThisWeek": "Completed this week",
   "dashboard.metric.completedThisWeek.hint": "against the week before",
   "dashboard.metric.cycleTime": "Cycle time",
-  "dashboard.metric.cycleTime.hint": "hours from accepted to completed",
+  "dashboard.metric.cycleTime.hint": "median hours from accepted to completed",
   "dashboard.metric.questBreakdown": "Quests by area",
   "dashboard.metric.questBreakdown.hint": "by area, tag or priority",
   "dashboard.metric.boardColumns": "Board",
@@ -2472,7 +2982,7 @@ export default {
   "dashboard.footer.burnup": "$1 completed of $2 created",
   "dashboard.footer.completedPerWeek": "over the last eight weeks",
   "dashboard.footer.completedThisWeek": "$1 the week before",
-  "dashboard.footer.cycleTime": "hours from accepted to completed",
+  "dashboard.footer.cycleTime": "median hours from accepted to completed",
   "dashboard.footer.boardColumns": "$1 open on the board",
   "dashboard.filterField.priority": "Priority",
   "dashboard.filterField.by": "Group by",

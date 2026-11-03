@@ -83,7 +83,7 @@ describe("alepha/api/users - session filters", () => {
 
     const ids = async (query: Record<string, unknown>) => {
       const page = await controller.findSessions(
-        { query: query as never },
+        { query: query },
         {
           user: adminUser,
         },

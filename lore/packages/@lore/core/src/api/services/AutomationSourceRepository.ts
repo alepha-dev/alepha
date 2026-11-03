@@ -102,7 +102,7 @@ export class AutomationSourceRepository<
       // RETURNING gives the changed row without reusing a now-false transition
       // predicate. It is also available from D1's prepared native batch.
       const mutation = this.rawUpdate()
-        .set(values as never)
+        .set(values)
         .where(predicate)
         .returning(this.pgTable)
         .getSQL();

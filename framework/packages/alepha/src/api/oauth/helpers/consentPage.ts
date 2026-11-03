@@ -1,6 +1,7 @@
+import { escapeHtml, renderStaticPage } from "alepha/server";
+
 import {
   type ConsentScope,
-  escapeHtml,
   OAUTH_PAGE_STYLE,
   renderScopeList,
 } from "./oauthPage.ts";
@@ -75,10 +76,6 @@ export const renderConsentPage = (options: ConsentPageOptions): string => {
 
   const scopes = renderScopeList(options.scopes);
 
-  const brand = options.productName
-    ? `<div class="brand">${escapeHtml(options.productName)}</div>`
-    : "";
-
   const host = options.redirectHost
     ? `<span class="host">${escapeHtml(options.redirectHost)}</span>`
     : "";
@@ -91,16 +88,12 @@ export const renderConsentPage = (options: ConsentPageOptions): string => {
     ? `<p class="footer">You can revoke this at any time from <a href="${escapeHtml(options.connectionsUrl)}">your connected apps</a>.</p>`
     : "";
 
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="robots" content="noindex" />
-<title>Authorize ${escapeHtml(options.clientName)}</title>
-<style>${OAUTH_PAGE_STYLE}</style></head><body>
-<main>
-${brand}
-<div class="card">
-<h1>${heading}</h1>
+  return renderStaticPage({
+    title: `Authorize ${options.clientName}`,
+    brand: options.productName,
+    style: OAUTH_PAGE_STYLE,
+    footer,
+    body: `<h1>${heading}</h1>
 <p class="sub">Authorization will be sent to${host ? "" : " the address it registered"}</p>
 ${host}
 <div class="section">
@@ -110,10 +103,8 @@ ${host}
 <div class="account">Granting as <strong>${escapeHtml(options.userName)}</strong></div>
 <form method="POST" action="/oauth/authorize">${hidden}
 <div class="row">
-<button class="deny" type="submit" name="decision" value="deny">Deny</button>
-<button class="allow" type="submit" name="decision" value="allow">Allow</button>
-</div></form>
-</div>
-${footer}
-</main></body></html>`;
+<button class="secondary" type="submit" name="decision" value="deny">Deny</button>
+<button class="primary" type="submit" name="decision" value="allow">Allow</button>
+</div></form>`,
+  });
 };

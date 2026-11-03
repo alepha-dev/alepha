@@ -128,7 +128,7 @@ export const AdminParametersEditorPane = (
 
   const data = current;
   const schema = data.schema
-    ? (jsonSchemaToZod(data.schema as any) as ZObject)
+    ? (jsonSchemaToZod(data.schema) as ZObject)
     : (jsonSchemaToZod({
         type: "object",
         properties: {},

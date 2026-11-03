@@ -22,7 +22,7 @@ export class AddressService {
 
   /**
    * Check an address and return it normalised, or throw naming the field at
-   * fault. Does not write anything — {@link create} does that.
+   * fault. Does not write anything - {@link create} does that.
    *
    * @throws InvalidAddressError
    */

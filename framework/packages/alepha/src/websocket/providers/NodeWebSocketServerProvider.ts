@@ -169,7 +169,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     | undefined {
     const own = this.alepha.store.get("alepha.node.server");
     if (own) return own;
-    const vite = this.alepha.store.get("alepha.vite.server" as any) as
+    const vite = this.alepha.store.get("alepha.vite.server") as
       | {
           httpServer?:
             | NodeWebSocketServerProvider["attachedUpgradeServer"]

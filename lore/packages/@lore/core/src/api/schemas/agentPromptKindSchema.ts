@@ -4,11 +4,12 @@ import { type Infer, z } from "alepha";
  * The prompts a project can hand to an agent, one per surface and verb:
  * Review and Activate on an epic, Work on it on a quest, Work on it on a
  * feedback item, Triage the inbox on the feedback inbox, Triage the blights
- * on the blights inbox, and Work the loose quests on the Quests page.
+ * on the blights inbox, Work the loose quests on the Quests page, and Write
+ * the weekly status on the Reports Summary tab.
  *
  * ⚠️ **Two shapes, not one.** The first four name ONE item and take an
- * `AgentPromptItemSubject`; `feedbackLoop`, `blightTriage` and `questLoop`
- * name a SURFACE and take an
+ * `AgentPromptItemSubject`; `feedbackLoop`, `blightTriage`, `questLoop` and
+ * `weeklyStatus` name a SURFACE and take an
  * `AgentPromptProjectSubject`, which has no `number`, `id`, `reference` or
  * `title` because a loop has no item to number. A template written for the
  * wrong shape does not fail - `renderPromptTemplate` leaves an unanswerable
@@ -33,6 +34,7 @@ export const agentPromptKindSchema = z.enum([
   "feedbackLoop",
   "blightTriage",
   "questLoop",
+  "weeklyStatus",
 ]);
 
 export type AgentPromptKind = Infer<typeof agentPromptKindSchema>;

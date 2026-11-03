@@ -111,6 +111,7 @@ export {
   metricUnavailableKey,
 } from "./app/components/dashboard/dashboardEligibility.ts";
 export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilterFields.ts";
+export { default as ProjectPageSkeleton } from "./app/components/project/ProjectPageSkeleton.tsx";
 export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,
@@ -131,7 +132,25 @@ export {
   type ReportsKpi,
   default as ReportsKpiRow,
 } from "./app/components/project/reports/ReportsKpiRow.tsx";
+export { default as ReportsQuestList } from "./app/components/project/reports/ReportsQuestList.tsx";
 export { default as ReportsSection } from "./app/components/project/reports/ReportsSection.tsx";
+export { default as ReportsHeatmap } from "./app/components/project/reports/ReportsHeatmap.tsx";
+export {
+  default as ReportsHistogram,
+  type ReportsHistogramBucket,
+} from "./app/components/project/reports/ReportsHistogram.client.tsx";
+export {
+  default as ReportsScatterChart,
+  type ReportsScatterPoint,
+} from "./app/components/project/reports/ReportsScatterChart.client.tsx";
+export { default as ReportsStackedArea } from "./app/components/project/reports/ReportsStackedArea.client.tsx";
+export { useReportsDrillDown } from "./app/components/project/reports/useReportsDrillDown.ts";
+export { ReportsCsv, type ReportsCsvRow } from "./app/services/ReportsCsv.ts";
+export { ReportsSummaryMarkdown } from "./app/services/ReportsSummaryMarkdown.ts";
+export {
+  ReportsDrillDown,
+  type ReportsSegment,
+} from "./app/services/ReportsDrillDown.ts";
 export { default as ProjectSettingsCapabilitySection } from "./app/components/project/settings/ProjectSettingsCapabilitySection.tsx";
 export { default as AttachmentLightbox } from "./app/components/shared/AttachmentLightbox.tsx";
 export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";
@@ -212,7 +231,15 @@ export {
   type ProjectCreateDialogProps,
   ProjectShellRegistry,
 } from "./app/registries/ProjectShellRegistry.ts";
-export { ReportsTabRegistry } from "./app/registries/ReportsTabRegistry.ts";
+export {
+  type ReportsFilter,
+  type ReportsTab,
+  ReportsTabRegistry,
+} from "./app/registries/ReportsTabRegistry.ts";
+export {
+  type ReportsFilterKey,
+  ReportsUrlQuery,
+} from "./app/services/ReportsUrlQuery.ts";
 export {
   type LinkedCollection,
   ResourceTabRegistry,

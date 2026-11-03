@@ -220,7 +220,8 @@ export class ParameterProvider {
   /**
    * Get the current parameter value asynchronously.
    * Lazy-loads from database on first call.
-   * Checks if a cached next version has become current.
+   * Checks if a cached next version has become current, and notifies
+   * subscribers when that changes the value.
    */
   public async get(name: string): Promise<unknown> {
     const ck = this.cacheKey(name);
@@ -233,9 +234,15 @@ export class ParameterProvider {
     if (cachedNext) {
       const now = this.dateTimeProvider.now().toDate();
       if (new Date(cachedNext.activationDate) <= now) {
+        const previous = this.getCachedCurrentContent(name);
         this.cachedCurrent.set(ck, cachedNext.content);
         this.cachedNext.delete(ck);
         this.reloadNextInBackground(name);
+        // A later load finds the cache already switched, so this is the only
+        // moment the change can be seen.
+        if (JSON.stringify(previous) !== JSON.stringify(cachedNext.content)) {
+          this.notifySubscribers(name);
+        }
       }
     }
 

@@ -1,10 +1,14 @@
 import { AccountRouter } from "@alepha/ui/account";
+import { reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
   $pageProjectSettings,
   currentProjectAtom,
+  ProjectPageSkeleton,
   RedirectPage,
   CoreRouter,
+  ReportsTabRegistry,
+  ReportsUrlQuery,
   hasCapability,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
@@ -15,8 +19,9 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
 import type { AppController } from "../../api/controllers/AppController.ts";
+import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
-import type { QualityController } from "../../api/controllers/QualityController.ts";
+import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
@@ -53,7 +58,10 @@ export const ANALYTICS_DIMENSIONS = new Set([
 export class DeployRouter {
   core = $inject(CoreRouter);
   alepha = $inject(Alepha);
-  qualityApi = $client<QualityController>();
+  deliveryApi = $client<DeliveryReportsController>();
+  qualityApi = $client<QualityReportsController>();
+  reportsUrl = $inject(ReportsUrlQuery);
+  reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
   estateApi = $client<EstateController>();
   router = $inject(ReactRouter);
@@ -201,6 +209,21 @@ export class DeployRouter {
     lazy: () => import("./components/project/artifacts/ProjectArtifacts.tsx"),
   });
 
+  /**
+   * One tag of one app, every variant on one page.
+   *
+   * ⚠️ `:artifactTag`, never `:tag`: one param name per tree position, the
+   * trap `:epicNumber` and `:releaseTag` document. No loader, like the list:
+   * the page owns its reads, and a missing tag is its own state.
+   */
+  projectArtifact = $pageProject({
+    path: "/artifacts/:app/:artifactTag",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Artifacts`,
+    }),
+    lazy: () => import("./components/project/artifacts/ProjectArtifact.tsx"),
+  });
+
   projectBlights = $pageProject({
     name: "projectBlights",
     path: "/blights",
@@ -295,6 +318,7 @@ export class DeployRouter {
    * variables, volumes and settings. Two segments, like an app instance.
    */
   projectStackEnvironment = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectStackEnvironment",
     path: "/stacks/:stack/:env",
     schema: { params: z.object({ stack: z.string(), env: z.string() }) },
@@ -348,6 +372,7 @@ export class DeployRouter {
    * arrives missing.
    */
   projectApp = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectApp",
     path: "/apps/:app/:env",
     children: () => [
@@ -755,31 +780,53 @@ export class DeployRouter {
   }
 
   /**
-   * The one Reports tab whose data is INGESTED rather than derived.
-   *
-   * Deliberately not 404'd when the project has no Apps and no run, matching
-   * how the `projectKanban` route stays reachable while only its sidebar entry
-   * is gated: a link someone already holds should not break because a switch
-   * moved. What decides whether the tab is OFFERED is `reportsTabs`, which
-   * asks for Apps and for a run to exist - Quality lost its own flag when it
-   * joined the Apps baseline, since a tab that appears once there is something
-   * in it needs no switch.
+   * DORA metrics, blights, errors and uptime (#Q3008). Quality is its own tab,
+   * `reportsQuality` below (#Q3070).
+   */
+  reportsDelivery = $page({
+    parent: this.core.projectReports,
+    name: "reportsDelivery",
+    prefetch: true,
+    path: "/delivery",
+    schema: { query: reportsUrlSchema },
+    lazy: () =>
+      import("./components/project/reports/ReportsDelivery.client.tsx"),
+    loader: async ({ query }) => ({
+      delivery: await this.deliveryApi.getReportsDelivery({
+        params: {
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+        query: this.reportsUrl.toQuery(
+          query,
+          this.reportsTabs.honours("reportsDelivery"),
+        ),
+      }),
+    }),
+  });
+
+  /**
+   * Coverage and test totals pushed by CI, a tab of its own (#Q3070) after a
+   * day as the last section of Delivery (#Q3010). The one Reports tab whose
+   * data is INGESTED rather than derived, hence its empty state.
    */
   reportsQuality = $page({
     parent: this.core.projectReports,
     name: "reportsQuality",
+    prefetch: true,
     path: "/quality",
+    schema: { query: reportsUrlSchema },
     lazy: () =>
       import("./components/project/reports/ReportsQuality.client.tsx"),
-    schema: {
-      query: z.object({ branch: z.string().min(1).max(200).optional() }),
-    },
     loader: async ({ query }) => ({
-      quality: await this.qualityApi.getQualityRuns({
-        query,
+      url: query,
+      quality: await this.qualityApi.getReportsQuality({
         params: {
-          projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
+        query: this.reportsUrl.toQuery(
+          query,
+          this.reportsTabs.honours("reportsQuality"),
+        ),
       }),
     }),
   });

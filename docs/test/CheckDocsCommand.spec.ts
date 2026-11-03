@@ -6,6 +6,7 @@ import { CheckDocsCommand } from "../scripts/check-docs.ts";
 
 class TestCheckDocsCommand extends CheckDocsCommand {
   public testUnstagedOutputs = this.unstagedOutputs.bind(this);
+  public testDanglingLinks = this.danglingLinks.bind(this);
 }
 
 describe("CheckDocsCommand", () => {
@@ -94,6 +95,39 @@ describe("CheckDocsCommand", () => {
           message:
             "docs/2-reference/1-primitives/$pageNav.md - generated, and not added to git",
         },
+      ]);
+    });
+  });
+
+  describe("danglingLinks", () => {
+    const index = new Map([
+      [":guides-core", new Set(["top"])],
+      ["lore:guides-x", new Set<string>()],
+    ]);
+
+    it("should accept a link to an existing page and heading", () => {
+      const { check } = boot();
+      const md = [
+        "# Page",
+        "[a](/docs/guides-core#top) [b](https://alepha.dev/lore/docs/guides-x.md) [c](#page)",
+      ].join("\n");
+
+      expect(check.testDanglingLinks("a.md", md, index)).toEqual([]);
+    });
+
+    it("should refuse a missing page, a missing heading and a missing anchor", () => {
+      const { check } = boot();
+      const md = [
+        "# Page",
+        "[a](/docs/guides-gone) [b](/docs/guides-core#gone)",
+        "[c](/bay/docs/guides-core) [d](#gone)",
+      ].join("\n");
+
+      expect(check.testDanglingLinks("a.md", md, index)).toEqual([
+        "a.md:2 - /docs/guides-gone is linked but no page generates it",
+        "a.md:2 - /docs/guides-core#gone is linked but that page has no such heading",
+        "a.md:3 - /bay/docs/guides-core is linked but no page generates it",
+        "a.md:3 - #gone is linked but this page has no such heading",
       ]);
     });
   });

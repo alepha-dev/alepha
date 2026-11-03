@@ -17,9 +17,16 @@ import { $logger } from "alepha/logger";
 import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";
 import { currentUserAtom } from "alepha/security";
-import { createElement, type ReactNode, StrictMode } from "react";
+import {
+  type ComponentType,
+  createElement,
+  type ReactNode,
+  StrictMode,
+  Suspense,
+} from "react";
 
 import { loginRoutesAtom } from "../atoms/loginRoutesAtom.ts";
+import DeferredScript from "../components/DeferredScript.tsx";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
@@ -31,6 +38,8 @@ import {
   type PagePrimitive,
   type PagePrimitiveOptions,
 } from "../primitives/$page.ts";
+import { ReactDeferred } from "../services/ReactDeferred.ts";
+import { ReactPrefetchCache } from "../services/ReactPrefetchCache.ts";
 import { RootComponentsProvider } from "./RootComponentsProvider.ts";
 import { RouterLocaleProvider } from "./RouterLocaleProvider.ts";
 
@@ -61,10 +70,19 @@ export const reactPageOptions = $atom({
      * @default "\\.[a-zA-Z0-9]{1,10}$"
      */
     staticFilePattern: z.string(),
+    /**
+     * How long a navigation may run, in milliseconds, before the page's
+     * `loading` component replaces it in its slot. A navigation faster than
+     * this never shows one.
+     *
+     * @default 200
+     */
+    loadingDelay: z.number(),
   }),
   default: {
     strictMode: true,
     staticFilePattern: "\\.[a-zA-Z0-9]{1,10}$",
+    loadingDelay: 200,
   },
 });
 
@@ -80,6 +98,8 @@ export class ReactPageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly rootComponentsProvider = $inject(RootComponentsProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly deferred = $inject(ReactDeferred);
+  protected readonly prefetched = $inject(ReactPrefetchCache);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;
 
@@ -308,6 +328,7 @@ export class ReactPageProvider {
     route: PageRoute,
     state: ReactRouterState,
     previous: PreviousLayerData[] = [],
+    options: CreateLayersOptions = {},
   ): Promise<CreateLayersResult> {
     const context: Record<string, any> = {}; // all props
     const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
@@ -320,6 +341,11 @@ export class ReactPageProvider {
 
     let forceRefresh = false;
     let identity = "";
+    let announced = false;
+
+    // What is on screen, not `previous`: `invalidate` and a forced push hand
+    // over an empty `previous` for a page that stays.
+    const committed = this.alepha.store.get("alepha.react.router.state");
 
     for (let i = 0; i < stack.length; i++) {
       const it = stack[i];
@@ -402,6 +428,36 @@ export class ReactPageProvider {
         forceRefresh = true;
       }
 
+      // The first layer that becomes another page. A layer that only re-runs
+      // stays on screen, or a filter box would unmount itself on a keystroke.
+      if (
+        !announced &&
+        !options.overlay &&
+        !options.prefetch &&
+        committed &&
+        committed.name !== "offline" &&
+        committed.layers[i]?.key !== it.key
+      ) {
+        announced = true;
+        await this.alepha.events.emit("react:layer:requested", {
+          index: i,
+          loading: this.getLoading(route),
+          delay: this.options.loadingDelay,
+        });
+      }
+
+      // A prefetch ran this loader moments ago.
+      if (options.prefetched) {
+        const result = this.prefetched.take(
+          this.prefetched.key(route.name, it.key, config.query),
+        );
+        if (result) {
+          it.props = result;
+          Object.assign(context, result);
+          continue;
+        }
+      }
+
       // redirect shorthand
       if (route.redirect) {
         return { redirect: route.redirect };
@@ -449,6 +505,7 @@ export class ReactPageProvider {
         it.props = {
           ...props,
         };
+        this.deferred.track(it.props);
 
         // add props to context. `Object.assign` onto the accumulator rather
         // than rebuilding it: `context` is a fresh local object and this runs
@@ -494,7 +551,11 @@ export class ReactPageProvider {
     //
     // Loaders are untouched. They ran in the loop above and their props are
     // what the client hydrates from; only the component import is skipped.
-    const skipComponents = !this.alepha.isBrowser() && !this.isSSR(route);
+    //
+    // A prefetch builds no view either: nothing will render it, and a chunk
+    // that fails there would reload the page under a hover.
+    const skipComponents =
+      options.prefetch || (!this.alepha.isBrowser() && !this.isSSR(route));
 
     let acc = "";
     for (let i = 0; i < stack.length; i++) {
@@ -531,7 +592,9 @@ export class ReactPageProvider {
           const element = skipComponents
             ? undefined
             : await this.createElement(
-                it.route,
+                options.overlay && i === stack.length - 1
+                  ? { ...it.route, ...it.route.overlay }
+                  : it.route,
                 {
                   // default props attached to page
                   ...(it.route.props ? it.route.props() : {}),
@@ -548,7 +611,16 @@ export class ReactPageProvider {
             props,
             part: it.route.path,
             config: it.config,
-            element: this.renderView(i + 1, path, element, it.route, it.key),
+            element: this.renderView(
+              i + 1,
+              path,
+              element,
+              it.route,
+              it.key,
+              // A value a client navigation loaded goes nowhere: only what the
+              // server rendered has a script to match.
+              this.alepha.isBrowser() && !it.cache ? undefined : props,
+            ),
             index: i + 1,
             path,
             key: it.key,
@@ -629,6 +701,100 @@ export class ReactPageProvider {
     while (parent) {
       if (parent.errorHandler) return parent.errorHandler;
       parent = parent.parent;
+    }
+  }
+
+  /**
+   * The layers a navigation to `route` would not reuse, with what a prefetch
+   * needs to key them. The same decision as `createLayers`, without running
+   * anything: it has to be known that every one of them may run before the
+   * first one does.
+   */
+  public pendingLayers(
+    route: PageRoute,
+    state: ReactRouterState,
+    previous: PreviousLayerData[],
+  ): PendingLayer[] {
+    const stack: PageRoute[] = [route];
+    for (let it = route.parent; it; it = it.parent) {
+      stack.unshift(it);
+    }
+
+    const pending: PendingLayer[] = [];
+    let identity = "";
+
+    for (let i = 0; i < stack.length; i++) {
+      const it = stack[i];
+      identity = this.identityOf(identity, it, state.params);
+
+      let query: Record<string, any> = {};
+      try {
+        this.convertStringObjectToObject(it.schema?.query, state.query);
+        if (it.schema?.query) {
+          query = this.alepha.codec.decode(
+            it.schema.query,
+            coerceObject(it.schema.query, state.query),
+          ) as Record<string, any>;
+        }
+      } catch {
+        // A query the page refuses is an error page, not something to load.
+        return [];
+      }
+
+      const same =
+        pending.length === 0 &&
+        previous[i]?.name === it.name &&
+        JSON.stringify([previous[i].key, previous[i].config?.query ?? {}]) ===
+          JSON.stringify([identity, query]);
+
+      if (!same) {
+        pending.push({ route: it, key: identity, query });
+      }
+    }
+
+    return pending;
+  }
+
+  /**
+   * Whether a navigation to `route` opens as an overlay over what is on
+   * screen: the page declares one, it opens over the committed page, and its
+   * parent chain is already there. The overlay renders on the layers its
+   * parents hold, so with any other chain it has nothing to stand on.
+   */
+  public canOverlay(
+    route: PageRoute,
+    params: Record<string, string>,
+    committed?: ReactRouterState,
+  ): boolean {
+    if (!route.overlay || !committed?.name) {
+      return false;
+    }
+
+    const over = route.overlay.over().map((page) => page.name);
+    if (!over.includes(committed.name)) {
+      return false;
+    }
+
+    const parents: PageRoute[] = [];
+    for (let it = route.parent; it; it = it.parent) {
+      parents.unshift(it);
+    }
+
+    let identity = "";
+    return parents.every((parent, index) => {
+      identity = this.identityOf(identity, parent, params);
+      return committed.layers[index]?.key === identity;
+    });
+  }
+
+  /**
+   * The nearest `loading` for a page: its own, else the closest parent's.
+   */
+  protected getLoading(route: PageRoute): ComponentType | undefined {
+    let current: PageRoute | undefined = route;
+    while (current) {
+      if (current.loading) return current.loading;
+      current = current.parent;
     }
   }
 
@@ -768,23 +934,45 @@ export class ReactPageProvider {
     view: ReactNode | undefined,
     page: PageRoute,
     key?: string,
+    props?: Record<string, unknown>,
   ): ReactNode {
     view ??= this.renderEmptyView();
 
+    const context = {
+      // The layer's identity (`identityOf`): a new one is a remount of
+      // this layer and everything below it, the same one an update.
+      key,
+      value: {
+        index,
+        path,
+        onError:
+          this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
+      },
+    };
+
+    const deferred = this.deferred.entries(props);
+    if (deferred.length === 0) {
+      return createElement(RouterLayerContext.Provider, context, view);
+    }
+
+    const scripts = deferred.map(([name, promise]) =>
+      createElement(
+        Suspense,
+        { key: name, fallback: null },
+        createElement(DeferredScript, {
+          id: this.deferred.id(index, name),
+          promise,
+        }),
+      ),
+    );
+
     return createElement(
       RouterLayerContext.Provider,
-      {
-        // The layer's identity (`identityOf`): a new one is a remount of
-        // this layer and everything below it, the same one an update.
-        key,
-        value: {
-          index,
-          path,
-          onError:
-            this.getErrorHandler(page) ?? ((error) => this.renderError(error)),
-        },
-      },
+      context,
       view,
+      // Under an element: React cannot flush a shell while a `<Suspense>` with
+      // no element above it is pending, since it could still hold the `<html>`.
+      createElement("div", { hidden: true }, ...scripts),
     );
   }
 
@@ -1152,6 +1340,29 @@ export interface ReactRouterState {
    * Optional name of the current page route
    */
   name?: string;
+
+  /**
+   * Set on a prefetch, for a loader to hand to what it calls: aborted when the
+   * link that asked for it leaves the page.
+   */
+  signal?: AbortSignal;
+
+  /**
+   * The page open as an overlay over this state.
+   *
+   * ⚠️ `name`, `layers`, `url` and `params` stay the BACKGROUND's, so
+   * everything that reads them keeps describing the page that stays mounted.
+   * The URL of the address bar is `overlay.url`.
+   */
+  overlay?: ReactRouterOverlay;
+}
+
+export interface ReactRouterOverlay {
+  name: string;
+  url: URL;
+  params: Record<string, any>;
+  query: Record<string, string>;
+  layers: Array<Layer>;
 }
 
 export interface RouterStackItem {
@@ -1161,6 +1372,31 @@ export interface RouterStackItem {
   props?: Record<string, any>;
   error?: Error;
   cache?: boolean;
+}
+
+export interface CreateLayersOptions {
+  /**
+   * The leaf renders its `overlay` component, and no slot is announced.
+   */
+  overlay?: boolean;
+  /**
+   * A dry run for a prefetch: loaders run, nothing is announced, and no view
+   * is built.
+   */
+  prefetch?: boolean;
+  /**
+   * Take a layer's props from what a prefetch left, instead of its loader.
+   */
+  prefetched?: boolean;
+}
+
+/**
+ * A layer a navigation would not reuse. See `ReactPageProvider.pendingLayers`.
+ */
+export interface PendingLayer {
+  route: PageRoute;
+  key: string;
+  query: Record<string, any>;
 }
 
 export interface CreateLayersResult {

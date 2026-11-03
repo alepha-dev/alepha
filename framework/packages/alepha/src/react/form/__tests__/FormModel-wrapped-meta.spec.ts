@@ -36,7 +36,7 @@ describe("FormModel meta on wrapped fields", () => {
   const create = async () => {
     const alepha = Alepha.create().with(AlephaLogger);
     await alepha.start();
-    return alepha.inject(FormModel as any, {
+    return alepha.inject(FormModel, {
       lifetime: "transient",
       args: ["f1", { id: "f1", schema, handler: () => {} }],
     }) as FormModel<any>;
@@ -44,7 +44,7 @@ describe("FormModel meta on wrapped fields", () => {
 
   const labelOf = async (name: string) => {
     const form = await create();
-    return parseField((form.input as any)[name]).label;
+    return parseField(form.input[name]).label;
   };
 
   it("should label an unwrapped field", async ({ expect }) => {
@@ -72,9 +72,7 @@ describe("FormModel meta on wrapped fields", () => {
   }) => {
     const form = await create();
 
-    expect(parseField((form.input as any).described).description).toBe(
-      "Help text",
-    );
+    expect(parseField(form.input.described).description).toBe("Help text");
   });
 
   it("should still fall back to the property name when untitled", async ({

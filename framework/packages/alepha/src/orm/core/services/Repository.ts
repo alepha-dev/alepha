@@ -679,6 +679,13 @@ export abstract class Repository<T extends ZObject> {
           `findMany on '${this.tableName}' was given both 'for' and 'cache': a cached result takes no row lock. Drop one of them.`,
         );
       }
+      if (opts.for && this.provider.dialect !== "postgresql") {
+        // Refused rather than ignored: the caller would believe it holds a
+        // lock, and drizzle's SQLite builder has no `.for` to call anyway.
+        throw new AlephaError(
+          `findMany on '${this.tableName}' was given 'for', and row locks exist on PostgreSQL only. The '${this.provider.dialect}' dialect has none: drop the option.`,
+        );
+      }
       const cache = this.inTransaction(opts) ? undefined : opts.cache;
       if (cache) {
         const cacheKey =
@@ -1428,6 +1435,10 @@ export abstract class Repository<T extends ZObject> {
    * `createMany`, the batches are not one atomic unit unless the caller wraps
    * the call in `$transactional`.
    *
+   * A row conflicting with a soft-deleted one throws, as in {@link upsert},
+   * once the other rows are written: the same `$transactional` keeps them out
+   * too.
+   *
    * ⚠️ **Two rules the single-row version does not have.**
    *
    * 1. **No duplicate conflict targets within one call.** The engines disagree,
@@ -1568,6 +1579,16 @@ export abstract class Repository<T extends ZObject> {
           data: values,
           entity: entities,
         });
+
+        // A conflict the soft-delete guard skipped neither inserts nor updates,
+        // so it only shows as a shorter result. Thrown last: the other rows are
+        // written, and the cache and the event above have to say so.
+        const refused = values.length - entities.length;
+        if (refused > 0) {
+          throw new AlephaError(
+            `Upsert on '${this.tableName}' conflicted with ${refused} already-deleted row(s); refusing to overwrite them.`,
+          );
+        }
 
         return entities;
       } catch (error) {

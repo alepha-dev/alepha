@@ -256,6 +256,33 @@ export class CapacitorProject {
   }
 
   /**
+   * The network security config the Android manifest names, from the app
+   * root, or `undefined` when it names none. Android reads no other file, and
+   * the name is the app's to choose.
+   */
+  public async androidNetworkSecurityConfig(
+    root: string,
+  ): Promise<string | undefined> {
+    const path = this.androidManifestPath(root);
+    if (!(await this.fs.exists(path))) {
+      return undefined;
+    }
+    const name = (await this.fs.readTextFile(path))
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .match(/android:networkSecurityConfig\s*=\s*["']@xml\/([\w.]+)["']/)?.[1];
+    return name ? `android/app/src/main/res/xml/${name}.xml` : undefined;
+  }
+
+  /**
+   * Whether `capacitor({ ... })` declares that the iOS app ships
+   * `NSAllowsLocalNetworking` on purpose. It holds for every variant: there
+   * is one `Info.plist`.
+   */
+  public declaresLocalNetworking(): boolean {
+    return this.optionsStore?.iosLocalNetworking === true;
+  }
+
+  /**
    * The API origin the shell calls: `apiUrl` when declared, `PUBLIC_URL`
    * otherwise, `undefined` when neither is set.
    *

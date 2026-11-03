@@ -55,8 +55,8 @@ const setup = async () => {
   alepha.with(ReadCounter);
 
   const counter = alepha.inject(ReadCounter);
-  const feedbackTools = alepha.inject(FeedbackTools) as any;
-  const questTools = alepha.inject(QuestTools) as any;
+  const feedbackTools = alepha.inject(FeedbackTools);
+  const questTools = alepha.inject(QuestTools);
   alepha.inject(WorkTestEntities);
   const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
@@ -66,7 +66,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       // Seeded the way `server:request:before` seeds it. MCP is served over HTTP,
       // so a real tool call always has this Map; a bare `context.run` does
       // not, and without it every gate read happens twice over and the number
@@ -87,14 +87,14 @@ const setup = async () => {
   // Created through the controller: ownership lives in a membership record,
   // so a bare row is a project nobody owns.
   const project = await asUser(owner.id, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({ body: { title: "Test" } }),
   );
 
   // Several more, so a resolution that reads the whole list is paying for
   // rows it will discard.
   for (let i = 0; i < 4; i++) {
     await asUser(owner.id, () =>
-      projectApi.createProject({ body: { title: `Other ${i}` } } as any),
+      projectApi.createProject({ body: { title: `Other ${i}` } }),
     );
   }
 

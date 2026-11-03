@@ -15,7 +15,7 @@ export interface AdminProductDetailAsideProps {
 
 /**
  * Identity panel for a product: its listing image, then the facts an operator
- * checks without opening a tab — what it is, what it costs, whether it is on
+ * checks without opening a tab - what it is, what it costs, whether it is on
  * sale, and how many are sellable.
  *
  * Both `slug` and `id` are copyable. The slug is what a storefront URL carries

@@ -148,32 +148,104 @@ test.describe("Kanban", () => {
     );
 
     await page.goto(`/${projectSlug}/kanban`);
-    await page
-      .locator(`[data-testid="kanban-card"][data-quest-short-id="${shortId}"]`)
-      .click();
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.waitForLoadState("networkidle");
 
-    // Opening the card is a navigation, so it is addressable.
+    // The board's own DOM node carries a mark, and its reads are counted:
+    // nothing about the board may move while a card opens and closes.
+    await page.getByTestId("kanban-board").evaluate((board) => {
+      board.setAttribute("data-spec-mark", "still-here");
+    });
+    let boardReads = 0;
+    page.on("request", (request) => {
+      if (request.url().includes(`/kanban/${projectId}`)) {
+        boardReads += 1;
+      }
+    });
+    const sidebar = page.locator('[data-slot="sidebar"]').first();
+    const kanbanEntry = sidebar.locator(`a[href="/${projectSlug}/kanban"]`);
+    const activeBefore = await kanbanEntry.getAttribute("data-active");
+
+    const card = page.locator(
+      `[data-testid="kanban-card"][data-quest-short-id="${shortId}"]`,
+    );
+    // Neither opening nor closing may scroll the page behind. Clicked through
+    // the DOM: Playwright's own click would scroll the card into view.
+    await page.evaluate(() => {
+      const spacer = document.createElement("div");
+      spacer.style.height = "2000px";
+      document.body.appendChild(spacer);
+      window.scrollTo(0, 120);
+    });
+    const scrollY = () => page.evaluate(() => window.scrollY);
+    const offset = await scrollY();
+    await card.evaluate((node) => (node as HTMLElement).click());
+
+    // Opening the card is a navigation to the quest's own URL.
     await expect(page).toHaveURL(
-      new RegExp(`/${projectSlug}/kanban/${shortId}$`),
+      new RegExp(`/${projectSlug}/quests/${shortId}$`),
       { timeout: 10_000 },
     );
-    await expect(page.getByText(questTitle).first()).toBeVisible({
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText(questTitle).first()).toBeVisible({
       timeout: 10_000,
     });
 
-    // A deep link opens the card over the board, with the board behind it.
-    await page.reload();
-    await expect(page.getByText(questTitle).first()).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(page.getByTestId("kanban-board")).toBeVisible();
+    // The board stayed mounted behind it, and the shell did not flip to the
+    // quest page's layout.
+    await expect(page.getByTestId("kanban-board")).toHaveAttribute(
+      "data-spec-mark",
+      "still-here",
+    );
+    expect(await kanbanEntry.getAttribute("data-active")).toBe(activeBefore);
+    expect(await scrollY()).toBe(offset);
 
-    // Closing returns to the board, not to the quest list.
+    // Closing goes back to the board, through history.
     await page.getByRole("button", { name: /back/i }).first().click();
     await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`), {
       timeout: 10_000,
     });
-    await expect(page.getByTestId("kanban-board")).toBeVisible();
+    await expect(sheet).toHaveCount(0);
+    expect(await scrollY()).toBe(offset);
+    await expect(page.getByTestId("kanban-board")).toHaveAttribute(
+      "data-spec-mark",
+      "still-here",
+    );
+
+    // Forward reopens it, still over the same board.
+    await page.goForward();
+    await expect(sheet.getByText(questTitle).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("kanban-board")).toHaveAttribute(
+      "data-spec-mark",
+      "still-here",
+    );
+
+    await page.goBack();
+    await expect(sheet).toHaveCount(0);
+    expect(boardReads).toBe(0);
+
+    // One URL, two presentations: a reload is the full quest page.
+    await card.click();
+    await expect(sheet.getByText(questTitle).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.reload();
+    await expect(page.getByText(questTitle).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+    await expect(sheet).toHaveCount(0);
+
+    // The old card URL still lands somewhere.
+    await page.goto(`/${projectSlug}/kanban/${shortId}`);
+    await expect(page).toHaveURL(
+      new RegExp(`/${projectSlug}/quests/${shortId}$`),
+      { timeout: 10_000 },
+    );
   });
 
   /**

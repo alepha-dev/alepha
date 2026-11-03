@@ -42,10 +42,10 @@ describe("ControlObject clear", () => {
   };
 
   const Probe = (props: { required?: boolean; clearable?: boolean }) => {
-    const address = z.object({ city: z.text().optional() as never });
+    const address = z.object({ city: z.text().optional() });
     const form = useForm({
       schema: z.object(
-        props.required ? { address } : { address: address.optional() as never },
+        props.required ? { address } : { address: address.optional() },
       ),
       handler: () => {},
     });

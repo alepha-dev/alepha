@@ -36,7 +36,7 @@ describe("DevAtomLogProvider", () => {
 
     // A raw string state key with no registered atom must still be logged —
     // only *known* serverOnly atoms are skipped.
-    alepha.store.set("test.devlog.raw" as any, "unregistered" as any);
+    alepha.store.set("test.devlog.raw", "unregistered");
     await new Promise((r) => setTimeout(r, 0));
 
     expect(log.entries("test.devlog.raw")).toHaveLength(1);
@@ -47,8 +47,8 @@ describe("DevAtomLogProvider", () => {
     const log = alepha.inject(DevAtomLogProvider);
     await alepha.start();
 
-    alepha.store.set("test.devlog.a" as any, 1 as any);
-    alepha.store.set("test.devlog.a" as any, 2 as any);
+    alepha.store.set("test.devlog.a", 1);
+    alepha.store.set("test.devlog.a", 2);
     await new Promise((r) => setTimeout(r, 0));
 
     const entries = log.entries("test.devlog.a");
@@ -63,8 +63,8 @@ describe("DevAtomLogProvider", () => {
     const log = alepha.inject(DevAtomLogProvider);
     await alepha.start();
 
-    alepha.store.set("test.devlog.x" as any, 1 as any);
-    alepha.store.set("test.devlog.y" as any, 1 as any);
+    alepha.store.set("test.devlog.x", 1);
+    alepha.store.set("test.devlog.y", 1);
     await new Promise((r) => setTimeout(r, 0));
 
     expect(log.entries("test.devlog.x")).toHaveLength(1);
@@ -77,7 +77,7 @@ describe("DevAtomLogProvider", () => {
     await alepha.start();
 
     for (let i = 0; i < 250; i++) {
-      alepha.store.set("test.devlog.cap" as any, i as any);
+      alepha.store.set("test.devlog.cap", i);
     }
     await new Promise((r) => setTimeout(r, 0));
 

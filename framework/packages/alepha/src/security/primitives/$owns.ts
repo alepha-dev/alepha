@@ -290,7 +290,7 @@ export function $owns(options: OwnsOptions): SecureMiddleware {
                 [via.resource]: { eq: membershipResourceId },
                 [via.user]: { eq: ctx.user.id },
               },
-            } as any),
+            }),
         )) as Record<string, unknown> | undefined;
       };
 

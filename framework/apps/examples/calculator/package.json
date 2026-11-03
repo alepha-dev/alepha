@@ -15,21 +15,21 @@
     "@alepha/capacitor": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@aparajita/capacitor-secure-storage": "8.0.1",
-    "@capacitor/android": "8.5.2",
+    "@capacitor/android": "8.6.0",
     "@capacitor/app": "8.1.2",
-    "@capacitor/core": "8.5.2",
+    "@capacitor/core": "8.6.0",
     "@capacitor/device": "8.0.3",
     "@capacitor/haptics": "8.0.2",
-    "@capacitor/ios": "8.5.2",
+    "@capacitor/ios": "8.6.0",
     "@capacitor/splash-screen": "8.0.2",
     "alepha": "workspace:^",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.2",
+    "@capacitor/cli": "8.6.0",
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.3.3"
+    "vite": "^8.3.5"
   }
 }

@@ -8,7 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectReportsController, QuestController } from "../src/api/index.ts";
+import { ProjectReportsService, QuestController } from "../src/api/index.ts";
 import { LoreWorkApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -23,7 +23,7 @@ interface TestContext {
   admin: AdminUserController;
   projects: ProjectController;
   quests: QuestController;
-  reports: ProjectReportsController;
+  reports: ProjectReportsService;
   fake: FakeProvider;
 }
 
@@ -44,7 +44,7 @@ const setup = async (): Promise<TestContext> => {
     admin: alepha.inject(AdminUserController),
     projects: alepha.inject(ProjectController),
     quests: alepha.inject(QuestController),
-    reports: alepha.inject(ProjectReportsController),
+    reports: alepha.inject(ProjectReportsService),
     fake: alepha.inject(FakeProvider),
   };
 };
@@ -220,20 +220,14 @@ describe("QuestController — shelving", () => {
     await createQuest(ctx, user, cid, "Counts");
     const shelf = await createQuest(ctx, user, cid, "Does not count");
 
-    const before = await ctx.reports.getReportsOverview.fetch(
-      { params: { id: cid } },
-      { user },
-    );
+    const before = { data: await ctx.reports.overview(cid, {}) };
     expect(before.data.kpis.totalQuests).toBe(2);
-    expect(before.data.attention.unassignedQuests).toBe(2);
+    expect(before.data.attention.notStartedQuests).toBe(2);
 
     await ctx.quests.shelveQuest.fetch({ params: { id: shelf.id } }, { user });
 
-    const after = await ctx.reports.getReportsOverview.fetch(
-      { params: { id: cid } },
-      { user },
-    );
+    const after = { data: await ctx.reports.overview(cid, {}) };
     expect(after.data.kpis.totalQuests).toBe(1);
-    expect(after.data.attention.unassignedQuests).toBe(1);
+    expect(after.data.attention.notStartedQuests).toBe(1);
   });
 });

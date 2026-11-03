@@ -143,7 +143,7 @@ describe("stack variables", () => {
       alepha
         .inject(StackVariableController)
         .setStackVariable.fetch(
-          { params, body: { key: "A", value: "b" } } as never,
+          { params, body: { key: "A", value: "b" } },
           { user: stranger },
         ),
     ).rejects.toThrow();

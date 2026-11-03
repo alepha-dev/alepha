@@ -90,7 +90,7 @@ describe("the Apps settings page", () => {
       .with(I18n)
       .with(DeployShell);
     await alepha.start();
-    alepha.store.set(currentProjectAtom, aProject as never);
+    alepha.store.set(currentProjectAtom, aProject);
 
     const view = render(
       <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,

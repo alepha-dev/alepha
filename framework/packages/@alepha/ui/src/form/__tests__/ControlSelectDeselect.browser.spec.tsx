@@ -39,9 +39,7 @@ describe("ControlSelect combobox deselection", () => {
   }) => {
     const form = useForm({
       schema: z.object(
-        props.required
-          ? { tag: z.text() }
-          : { tag: z.text().optional() as never },
+        props.required ? { tag: z.text() } : { tag: z.text().optional() },
       ),
       handler: () => {},
     });

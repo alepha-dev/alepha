@@ -66,7 +66,7 @@ class GeneratedRepository extends Repository<typeof generatedRows.schema> {
   /** What the driver is really handed for these rows. */
   public boundParametersFor = (
     rows: ReadonlyArray<Record<string, unknown>>,
-  ): number => (this.rawInsert({}) as any).values(rows).toSQL().params.length;
+  ): number => this.rawInsert({}).values(rows).toSQL().params.length;
 }
 
 describe("createMany batching", () => {

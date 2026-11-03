@@ -120,7 +120,7 @@ const setup = async (sockets: FakeWs[]) => {
     acceptWebSocket: (ws: FakeWs) => sockets.push(ws),
     getWebSockets: () => sockets,
   };
-  return new TestWebSocketRoom(ctx as any, {});
+  return new TestWebSocketRoom(ctx, {});
 };
 
 const upgrade = (

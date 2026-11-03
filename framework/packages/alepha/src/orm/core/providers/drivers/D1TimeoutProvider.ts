@@ -253,12 +253,20 @@ export class D1TimeoutProvider {
   }
 
   /**
-   * Keeps a runaway statement from filling the log line. The head of the SQL
-   * is what identifies the query; the bound values are deliberately absent,
-   * since they routinely hold personal data.
+   * Keeps a runaway statement from filling the log line. The bound values
+   * are deliberately absent, since they routinely hold personal data.
+   *
+   * What identifies a query is what follows `from`, not the head of the SQL:
+   * a full-row read spends the whole budget naming its columns, and a stack
+   * cannot help, since the error is created by the timer. So an over-long
+   * statement drops its select list first and is only cut after that.
    */
   protected summarize(query: string): string {
     const flat = query.replace(/\s+/g, " ").trim();
-    return flat.length > 200 ? `${flat.slice(0, 200)}...` : flat;
+    if (flat.length <= 200) {
+      return flat;
+    }
+    const named = flat.replace(/^select .+? from /i, "select ... from ");
+    return named.length > 200 ? `${named.slice(0, 200)}...` : named;
   }
 }

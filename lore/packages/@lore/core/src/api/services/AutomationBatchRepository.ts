@@ -73,7 +73,7 @@ export class AutomationBatchRepository<
     delete values[this.id.key as string];
     this.withVersionBump(values);
     const query = this.rawUpdate()
-      .set(values as any)
+      .set(values)
       .where(this.toSQL(this.withDeletedAt(where, {})));
     return (returning ? query.returning(this.pgTable) : query).getSQL();
   }

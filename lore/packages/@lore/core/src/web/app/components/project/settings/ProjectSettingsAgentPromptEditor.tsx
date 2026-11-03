@@ -99,10 +99,10 @@ export const ProjectSettingsAgentPromptEditor = (
     <div className="flex flex-col gap-2" data-testid={`prompt-${props.kind}`}>
       <div className="flex flex-col gap-1">
         <span className="text-sm font-medium">
-          {tr(`agentPrompts.settings.${props.kind}.title` as never)}
+          {tr(`agentPrompts.settings.${props.kind}.title`)}
         </span>
         <span className="text-muted-foreground text-xs">
-          {tr(`agentPrompts.settings.${props.kind}.description` as never)}
+          {tr(`agentPrompts.settings.${props.kind}.description`)}
         </span>
       </div>
 
@@ -118,7 +118,7 @@ export const ProjectSettingsAgentPromptEditor = (
         disabled={pending}
         spellCheck={false}
         className="font-mono text-xs"
-        aria-label={tr(`agentPrompts.settings.${props.kind}.title` as never)}
+        aria-label={tr(`agentPrompts.settings.${props.kind}.title`)}
         data-testid={`prompt-input-${props.kind}`}
         onChange={(e) => setText(e.currentTarget.value)}
       />

@@ -118,8 +118,8 @@ export class EstateSocketController {
         // the same ids. This is what caps a lost-in-transit command at
         // "however long the outage lasted".
         for (const command of await this.commands.pendingFor(estate.id)) {
-          await reply({ message: this.commands.frameOf(command) });
           await this.commands.markSent(command);
+          await reply({ message: this.commands.frameOf(command) });
         }
         return;
       }

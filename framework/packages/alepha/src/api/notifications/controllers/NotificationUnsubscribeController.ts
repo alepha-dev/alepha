@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $logger } from "alepha/logger";
-import { $route } from "alepha/server";
+import { $route, escapeHtml, renderStaticPage } from "alepha/server";
 
 import { NotificationSuppressionService } from "../services/NotificationSuppressionService.ts";
 import { NotificationUnsubscribeService } from "../services/NotificationUnsubscribeService.ts";
@@ -102,28 +102,16 @@ export class NotificationUnsubscribeController {
    */
   protected page(title: string, detail: string, token?: string): string {
     const form = token
-      ? `<form method="post" action="${this.url}/${token}">
-      <button type="submit">Unsubscribe</button>
-    </form>`
+      ? `<form method="post" action="${this.url}/${escapeHtml(token)}">
+<div class="row"><button class="primary" type="submit">Unsubscribe</button></div>
+</form>`
       : "";
 
-    return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex" />
-    <title>${title}</title>
-    <style>
-      body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.5; }
-      button { font: inherit; padding: 0.6rem 1.2rem; border-radius: 0.4rem; border: 1px solid currentColor; background: none; cursor: pointer; }
-    </style>
-  </head>
-  <body>
-    <h1>${title}</h1>
-    <p>${detail}</p>
-    ${form}
-  </body>
-</html>`;
+    return renderStaticPage({
+      title,
+      body: `<h1>${escapeHtml(title)}</h1>
+<p class="sub">${escapeHtml(detail)}</p>
+${form}`,
+    });
   }
 }

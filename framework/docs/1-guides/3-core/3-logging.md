@@ -1,0 +1,360 @@
+# Logging
+
+Alepha provides structured logging via the `$logger` primitive from `alepha/logger`.
+
+## Basic Usage
+
+```typescript check
+import { $logger } from "alepha/logger";
+
+class UserService {
+  log = $logger();
+
+  async createUser(name: string) {
+    this.log.info("Creating user", { name });
+    // prints: [23:45:53.326] INFO <app.UserService>: Creating user {"name":"alice"}
+  }
+}
+```
+
+`$logger()` returns a `Logger` instance. The logger name defaults to the class name.
+The module is the name of the `$module` the service belongs to, else `MODULE_NAME`
+when it is set, else `"app"`. Module names are what `LOG_LEVEL` filters on.
+
+You can override the name:
+
+```typescript
+class App {
+  log = $logger({ name: "Bootstrap" });
+}
+```
+
+Every log entry carries an `app` field: [`alepha.name`](/docs/guides-core-alepha-instance), which is `APP_NAME` when set, else the app name `alepha build` or `alepha dev` baked in. Set it to tell environments apart:
+
+```bash
+APP_NAME=my-app-production
+```
+
+This is useful for identifying logs from different applications in a shared logging system. Specs and unbuilt scripts, whose name is only the `"app"` fallback, leave the field out.
+
+## Log Levels
+
+The `LoggerInterface` exposes five methods:
+
+```typescript
+export interface LoggerInterface {
+  trace(message: string, data?: unknown): void;
+  debug(message: string, data?: unknown): void;
+  info(message: string, data?: unknown): void;
+  warn(message: string, data?: unknown): void;
+  error(message: string, data?: unknown): void;
+}
+```
+
+Severity order from lowest to highest: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `SILENT`.
+
+A log call is only written to the destination if its level is at or above the configured threshold. `SILENT` suppresses all output.
+
+`log.isLevelEnabled(level)` answers whether a call at that level would be written, which is how to skip building an expensive payload nobody will see:
+
+```typescript
+if (this.log.isLevelEnabled("DEBUG")) {
+  this.log.debug("Cache state", this.cache.dump());
+}
+```
+
+## Configuration
+
+### LOG_LEVEL
+
+Set via the `LOG_LEVEL` environment variable. Case-insensitive.
+
+```bash
+# Global level
+LOG_LEVEL=debug
+
+# Per-module level with global fallback
+LOG_LEVEL=alepha.core:trace,info
+
+# Multiple module overrides
+LOG_LEVEL=alepha.core:trace,alepha.server:debug,my.app:error,info
+```
+
+The syntax is `module_prefix:level` pairs (`module_prefix=level` also works) separated by commas or semicolons, with an optional global level at the end. Module matching uses prefix matching: `alepha` matches `alepha.core`, `alepha.server`, etc.
+
+Wildcard patterns are supported:
+
+```bash
+LOG_LEVEL=alepha.*:debug,*.test:silent,info
+```
+
+Defaults by environment:
+
+- **dev**: `info`
+- **prod**: `info` (server) / `warn` (browser)
+- **test**: `trace` (but logs go to memory, only printed on test failure)
+
+### DEBUG
+
+`DEBUG` is a shorthand following the `debug` package convention. It derives a level and sets the format to `pretty`, but only where `LOG_LEVEL` and `LOG_FORMAT` are unset:
+
+```bash
+DEBUG=1            # LOG_LEVEL=trace
+DEBUG=alepha:*     # LOG_LEVEL=alepha.*:debug,info
+DEBUG=alepha:orm*  # debug for alepha.orm and its submodules, info elsewhere
+```
+
+`DEBUG=false` and `DEBUG=0` leave it off.
+
+### LOG_FORMAT
+
+Set via the `LOG_FORMAT` environment variable.
+
+| Value    | Description                                                                      | Provider                  |
+| -------- | -------------------------------------------------------------------------------- | ------------------------- |
+| `pretty` | Colored, human-readable output with timestamps, module and context               | `PrettyFormatterProvider` |
+| `cli`    | Compact output for CLI sessions: `HH:MM:SS L message {json}` (no module/context) | `CliFormatterProvider`    |
+| `json`   | Structured JSON, one object per line                                             | `JsonFormatterProvider`   |
+| `raw`    | Plain message text, no metadata (best for piping)                                | `RawFormatterProvider`    |
+
+If `LOG_FORMAT` is not set:
+
+- **Production** (non-browser): defaults to `json`
+- **Everything else**: defaults to `pretty`
+
+The `alepha` and `create-alepha` CLIs default to `cli`. Pass `--verbose` to a
+CLI command to switch to `pretty` at `trace` level when you need module/context
+and the framework's internal logs. Nothing implies it: an agent session passes
+`--verbose` like anyone else.
+
+`--verbose` does not touch `LOG_LEVEL` or `LOG_FORMAT`. It writes two store keys
+that every `Logger` reads live: `alepha.logger.level`, which `LOG_LEVEL` seeds at
+boot, and `alepha.logger.format`, an override of the formatter `LOG_FORMAT`
+picked. Set them yourself to change the level (same syntax as `LOG_LEVEL`) or the
+format of a running app:
+
+```typescript
+alepha.store.set("alepha.logger.level", "alepha.server:debug,info");
+```
+
+### Sub-process output
+
+CLI tasks that shell out (`yarn lint`, `vite build`, nested `alepha`
+subcommands, …) only stream their output live when `DEBUG` or a more verbose
+level is enabled - i.e. under `--verbose` or `LOG_LEVEL=debug`.
+Below `DEBUG` (the default), that output is captured instead of streamed, so a
+quiet run such as `alepha verify` is not buried under thousands of sub-process
+lines. Captured output is still surfaced (stdout **and** stderr) if the task
+fails, and the `Starting … / Finished … after Ns` lines always print.
+
+### Which stream: stdout or stderr
+
+A server writes its log lines to **stdout**: they are its output, and that is
+where a container runtime or a log collector reads them.
+
+A CLI writes them to **stderr**. As soon as `CliProvider` runs a command, or
+prints help or a usage error, it switches its own container's logs over, so
+stdout carries only what the command prints: `--version`, help, a rendered
+result. That is what keeps a pipe honest:
+
+```bash
+alepha --version | cat        # 0.29.0, and nothing else
+lore quest list --output json | jq length
+```
+
+| Stream | In a CLI                                                         |
+| ------ | ---------------------------------------------------------------- |
+| stdout | `print()`: help, `--version`, a command's result                 |
+| stderr | every log line: progress, warnings, and the reason for a failure |
+
+The switch is the store key `alepha.logger.stream`, read by
+`ConsoleDestinationProvider` each time it writes, and it is set on the CLI's
+container only. An application container that a command boots in the same
+process, the way `alepha dev` does, keeps writing to stdout.
+
+A container that registers commands but is started with nothing to run (a
+server carrying a maintenance command) is not a CLI, and keeps stdout too.
+
+## Log Entry Structure
+
+Every log call produces a `LogEntry`:
+
+```typescript
+interface LogEntry {
+  level: "SILENT" | "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR";
+  message: string;
+  service: string; // class name, e.g. "UserService"
+  module: string; // module name, e.g. "app" or "my.project.users"
+  context?: string; // request-scoped correlation ID (from AsyncLocalStorage)
+  app?: string; // alepha.name, absent for the no-build "app" fallback
+  data?: unknown; // arbitrary payload or Error object
+  timestamp: number; // milliseconds since epoch
+}
+```
+
+## Redaction
+
+Credential-bearing values never reach a formatter, a destination, the breadcrumb
+buffer or the devtools. Before an entry is built, every key of `data`, at any
+depth, is compared with a short list, case-insensitively, ignoring `-` and `_`,
+as a substring: `authorization`, `cookie`, `password`, `passwd`, `secret`,
+`token`, `apikey`, `accesskey`, `privatekey`, `credential` and `sessionid`. A
+match replaces the value with `"[redacted]"`.
+
+```typescript
+this.log.debug("Outgoing call", {
+  url: "https://api.example.com",
+  headers: { "x-api-key": "sk_live_123", accept: "application/json" },
+});
+// data: { url: "...", headers: { "x-api-key": "[redacted]", accept: "application/json" } }
+```
+
+So `refreshToken`, `set-cookie` and `X-Api-Key` are all masked. An `Error` passed
+as `data` is kept as is, since formatters need the instance, and a cycle becomes
+`"[circular]"` rather than a crash. A secret under an innocent key (`{ value: token }`)
+is not detected: name the key for what it holds.
+
+## Log Events
+
+Every log call emits a `"log:entry"` event on the Alepha event system, regardless of whether the message was above the configured threshold. This allows external listeners to capture all log activity:
+
+```typescript
+alepha.events.on("log:entry", (event) => {
+  // event.message  - formatted string (or undefined if below threshold)
+  // event.entry    - the raw LogEntry
+});
+```
+
+## Per-request breadcrumbs
+
+Every HTTP request and every job run keeps its own bounded ring of log entries, so that when something throws you can ship the lines that led to it - not just the stack.
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { LogBufferProvider } from "alepha/logger";
+
+class ErrorReporter {
+  logBuffer = $inject(LogBufferProvider);
+
+  onError = $hook({
+    on: "server:request:error",
+    handler: ({ request, error }) => {
+      sendToYourTool(error, {
+        requestId: request.requestId,
+        breadcrumbs: this.logBuffer.snapshot(),
+      });
+    },
+  });
+}
+```
+
+`snapshot()` returns the entries logged so far in the current context, oldest first, or `undefined` when no buffer is active. Two properties make it useful in production:
+
+- **Entries below the active `LOG_LEVEL` are captured.** Running at `info`, the `debug` and `trace` calls that explain the failure are still in the buffer even though they were never printed.
+- **Values are already redacted.** Credential-bearing keys are masked before the entry reaches the buffer, so a snapshot is safe to send off-box.
+
+The ring keeps the **last** `size` entries. When it discards older ones, the snapshot opens with a `WARN` saying how many - a truncated buffer never passes itself off as complete.
+
+Size is controlled by the `alepha.logger.buffer` atom:
+
+```typescript
+alepha.store.set("alepha.logger.buffer", { size: 200 }); // default: 50
+```
+
+Set `size` to `0` to disable capture entirely: no buffer is created and the write path becomes a no-op. Job runs use `alepha.jobs.logMaxEntries` instead, and persist their breadcrumbs onto the execution row when they fail.
+
+To read the buffer somewhere other than an error hook - inside a handler, a middleware, another hook - inject `LogBufferProvider` and call `snapshot()` the same way. Outside any request or job, it returns `undefined`.
+
+### Correlating with the client
+
+`request.requestId` is the same value as the `context` field on every entry the request logged, and it is what the server returns in error responses. An id quoted by a user therefore finds their logs directly:
+
+```bash
+grep '"context":"<the id they gave you>"' app.log
+```
+
+Put `x-request-id` (or `x-correlation-id`) on the request at your proxy and that id is used instead of a generated one, extending the correlation across services.
+
+## Testing
+
+In test mode, Alepha routes logs to `MemoryDestinationProvider` by default (unless `LOG_LEVEL` or `DEBUG` is set, which switches back to console output). Logs are buffered in memory and only printed to the console if a test fails.
+
+To capture and assert on logs in tests:
+
+```typescript
+import { Alepha } from "alepha";
+import {
+  $logger,
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
+
+class App {
+  log = $logger();
+}
+
+describe("$logger", () => {
+  it("should log info message", ({ expect }) => {
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "trace" },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+
+    const output = alepha.inject(MemoryDestinationProvider);
+    const app = alepha.inject(App);
+
+    app.log.info("Test log message");
+
+    expect(output.logs[0].message).toBe("Test log message");
+    expect(output.logs[0].level).toBe("INFO");
+    expect(output.logs[0].service).toBe("App");
+    expect(output.wasLogged(/Test log/, "INFO")).toBe(true);
+  });
+});
+```
+
+`wasLogged(pattern, level?)` matches the message (a string is a substring, a `RegExp` is tested), never the formatted line, so a spec does not depend on `LOG_FORMAT`. The memory destination is a ring of 10,000 entries (`maxEntries`): once full, it drops the oldest fifth, and `dropped` counts entries it evicted, which tells "never logged" from "logged and pushed out".
+
+## Custom Destination
+
+Replace the log destination by substituting `LogDestinationProvider`:
+
+```typescript check
+import { Alepha } from "alepha";
+import { LogDestinationProvider } from "alepha/logger";
+import type { LogEntry } from "alepha/logger";
+
+class MyDestination extends LogDestinationProvider {
+  write(message: string, entry: LogEntry): void {
+    // send to external service, write to file, etc.
+  }
+}
+
+const alepha = Alepha.create().with({
+  provide: LogDestinationProvider,
+  use: MyDestination,
+});
+```
+
+## Custom Formatter
+
+Replace the log formatter by substituting `LogFormatterProvider`:
+
+```typescript check
+import { Alepha } from "alepha";
+import { LogFormatterProvider } from "alepha/logger";
+import type { LogEntry } from "alepha/logger";
+
+class MyFormatter extends LogFormatterProvider {
+  format(entry: LogEntry): string {
+    return `[${entry.level}] ${entry.module}.${entry.service}: ${entry.message}`;
+  }
+}
+
+const alepha = Alepha.create().with({
+  provide: LogFormatterProvider,
+  use: MyFormatter,
+});
+```

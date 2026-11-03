@@ -35,9 +35,7 @@ const DashboardTileStatus = (props: DashboardTileStatusProps) => {
           <span className="size-1.5 shrink-0 rounded-full bg-current" />
           <span className="truncate">
             {row.id ??
-              (row.badge
-                ? tr(`dashboard.badge.${row.badge}` as never)
-                : row.title)}
+              (row.badge ? tr(`dashboard.badge.${row.badge}`) : row.title)}
           </span>
           {row.value !== undefined && (
             <span className="font-medium tabular-nums">{l(row.value)}</span>

@@ -86,7 +86,7 @@ describe("The open-quest count's index", () => {
       // Letters, not numbers: a title that slugs to `project-0` is reserved.
       const project = await projectApi.createProject.fetch(
         { body: { title: `Garden ${String.fromCharCode(97 + i)}` } },
-        { user } as never,
+        { user },
       );
       ids.push(project.data.id);
       for (let q = 0; q < 5; q++) {
@@ -99,7 +99,7 @@ describe("The open-quest count's index", () => {
               priority: "medium",
             },
           },
-          { user } as never,
+          { user },
         );
       }
     }

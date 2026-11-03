@@ -70,11 +70,11 @@ const AutomationGalleryPage = () => {
     "deploy-failed": Rocket,
   };
   const title = (preset: AutomationPresetDescriptor) =>
-    tr(`automation.preset.${preset.key}.title` as never, {
+    tr(`automation.preset.${preset.key}.title`, {
       default: preset.title,
     });
   const description = (preset: AutomationPresetDescriptor) =>
-    tr(`automation.preset.${preset.key}.description` as never, {
+    tr(`automation.preset.${preset.key}.description`, {
       default: preset.description,
     });
   const toList = () =>

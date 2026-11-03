@@ -78,4 +78,5 @@ export type SchemaToTableConfig<T extends ZObject> = {
     >;
   };
   dialect: string;
+  isAlias: false;
 };

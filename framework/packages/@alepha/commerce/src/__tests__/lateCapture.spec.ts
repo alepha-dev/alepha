@@ -10,6 +10,7 @@ import { CartService } from "../cart/services/CartService.ts";
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { resourceReservations } from "../entities/resourceReservations.ts";
+import { stockReservations } from "../entities/stockReservations.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
@@ -24,6 +25,7 @@ import { TestCourtKind } from "./fixtures/TestCourtKind.ts";
  */
 class Ledger {
   public readonly claims = $repository(resourceReservations);
+  public readonly holds = $repository(stockReservations);
 }
 
 const setup = async (backend: "postgres" | "sqlite") => {
@@ -107,8 +109,117 @@ const expireHolds = async (ctx: Ctx, orderId: string) => {
   }
 };
 
+/**
+ * One last ring, in a cart taken to the payment page.
+ */
+const buyTheLastRing = async (ctx: Ctx, ringId: string) => {
+  const cart = await ctx.carts.resolve(ctx.carts.newToken());
+  await ctx.carts.add(cart.id, ringId, 1);
+  const opened = await ctx.checkout.start(cart.id);
+  const { session, handoff } = await ctx.checkout.pay(opened.id, {
+    returnUrl: "https://bijoux.example/merci",
+  });
+  return { sessionId: opened.id, orderId: session.orderId!, handoff };
+};
+
+const aLastRing = async (ctx: Ctx) => {
+  const ring = await ctx.catalog.create({
+    slug: `ring-${randomUUID()}`,
+    name: "Bague Aurore",
+    price: 8900,
+    published: true,
+    config: { trackStock: true },
+  });
+  await ctx.stock.recordIntake(ring.id, 1);
+  return ring;
+};
+
+const expireStockHolds = async (ctx: Ctx, orderId: string) => {
+  for (const hold of await ctx.stock.reservationsOf(orderId)) {
+    await ctx.ledger.holds.updateById(hold.id, {
+      expiresAt: "2020-01-01T00:00:00.000Z",
+    });
+  }
+};
+
 describe("a capture that lands after its hold expired", () => {
   describe.each(["postgres", "sqlite"] as const)("on %s", (backend) => {
+    describe("on goods", () => {
+      it("becomes a stray capture when the units were sold meanwhile", async ({
+        expect,
+      }) => {
+        const ctx = await setup(backend);
+        const ring = await aLastRing(ctx);
+        const late = await buyTheLastRing(ctx, ring.id);
+        await expireStockHolds(ctx, late.orderId);
+
+        const winner = await buyTheLastRing(ctx, ring.id);
+        await ctx.payments.handleWebhookEvent(
+          winner.handoff.intentId,
+          "captured",
+        );
+
+        const strays: string[] = [];
+        ctx.alepha.events.on("commerce:capture:strayDetected", (event) => {
+          strays.push(event.orderId);
+        });
+
+        await ctx.payments.handleWebhookEvent(
+          late.handoff.intentId,
+          "captured",
+        );
+
+        const order = await ctx.orders.getById(late.orderId);
+        expect(order.status).toBe("cancelled");
+        expect(order.strayCaptures).toHaveLength(1);
+        expect(strays).toEqual([late.orderId]);
+        expect((await ctx.orders.getById(winner.orderId)).status).toBe("paid");
+        expect(await ctx.stock.onHand(ring.id)).toBe(0);
+      });
+
+      it("leaves the units another live checkout holds", async ({ expect }) => {
+        const ctx = await setup(backend);
+        const ring = await aLastRing(ctx);
+        const late = await buyTheLastRing(ctx, ring.id);
+        await expireStockHolds(ctx, late.orderId);
+        const other = await buyTheLastRing(ctx, ring.id);
+
+        await ctx.payments.handleWebhookEvent(
+          late.handoff.intentId,
+          "captured",
+        );
+
+        expect((await ctx.orders.getById(late.orderId)).status).toBe(
+          "cancelled",
+        );
+
+        // The other buyer, whose hold is live, is not the one to pay for it.
+        await ctx.payments.handleWebhookEvent(
+          other.handoff.intentId,
+          "captured",
+        );
+        expect((await ctx.orders.getById(other.orderId)).status).toBe("paid");
+        expect(await ctx.stock.onHand(ring.id)).toBe(0);
+      });
+
+      it("sells the units when nobody took them meanwhile", async ({
+        expect,
+      }) => {
+        const ctx = await setup(backend);
+        const ring = await aLastRing(ctx);
+        const late = await buyTheLastRing(ctx, ring.id);
+        await expireStockHolds(ctx, late.orderId);
+
+        await ctx.payments.handleWebhookEvent(
+          late.handoff.intentId,
+          "captured",
+        );
+
+        expect((await ctx.orders.getById(late.orderId)).status).toBe("paid");
+        expect(await ctx.stock.onHand(ring.id)).toBe(0);
+      });
+    });
+
     it("becomes a stray capture when somebody else took the slot", async ({
       expect,
     }) => {

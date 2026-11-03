@@ -7,14 +7,18 @@ A project is not one fixed shape. It is a container that composes four
 
 - **Work** - **quests** (the roadmap and the in-flight work), **areas**, and
   optionally **epics** (bounded initiatives that hold quests and run from
-  draft to completed, see [Epics](3-epics.md)), **releases**
-  (the named goals epics and quests ship in) and a Kanban **board**.
+  draft to completed, see [Epics](/lore/docs/guides-epics)), **releases**
+  (the named goals epics and quests ship in) and a Kanban **board**. See
+  [Quests](/lore/docs/guides-quests).
 - **Knowledge** - **folios**: project memory, wiki-linked, optionally
-  end-to-end encrypted, filed in a tree.
+  end-to-end encrypted, filed in a tree. See [Folios](/lore/docs/guides-folios).
 - **Apps** - the copies you deploy, the **sigils** they report with, their
-  analytics, and **blights**: deduplicated crash telemetry.
+  analytics, and **blights**: deduplicated crash telemetry. See
+  [Telemetry](/lore/docs/guides-telemetry) and
+  [Deploying an app](/lore/docs/guides-deploying).
 - **Support** - **feedback**, inbound bug and feature triage, plus a
-  first-party request form your users can reach.
+  first-party request form your users can reach. See
+  [Feedback](/lore/docs/guides-feedback).
 
 Turn a capability off and its pages, its menu entries and its search results
 go with it. Nothing is deleted: turn it back on and everything is where you
@@ -22,12 +26,28 @@ left it. A project can have all four or just one, and turning them all off is
 allowed - what remains is the project itself, its members, its activity feed
 and its reports.
 
-**Reports** sits outside the four: every project has it, and each of its tabs
-appears when the capability behind it does.
+```mermaid
+flowchart LR
+  People[People in the browser] --> Project[Lore project]
+  Agents[AI agents over MCP] --> Project
+  CLI[lore CLI and CI] --> Project
+  Project --> Work
+  Project --> Knowledge
+  Project --> Apps
+  Project --> Support
+  Deployed[Deployed apps] -->|sigil| Apps
+```
 
-Every one of those surfaces is exposed over **MCP**, which is the primary consumer:
-an AI agent reads the folio index to orient itself, drives quests as work lands, and
-files what it learned back as a folio. `project_context` answers the capability
+**Reports** sits outside the four: every project has it, and each of its tabs
+appears when the capability behind it does. Summary compares a period with the
+one before; Flow, Backlog, Planning, Support, Knowledge, Delivery and Team explain
+what moved, with one filter bar across them. See
+[Reports](/lore/docs/guides-reports).
+
+Most of those surfaces are exposed over **MCP**, which is the primary consumer: an
+AI agent reads the folio index to orient itself, drives quests as work lands, and
+files what it learned back as a folio. [MCP tools](/lore/docs/guides-mcp) lists every
+tool, and what has none. `project_context` answers the capability
 set first, then only the sections those capabilities own - a section a project
 has turned off is absent rather than empty, so an agent is never told a project
 tracks something it does not.
@@ -58,17 +78,18 @@ somewhere, and each capability is unlocked on it separately, from that instance'
   unlocks Analytics, Vitals, Errors and Explore for that copy alone.
 - an **estate** names the machine the copy is deployed to.
 
-⚠️ **Removing a sigil destroys that instance's analytics history** - views,
+⚠️ **Removing a sigil loses that instance's analytics history** - views,
 vitals, unique visitors and error groups all hang off the credential. To revoke a
 leaked token, rotate it instead: the app stops reporting with the old key
 immediately and every row survives.
 
 ## Why it exists
 
-Lore is the only public Alepha _product_ (the docs site and examples are public too, but they demo the framework rather than stand alone), and it lives in the framework's own
-repository on purpose. It is where framework changes get used before they are
-recommended: a rough edge in Alepha shows up in Lore first, and the fix ships in the
-same commit as the feature that exposed it.
+Lore is built with Alepha, and it lives in one repository beside the framework and
+[Bay](/bay/docs/guides-introduction) on purpose: it builds on the framework's
+source, not a published version. It is where framework changes get used before
+they are recommended: a rough edge in Alepha shows up in Lore first, and the fix
+ships in the same commit as the feature that exposed it.
 
 ## Status
 
@@ -83,5 +104,30 @@ configuration:
 docker run -p 3000:3000 -v lore:/data ghcr.io/alepha-dev/lore
 ```
 
-See [Self-Hosting](2-self-hosting.md) for what happens on first boot and
+See [Self-Hosting](/lore/docs/guides-self-hosting) for what happens on first boot and
 what each optional variable buys.
+
+## Where to go next
+
+- [Getting started](/lore/docs/guides-getting-started) - a project, the CLI and
+  an agent connected, in a few minutes.
+- [Quests](/lore/docs/guides-quests), [Epics](/lore/docs/guides-epics) and
+  [Releases](/lore/docs/guides-releases) - planning and tracking the work.
+- [The project dashboard](/lore/docs/guides-project-dashboard) - where a
+  project stands, at a glance.
+- [Folios](/lore/docs/guides-folios) and
+  [Attachments](/lore/docs/guides-attachments) - the project's memory.
+- [Feedback](/lore/docs/guides-feedback) and
+  [Notifications](/lore/docs/guides-notifications) - hearing from your users and
+  from Lore.
+- [Agent prompts](/lore/docs/guides-agent-prompts),
+  [Automations](/lore/docs/guides-automations) and
+  [MCP tools](/lore/docs/guides-mcp) - putting agents to work.
+- [The lore CLI](/lore/docs/guides-cli) - every command.
+- [Telemetry](/lore/docs/guides-telemetry),
+  [Healthchecks](/lore/docs/guides-healthchecks),
+  [Deploying an app](/lore/docs/guides-deploying),
+  [Artifacts](/lore/docs/guides-artifacts),
+  [Stacks](/lore/docs/guides-stacks) and
+  [Estates](/lore/docs/guides-estates) - running your apps.
+- [Self-Hosting](/lore/docs/guides-self-hosting) - your own instance.

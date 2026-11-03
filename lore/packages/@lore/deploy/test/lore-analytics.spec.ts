@@ -66,7 +66,7 @@ const setup = async (
   });
 
   if (analyticsProvider) {
-    alepha.with({ provide: AnalyticsProvider, use: analyticsProvider as any });
+    alepha.with({ provide: AnalyticsProvider, use: analyticsProvider });
   }
 
   alepha.with(AlephaOrm);
@@ -91,7 +91,7 @@ const setup = async (
     // A sigil is minted only for a project with a slug (#Q2620).
     slug: "test",
     createdBy: owner.id,
-  } as any);
+  });
 
   // `apps.track` is the switch above the telemetry surfaces, and `support`
   // the second one the `feedback` kind needs: `gatesFor` reads a capability

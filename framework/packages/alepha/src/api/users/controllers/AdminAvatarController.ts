@@ -90,7 +90,7 @@ export class AdminAvatarController {
         description: "avatar replaced",
       });
 
-      return updated as never;
+      return updated;
     },
   });
 
@@ -125,7 +125,7 @@ export class AdminAvatarController {
         description: "avatar removed",
       });
 
-      return updated as never;
+      return updated;
     },
   });
 

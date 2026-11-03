@@ -6,7 +6,7 @@ import { FormModel } from "../services/FormModel.ts";
 
 describe("FormModel.submit double-submit guard", () => {
   const makeForm = (alepha: Alepha, handler: () => Promise<void> | void) =>
-    alepha.inject(FormModel as any, {
+    alepha.inject(FormModel, {
       lifetime: "transient",
       args: [
         "f1",

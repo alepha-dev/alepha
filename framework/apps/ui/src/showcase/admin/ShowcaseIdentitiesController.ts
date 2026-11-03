@@ -72,7 +72,7 @@ export class ShowcaseIdentitiesController {
           isFirst: true,
           isLast: true,
         },
-      } as any;
+      };
     },
   });
 
@@ -102,6 +102,6 @@ export class ShowcaseIdentitiesController {
     // full settings default: a partial literal fails response validation with
     // "Invalid input at /settings/email", which is how the first version of
     // this fixture was found.
-    handler: () => SHOWCASE_REALM as any,
+    handler: () => SHOWCASE_REALM,
   });
 }

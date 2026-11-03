@@ -72,3 +72,143 @@
     services:
       api: {x-lore: {app: api}}
       worker: {image: busybox, depends_on: [api]}
+- name: named volume with driver options
+  stage: bay
+  expect: "volume hostroot: driver_opts is not allowed"
+  compose: |
+    services:
+      web:
+        image: nginx
+        volumes: ["hostroot:/host"]
+    volumes:
+      hostroot:
+        driver: local
+        driver_opts: {type: none, o: bind, device: /etc}
+- name: named volume with a fixed name
+  stage: bay
+  expect: "volume theirs: name is not allowed"
+  compose: |
+    services:
+      web:
+        image: nginx
+        volumes: ["theirs:/data"]
+    volumes:
+      theirs:
+        name: lore-production_db
+- name: external named volume
+  stage: bay
+  expect: "volume theirs: external is not allowed"
+  compose: |
+    services:
+      web:
+        image: nginx
+        volumes: ["theirs:/data"]
+    volumes:
+      theirs:
+        external: true
+        name: lore-production_db
+- name: network of another container
+  stage: bay
+  expect: "service web: network_mode: container:lore-production-db is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, network_mode: "container:lore-production-db"}
+- name: processes of another container
+  stage: bay
+  expect: "service web: pid: container:lore-production-db is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, pid: "container:lore-production-db"}
+- name: shared memory of another container
+  stage: bay
+  expect: "service web: ipc: container:lore-production-db is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, ipc: "container:lore-production-db"}
+- name: volumes of another container
+  stage: bay
+  expect: "service web: volumes_from: container:lore-production-db:ro is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, volumes_from: ["container:lore-production-db:ro"]}
+- name: network with a fixed name
+  stage: bay
+  expect: "network theirs: name is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, networks: [theirs]}
+    networks:
+      theirs: {name: lore-production_default}
+- name: external network
+  stage: bay
+  expect: "network theirs: external is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, networks: [theirs]}
+    networks:
+      theirs: {external: true, name: lore-production_default}
+- name: secret outside the bundle
+  stage: bay
+  expect: "secret key: file /etc/hosts is outside the bundle"
+  compose: |
+    services:
+      web: {image: nginx, secrets: [key]}
+    secrets:
+      key: {file: /etc/hosts}
+- name: secret the bundle lacks
+  stage: parse
+  expect: "secret key: file ./missing.key is not in the bundle"
+  compose: |
+    services:
+      web: {image: nginx, secrets: [key]}
+    secrets:
+      key: {file: ./missing.key}
+- name: config outside the bundle
+  stage: bay
+  expect: "config app: file /etc/hosts is outside the bundle"
+  compose: |
+    services:
+      web: {image: nginx, configs: [app]}
+    configs:
+      app: {file: /etc/hosts}
+- name: env_file outside the bundle
+  stage: bay
+  expect: "service web: env_file /opt/bay/data/stacks/lore-production/.env is outside the bundle"
+  compose: |
+    services:
+      web: {image: nginx, env_file: [/opt/bay/data/stacks/lore-production/.env]}
+- name: env_file the bundle lacks
+  stage: parse
+  expect: "service web: env_file ./missing.env is not in the bundle"
+  compose: |
+    services:
+      web: {image: nginx, env_file: [./missing.env]}
+- name: include
+  stage: bay
+  expect: "include is not allowed"
+  compose: |
+    include: [extra.yml]
+    services:
+      web: {image: nginx}
+- name: env_file through a variable
+  stage: bay
+  expect: "service web: env_file ${ENV_FILE:-/etc/hosts} cannot use a variable"
+  compose: |
+    services:
+      web: {image: nginx, env_file: ["${ENV_FILE:-/etc/hosts}"]}
+- name: extends from another file
+  stage: bay
+  expect: "service web: extends.file is not allowed"
+  compose: |
+    services:
+      web: {extends: {file: base.yml, service: base}}
+
+- name: tls-without-tcp
+  stage: parse
+  expect: "x-lore.tls terminates TLS on x-lore.tcp"
+  compose: |
+    services:
+      broker:
+        image: eclipse-mosquitto:2
+        x-lore:
+          tls: true

@@ -175,7 +175,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {
@@ -248,13 +248,13 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     alepha.store.set(currentReleasesAtom, [
       aRelease(7, 1, "0.28.0"),
       aRelease(8, 2, "0.29.0"),
-    ] as never);
+    ]);
     // ⚠️ `id` and `number` are deliberately far apart. The Epic column reads
     // `quests.epicId` (42) and must render and link the `number` (7); with
     // the two equal, printing the raw id would pass every assertion.
     alepha.store.set(currentEpicsAtom, [
       { id: 42, number: 7, title: "Epic Workflow", status: "draft" },
-    ] as never);
+    ]);
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
@@ -318,7 +318,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     await view.findByRole("link", { name: "#Q2 - Quest from the toolbar" });
     expect(links.fetches).toBeGreaterThan(fetchesBefore);
     expect(
-      alepha!.store.get("alepha.react.router.state" as never) as
+      alepha!.store.get("alepha.react.router.state") as
         | { name?: string }
         | undefined,
     ).not.toMatchObject({ name: "projectQuest" });
@@ -531,7 +531,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         ...questOf(1, "Done quest"),
         completedAt: "2026-09-01T10:00:00.000Z",
       };
-      await mount([completed as never]);
+      await mount([completed]);
 
       const joined = (await openRowMenu())
         .map((it) => it.textContent ?? "")

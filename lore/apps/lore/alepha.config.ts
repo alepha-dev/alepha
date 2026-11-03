@@ -192,7 +192,13 @@ export default defineConfig({
          * 2026-08-11 by the same route. A var is uploaded as a plain-text
          * binding whatever the manifest says, and it is not a secret.
          */
-        vars: { DATABASE_D1_MODE: "sessions" },
+        vars: {
+          DATABASE_D1_MODE: "sessions",
+          // What `$robots` compares a request's host to, so a `workers.dev`
+          // address answers `Disallow: /`. A self-hosted image has none, and
+          // answers for its own host.
+          PUBLIC_URL: "https://lore.alepha.dev",
+        },
       },
     },
   },
@@ -229,6 +235,20 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        // The Reports bar (#Q2996): its period and grain, built from the value.
+        "reports.filter.range.",
+        "reports.filter.grain.",
+        "reports.summary.line.",
+        "reports.flow.bucket.",
+        "reports.flow.band.",
+        "reports.flow.size.",
+        "reports.backlog.age.",
+        "reports.summary.section.",
+        "reports.team.channel.",
+        "reports.team.day.",
+        "reports.team.run.",
+        "reports.team.column.",
+        "reports.team.sort.",
         // Catalogue-defined preset keys, slot names and channel choices (#E43).
         "automation.preset.",
         "automation.setup.",
@@ -270,6 +290,7 @@ export default defineConfig({
         "agentPrompts.settings.feedbackWork.",
         "agentPrompts.settings.feedbackLoop.",
         "agentPrompts.settings.questLoop.",
+        "agentPrompts.settings.weeklyStatus.",
         "agentPrompts.settings.blightTriage.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",

@@ -67,7 +67,7 @@ describe("a project's repository URL", () => {
       as: { id: string; roles: string[] } = owner,
     ) =>
       projects.updateProjectById.fetch(
-        { params: { id: project.data.id }, body: body as never },
+        { params: { id: project.data.id }, body: body },
         { user: as },
       );
 

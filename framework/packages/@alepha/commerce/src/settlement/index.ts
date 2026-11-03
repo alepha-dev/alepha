@@ -12,11 +12,14 @@ export * from "./services/SettlementListener.ts";
 export * from "./settlementConfigAtom.ts";
 
 /**
- * Durable checkout outcomes, two jobs:
+ * Durable checkout outcomes, four jobs:
  *
  * - **orderSettlement**: invoice and confirmation email as one keyed
  *   `$job` with retry and admin visibility, replacing the fire-and-forget
  *   listeners that silently dropped a failed invoice.
+ * - **shippingNotice**: the "it's on its way" email, with the same retry and
+ *   visibility.
+ * - **refundCreditNote**: the credit note of each refund, likewise.
  * - **checkoutReconciliation**: one delayed execution per payment handoff:
  *   a checkout still `paying` after the wait gets the PSP polled
  *   (recovering payments whose webhook never arrived, the

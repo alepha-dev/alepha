@@ -152,7 +152,7 @@ export class ServerSwaggerProvider {
     const toJson = (source: ZType): any => {
       let json: any;
       try {
-        json = z.toJSONSchema(source as any);
+        json = z.toJSONSchema(source);
       } catch {
         json = {};
       }
@@ -199,8 +199,8 @@ export class ServerSwaggerProvider {
       const json = toJson(source);
       // A titled schema is hoisted into `components/schemas` and referenced.
       const title =
-        (typeof (source as any)?.meta === "function"
-          ? (source as any).meta()?.title
+        (typeof source?.meta === "function"
+          ? source.meta()?.title
           : undefined) ?? json.title;
       if (typeof title === "string") {
         schemas[title] = json;
@@ -320,9 +320,7 @@ export class ServerSwaggerProvider {
           z.schema.shape(route.options.schema.params),
         )) {
           const valueMeta =
-            typeof (value as any)?.meta === "function"
-              ? ((value as any).meta() ?? {})
-              : {};
+            typeof value?.meta === "function" ? (value.meta() ?? {}) : {};
           const description =
             typeof valueMeta.description === "string"
               ? valueMeta.description

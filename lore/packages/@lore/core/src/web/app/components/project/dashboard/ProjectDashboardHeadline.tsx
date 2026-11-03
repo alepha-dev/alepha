@@ -22,13 +22,7 @@ const ProjectDashboardHeadline = (props: ProjectDashboardHeadlineProps) => {
   const { tr, lang } = useI18n<I18n, "en">();
   const catalog = useInject(DashboardMetricCatalog);
   const builder = useMemo(() => new DashboardHeadline(), []);
-  const sentence = builder.build(
-    props.cards,
-    props.values,
-    catalog,
-    tr as never,
-    lang,
-  );
+  const sentence = builder.build(props.cards, props.values, catalog, tr, lang);
 
   if (!sentence) return null;
   return (

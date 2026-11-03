@@ -80,7 +80,7 @@ describe("stack deploys", () => {
     await w.rows.grants.create({
       estateId: minted.id,
       projectId: w.project.id,
-    } as never);
+    });
     const stack = await createStack(alepha, w, {
       name: "shop",
       estateId: minted.id,

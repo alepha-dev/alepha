@@ -214,9 +214,9 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       return record;
     });
 
-    await raw.upsertMany(values as never, {
-      target: [AnalyticsEntityFactory.TIME_COLUMN, ...dimensions] as never,
-      set: this.upsertSet(dataset, raw) as never,
+    await raw.upsertMany(values, {
+      target: [AnalyticsEntityFactory.TIME_COLUMN, ...dimensions],
+      set: this.upsertSet(dataset, raw),
     });
   }
 
@@ -577,10 +577,9 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       return;
     }
 
-    await this.floors.upsertMany(
-      [{ dataset: dataset.name, floor: boundary } as never],
-      { target: ["dataset"] as never },
-    );
+    await this.floors.upsertMany([{ dataset: dataset.name, floor: boundary }], {
+      target: ["dataset"],
+    });
   }
 
   /**
@@ -608,9 +607,9 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   ): Promise<AnalyticsPruneFloorEntity | undefined> {
     if (!this.floors) return undefined;
     const row = await this.floors.findOne({
-      where: { dataset: { eq: dataset.name } } as never,
+      where: { dataset: { eq: dataset.name } },
     });
-    return row as never as AnalyticsPruneFloorEntity | undefined;
+    return row as AnalyticsPruneFloorEntity | undefined;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -648,7 +647,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       if (!ref || kept.length === 0) continue;
 
       const target = ref.ref();
-      const table = this.database.table(target.entity) as never as Record<
+      const table = this.database.table(target.entity) as Record<
         string,
         unknown
       >;
@@ -729,7 +728,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     repository: Repository<ZObject>,
   ): Record<string, unknown> {
-    const table = repository.table as never as Record<string, unknown>;
+    const table = repository.table as Record<string, unknown>;
     const set: Record<string, unknown> = {};
     for (const column of this.storedColumns(dataset, repository)) {
       const target = (name: string) =>
@@ -938,7 +937,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * identical bug the moment the hot-retention sweep tried to fold them.
    */
   protected columnName(repository: Repository<ZObject>, name: string): string {
-    const table = repository.table as never as Record<string, NamedColumn>;
+    const table = repository.table as Record<string, NamedColumn>;
     return table[name].name;
   }
 
@@ -1108,7 +1107,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       z.object(shape),
     );
 
-    return rows as never as Array<Record<string, string | number | null>>;
+    return rows as Array<Record<string, string | number | null>>;
   }
 
   /**

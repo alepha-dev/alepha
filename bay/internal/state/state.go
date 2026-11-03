@@ -140,6 +140,12 @@ type App struct {
 	// config`). Above the app's own declaration, and kept across deploys: it is
 	// a decision about the instance, not about one release.
 	BackupOverride *backuppolicy.Policy `json:"backupOverride,omitempty"`
+	// BackupHold is when and why the schedule must leave this app alone: a deploy
+	// created its database empty and could not restore the snapshot that may
+	// exist. Backing that database up would make it the newest snapshot, and the
+	// next plain `bay restore` would install it. Cleared by a restore, and by a
+	// backup somebody asked for, which is them saying this database is the one.
+	BackupHold string `json:"backupHold,omitempty"`
 
 	// Crons is how many cron expressions the artifact declared. Derived from the
 	// manifest at deploy time, so it is replaced on every deploy rather than
@@ -537,6 +543,7 @@ func (s *Store) Upsert(app App) error {
 			// The operator's backup policy outlives releases; the app's own
 			// declaration (BackupDeclared) comes with each deploy instead.
 			app.BackupOverride = a.BackupOverride
+			app.BackupHold = a.BackupHold
 			// Traffic history belongs to the instance, not the release. Resetting
 			// it here would make every app read "no traffic ever" right after a
 			// deploy — so the staleness badge would be blank for exactly the apps
@@ -618,7 +625,25 @@ func (s *Store) RecordBackup(key string, rec BackupRecord) error {
 		a.BackupFailure = nil
 		r := rec
 		a.LastBackup = &r
+		// A backup somebody asked for says this database is the one. The
+		// safety copy a restore takes first says nothing of the kind, and
+		// lifting the hold on it would leave a failed restore unguarded.
+		if rec.Trigger != "restore" {
+			a.BackupHold = ""
+		}
 	})
+}
+
+// HoldBackups keeps the schedule off an app. See `App.BackupHold`.
+func (s *Store) HoldBackups(key, reason string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		a.BackupHold = at.UTC().Format(time.RFC3339) + ": " + reason
+	})
+}
+
+// ClearBackupHold gives an app back to the schedule.
+func (s *Store) ClearBackupHold(key string) error {
+	return s.mutate(key, func(a *App) { a.BackupHold = "" })
 }
 
 // RecordBackupFailure stores why the last attempt failed.

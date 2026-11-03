@@ -93,7 +93,7 @@ describe("Bug #4: Missing HTTP Response Validation in OAuth2", () => {
     expect(token).toBe(mockToken);
 
     // Verify fetch was called correctly
-    expect((global as any).fetch).toHaveBeenCalledWith(
+    expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/token",
       expect.objectContaining({
         method: "POST",

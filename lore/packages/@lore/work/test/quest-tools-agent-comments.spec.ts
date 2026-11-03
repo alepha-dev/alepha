@@ -45,7 +45,7 @@ const setup = async () => {
 
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
-      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] });
       return fn();
     });
 
@@ -54,7 +54,7 @@ const setup = async () => {
     asUser(userId, () => tool.execute(params));
 
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({ body: { title: "Test" } }),
   );
 
   const quest = await call(questTools.quest_create, {
@@ -96,6 +96,25 @@ describe("Lore MCP: agent-authored comments", () => {
 
     const res = await call(questTools.quest_get, { id: quest.id });
     expect(res.discussion[0].client).toBe("claude-code");
+  });
+
+  it("reads a comment left by lore quest comment add --as as an agent's", async () => {
+    const { questTools, commentApi, quest, call, asUser, OWNER } =
+      await setup();
+
+    await asUser(OWNER, () =>
+      commentApi.createQuestComment({
+        params: { id: quest.id },
+        body: {
+          body: "Posted from a shell.",
+          source: { kind: "cli", client: "claude-code" },
+        },
+      }),
+    );
+
+    const res = await call(questTools.quest_get, { id: quest.id });
+
+    expect(res.discussion[0].authorKind).toBe("agent");
   });
 
   it("leaves a comment written through the web path unmarked", async () => {

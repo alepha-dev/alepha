@@ -1,7 +1,6 @@
 import { Sheet, SheetContent } from "@alepha/ui";
-import { currentProjectAtom } from "@lore/core/web";
 import { useAlepha, useStore } from "alepha/react";
-import { useRouter } from "alepha/react/router";
+import { useOverlay } from "alepha/react/router";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
@@ -12,33 +11,23 @@ export interface ProjectKanbanCardProps {
 }
 
 /**
- * One kanban card, open as a sheet over the board.
- *
- * Rendered by `projectKanbanCard` into the board layout's `NestedView`, so
- * the board stays mounted underneath and does not refetch when a card opens
- * or closes.
+ * One kanban card, open as a sheet over the board: `projectQuest`'s overlay,
+ * so the board stays mounted underneath and does not refetch when a card opens
+ * or closes, and a reload shows the full quest page.
  *
  * `QuestView` is mounted in its `card` context — the same one the local
  * drawer used, deliberately not a fourth context. The route only changes
  * where the quest comes from (a loader, fresh) and where closing goes (back
- * to `/kanban`).
+ * through history, to the board).
  */
 const ProjectKanbanCard = (props: ProjectKanbanCardProps) => {
   const alepha = useAlepha();
-  const router = useRouter();
-  const [project] = useStore(currentProjectAtom);
+  const { close } = useOverlay();
   // The loader seeds this, and `QuestView` writes it on every mutation, so
   // reading it here is what keeps the sheet showing the current version
   // rather than the one the route opened with.
   const [current] = useStore(currentQuestAtom);
   const quest = current ?? props.quest;
-
-  const close = () => {
-    if (!project) return;
-    void router.push("projectKanban", {
-      params: { projectSlug: project.slug },
-    });
-  };
 
   return (
     <Sheet open onOpenChange={(open) => !open && close()}>

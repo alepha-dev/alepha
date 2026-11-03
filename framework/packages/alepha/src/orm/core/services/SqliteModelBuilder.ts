@@ -99,7 +99,7 @@ export class SqliteModelBuilder extends ModelBuilder {
 
     // Table resolver function
     const tableResolver = (entityName: string) => {
-      return tables.get(entityName) as any;
+      return tables.get(entityName);
     };
 
     return this.buildTableConfig<any, BuildColumns<string, any, "sqlite">>(
@@ -129,7 +129,7 @@ export class SqliteModelBuilder extends ModelBuilder {
 
       const defaultValue = z.schema.defaultValue(value);
       if (defaultValue != null) {
-        col = col.default(defaultValue as any);
+        col = col.default(defaultValue);
       }
 
       if (hasAttr(value, PG_PRIMARY_KEY)) {

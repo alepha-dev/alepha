@@ -40,7 +40,7 @@ export const coreFeatures = [
   {
     icon: IconApi,
     title: "OpenAPI",
-    module: "alepha/server-swagger",
+    module: "alepha/server/swagger",
     description: "Auto-generated API documentation.",
     slug: "packages-alepha-server-swagger",
   },
@@ -89,7 +89,7 @@ export const coreFeatures = [
     title: "Queue",
     module: "alepha/queue",
     description: "Background job processing with retries.",
-    slug: "packages-alepha-queue-core",
+    slug: "packages-alepha-queue",
   },
   {
     icon: IconClock,
@@ -135,7 +135,7 @@ export const coreFeatures = [
     title: "Topic",
     module: "alepha/topic",
     description: "Pub/sub messaging.",
-    slug: "packages-alepha-topic-core",
+    slug: "packages-alepha-topic",
   },
   {
     icon: IconPlugConnected,
@@ -149,7 +149,7 @@ export const coreFeatures = [
   {
     icon: IconLink,
     title: "Links",
-    module: "alepha/server-links",
+    module: "alepha/server/links",
     description: "Type-safe API client.",
     slug: "packages-alepha-server-links",
   },
@@ -158,7 +158,7 @@ export const coreFeatures = [
     title: "Lock",
     module: "alepha/lock",
     description: "Distributed locking.",
-    slug: "packages-alepha-lock-core",
+    slug: "packages-alepha-lock",
   },
 
   // Dev & Ops
@@ -172,9 +172,9 @@ export const coreFeatures = [
   {
     icon: IconHeartRateMonitor,
     title: "Health",
-    module: "alepha/server-health",
+    module: "alepha/server",
     description: "Health check endpoints.",
-    slug: "packages-alepha-server-health",
+    slug: "reference-providers-serverhealthprovider",
   },
   {
     icon: IconDeviceDesktop,

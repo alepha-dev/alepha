@@ -19,7 +19,7 @@ This module enables:
 - Type-safe URL parameter and query string validation
 - Server-side data fetching with the `loader` function
 - Lazy loading and code splitting
-- Page animations and error handling
+- View transitions and error handling
 
 ## API Reference
 
@@ -30,6 +30,7 @@ This module enables:
 ### React Hooks
 
 - [`useActive`](/docs/reference-react-hooks-useactive) - Hook to determine if a given route is active and to provide anchor props for navigation.
+- [`useOverlay`](/docs/reference-react-hooks-useoverlay) - The overlay on screen, and the way out of it.
 - [`useQueryParams`](/docs/reference-react-hooks-usequeryparams) - Hook to manage query parameters in the URL using a defined schema.
 - [`useRouter`](/docs/reference-react-hooks-userouter) - Use this hook to access the React Router instance.
 - [`useRouterState`](/docs/reference-react-hooks-userouterstate) - Subscribes to the router's live state - the matched route, its params and
@@ -41,6 +42,7 @@ This module enables:
 - [`ReactDomServerProvider`](/docs/reference-providers-reactdomserverprovider) - The renderer half of React, loaded only once something actually renders.
 - [`ReactPageCacheProvider`](/docs/reference-providers-reactpagecacheprovider) - The automatic page cache (#E78).
 - [`ReactPageProvider`](/docs/reference-providers-reactpageprovider) - Handle page routes for React applications. (Browser and Server)
+- [`ReactPrefetchProvider`](/docs/reference-providers-reactprefetchprovider) - Fetches a page before it is clicked: the `lazy` chunks of the page and of its
 - [`ReactPreloadProvider`](/docs/reference-providers-reactpreloadprovider) - Adds HTTP Link headers for preloading entry assets.
 - [`ReactServerErrorProvider`](/docs/reference-providers-reactservererrorprovider) - Answers a browser navigation with an HTML error page instead of JSON.
 - [`ReactServerProvider`](/docs/reference-providers-reactserverprovider) - React server provider responsible for SSR and static file serving.

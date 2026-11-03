@@ -378,20 +378,10 @@ export class CapacitorDev {
     root: string,
     host: string,
   ): Promise<DevEdit | undefined> {
-    const manifestPath = this.fs.join(
-      root,
-      "android/app/src/main/AndroidManifest.xml",
-    );
-    if (!(await this.fs.exists(manifestPath))) {
+    const relative = await this.project.androidNetworkSecurityConfig(root);
+    if (!relative) {
       return undefined;
     }
-    const name = (await this.fs.readTextFile(manifestPath)).match(
-      /android:networkSecurityConfig="@xml\/([\w.]+)"/,
-    )?.[1];
-    if (!name) {
-      return undefined;
-    }
-    const relative = `android/app/src/main/res/xml/${name}.xml`;
     const path = this.fs.join(root, relative);
     if (!(await this.fs.exists(path))) {
       return undefined;

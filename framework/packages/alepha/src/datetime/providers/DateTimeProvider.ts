@@ -751,7 +751,11 @@ export class DateTimeProvider {
         // the deadline reaches `fn` through its argument alone.
         const signal = AbortSignal.any([context.signal, controller.signal]);
         Promise.resolve()
-          .then(() => context.withSignal(signal, () => fn(signal)))
+          .then(() =>
+            context.withSignal(signal, () =>
+              fn(context.als ? context.signal : signal),
+            ),
+          )
           .then(resolve, reject);
       });
     } finally {

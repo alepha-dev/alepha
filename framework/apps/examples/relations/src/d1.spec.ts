@@ -46,7 +46,7 @@ const schemaFromPushSync = async (): Promise<Array<string>> => {
   const rows = await source
     .inject(DatabaseProvider)
     .execute(
-      "select sql from sqlite_master where sql is not null and name not like 'sqlite_%'" as never,
+      "select sql from sqlite_master where sql is not null and name not like 'sqlite_%'",
     );
 
   await source.stop();
@@ -112,7 +112,7 @@ describe("relations on cloudflare d1", () => {
 
     const provider = alepha.inject(DatabaseProvider);
     for (const statement of statements) {
-      await provider.execute(statement as never);
+      await provider.execute(statement);
     }
   });
 

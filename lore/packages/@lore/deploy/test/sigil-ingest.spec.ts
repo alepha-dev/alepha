@@ -65,7 +65,7 @@ const readMeasures = async (analytics: DeployAnalytics, sigilId: string) => {
     where: { sigilId: { inArray: [sigilId] } },
     select: { count: "sum", engaged: "sum", entries: "sum" },
   });
-  const row = result.rows[0] as any;
+  const row = result.rows[0];
   return {
     count: Number(row?.count ?? 0),
     engaged: Number(row?.engaged ?? 0),
@@ -192,7 +192,7 @@ const setup = async (
     // slug-less fixture would test a shape that cannot occur.
     slug: "test",
     createdBy: owner.id,
-  } as any);
+  });
 
   for (const capability of over.capabilities ?? allOn) {
     await probe.capabilities.create({

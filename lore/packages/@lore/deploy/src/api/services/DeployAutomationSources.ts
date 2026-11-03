@@ -34,7 +34,7 @@ export class DeployAutomationSources {
         : undefined;
     await this.rows.sourceUpdate(
       { id, status: { inArray: ["queued", "running"] } },
-      values as never,
+      values,
       {
         projectId: row.projectId,
         identity: `deployment:${id}:terminal`,

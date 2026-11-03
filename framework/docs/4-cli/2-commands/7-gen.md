@@ -26,7 +26,7 @@ alepha gen env                  # print to stdout
 alepha gen env --output .env.example
 ```
 
-Each variable comes with its description, its default value, whether it's required, and its allowed values:
+Each variable comes with its description, its default value, whether it's required, its allowed values, the other names it is also read from, and a `(public)` mark when it opted out of being a secret:
 
 ```bash
 # Port the HTTP server listens on
@@ -55,14 +55,16 @@ alepha gen changelog --from=1.0.0 --to=main
 
 | Flag           | Description                                                         |
 | -------------- | ------------------------------------------------------------------- |
-| `--from`, `-f` | Starting ref - tag, commit, or branch (default: latest version tag) |
-| `--to`, `-t`   | Ending ref (default: `HEAD`)                                        |
+| `--from`, `-f` | Starting ref - tag, commit, or branch (default: latest `x.y.z` tag) |
+| `--to`         | Ending ref (default: `HEAD`)                                        |
 
 Only commits with a **type and a scope** are read - `feat(orm): …`, `fix(server): …`. Anything else is skipped, so work in progress can be committed without landing in release notes.
 
+The default start is the most recent bare `x.y.z` tag; with none, the command prints `No version tags found in repository` and stops. Run from a project folder below the repository root (`framework/` beside `lore/`), it leaves out commits that only touched a sibling top-level folder, whatever their scope.
+
 ### What gets published
 
-By default: `feat` and `fix`, in that order, every scope. Both halves are configurable in `alepha.config.ts`, through the `changelog()` plugin:
+By default: `feat` and `fix`, in that order, every scope. A commit that declares a break (`refactor(server)!: …`, or a `BREAKING CHANGE:` footer) is published whatever its type, under Breaking Changes. Both halves are configurable in `alepha.config.ts`, through the `changelog()` plugin:
 
 ```ts
 import { changelog } from "alepha/cli";
@@ -94,4 +96,4 @@ Scopes match on the segment before the first `/`, so `api` covers `api/users`. A
 | `scopes` | _unset_              | Scopes to publish; unset means all                      |
 | `ignore` | see `DEFAULT_IGNORE` | Scopes to exclude - applied only when `scopes` is unset |
 
-Camel-case flags also accept their kebab-case spelling, for example `--dryRun` and `--dry-run`. Help displays kebab-case. `-t` is reserved for `--tag`; use `--to` for a changelog end ref.
+Camel-case flags also accept their kebab-case spelling, for example `--dryRun` and `--dry-run`. Help displays kebab-case. `--to` has no short form: `-t` means `--tag` across the CLI.

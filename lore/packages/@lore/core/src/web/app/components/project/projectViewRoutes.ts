@@ -123,11 +123,19 @@ export const ROUTES_FULL_WIDTH = new Set([
   // ever reads the active leaf: a set that names four of the five is a trap
   // for whoever adds the sixth.
   "projectReports",
-  "reportsOverview",
+  "reportsSummary",
+  "reportsFlow",
+  "reportsBacklog",
+  "reportsPlanning",
+  "reportsSupport",
+  "reportsKnowledge",
+  "reportsDelivery",
   "reportsQuests",
+  "reportsTeam",
   "reportsMembers",
   "reportsQuality",
   "projectArtifacts",
+  "projectArtifact",
   "projectFolios",
   "projectFoliosNew",
   "projectFoliosFolio",
@@ -175,6 +183,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectEpics"
   | "projectQuests"
   | "projectApps"
+  | "projectArtifacts"
   | "projectUptime"
   | "projectStacks"
   | "projectReleases"
@@ -204,6 +213,7 @@ export const SECTION_HREF_ROUTES: Record<
   appErrors: "projectApps",
   appExplore: "projectApps",
   appArtifacts: "projectApps",
+  projectArtifact: "projectArtifacts",
   appDeploy: "projectApps",
   appEnvironment: "projectApps",
   appSettings: "projectApps",
@@ -253,10 +263,18 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectReleases: "project.menu.releases",
   projectRelease: "project.menu.releases",
   projectReports: "project.menu.reports",
-  reportsOverview: "project.menu.reports",
+  reportsSummary: "project.menu.reports",
+  reportsFlow: "project.menu.reports",
+  reportsBacklog: "project.menu.reports",
+  reportsPlanning: "project.menu.reports",
+  reportsSupport: "project.menu.reports",
+  reportsKnowledge: "project.menu.reports",
+  reportsDelivery: "project.menu.reports",
   reportsQuests: "project.menu.reports",
+  reportsTeam: "project.menu.reports",
   reportsMembers: "project.menu.reports",
   projectArtifacts: "project.menu.artifacts",
+  projectArtifact: "project.menu.artifacts",
   projectFolios: "project.menu.folios",
   projectFoliosNew: "project.menu.folios",
   projectFoliosFolio: "project.menu.folios",

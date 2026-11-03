@@ -58,7 +58,7 @@ describe("paused-clock timeouts", () => {
     await time.travel([0, "milliseconds"]);
 
     const createdAt = time.now().valueOf();
-    const waiting = time.wait([5, "minutes"], { now: createdAt } as any);
+    const waiting = time.wait([5, "minutes"], { now: createdAt });
 
     await time.travel([6, "minutes"]);
 

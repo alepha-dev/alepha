@@ -435,7 +435,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
     test("should reject invalid UUID format", async ({ expect }) => {
       await expect(
         app.getUser.fetch({
-          params: { id: "not-a-uuid" as any },
+          params: { id: "not-a-uuid" },
         }),
       ).rejects.toThrow();
     });

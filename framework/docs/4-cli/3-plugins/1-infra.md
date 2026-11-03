@@ -25,7 +25,7 @@ export default defineConfig({
 alepha deploy
 ```
 
-Your app is live. Database created, secrets pushed, worker deployed.
+Your app is live. Database created, worker deployed with its secrets.
 
 ## What It Does
 
@@ -33,9 +33,16 @@ Alepha introspects your application at build time. It scans for primitives - `$e
 
 The deployment lifecycle runs in a fixed order:
 
-```txt
-authenticate → provision → build → migrate → deploy → secrets
+```mermaid
+flowchart LR
+  A[authenticate] --> B[provision]
+  B --> C[build]
+  C --> D[migrate]
+  D --> E[deploy]
+  E --> F[secrets]
 ```
+
+`alepha deploy` runs all six. `alepha infra deploy` runs only the first and the fifth, against a `dist/` that already exists. On Cloudflare the secrets travel inside the deploy upload, and on Bay with the deploy through `--secrets-file`, so the last step has nothing left to do on either.
 
 Each step is handled by an **adapter**, and an environment names its adapter by calling the adapter's factory: `cloudflare()` (Workers, recommended) and `bay()` (self-hosted) ship with `alepha/cli/infra`. There is no list of adapter names to extend: an adapter is an import, so [writing your own](#writing-an-adapter) needs nothing from the framework.
 
@@ -112,7 +119,7 @@ Settings shared by several environments repeat per environment; a plain `const` 
 
 ## Secrets
 
-Runtime secrets are pushed to the cloud provider's secret store during `alepha deploy`. The key set to push is resolved by precedence:
+Runtime secrets reach the deployed app during `alepha deploy`: on Cloudflare as secret bindings of the Worker upload, on Bay through a file the deploy passes as `--secrets-file`, merged before the new release starts. The key set to push is resolved by precedence:
 
 1. `infra().secrets.keys`: explicit override in `alepha.config.ts`.
 2. Otherwise, the union of every key your app declares via `$env` (captured in `dist/manifest.json` at build time) and any keys in `.env.{env}.local`. If no readable manifest is available, the base env file supplies the allowlist instead; it is not unioned when the manifest exists.
@@ -298,14 +305,14 @@ Configure the store in `infra()`:
 
 ## Cloudflare Adapter
 
-The Cloudflare adapter deploys your application as a [Cloudflare Worker](https://developers.cloudflare.com/workers/). It uses the Cloudflare REST API for resource provisioning and the Wrangler CLI for login, deployment, D1 migrations, and secret management.
+The Cloudflare adapter deploys your application as a [Cloudflare Worker](https://developers.cloudflare.com/workers/). It talks to the Cloudflare API for everything: provisioning, D1 migrations, and the Worker upload, secrets included. The Wrangler CLI is kept for the interactive login: `wrangler login` and `wrangler logout` behind `alepha infra login` and `alepha infra logout`, and `wrangler auth token` to read that login. A deploy never installs or runs it when `CLOUDFLARE_API_TOKEN` is set.
 
 ### Prerequisites
 
 - A Cloudflare account
-- `wrangler` is installed automatically if missing
+- `CLOUDFLARE_API_TOKEN` in CI, plus `CLOUDFLARE_ACCOUNT_ID` when the token reaches several accounts
 
-On first run, `alepha deploy` opens the Wrangler OAuth flow in your browser. The token is validated on every run (re-login is triggered automatically if it expired); account resolution is cached for 4 hours. In CI, set `CLOUDFLARE_API_TOKEN` instead.
+Without a token, the first `alepha deploy` in a terminal opens the Wrangler OAuth flow in your browser, installing `wrangler` first if it is missing. The token is validated on every run (re-login is triggered automatically if it expired); account resolution is cached for 4 hours. Off a terminal, a missing token fails the run with a message naming `CLOUDFLARE_API_TOKEN` rather than waiting on a login no one can complete.
 
 ### Resource Mapping
 
@@ -330,9 +337,9 @@ All provisioning is idempotent. If a resource already exists with the expected n
 
 The adapter chooses the database strategy based on `DATABASE_URL` in `.env.{env}`:
 
-**D1 (default)** - If no `DATABASE_URL` is set, or it does not start with `postgres:`, the adapter provisions a Cloudflare D1 database (SQLite at the edge). Migrations are applied file by file with `wrangler d1 execute --file`, never `wrangler d1 migrations apply`, whose transaction wrapper cascade-deletes child rows on a table rebuild (see the Migrations guide).
+**D1 (default)** - If no `DATABASE_URL` is set, or it does not start with `postgres:`, the adapter provisions a Cloudflare D1 database (SQLite at the edge). Before applying, a deploy without `--prebuilt` runs `alepha db migrations check --mode <env>` (or `migrations create` when `migrations/sqlite/` does not exist yet), so a schema change with no migration fails the deploy. Migrations are then applied file by file through D1's import API, the transport `wrangler d1 execute --remote --file` uses, never in the shape of `wrangler d1 migrations apply`, whose transaction wrapper cascade-deletes child rows on a table rebuild (see the Migrations guide). The bookkeeping table stays `d1_migrations`, readable by wrangler.
 
-**Hyperdrive** - If `DATABASE_URL` points to an external PostgreSQL database (`postgres://...`), the adapter provisions a [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) config instead. Hyperdrive accelerates connections from Workers to your Postgres database through connection pooling and caching. Migrations run via `alepha db migrations apply` directly against the database.
+**Hyperdrive** - If `DATABASE_URL` points to an external PostgreSQL database (`postgres://...`), the adapter provisions a [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) config instead. Hyperdrive accelerates connections from Workers to your Postgres database through connection pooling and caching. Migrations run via `alepha db migrations apply --mode <env>` directly against the database.
 
 ```bash
 # .env.production: D1 (no DATABASE_URL, or d1:// protocol)
@@ -377,7 +384,9 @@ that also serves unauthenticated routes.
 
 ### Deploy
 
-Deploys via `wrangler deploy` using the generated `dist/wrangler.jsonc`. Returns the live Worker URL.
+Uploads `dist/` through the Cloudflare API, read through the generated `dist/wrangler.jsonc`: modules, bindings, assets, Durable Object migrations, crons, the custom domain and queue consumers. No wrangler process runs. Returns the live Worker URL.
+
+The secrets are `secret_text` bindings of that same upload, so the new version never runs against the previous secret set. A secret the upload does not name stays bound, as Cloudflare carries it over: one the environment stopped declaring, or one set by hand in the dashboard. Each of those is logged by name before the upload, never by value.
 
 ### Teardown
 
@@ -417,7 +426,7 @@ STRIPE_SECRET_KEY=sk_live_...
 alepha deploy
 ```
 
-This authenticates with Cloudflare, provisions D1 + R2 + KV + Queue (based on your code), builds for Cloudflare Workers, runs D1 migrations, deploys the worker, and pushes `STRIPE_SECRET_KEY` as a secret.
+This authenticates with Cloudflare, provisions D1 + R2 + KV + Queue (based on your code), builds for Cloudflare Workers, runs D1 migrations, and deploys the worker with `STRIPE_SECRET_KEY` bound as a secret.
 
 ### Temporary Environments
 

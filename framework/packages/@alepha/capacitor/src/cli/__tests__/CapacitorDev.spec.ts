@@ -70,6 +70,7 @@ class FakeAppEntryProvider extends AppEntryProvider {
 class TestCapacitorDev extends CapacitorDev {
   public lan: Record<string, string> = { en0: "192.168.1.48" };
   public plistDuringRun?: string;
+  public networkPath = NETWORK;
   public networkDuringRun?: string;
 
   protected override hostPlatform(): NodeJS.Platform {
@@ -112,8 +113,8 @@ class TestCapacitorDev extends CapacitorDev {
     ...args: Parameters<CapacitorDev["runOnDevice"]>
   ): Promise<void> {
     this.plistDuringRun = await this.fs.readTextFile(PLIST);
-    if (await this.fs.exists(NETWORK)) {
-      this.networkDuringRun = await this.fs.readTextFile(NETWORK);
+    if (await this.fs.exists(this.networkPath)) {
+      this.networkDuringRun = await this.fs.readTextFile(this.networkPath);
     }
     await super.runOnDevice(...args);
   }
@@ -386,6 +387,47 @@ describe("alepha capacitor dev", () => {
 
     expect(fs.getFileContent(PLIST)).toBe(before);
     expect(await alepha.inject(NativeGuard).inspect(ROOT, ["ios"])).toEqual([]);
+  });
+
+  it("leaves in Info.plist nothing a build misses once the journal is gone", async ({
+    expect,
+  }) => {
+    // The journal is gitignored and Info.plist is checked in: a run's edit
+    // that gets committed reaches CI with no journal beside it.
+    const { alepha, fs, dev, run } = await setup();
+
+    await run("ios");
+    await fs.writeFile(PLIST, dev.plistDuringRun ?? "");
+
+    expect(await alepha.inject(NativeGuard).inspect(ROOT, ["ios"])).toEqual([
+      expect.stringContaining("NSAllowsLocalNetworking"),
+    ]);
+  });
+
+  it("leaves in a config of any name nothing a build misses once the journal is gone", async ({
+    expect,
+  }) => {
+    const { alepha, fs, dev, run } = await setup(
+      [{ id: "38251JEHN04224", name: "Google Pixel 7a" }],
+      "android",
+    );
+    const renamed = NETWORK.replace("network_security_config", "net_rules");
+    dev.networkPath = renamed;
+    await fs.writeFile(
+      MANIFEST,
+      (fs.getFileContent(MANIFEST) ?? "").replace(
+        "<application",
+        '<application android:networkSecurityConfig="@xml/net_rules"',
+      ),
+    );
+    await fs.writeFile(renamed, NETWORK_CONFIG);
+
+    await run("android");
+    await fs.writeFile(renamed, dev.networkDuringRun ?? "");
+
+    expect(await alepha.inject(NativeGuard).inspect(ROOT, ["android"])).toEqual(
+      [expect.stringContaining("net_rules.xml permits cleartext")],
+    );
   });
 
   it("refuses several plausible LAN addresses with the list, and none at all", async ({

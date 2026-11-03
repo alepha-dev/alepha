@@ -146,7 +146,7 @@ describe("ProjectActivityPage", () => {
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }) as never,
+      projectFixture({ title: "Alepha", slug: "alepha" }),
     );
 
     return render(

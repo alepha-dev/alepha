@@ -550,7 +550,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         input as any,
         // `user` is how `run()` carries an identity (`alepha/security`);
         // without it the action runs anonymous, never as "system".
-        { user } as any,
+        { user },
       );
       return {
         role: "tool",

@@ -130,6 +130,9 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	if p := a.RestorePending; p != nil {
 		line.Problems = append(line.Problems, restorePendingProblem(a.Key(), *p))
 	}
+	if a.BackupHold != "" {
+		line.Problems = append(line.Problems, "scheduled backups are held after a failed restore: "+a.BackupHold)
+	}
 	return line
 }
 

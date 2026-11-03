@@ -121,7 +121,7 @@ describe("ProjectEpicQuests - columns", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {
@@ -314,7 +314,7 @@ describe("ProjectEpicQuests - columns", () => {
       ...questOf(12, "Ship the thing", "low"),
       completedAt: "2026-09-01T10:00:00.000Z",
     };
-    await mount([completed as never], "in_progress");
+    await mount([completed], "in_progress");
 
     await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
     expect(screen.queryAllByRole("button", { name: /actions|menu/i })).toEqual(

@@ -24,7 +24,7 @@ export interface AdminProductDetailDetailsTabProps {
   onSaveAttributes: (next: Record<string, string>) => void;
   /**
    * The kind's config form, or undefined when the registered handler declares
-   * no `configSchema` — in which case no config card is rendered at all.
+   * no `configSchema` - in which case no config card is rendered at all.
    */
   configForm?: FormModel<any>;
   savingConfig: boolean;
@@ -37,7 +37,7 @@ export interface AdminProductDetailDetailsTabProps {
  * storefront renders (material, weight, care), untouched by the system;
  * **config** is validated by the handler that owns the product's `kind` and is
  * what `fulfil` consumes. Putting a spec sheet in `config` gets it silently
- * stripped on write — which is exactly what happened to this shop once, and why
+ * stripped on write - which is exactly what happened to this shop once, and why
  * the two columns exist separately. Hence one card each, and the wording below.
  *
  * Attribute values are edited as text. The column is JSON and will hold

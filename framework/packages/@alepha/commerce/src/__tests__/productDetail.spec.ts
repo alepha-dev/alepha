@@ -17,7 +17,7 @@ import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 
 /**
- * A kind that takes no configuration at all — neither core kind is one.
+ * A kind that takes no configuration at all - neither core kind is one.
  */
 class PlainKindHandler extends ProductKindHandler {
   public readonly kind = "plain";
@@ -82,7 +82,7 @@ describe("product tax rate", () => {
   /**
    * The gap this whole page exists to close: `products.vatRateBps` and
    * `CatalogService` both carried the field, and only the HTTP body schema did
-   * not — so it was silently stripped on every write and a mixed-rate catalogue
+   * not - so it was silently stripped on every write and a mixed-rate catalogue
    * was unreachable through the API.
    */
   it("round-trips vatRateBps through create", async ({ expect }) => {
@@ -197,7 +197,7 @@ describe("product deletion", () => {
 
   /**
    * The guard that makes delete safe to ship at all. Order lines snapshot what
-   * they need, so nothing would break — but the catalogue row is what answers
+   * they need, so nothing would break - but the catalogue row is what answers
    * "what was this line?" on an old invoice, and there is no undo.
    */
   it("refuses to delete a product that has sold", async ({ expect }) => {
@@ -336,7 +336,7 @@ describe("product sales", () => {
     const line = page.content[0]!;
     expect(line.orderId).toBe(orderId);
     expect(line.quantity).toBe(1);
-    // Snapshotted at purchase — this is what it sold for, not today's price.
+    // Snapshotted at purchase - this is what it sold for, not today's price.
     expect(line.unitPrice).toBe(8900);
     expect(line.orderStatus).toBe("paid");
     expect(line.orderCreatedAt).toBeTruthy();
@@ -362,7 +362,7 @@ describe("product kind config schemas", () => {
   /**
    * The detail page's config form is built by round-tripping this through
    * `jsonSchemaToZod`, so a kind that declares a schema must ship one and a
-   * kind that declares none must be absent — that absence is what tells the UI
+   * kind that declares none must be absent - that absence is what tells the UI
    * not to offer the form at all.
    */
   it("ships a JSON Schema for kinds that declare one", async ({ expect }) => {
@@ -379,7 +379,7 @@ describe("product kind config schemas", () => {
 
   /**
    * Both core kinds declare a schema, so the absence contract needs a kind that
-   * does not — which is also the case an application hits first, since a kind
+   * does not - which is also the case an application hits first, since a kind
    * with no configuration is the simplest one to write.
    */
   it("omits kinds that take no configuration", async ({ expect }) => {

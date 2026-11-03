@@ -67,9 +67,7 @@ function useComputed<R>(target: Computed<R>): R {
   );
 
   const getSnapshot = useCallback((): R => {
-    const inputs = target
-      .keys()
-      .map((depKey) => alepha.store.get(depKey as any));
+    const inputs = target.keys().map((depKey) => alepha.store.get(depKey));
 
     const prev = cache.current;
     if (

@@ -68,7 +68,7 @@ export class ServerEtagProvider {
     this.log.trace("Cache hit", { key });
 
     // Mark as cache hit in request metadata
-    request.metadata ??= {} as any;
+    request.metadata ??= {};
     request.metadata.etagHit = true;
 
     // For HTTP routes, set reply headers

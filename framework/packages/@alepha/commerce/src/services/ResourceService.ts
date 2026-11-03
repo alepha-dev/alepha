@@ -426,8 +426,11 @@ export class ResourceService {
   protected async releaseAll(
     found: ResourceReservationEntity[],
   ): Promise<void> {
-    for (const claim of found) {
-      await this.claims.updateById(claim.id, { status: "released" });
+    if (found.length > 0) {
+      await this.claims.updateMany(
+        { id: { inArray: found.map((claim) => claim.id) } },
+        { status: "released" },
+      );
     }
   }
 

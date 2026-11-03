@@ -42,7 +42,7 @@ describe("OrganizationTransferOwnershipDialog", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   afterEach(async () => {

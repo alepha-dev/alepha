@@ -299,7 +299,7 @@ describe("ReactBrowserProvider", () => {
           { name: "tab", props: { tab: "history" } },
         ],
         url: new URL("http://localhost/folio/1"),
-      } as any);
+      });
       return provider;
     };
 

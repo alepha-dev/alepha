@@ -78,7 +78,7 @@ const DashboardTileChart = (props: DashboardTileChartProps) => {
             data-testid="tile-chart-marker"
             className="border-muted-foreground/60 absolute top-0 bottom-0 border-l border-dashed"
             style={{ left: `${marker.left}%` }}
-            title={`${tr(`dashboard.marker.${marker.kind}` as never)} ${l(marker.at, { date: "lll" })}`}
+            title={`${tr(`dashboard.marker.${marker.kind}`)} ${l(marker.at, { date: "lll" })}`}
           />
         ))}
       </div>

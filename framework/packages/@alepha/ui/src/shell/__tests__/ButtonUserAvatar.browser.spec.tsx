@@ -42,7 +42,7 @@ describe("ButtonUser's avatar", () => {
         id: "u-1",
         email: "ada@example.com",
         picture: options.picture,
-      } as never);
+      });
     }
     await alepha.start();
 

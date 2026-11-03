@@ -9,12 +9,15 @@ import { feedbackResourceSchema } from "./feedbackResourceSchema.ts";
  * icon) so the cross-project list can show which project each feedback
  * item belongs to without a per-row lookup.
  */
-export const myFeedbackResourceSchema = feedbackResourceSchema.extend({
-  project: z.object({
-    id: z.integer(),
-    title: z.string(),
-    icon: z.union([z.uuid(), z.null()]).optional(),
-  }),
-});
+export const myFeedbackResourceSchema = feedbackResourceSchema
+  // A reporter need not be a member: who triaged is the project's business.
+  .omit({ triagedBy: true })
+  .extend({
+    project: z.object({
+      id: z.integer(),
+      title: z.string(),
+      icon: z.union([z.uuid(), z.null()]).optional(),
+    }),
+  });
 
 export type MyFeedbackResource = Infer<typeof myFeedbackResourceSchema>;

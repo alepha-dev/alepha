@@ -30,7 +30,7 @@ const setup = async (
   const realmProvider = alepha.inject(RealmProvider);
   if (realmSettings) {
     realmProvider.register(realmName, {
-      settings: realmSettings as never,
+      settings: realmSettings,
     });
   }
 
@@ -60,7 +60,7 @@ describe("RegistrationService — username: 'email' mode", () => {
         password: "SecurePassword123!",
         // The client sneaks a custom username into the request — server
         // must drop it on the floor and use the slugger.
-        username: "i-am-the-admin" as never,
+        username: "i-am-the-admin",
       },
       "email-mode-1",
     );

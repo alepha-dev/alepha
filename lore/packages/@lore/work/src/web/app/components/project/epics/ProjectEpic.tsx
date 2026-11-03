@@ -292,7 +292,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     ...linked.map((it) => ({
       value: it.tab.key,
       icon: it.tab.icon,
-      label: tr(it.tab.labelKey as never),
+      label: tr(it.tab.labelKey),
       count: it.count,
     })),
     {

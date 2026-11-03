@@ -135,8 +135,8 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
         root: "/deploy",
         env: "production",
         prebuilt: true,
-        entry: { root: "/deploy", server: "" } as never,
-        resources: resources as never,
+        entry: { root: "/deploy", server: "" },
+        resources: resources,
         run: Object.assign(
           async (
             task:

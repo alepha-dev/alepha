@@ -853,10 +853,11 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
             stdin: new Uint8Array(await this.fs.readFile(artifact)),
           });
         } catch (error) {
-          // Bay consumes the file itself, on success AND on every refusal, so
-          // the only way one survives is a deploy that never reached Bay: ssh
-          // refused, `bay` missing, the control socket down. Swept here rather
-          // than left, because that file is plaintext credentials.
+          // Bay consumes a file it can read as secrets, on success and on a
+          // refused key. One survives a deploy that never reached Bay (ssh
+          // refused, `bay` missing, the control socket down) or a file Bay
+          // refused unread, which it leaves where it is. Swept here rather than
+          // left, because that file is plaintext credentials.
           //
           // Best-effort and silent: whatever went wrong above is the error the
           // caller needs, and a failed cleanup must not replace it with a
@@ -867,6 +868,10 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
           throw this.explain(host, error);
         }
         url = this.deployedUrl(answer);
+        const warning = this.restoreWarning(answer);
+        if (warning) {
+          this.log.warn(warning);
+        }
       },
     });
     return url;
@@ -1025,6 +1030,21 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     try {
       const parsed = JSON.parse(answer);
       return typeof parsed?.url === "string" ? parsed.url : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * What Bay warned about the database, out of what `bay deploy` printed.
+   *
+   * A failed auto-restore does not fail the deploy: the app starts on an empty
+   * database, and the URL alone would report that as a success.
+   */
+  protected restoreWarning(answer: string): string | undefined {
+    try {
+      const warning = JSON.parse(answer)?.restore?.warning;
+      return typeof warning === "string" ? warning : undefined;
     } catch {
       return undefined;
     }

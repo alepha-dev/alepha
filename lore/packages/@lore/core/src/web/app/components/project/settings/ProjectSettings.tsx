@@ -38,8 +38,8 @@ const ProjectSettings = () => {
   const tabs: PlateTab[] = found
     ? visibleSettingsTabs(found.section, project).map((tab) => ({
         key: tab.route,
-        label: tr(tab.labelKey as never),
-        href: router.path(tab.route as never, {
+        label: tr(tab.labelKey),
+        href: router.path(tab.route, {
           params: { projectSlug: project.slug },
         }),
       }))
@@ -54,7 +54,7 @@ const ProjectSettings = () => {
         found ? (
           <div className="flex flex-col gap-1 px-4 pt-4 pb-3 md:px-6">
             <h1 className="text-xl font-semibold">
-              {tr(found.section.labelKey as never)}
+              {tr(found.section.labelKey)}
             </h1>
             <p className="text-muted-foreground text-sm">
               {tr(found.section.descriptionKey)}

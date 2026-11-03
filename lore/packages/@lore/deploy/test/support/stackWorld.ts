@@ -118,12 +118,12 @@ export const lentBayEstate = async (
     slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
     type: "bay",
     deployAllowed: options.deployAllowed ?? true,
-  } as never);
+  });
   if (options.lend ?? true) {
     await w.rows.grants.create({
       estateId: estate.id,
       projectId: w.project.id,
-    } as never);
+    });
   }
   return estate;
 };

@@ -270,13 +270,13 @@ export class MfaService {
     // start again.
     if (existing) {
       await this.identities(realm).updateById(existing.id, {
-        providerData: data as never,
+        providerData: data,
       });
     } else {
       await this.identities(realm).create({
         userId,
         provider: this.totpProvider,
-        providerData: data as never,
+        providerData: data,
       });
     }
 
@@ -336,7 +336,7 @@ export class MfaService {
           recoveryCodes.map((it) => this.crypto.hash(it)),
         ),
         activatedAt: this.dateTime.now().toISOString(),
-      } as never,
+      },
     });
 
     return { recoveryCodes };
@@ -377,7 +377,7 @@ export class MfaService {
         recoveryCodes: await Promise.all(
           recoveryCodes.map((it) => this.crypto.hash(it)),
         ),
-      } as never,
+      },
     });
 
     return { recoveryCodes };
@@ -572,7 +572,7 @@ export class MfaService {
       }
 
       await this.identities(realm).updateById(identity.id, {
-        providerData: { ...data, lastUsedStep: step } as never,
+        providerData: { ...data, lastUsedStep: step },
       });
       return true;
     }
@@ -603,7 +603,7 @@ export class MfaService {
     }
 
     await this.identities(realm).updateById(identityId, {
-      providerData: { ...data, recoveryCodes: remaining } as never,
+      providerData: { ...data, recoveryCodes: remaining },
     });
 
     this.log.info("A recovery code was used to pass two-factor", {

@@ -69,8 +69,8 @@ const ProjectSettingsCapabilitySection = (
           taking effect at once. */}
       {showMaster && (
         <SettingsRow
-          label={tr(descriptor.labelKey as never)}
-          description={tr(descriptor.descriptionKey as never)}
+          label={tr(descriptor.labelKey)}
+          description={tr(descriptor.descriptionKey)}
         >
           <Switch
             // Disabled rather than hidden: a switch that vanished for a
@@ -83,7 +83,7 @@ const ProjectSettingsCapabilitySection = (
             }}
             // The capability's own name, not "Enable": General renders four
             // of these on one page.
-            aria-label={tr(descriptor.labelKey as never)}
+            aria-label={tr(descriptor.labelKey)}
           />
         </SettingsRow>
       )}
@@ -94,8 +94,8 @@ const ProjectSettingsCapabilitySection = (
           className={showMaster ? "sm:pl-10" : undefined}
           capability={props.capability}
           option={option.key}
-          label={tr(option.labelKey as never)}
-          description={tr(option.descriptionKey as never)}
+          label={tr(option.labelKey)}
+          description={tr(option.descriptionKey)}
           // ⚠️ Disabled while the master is off, not hidden. An option that
           // vanished with its capability would make turning the capability on
           // feel like the page had changed under you, and it is also the only

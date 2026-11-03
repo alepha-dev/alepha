@@ -51,7 +51,7 @@ export const ButtonSettingsLanguageMenu = (
           }}
         >
           {languages.map((code) => {
-            const translated = i18n.tr(`language.${code}` as never);
+            const translated = i18n.tr(`language.${code}`);
             return (
               // A single choice, so picking one closes the menu, as
               // `ButtonLanguage` does.

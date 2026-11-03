@@ -154,7 +154,7 @@ describe("the build manifest schema", () => {
 
     it("refuses a slice naming a runtime it cannot name", ({ expect }) => {
       const manifest = twoSlices();
-      manifest.runtimes[1] = { runtime: "deno", entry: "index.deno.js" } as any;
+      manifest.runtimes[1] = { runtime: "deno", entry: "index.deno.js" };
       expect(buildManifestSchema.safeParse(manifest).success).toBe(false);
     });
 
@@ -239,7 +239,7 @@ describe("the build manifest schema", () => {
       dump: () => {
         throw new AlephaError("not available in this fake");
       },
-    } as any;
+    };
 
     /**
      * What the multi-slice build actually writes (epic #E63). The schema cases

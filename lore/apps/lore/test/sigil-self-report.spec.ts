@@ -135,7 +135,7 @@ const setup = async (
   const project = await probe.projects.create({
     title: "Lore",
     createdBy: owner.id,
-  } as any);
+  });
 
   for (const capability of over.capabilities ?? allOn) {
     await probe.capabilities.create({

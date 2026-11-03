@@ -58,7 +58,7 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
         select
         items={props.entries.map((item) => ({
           value: item.key,
-          label: tr(`automation.action.${item.key}` as never, {
+          label: tr(`automation.action.${item.key}`, {
             default: item.key,
           }),
         }))}
@@ -89,7 +89,7 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
         .map(([key, slot]) => (
           <AutomationValueControl
             key={`${entry?.key}:${key}`}
-            label={tr(`automation.setup.${key}` as never, { default: key })}
+            label={tr(`automation.setup.${key}`, { default: key })}
             slot={slot}
             value={(props.action as unknown as Record<string, unknown>)[key]}
             bindings={props.bindings}

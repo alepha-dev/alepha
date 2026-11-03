@@ -100,7 +100,7 @@ const deleteAccount = (
     // No `currentPassword`: an admin-created account has no credentials
     // identity, so the server takes the confirmation phrase alone.
     { body: { confirm: user.email } },
-    { user: user as never },
+    { user: user },
   );
 
 const accountExists = async (ctx: TestContext, id: string) =>
@@ -185,9 +185,12 @@ describe("UserDeletionHook", () => {
     */
     const user = await createTestUser(ctx);
     for (const title of ["One", "Two"]) {
-      await ctx.projectController.createProject.fetch({ body: { title } }, {
-        user,
-      } as never);
+      await ctx.projectController.createProject.fetch(
+        { body: { title } },
+        {
+          user,
+        },
+      );
     }
 
     await expectConflict(
@@ -217,7 +220,7 @@ describe("UserDeletionHook", () => {
           area: "general",
           priority: "medium",
         },
-      } as never,
+      },
       { user },
     );
 

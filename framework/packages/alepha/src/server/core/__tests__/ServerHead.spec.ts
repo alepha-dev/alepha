@@ -184,7 +184,7 @@ describe("HEAD on a GET route", () => {
             cancel() {
               cancelled = true;
             },
-          }) as never,
+          }),
       });
     }
 

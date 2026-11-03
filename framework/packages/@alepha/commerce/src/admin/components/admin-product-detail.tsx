@@ -15,9 +15,11 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
+  Coins,
   Eye,
   EyeOff,
   Images,
+  Layers,
   Package,
   Receipt,
   Tags,
@@ -25,13 +27,16 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { AdminCategoryController } from "../controllers/AdminCategoryController.ts";
 import type { AdminProductController } from "../controllers/AdminProductController.ts";
 import { AdminProductDetailAside } from "./admin-product-detail-aside.tsx";
 import { AdminProductDetailDetailsTab } from "./admin-product-detail-details-tab.tsx";
 import { AdminProductDetailMediaTab } from "./admin-product-detail-media-tab.tsx";
 import { AdminProductDetailOrdersTab } from "./admin-product-detail-orders-tab.tsx";
 import { AdminProductDetailOverviewTab } from "./admin-product-detail-overview-tab.tsx";
+import { AdminProductDetailPricesTab } from "./admin-product-detail-prices-tab.tsx";
 import { AdminProductDetailStockTab } from "./admin-product-detail-stock-tab.tsx";
+import { AdminProductDetailVariantsTab } from "./admin-product-detail-variants-tab.tsx";
 import { imagesFormSchema } from "./images-form-schema.ts";
 import { productFormSchema } from "./product-form-schema.ts";
 import { stockAdjustSchema } from "./stock-adjust-schema.ts";
@@ -44,12 +49,19 @@ export interface AdminProductDetailProps {
   backPath?: string;
 }
 
-type TabKey = "overview" | "media" | "details" | "stock" | "orders";
+type TabKey =
+  | "overview"
+  | "media"
+  | "details"
+  | "variants"
+  | "prices"
+  | "stock"
+  | "orders";
 
 /**
  * Composition root for the product detail page.
  *
- * Owns the data — queries, forms, mutations — and hands each tab what it needs.
+ * Owns the data - queries, forms, mutations - and hands each tab what it needs.
  * The tabs render and fetch nothing themselves, which is what keeps a page with
  * five of them readable.
  *
@@ -57,14 +69,14 @@ type TabKey = "overview" | "media" | "details" | "stock" | "orders";
  *
  * The drawer this replaces reached six of the product entity's fields.
  * `currency`, `vatRateBps`, `images`, `attributes` and `config` had no UI at
- * all — and `vatRateBps` was not even accepted by the API, so a mixed-rate
+ * all - and `vatRateBps` was not even accepted by the API, so a mixed-rate
  * catalogue was impossible however anyone tried. That is more than a drawer
  * holds.
  *
  * ### Several forms, not one
  *
  * Overview, Media, Stock and the kind's config each own a form. They submit to
- * different endpoints and have different lifetimes — `ControlUpload` writes as
+ * different endpoints and have different lifetimes - `ControlUpload` writes as
  * uploads land, so sharing the editor's form would leave it dirty and let its
  * Reset discard an upload that already happened.
  */
@@ -112,7 +124,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       key: ["commerce", "product-kinds"],
       staleTime: [10, "minutes"],
       handler: () => client.commerceAdminProductKinds({}),
-      // Kind metadata only shapes the pickers — a failure must not block.
+      // Kind metadata only shapes the pickers - a failure must not block.
       onError: () => {},
     },
     [client],
@@ -125,13 +137,32 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   /*
    * `kinds.join()` rather than `kinds` itself: `kindsQuery.data?.kinds ?? []`
    * yields a fresh array on every render until the query resolves, so the array
-   * as a dependency would rebuild the schema — and, through the form's `deps`
-   * below, the form — on every single render.
+   * as a dependency would rebuild the schema - and, through the form's `deps`
+   * below, the form - on every single render.
    */
+  const categoryClient = useClient<AdminCategoryController>();
+  const categoriesQuery = useQuery(
+    {
+      key: ["commerce", "categories"],
+      handler: () => categoryClient.commerceAdminCategoryList({}),
+      // The picker only: a failure must not block the page.
+      onError: () => {},
+    },
+    [categoryClient],
+  );
+  const categories = categoriesQuery.data ?? [];
+  const categoriesKey = categories.map((it) => it.id).join(",");
+
   const kindsKey = kinds.join(",");
   const schema = useMemo(
-    () => productFormSchema(tr, kinds, product?.currency),
-    [tr, kindsKey, product?.currency],
+    () =>
+      productFormSchema(
+        tr,
+        kinds,
+        product?.currency,
+        categories.map((it) => ({ value: it.id, label: it.name })),
+      ),
+    [tr, kindsKey, product?.currency, categoriesKey],
   );
 
   const form = useForm(
@@ -141,15 +172,23 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         name: product?.name ?? "",
         slug: product?.slug ?? "",
         kind: product?.kind ?? kinds[0] ?? "good",
+        categoryId: product?.categoryId,
         price: product?.price ?? 0,
         currency: product?.currency ?? "EUR",
+        compareAtPrice: product?.compareAtPrice,
         vatRateBps: product?.vatRateBps,
         description: product?.description ?? "",
+        metaTitle: product?.metaTitle,
+        metaDescription: product?.metaDescription,
+        weightGrams: product?.weightGrams,
+        lengthMm: product?.lengthMm,
+        widthMm: product?.widthMm,
+        heightMm: product?.heightMm,
         published: product?.published ?? false,
       },
       handler: async (values) => {
         /*
-         * Emptiness is checked here rather than in the schema — see the note in
+         * Emptiness is checked here rather than in the schema - see the note in
          * `product-form-schema.ts`. A schema-level `minLength` crashes the page
          * on its empty first render, long before anyone types anything.
          */
@@ -172,7 +211,18 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
 
         await client.commerceAdminProductUpdate({
           params: { id: productId },
-          body: values,
+          body: {
+            ...values,
+            // An emptied field arrives absent, which an update reads as "leave
+            // it": the sale would never end.
+            compareAtPrice: values.compareAtPrice ?? null,
+            metaTitle: values.metaTitle ?? null,
+            metaDescription: values.metaDescription ?? null,
+            weightGrams: values.weightGrams ?? null,
+            lengthMm: values.lengthMm ?? null,
+            widthMm: values.widthMm ?? null,
+            heightMm: values.heightMm ?? null,
+          },
         });
         toast.success(
           tr("commerce.admin.saved", { default: "Product saved." }),
@@ -183,7 +233,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
     /*
      * Rebuild the model when the schema changes.
      *
-     * `useForm` memoises on these deps and captures the schema once — with the
+     * `useForm` memoises on these deps and captures the schema once - with the
      * default `[]` the form is built on the first render, when the kind list has
      * not arrived, and the Type picker is left with no options for the life of
      * the page. The values survive: the effect below re-anchors them from the
@@ -203,8 +253,15 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       kind: product.kind,
       price: product.price,
       currency: product.currency,
+      compareAtPrice: product.compareAtPrice,
       vatRateBps: product.vatRateBps,
       description: product.description ?? "",
+      metaTitle: product.metaTitle,
+      metaDescription: product.metaDescription,
+      weightGrams: product.weightGrams,
+      lengthMm: product.lengthMm,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
       published: product.published,
     });
   }, [productQuery.data]);
@@ -234,7 +291,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   /*
    * Subscribed rather than read off the field, so the preview grid re-renders
    * when `ControlUpload` writes an id after an upload finishes and when the
-   * arrows reorder — neither of which is a React state change of this
+   * arrows reorder - neither of which is a React state change of this
    * component's own.
    */
   const [imagesValue, setImagesValue] = useFieldValue(imagesForm.input.images);
@@ -244,8 +301,8 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   // -- Kind config form ------------------------------------------------------
 
   /*
-   * The handler's `configSchema` arrives as JSON Schema — a zod schema cannot
-   * be serialised — and is rebuilt here with `jsonSchemaToZod`, the same
+   * The handler's `configSchema` arrives as JSON Schema - a zod schema cannot
+   * be serialised - and is rebuilt here with `jsonSchemaToZod`, the same
    * round-trip `api/parameters` and `api/analytics` use for exactly this.
    *
    * Falls back to an empty object so the hook below is called unconditionally;
@@ -317,24 +374,71 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
 
   // -- Stock -----------------------------------------------------------------
 
-  const adjustSchema = useMemo(() => stockAdjustSchema(tr), [tr]);
-
-  const adjustForm = useForm({
-    schema: adjustSchema,
-    initialValues: { quantity: 1, reason: "intake" as const },
-    handler: async (values) => {
-      await client.commerceAdminProductAdjustStock({
-        params: { id: productId },
-        body: values,
-      });
-      toast.success(
-        tr("commerce.admin.stock.adjusted", { default: "Stock updated." }),
-      );
-      // Both the figures (aside + cards) and the ledger below have changed.
-      await productQuery.refetch();
-      setMovementsSignal((n) => n + 1);
+  const variantsQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        client.commerceAdminProductVariants(
+          { params: { id: productId } },
+          { request: { signal } },
+        ),
     },
-  });
+    [client, productId],
+  );
+  const variants = variantsQuery.data ?? [];
+
+  const pricesQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        client.commerceAdminProductPrices(
+          { params: { id: productId } },
+          { request: { signal } },
+        ),
+      // The tab stays hidden: nothing here blocks the product.
+      onError: () => {},
+    },
+    [client, productId],
+  );
+  const currencies = pricesQuery.data?.currencies ?? [];
+
+  /*
+   * By the ids, for the reason `kindsKey` above is a string: `variants` is a
+   * fresh array until the query resolves.
+   */
+  const variantsKey = variants.map((it) => it.id).join(",");
+  const adjustSchema = useMemo(
+    () =>
+      stockAdjustSchema(
+        tr,
+        variants.map((variant) => ({
+          value: variant.id,
+          label: Object.values(variant.options as Record<string, string>).join(
+            " / ",
+          ),
+        })),
+      ),
+    [tr, variantsKey],
+  );
+
+  const adjustForm = useForm(
+    {
+      schema: adjustSchema,
+      initialValues: { quantity: 1, reason: "intake" as const },
+      handler: async (values) => {
+        await client.commerceAdminProductAdjustStock({
+          params: { id: productId },
+          body: values,
+        });
+        toast.success(
+          tr("commerce.admin.stock.adjusted", { default: "Stock updated." }),
+        );
+        // Both the figures (aside + cards) and the ledger below have changed.
+        await productQuery.refetch();
+        await variantsQuery.refetch();
+        setMovementsSignal((n) => n + 1);
+      },
+    },
+    [adjustSchema],
+  );
 
   const movementsFetcher = useCallback(
     (params: { page: number; size: number }) =>
@@ -397,7 +501,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           /*
            * The server refuses (409) once the product appears on an order line,
            * and its message says why and what to do instead. Surfacing it
-           * verbatim beats a generic failure toast — "unpublish it" is the
+           * verbatim beats a generic failure toast - "unpublish it" is the
            * actionable half.
            */
           toast.error(
@@ -438,6 +542,23 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       icon: Tags,
       label: tr("commerce.admin.detail.tabDetails", { default: "Details" }),
     },
+    {
+      value: "variants",
+      icon: Layers,
+      label: tr("commerce.admin.detail.tabVariants", { default: "Variants" }),
+    },
+    // Only where there is a choice: a shop in one currency has no list to edit.
+    ...(currencies.length > 1
+      ? [
+          {
+            value: "prices",
+            icon: Coins,
+            label: tr("commerce.admin.detail.tabPrices", {
+              default: "Prices",
+            }),
+          },
+        ]
+      : []),
     {
       value: "stock",
       icon: Package,
@@ -526,6 +647,27 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           onSaveAttributes={(next) => void saveAttributes.run(next)}
           configForm={hasConfig ? configForm : undefined}
           savingConfig={configSaving}
+        />
+      )}
+
+      {tab === "variants" && product && (
+        <AdminProductDetailVariantsTab
+          product={product}
+          variants={variants}
+          onChanged={() => {
+            void variantsQuery.refetch();
+            void productQuery.refetch();
+          }}
+        />
+      )}
+
+      {tab === "prices" && product && (
+        <AdminProductDetailPricesTab
+          product={product}
+          variants={variants}
+          currencies={currencies}
+          prices={pricesQuery.data?.prices ?? []}
+          onChanged={() => void pricesQuery.refetch()}
         />
       )}
 

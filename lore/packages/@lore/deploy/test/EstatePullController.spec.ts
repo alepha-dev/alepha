@@ -194,7 +194,7 @@ const movedToBay = async (
     projectId,
     app: "my-app",
     env: "production",
-  } as never);
+  });
   const secrets = ctx.alepha.inject(AppSecretService);
   // What `DeployService.openSecrets` leaves behind on a deploy.
   await secrets.ensureGenerated(instance.id);
@@ -434,7 +434,7 @@ describe("EstatePullController, the secret set", () => {
       app: "my-app",
       env: "production",
       estateId: machine.estate.id,
-    } as never);
+    });
     await ctx.alepha.inject(AppSecretService).set({
       instanceId: instance.id,
       key: "STRIPE_SECRET_KEY",
@@ -524,7 +524,7 @@ describe("EstatePullController, the secret set", () => {
         app: "my-app",
         env: "production",
         estateId: machine.estate.id,
-      } as never);
+      });
     }
 
     const command = await sentDeploy(ctx, machine, artifact);

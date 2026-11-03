@@ -81,8 +81,8 @@ class SocketInbox {
     this.socket = socket;
     socket.addEventListener("message", (event: any) => {
       const frame = JSON.parse(event.data);
-      if (this.pending?.type === frame.type) {
-        const pending = this.pending;
+      const pending = this.pending;
+      if (pending && pending.type === frame.type) {
         this.pending = undefined;
         pending.resolve(frame);
       } else this.frames.push(frame);

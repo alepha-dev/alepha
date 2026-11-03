@@ -159,7 +159,7 @@ export const testTimestamps = async (alepha: Alepha) => {
   const recentArticles = await app.articles.findMany({
     where: {
       createdAt: {
-        gte: article1.createdAt as any,
+        gte: article1.createdAt,
       },
     },
   });
@@ -242,8 +242,8 @@ export const testTimestampIndexes = async (alepha: Alepha) => {
   const byCreated = await app.articles.findMany({
     where: {
       createdAt: {
-        gte: startTime.toISOString() as any,
-        lte: endTime.toISOString() as any,
+        gte: startTime.toISOString(),
+        lte: endTime.toISOString(),
       },
     },
   });
@@ -255,7 +255,7 @@ export const testTimestampIndexes = async (alepha: Alepha) => {
   const byStatusAndCreated = await app.articles.findMany({
     where: {
       status: { eq: "draft" },
-      createdAt: { gte: startTime.toISOString() as any },
+      createdAt: { gte: startTime.toISOString() },
     },
   });
 

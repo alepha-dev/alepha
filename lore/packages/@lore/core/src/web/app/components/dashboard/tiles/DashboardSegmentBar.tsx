@@ -33,7 +33,7 @@ const DashboardSegmentBar = (props: DashboardSegmentBarProps) => {
   const palette = ["bg-chart-1", "bg-chart-2", "bg-chart-3", "bg-chart-4"];
 
   const name = (label: string) =>
-    NAMED.has(label) ? tr(`dashboard.segment.${label}` as never) : label;
+    NAMED.has(label) ? tr(`dashboard.segment.${label}`) : label;
   const fill = (index: number) => {
     const state = props.segments[index]!.state;
     return state

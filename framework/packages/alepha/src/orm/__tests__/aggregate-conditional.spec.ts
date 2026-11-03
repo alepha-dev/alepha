@@ -172,7 +172,7 @@ const testKeyRules = async (alepha: Alepha) => {
   // A misspelt column with no `column` beside it.
   await expect(
     app.repository.aggregate({
-      select: { amont: { count: true } } as never,
+      select: { amont: { count: true } },
     }),
   ).rejects.toThrow(AlephaError);
 

@@ -19,7 +19,7 @@ const server = async (
   options?: Partial<{ enabled: boolean; path: string; expose: string[] }>,
 ) => {
   const alepha = Alepha.create(
-    options ? ({ "alepha.server.version.options": options } as never) : {},
+    options ? { "alepha.server.version.options": options } : {},
   ).with(AlephaServer);
   await alepha.start();
   return alepha.inject(ServerProvider);
@@ -101,7 +101,7 @@ describe("ServerVersionProvider", () => {
       // effect without the container having to be rebuilt.
       const alepha = Alepha.create().with(AlephaServer);
       await alepha.start();
-      alepha.set(versionOptions, { expose: ["version"] } as never);
+      alepha.set(versionOptions, { expose: ["version"] });
 
       const srv = alepha.inject(ServerProvider);
       const body = await (await fetch(`${srv.hostname}/version`)).json();

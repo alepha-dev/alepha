@@ -173,9 +173,7 @@ alepha deploy
 
 `npm create alepha my-app -- --yes --infra cf` forwards the same typed choice without a provider question. Other providers and the old `--platform` and `--deploy` flags are rejected. `create-alepha` does not forward a force flag.
 
-In place, `alepha init --infra cf` makes a bounded edit to a direct `export default defineConfig({ ... })` configuration with literal options and a literal `plugins` array. It preserves import aliases, comments, unrelated plugins, services and build options. A single canonical production Cloudflare registration is already satisfied, including its domain/options and other environments, so rerunning preserves it byte for byte.
-
-The editor refuses legacy imports, conflicting production adapters, multiple or indirect infra registrations, and dynamic/spread config shapes before scaffolding writes or installation. Resolve the configuration explicitly, then rerun. It never evaluates the config to decide an edit. Naming an existing nonempty target still requires `--force`; the additive flag does not bypass that guard. Force is the broad scaffold replacement mode, including `alepha.config.ts`, while an existing `.env` is preserved.
+`--infra` only writes a fresh `alepha.config.ts`. When the file already exists, `alepha init --infra cf` refuses before scaffolding anything or installing, and prints the canonical configuration to add by hand: an in-place edit would need a parser for your imports and plugin list, and the TypeScript compiler as a dependency, for a change made once. Naming an existing nonempty target still requires `--force`, and so does replacing the config: force is the broad scaffold replacement mode, `alepha.config.ts` included, while an existing `.env` is preserved.
 
 See [Infra](/docs/cli-plugins-infra) for auth, full versus granular deployment, and arbitrary environment names.
 
@@ -183,13 +181,13 @@ See [Infra](/docs/cli-plugins-infra) for auth, full versus granular deployment, 
 
 When you name a target path, the directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to scaffold over existing files.
 
-A bare `alepha init` fills missing files without replacing them. The explicit `--infra` flag can also edit a supported existing config as described above; conflicting or dynamic config is refused.
+A bare `alepha init` fills missing files without replacing them. With `--infra`, an existing `alepha.config.ts` is refused as described above.
 
 ## Package Manager Detection
 
 If you don't specify `--pm`, `init` figures it out automatically, strongest evidence first:
 
-1. A lockfile in the target directory - `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` or `package-lock.json`
+1. A lockfile in the target directory - `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` (or the older `bun.lockb`) or `package-lock.json`
 2. Inside a workspace → inherits the workspace's package manager
 3. How you invoked the CLI → `bunx alepha init` gives you Bun, `pnpm dlx` gives you pnpm, `npx` gives you npm
 4. Running under Bun → uses Bun
@@ -239,6 +237,8 @@ Everything else about the Vite setup is handled internally by the Alepha CLI - t
 The two halves of what `alepha lint` runs, written in Rust and fast enough that linting a large monorepo is under a second.
 
 `.oxlintrc.json` enables oxlint's `correctness` category as an **error** - code that is outright wrong, nothing about style - across the TypeScript, React, import, promise, unicorn and Vitest plugins. A handful of rules are turned off with the reason written next to each: the ones whose premise (React Compiler semantics, Jest's `expect` arity, a hook dependency the DI container guarantees is stable) does not hold in an Alepha app.
+
+It also turns on `typeAware`, so rules that need types (`no-floating-promises`, `unbound-method`) run through `tsgolint`, which ships embedded in `alepha` like oxlint itself. `unbound-method` is off in spec files, where reading a method without calling it is usually the point.
 
 `.oxfmtrc.json` is the formatter: two spaces at 80 columns, double quotes, semicolons, trailing commas, and `sortImports` for import organization. These are spelled out rather than left to oxfmt's defaults, because the defaults are Prettier's - and one of them (tabs) disagrees with the `.editorconfig` written next to it.
 

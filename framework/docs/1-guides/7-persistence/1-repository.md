@@ -1,0 +1,839 @@
+# Repository
+
+Alepha ORM is built on top of [Drizzle ORM](https://orm.drizzle.team/) and Drizzle Kit.
+
+`$entity` defines a database table. `$repository` creates a type-safe data access layer for that table.
+
+PostgreSQL and SQLite (including Cloudflare D1) are both supported. SQLite is the default driver of `alepha/orm`; PostgreSQL drivers live in `alepha/orm/postgres` and must be registered explicitly with `AlephaOrmPostgres` (see [Database URL Configuration](/docs/guides-persistence-migrations#database-url-configuration)).
+
+The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
+
+```typescript check
+import { z } from "alepha";
+import { $entity, $repository, db } from "alepha/orm";
+```
+
+## Defining an Entity
+
+An entity maps directly to a database table. The schema uses Alepha's Zod schema layer (`z`) combined with `db` helpers for database-specific column types.
+
+```typescript check
+import { z } from "alepha";
+import { $entity, db } from "alepha/orm";
+
+const product = $entity({
+  name: "products",
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    sku: z.text(),
+    name: z.text(),
+    price: z.number(),
+    createdAt: db.createdAt(),
+    updatedAt: db.updatedAt(),
+  }),
+  indexes: [{ column: "name", unique: true }],
+});
+```
+
+The `name` field sets the database table name. The `schema` field defines columns using Zod schemas. The `indexes` field configures database indexes for query optimization.
+
+### Index Options
+
+Indexes accept several forms:
+
+```typescript
+indexes: [
+  "name",                                    // simple index on one column
+  { column: "email", unique: true },         // unique index on one column
+  { columns: ["tenantId", "name"], unique: true }, // composite unique index
+  { column: "status", name: "idx_status" },  // index with custom name
+  { column: "email", unique: true, where: { deletedAt: { isNull: true } } }, // partial index
+  {
+    // expression index; `name` is required here
+    expressions: (self, ctx) => [self.realm, ctx.caseInsensitive(self.username)],
+    unique: true,
+    name: "users_realm_username_ci_idx",
+  },
+],
+```
+
+`where` makes any form a partial index. Write it as a where-object: it is compiled against the entity's own columns, so a renamed column cannot leave the predicate stale, and its values are inlined (`{ status: { eq: "draft" } }` lands as `'draft'`), since an index predicate binds no parameters. Column operators and `and` / `or` / `not` are allowed; a subquery (`exists`, an `inArray` subquery), a join or a raw fragment inside the object is refused with the index named. No soft-delete filter is added: the predicate is exactly what you write. A raw `sql` fragment is still accepted as the whole `where`.
+
+Moving an existing hand-typed predicate (`` sql`deleted_at IS NULL` ``) to the object changes its stored text, so the next generated migration recreates that index once.
+
+`expressions` receives the table's columns and a context: prefer `ctx.caseInsensitive(col)` over a hand-written `LOWER()`, since it emits `LOWER(col)` on PostgreSQL and `col COLLATE NOCASE` on SQLite, the only form drizzle-kit can introspect there in a multi-column unique index.
+
+### Constraints
+
+Entities support unique constraints and check constraints at the table level:
+
+```typescript
+import { $entity, db, sql } from "alepha/orm";
+
+const user = $entity({
+  name: "users",
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    tenantId: z.uuid(),
+    username: z.text(),
+    age: z.integer(),
+  }),
+  constraints: [
+    { columns: ["tenantId", "username"], unique: true },
+    { columns: ["age"], check: sql`age >= 0 AND age <= 150` },
+  ],
+});
+```
+
+### Foreign Keys
+
+Explicit foreign key constraints can be declared at the entity level:
+
+```typescript
+foreignKeys: [
+  {
+    columns: ["authorId"],
+    foreignColumns: [() => user.cols.id],
+  },
+],
+```
+
+For single-column foreign keys, prefer `db.ref()` on the column itself (see [Special Columns](/docs/guides-persistence-special-columns)).
+
+## Creating a Repository
+
+Use `$repository` as a class property to get a fully typed repository:
+
+```typescript
+class ProductService {
+  repo = $repository(product);
+}
+```
+
+Relations between tables are NOT handled by `$entity`. Declare them separately with `$relations` and read them with `include` - see [Relations](/docs/guides-persistence-relations). For a one-off SQL join written per query, the `with` option is still there; see [Joins](/docs/guides-persistence-joins).
+
+## Query Methods
+
+### findMany
+
+Find multiple records. Supports `where`, `limit`, `offset`, `orderBy`, `groupBy`, `distinct`, `columns`, and `with` (joins). There is no `sort` or `size` here: those belong to `paginate`.
+
+```typescript
+const items = await this.repo.findMany({
+  where: { price: { gte: 10 } },
+  orderBy: { column: "name", direction: "asc" },
+  limit: 20,
+  offset: 0,
+});
+```
+
+`orderBy` takes a column name (`"name"`, ascending), one `{ column, direction }` clause, or an array of them. `columns` projects the row to the listed columns (the primary key is always read). `distinct` cannot be combined with `with`.
+
+### findOne
+
+Find a single record. Returns `undefined` if not found. Takes `where` and `with` only.
+
+```typescript
+const item = await this.repo.findOne({
+  where: { name: { eq: "Widget" } },
+});
+```
+
+### getOne
+
+Find a single record. Throws `DbEntityNotFoundError` if not found.
+
+```typescript
+const item = await this.repo.getOne({
+  where: { name: { eq: "Widget" } },
+});
+```
+
+### findById / getById
+
+Look up a record by primary key. `findById` returns `undefined` if not found, `getById` throws `DbEntityNotFoundError`.
+
+```typescript
+const item = await this.repo.findById("some-uuid");
+const item = await this.repo.getById("some-uuid"); // throws if missing
+```
+
+### paginate
+
+Returns paginated results with metadata.
+
+```typescript
+const page = await this.repo.paginate(
+  { page: 0, size: 10, sort: "name" },
+  { where: { price: { gt: 0 } } },
+  { count: true },
+);
+
+// page.content     -> T[]
+// page.page.number, size, offset, numberOfElements -> number
+// page.page.isEmpty, isFirst, isLast               -> boolean
+// page.page.totalElements -> number (when count: true)
+// page.page.totalPages    -> number (when count: true)
+```
+
+The first argument is the page query: `page` (0-based integer, default `0`), `size` (integer from 1 to 100, default `10`) and `sort`. A value outside those ranges throws; use `findMany` for a bulk read. The `sort` string is a comma-separated column list; prefix a column with `-` for descending order: `"name"`, `"-createdAt"`, `"role,-name"`. `sort` wins over an `orderBy` in the second argument, which only sets the default order. A `limit` or `offset` in the second argument throws: paging is the page query's job. Without `{ count: true }` no count query runs, and `totalElements` / `totalPages` stay unset; `isLast` is still exact, because the query fetches one row past the page to know whether another follows.
+
+### count
+
+Count matching records.
+
+```typescript
+const total = await this.repo.count({ status: { eq: "active" } });
+```
+
+### query
+
+Execute raw SQL using the `sql` tagged template. Returns decoded entities.
+
+```typescript
+import { sql } from "alepha/orm";
+
+const t = this.repo.table;
+const results = await this.repo.query(
+  sql`SELECT * FROM ${t} WHERE ${t.price} > ${100}`,
+);
+```
+
+`repo.table` is a reference for raw SQL: interpolated, it renders the table name, and each property renders one of its columns. The same column references work as where-filter operands (`{ epicId: { eq: this.epics.table.id } }`) and in a write (``{ count: sql`${t.count} + 1` }``).
+
+A raw statement skips everything the other methods do for a write: it does not stamp `updatedAt`, bump a `db.version()` column, invalidate the query cache or emit repository events. For dialect-neutral date expressions, see [Portable SQL](/docs/guides-persistence-portable-sql).
+
+### aggregate
+
+Grouped aggregations (`sum`, `avg`, `min`, `max`, `count`) without writing raw SQL.
+It cannot be combined with `with` joins.
+
+A select key is normally a column, and `true` selects it as-is (which is what a
+`groupBy` key wants):
+
+```typescript
+await this.repo.aggregate({
+  select: { category: true, amount: { sum: true, avg: true } },
+  groupBy: ["category"],
+});
+// -> [{ category: "books", amount: { sum: 500, avg: 25 } }]
+```
+
+The query also takes `where` (applied before grouping, with the soft-delete filter), `having` (per aggregate, e.g. `{ amount: { sum: { gt: 100 } } }`), `orderBy` (dot notation reaches an aggregate: `"amount.sum"`), `limit` and `offset`.
+
+**Conditional buckets.** An operation can instead take `{ column, where }`,
+which compiles to `COUNT(CASE WHEN <where> THEN <column> END)`. Supplying
+`column` turns the key into an alias, so several differently-conditioned
+aggregates over the same column can sit side by side in one pass:
+
+```typescript
+await this.repo.aggregate({
+  select: {
+    epicId: true,
+    id: { count: true },
+    completed: {
+      count: { column: "id", where: { completedAt: { isNotNull: true } } },
+    },
+    open: {
+      count: {
+        column: "id",
+        where: {
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      },
+    },
+  },
+  where: { epicId: { inArray: epicIds } },
+  groupBy: ["epicId"],
+});
+```
+
+Four things to know about that form:
+
+- The per-aggregate `where` **narrows**, never widens. It is ANDed inside the
+  `CASE`, while the query's own `where` and the soft-delete filter still decide
+  which rows the aggregate sees at all.
+- A key is **either** a column name **or** an alias: a column key may not carry
+  `column`, an alias key must carry it on every operation, and an alias may not
+  be spelled like one of the entity's columns. Anything else is refused with the
+  key named, because a misspelt column and an intended alias are indistinguishable.
+- `COUNT(CASE WHEN c THEN col END)` skips NULLs of `col` as well as rows failing
+  `c`. For "how many rows match", point `column` at a column that is never null,
+  such as the primary key. Pointing it at a nullable one asks a different (also
+  useful) question.
+- A bucket that matches nothing is `0` for `count` / `sum` / `avg`, and `null`
+  for `min` / `max` - the same empty-set answers as an unconditioned aggregate.
+
+**Computed values.** A select key may carry `{ expr }`, an SQL expression to
+group and order by, and an operation may aggregate an expression with `{ expr }`
+in place of `column`. With [`SqlExpressionProvider`](/docs/guides-persistence-portable-sql)
+that covers date buckets and durations on every dialect:
+
+```typescript
+const t = this.quests.table;
+const cycle = this.sqlx.dateDiff(t.completedAt, t.acceptedAt, "hours");
+
+await this.quests.aggregate({
+  select: {
+    day: { expr: this.sqlx.dateDay(t.createdAt) },
+    id: { count: true },
+    cycle: { avg: { expr: cycle }, max: { expr: cycle } },
+  },
+  where: {
+    createdAt: { gte: this.dateTime.now().subtract(7, "day").toISOString() },
+  },
+  groupBy: ["day"],
+  orderBy: "day",
+});
+// -> [{ day: "2026-03-09", id: { count: 2 }, cycle: { avg: 4, max: 6 } }]
+```
+
+- An `expr` key is an alias: it may not be spelled like a column, and `groupBy`
+  / `orderBy` render it as that alias, never as the expression a second time.
+- `expr` and `column` are exclusive within one operation; `where` wraps an
+  `expr` in the same `CASE`, and `having` compares the same expression.
+- The result type comes from the expression's `SQL<T>` (`dateDay` is
+  `SQL<string>`, `dateDiff` `SQL<number>`, `` sql<number>`...` `` your own);
+  an untyped `SQL` is `unknown`. `count` / `sum` / `avg` stay `number`.
+
+## Create Methods
+
+### create
+
+Create a single entity. Returns the full created entity.
+
+```typescript
+const created = await this.repo.create({
+  name: "Widget",
+  price: 9.99,
+});
+```
+
+### createMany
+
+Batch-create entities. Inserts are batched in chunks of 1000 by default, and fewer when a chunk would bind more values than the driver accepts (100 on Cloudflare D1). The returned array is in the same order as the input. The batches are not one atomic unit unless the call runs inside `$transactional`.
+
+```typescript
+const items = await this.repo.createMany(
+  [
+    { name: "A", price: 1 },
+    { name: "B", price: 2 },
+  ],
+  { batchSize: 500 },
+);
+```
+
+### upsert
+
+Insert a new entity or update an existing one if a conflict is detected. Works on both PostgreSQL and SQLite.
+
+```typescript
+// Simple upsert on primary key
+const product = await this.repo.upsert({
+  id: "some-uuid",
+  name: "Widget",
+  price: 9.99,
+});
+
+// Upsert on a unique column
+const product = await this.repo.upsert(
+  { id: "some-uuid", sku: "WIDGET-1", name: "Widget", price: 9.99 },
+  { target: ["sku"] },
+);
+
+// Upsert with custom update fields (only update price on conflict)
+const product = await this.repo.upsert(
+  { id: "some-uuid", sku: "WIDGET-1", name: "Widget", price: 19.99 },
+  { target: ["sku"], set: { price: 19.99 } },
+);
+```
+
+- `target`: column(s) to detect conflicts on. Defaults to the primary key.
+- `set`: fields to update on conflict. Defaults to the insert data minus the target and primary key columns.
+
+If the entity has an `updatedAt` column, it is automatically set on conflict.
+
+An upsert that conflicts with a soft-deleted row throws rather than bringing the
+row back: hard-delete it first. `{ force: true }` lifts that guard and overwrites
+the row, which stays soft-deleted. `upsertMany` throws the same way, once its
+other rows are written: wrap it in `$transactional` to keep them out too.
+
+### upsertMany
+
+Batch upsert. Same options as `upsert` (without `set`, each non-target column
+takes its incoming value), with two batch-only rules:
+
+- **No duplicate conflict targets within one call.** PostgreSQL refuses them
+  ("cannot affect row a second time") while SQLite applies them one after the
+  other, so code tested on SQLite throws on PostgreSQL. Fold duplicates first.
+- **A counter-style `set` must read from `excluded`** (the incoming row) rather
+  than add a constant, or the batch adds one per row whatever each row carried.
+
+`repository.excluded(key)` names the incoming value of a column. It resolves the
+physical column name from the entity, so a renamed column cannot leave a
+hand-typed `excluded.<name>` stale:
+
+```typescript
+const t = this.pageViews.table;
+await this.pageViews.upsertMany(
+  [
+    { path: "/", hour, count: 4 },
+    { path: "/about", hour, count: 1 },
+  ],
+  {
+    target: ["path", "hour"],
+    set: { count: sql`${t.count} + ${this.pageViews.excluded("count")}` },
+  },
+);
+```
+
+`excluded()` only means something inside an `upsert` or `upsertMany` `set`.
+
+It sends one statement when the rows fit, and otherwise splits them the way
+`createMany` does, so no statement binds more values than the driver accepts
+(100 on Cloudflare D1). Like `createMany`'s, the batches are not one atomic unit
+unless the call runs inside `$transactional`.
+
+## Update Methods
+
+### updateOne
+
+Find a single entity by where clause and update it. Throws `DbEntityNotFoundError` if not found. Returns the updated entity.
+
+```typescript
+const updated = await this.repo.updateOne(
+  { name: { eq: "Widget" } },
+  { price: 12.99 },
+);
+```
+
+⚠️ **`updateOne` updates every row the where clause matches** and returns the first. Give it a clause that identifies one row (a primary key or a unique column), or use `updateMany`.
+
+### updateById
+
+Update by primary key. Returns the updated entity.
+
+```typescript
+const updated = await this.repo.updateById("some-uuid", { price: 12.99 });
+```
+
+### updateMany
+
+Update multiple records matching a where clause. Returns an array of updated entity IDs.
+
+```typescript
+const ids = await this.repo.updateMany(
+  { status: { eq: "draft" } },
+  { status: "published" },
+);
+```
+
+### Leaving `updatedAt` alone
+
+Every update method stamps the `db.updatedAt()` column. A write that is bookkeeping rather than an edit can opt out with `touch: false`, so a reader of `updatedAt` (an activity feed, a "recently changed" list) does not see it as a change:
+
+```typescript
+await this.releases.updateMany(
+  { projectId: { eq: projectId }, defaultSince: { isNotNull: true } },
+  { defaultSince: null },
+  { touch: false },
+);
+```
+
+`touch` is accepted by `updateOne`, `updateMany`, `updateById` and `save`, and skips the stamp only: a `db.version()` column is still bumped, events still fire and the query cache is still invalidated. An `updatedAt` written in the patch itself is stored as given. Reads and upserts do not take it; an upsert's conflict branch always stamps `updatedAt`.
+
+### save
+
+Save a previously fetched entity. Uses optimistic locking when a `version` column is present. Unlike `updateOne`/`updateById`, `save` expects the full entity object and sets `undefined` fields to `null`.
+
+```typescript
+const entity = await this.repo.getById("some-uuid"); // getById throws if missing
+entity.name = "Updated Name";
+await this.repo.save(entity);
+```
+
+If the row was written since the entity was fetched (by `save` or any other update, all of which bump the version), `save` throws `DbVersionMismatchError`, a 409 over HTTP, and leaves the entity as it was loaded.
+
+## Delete Methods
+
+### deleteOne
+
+Delete a single entity matching the where clause. Returns an array of deleted IDs (empty when nothing matched: unlike `deleteById`, it does not throw).
+
+```typescript
+await this.repo.deleteOne({ name: { eq: "Widget" } });
+```
+
+### deleteById
+
+Delete by primary key. Throws `DbEntityNotFoundError` if not found.
+
+```typescript
+await this.repo.deleteById("some-uuid");
+```
+
+### deleteMany
+
+Delete multiple records matching a where clause. Returns an array of deleted IDs.
+
+```typescript
+const ids = await this.repo.deleteMany({ status: { eq: "archived" } });
+```
+
+### destroy
+
+Delete a previously fetched entity by its primary key.
+
+```typescript
+const entity = await this.repo.getById("some-uuid");
+await this.repo.destroy(entity);
+```
+
+### clear
+
+Delete all records in the table.
+
+```typescript
+await this.repo.clear();
+```
+
+### Soft Delete
+
+If the entity schema includes a `db.deletedAt()` column, all delete operations automatically perform a soft delete by setting the `deletedAt` timestamp instead of removing the row. All query operations automatically filter out soft-deleted records. A soft delete is an update: it emits the `repository:update:*` events, not `repository:delete:*`.
+
+To perform a hard delete on a soft-deletable entity, pass `{ force: true }`:
+
+```typescript
+await this.repo.deleteById("some-uuid", { force: true });
+```
+
+To include soft-deleted records in queries, also use `{ force: true }`:
+
+```typescript
+const all = await this.repo.findMany({}, { force: true });
+```
+
+## Where Clause Operators
+
+Where clauses accept either a direct value (shorthand for `eq`) or an object with filter operators:
+
+```typescript
+// Direct value (shorthand for eq)
+{
+  status: "active";
+}
+
+// Explicit operator
+{
+  status: {
+    eq: "active";
+  }
+}
+```
+
+**Never pass `undefined` into a where-filter.** `where: { col: undefined }` throws
+`AlephaError` - it used to be dropped silently, which produced a query with no
+`WHERE` clause at all. For optional filters, omit the key entirely:
+
+```typescript
+const where: Record<string, unknown> = {};
+if (status) where.status = status;
+```
+
+### Comparison Operators
+
+| Operator | Description           |
+| -------- | --------------------- |
+| `eq`     | Equal                 |
+| `ne`     | Not equal             |
+| `gt`     | Greater than          |
+| `gte`    | Greater than or equal |
+| `lt`     | Less than             |
+| `lte`    | Less than or equal    |
+
+The value may also be another column or an SQL fragment, compared as it is:
+
+```typescript
+// Quests created after the quest they depend on.
+await this.quests.findMany({
+  where: { id: { gt: this.quests.table.dependsOn } },
+});
+```
+
+### Array Operators
+
+| Operator     | Description       |
+| ------------ | ----------------- |
+| `inArray`    | Value in list     |
+| `notInArray` | Value not in list |
+
+Both also take a subquery (see [Subqueries](#subqueries)); the "at least one value" check applies to a literal array only.
+
+### Null Operators
+
+| Operator    | Description       |
+| ----------- | ----------------- |
+| `isNull`    | Value is NULL     |
+| `isNotNull` | Value is not NULL |
+
+### Range Operators
+
+| Operator     | Description                                      |
+| ------------ | ------------------------------------------------ |
+| `between`    | Value in range (inclusive). Accepts `[min, max]` |
+| `notBetween` | Value outside range. Accepts `[min, max]`        |
+
+### String Operators
+
+| Operator        | Description                                               |
+| --------------- | --------------------------------------------------------- |
+| `like`          | Pattern match (case-sensitive)                            |
+| `notLike`       | Negated pattern match (case-sensitive)                    |
+| `ilike`         | Pattern match (case-insensitive)                          |
+| `notIlike`      | Negated pattern match (case-insensitive)                  |
+| `eqInsensitive` | Case-insensitive equality                                 |
+| `contains`      | Case-insensitive substring match, like `ilike: '%value%'` |
+| `startsWith`    | Case-insensitive prefix match, like `ilike: 'value%'`     |
+| `endsWith`      | Case-insensitive suffix match, like `ilike: '%value'`     |
+
+`contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
+
+### PostgreSQL Array Operators
+
+| Operator         | Description                                     |
+| ---------------- | ----------------------------------------------- |
+| `arrayContains`  | Column contains all elements of the given array |
+| `arrayContained` | Given array contains all elements of the column |
+| `arrayOverlaps`  | Column shares any element with the given array  |
+
+### Logical Operators
+
+Combine conditions with `and`, `or`, or negate with `not`:
+
+```typescript
+{
+  and: [
+    { status: { eq: "active" } },
+    { or: [
+      { role: { eq: "admin" } },
+      { role: { eq: "moderator" } },
+    ]},
+  ],
+}
+```
+
+You can also pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
+
+### Subqueries
+
+`repository.subquery(where, column?, opts?)` compiles a where-object against that repository's table into a subquery, soft-delete filter included unless `opts.force`. Without `column` it is `SELECT 1 ...`, for `exists` / `notExists`; with a column it selects that column, for `inArray` / `notInArray`. A column of the outer query used as a comparison value correlates it:
+
+```typescript
+// Epics with no open quest left.
+const finished = await this.epics.findMany({
+  where: {
+    notExists: this.quests.subquery({
+      epicId: { eq: this.epics.table.id },
+      completedAt: { isNull: true },
+    }),
+  },
+});
+
+// Quests outside draft epics.
+const visible = await this.quests.findMany({
+  where: {
+    epicId: {
+      notInArray: this.epics.subquery({ status: { eq: "draft" } }, "id"),
+    },
+  },
+});
+```
+
+The subquery's table is always aliased `<table>_sq`, so a subquery over the outer query's own table reads the outer row correctly (`exists: this.quests.subquery({ id: { eq: this.quests.table.dependsOn } })`). Nesting a subquery of a table inside another subquery of the same table throws, since the aliases would collide.
+
+## Transactions
+
+Use the `transaction` method to execute multiple operations atomically:
+
+```typescript
+await this.repo.transaction(async (tx) => {
+  const user = await this.users.create({ name: "Alice" }, { tx });
+  await this.orders.create({ userId: user.id, total: 50 }, { tx });
+});
+```
+
+All repository methods accept `{ tx }` in their options parameter to participate in the transaction (`tx: null` forces a statement outside the ambient `$transactional` one). Beyond `tx`, that options parameter also takes:
+
+- `force`: include soft-deleted rows.
+- `for`: a row lock taken by the SELECT. `{ for: "update" }` (or `"no key update"`, `"share"`, `"key share"`), or `{ for: { mode: "update", onLocked: "skip" } }` for `SKIP LOCKED` (`"nowait"` for `NOWAIT`). PostgreSQL only: SQLite and D1 have no row locks, and a read given `for` throws an `AlephaError` there.
+- `now`: override the timestamp used for `updatedAt`.
+- `signal`: an `AbortSignal` that refuses the statement once it fired, and cancels it in flight where the driver can. A read outside a transaction already inherits the request's or job's signal (see [Cancellation](/docs/guides-core-cancellation)); a write only takes one given here, so a client that left never cuts a write sequence in half.
+- `timeout`: how long the statement may run before it fails with `DbTimeoutError` (503). It wins over `DATABASE_TIMEOUT`; `false` or `0` means none. No timeout applies inside a transaction.
+- `cache`: see [Query cache](#query-cache).
+
+`transaction()` and `$transactional()` take the transaction's options: `{ isolation: "serializable" }` (or `"read committed"`, `"repeatable read"`) and `{ access: "read only" }`. Left unset, both are the database's own defaults; SQLite ignores them.
+
+On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws and tells you to use `$transactional()` instead.
+
+To wrap a whole handler in a transaction without drilling `{ tx }` through every call, use the `$transactional` middleware:
+
+```typescript
+import { $action } from "alepha/server";
+import { $transactional } from "alepha/orm";
+
+class OrderService {
+  processOrder = $action({
+    method: "POST",
+    path: "/processOrder",
+    use: [$transactional()],
+    handler: async ({ body }) => {
+      await this.orders.create(body);       // auto-uses the transaction
+      await this.audit.create({ ... });     // auto-uses the transaction
+      // throw → rollback, return → commit
+    },
+  });
+}
+```
+
+Every repository operation inside the handler automatically participates in the transaction. A nested `$transactional` joins the outer transaction: there is no savepoint, and a throw anywhere rolls the whole of it back. Options the outer transaction cannot honour throw instead of being ignored: a different `isolation`, or `access: "read write"` inside a `read only` transaction. Set them on the outermost block.
+
+A query given both `for` (a row lock) and `cache` throws: a cached result takes no lock.
+
+### No transactions on D1
+
+**Cloudflare D1 (and PGlite) has no transactions, and `$transactional()` is a no-op there.** The handler runs in place, a throw rolls back nothing, and two requests interleave freely. Each `$transactional()` primitive logs one warning the first time it runs on such a driver. Code that must be correct on D1 does not rely on a rollback:
+
+- **Lost updates:** `db.version()` with `save()`, which answers 409 when the row changed underneath.
+- **Check-then-act:** put the precondition in the write's WHERE (`updateOne({ id, status: "ready" }, …)`), and treat a miss as "someone else won".
+- **Several writes:** validate before the first one, and order them so that a failure halfway leaves harmless state, or compensate by hand.
+- **Unique names:** claim the name first; a UNIQUE violation is an ordinary error without a transaction.
+
+Specs can run the same way on SQLite with `DATABASE_TRANSACTIONS: false` (see the testing guide).
+
+Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time - `Promise.all`, two requests, a job racing a handler - never read or write through each other's transaction.
+
+### After the commit
+
+Side effects that must only happen once the data is durable - emitting a domain event, sending an email - do not belong inside the transaction: subscribers would read uncommitted rows and every lock the transaction holds stays held while they run. Register them with `DatabaseProvider.afterCommit()` instead:
+
+```typescript
+import { $inject } from "alepha";
+import { DatabaseProvider } from "alepha/orm";
+
+class OrderService {
+  protected readonly db = $inject(DatabaseProvider);
+
+  async markPaid(id: string) {
+    return this.db.transactional(async () => {
+      const order = await this.orders.updateById(id, { status: "paid" });
+
+      await this.db.afterCommit(() =>
+        this.alepha.events.emit("commerce:order:paid", { orderId: order.id }),
+      );
+
+      return order;
+    });
+  }
+}
+```
+
+Because nested `transactional()` blocks join the outermost transaction, the callback waits for the _outermost_ commit - even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
+
+## Query cache
+
+Read methods (`findMany` and the ones built on it) take a `cache` option that keeps the result in an in-process map:
+
+```typescript
+const items = await this.repo.findMany(
+  { where: { status: { eq: "active" } } },
+  { cache: { ttl: 60_000 } }, // milliseconds; `key` overrides the derived key
+);
+```
+
+Any write through the repository to the same table invalidates every cached query for it; inside a `$transactional` block, the invalidation waits for the COMMIT, while an explicit `{ tx }` outside one invalidates at write time, even if that transaction rolls back. A read inside a transaction never uses the cache, and a hit is a copy, so mutating it leaves the cache alone. The cache is per process (not shared between instances, and unrelated to `$cache`), and capped at 5000 entries: with several instances, `ttl` is what bounds the staleness, unless `DbCacheProvider` is substituted with a shared implementation. A raw `query()` write does not invalidate it.
+
+## Sequences
+
+`$sequence` declares a portable numeric counter, for human-readable numbers next to a UUID key (an order number, a ticket id). It works the same on PostgreSQL, SQLite and D1, backed by one shared `alepha_sequences` table:
+
+```typescript
+import { $sequence } from "alepha/orm";
+
+class Orders {
+  number = $sequence(); // name defaults to the property key
+
+  async next(shopId: string) {
+    const global = await this.number.next(); // the "default" scope
+    const perShop = await this.number.next(shopId); // one counter per scope
+    return { global, perShop };
+  }
+}
+```
+
+Options are `name`, `startWith` (default `1`) and `incrementBy` (default `1`). Besides `next(scope?)` there are `current(scope?)` (`null` before the first `next`) and `reset(value, scope?)`. The increment is one atomic statement: inside a real transaction a rollback returns the value; without one (D1) a failed insert leaves a gap, never a duplicate.
+
+## Repository.of
+
+For inline repository creation without a separate entity variable:
+
+```typescript
+import { $inject } from "alepha";
+import { Repository } from "alepha/orm";
+
+class App {
+  users = $inject(Repository.of(user)); // user: the $entity from above
+}
+```
+
+This creates a Repository subclass bound to the given entity, suitable for use with `$inject`.
+
+## Events
+
+Repository operations emit lifecycle events:
+
+| Event                      | Payload                                |
+| -------------------------- | -------------------------------------- |
+| `repository:create:before` | `{ tableName, data }`                  |
+| `repository:create:after`  | `{ tableName, data, entity }`          |
+| `repository:update:before` | `{ tableName, where, data }`           |
+| `repository:update:after`  | `{ tableName, where, data, entities }` |
+| `repository:delete:before` | `{ tableName, where }`                 |
+| `repository:delete:after`  | `{ tableName, where, ids }`            |
+| `repository:read:before`   | `{ tableName, query }`                 |
+| `repository:read:after`    | `{ tableName, query, entities }`       |
+
+## Error Types
+
+| Error                      | HTTP | Thrown When                                                                    |
+| -------------------------- | ---- | ------------------------------------------------------------------------------ |
+| `DbEntityNotFoundError`    | 404  | `getOne`, `getById`, `updateOne`, `updateById`, `deleteById` find no match     |
+| `DbVersionMismatchError`   | 409  | `save` detects a version conflict (optimistic locking)                         |
+| `DbConflictError`          | 409  | Unique constraint violation                                                    |
+| `DbForeignKeyError`        | 409  | Foreign key constraint violation                                               |
+| `DbNotNullError`           | 400  | NOT NULL constraint violation                                                  |
+| `DbDeadlockError`          | 409  | Database deadlock detected                                                     |
+| `DbTooManyParametersError` | 400  | A statement binds more values than the driver accepts (split a long `inArray`) |
+| `DbTimeoutError`           | 503  | A query outlived its `timeout`, or `DATABASE_TIMEOUT`                          |
+| `DbTableNotFoundError`     | 500  | Referenced table does not exist                                                |
+| `DbColumnNotFoundError`    | 500  | Referenced column does not exist                                               |
+| `DbConnectionError`        | 503  | The database cannot be reached                                                 |
+| `DbMigrationError`         | -    | A migration fails to apply at startup                                          |
+
+## Drizzle
+
+Alepha ORM is built on Drizzle, but `alepha/orm` exports none of it except the `sql` tag and its `SQL` type. Everything else is reached through `alepha/orm/drizzle`, which re-exports `drizzle-orm` and `drizzle-orm/pg-core` and gives the drizzle objects behind a repository:
+
+```typescript
+import { Drizzle, eq } from "alepha/orm/drizzle";
+
+const users = Drizzle.table(this.users);
+const rows = await Drizzle.db(this.users)
+  .select({ id: users.id })
+  .from(users)
+  .where(eq(users.email, email));
+```
+
+`Drizzle.tx(tx)` turns the `DbTransaction` a `transaction()` callback receives into drizzle's transaction.
+
+⚠️ `alepha/orm/drizzle` is outside semver. The drizzle version is pinned, and an Alepha minor release may move to a new drizzle with its own breaking changes.

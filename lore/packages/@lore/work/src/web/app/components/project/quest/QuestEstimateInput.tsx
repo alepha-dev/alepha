@@ -88,8 +88,8 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
   const unitLabel = (u: EstimateUnit, n: number) =>
     String(
       n === 1
-        ? tr(`quest.create.estimate.unit.${u}.one` as never)
-        : tr(`quest.create.estimate.unit.${u}` as never),
+        ? tr(`quest.create.estimate.unit.${u}.one`)
+        : tr(`quest.create.estimate.unit.${u}`),
     );
 
   return (

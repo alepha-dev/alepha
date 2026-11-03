@@ -79,7 +79,7 @@ describe("admin status labels", () => {
    * that query schema equal to the entity, which closes the chain.
    */
   const deliveryStatuses = (): string[] =>
-    (notificationQuerySchema.shape.status as any).unwrap().options;
+    notificationQuerySchema.shape.status.unwrap().options;
 
   it("offers every delivery status the receipt can hold", () => {
     // Order differs on purpose - the filter lists the happy path first - so

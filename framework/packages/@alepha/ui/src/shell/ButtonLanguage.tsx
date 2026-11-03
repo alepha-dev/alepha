@@ -67,7 +67,7 @@ export const ButtonLanguage = (props: ButtonLanguageProps) => {
       </Tooltip>
       <DropdownMenuContent align="end">
         {languages.map((code) => {
-          const translated = i18n.tr(`language.${code}` as never);
+          const translated = i18n.tr(`language.${code}`);
           const label = translated === `language.${code}` ? code : translated;
           return (
             <DropdownMenuCheckboxItem

@@ -826,8 +826,8 @@ describe("relations", () => {
       await seed(app);
       const provider = app.db.campaigns.base.provider;
 
-      await provider.execute("drop table users" as never);
-      await provider.execute("drop table characters" as never);
+      await provider.execute("drop table users");
+      await provider.execute("drop table characters");
 
       const relational = await app.db.campaigns
         .findMany({ include: { owner: true } })

@@ -36,7 +36,7 @@ const streamedFile = (megabytes: number, onChunk?: () => void): FileLike => {
           onChunk?.();
           controller.enqueue(chunk);
         },
-      }) as never;
+      });
     },
     arrayBuffer: async () => {
       throw new Error(

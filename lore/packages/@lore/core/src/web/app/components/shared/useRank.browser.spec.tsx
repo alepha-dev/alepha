@@ -34,7 +34,7 @@ const mount = async (
 ) => {
   const alepha = Alepha.create().with(AlephaReact);
   await alepha.start();
-  alepha.store.set(currentProjectAtom, project as never);
+  alepha.store.set(currentProjectAtom, project);
 
   const view = render(
     <AlephaContext.Provider value={alepha}>
@@ -116,7 +116,7 @@ describe("useRank", () => {
       projectFixture({
         permissions: ["project:read"],
         rank: { key: "custom-1", name: "Reviewer" },
-      }) as never,
+      }),
     );
 
     const view = render(

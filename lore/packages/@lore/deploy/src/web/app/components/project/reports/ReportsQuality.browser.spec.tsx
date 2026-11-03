@@ -58,7 +58,7 @@ describe("the Quality tab's two ingested-data states", () => {
       .with(I18n);
     await alepha.start();
 
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
 
     return alepha;
   };

@@ -12,7 +12,7 @@ import type { DurationLike } from "alepha/datetime";
 import { KIND, OPTIONS } from "alepha/internal";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
-import type { FC, ReactNode } from "react";
+import type { ComponentType, FC, ReactNode } from "react";
 
 import { PAGE_PRELOAD_KEY } from "../constants/PAGE_PRELOAD_KEY.ts";
 import type { Redirection } from "../errors/Redirection.ts";
@@ -167,12 +167,31 @@ export interface PagePrimitiveOptions<
    *
    * > In SSR, the returned data will be serialized and sent to the client, then reused during the client-side hydration.
    *
+   * A promise at the top level of the result is deferred: it is not awaited,
+   * the page paints at once and reads it with `use()` inside a `<Suspense>`,
+   * and on a server render it streams into that boundary. A rejection reaches
+   * the nearest `errorHandler`. Such a page is never stored in the page cache.
+   *
    * Loader can be stopped by throwing an error, which will be handled by the `errorHandler` function.
    * It's common to throw a `NotFoundError` to display a 404 page.
    *
    * RedirectError can be thrown to redirect the user to another page.
    */
   loader?: (context: PageLoader<TConfig, TPropsParent>) => Async<TProps>;
+
+  /**
+   * Declare the `loader` free of side effects, so a prefetch may run it.
+   *
+   * On a prefetch (a link's `prefetch`, or `router.prefetch`) the router runs
+   * the layers the target would not reuse, and keeps the result for the
+   * navigation that follows, for 30 seconds. It runs only if EVERY one of those
+   * layers has a loader marked this way, or none: a loader that writes atoms
+   * must not run on a hover, and a target with one simply prefetches its code.
+   * A `use` guard runs as on a navigation, and a denial or a failure is dropped.
+   *
+   * @default false
+   */
+  prefetch?: boolean;
 
   /**
    * Default props to pass to the component when rendering the page.
@@ -196,6 +215,57 @@ export interface PagePrimitiveOptions<
    * and enable code-splitting.
    */
   lazy?: () => Promise<{ default: FC<TProps & TPropsParent> }>;
+
+  /**
+   * Shown in this page's slot when a navigation to it takes longer than 200 ms
+   * (`reactPageOptions.loadingDelay`), with the layouts above it staying in
+   * place. A page without one uses its nearest parent's.
+   *
+   * A plain component, never lazy: a skeleton that has to be fetched is not
+   * instant. It lands in the static graph, so keep it light.
+   *
+   * It only replaces a page for another page. A query change or
+   * `router.invalidate` keeps the page on screen. The URL does not move early:
+   * the address bar stays on the old page until the new one is ready.
+   *
+   * It is also the page's `<Suspense>` fallback.
+   *
+   * ```ts
+   * invoices = $page({
+   *   path: "/invoices",
+   *   loading: () => <TableSkeleton />,
+   *   lazy: () => import("./Invoices.tsx"),
+   * });
+   * ```
+   */
+  loading?: ComponentType;
+
+  /**
+   * Open this page as an overlay over another one, on an in-app navigation
+   * from it: one URL, two presentations. A reload, a shared link or a
+   * navigation from anywhere else renders the page in full, which is what
+   * makes the overlay's URL safe to share.
+   *
+   * `component` (or `lazy`) replaces the page's own and receives its loader
+   * props. The page behind stays mounted and is not re-fetched, and
+   * `useRouterState()` keeps describing it: the overlay is in `state.overlay`.
+   * Close it with `useOverlay().close()`, which goes back through history.
+   *
+   * ```ts
+   * board = $page({ path: "/board", lazy: () => import("./Board.tsx") });
+   *
+   * card = $page({
+   *   path: "/cards/:id",
+   *   loader: ({ params }) => this.api.card(params),
+   *   lazy: () => import("./CardPage.tsx"),
+   *   overlay: {
+   *     over: () => [this.board],
+   *     lazy: () => import("./CardSheet.tsx"),
+   *   },
+   * });
+   * ```
+   */
+  overlay?: PageOverlay<TProps & TPropsParent>;
 
   /**
    * Attach child pages to create nested routes, adopting them as children of
@@ -452,48 +522,42 @@ export interface PagePrimitiveOptions<
   onLeave?: () => void;
 
   /**
-   * @experimental
+   * Animate this page's slot when a navigation commits, with a view
+   * transition. The rest of the document does not move, and a browser without
+   * the API swaps instantly.
    *
-   * Add a css animation when the page is loaded or unloaded.
-   * It uses CSS animations, so you need to define the keyframes in your CSS.
+   * Values are CSS class names, which your CSS targets through
+   * `::view-transition-old(.name)` for a page leaving and
+   * `::view-transition-new(.name)` for a page arriving. A string is `enter`
+   * and `exit`; `update` is a change inside a page that stays, a query change
+   * for example, and only runs when asked for.
    *
-   * @example Simple animation name
+   * `prefers-reduced-motion`, and a back gesture the browser already animated,
+   * turn it off.
+   *
+   * @example One class for both directions
    * ```ts
-   * animation: "fadeIn"
+   * viewTransition: "fade"
    * ```
    *
    * CSS example:
    * ```css
-   * @keyframes fadeIn {
-   *  from { opacity: 0; }
-   *  to { opacity: 1; }
-   * }
+   * ::view-transition-old(.fade) { animation: 200ms ease-in both fadeOut; }
+   * ::view-transition-new(.fade) { animation: 200ms ease-out both fadeIn; }
    * ```
    *
-   * @example Detailed animation
+   * @example Only the way in
    * ```ts
-   * animation: {
-   *   enter: { name: "fadeIn", duration: 300 },
-   *   exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
-   * }
+   * viewTransition: { enter: "fade" }
    * ```
    *
-   * @example Only exit animation
+   * @example From the target of the navigation
    * ```ts
-   * animation: {
-   *   exit: "fadeOut"
-   * }
-   * ```
-   *
-   * @example With custom timing function
-   * ```ts
-   * animation: {
-   *   enter: { name: "fadeIn", duration: 300, timing: "cubic-bezier(0.4, 0, 0.2, 1)" },
-   *   exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
-   * }
+   * viewTransition: ({ url }) =>
+   *   url.pathname === "/checkout" ? { exit: "slide-left" } : undefined
    * ```
    */
-  animation?: PageAnimation;
+  viewTransition?: PageViewTransition;
 
   /**
    * Head configuration for the page (title, meta tags, etc.).
@@ -653,11 +717,16 @@ export class PagePrimitive<
     await this.reactPageService.invalidate(this.name, params);
   }
 
+  /**
+   * Request this page from the running server over HTTP, at its full path
+   * with `options.params` and `options.query` filled in. The server's own
+   * routing answers, middlewares and page cache included.
+   */
   public async fetch(options?: PagePrimitiveRenderOptions): Promise<{
     html: string;
     response: Response;
   }> {
-    return this.reactPageService.fetch(this.options.path || "", options);
+    return this.reactPageService.fetch(this.name, options);
   }
 }
 
@@ -837,21 +906,31 @@ export type PageLoader<
   TPropsParent &
   Omit<ReactRouterState, "layers" | "onError">;
 
-export type PageAnimation =
-  | PageAnimationObject
-  | ((state: ReactRouterState) => PageAnimationObject | undefined);
+/**
+ * How a page opens over another one. See `$page`'s `overlay`.
+ */
+export interface PageOverlay<TProps = any> {
+  /**
+   * The pages it opens over. From any other page, it is a full page.
+   */
+  over: () => Array<PagePrimitive<any, any, any>>;
 
-type PageAnimationObject =
-  | CssAnimationName
+  /**
+   * What renders instead of the page's component, with the same props.
+   */
+  component?: FC<TProps>;
+
+  lazy?: () => Promise<{ default: FC<TProps> }>;
+}
+
+export type PageViewTransition =
+  | PageViewTransitionObject
+  | ((state: ReactRouterState) => PageViewTransitionObject | undefined);
+
+type PageViewTransitionObject =
+  | string
   | {
-      enter?: CssAnimation | CssAnimationName;
-      exit?: CssAnimation | CssAnimationName;
+      enter?: string;
+      exit?: string;
+      update?: string;
     };
-
-type CssAnimationName = string;
-
-type CssAnimation = {
-  name: string;
-  duration?: number;
-  timing?: string;
-};

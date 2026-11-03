@@ -23,12 +23,15 @@ import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
+import { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
+import { ProjectReportController } from "./controllers/ProjectReportController.ts";
+import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
@@ -51,6 +54,7 @@ import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
 import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
 import { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";
@@ -95,16 +99,23 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
+import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
+import { McpProjectScope } from "./services/McpProjectScope.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
+import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { ReportsDigest } from "./services/ReportsDigest.ts";
+import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
+import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 
 /**
@@ -253,7 +264,18 @@ export const LoreCoreApi = $module({
     // `main.server.ts`, same arrangement.
     LoreNotificationPreferences,
     NotificationPreferenceController,
+    ActivityChannel,
+    DeliveryChangeRegistry,
+    McpProjectScope,
     ProjectLimits,
+    ProjectAnalyticsController,
+    ProjectAutomationReport,
+    ProjectReportController,
+    ProjectReportRegistry,
+    ReportStatistics,
+    ReportsSummaryController,
+    ReportsDigest,
+    ReportsSummaryRegistry,
     // The dashboard: the membership gate every card scope goes through, and
     // card storage. The declarative registry (`DashboardMetricCatalog`) is
     // browser-safe and constructed by whatever injects it; each module
@@ -411,7 +433,27 @@ export { LoreAuditService } from "./services/LoreAuditService.ts";
 export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
+export {
+  ActivityChannel,
+  type ActivityChannelValue,
+} from "./services/ActivityChannel.ts";
+export {
+  type BlightForward,
+  type DeliveryChange,
+  DeliveryChangeRegistry,
+} from "./services/DeliveryChangeRegistry.ts";
+export { McpProjectScope } from "./services/McpProjectScope.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
+export {
+  type ReportsGrain,
+  ReportStatistics,
+} from "./services/ReportStatistics.ts";
+export { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
+export {
+  ReportsSummaryRegistry,
+  type ReportsSummarySource,
+  type ReportsSummarySourceLine,
+} from "./services/ReportsSummaryRegistry.ts";
 export { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 export {
   ProjectMergeNumbers,
@@ -444,6 +486,14 @@ export {
 export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
+export { ReportsDigest } from "./services/ReportsDigest.ts";
+export { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
+export { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
+export { ProjectReportController } from "./controllers/ProjectReportController.ts";
+export {
+  type ProjectReportSection,
+  ProjectReportRegistry,
+} from "./services/ProjectReportRegistry.ts";
 
 export { AutomationReferences } from "./services/AutomationReferences.ts";
 

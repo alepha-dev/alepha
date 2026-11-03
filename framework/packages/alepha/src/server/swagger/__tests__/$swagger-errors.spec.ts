@@ -118,7 +118,7 @@ describe("ServerSwaggerProvider - declared errors", () => {
       },
     });
 
-    const quota = json.components!.schemas!.QUOTA_EXCEEDED as any;
+    const quota = json.components!.schemas!.QUOTA_EXCEEDED;
     expect(quota.properties.name).toMatchObject({ const: "QUOTA_EXCEEDED" });
     expect(quota.properties.data).toMatchObject({
       type: "object",
@@ -127,7 +127,7 @@ describe("ServerSwaggerProvider - declared errors", () => {
     expect(quota.required).toEqual(
       expect.arrayContaining(["name", "message", "data"]),
     );
-    const notFound = json.components!.schemas!.NOT_FOUND as any;
+    const notFound = json.components!.schemas!.NOT_FOUND;
     expect(notFound.properties.name).toMatchObject({ const: "NOT_FOUND" });
     expect(notFound.properties.data).toMatchObject({
       properties: { status: { type: "integer" } },

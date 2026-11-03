@@ -86,7 +86,7 @@ describe("the Cloudflare token template", () => {
     const guide = readFileSync(
       resolve(
         import.meta.dirname,
-        "../../../../docs/1-guides/5-cloudflare-token.md",
+        "../../../../docs/1-guides/21-cloudflare-token.md",
       ),
       "utf8",
     );

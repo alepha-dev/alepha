@@ -61,7 +61,7 @@ describe("QuestViewSettings", () => {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as never;
+    };
   });
 
   const mount = async (over: Partial<QuestResource>) => {

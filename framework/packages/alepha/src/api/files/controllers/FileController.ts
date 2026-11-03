@@ -172,7 +172,7 @@ export class FileController {
               controller.error(error);
             }
           },
-        }) as never,
+        }),
       arrayBuffer: async () => {
         throw new AlephaError(
           "a streamed upload is read once — ask FileService, not the part",

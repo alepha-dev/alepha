@@ -71,7 +71,7 @@ describe("writes do not mutate the caller's payload", () => {
       {
         name: "b",
         // forcing a distinct instant
-      } as any,
+      },
       { now: "2030-01-01T00:00:00.000Z" },
     );
 

@@ -92,12 +92,12 @@ describe("ProjectDashboard", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     const project = projectFixture();
-    alepha.store.set(currentProjectAtom, project as never);
+    alepha.store.set(currentProjectAtom, project);
     alepha.store.set(projectDashboardAtom, {
       projectId: project.id,
       cards: [card(1), card(2)],
       values: [],
-    } as never);
+    });
     const fake = alepha.inject(FakeLinkProvider);
 
     render(
@@ -140,7 +140,7 @@ describe("ProjectDashboard", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     // The atom holds no board for this project yet: the read is in flight.
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, projectFixture());
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -171,13 +171,13 @@ describe("ProjectDashboard", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     const project = projectFixture();
-    alepha.store.set(currentProjectAtom, project as never);
+    alepha.store.set(currentProjectAtom, project);
     alepha.store.set(projectDashboardAtom, {
       projectId: project.id,
       computed: true,
       cards: [{ ...card(-1), slot: "flow" }],
       values: [{ cardId: -1, ok: true, value: 4, detail: {}, scopeNames: [] }],
-    } as never);
+    });
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -212,7 +212,7 @@ describe("ProjectDashboard", () => {
       // spec registers neither router. The link is the e2e's.
       capabilities: [],
     };
-    alepha.store.set(currentProjectAtom, project as never);
+    alepha.store.set(currentProjectAtom, project);
     const fake = alepha.inject(FakeLinkProvider);
 
     render(

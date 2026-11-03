@@ -139,7 +139,7 @@ class FakeR2Bucket {
   }
 
   async head(key: string) {
-    return this.objects.has(key) ? (this.objects.get(key) as never) : null;
+    return this.objects.has(key) ? this.objects.get(key) : null;
   }
 
   async delete(key: string | string[]) {
@@ -169,7 +169,7 @@ const setup = async (env: Record<string, string> = {}) => {
   });
   // The Workers runtime puts bindings here; the provider reads its bucket out
   // of this store on `start`.
-  alepha.store.set("cloudflare.env", { storage: r2 } as never);
+  alepha.store.set("cloudflare.env", { storage: r2 });
   provider = alepha.inject(R2FileStorageProvider);
   await alepha.start();
   return provider;
@@ -360,7 +360,7 @@ describe("R2FileStorageProvider", () => {
       const app = Alepha.create({
         env: { LOG_LEVEL: "error", R2_BUCKET_NAME: "storage" },
       });
-      app.store.set("cloudflare.env", {} as never);
+      app.store.set("cloudflare.env", {});
       app.inject(R2FileStorageProvider);
 
       expect(await startFailureCause(app)).toMatch(

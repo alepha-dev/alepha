@@ -200,7 +200,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
 
         const resource = await client.uploadFile({
           body: { file },
-          query: props.bucket ? { bucket: props.bucket } : ({} as never),
+          query: props.bucket ? { bucket: props.bucket } : {},
         });
 
         const previewUrl = file.type.startsWith("image/")
