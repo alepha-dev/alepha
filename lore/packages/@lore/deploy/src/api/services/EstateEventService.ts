@@ -1,5 +1,5 @@
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DbConflictError } from "alepha/orm";
 
 import { type EstateEvent, estateEvents } from "../entities/estateEvents.ts";
 import type { Estate } from "../entities/estates.ts";
@@ -33,15 +33,24 @@ export class EstateEventService {
     if (existing) {
       return false;
     }
-    await this.events.create({
-      estateId: estate.id,
-      eventId: frame.id,
-      kind: frame.kind,
-      at: frame.at,
-      ...(frame.app ? { app: frame.app } : {}),
-      ...(frame.env ? { env: frame.env } : {}),
-      ...(frame.data ? { data: this.bounded(frame) } : {}),
-    });
+    try {
+      await this.events.create({
+        estateId: estate.id,
+        eventId: frame.id,
+        kind: frame.kind,
+        at: frame.at,
+        ...(frame.app ? { app: frame.app } : {}),
+        ...(frame.env ? { env: frame.env } : {}),
+        ...(frame.data ? { data: this.bounded(frame) } : {}),
+      });
+    } catch (error) {
+      // Two deliveries of one event raced past the lookup: the unique index
+      // kept the first, so this one is the duplicate, not a failure.
+      if (error instanceof DbConflictError) {
+        return false;
+      }
+      throw error;
+    }
     await this.prune(estate.id);
     return true;
   }

@@ -189,6 +189,8 @@ func (c *Client) flushEvents() {
 	if c.Events == nil || !c.eventsOK.Load() {
 		return
 	}
+	c.flushMu.Lock()
+	defer c.flushMu.Unlock()
 	for _, e := range c.Events.Pending() {
 		if err := c.Send(e); err != nil {
 			return

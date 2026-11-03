@@ -326,6 +326,9 @@ type Client struct {
 	// event frames. Reset on every dial: a Lore rolled back to a version
 	// without them must not be sent one.
 	eventsOK atomic.Bool
+	// flushMu keeps one flush at a time: the welcome and the append loop both
+	// flush, and two at once would send the same pending events twice.
+	flushMu sync.Mutex
 }
 
 // ensureChannels creates the kick channels exactly once, so a kick that

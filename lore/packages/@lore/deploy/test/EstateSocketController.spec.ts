@@ -516,6 +516,28 @@ describe("EstateSocketController, events", () => {
     await close(client);
   });
 
+  it("keeps one of two deliveries of an event that race each other", async ({
+    expect,
+  }) => {
+    const events = ctx.alepha.inject(EstateEventService);
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-events-race");
+    const estate = await rowOf(ctx, minted.id);
+    const frame = {
+      type: "event" as const,
+      id: "evt-race",
+      kind: "backup.completed",
+      at: new Date().toISOString(),
+    };
+
+    const kept = await Promise.all([
+      events.record(estate, frame),
+      events.record(estate, frame),
+    ]);
+    expect(kept.filter(Boolean)).toHaveLength(1);
+    expect(await events.list(minted.id)).toHaveLength(1);
+  });
+
   it("keeps an oversized payload as a marker, not the payload", async ({
     expect,
   }) => {

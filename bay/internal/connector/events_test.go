@@ -112,6 +112,54 @@ func TestFlushEventsWaitsForTheFeatureAndKeepsWhatFailed(t *testing.T) {
 	}
 }
 
+// heldConn holds its first write until released, so a second flush can run
+// while the first is still sending.
+type heldConn struct {
+	writeConn
+	entered, release chan struct{}
+	once             sync.Once
+}
+
+func (c *heldConn) WriteJSON(v any) error {
+	first := false
+	c.once.Do(func() { first = true })
+	if first {
+		close(c.entered)
+		<-c.release
+	}
+	return c.writeConn.WriteJSON(v)
+}
+
+/*
+The welcome and the append loop both flush. Two flushes at once would each
+read the same pending list and send its events twice.
+*/
+func TestConcurrentFlushesSendEachEventOnce(t *testing.T) {
+	spool := NewEventSpool(t.TempDir(), 0)
+	_, _ = spool.Append("backup.completed", "demo", "production", nil)
+	_, _ = spool.Append("backup.failed", "demo", "production", nil)
+	conn := &heldConn{entered: make(chan struct{}), release: make(chan struct{})}
+	c := &Client{Events: spool, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	c.setConn(conn)
+	c.eventsOK.Store(true)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); c.flushEvents() }()
+	<-conn.entered
+	go func() { defer wg.Done(); c.flushEvents() }()
+	time.Sleep(50 * time.Millisecond)
+	close(conn.release)
+	wg.Wait()
+
+	if n := len(conn.written); n != 2 {
+		t.Fatalf("each event is sent once: wrote %d", n)
+	}
+	if len(spool.Pending()) != 0 {
+		t.Fatal("everything sent is removed")
+	}
+}
+
 func TestHasFeature(t *testing.T) {
 	if !hasFeature([]string{"stats", EventsFeature}, EventsFeature) || hasFeature(nil, EventsFeature) {
 		t.Fatal("hasFeature")
