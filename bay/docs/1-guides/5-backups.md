@@ -32,6 +32,7 @@ BAY_S3_ACCESS_KEY=... BAY_S3_SECRET_KEY=... \
   bay config s3:backups --endpoint https://<account>.r2.cloudflarestorage.com --bucket bay-backups --keep 14
 
 # where hosted APPS put their uploads; given to every app that declares a bucket
+# and has no key of its own (see below)
 BAY_STORAGE_ACCESS_KEY=... BAY_STORAGE_SECRET_KEY=... \
   bay config s3:apps --endpoint https://<account>.r2.cloudflarestorage.com --bucket bay-uploads
 ```
@@ -48,6 +49,15 @@ refused for an app with files in `storage/` until
 is convenient, and any hosted app given that key can then delete every backup.
 Bay warns when you use it, and `bay status` flags it for as long as it lasts.
 Scope the backup key to the backup bucket alone.
+
+**One upload key per app.** The host-wide `s3:apps` key goes into every app's
+`.env`, so with it alone any app can read and delete the others' uploads.
+`bay config s3:apps <name/env> --endpoint … --bucket …` gives one instance a key
+of its own (same variables), stored only once S3 itself proves it: the key must
+write under `apps/<name>-<env>/blobs/` and be refused on the backups and every
+other app's prefix. R2 scopes a token to a bucket, not a prefix, so there
+isolation means one bucket per app. `--check` re-runs the proof, `--clear`
+falls back to the host-wide key.
 
 ## The schedule
 
