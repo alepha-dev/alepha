@@ -287,6 +287,10 @@ type State struct {
 	// Set by `bay config s3:apps <name/env>`, which proves before storing it
 	// that the key cannot reach the backups or any other app's blobs.
 	InstanceStorage map[string]*S3Target `json:"instanceStorage,omitempty"`
+	// WideInstanceStorage marks the instance keys stored with
+	// `--allow-wide-key`: known not to be isolated, so `bay doctor
+	// --probe-keys` warns about them instead of failing.
+	WideInstanceStorage map[string]bool `json:"wideInstanceStorage,omitempty"`
 	// RuntimeLocks maps a runtime image tag ("node:26-slim") to the reference
 	// `bay runtimes update` last resolved it to ("node:26-slim@sha256:...").
 	//
@@ -641,6 +645,7 @@ func (s *Store) Remove(key string) (App, bool, error) {
 			// app deployed under the same name, which may not be the same
 			// owner.
 			delete(s.state.InstanceStorage, key)
+			delete(s.state.WideInstanceStorage, key)
 			return a, true, s.flush()
 		}
 	}
@@ -776,10 +781,11 @@ func (s *Store) AllInstanceStorage() map[string]S3Target {
 }
 
 // SetInstanceStorage records (or, with nil, removes) an instance's own upload
-// credential.
-func (s *Store) SetInstanceStorage(key string, cfg *S3Target) error {
+// credential. wide says it was stored although its isolation proof failed.
+func (s *Store) SetInstanceStorage(key string, cfg *S3Target, wide bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	delete(s.state.WideInstanceStorage, key)
 	if cfg == nil {
 		delete(s.state.InstanceStorage, key)
 	} else {
@@ -788,6 +794,12 @@ func (s *Store) SetInstanceStorage(key string, cfg *S3Target) error {
 		}
 		copied := *cfg
 		s.state.InstanceStorage[key] = &copied
+		if wide {
+			if s.state.WideInstanceStorage == nil {
+				s.state.WideInstanceStorage = map[string]bool{}
+			}
+			s.state.WideInstanceStorage[key] = true
+		}
 	}
 	return s.flush()
 }

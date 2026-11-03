@@ -57,6 +57,14 @@ func (s *server) handleConfigStorage(w http.ResponseWriter, r *http.Request) {
 			"Mint a separate key, or pass --allow-shared-key to accept the risk")
 		return
 	}
+	// An app's own key handed to every app undoes the isolation it was proved
+	// to give, and no flag makes that a reasonable trade.
+	for other, t := range s.store.AllInstanceStorage() {
+		if state.SameCredential(&t, &body) {
+			writeError(w, http.StatusConflict, "this key is "+other+"'s own upload key: as the host-wide key every app would hold it. Mint a separate one")
+			return
+		}
+	}
 	if body.Region == "" {
 		// What R2 wants, and what nobody remembers to pass.
 		body.Region = "auto"

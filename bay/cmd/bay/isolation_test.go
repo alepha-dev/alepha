@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/runner"
@@ -22,8 +23,10 @@ import (
 policyS3 is a bucket service that enforces who may touch what.
 
 Each access key is granted a list of "bucket/prefix" scopes, optionally
-narrowed to one method ("PUT bucket/prefix"); a request outside every scope of
-its key answers 403, as a real scoped token does. That refusal
+narrowed to one method ("PUT bucket/prefix", "LIST bucket/prefix" for a
+listing, "GET" being an object read); a request outside every scope of its key
+answers 403, as a real scoped token does. As on AWS, a read of a missing object
+answers 404 only to a key that may also list there, 403 to any other. That refusal
 is the evidence the isolation proof reads, so a fake that said yes to
 everything (fakeS3) could not tell an isolated key from a wide one.
 */
@@ -40,15 +43,25 @@ type policyS3 struct {
 	maxKeys []string
 	// writes counts every PUT and DELETE that reached the service.
 	writes int
-	srv    *httptest.Server
+	// slowBucket answers nothing for its requests until the caller gives up.
+	slowBucket string
+	closing    chan struct{}
+	srv        *httptest.Server
 }
 
 var credentialRe = regexp.MustCompile(`Credential=([^/]+)/`)
 
 func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 	t.Helper()
-	p := &policyS3{grants: grants, objects: map[string]bool{}}
+	p := &policyS3{grants: grants, objects: map[string]bool{}, closing: make(chan struct{})}
 	p.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p.slowBucket != "" && strings.HasPrefix(r.URL.Path, "/"+p.slowBucket+"/") {
+			select {
+			case <-r.Context().Done():
+			case <-p.closing:
+			}
+			return
+		}
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		m := credentialRe.FindStringSubmatch(r.Header.Get("Authorization"))
@@ -74,18 +87,25 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 			key = r.URL.Query().Get("prefix")
 			p.maxKeys = append(p.maxKeys, r.URL.Query().Get("max-keys"))
 		}
-		allowed := false
-		for _, g := range p.grants[m[1]] {
-			if method, scope, ok := strings.Cut(g, " "); ok {
-				if method != r.Method {
-					continue
+		grants := func(method string) bool {
+			for _, g := range p.grants[m[1]] {
+				if scoped, scope, ok := strings.Cut(g, " "); ok {
+					if scoped != method {
+						continue
+					}
+					g = scope
 				}
-				g = scope
+				if strings.HasPrefix(bucket+"/"+key, g) {
+					return true
+				}
 			}
-			if strings.HasPrefix(bucket+"/"+key, g) {
-				allowed = true
-			}
+			return false
 		}
+		method := r.Method
+		if listing {
+			method = "LIST"
+		}
+		allowed := grants(method)
 		if !allowed && m[1] == p.broken {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -103,6 +123,11 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 			w.WriteHeader(http.StatusNoContent)
 		case http.MethodGet:
 			if !listing {
+				if !p.objects[bucket+"/"+key] && !grants("LIST") {
+					w.WriteHeader(http.StatusForbidden)
+					_, _ = w.Write([]byte("<Error><Code>AccessDenied</Code></Error>"))
+					return
+				}
 				if !p.objects[bucket+"/"+key] {
 					w.WriteHeader(http.StatusNotFound)
 					_, _ = w.Write([]byte("<Error><Code>NoSuchKey</Code></Error>"))
@@ -129,6 +154,8 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 		}
 	}))
 	t.Cleanup(p.srv.Close)
+	// Runs first: releases the slow handlers Close would otherwise wait on.
+	t.Cleanup(func() { close(p.closing) })
 	return p
 }
 
@@ -284,7 +311,7 @@ func TestKeysAlreadyHeldElsewhereAreAlwaysRefused(t *testing.T) {
 		}
 	}
 	if err := f.server.store.SetInstanceStorage("other/production", &state.S3Target{
-		Endpoint: p.srv.URL, Bucket: "bay-blobs", AccessKey: "other-key", SecretKey: "s", Region: "auto"}); err != nil {
+		Endpoint: p.srv.URL, Bucket: "bay-blobs", AccessKey: "other-key", SecretKey: "s", Region: "auto"}, false); err != nil {
 		t.Fatal(err)
 	}
 	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "other-key", `,"allowWide":true`))
@@ -384,7 +411,7 @@ func TestBackupDestinationRefusesAnAppKey(t *testing.T) {
 	}
 
 	if err := f.server.store.SetInstanceStorage("demo/production", &state.S3Target{
-		Endpoint: p.srv.URL, Bucket: "bay-blobs", AccessKey: "demo-key", SecretKey: "s", Region: "auto"}); err != nil {
+		Endpoint: p.srv.URL, Bucket: "bay-blobs", AccessKey: "demo-key", SecretKey: "s", Region: "auto"}, false); err != nil {
 		t.Fatal(err)
 	}
 	body = `{"endpoint":"` + p.srv.URL + `","bucket":"backups","accessKey":"demo-key","secretKey":"s","region":"auto"}`
@@ -481,5 +508,97 @@ func TestAFailedProbeLeavesNothingBehind(t *testing.T) {
 	}
 	if p.objects[demoPrefix+probeObject] {
 		t.Fatal("the probe object must be deleted even when the listing failed")
+	}
+}
+
+// A key that may read but not list gets 403 for a made-up name on AWS, and
+// still downloads every backup whose name it can guess.
+func TestAKeyThatReadsWithoutListingIsNotIsolated(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.grants["reader-key"] = []string{demoPrefix, "GET backups/"}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "reader-key", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"get"`) {
+		t.Fatalf("a key reading the backups must be refused for its get, got %d: %s", rec.Code, rec.Body)
+	}
+	if len(p.objects) != 0 {
+		t.Fatalf("the seeds must be removed: %v", p.objects)
+	}
+}
+
+// Refused on apps/ says nothing below it: another app's uploads (on the
+// host-wide key, so absent from the instance keys) and its backups are tried
+// where they are.
+func TestAKeyReachingAnotherAppsPrefixesIsRefused(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	if _, failure := f.server.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: bucketDeployableArtifact(t), Name: "other", Env: "production",
+	}); failure != nil {
+		t.Fatalf("deploy failed: %v", failure)
+	}
+	for grant, place := range map[string]string{
+		"bay-blobs/apps/other-production/blobs/": "uploads of other/production",
+		"backups/apps/other-production/db/":      "backups of other/production",
+	} {
+		p.grants["leaky-key"] = []string{demoPrefix, grant}
+		rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "leaky-key", ""))
+		if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), place) {
+			t.Fatalf("a key reaching %s must be refused naming it, got %d: %s", grant, rec.Code, rec.Body)
+		}
+	}
+}
+
+// One place that hangs must not leave the ones after it untried.
+func TestAHangingLocationDoesNotHideTheNext(t *testing.T) {
+	p := newPolicyS3(t, map[string][]string{"wide": {"open/"}, "holder": {"open/", "slow/"}})
+	p.slowBucket = "slow"
+	defer func(d time.Duration) { probeOpTimeout = d }(probeOpTimeout)
+	probeOpTimeout = 50 * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	locs := []foreignLocation{
+		{what: "slow", target: *target(p.srv.URL, "slow", "holder"), prefix: "apps/"},
+		{what: "open", target: *target(p.srv.URL, "open", "holder"), prefix: "apps/"},
+	}
+	checks, isolated := probeLocations(ctx, *target(p.srv.URL, "", "wide"), locs)
+	if isolated || checks[0].Result != "unverified" || checks[1].Result != "reachable" {
+		t.Fatalf("the hang must be unverified and the leak after it found: %+v", checks)
+	}
+}
+
+// An app's own key as the host-wide one would hand it to every app.
+func TestAppStorageRefusesAnInstanceKey(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", "")); rec.Code != http.StatusOK {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	rec := configStorage(t, f, `{"endpoint":"`+p.srv.URL+`","bucket":"bay-blobs","accessKey":"demo-key","secretKey":"s","region":"auto","allowShared":true}`)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "demo/production") {
+		t.Fatalf("an instance's key must be refused as the host-wide key, naming the app, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// --allow-wide-key is remembered, so doctor can tell a known trade-off from a
+// key that stopped being isolated.
+func TestAWideKeyIsRememberedAsWide(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "wide-key", `,"allowWide":true`)); rec.Code != http.StatusOK {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	raw, err := os.ReadFile(filepath.Join(f.root, "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st state.State
+	if err := json.Unmarshal(raw, &st); err != nil {
+		t.Fatal(err)
+	}
+	if !st.WideInstanceStorage["demo/production"] {
+		t.Fatalf("the key must be recorded as stored wide: %s", raw)
+	}
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", "")); rec.Code != http.StatusOK {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	if raw, _ := os.ReadFile(filepath.Join(f.root, "state.json")); strings.Contains(string(raw), "wideInstanceStorage") {
+		t.Fatalf("an isolated key replacing it must clear the mark: %s", raw)
 	}
 }

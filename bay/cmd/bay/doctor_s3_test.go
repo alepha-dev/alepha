@@ -195,3 +195,17 @@ func findCheckOK(checks []check, name string) (check, bool) {
 	}
 	return check{}, false
 }
+
+// Stored on purpose with --allow-wide-key: a known trade-off, warned.
+func TestDoctorWarnsAWideKeyStoredOnPurpose(t *testing.T) {
+	p := doctorPolicy(t)
+	st := &state.State{
+		S3:                  &state.S3Config{S3Target: *target(p.srv.URL, "backups", "backup-key")},
+		InstanceStorage:     map[string]*state.S3Target{"demo/production": target(p.srv.URL, "bay-blobs", "wide-key")},
+		WideInstanceStorage: map[string]bool{"demo/production": true},
+	}
+	c := findCheck(t, storageChecksFor(context.Background(), st, true), "s3 key demo/production")
+	if c.OK || !c.Warn || !strings.Contains(c.Detail, "--allow-wide-key") {
+		t.Fatalf("a key stored wide on purpose must warn, saying so: %+v", c)
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,8 +39,8 @@ refused with 401/403. Any one that succeeds is a leak; anything else (timeout,
 
 A refusal on a prefix says nothing about the prefixes under it: a key scoped
 to `apps/<inst>/` is refused on `apps/` and still reaches `apps/<inst>/db/`,
-where its own backups live. So the app's own backup prefix is a place of its
-own, tried directly.
+where its own backups live. So every app's backup prefix, and every other app's
+upload prefix, is a place of its own, tried directly.
 */
 
 // isolationCheck is one place the key was tried against.
@@ -70,10 +71,14 @@ type storageHolders struct {
 	backups   *state.S3Config
 	storage   *state.S3Target
 	instances map[string]state.S3Target
+	// apps is every deployed instance: their backup prefixes, and the upload
+	// prefixes of those on the host-wide key, are places too.
+	apps []state.App
 }
 
 func (s *server) storageHolders() storageHolders {
-	return storageHolders{backups: s.store.S3(), storage: s.store.Storage(), instances: s.store.AllInstanceStorage()}
+	return storageHolders{backups: s.store.S3(), storage: s.store.Storage(),
+		instances: s.store.AllInstanceStorage(), apps: s.store.Apps()}
 }
 
 // foreignLocation is a bucket+prefix an instance's key must not reach.
@@ -112,12 +117,31 @@ func foreignLocations(hosts storageHolders, key string, own state.S3Target) []fo
 	if st := hosts.storage; st != nil {
 		add("every app's uploads (host-wide s3:apps bucket)", *st, "apps/")
 	}
-	for other, t := range hosts.instances {
+	others := make([]string, 0, len(hosts.instances))
+	for other := range hosts.instances {
+		others = append(others, other)
+	}
+	sort.Strings(others)
+	for _, other := range others {
 		if other == key {
 			continue
 		}
 		name, env, _ := strings.Cut(other, "/")
-		add("uploads of "+other, t, deploy.BlobPrefix(name, env)+"/")
+		add("uploads of "+other, hosts.instances[other], deploy.BlobPrefix(name, env)+"/")
+	}
+	apps := append([]state.App(nil), hosts.apps...)
+	sort.Slice(apps, func(i, j int) bool { return apps[i].Key() < apps[j].Key() })
+	for _, a := range apps {
+		other := a.Key()
+		if other == key {
+			continue
+		}
+		if b := hosts.backups; b != nil {
+			add("backups of "+other, b.S3Target, backup.DBPrefix(a.Name, a.Env))
+		}
+		if _, own := hosts.instances[other]; !own && hosts.storage != nil && a.StorageBackend == deploy.BackendS3 {
+			add("uploads of "+other+" (host-wide key)", *hosts.storage, deploy.BlobPrefix(a.Name, a.Env)+"/")
+		}
 	}
 	// Its own bucket, above its own prefix - only when that bucket is shared.
 	// A key scoped to a shared bucket rather than to its prefix reads whatever
@@ -145,13 +169,13 @@ func probeIsolation(ctx context.Context, hosts storageHolders, key string, own s
 		return report
 	}
 	probe := prefix + probeObject
-	if err := client.Put(ctx, probe, []byte("bay isolation probe")); err != nil {
+	if err := probeOp(ctx, func(c context.Context) error { return client.Put(c, probe, []byte("bay isolation probe")) }); err != nil {
 		report.WorkError = "cannot write under " + prefix + ": " + err.Error()
 	} else {
 		deleted := false
-		if _, err := client.ListPage(ctx, prefix, 1); err != nil {
+		if err := probeOp(ctx, func(c context.Context) error { _, err := client.ListPage(c, prefix, 1); return err }); err != nil {
 			report.WorkError = "cannot list " + prefix + ": " + err.Error()
-		} else if err := client.Delete(ctx, probe); err != nil {
+		} else if err := probeOp(ctx, func(c context.Context) error { return client.Delete(c, probe) }); err != nil {
 			report.WorkError = "cannot delete under " + prefix + ": " + err.Error()
 		} else {
 			deleted, report.Works = true, true
@@ -169,8 +193,29 @@ func probeIsolation(ctx context.Context, hosts storageHolders, key string, own s
 	return report
 }
 
-// probeObject is the key every probe writes, under the prefix it tries.
-const probeObject = ".bay-isolation-probe"
+// probeObject is the key every probe writes, under the prefix it tries;
+// probeSeed the object the location's own key puts there for the get to read.
+const (
+	probeObject = ".bay-isolation-probe"
+	probeSeed   = ".bay-isolation-seed"
+)
+
+/*
+probeOpTimeout bounds each single S3 call of a probe. Without it, one location
+that hangs eats the whole budget and every place after it comes back
+"unverified" - never tried, rather than proved either way. A var for the tests.
+*/
+var probeOpTimeout = 10 * time.Second
+
+// isolationProbeTimeout bounds a whole proof: a few calls per location, a
+// couple of locations per app on the host.
+const isolationProbeTimeout = 2 * time.Minute
+
+func probeOp(ctx context.Context, op func(context.Context) error) error {
+	c, cancel := context.WithTimeout(ctx, probeOpTimeout)
+	defer cancel()
+	return op(c)
+}
 
 // probeLocations tries cred against each location; isolated only when every
 // one of them refused every operation.
@@ -190,10 +235,16 @@ func probeLocations(ctx context.Context, cred state.S3Target, locs []foreignLoca
 /*
 tryLocation attempts list, get, put and delete at loc with cred.
 
+The get reads an object that exists: the location's OWN key seeds one first.
+S3 answers a missing key with 403 rather than 404 to a caller that may read but
+not list (AWS does), so a get of a made-up key would pass a key that downloads
+every backup whose name it can guess. Only when the seed cannot be written
+(the holder's key is read-only there) does a 404 on a made-up key stand in:
+S3 says "no such key" only to a caller allowed to read.
+
 The put writes a probe object; if it goes through, it is removed with the
-location's OWN credential as well, since a write-only leak cannot delete what
-it wrote. A get answered 404 is a leak too: S3 says "no such key" only to a
-caller allowed to read there.
+location's own credential as well, since a write-only leak cannot delete what
+it wrote.
 */
 func tryLocation(ctx context.Context, cred state.S3Target, loc foreignLocation) isolationCheck {
 	check := isolationCheck{What: loc.what, Bucket: loc.target.Bucket, Prefix: loc.prefix}
@@ -204,26 +255,33 @@ func tryLocation(ctx context.Context, cred state.S3Target, loc foreignLocation) 
 		return check
 	}
 	key := loc.prefix + probeObject
+	readKey, seeded := key, false
+	if holder, err := s3.New(s3.Config{Endpoint: loc.target.Endpoint, Bucket: loc.target.Bucket,
+		AccessKey: loc.target.AccessKey, SecretKey: loc.target.SecretKey, Region: loc.target.Region}); err == nil {
+		seed := loc.prefix + probeSeed
+		if probeOp(ctx, func(op context.Context) error { return holder.Put(op, seed, []byte("bay isolation seed")) }) == nil {
+			readKey, seeded = seed, true
+			defer removeProbe(ctx, loc.target, seed)
+		}
+	}
 	var errs []string
 	try := func(op string, err error) {
 		var se *s3.StatusError
 		switch {
-		case err == nil, op == "get" && errors.As(err, &se) && se.Code == http.StatusNotFound:
+		case err == nil, op == "get" && !seeded && errors.As(err, &se) && se.Code == http.StatusNotFound:
 			check.Reached = append(check.Reached, op)
 		case !s3.IsDenied(err):
 			errs = append(errs, op+": "+err.Error())
 		}
 	}
-	_, err = c.ListPage(ctx, loc.prefix, 1)
-	try("list", err)
-	_, err = c.Get(ctx, key)
-	try("get", err)
-	err = c.Put(ctx, key, []byte("bay isolation probe"))
+	try("list", probeOp(ctx, func(op context.Context) error { _, err := c.ListPage(op, loc.prefix, 1); return err }))
+	try("get", probeOp(ctx, func(op context.Context) error { _, err := c.Get(op, readKey); return err }))
+	err = probeOp(ctx, func(op context.Context) error { return c.Put(op, key, []byte("bay isolation probe")) })
 	if err == nil {
 		defer removeProbe(ctx, loc.target, key)
 	}
 	try("put", err)
-	try("delete", c.Delete(ctx, key))
+	try("delete", probeOp(ctx, func(op context.Context) error { return c.Delete(op, key) }))
 
 	switch {
 	case len(check.Reached) > 0:
@@ -325,7 +383,7 @@ func (s *server) handleSetInstanceStorage(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), storageProbeTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), isolationProbeTimeout)
 	defer cancel()
 	report := probeIsolation(ctx, s.storageHolders(), key, target)
 	if !report.Works {
@@ -341,7 +399,7 @@ func (s *server) handleSetInstanceStorage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.store.SetInstanceStorage(key, &target); err != nil {
+	if err := s.store.SetInstanceStorage(key, &target, !report.Isolated); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -406,7 +464,7 @@ func (s *server) handleGetInstanceStorage(w http.ResponseWriter, r *http.Request
 	resp := map[string]any{"app": app.Key(), "ownKey": true,
 		"endpoint": own.Endpoint, "bucket": own.Bucket, "region": own.Region}
 	if r.URL.Query().Get("check") == "yes" {
-		ctx, cancel := context.WithTimeout(r.Context(), storageProbeTimeout)
+		ctx, cancel := context.WithTimeout(r.Context(), isolationProbeTimeout)
 		defer cancel()
 		resp["isolation"] = probeIsolation(ctx, s.storageHolders(), app.Key(), *own)
 	}
@@ -430,7 +488,7 @@ func (s *server) handleClearInstanceStorage(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusConflict, app.Key()+" stores its uploads with this key; replace it with another `bay config s3:apps "+app.Key()+"` rather than removing it")
 		return
 	}
-	if err := s.store.SetInstanceStorage(app.Key(), nil); err != nil {
+	if err := s.store.SetInstanceStorage(app.Key(), nil, false); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

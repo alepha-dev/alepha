@@ -107,7 +107,8 @@ each of them can read and delete the others' uploads. `bay config s3:apps
 <name/env>` gives an instance its own key, stored only after S3 proves it is
 refused, for list, get, put and delete, outside `apps/<name>-<env>/blobs/`,
 its own backups under `apps/<name>-<env>/db/` included; a key already held by the backups, the
-host-wide target or another app is refused.
+host-wide target or another app is refused, and the host-wide `s3:apps`
+refuses a key an app already holds on its own.
 
 Every key sits in clear in `state.json`, at mode `0600`, and an app's key in
 its `.env` too.

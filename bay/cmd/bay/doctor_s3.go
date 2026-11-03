@@ -108,7 +108,7 @@ func storageChecksFor(ctx context.Context, st *state.State, probeKeys bool) []ch
 		checks = append(checks, hostWideKeyCheck(ctx, st))
 	}
 
-	holders := storageHolders{backups: st.S3, storage: st.Storage, instances: instances}
+	holders := storageHolders{backups: st.S3, storage: st.Storage, instances: instances, apps: st.Apps}
 	keys := make([]string, 0, len(instances))
 	for k := range instances {
 		keys = append(keys, k)
@@ -120,7 +120,7 @@ func storageChecksFor(ctx context.Context, st *state.State, probeKeys bool) []ch
 				Detail: "own key stored; not re-proved (bay doctor --probe-keys writes a probe object to verify it)"})
 			continue
 		}
-		checks = append(checks, instanceKeyCheck(ctx, holders, k, instances[k]))
+		checks = append(checks, instanceKeyCheck(ctx, holders, k, instances[k], st.WideInstanceStorage[k]))
 	}
 	return checks
 }
@@ -144,7 +144,7 @@ func hostWideKeyCheck(ctx context.Context, st *state.State) check {
 	for _, a := range st.Apps {
 		locs = append(locs, foreignLocation{what: "backups of " + a.Key(), target: b, prefix: backup.DBPrefix(a.Name, a.Env)})
 	}
-	probe, cancel := context.WithTimeout(ctx, storageProbeTimeout)
+	probe, cancel := context.WithTimeout(ctx, isolationProbeTimeout)
 	defer cancel()
 	results, isolated := probeLocations(probe, *st.Storage, locs)
 	if isolated {
@@ -207,9 +207,14 @@ func bucketCheck(ctx context.Context, name string, t state.S3Target, needsVersio
 	return c
 }
 
-func instanceKeyCheck(ctx context.Context, holders storageHolders, key string, own state.S3Target) check {
+/*
+instanceKeyCheck re-proves an app's own key. A key that no longer works, or
+was proved isolated and no longer is, fails. One stored with --allow-wide-key
+was known not to be: still not isolated is a warning, as when it was stored.
+*/
+func instanceKeyCheck(ctx context.Context, holders storageHolders, key string, own state.S3Target, wide bool) check {
 	c := check{Name: "s3 key " + key}
-	probe, cancel := context.WithTimeout(ctx, storageProbeTimeout)
+	probe, cancel := context.WithTimeout(ctx, isolationProbeTimeout)
 	defer cancel()
 	report := probeIsolation(probe, holders, key, own)
 	if !report.Works {
@@ -224,6 +229,10 @@ func instanceKeyCheck(ctx context.Context, holders storageHolders, key string, o
 	}
 	if len(bad) > 0 {
 		c.Detail = "not isolated (" + strings.Join(bad, "; ") + ")"
+		if wide {
+			c.Warn = true
+			c.Detail += "; stored with --allow-wide-key"
+		}
 		return c
 	}
 	c.OK = true
