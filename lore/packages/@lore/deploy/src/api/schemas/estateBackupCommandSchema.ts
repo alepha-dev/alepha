@@ -92,6 +92,17 @@ export const ESTATE_BACKUP_COMMAND_KINDS = [
 ] as const satisfies readonly EstateCommandKind[];
 
 /**
+ * The backup verbs refused while the Bay is offline rather than queued. A
+ * restore or a policy change delivered up to a day later, once nobody is
+ * looking, is worse than an error: the person asking has moved on, and the
+ * data or the schedule changes under whoever is there then.
+ */
+export const BACKUP_KINDS_REFUSED_OFFLINE: readonly string[] = [
+  "restore",
+  "backup-policy",
+];
+
+/**
  * The queued command for a backup body, aimed at the instance Bay knows as
  * `app/environment` (the machine's name, project segment included).
  */

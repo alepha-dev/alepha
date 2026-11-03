@@ -18,6 +18,7 @@ import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import {
+  BACKUP_KINDS_REFUSED_OFFLINE,
   backupCommandInput,
   ESTATE_BACKUP_COMMAND_KINDS,
   type EstateBackupCommandBody,
@@ -212,11 +213,20 @@ export class EstateCommandController {
           app: string;
           environment: string;
         };
-        return this.commands.enqueue(
-          estate,
-          backupCommandInput(backup, backup.app, backup.environment),
-          user.id,
+        const input = backupCommandInput(
+          backup,
+          backup.app,
+          backup.environment,
         );
+        if (
+          BACKUP_KINDS_REFUSED_OFFLINE.includes(body.kind) &&
+          !this.estates.isOnline(estate)
+        ) {
+          throw new BadRequestError(
+            `Estate "${estate.slug}" is not connected right now: a ${body.kind} waits for it to be back rather than running hours later.`,
+          );
+        }
+        return this.commands.enqueue(estate, input, user.id);
       }
 
       if (body.kind !== "deploy") {

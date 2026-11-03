@@ -16,6 +16,7 @@ import {
   appBackupViewSchema,
 } from "../schemas/appBackupViewSchema.ts";
 import {
+  BACKUP_KINDS_REFUSED_OFFLINE,
   backupCommandInput,
   ESTATE_BACKUP_COMMAND_KINDS,
   estateBackupCommandBodySchema,
@@ -157,11 +158,16 @@ export class BackupController {
         );
       }
       const { estate, machineApp } = await this.requireTarget(instance);
-      return this.commands.enqueue(
-        estate,
-        backupCommandInput(body, machineApp, instance.env),
-        user.id,
-      );
+      const input = backupCommandInput(body, machineApp, instance.env);
+      if (
+        BACKUP_KINDS_REFUSED_OFFLINE.includes(body.kind) &&
+        !this.estateService.isOnline(estate)
+      ) {
+        throw new BadRequestError(
+          `Estate "${estate.slug}" is not connected right now: a ${body.kind} waits for it to be back rather than running hours later.`,
+        );
+      }
+      return this.commands.enqueue(estate, input, user.id);
     },
   });
 

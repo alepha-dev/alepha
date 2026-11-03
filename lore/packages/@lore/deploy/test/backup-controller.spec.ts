@@ -190,6 +190,31 @@ describe("BackupController", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
+  it("refuses a restore or a policy change while the Bay is offline, and queues it once connected", async ({
+    expect,
+  }) => {
+    const { w, estate } = await deployed();
+    const send = (body: object) =>
+      api.sendAppBackupCommand(
+        { params: params(w), body: body as never },
+        { user: w.user },
+      );
+    const restore = { kind: "restore", reason: "the import went wrong" };
+    const policy = { kind: "backup-policy", policy: null };
+
+    await expect(send(restore)).rejects.toThrow(/not connected/);
+    await expect(send(policy)).rejects.toThrow(/not connected/);
+    // A plain backup still queues: it is harmless whenever it runs.
+    expect((await send({ kind: "backup" })).kind).toBe("backup");
+
+    const now = new Date().toISOString();
+    await w.rows.estates.updateById(estate.id, {
+      connectedAt: now,
+      lastSeenAt: now,
+    });
+    expect((await send(restore)).kind).toBe("restore");
+  });
+
   it("answers 404 for another app's command on the same estate, and for a non-backup command", async ({
     expect,
   }) => {

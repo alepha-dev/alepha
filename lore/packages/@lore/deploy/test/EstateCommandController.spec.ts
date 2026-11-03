@@ -477,6 +477,34 @@ describe("EstateCommandController, logs", () => {
     expect(listed.items).toEqual([]);
   });
 
+  it("refuses a restore or a policy change while the machine is offline", async ({
+    expect,
+  }) => {
+    const owner = await createUser(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-restore-off", true);
+    const send = (body: object) =>
+      ctx.commands.enqueueEstateCommand(
+        { params: { estateId: estate.id }, body: body as never },
+        { user: owner },
+      );
+    const target = { app: "demo", environment: "production" };
+
+    await expect(
+      send({ ...target, kind: "restore", reason: "wrong import" }),
+    ).rejects.toThrow(/not connected/);
+    await expect(
+      send({ ...target, kind: "backup-policy", policy: null }),
+    ).rejects.toThrow(/not connected/);
+
+    await online(ctx, estate);
+    const command = await send({
+      ...target,
+      kind: "restore",
+      reason: "wrong import",
+    });
+    expect(command.kind).toBe("restore");
+  });
+
   it("queues a bounded ask while the machine is connected, defaulting the line count", async ({
     expect,
   }) => {
