@@ -289,7 +289,7 @@ export class BackupController {
   /**
    * The Bay instance a copy is, checked the way `DeployGate` checks a deploy:
    * an estate, still there, still lent, a Bay, and a name the copy was
-   * deployed under.
+   * deployed under ON THAT estate (`resourceEstateId`).
    *
    * ⚠️ Reads the STORED name and never `ResourceNameService.resolve`, which
    * stores one: looking at a tab must not name a copy that never deployed.
@@ -325,7 +325,14 @@ export class BackupController {
     }
     const suffix = `-${instance.env}`;
     const name = instance.resourceName;
-    if (!name?.endsWith(suffix) || name.length <= suffix.length) {
+    // ⚠️ The name is only this copy's on the estate it was deployed to under
+    // it. Moved since, the same name on the new estate may be another
+    // project's instance: its backups and restores are not ours to drive.
+    if (
+      instance.resourceEstateId !== estate.id ||
+      !name?.endsWith(suffix) ||
+      name.length <= suffix.length
+    ) {
       return { status: "not-deployed", estate };
     }
     return { status: "ok", estate, machineApp: name.slice(0, -suffix.length) };

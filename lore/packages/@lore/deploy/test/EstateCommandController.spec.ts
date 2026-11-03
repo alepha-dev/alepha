@@ -332,6 +332,9 @@ describe("EstateCommandController, the name a Bay deploy sends", () => {
 
     const after = await ctx.repos.instances.findById(setup.instance.id);
     expect(after?.resourceName).toBe(`${setup.project.slug}-demo-production`);
+    // The estate goes with the name: the Backups tab acts on the instance
+    // only where the copy was deployed under it.
+    expect(after?.resourceEstateId).toBe(setup.estate.id);
   });
 
   it("sends the stored project segment after the project is renamed", async ({

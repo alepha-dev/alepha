@@ -50,6 +50,7 @@ describe("BackupController", () => {
     await world.rows.instances.updateById(instance.id, {
       estateId: estate.id,
       resourceName: `${machineApp}-production`,
+      resourceEstateId: estate.id,
     });
     return { w: world, estate, instance, machineApp };
   };
@@ -73,6 +74,7 @@ describe("BackupController", () => {
 
     await w.rows.instances.updateById(instance.id, {
       resourceName: "acme-minpricing-production",
+      resourceEstateId: estate.id,
     });
     const unreported = await view();
     expect(unreported.status).toBe("not-reported");
@@ -228,6 +230,7 @@ describe("BackupController", () => {
     await a.w.rows.instances.updateById(otherInstance.id, {
       estateId: a.estate.id,
       resourceName: `p${a.w.project.id}-shop-production`,
+      resourceEstateId: a.estate.id,
     });
 
     const theirs = await api.sendAppBackupCommand(
@@ -266,5 +269,31 @@ describe("BackupController", () => {
         { user: w.user },
       ),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("never drives an instance the copy did not deploy as on its current estate", async ({
+    expect,
+  }) => {
+    // Deployed on one estate, then moved to another the project was lent,
+    // where the same name is ANOTHER project's live instance (that project
+    // took the slug this one was renamed away from).
+    const { w, instance } = await deployed();
+    const elsewhere = await lentBayEstate(w);
+    await w.rows.instances.updateById(instance.id, {
+      estateId: elsewhere.id,
+    });
+
+    const view = await api.getAppBackup(
+      { params: params(w), query: {} },
+      { user: w.user },
+    );
+    expect(view.status).toBe("not-deployed");
+    expect(view.machineApp).toBeUndefined();
+    await expect(
+      api.sendAppBackupCommand(
+        { params: params(w), body: { kind: "backup" } as never },
+        { user: w.user },
+      ),
+    ).rejects.toThrow(BadRequestError);
   });
 });

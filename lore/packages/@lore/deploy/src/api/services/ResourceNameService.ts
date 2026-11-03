@@ -43,8 +43,16 @@ export class ResourceNameService {
   public async resolve(instance: AppInstance, estate: Estate): Promise<string> {
     const name = instance.resourceName ?? (await this.derive(instance, estate));
     await this.assertFree(instance, estate, name);
-    if (!instance.resourceName) {
-      await this.instances.updateById(instance.id, { resourceName: name });
+    if (
+      instance.resourceName !== name ||
+      instance.resourceEstateId !== estate.id
+    ) {
+      // The estate goes with the name: only a deploy that passed `assertFree`
+      // here may say "this copy is `name` on this estate".
+      await this.instances.updateById(instance.id, {
+        resourceName: name,
+        resourceEstateId: estate.id,
+      });
     }
     return name;
   }
