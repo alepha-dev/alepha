@@ -87,7 +87,7 @@ func TestAFailedAutoRestoreKeepsTheScheduleOffTheEmptyDatabase(t *testing.T) {
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
 
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 	f.server.runDueBackups(t.Context())
 
@@ -103,7 +103,7 @@ func TestAFailedAutoRestoreWarnsTheDeploy(t *testing.T) {
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
 
-	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	warning, _ := restore["warning"].(string)
 	if !strings.Contains(warning, "bay restore demo/production") {
@@ -116,7 +116,7 @@ func TestAFailedAutoRestoreWarnsTheDeploy(t *testing.T) {
 func TestAFirstDeployWithNothingToRestoreIsNotHeld(t *testing.T) {
 	f := newBackupFixture(t)
 
-	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	if _, warned := restore["warning"]; warned {
 		t.Fatalf("nothing failed, got %v", restore)
@@ -130,7 +130,7 @@ func TestAHeldBackupIsAProblemInStatus(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	line := computeStatus(listedApp{App: f.app(t), Running: true}, time.Now(), 24*time.Hour)
 
@@ -143,7 +143,7 @@ func TestAHoldSurvivesARedeploy(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	if _, derr := f.deploy(deployableArtifact(t)); derr != nil {
 		t.Fatal(derr)
@@ -158,7 +158,7 @@ func TestARestoreLiftsTheHold(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 
 	req := httptest.NewRequest(http.MethodPost, "/apps/demo/production/restore?confirm=yes", nil)
@@ -181,7 +181,7 @@ func TestABackupTakenByHandLiftsTheHold(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 
 	if rec := f.backup(t); rec.Code != http.StatusOK {
@@ -201,7 +201,7 @@ func TestAnUncheckedEmptyStartHoldsUntilDismissed(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	if a := f.app(t); a.BackupHold == "" || a.RestorePending == nil {
 		t.Fatalf("hold = %q, pending = %v", a.BackupHold, a.RestorePending)
@@ -227,7 +227,7 @@ func TestAPreDeployBackupKeepsTheHold(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 
 	for _, trigger := range []string{"deploy", "restore", "schedule"} {
@@ -247,7 +247,7 @@ func TestARestoreWithoutAKeyIgnoresBackupsOfTheEmptyDatabase(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 	app := f.app(t)
 	app.RestorePending.Since = time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
@@ -280,7 +280,7 @@ func TestTheAutoRestoreWaitsForTheBackupLock(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		f.server.maybeAutoRestore(context.Background(), f.app(t), f.databasePath())
+		f.server.maybeAutoRestore(context.Background(), f.app(t), f.databasePath(), time.Now())
 		close(done)
 	}()
 	select {
@@ -321,7 +321,7 @@ func TestARestoreThatDoesNotBootStillLiftsTheGuards(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 	f.runner.refuseStart = func(int) error { return errors.New("will not boot") }
 
@@ -348,7 +348,7 @@ func TestAScheduledBackupThatWaitedForTheLockSeesTheHold(t *testing.T) {
 	picked := f.app(t)
 
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 	f.server.backupOne(t.Context(), picked, time.Now())
 
@@ -366,7 +366,7 @@ func TestASecondAutoRestoreSkipsBackupsOfTheEmptyDatabase(t *testing.T) {
 	f := newBackupFixture(t)
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
-	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 	bucket.down.Store(false)
 	app := f.app(t)
 	app.RestorePending.Since = time.Now().UTC().Add(-time.Hour).Format(time.RFC3339)
@@ -376,9 +376,27 @@ func TestASecondAutoRestoreSkipsBackupsOfTheEmptyDatabase(t *testing.T) {
 	bucket.newer.Store("apps/" + naming.Instance("demo", "production") + "/db/" +
 		time.Now().UTC().Add(-time.Minute).Format("20060102T150405Z") + ".sqlite.gz")
 
-	out := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	out := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	if got, _ := out["database"].(string); !strings.Contains(got, "20260101T000000Z") {
 		t.Fatalf("want the snapshot from before the empty start, got %v", out)
+	}
+}
+
+// A first deploy on a new host, nothing failed and nothing pending: the
+// schedule can still snapshot the empty database between its creation and the
+// lock auto-restore takes. That snapshot is the newest in the bucket, and
+// restoring it would install the empty database and lift the guards.
+func TestAFirstDeployNeverRestoresABackupTakenSinceItBegan(t *testing.T) {
+	f := newBackupFixture(t)
+	bucket := newRecoveryBucket(t, f)
+	deployStart := time.Now()
+	bucket.newer.Store("apps/" + naming.Instance("demo", "production") + "/db/" +
+		deployStart.UTC().Format("20060102T150405Z") + ".sqlite.gz")
+
+	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), deployStart)
+
+	if got, _ := restore["database"].(string); !strings.Contains(got, "20260101T000000Z") {
+		t.Fatalf("must restore the backup from before the deploy, got %v", restore)
 	}
 }

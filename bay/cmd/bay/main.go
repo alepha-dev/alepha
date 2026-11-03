@@ -1481,6 +1481,9 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		_ = s.runner.Stop(key, stopGrace)
 	}
 
+	// Before deploy.Run creates the database: any backup from here on may be
+	// of that empty file, and auto-restore must not pick it.
+	deployStart := time.Now()
 	res, err := deploy.Run(deploy.Options{
 		Root: s.root, Artifact: opts.Artifact, Name: opts.Name, Env: opts.Env,
 		Domains: opts.Domains, BaseDomain: s.store.BaseDomain(),
@@ -1507,7 +1510,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// empty file — never over an existing database.
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
-		restore = s.maybeAutoRestore(ctx, res.App, res.DatabasePath)
+		restore = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart)
 	}
 
 	if blueGreen {

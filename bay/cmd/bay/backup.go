@@ -567,7 +567,7 @@ func fetchedPaths(f *backup.Fetched) []string {
 //
 // A failure does not fail the deploy: the app starts on the empty database. See
 // `startedEmptyUnchecked` for what keeps that from costing the snapshot it missed.
-func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string) map[string]any {
+func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string, deployStart time.Time) map[string]any {
 	// The scheduler takes the same lock: without it, it could back the empty
 	// database up between its creation and the restore.
 	defer s.lockBackup(app.Key())()
@@ -583,15 +583,20 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 		return s.startedEmptyUnchecked(app, "no backup destination configured")
 	}
 
+	// Never a backup taken since this deploy began: the empty database exists
+	// from deploy.Run on, and the schedule can snapshot it before this lock is
+	// taken - on a first deploy as much as after a failed recovery. Key
+	// timestamps are to the second, so that whole second is excluded too.
 	// An instance that already started empty once may have backed that empty
-	// database up since: the backup to restore is the latest before then, as
-	// for a `bay restore` without a key.
-	latest, found, err := backup.Entry{}, false, error(nil)
-	if current, ok := s.store.Get(app.Key()); ok && current.RestorePending != nil && !current.RestorePending.SinceTime().IsZero() {
-		latest, found, err = mgr.Before(ctx, app.Name, app.Env, current.RestorePending.SinceTime())
-	} else {
-		latest, found, err = mgr.Latest(ctx, app.Name, app.Env)
+	// database up since: then the cut-off is when it did, as for a
+	// `bay restore` without a key.
+	cutoff := deployStart.UTC().Truncate(time.Second).Add(-time.Nanosecond)
+	if current, ok := s.store.Get(app.Key()); ok && current.RestorePending != nil {
+		if since := current.RestorePending.SinceTime(); !since.IsZero() && since.Before(cutoff) {
+			cutoff = since
+		}
 	}
+	latest, found, err := mgr.Before(ctx, app.Name, app.Env, cutoff)
 	if err != nil {
 		s.log.Error("could not list backups", "app", app.Key(), "err", err)
 		return s.startedEmptyUnchecked(app, "could not reach the bucket")
