@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -81,7 +82,14 @@ func (s *server) globalBackupLayer() backuppolicy.Layer {
 	}
 	if p.Retention == nil || p.Retention.Keep == nil {
 		if cfg := s.store.S3(); cfg != nil && cfg.Keep > 0 {
-			p.Retention = &backuppolicy.Retention{Keep: backuppolicy.Int(cfg.Keep)}
+			// Fill only keep: the other rules (daily, weekly…) stay. A copy, so
+			// the stored policy is not changed under the store.
+			var r backuppolicy.Retention
+			if p.Retention != nil {
+				r = *p.Retention
+			}
+			r.Keep = backuppolicy.Int(cfg.Keep)
+			p.Retention = &r
 		}
 	}
 	return backuppolicy.Layer{Source: backuppolicy.Global, Policy: &p}
@@ -247,7 +255,7 @@ func (s *server) applyOperatorPolicy(app state.App, p *backuppolicy.Policy, by s
 // policyLine is the policy as `bay status` prints it, each part with the
 // layer that set it: "every 6h (app); keep 14, 7 daily (global)".
 func policyLine(p backuppolicy.Effective) string {
-	retention := p.RetentionWords() + " (" + string(p.Sources.Keep) + ")"
+	retention := p.RetentionWords() + " (" + retentionSources(p) + ")"
 	if p.Prune == backuppolicy.PruneLifecycle {
 		retention = "pruned by the bucket's lifecycle rules (" + string(p.Sources.Prune) + ")"
 	}
@@ -259,6 +267,28 @@ func policyLine(p backuppolicy.Effective) string {
 		when += ", and before each deploy (" + string(p.Sources.OnDeploy) + ")"
 	}
 	return when + "; " + retention + "; " + p.VerifyWords() + " (" + string(p.Sources.Verify) + ")"
+}
+
+// retentionSources names every layer behind a retention rule in force, so
+// "keep 14 (global)" with an operator's "10 daily" reads "global, operator".
+func retentionSources(p backuppolicy.Effective) string {
+	var out []string
+	for _, r := range []struct {
+		set bool
+		src backuppolicy.Source
+	}{
+		{p.Keep > 0, p.Sources.Keep}, {p.Hourly > 0, p.Sources.Hourly}, {p.Daily > 0, p.Sources.Daily},
+		{p.Weekly > 0, p.Sources.Weekly}, {p.Monthly > 0, p.Sources.Monthly}, {p.Yearly > 0, p.Sources.Yearly},
+		{p.MaxAge > 0, p.Sources.MaxAge},
+	} {
+		if r.set && r.src != "" && !slices.Contains(out, string(r.src)) {
+			out = append(out, string(r.src))
+		}
+	}
+	if len(out) == 0 {
+		return string(p.Sources.Keep)
+	}
+	return strings.Join(out, ", ")
 }
 
 func policyLog(p *backuppolicy.Policy) string {

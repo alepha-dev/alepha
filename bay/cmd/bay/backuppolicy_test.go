@@ -182,6 +182,30 @@ func TestPruneUsesTheAppsKeep(t *testing.T) {
 	}
 }
 
+func TestLegacyS3KeepOnlyFillsTheGlobalKeep(t *testing.T) {
+	f := newBackupFixture(t)
+	pointAt(t, f, "http://127.0.0.1:1") // legacy keep 1
+	global := &backuppolicy.Policy{Retention: &backuppolicy.Retention{Daily: backuppolicy.Int(7), Weekly: backuppolicy.Int(4)}}
+	if err := f.server.store.SetBackupPolicy(global); err != nil {
+		t.Fatal(err)
+	}
+	r := f.server.globalBackupLayer().Policy.Retention
+	if r == nil || r.Keep == nil || *r.Keep != 1 || r.Daily == nil || *r.Daily != 7 || r.Weekly == nil || *r.Weekly != 4 {
+		t.Fatalf("legacy keep must join daily 7 / weekly 4, not replace them: %+v", r)
+	}
+	if stored := f.server.store.BackupPolicy(); stored.Retention.Keep != nil {
+		t.Fatal("the stored global policy must not be changed")
+	}
+}
+
+func TestPolicyLineNamesEveryRetentionLayer(t *testing.T) {
+	p := backuppolicy.Effective{Enabled: true, Every: 6 * time.Hour, Keep: 14, Daily: 10, KeepPreDeploy: 5,
+		Sources: backuppolicy.Sources{Schedule: backuppolicy.Global, Keep: backuppolicy.Global, Daily: backuppolicy.Operator, Verify: backuppolicy.Global}}
+	if line := policyLine(p); !strings.Contains(line, "10 daily, 5 pre-deploy (global, operator)") {
+		t.Fatalf("both layers behind the retention must be named: %s", line)
+	}
+}
+
 func TestStatusJudgesStalenessByTheAppsPolicy(t *testing.T) {
 	now := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 	app := listedApp{App: state.App{Name: "demo", Env: "production", Backups: true,
