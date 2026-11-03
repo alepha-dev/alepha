@@ -243,11 +243,12 @@ func (m *Manager) BackupBundle(ctx context.Context, app, env string, runtime Int
 	}
 	var uploaded []string
 	fail := func(err error) (*Result, *Manifest, error) {
-		// A fresh context: the one that failed may be the reason.
+		// A fresh context: the one that failed may be the reason. Newest
+		// first, so the manifest goes before the files it vouches for.
 		cleanup, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		for _, key := range uploaded {
-			_ = m.store.Delete(cleanup, key)
+		for i := len(uploaded) - 1; i >= 0; i-- {
+			_ = m.store.Delete(cleanup, uploaded[i])
 		}
 		return nil, nil, err
 	}
@@ -267,11 +268,13 @@ func (m *Manager) BackupBundle(ctx context.Context, app, env string, runtime Int
 		// with every one before it.
 		os.Remove(snapshot)
 		key := prefix + filesDir + rel + ".gz"
+		// Listed before the PUT: a failure that is only the answer getting
+		// lost may still have stored the object.
+		uploaded = append(uploaded, key)
 		stored, err := m.store.PutFile(ctx, key, packed)
 		if err != nil {
 			return fail(fmt.Errorf("upload %s: %w", key, err))
 		}
-		uploaded = append(uploaded, key)
 		os.Remove(packed)
 		manifest.Files = append(manifest.Files, ManifestFile{
 			Path: rel, Key: key, RawBytes: raw, StoredBytes: stored, SHA256: sum, Inspection: inspection,
@@ -283,6 +286,9 @@ func (m *Manager) BackupBundle(ctx context.Context, app, env string, runtime Int
 		return fail(err)
 	}
 	manifestKey := prefix + manifestName
+	// The same goes for the manifest: one left behind by an ambiguous failure
+	// would list a backup whose files were just deleted.
+	uploaded = append(uploaded, manifestKey)
 	if err := m.store.Put(ctx, manifestKey, body); err != nil {
 		return fail(fmt.Errorf("upload %s: %w", manifestKey, err))
 	}

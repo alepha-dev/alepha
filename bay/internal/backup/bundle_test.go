@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -304,5 +305,34 @@ func TestAFailedCopyLeavesTheLiveDatabaseAsItWas(t *testing.T) {
 	left, _ := filepath.Glob(filepath.Join(data, "app.db.*"))
 	if len(left) != 0 {
 		t.Fatalf("no temporary or set-aside file may be left, got %v", left)
+	}
+}
+
+// A PUT that stored the manifest but lost the answer looks like a failure: the
+// cleanup must remove the manifest too, or it would list a bundle whose files
+// are gone.
+func TestAnAmbiguousManifestFailureLeavesNothingBehind(t *testing.T) {
+	node := nodeWithSQLite(t)
+	data := t.TempDir()
+	runNode(t, node, `
+const { DatabaseSync } = require("node:sqlite");
+new DatabaseSync(process.argv[1]).exec("CREATE TABLE notes(body TEXT)");
+`, filepath.Join(data, "app.db"))
+
+	srv := s3test.New(t)
+	srv.Fail = func(r *http.Request) int {
+		if r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/manifest.json") {
+			srv.Seed(strings.TrimPrefix(r.URL.Path, "/"+srv.Bucket+"/"), []byte("{}"))
+			return http.StatusBadRequest
+		}
+		return 0
+	}
+	m := New(srv.Client(t))
+	if _, _, err := m.BackupBundle(context.Background(), "lore", "production", HostRuntime(node), data,
+		BundleMeta{Trigger: "manual"}); err == nil {
+		t.Fatal("want the backup failed")
+	}
+	if keys := srv.Keys(); len(keys) != 0 {
+		t.Fatalf("a failed backup left %v in the bucket", keys)
 	}
 }
