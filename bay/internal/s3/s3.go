@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -123,6 +124,47 @@ func (c *Client) Versioning(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("s3: parse versioning: %w", err)
 	}
 	return parsed.Status, nil
+}
+
+/*
+ListPage returns at most max objects under prefix, in one request.
+
+For probes: whether a key may list a prefix is answered by the first page, and
+following continuation tokens through a large bucket only turns a slow answer
+into a timeout reported as "unreachable".
+*/
+func (c *Client) ListPage(ctx context.Context, prefix string, max int) ([]Object, error) {
+	q := url.Values{}
+	q.Set("list-type", "2")
+	q.Set("prefix", prefix)
+	q.Set("max-keys", strconv.Itoa(max))
+	res, err := c.do(ctx, http.MethodGet, "", q, nil)
+	if err != nil {
+		return nil, err
+	}
+	raw, readErr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err := expect(res, http.StatusOK); err != nil {
+		return nil, err
+	}
+	if readErr != nil {
+		return nil, readErr
+	}
+	var parsed struct {
+		Contents []struct {
+			Key          string    `xml:"Key"`
+			Size         int64     `xml:"Size"`
+			LastModified time.Time `xml:"LastModified"`
+		} `xml:"Contents"`
+	}
+	if err := xml.Unmarshal(raw, &parsed); err != nil {
+		return nil, fmt.Errorf("s3: parse listing: %w", err)
+	}
+	out := make([]Object, 0, len(parsed.Contents))
+	for _, o := range parsed.Contents {
+		out = append(out, Object{Key: o.Key, Size: o.Size, LastModified: o.LastModified})
+	}
+	return out, nil
 }
 
 // List returns every object under prefix, following continuation tokens.

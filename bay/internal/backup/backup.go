@@ -51,6 +51,9 @@ type Result struct {
 	Tables      int
 }
 
+// DBPrefix is where an instance's database backups live in the backups bucket.
+func DBPrefix(app, env string) string { return dbPrefix(app, env) }
+
 func dbPrefix(app, env string) string {
 	return "apps/" + naming.Instance(app, env) + "/db/"
 }

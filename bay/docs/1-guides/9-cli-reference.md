@@ -66,7 +66,7 @@ See [Deploying](/bay/docs/guides-deploying) and [Operating](/bay/docs/guides-ope
 | ------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `bay config s3:backups --endpoint URL --bucket B [--region R] [--keep 14] [--allow-shared-key]` | where backups go; keys from `BAY_S3_ACCESS_KEY`, `BAY_S3_SECRET_KEY`. Refused if an app already holds that key |
 | `bay config s3:apps --endpoint URL --bucket B [--region R]`               | where apps store uploads, host-wide; keys from `BAY_STORAGE_ACCESS_KEY`, `BAY_STORAGE_SECRET_KEY` |
-| `bay config s3:apps <name/env> --endpoint URL --bucket B [--allow-wide-key] [--moved]` | a key for this app only (same variables), stored once S3 proves it can reach only `apps/<name>-<env>/` |
+| `bay config s3:apps <name/env> --endpoint URL --bucket B [--allow-wide-key] [--moved]` | a key for this app only (same variables), stored once S3 proves it can reach only `apps/<name>-<env>/blobs/` |
 | `bay config s3:apps <name/env> --check\|--clear`                          | re-run that proof / fall back to the host-wide key         |
 | `bay config s3 --endpoint URL --bucket B [--region R] [--keep N]`         | both from one credential (warned about)                    |
 | `bay backup <name/env>`                                                   | snapshot, verify, upload, now                              |

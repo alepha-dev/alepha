@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/runner"
@@ -28,9 +30,16 @@ gives an instance a key of its own, and refuses it unless S3 itself says the
 key cannot reach the backups or another app's blobs.
 
 The proof is a NEGATIVE test, made with the new key against every place it
-must not reach. A listing that succeeds is a leak; one refused with 401/403 is
-the isolation holding; anything else (timeout, 5xx) proves nothing and is
-reported as unverified, never as safe.
+must not reach, and for each place every kind of access: list, get, put and
+delete. A scope can grant one and not the others (a write-only key still
+overwrites a backup), so a place counts as denied only when all four are
+refused with 401/403. Any one that succeeds is a leak; anything else (timeout,
+5xx) proves nothing and is reported as unverified, never as safe.
+
+A refusal on a prefix says nothing about the prefixes under it: a key scoped
+to `apps/<inst>/` is refused on `apps/` and still reaches `apps/<inst>/db/`,
+where its own backups live. So the app's own backup prefix is a place of its
+own, tried directly.
 */
 
 // isolationCheck is one place the key was tried against.
@@ -40,7 +49,9 @@ type isolationCheck struct {
 	Prefix string `json:"prefix"`
 	// Result is "denied" (good), "reachable" (a leak) or "unverified".
 	Result string `json:"result"`
-	Error  string `json:"error,omitempty"`
+	// Reached names the operations that went through, for a leak.
+	Reached []string `json:"reached,omitempty"`
+	Error   string   `json:"error,omitempty"`
 }
 
 type isolationReport struct {
@@ -95,6 +106,8 @@ func foreignLocations(hosts storageHolders, key string, own state.S3Target) []fo
 	}
 	if b := hosts.backups; b != nil {
 		add("the backups", b.S3Target, "apps/")
+		name, env, _ := strings.Cut(key, "/")
+		add("its own backups", b.S3Target, backup.DBPrefix(name, env))
 	}
 	if st := hosts.storage; st != nil {
 		add("every app's uploads (host-wide s3:apps bucket)", *st, "apps/")
@@ -131,42 +144,110 @@ func probeIsolation(ctx context.Context, hosts storageHolders, key string, own s
 		report.WorkError = err.Error()
 		return report
 	}
-	probe := prefix + ".bay-probe"
+	probe := prefix + probeObject
 	if err := client.Put(ctx, probe, []byte("bay isolation probe")); err != nil {
 		report.WorkError = "cannot write under " + prefix + ": " + err.Error()
 	} else {
-		if _, err := client.List(ctx, prefix); err != nil {
+		deleted := false
+		if _, err := client.ListPage(ctx, prefix, 1); err != nil {
 			report.WorkError = "cannot list " + prefix + ": " + err.Error()
 		} else if err := client.Delete(ctx, probe); err != nil {
 			report.WorkError = "cannot delete under " + prefix + ": " + err.Error()
 		} else {
-			report.Works = true
+			deleted, report.Works = true, true
+		}
+		if !deleted {
+			// Best effort, on a context of its own: the probe's may be the
+			// one that just expired.
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			_ = client.Delete(cleanup, probe)
+			cancel()
 		}
 	}
 
-	report.Isolated = true
-	for _, loc := range foreignLocations(hosts, key, own) {
-		check := isolationCheck{What: loc.what, Bucket: loc.target.Bucket, Prefix: loc.prefix}
-		c, err := s3.New(s3.Config{Endpoint: loc.target.Endpoint, Bucket: loc.target.Bucket,
-			AccessKey: own.AccessKey, SecretKey: own.SecretKey, Region: own.Region})
-		if err == nil {
-			_, err = c.List(ctx, loc.prefix)
-		}
-		switch {
-		case err == nil:
-			check.Result = "reachable"
-		case s3.IsDenied(err):
-			check.Result = "denied"
-		default:
-			check.Result = "unverified"
-			check.Error = err.Error()
-		}
-		if check.Result != "denied" {
-			report.Isolated = false
-		}
-		report.Checks = append(report.Checks, check)
-	}
+	report.Checks, report.Isolated = probeLocations(ctx, own, foreignLocations(hosts, key, own))
 	return report
+}
+
+// probeObject is the key every probe writes, under the prefix it tries.
+const probeObject = ".bay-isolation-probe"
+
+// probeLocations tries cred against each location; isolated only when every
+// one of them refused every operation.
+func probeLocations(ctx context.Context, cred state.S3Target, locs []foreignLocation) ([]isolationCheck, bool) {
+	checks := []isolationCheck{}
+	isolated := true
+	for _, loc := range locs {
+		check := tryLocation(ctx, cred, loc)
+		if check.Result != "denied" {
+			isolated = false
+		}
+		checks = append(checks, check)
+	}
+	return checks, isolated
+}
+
+/*
+tryLocation attempts list, get, put and delete at loc with cred.
+
+The put writes a probe object; if it goes through, it is removed with the
+location's OWN credential as well, since a write-only leak cannot delete what
+it wrote. A get answered 404 is a leak too: S3 says "no such key" only to a
+caller allowed to read there.
+*/
+func tryLocation(ctx context.Context, cred state.S3Target, loc foreignLocation) isolationCheck {
+	check := isolationCheck{What: loc.what, Bucket: loc.target.Bucket, Prefix: loc.prefix}
+	c, err := s3.New(s3.Config{Endpoint: loc.target.Endpoint, Bucket: loc.target.Bucket,
+		AccessKey: cred.AccessKey, SecretKey: cred.SecretKey, Region: cred.Region})
+	if err != nil {
+		check.Result, check.Error = "unverified", err.Error()
+		return check
+	}
+	key := loc.prefix + probeObject
+	var errs []string
+	try := func(op string, err error) {
+		var se *s3.StatusError
+		switch {
+		case err == nil, op == "get" && errors.As(err, &se) && se.Code == http.StatusNotFound:
+			check.Reached = append(check.Reached, op)
+		case !s3.IsDenied(err):
+			errs = append(errs, op+": "+err.Error())
+		}
+	}
+	_, err = c.ListPage(ctx, loc.prefix, 1)
+	try("list", err)
+	_, err = c.Get(ctx, key)
+	try("get", err)
+	err = c.Put(ctx, key, []byte("bay isolation probe"))
+	if err == nil {
+		defer removeProbe(ctx, loc.target, key)
+	}
+	try("put", err)
+	try("delete", c.Delete(ctx, key))
+
+	switch {
+	case len(check.Reached) > 0:
+		check.Result = "reachable"
+	case len(errs) > 0:
+		check.Result = "unverified"
+		check.Error = strings.Join(errs, "; ")
+	default:
+		check.Result = "denied"
+	}
+	return check
+}
+
+// removeProbe deletes a probe a leaky key managed to write, with the key that
+// legitimately holds the location.
+func removeProbe(ctx context.Context, holder state.S3Target, key string) {
+	c, err := s3.New(s3.Config{Endpoint: holder.Endpoint, Bucket: holder.Bucket,
+		AccessKey: holder.AccessKey, SecretKey: holder.SecretKey, Region: holder.Region})
+	if err != nil {
+		return
+	}
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	_ = c.Delete(cleanup, key)
 }
 
 // instanceStorageRequest is the body of PUT /apps/{name}/{env}/storage.

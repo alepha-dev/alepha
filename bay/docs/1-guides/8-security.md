@@ -105,7 +105,8 @@ is flagged by `bay status`. See [Backups](/bay/docs/guides-backups#where-backups
 The host-wide apps key is shared by every app that has no key of its own, so
 each of them can read and delete the others' uploads. `bay config s3:apps
 <name/env>` gives an instance its own key, stored only after S3 proves it is
-refused outside `apps/<name>-<env>/`; a key already held by the backups, the
+refused, for list, get, put and delete, outside `apps/<name>-<env>/blobs/`,
+its own backups under `apps/<name>-<env>/db/` included; a key already held by the backups, the
 host-wide target or another app is refused.
 
 Every key sits in clear in `state.json`, at mode `0600`, and an app's key in

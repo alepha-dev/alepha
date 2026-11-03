@@ -21,8 +21,9 @@ import (
 /*
 policyS3 is a bucket service that enforces who may touch what.
 
-Each access key is granted a list of "bucket/prefix" scopes; a request outside
-every scope of its key answers 403, as a real scoped token does. That refusal
+Each access key is granted a list of "bucket/prefix" scopes, optionally
+narrowed to one method ("PUT bucket/prefix"); a request outside every scope of
+its key answers 403, as a real scoped token does. That refusal
 is the evidence the isolation proof reads, so a fake that said yes to
 everything (fakeS3) could not tell an isolated key from a wide one.
 */
@@ -35,7 +36,9 @@ type policyS3 struct {
 	versioning map[string]string
 	// broken answers 500 outside this access key's grants: neither yes nor no.
 	broken string
-	srv    *httptest.Server
+	// maxKeys records the max-keys of every listing, "" when unbounded.
+	maxKeys []string
+	srv     *httptest.Server
 }
 
 var credentialRe = regexp.MustCompile(`Credential=([^/]+)/`)
@@ -61,11 +64,19 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 			_, _ = w.Write([]byte("<VersioningConfiguration><Status>" + status + "</Status></VersioningConfiguration>"))
 			return
 		}
-		if r.Method == http.MethodGet {
+		listing := r.Method == http.MethodGet && key == ""
+		if listing {
 			key = r.URL.Query().Get("prefix")
+			p.maxKeys = append(p.maxKeys, r.URL.Query().Get("max-keys"))
 		}
 		allowed := false
 		for _, g := range p.grants[m[1]] {
+			if method, scope, ok := strings.Cut(g, " "); ok {
+				if method != r.Method {
+					continue
+				}
+				g = scope
+			}
 			if strings.HasPrefix(bucket+"/"+key, g) {
 				allowed = true
 			}
@@ -86,6 +97,15 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 			delete(p.objects, bucket+"/"+key)
 			w.WriteHeader(http.StatusNoContent)
 		case http.MethodGet:
+			if !listing {
+				if !p.objects[bucket+"/"+key] {
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte("<Error><Code>NoSuchKey</Code></Error>"))
+					return
+				}
+				_, _ = w.Write([]byte("x"))
+				return
+			}
 			var names []string
 			for k := range p.objects {
 				if strings.HasPrefix(k, bucket+"/"+key) {
@@ -396,4 +416,65 @@ func decodeJSONBody(t *testing.T, rec *httptest.ResponseRecorder) map[string]any
 		t.Fatalf("response is not JSON: %v\n%s", err, rec.Body.String())
 	}
 	return body
+}
+
+// The prefix the security guide says to scope to, apps/<inst>/, also holds the
+// app's backups when they share the bucket: refused on apps/, the key still
+// deletes its own backups.
+func TestAKeyThatReachesItsOwnBackupsIsRefused(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.grants["backup-key"] = []string{"bay-blobs/"}
+	p.grants["inst-key"] = []string{"bay-blobs/apps/demo-production/"}
+	if err := f.server.store.SetS3(&state.S3Config{S3Target: state.S3Target{Endpoint: p.srv.URL, Bucket: "bay-blobs",
+		AccessKey: "backup-key", SecretKey: "s", Region: "auto"}, Keep: 7}); err != nil {
+		t.Fatal(err)
+	}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "inst-key", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "its own backups") {
+		t.Fatalf("a key reaching apps/<inst>/db/ must be refused and say so, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// A scope can grant writes without listings; overwriting a backup is a leak.
+func TestAWriteOnlyLeakIsCaughtAndItsProbeRemoved(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.grants["drop-key"] = []string{demoPrefix, "PUT backups/"}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "drop-key", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"put"`) {
+		t.Fatalf("a key that can write into the backups must be refused, naming the write, got %d: %s", rec.Code, rec.Body)
+	}
+	for k := range p.objects {
+		if strings.HasSuffix(k, probeObject) {
+			t.Fatalf("the probe written by the leak must be removed, found %s", k)
+		}
+	}
+}
+
+// One page is the answer; a large bucket must not turn it into a timeout.
+func TestProbesListOnePage(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", "")); rec.Code != http.StatusOK {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	if len(p.maxKeys) == 0 {
+		t.Fatal("no listing reached the bucket")
+	}
+	for _, mk := range p.maxKeys {
+		if mk != "1" {
+			t.Fatalf("every probe listing must ask for one key, got max-keys=%q in %v", mk, p.maxKeys)
+		}
+	}
+}
+
+// A key that writes but cannot list is refused - without leaving its probe.
+func TestAFailedProbeLeavesNothingBehind(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.grants["blind-key"] = []string{"PUT " + demoPrefix, "DELETE " + demoPrefix}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "blind-key", ""))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("a key that cannot list its prefix must be refused, got %d: %s", rec.Code, rec.Body)
+	}
+	if p.objects[demoPrefix+probeObject] {
+		t.Fatal("the probe object must be deleted even when the listing failed")
+	}
 }

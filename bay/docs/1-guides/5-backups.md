@@ -54,8 +54,11 @@ Scope the backup key to the backup bucket alone.
 `.env`, so with it alone any app can read and delete the others' uploads.
 `bay config s3:apps <name/env> --endpoint … --bucket …` gives one instance a key
 of its own (same variables), stored only once S3 itself proves it: the key must
-write under `apps/<name>-<env>/blobs/` and be refused on the backups and every
-other app's prefix. R2 scopes a token to a bucket, not a prefix, so there
+write under `apps/<name>-<env>/blobs/` and be refused on the backups (its own,
+`apps/<name>-<env>/db/`, included) and every other app's prefix, for listing,
+reading, writing and deleting alike. Scope it to `apps/<name>-<env>/blobs/`, not
+`apps/<name>-<env>/`: when backups share the bucket, the wider scope can delete
+the app's own backups, and Bay refuses it. R2 scopes a token to a bucket, not a prefix, so there
 isolation means one bucket per app. `--check` re-runs the proof, `--clear`
 falls back to the host-wide key.
 

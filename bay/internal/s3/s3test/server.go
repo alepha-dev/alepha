@@ -186,6 +186,9 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request) {
 	if page <= 0 {
 		page = 1000
 	}
+	if mk, err := strconv.Atoi(q.Get("max-keys")); err == nil && mk > 0 && mk < page {
+		page = mk
+	}
 	end := min(start+page, len(keys))
 
 	type content struct {
