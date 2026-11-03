@@ -4,27 +4,29 @@ import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
-  type CryptoKey,
   createLocalJWKSet,
   createRemoteJWKSet,
   exportJWK,
-  type FlattenedJWSInput,
   generateKeyPair,
   importPKCS8,
-  type JSONWebKeySet,
-  type JWK,
-  type JWSHeaderParameters,
-  type JWTHeaderParameters,
-  type JWTPayload,
-  type JWTVerifyResult,
   jwtVerify,
-  type KeyObject,
   SignJWT,
 } from "jose";
 import { JWTClaimValidationFailed, JWTExpired } from "jose/errors";
-import type { JWTVerifyOptions } from "jose/jwt/verify";
 
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
+import type {
+  CryptoKey,
+  FlattenedJWSInput,
+  JSONWebKeySet,
+  JWK,
+  JWSHeaderParameters,
+  JWTHeaderParameters,
+  JWTPayload,
+  JWTVerifyOptions,
+  JWTVerifyResult,
+  KeyObject,
+} from "../interfaces/Jose.ts";
 
 /**
  * Provides utilities for working with JSON Web Tokens (JWT).
