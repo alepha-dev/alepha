@@ -207,6 +207,7 @@ __metadata:
     "@types/node": "npm:^26.6.6"
     alepha: "npm:0.35.0"
     mqtt: "npm:^5.16.1"
+    mqtt-packet: "npm:^9.0.2"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
