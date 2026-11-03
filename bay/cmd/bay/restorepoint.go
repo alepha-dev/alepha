@@ -268,13 +268,14 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 		}
 		return fail(http.StatusInternalServerError, msg, nil)
 	}
+	// The data is back the moment the install succeeds: the backups the guards
+	// were protecting have done their job, whether or not the app boots on it.
+	s.clearRestorePending(app.Key())
 	if err := s.start(app); err != nil {
 		return fail(http.StatusBadGateway, "database restored but the app did not come back: "+err.Error(),
 			map[string]any{"restored": key})
 	}
 	s.log.Info("database restored", "app", app.Key(), "key", key, "from", src.key(), "by", opts.Trigger)
-	// The backups the guard was protecting have done their job.
-	s.clearRestorePending(app.Key())
 	rec.Status = "done"
 	s.recordRestore(app, rec)
 	resp["restored"] = key

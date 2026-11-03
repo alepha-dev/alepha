@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -311,5 +312,29 @@ func TestARestoreOutlivesItsRequest(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("restore: %d %s", rec.Code, rec.Body)
+	}
+}
+
+// The guards protect the backups until the data is back. An app that does not
+// boot on the restored database is a different problem: they are lifted anyway.
+func TestARestoreThatDoesNotBootStillLiftsTheGuards(t *testing.T) {
+	f := newBackupFixture(t)
+	bucket := newRecoveryBucket(t, f)
+	bucket.down.Store(true)
+	f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath())
+	bucket.down.Store(false)
+	f.runner.refuseStart = func(int) error { return errors.New("will not boot") }
+
+	req := httptest.NewRequest(http.MethodPost, "/apps/demo/production/restore?confirm=yes", nil)
+	req.SetPathValue("name", "demo")
+	req.SetPathValue("env", "production")
+	rec := httptest.NewRecorder()
+	f.server.handleRestore(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("want the failed start reported, got %d %s", rec.Code, rec.Body)
+	}
+	if a := f.app(t); a.BackupHold != "" || a.RestorePending != nil {
+		t.Fatalf("still guarded after the data came back: hold = %q, pending = %v", a.BackupHold, a.RestorePending)
 	}
 }
