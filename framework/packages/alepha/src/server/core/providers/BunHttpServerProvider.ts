@@ -34,10 +34,20 @@ export class BunHttpServerProvider extends ServerProvider {
   protected bunServer?: ReturnType<typeof Bun.serve>;
 
   public get hostname(): string {
+    const scheme = this.tls() ? "https" : "http";
     if (this.bunServer) {
-      return `http://${this.bunServer.hostname}:${this.bunServer.port}`;
+      return `${scheme}://${this.bunServer.hostname}:${this.bunServer.port}`;
     }
-    return `http://${this.env.SERVER_HOST}:${this.env.SERVER_PORT}`;
+    return `${scheme}://${this.env.SERVER_HOST}:${this.env.SERVER_PORT}`;
+  }
+
+  /**
+   * The listener's TLS: a PEM certificate (with its chain) and its key, or
+   * none for plain HTTP (the default). Override it to serve HTTPS, as an app
+   * does on Node by giving `NodeHttpServerProvider` an `https.Server`.
+   */
+  protected tls(): { cert: string; key: string } | undefined {
+    return undefined;
   }
 
   public readonly start = $hook({
@@ -68,10 +78,12 @@ export class BunHttpServerProvider extends ServerProvider {
       port = 0;
     }
 
+    const tls = this.tls();
     try {
       this.bunServer = Bun.serve({
         port,
         hostname: this.env.SERVER_HOST,
+        ...(tls ? { tls } : {}),
         fetch: async (request: Request) => {
           this.log.trace(`Incoming Bun request -> ${request.url}`);
 
