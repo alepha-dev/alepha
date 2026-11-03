@@ -1,4 +1,4 @@
-import { escapeHtml, OAUTH_PAGE_STYLE } from "./oauthPage.ts";
+import { escapeHtml, renderStaticPage } from "alepha/server";
 
 /**
  * The page `/oauth/authorize` answers with when it does not know the
@@ -29,29 +29,19 @@ export interface UnknownClientPageOptions {
 export const renderUnknownClientPage = (
   options: UnknownClientPageOptions,
 ): string => {
-  const brand = options.productName
-    ? `<div class="brand">${escapeHtml(options.productName)}</div>`
-    : "";
   const target = options.productName
     ? escapeHtml(options.productName)
     : "this server";
 
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="robots" content="noindex" />
-<title>Connection not recognized</title>
-<style>${OAUTH_PAGE_STYLE}</style></head><body>
-<main>
-${brand}
-<div class="card">
-<h1>This connection is no longer recognized</h1>
+  return renderStaticPage({
+    title: "Connection not recognized",
+    brand: options.productName,
+    body: `<h1>This connection is no longer recognized</h1>
 <p class="sub">The app that sent you here is signing in with a registration ${target} does not hold, or has revoked.</p>
 <span class="host">${escapeHtml(options.clientId)}</span>
 <div class="section">
 <h2>To connect again</h2>
 <p class="sub">Remove the connector from the app you came from, then add it again. Adding it registers a new connection, and signing in will work from there. Retrying from the app as it is will keep landing on this page.</p>
-</div>
-</div>
-</main></body></html>`;
+</div>`,
+  });
 };

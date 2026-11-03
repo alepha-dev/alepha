@@ -1,6 +1,7 @@
+import { escapeHtml, renderStaticPage } from "alepha/server";
+
 import {
   type ConsentScope,
-  escapeHtml,
   OAUTH_PAGE_STYLE,
   renderScopeList,
 } from "./oauthPage.ts";
@@ -73,10 +74,6 @@ export interface DevicePageDoneOptions {
  * The rules the consent screen does not need: the code, typed and shown.
  */
 const DEVICE_STYLE = `
-:root{--danger:#b42318; --danger-bg:#fef3f2}
-@media (prefers-color-scheme:dark){
-  :root{--danger:#f97066; --danger-bg:#2a1413}
-}
 .code{
   margin-top:18px; padding:14px; border-radius:10px; text-align:center;
   background:var(--chip); color:var(--text);
@@ -84,19 +81,10 @@ const DEVICE_STYLE = `
   font-size:28px; font-weight:600; letter-spacing:.14em;
 }
 .code-input{
-  display:block; width:100%; margin-top:18px; padding:12px;
-  border:1px solid var(--line); border-radius:10px;
-  background:var(--panel); color:var(--text); text-align:center;
+  margin-top:18px; padding:12px; border-radius:10px; text-align:center;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:24px; letter-spacing:.14em; text-transform:uppercase;
 }
-.code-input:focus{outline:2px solid var(--accent); outline-offset:2px}
-.notice{color:var(--muted); font-size:13px; margin:14px 0 0}
-.error{
-  margin:16px 0 0; padding:10px 12px; border-radius:9px;
-  background:var(--danger-bg); color:var(--danger); font-size:14px;
-}
-.primary{background:var(--accent); color:var(--accent-text)}
 `.trim();
 
 const renderEnter = (options: DevicePageEnterOptions): string => {
@@ -137,8 +125,8 @@ const renderConfirm = (options: DevicePageConfirmOptions): string => {
 <div class="account">Granting as <strong>${escapeHtml(options.userName)}</strong></div>
 <form method="POST" action="/oauth/device"><input type="hidden" name="user_code" value="${code}" />
 <div class="row">
-<button class="deny" type="submit" name="decision" value="deny">Deny</button>
-<button class="allow" type="submit" name="decision" value="allow">Allow</button>
+<button class="secondary" type="submit" name="decision" value="deny">Deny</button>
+<button class="primary" type="submit" name="decision" value="allow">Allow</button>
 </div></form>`;
 };
 
@@ -157,21 +145,10 @@ export const renderDevicePage = (options: DevicePageOptions): string => {
         ? renderConfirm(options)
         : renderDone(options);
 
-  const brand = options.productName
-    ? `<div class="brand">${escapeHtml(options.productName)}</div>`
-    : "";
-
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="robots" content="noindex" />
-<title>Connect a device</title>
-<style>${OAUTH_PAGE_STYLE}
-${DEVICE_STYLE}</style></head><body>
-<main>
-${brand}
-<div class="card">
-${body}
-</div>
-</main></body></html>`;
+  return renderStaticPage({
+    title: "Connect a device",
+    brand: options.productName,
+    style: `${OAUTH_PAGE_STYLE}\n${DEVICE_STYLE}`,
+    body,
+  });
 };
