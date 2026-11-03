@@ -213,6 +213,29 @@ const BayInstance = () => {
                 <p className="text-sm">{tr("bay.instance.noDatabase")}</p>
               </>
             )}
+            {reported.backups && !reported.backup && (
+              // A Bay older than the backup block only reports these fields.
+              <>
+                <h3 className="mt-2 text-sm font-semibold">
+                  {tr("bay.instance.backups")}
+                </h3>
+                <p className="text-sm">
+                  {reported.lastBackupAt
+                    ? tr("bay.instance.lastBackup", {
+                        args: [l(reported.lastBackupAt, { date: "fromNow" })],
+                      })
+                    : tr("bay.instance.neverBackedUp")}
+                  {reported.backupStale
+                    ? ` ${tr("bay.instance.backupStale")}`
+                    : ""}
+                </p>
+                {reported.lastBackupError && (
+                  <p className="text-muted-foreground font-mono text-xs">
+                    {reported.lastBackupError}
+                  </p>
+                )}
+              </>
+            )}
 
             {reported.problems.length > 0 && (
               <>
