@@ -46,7 +46,7 @@ stack's service is the instance `stack.service/env`, as in
 | `bay env list <name/env>`                                   | variable names only                                                      |
 | `bay harden <name/env> --relax writable-rootfs[,capabilities]` | lift isolation defaults for this app; replaces the previous set       |
 | `bay harden <name/env> --memory 1g\|default`                | memory ceiling, 64m to 64g (default 512m)                                |
-| `bay harden <name/env> --clear`                             | remove every relaxation; the memory ceiling stays                        |
+| `bay harden <name/env> --clear`                             | remove every relaxation; the memory, pids and mounts stay                |
 | `bay harden <name/env> --pids 1024\|default`                | process/thread ceiling for this app                                      |
 | `bay harden <name/env> --mount /path[:rw][,...]\|none`      | hand host paths to this app at the same path, read-only unless `:rw`; system trees, the container engine's and Bay's own root are refused, and so is any folder that contains one (symlinks resolved), and any path below a folder that is not root's or that others may write to, since Docker binds the path again on every restart |
 

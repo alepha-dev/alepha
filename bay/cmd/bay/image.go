@@ -300,7 +300,7 @@ func (s *server) handleRelax(w http.ResponseWriter, r *http.Request) {
 cmdHarden is `bay harden`:
 
 	bay harden <name/env> --relax writable-rootfs[,capabilities]   # lift defaults, explicitly
-	bay harden <name/env> --clear                                  # back to every default
+	bay harden <name/env> --clear                                  # drop every --relax; memory, pids and mounts stay
 	bay harden <name/env> --pids 1024|default                      # process/thread ceiling
 	bay harden <name/env> --mount /tmp/.X11-unix,/srv/x:rw|none    # host paths, same path inside
 */
