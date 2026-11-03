@@ -412,9 +412,13 @@ export const DataTable = <
   // the count beside them. A table that hid the picker (`pageSizes={[]}`)
   // and fits on one page has neither, and "Page 1 of 1" alone is a bar
   // saying nothing, so it goes. The links' condition is the footer's own.
+  // `pagination={false}` holds for static rows only: a fetched table is
+  // paged by the server, and hiding its pager would hide rows.
+  const unpaged = props.pagination === false && Boolean(props.data);
   const showFooter =
-    (props.pageSizes ?? PAGE_SIZES).length > 0 ||
-    Boolean(meta?.totalPages && meta.totalPages > 1);
+    !unpaged &&
+    ((props.pageSizes ?? PAGE_SIZES).length > 0 ||
+      Boolean(meta?.totalPages && meta.totalPages > 1));
   const showColumnPicker = !props.hideColumnPicker && allColumnKeys.length > 0;
   const showActionsMenu = !props.hideActionsMenu;
 
@@ -593,6 +597,8 @@ export const DataTable = <
               toggleRow={toggleRow}
               rowCtx={rowCtx}
               rowActions={props.rowActions}
+              rowActionsDisplay={props.rowActionsDisplay}
+              striped={props.striped}
               onRowClick={props.onRowClick}
               onRowHover={props.onRowHover}
               empty={props.empty}

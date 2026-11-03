@@ -117,6 +117,36 @@ const AppEnvironment = () => {
           hideColumnPicker
           hideActionsMenu
           cellPadding="large"
+          // A copy carries at most a hundred keys: one list, no pager.
+          pagination={false}
+          striped
+          chromeClassName="bg-card"
+          rowActionsDisplay="inline"
+          rowActions={(row) =>
+            canDeploy
+              ? [
+                  {
+                    icon: Pencil,
+                    label: tr(
+                      row.kind === "variable"
+                        ? "app.environment.edit"
+                        : "app.environment.replace",
+                    ),
+                    disabled: () => actions.busy,
+                    onClick: (item: AppEnvironmentItem) =>
+                      void actions.edit(item),
+                  },
+                  {
+                    icon: Trash2,
+                    label: tr("app.environment.remove"),
+                    destructive: true,
+                    disabled: () => actions.busy,
+                    onClick: (item: AppEnvironmentItem) =>
+                      void actions.remove(item),
+                  },
+                ]
+              : []
+          }
           leading={
             <div className="flex items-center gap-2">
               <h2 className="text-base font-medium">{tr("app.environment")}</h2>
@@ -214,49 +244,6 @@ const AppEnvironment = () => {
                 />
               ),
             },
-            ...(canDeploy
-              ? {
-                  actions: {
-                    label: "",
-                    align: "right" as const,
-                    className: "w-24",
-                    cell: (row: AppEnvironmentItem) => (
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="outlined"
-                          size="icon"
-                          className="size-8"
-                          disabled={actions.busy}
-                          aria-label={tr(
-                            row.kind === "variable"
-                              ? "app.environment.edit"
-                              : "app.environment.replace",
-                          )}
-                          title={tr(
-                            row.kind === "variable"
-                              ? "app.environment.edit"
-                              : "app.environment.replace",
-                          )}
-                          onClick={() => void actions.edit(row)}
-                        >
-                          <Pencil className="size-3.5" aria-hidden />
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="icon"
-                          className="text-destructive hover:text-destructive size-8"
-                          disabled={actions.busy}
-                          aria-label={tr("app.environment.remove")}
-                          title={tr("app.environment.remove")}
-                          onClick={() => void actions.remove(row)}
-                        >
-                          <Trash2 className="size-3.5" aria-hidden />
-                        </Button>
-                      </div>
-                    ),
-                  },
-                }
-              : {}),
           }}
         />
       )}

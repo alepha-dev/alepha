@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Checkbox } from "../core/Checkbox.tsx";
 import { TableBody, TableCell, TableRow } from "../core/Table.tsx";
 import { cn } from "../core/utils.ts";
+import { DataTableRowActionsInline } from "./DataTableRowActionsInline.tsx";
 import { DataTableRowActionsMenu } from "./DataTableRowActionsMenu.tsx";
 import { DataTableSkeletonRows } from "./DataTableSkeletonRows.tsx";
 import type {
@@ -46,6 +47,14 @@ export interface DataTableBodyProps<T> {
   toggleRow: (item: T) => void;
   rowCtx: RowActionContext;
   rowActions?: (item: T) => RowActionEntry<T>[];
+  /**
+   * The table's `rowActionsDisplay`.
+   */
+  rowActionsDisplay?: "menu" | "inline";
+  /**
+   * The table's `striped`.
+   */
+  striped?: boolean;
   onRowClick?: (item: T) => void;
   onRowHover?: (item: T | undefined) => void;
   empty?: ReactNode;
@@ -177,6 +186,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                 // is also conditional, which no blanket rule could be -
                 // a row is only clickable when a handler was given.
                 props.onRowClick && "cursor-pointer",
+                props.striped && "even:bg-muted/40",
                 isSelected && "bg-muted/30",
               )}
             >
@@ -212,11 +222,19 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                   className={cn(props.cellClassName, "text-right")}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <DataTableRowActionsMenu
-                    actions={props.rowActions!(item)}
-                    item={item}
-                    ctx={rowCtx}
-                  />
+                  {props.rowActionsDisplay === "inline" ? (
+                    <DataTableRowActionsInline
+                      actions={props.rowActions!(item)}
+                      item={item}
+                      ctx={rowCtx}
+                    />
+                  ) : (
+                    <DataTableRowActionsMenu
+                      actions={props.rowActions!(item)}
+                      item={item}
+                      ctx={rowCtx}
+                    />
+                  )}
                 </TableCell>
               )}
             </TableRow>
