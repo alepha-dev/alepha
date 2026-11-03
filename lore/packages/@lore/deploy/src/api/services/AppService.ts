@@ -411,9 +411,15 @@ export class AppService {
     instance: AppInstance,
     estateId: string | null,
   ): Promise<AppInstance> {
+    // ⚠️ Any move forgets which estate the copy last deployed to: moved away
+    // and back without a deploy, the name may meanwhile be another project's
+    // instance there, and only a deploy (which checks the name) may vouch again.
     if (estateId === null) {
-      await this.instances.updateById(instance.id, { estateId: null });
-      return { ...instance, estateId: undefined };
+      await this.instances.updateById(instance.id, {
+        estateId: null,
+        resourceEstateId: null,
+      });
+      return { ...instance, estateId: undefined, resourceEstateId: undefined };
     }
 
     const grant = await this.grants.findOne({
@@ -426,8 +432,14 @@ export class AppService {
       throw new NotFoundError("This project has no such estate");
     }
 
-    await this.instances.updateById(instance.id, { estateId });
-    return { ...instance, estateId };
+    if (estateId === instance.estateId) {
+      return instance;
+    }
+    await this.instances.updateById(instance.id, {
+      estateId,
+      resourceEstateId: null,
+    });
+    return { ...instance, estateId, resourceEstateId: undefined };
   }
 
   /**

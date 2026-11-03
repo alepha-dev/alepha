@@ -3,6 +3,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
+  AppService,
   BackupController,
   EstateEventService,
   EstateInventoryService,
@@ -295,5 +296,24 @@ describe("BackupController", () => {
         { user: w.user },
       ),
     ).rejects.toThrow(BadRequestError);
+  });
+
+  it("does not give a copy moved away and back its old instance again", async ({
+    expect,
+  }) => {
+    // Moved off E and back, without a deploy in between: on E the name may now
+    // belong to another project's copy (it took the slug meanwhile), so only a
+    // new deploy - which checks the name is free - may hand the tab back.
+    const { w, estate, instance } = await deployed();
+    const elsewhere = await lentBayEstate(w);
+    const apps = alepha.inject(AppService);
+    const moved = await apps.setEstate(instance as never, elsewhere.id);
+    await apps.setEstate(moved, estate.id);
+
+    const view = await api.getAppBackup(
+      { params: params(w), query: {} },
+      { user: w.user },
+    );
+    expect(view.status).toBe("not-deployed");
   });
 });
