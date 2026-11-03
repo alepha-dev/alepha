@@ -105,6 +105,7 @@ func TestHostMounts(t *testing.T) {
 	t.Run("refuses paths that would reach past the app", func(t *testing.T) {
 		for _, bad := range []string{
 			"/", "relative", outside + "/../x", "/etc", "/run", "/var/run/docker.sock", "/proc/self",
+			"/var", "/var/lib",
 			s.root, filepath.Dir(s.root), instance, other, link, filepath.Dir(s.controlSocket),
 			filepath.Join(outside, "missing"),
 		} {
@@ -115,6 +116,22 @@ func TestHostMounts(t *testing.T) {
 		}
 		if code, _ := put(`{"mounts": [{"path": "` + outside + `"}, {"path": "` + outside + `"}]}`); code != 400 {
 			t.Error("duplicate accepted")
+		}
+	})
+
+	t.Run("a Bay root behind a symlink is guarded by its real path", func(t *testing.T) {
+		real := s.root
+		linked := filepath.Join(t.TempDir(), "bay")
+		if err := os.Symlink(real, linked); err != nil {
+			t.Fatal(err)
+		}
+		s.root = linked
+		defer func() { s.root = real }()
+		for _, bad := range []string{real, filepath.Dir(real), other} {
+			body := `{"mounts": [{"path": "` + bad + `", "readOnly": true}]}`
+			if code, msg := put(body); code != 400 {
+				t.Errorf("%q accepted through the symlinked root: %d %s", bad, code, msg)
+			}
 		}
 	})
 

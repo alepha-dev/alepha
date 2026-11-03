@@ -45,8 +45,9 @@ func parsePids(raw string) (int, error) {
 }
 
 // hostMountDenied are host trees no app is ever handed, nor any path inside
-// them: the system itself, the container engine, and /run (control sockets,
-// Bay's own among them).
+// them or any folder above them: the system itself, the container engine, and
+// /run (control sockets, Bay's own among them). Mounting /var/lib would hand
+// /var/lib/docker over just as surely as mounting it by name.
 var hostMountDenied = []string{
 	"/bin", "/boot", "/dev", "/etc", "/lib", "/lib32", "/lib64", "/proc", "/root",
 	"/run", "/sbin", "/sys", "/usr", "/var/lib/containerd", "/var/lib/docker", "/var/run",
@@ -57,13 +58,26 @@ func within(path, dir string) bool {
 	return path == dir || strings.HasPrefix(path, strings.TrimSuffix(dir, "/")+"/")
 }
 
+// resolved is p and, when it differs, where its symlinks lead: a guarded
+// path is compared in both forms, so a Bay root or a Docker root behind a
+// symlink is still found under the real path an operator gives.
+func resolved(p string) []string {
+	p = filepath.Clean(p)
+	if real, err := filepath.EvalSymlinks(p); err == nil && real != p {
+		return []string{p, real}
+	}
+	return []string{p}
+}
+
 /*
 checkHostMount decides whether a host path may be handed to an app.
 
 The path must be absolute, clean, existing and no symlink (so what is checked
-is what gets mounted). It may not be, or contain, Bay's root or its control
-socket: mounting /opt would hand every other app's data over. Inside Bay's
-root, only a path inside the app's own instance directory is accepted.
+is what gets mounted). It may not be inside, or contain, a denied tree, Bay's
+root or its control socket: mounting /opt would hand every other app's data
+over. Inside Bay's root, only a path inside the app's own instance directory
+is accepted. Guarded paths are checked as given and as their symlinks
+resolve.
 */
 func (s *server) checkHostMount(app state.App, path string) error {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
@@ -75,21 +89,32 @@ func (s *server) checkHostMount(app state.App, path string) error {
 	if real, err := filepath.EvalSymlinks(path); err != nil || real != path {
 		return fmt.Errorf("mount %q: a symlink or a path through one; give the real path", path)
 	}
-	for _, denied := range hostMountDenied {
-		if within(path, denied) {
-			return fmt.Errorf("mount %q: nothing under %s is handed to an app", path, denied)
+	for _, entry := range hostMountDenied {
+		for _, denied := range resolved(entry) {
+			if within(path, denied) {
+				return fmt.Errorf("mount %q: nothing under %s is handed to an app", path, denied)
+			}
+			if within(denied, path) {
+				return fmt.Errorf("mount %q: it contains %s", path, denied)
+			}
 		}
 	}
-	root := filepath.Clean(s.root)
-	for _, guarded := range []string{root, filepath.Clean(s.controlSocket)} {
-		if guarded != "." && guarded != "" && within(guarded, path) {
+	guards := []string{}
+	if s.controlSocket != "" {
+		guards = append(guards, resolved(s.controlSocket)...)
+	}
+	roots := resolved(s.root)
+	for _, guarded := range append(guards, roots...) {
+		if guarded != "." && within(guarded, path) {
 			return fmt.Errorf("mount %q: it contains %s", path, guarded)
 		}
 	}
-	if within(path, root) {
-		instance := filepath.Join(root, "apps", naming.Instance(app.Name, app.Env))
-		if path == instance || !within(path, instance) {
-			return fmt.Errorf("mount %q: inside Bay's root, only a path inside %s's own directory", path, app.Key())
+	for _, root := range roots {
+		if within(path, root) {
+			instance := filepath.Join(root, "apps", naming.Instance(app.Name, app.Env))
+			if path == instance || !within(path, instance) {
+				return fmt.Errorf("mount %q: inside Bay's root, only a path inside %s's own directory", path, app.Key())
+			}
 		}
 	}
 	return nil

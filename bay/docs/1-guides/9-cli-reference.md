@@ -48,7 +48,7 @@ stack's service is the instance `stack.service/env`, as in
 | `bay harden <name/env> --memory 1g\|default`                | memory ceiling, 64m to 64g (default 512m)                                |
 | `bay harden <name/env> --clear`                             | remove every relaxation; the memory ceiling stays                        |
 | `bay harden <name/env> --pids 1024\|default`                | process/thread ceiling for this app                                      |
-| `bay harden <name/env> --mount /path[:rw][,...]\|none`      | hand host paths to this app at the same path, read-only unless `:rw`; system trees, the container engine's and Bay's own root are refused |
+| `bay harden <name/env> --mount /path[:rw][,...]\|none`      | hand host paths to this app at the same path, read-only unless `:rw`; system trees, the container engine's and Bay's own root are refused, and so is any folder that contains one (symlinks resolved) |
 
 See [Deploying](/bay/docs/guides-deploying) and [Operating](/bay/docs/guides-operating).
 
