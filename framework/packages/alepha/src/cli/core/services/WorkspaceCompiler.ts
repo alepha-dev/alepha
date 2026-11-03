@@ -88,6 +88,14 @@ export interface WorkspaceCompileOptions {
  * `verify` it never asked for.
  */
 export class WorkspaceCompiler {
+  /**
+   * What every compiled binary leaves alone in its working directory.
+   */
+  public static readonly NO_AUTOLOAD = [
+    "--no-compile-autoload-dotenv",
+    "--no-compile-autoload-bunfig",
+  ] as const;
+
   protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
@@ -312,6 +320,7 @@ export class WorkspaceCompiler {
       "bun",
       "build",
       "--compile",
+      ...WorkspaceCompiler.NO_AUTOLOAD,
       `--target=${target}`,
       ...(minify ? ["--minify"] : []),
       `--outfile=${name}`,
@@ -378,6 +387,11 @@ export class WorkspaceCompiler {
   /**
    * The `bun build --compile` invocation. Runs from `<root>/<dist>`, so the
    * entry path stays relative and the binary lands beside the migrations.
+   *
+   * ⚠️ No `.env` nor `bunfig.toml` autoload: Bun's default reads them from
+   * the directory the binary is started in, so a stray file there would
+   * silently reconfigure a deployed app. Its configuration is its
+   * environment, as with `node dist`.
    */
   protected buildCompileCommand(
     name: string,
@@ -388,6 +402,7 @@ export class WorkspaceCompiler {
     return [
       "bun build",
       "--compile",
+      ...WorkspaceCompiler.NO_AUTOLOAD,
       `--target=${target}`,
       minify ? "--minify" : "",
       `--outfile=${name}`,
