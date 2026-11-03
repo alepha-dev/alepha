@@ -77,9 +77,8 @@ The size of a database is bounded by the disk, not by Bay's RAM.
 their header, whatever they are called (an empty `.db`, `.sqlite` or
 `.sqlite3` counts too); `-wal`/`-shm`/`-journal`, the copies a restore sets
 aside, hidden files and folders (a browser profile's or `HOME`'s own SQLite
-stores live there) and symbolic links are left out, the links named in the
-manifest. Each
-file is snapshotted with `VACUUM INTO` and integrity-checked in the app's own
+stores live there) and symbolic links are left out, each named in the
+manifest's `skipped`. Each file is snapshotted with `VACUUM INTO` and integrity-checked in the app's own
 runtime, then uploaded as one bundle:
 
 ```

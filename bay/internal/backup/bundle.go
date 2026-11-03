@@ -72,8 +72,9 @@ type Manifest struct {
 	// manifest older than encryption".
 	Encryption *string        `json:"encryption"`
 	Files      []ManifestFile `json:"files"`
-	// Skipped names what was in data/ and deliberately left out (a symbolic
-	// link), so its absence from the bundle is stated, not inferred.
+	// Skipped names what was in data/ and deliberately left out (a hidden
+	// file or folder, a symbolic link), so its absence from the bundle is
+	// stated, not inferred.
 	Skipped []string `json:"skipped,omitempty"`
 }
 
@@ -113,9 +114,10 @@ Left out on purpose:
   - `-wal`, `-shm`, `-journal`: the snapshot reads through them already;
   - `*.before-restore-*`: the copies a restore sets aside, which would
     otherwise be backed up - and restored over the live data - forever;
-  - hidden files and folders (`.home`, `.cache`...): a browser's profile
-    and the system's key stores live there as SQLite files, and they are
-    neither the app's data nor anything a bucket should hold;
+  - hidden files and folders (`.home`, `.cache`...), reported in `skipped`
+    (a folder once, not its contents): a browser's profile and the system's
+    key stores live there as SQLite files, and they are neither the app's
+    data nor anything a bucket should hold;
   - symbolic links, reported in `skipped`: following one could read another
     app's data into this app's bucket.
 */
@@ -138,8 +140,10 @@ func DiscoverSQLite(dataDir string) (files, skipped []string, err error) {
 		rel = filepath.ToSlash(rel)
 		if strings.HasPrefix(d.Name(), ".") {
 			if d.IsDir() {
+				skipped = append(skipped, rel+"/ (hidden folder)")
 				return filepath.SkipDir
 			}
+			skipped = append(skipped, rel+" (hidden file)")
 			return nil
 		}
 		if d.Type()&fs.ModeSymlink != 0 {

@@ -39,8 +39,9 @@ func TestDiscoverFindsDatabasesByHeaderAndSkipsTheRest(t *testing.T) {
 	if strings.Join(files, ",") != "app.db,fresh.sqlite,queue/jobs.anything" {
 		t.Fatalf("files = %v", files)
 	}
-	if len(skipped) != 1 || !strings.HasPrefix(skipped[0], "linked.db") {
-		t.Fatalf("a symbolic link must be skipped AND said, got %v", skipped)
+	want := ".hidden.db (hidden file),.home/ (hidden folder),linked.db (symbolic link)"
+	if got := strings.Join(skipped, ","); got != want {
+		t.Fatalf("hidden entries and symbolic links must be skipped AND said\n got %s\nwant %s", got, want)
 	}
 }
 
