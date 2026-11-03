@@ -58,7 +58,8 @@
     "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "dependencies": {
-    "mqtt": "^5.16.1"
+    "mqtt": "^5.16.1",
+    "mqtt-packet": "^9.0.2"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
