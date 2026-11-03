@@ -1,3 +1,72 @@
+## [0.35.0] - 2026-11-03
+
+### Breaking Changes
+
+- **react/router**: view transitions replace $page animation, through React's ViewTransition #E109 #Q3029 (`7a1c7dc5`)
+
+### Features
+
+- **server**: one shared look for the framework's static pages, buttons after @alepha/ui with hover and press #Q3089 (`0a4f7e10`)
+- **cli**: alepha init --infra refuses an existing alepha.config.ts, so alepha no longer ships typescript (-30 MB) #Q3085 (`08d53928`)
+- **cli**: alepha typecheck runs the embedded tsgolint, so alepha no longer ships typescript (-30 MB) #Q3073 (`d63940c3`)
+- **cli**: alepha init turns on type-aware lint, and alepha lint finds the embedded tsgolint #Q3072 (`153b93cf`)
+- **cli**: alepha docs falls back to the running alepha's own docs when the project installs none, so npx alepha docs works from any folder #Q3068 (`0461202d`)
+- **react/router**: opt-in loader prefetch, adopted on Lore's Reports tabs #E109 #Q3038 (`0f94c861`)
+- **react/sitemap**: $robots and $manifest, robots.txt and the web app manifest from code #E109 #Q3036 (`875a737c`)
+- **react**: Web Vitals in the framework, a free-standing collector and events per page #E109 #Q3034 (`e7a778d9`)
+- **core**: z runs on zod/mini behind a chain layer, and tree-shakes as a namespace #Q3041 (`817b37f3`)
+- **react/router**: link prefetching, the page's code on hover or visibility #E109 #Q3033 (`d0332f51`)
+- **react/router**: deferred loader values, streamed into Suspense with hydration starting after the shell #E109 #Q3032 (`43a3fbf3`)
+- **react/router**: modal routes, a page opened as an overlay in-app and a full page on reload #E109 #Q3031 (`ace4b408`)
+- **react/router**: $page loading, shown in the page's slot after 200 ms and used as its Suspense fallback #E109 #Q3030 (`b7a6f8bc`)
+- **react/router**: view transitions replace $page animation, through React's ViewTransition #E109 #Q3029 [BREAKING] (`7a1c7dc5`)
+- **commerce**: compare-at price, search metadata, weight and dimensions, and rates by weight #E107 #Q2984 (`7d4847b6`)
+- **commerce**: price lists per currency, and carts, checkouts and invoices in the buyer's #E107 #Q2983 (`1c6c04f2`)
+- **commerce**: invoices and emails read a dictionary, in French and English #E107 #Q2977 (`81baca28`)
+- **commerce**: destination VAT for EU distance sales, and B2B reverse charge #E107 #Q2982 (`d68178ae`)
+- **commerce**: cart reminders need consent and carry a one-click unsubscribe #E107 #Q2976 (`a2c5fcb8`)
+- **commerce**: digital goods delivered by expiring, counted links #E107 #Q2967 (`d04bb206`)
+- **commerce**: returns, line cancel before shipping, and their admin #E107 #Q2972 (`2a40f8a7`)
+- **commerce**: amount-aware credit notes, by a retried job, and refunds by amount or line #E107 #Q2971 (`3fddf921`)
+- **commerce**: orders carry a human-readable number #E107 #Q2981 (`82cbc481`)
+- **commerce**: categories, search, filters and sorting in the public catalogue #E107 #Q2980 (`79a1b938`)
+- **commerce**: promotions, discount codes and automatic discounts #E107 #Q2979 (`c57ff8f5`)
+- **server/cookies**: warn when a client's cookies near the header limits, and document chunking #E106 #Q2952 (`3b41f155`)
+- **commerce**: product variants, with their own SKU, price and stock #E107 #Q2978 (`fbcccb3d`)
+- **server/cookies**: a server cookie over 3,800 bytes is written as numbered chunks and joined back on read #E106 #Q2951 (`45519eff`)
+- **server/cookies**: compressed and encrypted values are base64url, so encodeURIComponent stops tripling characters #E106 #Q2950 (`0fb9bea7`)
+
+### Bug Fixes
+
+- **cli**: alepha init's refusals print as a clean message, not a crash with a stack trace #Q3090 (`735c671b`)
+- **cli**: typescript stays a runtime dependency, InfraConfigEditor spawns it through its AST API #Q3073 (`8d84b0f8`)
+- **cli**: enable_request_signal only below 2026-11-17 and never next to disable_request_signal #Q3046 (`77921bb7`)
+- **orm/d1**: a timeout names its query, the select list no longer spends the whole summary #Q3045 (`5422537c`)
+- **router**: an app under a Vite base links with one slash after it, and a path under it resolves to its page #Q3024 (`399f0a20`)
+- **server/cookies**: a chunked cookie records its chunk count, so a stale tail from a concurrent write cannot sign a user out #Q3021 (`e1179157`)
+- **commerce**: the shipping notice is a retried job, not a hook that swallows failures #E107 #Q2975 (`8bca7d09`)
+- **capacitor**: a build reads the network security config the manifest names, and refuses NSAllowsLocalNetworking unless capacitor({ iosLocalNetworking }) declares it #Q3020 (`4e9be9ed`)
+- **commerce**: a checkout session answers only the cart or the user that opened it #E107 #Q2969 (`2f238bf7`)
+- **jobs**: the retention trim reads the newest rows through (jobName, status, createdAt), so it no longer sorts a whole job's rows and times out on D1 #Q3019 (`0f5a9548`)
+- **commerce**: a full refund of a shipped order leaves the ledger alone #E107 #Q2970 (`e51fed23`)
+- **server**: a local $action run() carries its caller's signal, so a handler reading it no longer gets undefined #Q2987 (`ef2d95e6`)
+- **cli**: the REDIS_URL warning on a Worker says topic and lock are memory only #Q2993 (`8aee0c47`)
+- **cli**: the build skips a $sitemap with static: false, so a built server answers live #Q2992 (`7bba8a69`)
+- **commerce**: checkout refuses a delivery country no zone covers #E107 #Q2968 (`ff7455ec`)
+- **commerce**: the customer's order views carry no product config #E107 #Q2966 (`6035a186`)
+- **commerce**: a late capture on goods sold meanwhile becomes a stray capture #E107 #Q2965 (`7e10d213`)
+- **commerce**: every order transition claims the row, the ledger sells and releases per line #E107 #Q2964 (`33cfad38`)
+- **api**: get() switching to a scheduled parameter version notifies its subscribers #Q2962 (`8f5663c9`)
+- **orm**: upsertMany throws on a soft-deleted conflict, as upsert does, instead of returning fewer rows #Q2962 (`44cced1a`)
+- **cli**: a static build finds the root $page that leaves path out, as the router does #Q2962 (`1b8a9036`)
+- **react**: page.fetch requests the page's full path with its params and query, and no longer builds host//path #Q2962 (`ba6494c5`)
+- **server**: the link batch keeps any FileLike out of /api/\_batch, not only a File or a Blob #Q2962 (`2b037bf9`)
+- **server**: an $action or $tool deadline aborts the handler's own signal, as $job's does, so a bare fetch stops at the timeout #Q2962 (`fad9e719`)
+- **orm**: a read given `for` on SQLite and D1 fails with an AlephaError naming the option, not a raw TypeError #Q2962 (`d41f840d`)
+- **react**: a page's meta tags replace the ones it inherits #Q2958 (`2e2d8d2b`)
+- **cli**: vendor sync reads packages from framework/packages since the repo move, falling back to packages for a baseline that predates it #Q2955 (`6b5126de`)
+- **cli**: R2 buckets are created with the weur location hint, and Lore's provisioner places D1 in weur too, as the CLI does #Q2954 (`b802225c`)
+
 ## [0.34.0] - 2026-10-29
 
 ### Features
