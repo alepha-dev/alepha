@@ -61,7 +61,7 @@ network in clear.
 
 ## What Lore can make the machine do
 
-A **closed vocabulary of seven verbs**, each naming one app instance or stack
+A **closed vocabulary of twelve verbs**, each naming one app instance or stack
 environment. `deploy` and `stack-deploy` create what they name; the others
 refuse an instance this Bay does not run:
 
@@ -74,11 +74,20 @@ refuse an instance this Bay does not run:
 | `backup`       | the snapshot the schedule takes, now. Refused for an app with no database Bay owns               |
 | `logs`         | a tail, uploaded back to Lore. A read, so it answers during a deploy rather than queueing behind it |
 | `stack-deploy` | a stack bundle named by digest, pulled and verified, then applied as a revision                  |
+| `backups-list` | the instance's backups in the bucket, newest first, uploaded back to Lore                        |
+| `backup-verify` | downloads a backup (the newest by default) and checks it as a restore would, without touching the app |
+| `target-probe` | checks the S3 bucket now and reports whether it answers                                          |
+| `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's  |
+| `restore`      | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
 whoever controls Lore, can ask of this machine. No verb takes a path, a shell
 command or an argument list; `logs` carries a line count, a time window and a
-pattern, all bounded and validated. **Exec into a container is not a verb and
+pattern, all bounded and validated; `backup-policy` carries a policy checked
+like `bay backup config`'s, and `restore` a backup key or a time, the instance
+to restore from and a reason. Both are held to the same switch as `deploy`,
+and Lore refuses them while the machine is offline rather than queueing them.
+**Exec into a container is not a verb and
 never will be**: it takes SSH.
 
 The secret points the other way. It sits on the host in clear, and it is the

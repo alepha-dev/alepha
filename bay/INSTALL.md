@@ -266,7 +266,7 @@ history keeps it: clear that entry.
 
 ### What the machine will do, and nothing else
 
-What Lore may make the machine do is a **closed vocabulary of seven verbs**, each naming one instance
+What Lore may make the machine do is a **closed vocabulary of twelve verbs**, each naming one instance
 or stack environment. `deploy` and `stack-deploy` create what they name; the others refuse an
 instance this Bay does not run:
 
@@ -292,8 +292,8 @@ that switch on its own side too.
 can ask of this machine. Every verb names an instance and takes no path, no shell command and no
 argument list; `logs` carries a line count, a window and a pattern, all bounded and validated.
 `backup-policy` carries a policy checked like `bay backup config`'s, and `restore` a backup key or a
-time, the instance to restore from and a reason; both are held to the same switch as `deploy`, and a
-restore first backs up what it replaces (and says so when it could not). Adding a verb widens what a
+time, the instance to restore from and a reason; both are held to the same switch as `deploy`, Lore
+refuses them while the machine is offline rather than queueing them, and a restore first backs up what it replaces (and says so when it could not). Adding a verb widens what a
 compromised Lore is worth, so it is a decision about that, not a feature.
 
 The secret points the other way. It is on the host in cleartext, and it is the bearer the machine
