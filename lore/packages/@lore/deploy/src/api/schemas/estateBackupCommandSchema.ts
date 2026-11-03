@@ -3,10 +3,7 @@ import { type Infer, z } from "alepha";
 import type { EstateCommandPayload } from "./estateCommandPayloadSchema.ts";
 import type { EstateCommandKind } from "./estateCommandValues.ts";
 
-/**
- * Which backup to read: a `key`, or the newest at or before `at` (read in
- * `tz`), optionally from another instance (`from`, `<app>/<env>`).
- */
+/** Which backup to read: a `key`, or the newest at or before `at` (read in `tz`). */
 const pointFields = {
   key: z.string().min(1).max(500).optional(),
   at: z.string().min(1).max(40).optional(),
@@ -25,6 +22,7 @@ const pointFields = {
  */
 const variants = <T extends NonNullable<Parameters<typeof z.object>[0]>>(
   target: T,
+  allowFrom: boolean,
 ) =>
   [
     z.object({
@@ -49,27 +47,39 @@ const variants = <T extends NonNullable<Parameters<typeof z.object>[0]>>(
       ...target,
       kind: z.literal("restore"),
       ...pointFields,
+      // Another instance's data (`<app>/<env>`). Only the estate's owner may
+      // ask. On a shared Bay a project member must never reach another
+      // project's backups, and an unknown key would be stripped silently,
+      // restoring the caller's own data instead: so the project body refuses
+      // the field outright (the project controller rejects it).
       from: z.string().min(3).max(201).optional(),
       reason: z.string().max(500).optional(),
       dryRun: z.boolean().optional(),
     }),
   ] as const;
 
-export const estateBackupCommandBodySchema = z.union(variants({}));
+export const estateBackupCommandBodySchema = z.union(variants({}, false));
 
 /**
  * The same, naming the instance as the estate page does: `app` is the
  * machine's own instance name, project segment included.
  */
 export const estateBackupCommandTargetedSchema = z.union(
-  variants({
-    app: z.string().min(1).max(100),
-    environment: z.string().min(1).max(100),
-  }),
+  variants(
+    {
+      app: z.string().min(1).max(100),
+      environment: z.string().min(1).max(100),
+    },
+    true,
+  ),
 );
 
 export type EstateBackupCommandBody = Infer<
   typeof estateBackupCommandBodySchema
+>;
+
+export type EstateBackupCommandTargeted = Infer<
+  typeof estateBackupCommandTargetedSchema
 >;
 
 export const ESTATE_BACKUP_COMMAND_KINDS = [
@@ -86,7 +96,7 @@ export const ESTATE_BACKUP_COMMAND_KINDS = [
  * `app/environment` (the machine's name, project segment included).
  */
 export const backupCommandInput = (
-  body: EstateBackupCommandBody,
+  body: EstateBackupCommandBody | EstateBackupCommandTargeted,
   app: string,
   environment: string,
 ): { kind: EstateCommandKind; payload: EstateCommandPayload } => {
@@ -122,7 +132,7 @@ export const backupCommandInput = (
           ...base,
           restore: {
             ...point(body),
-            ...(body.from ? { from: body.from } : {}),
+            ...("from" in body && body.from ? { from: body.from } : {}),
             ...(body.reason?.trim() ? { reason: body.reason.trim() } : {}),
             ...(body.dryRun ? { dryRun: true } : {}),
           },

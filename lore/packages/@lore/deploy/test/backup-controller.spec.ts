@@ -171,6 +171,25 @@ describe("BackupController", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
+  it("refuses a restore from another instance: only the estate's owner may ask", async ({
+    expect,
+  }) => {
+    const { w } = await deployed();
+    await expect(
+      api.sendAppBackupCommand(
+        {
+          params: params(w),
+          body: {
+            kind: "restore",
+            from: "other-project-app/production",
+            reason: "borrowing another project's data",
+          } as never,
+        },
+        { user: w.user },
+      ),
+    ).rejects.toThrow(BadRequestError);
+  });
+
   it("answers 404 for another app's command on the same estate, and for a non-backup command", async ({
     expect,
   }) => {

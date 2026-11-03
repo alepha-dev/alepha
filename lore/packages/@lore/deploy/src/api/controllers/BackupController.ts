@@ -151,6 +151,11 @@ export class BackupController {
         params.app,
         params.env,
       );
+      if ("from" in body && body.from) {
+        throw new BadRequestError(
+          "Restoring from another instance is reserved to the estate's owner.",
+        );
+      }
       const { estate, machineApp } = await this.requireTarget(instance);
       return this.commands.enqueue(
         estate,
