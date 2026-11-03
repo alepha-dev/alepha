@@ -337,3 +337,44 @@ new DatabaseSync(process.argv[1]).exec("CREATE TABLE notes(body TEXT)");
 		t.Fatalf("a failed backup left %v in the bucket", keys)
 	}
 }
+
+// The app owns data/ and can plant symlinks in it before a restore. Bay
+// writes as root: neither the temporary copy nor a folder of the bundle may
+// lead it outside.
+func TestARestoreNeverWritesThroughASymlinkInData(t *testing.T) {
+	data := t.TempDir()
+	outside := t.TempDir()
+	victim := filepath.Join(outside, "victim")
+	write(t, victim, "host file")
+	if err := os.Symlink(victim, filepath.Join(data, "app.db.restoring")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(data, "queue")); err != nil {
+		t.Fatal(err)
+	}
+	staged := t.TempDir()
+	write(t, filepath.Join(staged, "0"), "restored app")
+	write(t, filepath.Join(staged, "1"), "restored queue")
+
+	if _, err := InstallBundle(&Fetched{Files: []FetchedFile{
+		{Path: "app.db", Local: filepath.Join(staged, "0")},
+	}}, data); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, victim); got != "host file" {
+		t.Fatalf("the restore wrote through data/app.db.restoring into %s: %q", victim, got)
+	}
+	if got := read(t, filepath.Join(data, "app.db")); got != "restored app" {
+		t.Fatalf("app.db reads %q", got)
+	}
+
+	_, err := InstallBundle(&Fetched{Files: []FetchedFile{
+		{Path: "queue/jobs.db", Local: filepath.Join(staged, "1")},
+	}}, data)
+	if err == nil {
+		t.Fatal("want a folder reached through a symlink refused")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "jobs.db")); err == nil {
+		t.Fatal("the restore wrote jobs.db outside data/")
+	}
+}

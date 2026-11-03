@@ -320,7 +320,14 @@ func copyFileSync(src, dst string) error {
 		return err
 	}
 	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	// dst sits in a folder the app writes to, so it may have planted a symlink
+	// there: opening it would write through it, as root, anywhere on the host.
+	// The name is removed (a symlink itself, never its target) and created
+	// anew; O_EXCL refuses one planted in between.
+	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}

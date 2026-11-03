@@ -425,7 +425,11 @@ func InstallBundle(f *Fetched, dataDir string) (untouched []string, err error) {
 	var installed []installedFile
 	for _, file := range f.Files {
 		live := filepath.Join(dataDir, filepath.FromSlash(file.Path))
-		aside, err := install(file.Local, live)
+		err := noSymlinkBetween(dataDir, filepath.Dir(live))
+		aside := ""
+		if err == nil {
+			aside, err = install(file.Local, live)
+		}
 		if err != nil {
 			rbErr := rollback(installed)
 			var notBack *NotRolledBackError
@@ -453,6 +457,34 @@ func InstallBundle(f *Fetched, dataDir string) (untouched []string, err error) {
 		}
 	}
 	return untouched, nil
+}
+
+// noSymlinkBetween refuses a folder under root reached through a symlink. The
+// app owns its data folder and could link data/sub to /etc: installing
+// sub/app.db would then write there, with Bay's rights.
+func noSymlinkBetween(root, dir string) error {
+	rel, err := filepath.Rel(root, dir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%s is outside %s", dir, root)
+	}
+	if rel == "." {
+		return nil
+	}
+	p := root
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		p = filepath.Join(p, part)
+		info, err := os.Lstat(p)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s is a symlink: a restore never writes through one", p)
+		}
+	}
+	return nil
 }
 
 // installedFile is a database InstallBundle put in place, and where the one it
