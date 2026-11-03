@@ -105,7 +105,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly crypto = $inject(CryptoProvider);
-  protected client?: S3mini;
+  private client?: S3mini;
 
   /**
    * Key prefix, so several apps can share one bucket.
@@ -118,7 +118,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     return this.env.S3_KEY_PREFIX || this.alepha.name;
   }
 
-  protected getClient(): S3mini {
+  private getClient(): S3mini {
     if (!this.client) {
       const endpoint = this.env.S3_ENDPOINT.replace(/\/+$/, "");
       this.client = new S3mini({
@@ -237,7 +237,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
    * leave its parts billed and invisible — S3 keeps them until someone says
    * otherwise, and nobody ever does.
    */
-  protected async uploadStreamed(
+  private async uploadStreamed(
     client: S3mini,
     key: string,
     file: FileLike,
