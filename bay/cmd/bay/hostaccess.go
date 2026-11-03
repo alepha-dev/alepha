@@ -70,10 +70,60 @@ func resolved(p string) []string {
 }
 
 /*
+swapProof refuses a path that someone other than root (or Bay's own user)
+could swap for a symlink once it has been checked.
+
+Docker binds the path again on every container restart, crash or reboot,
+without asking Bay, and follows a symlink it finds there. So what was checked
+must stay what gets mounted: every folder above the path is owned by root or
+Bay and writable by nobody else (a sticky folder like /tmp is fine, since only
+an entry's owner may rename it there, and the entry must then be root's or
+Bay's too). The path itself may be anyone's: what is inside it is the app's to
+change, the name it is reached by is not.
+*/
+func swapProof(path string) error {
+	trusted := func(fi os.FileInfo) bool {
+		uid, ok := ownerOf(fi)
+		return !ok || uid == 0 || uid == uint32(os.Geteuid())
+	}
+	stickyParent := false
+	for dir, child := filepath.Dir(path), path; ; dir, child = filepath.Dir(dir), dir {
+		fi, err := os.Lstat(dir)
+		if err != nil {
+			return err
+		}
+		if !trusted(fi) {
+			return fmt.Errorf("%s is not owned by root, so whoever owns it could swap %s for a symlink", dir, child)
+		}
+		sticky := fi.Mode()&os.ModeSticky != 0
+		if fi.Mode().Perm()&0o022 != 0 && !sticky {
+			return fmt.Errorf("%s is writable by others, who could swap %s for a symlink", dir, child)
+		}
+		if child == path {
+			stickyParent = sticky
+		}
+		if dir == "/" {
+			break
+		}
+	}
+	if stickyParent {
+		fi, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if !trusted(fi) {
+			return fmt.Errorf("it sits in shared %s and is not root's, so its owner could swap it for a symlink", filepath.Dir(path))
+		}
+	}
+	return nil
+}
+
+/*
 checkHostMount decides whether a host path may be handed to an app.
 
-The path must be absolute, clean, existing and no symlink (so what is checked
-is what gets mounted). It may not be inside, or contain, a denied tree, Bay's
+The path must be absolute, clean, existing, no symlink, and out of reach of
+anyone who could make it one later (swapProof), so what is checked is what
+Docker mounts on every restart. It may not be inside, or contain, a denied tree, Bay's
 root or its control socket: mounting /opt would hand every other app's data
 over. Inside Bay's root, only a path inside the app's own instance directory
 is accepted. Guarded paths are checked as given and as their symlinks
@@ -88,6 +138,9 @@ func (s *server) checkHostMount(app state.App, path string) error {
 	}
 	if real, err := filepath.EvalSymlinks(path); err != nil || real != path {
 		return fmt.Errorf("mount %q: a symlink or a path through one; give the real path", path)
+	}
+	if err := swapProof(path); err != nil {
+		return fmt.Errorf("mount %q: %w", path, err)
 	}
 	for _, entry := range hostMountDenied {
 		for _, denied := range resolved(entry) {

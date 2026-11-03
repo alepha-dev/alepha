@@ -119,6 +119,33 @@ func TestHostMounts(t *testing.T) {
 		}
 	})
 
+	t.Run("refuses a path others could swap for a symlink after the check", func(t *testing.T) {
+		// Docker binds the path again on every restart without asking Bay: a
+		// folder others may write to lets them swap it for a link to /etc.
+		shared := filepath.Join(t.TempDir(), "shared")
+		inside := filepath.Join(shared, "media")
+		if err := os.MkdirAll(inside, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(shared, 0o777); err != nil {
+			t.Fatal(err)
+		}
+		if code, msg := put(`{"mounts": [{"path": "` + inside + `"}]}`); code != 400 || !strings.Contains(msg, "writable by others") {
+			t.Fatalf("a path in a folder anyone may write accepted: %d %s", code, msg)
+		}
+		// Sticky, like /tmp: only an entry's owner may rename it, and this
+		// one is Bay's.
+		if err := os.Chmod(shared, 0o777|os.ModeSticky); err != nil {
+			t.Fatal(err)
+		}
+		if code, msg := put(`{"mounts": [{"path": "` + inside + `"}]}`); code != 200 {
+			t.Fatalf("a Bay-owned path in a sticky folder refused: %d %s", code, msg)
+		}
+		if code, _ := put(`{"mounts": []}`); code != 200 {
+			t.Fatal(code)
+		}
+	})
+
 	t.Run("a Bay root behind a symlink is guarded by its real path", func(t *testing.T) {
 		real := s.root
 		linked := filepath.Join(t.TempDir(), "bay")
