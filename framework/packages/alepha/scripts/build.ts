@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import { existsSync } from "node:fs";
-import { access, readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -376,6 +376,15 @@ class AlephaPackageBuilderCli {
         );
       });
 
+      // `tsc -p tsconfig.json` declares every file under `src`, specs
+      // included: 1,724 files and 6.7 MB of `alepha`'s `dist` were spec
+      // declarations and their maps, which no export reaches and every
+      // install downloaded. The tsconfig stays as it is, since typecheck
+      // reads it too; the emitted spec files go instead.
+      await run("drop spec declarations", async () => {
+        await removeSpecDeclarations(this.fs.join(root, this.dist));
+      });
+
       // A devDependency is bundled into the JS, so a consumer never installs
       // it, and a declaration naming it does not resolve there: the type
       // silently becomes `any`, or fails under `skipLibCheck: false`
@@ -589,6 +598,32 @@ async function findUndeclaredTypeImports(
 
   await scan(distDir);
   return [...new Set(leaks)].sort();
+}
+
+/**
+ * Delete what `tsc` declared for the specs: every `__tests__` folder, and
+ * every co-located `*.spec.d.ts` with its map. The JS bundle never contained
+ * them; only the declaration emit, which walks all of `src`, did.
+ */
+async function removeSpecDeclarations(distDir: string): Promise<void> {
+  const scan = async (dir: string): Promise<void> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === "__tests__") {
+          await rm(path, { recursive: true, force: true });
+        } else {
+          await scan(path);
+        }
+        continue;
+      }
+      if (/\.spec\.d\.ts(\.map)?$/.test(entry.name)) {
+        await rm(path, { force: true });
+      }
+    }
+  };
+
+  await scan(distDir);
 }
 
 async function getAllFiles(dir: string): Promise<string[]> {
