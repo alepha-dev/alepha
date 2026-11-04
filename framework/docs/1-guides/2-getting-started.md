@@ -68,16 +68,17 @@ base, but never moves it around.
 bun create alepha my-app
 ```
 
-It asks for anything no flag has answered: the project name and the preset. To
-run it with no prompts at all (a CI, a Dockerfile, any script with no stdin),
-pass `--yes`, which answers every remaining question with its default:
+It asks for anything no flag has answered: the project name and the preset.
+When there is no input to read (a CI, a Dockerfile, an agent's shell), the
+preset question takes its default instead of waiting, so a script needs only
+the name:
 
 ```bash
-npm create alepha my-app -- --yes --infra cloudflare    # or -y
+npm create alepha my-app -- --infra cloudflare
 ```
 
-Flags still win over `--yes`, so `--yes --preset saas` is promptless too. The
-project name is the one thing it cannot supply, since it has no default.
+On a terminal, `--yes` (`-y`) takes every default without asking. The project
+name is the one thing neither can supply, since it has no default.
 
 Already inside a project? `npx alepha init` runs the same scaffolding in place:
 it fills in whatever is missing, never prompts, and takes `--force` to replace

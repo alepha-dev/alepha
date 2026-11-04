@@ -4,7 +4,7 @@ import {
   presetSchema,
   infraProviderSchema,
 } from "alepha/cli";
-import { $command } from "alepha/command";
+import { $command, NoInputError } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
 export class CreateAlephaCoreCommands {
@@ -53,6 +53,16 @@ export class CreateAlephaCoreCommands {
    * negative `--no-devtools`, which left no fully flagged path to the default
    * shape (#Q1647). That question left with devtools itself (#Q2280); `--yes`
    * stayed for the preset and whatever comes next.
+   *
+   * Empty stdin now gets the same answers as `--yes` (#Q3106). An agent's
+   * shell tool runs `npm create alepha my-app` with nothing to read, so the
+   * preset question met end of input and the run died on a bare "No input
+   * available": the docs had to teach every agent `-- --yes`. A question
+   * with a default now takes it when there is nothing to read, while answers
+   * that ARE piped in are still read first. This lives here, not in `Asker`:
+   * there, a confirm defaulting to yes would go through on a closed stdin
+   * with nobody to see it. The name has no default, so its end of input is
+   * refused with the fix in the message.
    */
   public readonly root = $command({
     root: true,
@@ -97,36 +107,53 @@ export class CreateAlephaCoreCommands {
       }
       const name =
         args ??
-        (await ask.prompt("What is your project name?", {
-          schema: z.text({ trim: true, lowercase: true }),
-          validate: (value) => {
-            if (!/^[a-z0-9-]+$/.test(value)) {
+        (await ask
+          .prompt("What is your project name?", {
+            schema: z.text({ trim: true, lowercase: true }),
+            validate: (value) => {
+              if (!/^[a-z0-9-]+$/.test(value)) {
+                throw new AlephaError(
+                  "Project name must be lowercase alphanumeric with dashes",
+                );
+              }
+            },
+          })
+          .catch((error: unknown) => {
+            if (error instanceof NoInputError) {
               throw new AlephaError(
-                "Project name must be lowercase alphanumeric with dashes",
+                "No project name, and no input to ask for one. Pass it as an argument: npm create alepha my-app",
               );
             }
-          },
-        }));
+            throw error;
+          }));
 
       // 2. Project shape, unless the caller already picked one
       const preset =
         flags.preset ??
         (flags.yes
           ? "default"
-          : await ask.choice(
-              "Project shape:",
-              [
-                {
-                  value: "default",
-                  label: "default (API + web + Tailwind)",
-                },
-                {
-                  value: "saas",
-                  label: "saas (adds @alepha/ui with auth, account and admin)",
-                },
-              ],
-              { default: "default" },
-            ));
+          : await ask
+              .choice(
+                "Project shape:",
+                [
+                  {
+                    value: "default",
+                    label: "default (API + web + Tailwind)",
+                  },
+                  {
+                    value: "saas",
+                    label:
+                      "saas (adds @alepha/ui with auth, account and admin)",
+                  },
+                ],
+                { default: "default" },
+              )
+              .catch((error: unknown) => {
+                if (error instanceof NoInputError) {
+                  return "default" as const;
+                }
+                throw error;
+              }));
 
       // Create directory
       await this.fs.mkdir(name);

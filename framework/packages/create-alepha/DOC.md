@@ -12,21 +12,19 @@ gets - `yarn create alepha`, `pnpm create alepha` and `bun create alepha` all
 resolve themselves through `npm_config_user_agent`, so there is nothing to
 answer.
 
-Pass the name and `--yes` and it runs start to finish without a prompt, which
-is what a CI, a Dockerfile or a scripted scaffold needs:
+Pass the name and it runs start to finish in a CI, a Dockerfile or an agent's
+shell: with no input to read, every remaining question takes its default, so
+the project is the same one a human gets by pressing Enter.
 
 ```bash
-npm create alepha my-app -- --yes
+npm create alepha my-app
 ```
 
-`--yes` answers every remaining question with its default, so the project it
-produces is the same one a human gets by pressing Enter. Flags still win over
-it, so `--yes --preset saas` is a complete, promptless description of a
-different shape. The project name is the one thing `--yes` cannot supply,
-because it has no default; leave it out and the command says so rather than
-prompting.
-
-Omit `--yes` and an interactive wizard asks for whatever no flag has answered.
+On a terminal, an interactive wizard asks for whatever no flag has answered.
+`--yes` (`-y`) takes every default there too, without asking. Flags win over
+both, so `--preset saas` is a complete, promptless description of a different
+shape. The project name is the one thing no default can supply; leave it out
+with nothing to read and the command says so.
 
 The package is standalone with no runtime dependencies, so `npm create` stays
 fast. It scaffolds the same layout as `alepha init`; use `init` from inside an

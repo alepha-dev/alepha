@@ -88,7 +88,7 @@ Leaving is a flag, not a rewrite.
 
 ```text
 Read https://alepha.dev/llms.txt, then create an Alepha app in ./my-app with
-`npm create alepha my-app -- --yes`. Add a page that counts its views in the
+`npm create alepha my-app`. Add a page that counts its views in the
 database, run it with `npx alepha dev`, and tell me how to deploy it.
 ```
 

@@ -42,7 +42,11 @@ import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
 class AutoAnswerAsker extends Asker {
   questionCount = 0;
 
-  protected remainingAnswers = 10;
+  /**
+   * Set to 0 for an empty stdin: the first question then meets end of input,
+   * which is an agent's shell tool with nothing piped in.
+   */
+  remainingAnswers = 10;
   protected closed = false;
   protected listeners = new Map<string, Set<() => void>>();
 
@@ -296,5 +300,24 @@ describe("create-alepha", () => {
     // reach; the auto-answering double's empty reply takes its `default`.
     expect(asker.questionCount).toBe(1);
     expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
+  });
+
+  it("should take the default preset when stdin is empty, as an agent's shell runs it", async () => {
+    const { fs, cli, cmd, asker } = createTestEnv();
+    asker.remainingAnswers = 0;
+
+    await cli.run(cmd.root, { argv: "my-app", root: "/project" });
+
+    expect(asker.questionCount).toBe(1);
+    expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
+  });
+
+  it("should refuse a missing project name on empty stdin, and say how to fix it", async () => {
+    const { cli, cmd, asker } = createTestEnv();
+    asker.remainingAnswers = 0;
+
+    await expect(
+      cli.run(cmd.root, { argv: "", root: "/project" }),
+    ).rejects.toThrow(/Pass it as an argument/);
   });
 });
