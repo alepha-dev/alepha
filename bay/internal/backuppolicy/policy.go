@@ -444,19 +444,35 @@ func Resolve(layers ...Layer) Effective {
 			out.OnDeploy, out.Sources.OnDeploy = *p.OnDeploy, l.Source
 		}
 		if r := p.Retention; r != nil {
-			setInt(&out.Keep, &out.Sources.Keep, r.Keep, l.Source)
-			setInt(&out.Hourly, &out.Sources.Hourly, r.Hourly, l.Source)
-			setInt(&out.Daily, &out.Sources.Daily, r.Daily, l.Source)
-			setInt(&out.Weekly, &out.Sources.Weekly, r.Weekly, l.Source)
-			setInt(&out.Monthly, &out.Sources.Monthly, r.Monthly, l.Source)
-			setInt(&out.Yearly, &out.Sources.Yearly, r.Yearly, l.Source)
-			setInt(&out.KeepPreDeploy, &out.Sources.KeepPreDeploy, r.KeepPreDeploy, l.Source)
+			// The app may keep more than the operator's global retention,
+			// never less: a deploy is untrusted input, and the history the
+			// operator asked for is not its to delete. 0 means "all" for
+			// keep and maxAge, "none" for the period counts.
+			floored := func(cur int, src Source, v *int, zeroIsAll bool) *int {
+				if v == nil || l.Source != App || src != Global {
+					return v
+				}
+				if zeroIsAll && cur == 0 || !(zeroIsAll && *v == 0) && *v < cur {
+					return nil
+				}
+				return v
+			}
+			setInt(&out.Keep, &out.Sources.Keep, floored(out.Keep, out.Sources.Keep, r.Keep, true), l.Source)
+			setInt(&out.Hourly, &out.Sources.Hourly, floored(out.Hourly, out.Sources.Hourly, r.Hourly, false), l.Source)
+			setInt(&out.Daily, &out.Sources.Daily, floored(out.Daily, out.Sources.Daily, r.Daily, false), l.Source)
+			setInt(&out.Weekly, &out.Sources.Weekly, floored(out.Weekly, out.Sources.Weekly, r.Weekly, false), l.Source)
+			setInt(&out.Monthly, &out.Sources.Monthly, floored(out.Monthly, out.Sources.Monthly, r.Monthly, false), l.Source)
+			setInt(&out.Yearly, &out.Sources.Yearly, floored(out.Yearly, out.Sources.Yearly, r.Yearly, false), l.Source)
+			setInt(&out.KeepPreDeploy, &out.Sources.KeepPreDeploy, floored(out.KeepPreDeploy, out.Sources.KeepPreDeploy, r.KeepPreDeploy, false), l.Source)
 			if r.MaxAge != "" {
 				if d, err := ParseDuration(r.MaxAge); err == nil {
-					out.MaxAge, out.Sources.MaxAge = d, l.Source
+					hours := int(d / time.Hour)
+					if floored(int(out.MaxAge/time.Hour), out.Sources.MaxAge, &hours, true) != nil {
+						out.MaxAge, out.Sources.MaxAge = d, l.Source
+					}
 				}
 			}
-			if r.KeepTagged != nil {
+			if r.KeepTagged != nil && !(l.Source == App && out.Sources.KeepTagged == Global && out.KeepTagged && !*r.KeepTagged) {
 				out.KeepTagged, out.Sources.KeepTagged = *r.KeepTagged, l.Source
 			}
 		}
@@ -508,7 +524,8 @@ Validate checks a layer's values for the trust its source carries.
 The app layer is untrusted input: it arrives with a deploy, written by whoever
 builds the app. So it may not ask to keep everything forever, nor more than
 MaxAppKeep per rule, nor hand pruning to a bucket lifecycle that may not
-exist. Intervals and refinements are bounded for everyone.
+exist; and Resolve never lets it keep less than the global layer asks.
+Intervals and refinements are bounded for everyone.
 */
 func (p *Policy) Validate(source Source) error {
 	if p == nil {

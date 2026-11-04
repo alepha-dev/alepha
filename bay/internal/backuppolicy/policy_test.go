@@ -226,3 +226,37 @@ func TestResolveVerify(t *testing.T) {
 		t.Fatalf("round trip: %+v, %v", back, err)
 	}
 }
+
+// A deploy may keep more than the operator's global retention, never less:
+// the history the operator asked for is not the app's to delete.
+func TestTheAppCannotShrinkTheGlobalRetention(t *testing.T) {
+	global := Layer{Source: Global, Policy: &Policy{Retention: &Retention{
+		Keep: Int(10), Daily: Int(7), Weekly: Int(4), MaxAge: "90d", KeepTagged: Bool(true)}}}
+
+	shrink := Resolve(builtIn(), global, Layer{Source: App, Policy: &Policy{Retention: &Retention{
+		Keep: Int(1), Daily: Int(0), Weekly: Int(0), MaxAge: "1d", KeepTagged: Bool(false)}}})
+	if shrink.Keep != 10 || shrink.Daily != 7 || shrink.Weekly != 4 || shrink.MaxAge != 90*24*time.Hour || !shrink.KeepTagged {
+		t.Fatalf("the app shrank the global retention: %+v", shrink)
+	}
+	if shrink.Sources.Keep != Global || shrink.Sources.Daily != Global || shrink.Sources.MaxAge != Global {
+		t.Fatalf("the global values must still say where they come from: %+v", shrink.Sources)
+	}
+
+	grow := Resolve(builtIn(), global, Layer{Source: App, Policy: &Policy{Retention: &Retention{
+		Keep: Int(20), Daily: Int(14), Monthly: Int(6), MaxAge: "365d"}}})
+	if grow.Keep != 20 || grow.Daily != 14 || grow.Monthly != 6 || grow.MaxAge != 365*24*time.Hour {
+		t.Fatalf("the app may keep more: %+v", grow)
+	}
+
+	// Over the built-in default, which no operator chose, the app decides.
+	own := Resolve(builtIn(), Layer{Source: App, Policy: &Policy{Retention: &Retention{Keep: Int(3)}}})
+	if own.Keep != 3 || own.Sources.Keep != App {
+		t.Fatalf("the app sets its own count over the built-in: %+v", own)
+	}
+
+	// The operator's own per-instance override still wins either way.
+	op := Resolve(builtIn(), global, Layer{Source: Operator, Policy: &Policy{Retention: &Retention{Keep: Int(2)}}})
+	if op.Keep != 2 {
+		t.Fatalf("the operator may lower its own retention: %+v", op)
+	}
+}
