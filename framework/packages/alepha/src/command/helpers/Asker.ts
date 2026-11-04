@@ -117,6 +117,9 @@ export interface AskMethods {
 
   /**
    * Ask for one entry of a numbered list.
+   *
+   * The answer is the entry's number, or its value typed out (any case):
+   * `2` and `saas` pick the same entry. An empty answer takes the default.
    */
   choice<const C extends AskChoices>(
     question: string,
@@ -405,7 +408,7 @@ export class Asker {
       (answer) => {
         if (!answer) {
           if (defaultValue === undefined) {
-            this.printError(this.rangeError(items.length));
+            this.printError(this.choiceError(items));
             return undefined;
           }
           return { value: defaultValue };
@@ -415,14 +418,26 @@ export class Asker {
         // rather than quietly taking the first one. The digit check runs
         // first so formats Number() would otherwise accept — hex ("0x2"),
         // scientific notation ("2e0"), a leading "+" — are rejected too.
+        //
+        // Anything that is not plain digits may be the entry's value typed
+        // out: people type `saas` at a list that shows `saas`. Digits stay
+        // positions even when a value is itself a number, so `2` always means
+        // the second entry.
         if (!/^\d+$/.test(answer)) {
-          this.printError(this.rangeError(items.length));
+          const typed = answer.toLowerCase();
+          const named = items.find(
+            (item) => item.value.toLowerCase() === typed,
+          );
+          if (named) {
+            return { value: named.value };
+          }
+          this.printError(this.choiceError(items));
           return undefined;
         }
 
         const position = Number(answer);
         if (position < 1 || position > items.length) {
-          this.printError(this.rangeError(items.length));
+          this.printError(this.choiceError(items));
           return undefined;
         }
 
@@ -550,6 +565,17 @@ export class Asker {
 
   protected rangeError(max: number): string {
     return `Invalid answer, expected a number between 1 and ${max}`;
+  }
+
+  /**
+   * The error for a single choice, which also takes an entry's value.
+   *
+   * `multiChoice` keeps {@link rangeError}: it splits on `-`, so a value such
+   * as `full-stack` could never be typed there whole.
+   */
+  protected choiceError(items: AskChoice[]): string {
+    const names = items.map((item) => item.value).join(", ");
+    return `${this.rangeError(items.length)}, or one of: ${names}`;
   }
 
   protected printIntro(title: string): void {

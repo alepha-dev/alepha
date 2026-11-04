@@ -453,7 +453,7 @@ describe("Asker", () => {
 
     it("re-asks on 0, on past the end, and on a non-number", async () => {
       const { asker, output } = setup();
-      asker.answers("0", "3", "red", "2");
+      asker.answers("0", "3", "purple", "2");
 
       expect(
         await asker.ask.choice("Choose your color:", ["red", "blue"]),
@@ -496,6 +496,41 @@ describe("Asker", () => {
       // Failed before ever asking, not after: nothing was printed.
       expect(fake.prompts).toHaveLength(0);
       expect(output.text).toBe("");
+    });
+
+    it("accepts the value typed out, in any case", async () => {
+      const { asker } = setup();
+      asker.answers("Saas");
+
+      expect(
+        await asker.ask.choice(
+          "Project shape:",
+          [
+            { value: "default", label: "default (API + web + Tailwind)" },
+            { value: "saas", label: "saas (adds @alepha/ui)" },
+          ],
+          { default: "default" },
+        ),
+      ).toBe("saas");
+    });
+
+    it("reads digits as a position even when a value is a number", async () => {
+      const { asker } = setup();
+      asker.answers("1");
+
+      expect(await asker.ask.choice("Pick one:", ["2", "1"])).toBe("2");
+    });
+
+    it("names the values it accepts when the answer matches nothing", async () => {
+      const { asker, output } = setup();
+      asker.answers("purple", "red");
+
+      expect(
+        await asker.ask.choice("Choose your color:", ["red", "blue"]),
+      ).toBe("red");
+      expect(output.text).toContain(
+        "Invalid answer, expected a number between 1 and 2, or one of: red, blue",
+      );
     });
 
     it("re-asks on a hex-looking answer instead of picking by it", async () => {
