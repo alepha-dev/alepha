@@ -213,3 +213,34 @@ func TestRestoreIsRefusedWhileTheInstanceIsBusy(t *testing.T) {
 		t.Fatalf("the restore is recorded: %+v", r)
 	}
 }
+
+// The app a restore stopped is the restore's to start again: a start, stop or
+// restart in between would boot it on a data directory being swapped.
+func TestStartStopAndRestartWaitForARestore(t *testing.T) {
+	f, _, _ := bundleFixture(t)
+	if _, ok := f.server.claimInstance("demo/production", "restore"); !ok {
+		t.Fatal("claim")
+	}
+	for name, run := range map[string]func() error{
+		"start":   func() error { return f.server.startInstance("demo/production") },
+		"stop":    func() error { return f.server.stopInstance("demo/production") },
+		"restart": func() error { return f.server.restart(f.app(t)) },
+	} {
+		if err := run(); err == nil || !strings.Contains(err.Error(), "being restored") {
+			t.Errorf("%s during a restore: want a refusal, got %v", name, err)
+		}
+	}
+	f.server.releaseInstance("demo/production")
+	if err := f.server.startInstance("demo/production"); err != nil {
+		t.Fatalf("once the restore is done, a start runs: %v", err)
+	}
+
+	// A deploy's claim is not a restore's: the deploy path restarts the app itself.
+	if _, ok := f.server.claimInstance("demo/production", "deploy"); !ok {
+		t.Fatal("claim")
+	}
+	defer f.server.releaseInstance("demo/production")
+	if err := f.server.notRestoring("demo/production"); err != nil {
+		t.Fatalf("a deploy is not a restore: %v", err)
+	}
+}

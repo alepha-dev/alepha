@@ -913,6 +913,9 @@ running and is marked stopped, which the next boot corrects; the other order
 leaves one that is down and marked running, which nothing corrects.
 */
 func (s *server) stopInstance(key string) error {
+	if err := s.notRestoring(key); err != nil {
+		return err
+	}
 	app, ok := s.store.Get(key)
 	if !ok {
 		return fmt.Errorf("unknown app %q", key)
@@ -940,6 +943,9 @@ healthy app in disguise - a "start" that bounces production is not what anyone
 clicking it expects.
 */
 func (s *server) startInstance(key string) error {
+	if err := s.notRestoring(key); err != nil {
+		return err
+	}
 	app, ok := s.store.Get(key)
 	if !ok {
 		return fmt.Errorf("unknown app %q", key)

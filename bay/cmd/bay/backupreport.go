@@ -205,6 +205,21 @@ func (s *server) claimInstance(key, what string) (string, bool) {
 	return "", true
 }
 
+/*
+notRestoring refuses to start, stop or restart an instance a restore is
+working on. The restore stops the app and starts it again once the data is in
+place; a start in between (the operator seeing it down and pressing Start)
+boots it mid-rename, on an empty database the next rename then overwrites.
+*/
+func (s *server) notRestoring(key string) error {
+	s.busyMu.Lock()
+	defer s.busyMu.Unlock()
+	if s.busy[key] == "restore" {
+		return fmt.Errorf("%s is being restored: it starts again by itself once the data is in place", key)
+	}
+	return nil
+}
+
 func (s *server) releaseInstance(key string) {
 	s.busyMu.Lock()
 	delete(s.busy, key)

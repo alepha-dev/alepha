@@ -265,6 +265,9 @@ or a runtime update costs no request; stop then start otherwise (the app was
 down anyway, or the runner cannot run two copies).
 */
 func (s *server) restart(app state.App) error {
+	if err := s.notRestoring(app.Key()); err != nil {
+		return err
+	}
 	// A Compose service is restarted by Compose, in place: it has no
 	// artifact to start a second copy of.
 	if app.ServiceKind == "service" {
