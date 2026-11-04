@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/deploy"
@@ -39,6 +38,11 @@ func storageChecks(root string, probeKeys bool) []check {
 	if errors.Is(err, os.ErrNotExist) {
 		return nil // nothing configured yet: a fresh host, before `bay serve`.
 	}
+	if errors.Is(err, os.ErrPermission) {
+		// state.json is root's, 0600: an operator in the control group runs
+		// doctor too, and a check it cannot make is not a host that is broken.
+		return []check{{Name: "s3", Warn: true, Detail: "not checked: state.json is readable by root only (sudo bay doctor)"}}
+	}
 	if err != nil {
 		return []check{{Name: "s3", Detail: "cannot read state.json: " + err.Error()}}
 	}
@@ -46,9 +50,9 @@ func storageChecks(root string, probeKeys bool) []check {
 	if err := json.Unmarshal(raw, &st); err != nil {
 		return []check{{Name: "s3", Detail: "state.json is not valid JSON: " + err.Error()}}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	return storageChecksFor(ctx, &st, probeKeys)
+	// No budget over the whole: each check bounds its own calls, so a host
+	// with many apps does not see its last keys "unverified" for want of time.
+	return storageChecksFor(context.Background(), &st, probeKeys)
 }
 
 func storageChecksFor(ctx context.Context, st *state.State, probeKeys bool) []check {
@@ -136,7 +140,7 @@ narrower key, or a bucket of its own for backups) is the operator's.
 func hostWideKeyCheck(ctx context.Context, st *state.State) check {
 	c := check{Name: "s3 apps key"}
 	b := st.S3.S3Target
-	if strings.TrimRight(b.Endpoint, "/") != strings.TrimRight(st.Storage.Endpoint, "/") {
+	if !sameS3Service(b.Endpoint, st.Storage.Endpoint) {
 		c.OK, c.Detail = true, "backups are on another S3 service: the apps key cannot reach them"
 		return c
 	}
@@ -226,6 +230,9 @@ func instanceKeyCheck(ctx context.Context, holders storageHolders, key string, o
 		if ch.Result != "denied" {
 			bad = append(bad, ch.Result+": "+ch.What)
 		}
+	}
+	if report.Unproved != "" {
+		bad = append(bad, report.Unproved)
 	}
 	if len(bad) > 0 {
 		c.Detail = "not isolated (" + strings.Join(bad, "; ") + ")"

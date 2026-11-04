@@ -209,3 +209,19 @@ func TestDoctorWarnsAWideKeyStoredOnPurpose(t *testing.T) {
 		t.Fatalf("a key stored wide on purpose must warn, saying so: %+v", c)
 	}
 }
+
+// state.json is root's: an operator in the control group running doctor gets
+// a warning that the S3 half was not checked, not a failed host.
+func TestDoctorWarnsWhenItCannotReadTheState(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a 0000 file")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "state.json"), []byte("{}"), 0); err != nil {
+		t.Fatal(err)
+	}
+	checks := storageChecks(root, false)
+	if len(checks) != 1 || checks[0].OK || !checks[0].Warn || !strings.Contains(checks[0].Detail, "root only") {
+		t.Fatalf("got %+v", checks)
+	}
+}
