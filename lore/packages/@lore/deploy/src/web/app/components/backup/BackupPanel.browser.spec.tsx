@@ -21,7 +21,7 @@ describe("BackupPanel", () => {
     alepha = undefined;
   });
 
-  const mount = async (canRestoreFrom: boolean) => {
+  const mount = async (owner: boolean) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaReact)
@@ -36,7 +36,8 @@ describe("BackupPanel", () => {
       online: true,
       deployAllowed: true,
       canManage: true,
-      canRestoreFrom,
+      canRestoreFrom: owner,
+      canEditPolicy: owner,
       send: async () => {
         throw new Error("not sent in this spec");
       },
@@ -51,14 +52,16 @@ describe("BackupPanel", () => {
     );
   };
 
-  it("hides 'restore from' where the route refuses it", async () => {
+  it("hides 'restore from' and the policy editor where the route refuses them", async () => {
     await mount(false);
     expect(screen.getByTestId("backup-restore-reason")).toBeTruthy();
     expect(screen.queryByTestId("backup-restore-from")).toBeNull();
+    expect(screen.queryByTestId("backup-policy-draft")).toBeNull();
   });
 
-  it("offers it on the estate owner's console", async () => {
+  it("offers both on the estate owner's console", async () => {
     await mount(true);
     expect(screen.getByTestId("backup-restore-from")).toBeTruthy();
+    expect(screen.getByTestId("backup-policy-draft")).toBeTruthy();
   });
 });

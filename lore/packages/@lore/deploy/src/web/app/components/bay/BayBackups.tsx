@@ -58,6 +58,7 @@ const BayBackups = (props: BayBackupsProps) => {
       // The owner's console; the enqueue refuses anyone else server-side.
       canManage: true,
       canRestoreFrom: true,
+      canEditPolicy: true,
       send: (body) =>
         commandApi.enqueueEstateCommand({
           params: { estateId: estate.id },

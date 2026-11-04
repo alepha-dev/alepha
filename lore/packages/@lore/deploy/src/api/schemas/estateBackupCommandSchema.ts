@@ -19,10 +19,16 @@ const pointFields = {
  * ⚠️ `backup` is here and NOT in the estate endpoint's `restart`/`stop`
  * group: a union takes the first branch that parses, and that one would strip
  * the `tag`.
+ *
+ * ⚠️ Two fields are the estate owner's only, and the project controller
+ * refuses them: a restore's `from` (another instance's data), and the whole
+ * `backup-policy` verb, which writes Bay's OPERATOR layer, wider in its bounds
+ * than an app's (keep everything forever, override what the app declared), on
+ * a bucket the owner pays for. A project declares its policy at deploy, as
+ * the app layer, instead.
  */
 const variants = <T extends NonNullable<Parameters<typeof z.object>[0]>>(
   target: T,
-  allowFrom: boolean,
 ) =>
   [
     z.object({
@@ -50,15 +56,15 @@ const variants = <T extends NonNullable<Parameters<typeof z.object>[0]>>(
       // Another instance's data (`<app>/<env>`). Only the estate's owner may
       // ask. On a shared Bay a project member must never reach another
       // project's backups, and an unknown key would be stripped silently,
-      // restoring the caller's own data instead: so the project body refuses
-      // the field outright (the project controller rejects it).
+      // restoring the caller's own data instead: so the body keeps the field
+      // and the project controller refuses it outright.
       from: z.string().min(3).max(201).optional(),
       reason: z.string().max(500).optional(),
       dryRun: z.boolean().optional(),
     }),
   ] as const;
 
-export const estateBackupCommandBodySchema = z.union(variants({}, false));
+export const estateBackupCommandBodySchema = z.union(variants({}));
 
 /**
  * The same, naming the instance as the estate page does: `app` is the
@@ -70,7 +76,6 @@ export const estateBackupCommandTargetedSchema = z.union(
       app: z.string().min(1).max(100),
       environment: z.string().min(1).max(100),
     },
-    true,
   ),
 );
 

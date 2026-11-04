@@ -36,11 +36,12 @@ import { EstateService } from "../services/EstateService.ts";
  * its Backups tab, and with `deploy:manage` sends it the backup verbs: the
  * same commands the estate page sends, aimed by Lore at the copy's own
  * instance - never at a name the caller chose, so a project can only reach
- * the instances it deployed.
+ * the instances it deployed. Two things stay the owner's: a restore from
+ * another instance, and the backup policy override (Bay's operator layer).
  *
- * ⚠️ Restore and a policy change are gated twice more, by the estate's
- * `deployAllowed` (here, in `EstateCommandService.assertAccepts`) and again
- * by Bay itself from its `welcome` frame.
+ * ⚠️ A restore is gated twice more, by the estate's `deployAllowed` (here, in
+ * `EstateCommandService.assertAccepts`) and again by Bay itself from its
+ * `welcome` frame.
  */
 export class BackupController {
   protected readonly estateService = $inject(EstateService);
@@ -155,6 +156,13 @@ export class BackupController {
       if ("from" in body && body.from) {
         throw new BadRequestError(
           "Restoring from another instance is reserved to the estate's owner.",
+        );
+      }
+      // Bay's operator layer is the estate owner's: a project declares its
+      // policy with the deploy (`bay({ backup })`), bounded as the app layer.
+      if (body.kind === "backup-policy") {
+        throw new BadRequestError(
+          "Overriding the backup policy is reserved to the estate's owner: declare it in alepha.config.ts and deploy.",
         );
       }
       const { estate, machineApp } = await this.requireTarget(instance);

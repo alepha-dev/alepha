@@ -54,6 +54,11 @@ export interface BackupSource {
    * field rather than offer one the server always refuses.
    */
   canRestoreFrom: boolean;
+  /**
+   * Whether the operator policy may be edited. It is Bay's operator layer,
+   * the estate owner's alone: a project declares its policy at deploy.
+   */
+  canEditPolicy: boolean;
   send: (body: EstateBackupCommandBody) => Promise<EstateCommandResource>;
   poll: (id: string) => Promise<EstateCommandResource | undefined>;
   /** The uploaded result, parsed; `undefined` while there is none yet. */
@@ -518,7 +523,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
         </CardContent>
       </Card>
 
-      {source.canManage && (
+      {source.canManage && source.canEditPolicy && (
         <Card>
           <CardContent className="flex flex-col gap-3 text-sm">
             <h3 className="font-semibold">{tr("backup.policy.title")}</h3>
