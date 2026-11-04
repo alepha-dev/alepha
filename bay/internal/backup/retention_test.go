@@ -173,6 +173,14 @@ func TestRetentionIncompleteBundles(t *testing.T) {
 	if d := plan[4]; d.Keep || d.Reasons[0] != "incomplete upload" {
 		t.Fatalf("dead upload %+v", d)
 	}
+
+	// Older than the oldest kept but under a day old: another Bay on the
+	// same prefix may still be uploading it.
+	recent := []Entry{{Timestamp: at("2026-08-08T02:00:00Z")}}
+	plan = PlanRetention(entries, recent, Rules{Keep: 1}, at("2026-08-08T20:00:00Z"))
+	if d := plan[len(plan)-1]; !d.Keep || !d.Incomplete {
+		t.Fatalf("an incomplete bundle under a day old must be left alone: %+v", d)
+	}
 }
 
 func TestPruneDeletesTaggedBundlesByThePlan(t *testing.T) {

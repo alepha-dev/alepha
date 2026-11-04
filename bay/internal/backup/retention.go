@@ -209,8 +209,10 @@ func PlanRetention(complete, incomplete []Entry, r Rules, now time.Time) []Decis
 		}
 	}
 
-	// An incomplete bundle older than every backup kept is a dead upload. A
-	// newer one may be a backup still running: left alone.
+	// An incomplete bundle older than every backup kept, and than a day, is a
+	// dead upload. A newer one may be a backup still running, here or on
+	// another Bay writing the same prefix (a copy moved between estates on a
+	// shared bucket): left alone.
 	var oldestKept time.Time
 	for i := len(out) - 1; i >= 0; i-- {
 		if out[i].Keep {
@@ -220,13 +222,17 @@ func PlanRetention(complete, incomplete []Entry, r Rules, now time.Time) []Decis
 	}
 	for _, e := range incomplete {
 		d := Decision{Entry: e, Keep: true, Incomplete: true, Reasons: []string{"incomplete, may still be uploading"}}
-		if !oldestKept.IsZero() && e.Timestamp.Before(oldestKept) {
+		if !oldestKept.IsZero() && e.Timestamp.Before(oldestKept) && now.Sub(e.Timestamp) > deadUploadAge {
 			d.Keep, d.Reasons = false, []string{"incomplete upload"}
 		}
 		out = append(out, d)
 	}
 	return out
 }
+
+// deadUploadAge is how old an incomplete bundle must be before retention takes
+// it for a dead upload rather than one in progress.
+const deadUploadAge = 24 * time.Hour
 
 // shrinkWindow bounds how far back the size guard looks, and so how long it
 // holds a backup the rules would delete: a month to notice that data/ shrank,

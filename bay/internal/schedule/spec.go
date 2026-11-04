@@ -176,7 +176,16 @@ func (s Spec) NextDue(last time.Time, key string) time.Time {
 	if s.MinGap > gap {
 		gap = s.MinGap
 	}
-	return last.Add(gap + s.Offset(key))
+	offset := s.Offset(key)
+	if offset == 0 {
+		return last.Add(gap)
+	}
+	// Anchored, not added: last already carries the previous run's offset,
+	// and adding it again each cycle stretched every 6h with a 3h share to a
+	// run every 9h. The instance's runs fall on its own grid, gap apart and
+	// shifted by its share, the first one past half a gap after the last.
+	since := last.Add(gap / 2).Sub(time.Unix(0, 0).Add(offset))
+	return time.Unix(0, 0).Add(offset).Add((since/gap + 1) * gap)
 }
 
 // Decision is whether a task runs now, and if not, when it next may.

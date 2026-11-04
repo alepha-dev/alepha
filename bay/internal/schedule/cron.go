@@ -117,6 +117,7 @@ func (c *Cron) dayMatches(t time.Time) bool {
 // when nothing matches within five years (Feb 30th).
 func (c *Cron) Next(t time.Time) time.Time {
 	loc := t.Location()
+	from := t
 	t = t.Truncate(time.Minute).Add(time.Minute)
 	limit := t.AddDate(5, 0, 0)
 	// Skipping ahead by month, day or hour goes through time.Date, which a
@@ -141,6 +142,17 @@ func (c *Cron) Next(t time.Time) time.Time {
 			continue
 		}
 		if c.minute&(1<<uint(t.Minute())) == 0 {
+			t = t.Add(time.Minute)
+			continue
+		}
+		// The hour a fall-back repeats matches twice; like cron, run once, at
+		// the first. time.Date may have jumped straight to the second, so the
+		// first is taken when it is still ahead, and the second skipped once
+		// the first has run.
+		if prev := t.Add(-time.Hour); prev.Hour() == t.Hour() && prev.Minute() == t.Minute() {
+			if prev.After(from) {
+				return prev
+			}
 			t = t.Add(time.Minute)
 			continue
 		}

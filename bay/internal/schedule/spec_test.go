@@ -70,6 +70,15 @@ func TestCronCrossesDaylightSaving(t *testing.T) {
 		}
 		t0 = n
 	}
+	// And the repeated 02:30 runs once, as cron does: the next run is the
+	// following night's.
+	first := c.Next(after)
+	if _, off := first.Zone(); first.Day() != 25 || off != 2*3600 {
+		t.Fatalf("the run of the fall-back night is the first 02:30 (CEST), got %v", first)
+	}
+	if second := c.Next(first); second.Day() != 26 {
+		t.Fatalf("02:30 ran twice on the fall-back night: %v then %v", first, second)
+	}
 }
 
 func TestAtSlotsInTimezone(t *testing.T) {
@@ -176,5 +185,26 @@ func TestParseClockAndWindow(t *testing.T) {
 		if _, err := ParseWindow(bad); err == nil {
 			t.Errorf("window %q accepted", bad)
 		}
+	}
+}
+
+// A jittered every schedule keeps its interval: the instance's share shifts
+// its runs, it does not lengthen the gap between them.
+func TestJitterShiftsEveryWithoutStretchingIt(t *testing.T) {
+	s := Spec{Every: 6 * time.Hour, Jitter: 6 * time.Hour}
+	key := "lore/production"
+	if s.Offset(key) == 0 {
+		t.Skip("this key's share happens to be zero")
+	}
+	last := time.Date(2026, 11, 4, 1, 17, 0, 0, time.UTC)
+	for range 5 {
+		next := s.NextDue(last, key)
+		if gap := next.Sub(last); gap < 3*time.Hour || gap > 9*time.Hour {
+			t.Fatalf("next run %s after the last, want about 6h", gap)
+		}
+		if again := s.NextDue(next, key); again.Sub(next) != 6*time.Hour {
+			t.Fatalf("on its grid the runs are 6h apart, got %s", again.Sub(next))
+		}
+		last = next
 	}
 }
