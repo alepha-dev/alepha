@@ -16,6 +16,7 @@ export * from "./entities/paymentIntents.ts";
 export * from "./entities/paymentMethods.ts";
 export * from "./entities/refunds.ts";
 export * from "./errors/PaymentError.ts";
+export * from "./providers/DatabaseMemoryPaymentProvider.ts";
 export * from "./providers/MemoryPaymentProvider.ts";
 export * from "./providers/PaymentProvider.ts";
 export * from "./schemas/intentSchemas.ts";

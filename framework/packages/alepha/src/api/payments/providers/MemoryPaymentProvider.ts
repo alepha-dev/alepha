@@ -15,42 +15,97 @@ import type {
   WebhookEvent,
 } from "./PaymentProvider.ts";
 
-interface MemoryCharge {
+export interface MemoryCharge {
   providerRef: string;
   amount: number;
   status: string;
 }
 
-interface MemoryRefund {
+export interface MemoryRefund {
   providerRef: string;
   chargeRef: string;
   amount: number;
 }
 
+/**
+ * The state the mock keeps, one bucket per kind of record. The keys are
+ * provider references (or `account:idempotencyKey` for the replay buckets).
+ */
+export interface MemoryPaymentState {
+  charges: MemoryCharge;
+  sessionResults: CreateSessionResult;
+  refundResults: RefundResult;
+  refundRecords: MemoryRefund;
+  methods: CreatePaymentMethodResult;
+  methodOwners: { userId: string; account?: string; token: string };
+  savedSessions: {
+    userId: string;
+    account?: string;
+    method: CreatePaymentMethodResult;
+    completed: boolean;
+  };
+  offSessionResults: OffSessionResult;
+  expiredSessions: true;
+}
+
+export type MemoryPaymentBucket = keyof MemoryPaymentState;
+
+/**
+ * A payment provider that never moves money: every checkout is paid, every
+ * card is a Visa 4242. For tests and local development.
+ *
+ * Its state lives in in-process Maps, so it only holds within one process.
+ * Every read and write goes through {@link read}, {@link write} and
+ * {@link remove}, which a subclass overrides to keep the state elsewhere: see
+ * `DatabaseMemoryPaymentProvider`, for a deployment whose requests may each
+ * run in a fresh isolate (Cloudflare Workers).
+ */
 export class MemoryPaymentProvider implements PaymentProvider {
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly charges: Map<string, MemoryCharge> = new Map();
-  protected readonly sessionResults = new Map<string, CreateSessionResult>();
-  protected readonly refundResults = new Map<string, RefundResult>();
-  protected readonly refundRecords: Map<string, MemoryRefund> = new Map();
-  protected readonly methods: Map<string, CreatePaymentMethodResult> =
-    new Map();
-  protected readonly expiredSessions: Set<string> = new Set();
+  protected readonly state: {
+    [B in MemoryPaymentBucket]: Map<string, MemoryPaymentState[B]>;
+  } = {
+    charges: new Map(),
+    sessionResults: new Map(),
+    refundResults: new Map(),
+    refundRecords: new Map(),
+    methods: new Map(),
+    methodOwners: new Map(),
+    savedSessions: new Map(),
+    offSessionResults: new Map(),
+    expiredSessions: new Map(),
+  };
 
-  protected readonly methodOwners = new Map<
-    string,
-    { userId: string; account?: string; token: string }
-  >();
-  protected readonly savedSessions = new Map<
-    string,
-    {
-      userId: string;
-      account?: string;
-      method: CreatePaymentMethodResult;
-      completed: boolean;
-    }
-  >();
-  protected readonly offSessionResults = new Map<string, OffSessionResult>();
+  protected async read<B extends MemoryPaymentBucket>(
+    bucket: B,
+    key: string,
+  ): Promise<MemoryPaymentState[B] | undefined> {
+    return this.state[bucket].get(key);
+  }
+
+  protected async write<B extends MemoryPaymentBucket>(
+    bucket: B,
+    key: string,
+    value: MemoryPaymentState[B],
+  ): Promise<void> {
+    this.state[bucket].set(key, value);
+  }
+
+  protected async remove(
+    bucket: MemoryPaymentBucket,
+    key: string,
+  ): Promise<void> {
+    this.state[bucket].delete(key);
+  }
+
+  protected replayKey(options?: {
+    stripeAccount?: string;
+    idempotencyKey?: string;
+  }): string | undefined {
+    return options?.idempotencyKey
+      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
+      : undefined;
+  }
 
   public async createSetupSession(
     userId: string,
@@ -58,7 +113,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
   ): Promise<CreateSessionResult> {
     const providerRef = `mem_setup_${this.crypto.randomUUID()}`;
     const method = await this.createPaymentMethod(userId, "4242", options);
-    this.savedSessions.set(providerRef, {
+    await this.write("savedSessions", providerRef, {
       userId,
       account: options.stripeAccount,
       method,
@@ -71,10 +126,13 @@ export class MemoryPaymentProvider implements PaymentProvider {
   }
 
   public async completeSetupSession(providerRef: string): Promise<void> {
-    const session = this.savedSessions.get(providerRef);
+    const session = await this.read("savedSessions", providerRef);
     if (!session || !providerRef.startsWith("mem_setup_"))
       throw new AlephaError("Unknown setup session");
-    session.completed = true;
+    await this.write("savedSessions", providerRef, {
+      ...session,
+      completed: true,
+    });
   }
 
   public async retrieveSavedPaymentMethod(
@@ -82,11 +140,12 @@ export class MemoryPaymentProvider implements PaymentProvider {
     providerRef: string,
     options: ProviderAccountOptions = {},
   ): Promise<CreatePaymentMethodResult | null> {
-    const session = this.savedSessions.get(providerRef);
+    const session = await this.read("savedSessions", providerRef);
     if (!session) return null;
     if (session.userId !== userId || session.account !== options.stripeAccount)
       throw new AlephaError("Saved card belongs to another user or account");
-    return session.completed && this.methods.has(session.method.providerRef)
+    return session.completed &&
+      (await this.read("methods", session.method.providerRef))
       ? session.method
       : null;
   }
@@ -97,7 +156,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
     amount: number,
     options: OffSessionOptions,
   ): Promise<OffSessionResult> {
-    const owner = this.methodOwners.get(paymentMethodRef);
+    const owner = await this.read("methodOwners", paymentMethodRef);
     if (
       !owner ||
       owner.userId !== userId ||
@@ -108,11 +167,9 @@ export class MemoryPaymentProvider implements PaymentProvider {
       );
     if (!Number.isSafeInteger(amount) || amount <= 0)
       throw new AlephaError("Charge amount must be a positive integer");
-    const key = options.idempotencyKey
-      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
-      : undefined;
-    if (key && this.offSessionResults.has(key))
-      return this.offSessionResults.get(key)!;
+    const key = this.replayKey(options);
+    const replay = key ? await this.read("offSessionResults", key) : undefined;
+    if (replay) return replay;
     const status =
       owner.token === "authentication_required"
         ? "requires_action"
@@ -125,12 +182,12 @@ export class MemoryPaymentProvider implements PaymentProvider {
       providerRef,
       ...(status !== "succeeded" ? { code: owner.token } : {}),
     };
-    this.charges.set(providerRef, {
+    await this.write("charges", providerRef, {
       providerRef,
       amount,
       status: status === "succeeded" ? "captured" : status,
     });
-    if (key) this.offSessionResults.set(key, result);
+    if (key) await this.write("offSessionResults", key, result);
     return result;
   }
 
@@ -145,11 +202,9 @@ export class MemoryPaymentProvider implements PaymentProvider {
       idempotencyKey?: string;
     },
   ): Promise<CreateSessionResult> {
-    const key = options.idempotencyKey
-      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
-      : undefined;
-    if (key && this.sessionResults.has(key))
-      return this.sessionResults.get(key)!;
+    const key = this.replayKey(options);
+    const replay = key ? await this.read("sessionResults", key) : undefined;
+    if (replay) return replay;
     const providerRef = `mem_session_${this.crypto.randomUUID()}`;
     const status = options.authorize ? "authorized" : "captured";
     if (options.saveCard) {
@@ -160,14 +215,14 @@ export class MemoryPaymentProvider implements PaymentProvider {
         "4242",
         options,
       );
-      this.savedSessions.set(providerRef, {
+      await this.write("savedSessions", providerRef, {
         userId: intent.userId,
         account: options.stripeAccount,
         method,
         completed: false,
       });
     }
-    this.charges.set(providerRef, {
+    await this.write("charges", providerRef, {
       providerRef,
       amount: intent.amount,
       status,
@@ -176,7 +231,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
       url: `/payments/mock-checkout/${intent.id}?returnUrl=${encodeURIComponent(options.returnUrl)}`,
       providerRef,
     };
-    if (key) this.sessionResults.set(key, result);
+    if (key) await this.write("sessionResults", key, result);
     return result;
   }
 
@@ -192,7 +247,7 @@ export class MemoryPaymentProvider implements PaymentProvider {
     intent: PaymentIntentEntity,
   ): Promise<ElementSessionResult> {
     const providerRef = `mem_pi_${this.crypto.randomUUID()}`;
-    this.charges.set(providerRef, {
+    await this.write("charges", providerRef, {
       providerRef,
       amount: intent.amount,
       status: "captured",
@@ -209,19 +264,26 @@ export class MemoryPaymentProvider implements PaymentProvider {
     providerRef: string,
     amount: number,
   ): Promise<void> {
-    const charge = this.charges.get(providerRef);
+    const charge = await this.read("charges", providerRef);
     if (charge) {
-      const saved = this.savedSessions.get(providerRef);
-      if (saved) saved.completed = true;
-      charge.status = "captured";
-      charge.amount = amount;
+      const saved = await this.read("savedSessions", providerRef);
+      if (saved)
+        await this.write("savedSessions", providerRef, {
+          ...saved,
+          completed: true,
+        });
+      await this.write("charges", providerRef, {
+        ...charge,
+        status: "captured",
+        amount,
+      });
     }
   }
 
   public async voidPayment(providerRef: string): Promise<void> {
-    const charge = this.charges.get(providerRef);
+    const charge = await this.read("charges", providerRef);
     if (charge) {
-      charge.status = "voided";
+      await this.write("charges", providerRef, { ...charge, status: "voided" });
     }
   }
 
@@ -230,18 +292,17 @@ export class MemoryPaymentProvider implements PaymentProvider {
     amount: number,
     options?: ProviderAccountOptions,
   ): Promise<RefundResult> {
-    const key = options?.idempotencyKey
-      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
-      : undefined;
-    if (key && this.refundResults.has(key)) return this.refundResults.get(key)!;
+    const key = this.replayKey(options);
+    const replay = key ? await this.read("refundResults", key) : undefined;
+    if (replay) return replay;
     const refundRef = `mem_refund_${this.crypto.randomUUID()}`;
-    this.refundRecords.set(refundRef, {
+    await this.write("refundRecords", refundRef, {
       providerRef: refundRef,
       chargeRef: providerRef,
       amount,
     });
     const result = { providerRef: refundRef };
-    if (key) this.refundResults.set(key, result);
+    if (key) await this.write("refundResults", key, result);
     return result;
   }
 
@@ -271,8 +332,8 @@ export class MemoryPaymentProvider implements PaymentProvider {
       expMonth: 12,
       expYear: 2030,
     };
-    this.methods.set(providerRef, result);
-    this.methodOwners.set(providerRef, {
+    await this.write("methods", providerRef, result);
+    await this.write("methodOwners", providerRef, {
       userId,
       account: options.stripeAccount,
       token,
@@ -284,11 +345,12 @@ export class MemoryPaymentProvider implements PaymentProvider {
     providerRef: string,
     options: ProviderAccountOptions = {},
   ): Promise<void> {
-    if (!this.methods.has(providerRef)) return;
-    if (this.methodOwners.get(providerRef)?.account !== options.stripeAccount)
+    if (!(await this.read("methods", providerRef))) return;
+    const owner = await this.read("methodOwners", providerRef);
+    if (owner?.account !== options.stripeAccount)
       throw new AlephaError("Wrong payment account");
-    this.methods.delete(providerRef);
-    this.methodOwners.delete(providerRef);
+    await this.remove("methods", providerRef);
+    await this.remove("methodOwners", providerRef);
   }
 
   /**
@@ -306,31 +368,33 @@ export class MemoryPaymentProvider implements PaymentProvider {
   }
 
   public async expireSession(providerRef: string): Promise<void> {
-    this.expiredSessions.add(providerRef);
+    await this.write("expiredSessions", providerRef, true);
   }
 
   // --- Test assertion helpers ---
 
+  // They read the in-process Maps, so they only see what this instance wrote.
+
   public wasCharged(providerRef: string): boolean {
-    const charge = this.charges.get(providerRef);
+    const charge = this.state.charges.get(providerRef);
     return charge?.status === "captured";
   }
 
   public wasRefunded(providerRef: string): boolean {
-    return Array.from(this.refundRecords.values()).some(
+    return Array.from(this.state.refundRecords.values()).some(
       (r) => r.chargeRef === providerRef,
     );
   }
 
   public wasExpired(providerRef: string): boolean {
-    return this.expiredSessions.has(providerRef);
+    return this.state.expiredSessions.has(providerRef);
   }
 
   public getCharges(): MemoryCharge[] {
-    return Array.from(this.charges.values());
+    return Array.from(this.state.charges.values());
   }
 
   public getRefunds(): MemoryRefund[] {
-    return Array.from(this.refundRecords.values());
+    return Array.from(this.state.refundRecords.values());
   }
 }
