@@ -266,6 +266,63 @@ test.describe("deploying through Lore", () => {
       ).toHaveCount(0);
     });
 
+    await test.step("the Sigil switches write SIGIL_CONFIG, and only what differs (#Q3103)", async () => {
+      // No sigil and nothing declared: the copy collects nothing, so there
+      // is nothing to switch.
+      const sigilCard = page.getByTestId("app-environment-sigil");
+      await expect(sigilCard).toHaveCount(0);
+
+      // The same endpoint the Settings tab's mint button calls: a sigil, with
+      // its key sealed straight into this copy's environment.
+      const minted = await page.evaluate(
+        async ({ projectId, app, env }) => {
+          const res = await fetch(
+            `/api/projects/${projectId}/apps/${app}/${env}/sigil`,
+            { method: "POST", credentials: "include" },
+          );
+          return res.ok;
+        },
+        { projectId, app: appName, env: envName },
+      );
+      expect(minted).toBe(true);
+
+      await page.goto(`/${slug}/apps/${appName}/${envName}/environment`);
+      await page.waitForLoadState("networkidle");
+      await expect(sigilCard).toBeVisible({ timeout: 15_000 });
+
+      const vitals = sigilCard.getByRole("switch", { name: /web vitals/i });
+      await expect(vitals).toHaveAttribute("aria-checked", "true");
+      await vitals.click();
+      await sigilCard
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+
+      // Never deployed, so there is no tag to redeploy: it says when it
+      // applies instead of offering a deploy.
+      await expect(page.getByText(/applies on the next deploy/i)).toBeVisible({
+        timeout: 15_000,
+      });
+      const table = page.getByTestId("app-environment");
+      await expect(table.getByText('{"vitals":false}')).toBeVisible();
+
+      // Read back after a reload, from the stored variable.
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(
+        sigilCard.getByRole("switch", { name: /web vitals/i }),
+      ).toHaveAttribute("aria-checked", "false", { timeout: 15_000 });
+
+      // Every switch back at its default removes the variable altogether.
+      await sigilCard.getByRole("switch", { name: /web vitals/i }).click();
+      await sigilCard
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+      await expect(
+        table.getByText("SIGIL_CONFIG", { exact: true }),
+      ).toHaveCount(0, { timeout: 15_000 });
+      await expect(table.getByText("SIGIL_KEY", { exact: true })).toBeVisible();
+    });
+
     await test.step("turning the option back off takes both tabs away", async () => {
       // ⚠️ Disabling HIDES and never deletes: the variable set above survives,
       // which is what makes turning it back on safe.

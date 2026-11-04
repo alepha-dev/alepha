@@ -1969,6 +1969,45 @@ export default {
   "app.environment.value": "Value",
   "app.environment.save": "Save",
   "app.environment.saved": "Variable saved",
+  "app.environment.sigil.title": "Sigil features",
+  "app.environment.sigil.description":
+    "What this copy collects and sends to Lore, saved as SIGIL_CONFIG below. Only the switches you change are written, and it takes effect on the next deploy.",
+  "app.environment.sigil.unreadable":
+    "SIGIL_CONFIG is set, but Lore cannot read it back (it is stored as a secret, or does not parse), so these are the defaults. Saving replaces it.",
+  "app.environment.sigil.analytics": "Page views",
+  "app.environment.sigil.analytics.desc":
+    "Visits, pages, referrers and devices.",
+  "app.environment.sigil.blights": "Errors",
+  "app.environment.sigil.blights.desc":
+    "Client and server errors, grouped into blights.",
+  "app.environment.sigil.vitals": "Web vitals",
+  "app.environment.sigil.vitals.desc":
+    "Loading and interaction timings from real visits.",
+  "app.environment.sigil.feedback": "Feedback",
+  "app.environment.sigil.feedback.desc":
+    "Offer a link to send feedback to this project.",
+  "app.environment.sigil.feedbackButton": "Feedback button",
+  "app.environment.sigil.feedbackButton.desc":
+    "Where the built-in button sits, or hidden when the app shows its own link.",
+  "app.environment.sigil.feedbackButton.bottomRight": "Bottom right",
+  "app.environment.sigil.feedbackButton.bottomLeft": "Bottom left",
+  "app.environment.sigil.feedbackButton.hidden": "Hidden",
+  "app.environment.sigil.excludedPaths": "Hide the button on",
+  "app.environment.sigil.excludedPaths.desc":
+    "One path per line. * matches within a segment, ** across segments.",
+  "app.environment.sigil.outsideProduction": "Report outside production",
+  "app.environment.sigil.outsideProduction.desc":
+    "Send from a non-production server too, such as staging. The browser half still reports from production pages only.",
+  "app.environment.sigil.save": "Save",
+  "app.environment.sigil.savedNextDeploy":
+    "Saved. It applies on the next deploy.",
+  "app.environment.sigil.redeploy.title": "Redeploy to apply it?",
+  "app.environment.sigil.redeploy.description":
+    "SIGIL_CONFIG is saved, but this copy keeps running with the old one until it is deployed again. Redeploy $1 now?",
+  "app.environment.sigil.redeploy.latest":
+    "SIGIL_CONFIG is saved, but this copy keeps running with the old one until it is deployed again. This copy runs latest, which may now point at a newer build than the one running.",
+  "app.environment.sigil.redeploy.confirm": "Redeploy $1",
+  "app.environment.sigil.redeploy.later": "Later",
   "app.environment.kind": "Type",
   "app.environment.kind.secret": "Secret",
   "app.environment.kind.variable": "Variable",
@@ -2049,7 +2088,7 @@ export default {
   "app.dashboard.neverReported":
     "This app has not reported its configuration. Older releases send none, and one that has never reported has told us nothing either.",
   "app.dashboard.configHint":
-    "What the app sends is decided by SIGIL_CONFIG in its own deploy, not here. What Lore accepts is on the Settings tab.",
+    "What the app sends is decided by SIGIL_CONFIG in its own deploy. When Lore deploys this copy, switch it on the Environment tab.",
   "app.dashboard.acceptsNothing": "Lore accepts nothing from this app",
   "app.artifacts": "Artifacts",
   "app.artifacts.loading": "Reading what this app has built…",

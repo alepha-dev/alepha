@@ -1957,6 +1957,45 @@ export default {
   "app.environment.value": "Valeur",
   "app.environment.save": "Enregistrer",
   "app.environment.saved": "Variable enregistrée",
+  "app.environment.sigil.title": "Fonctions Sigil",
+  "app.environment.sigil.description":
+    "Ce que cette copie collecte et envoie à Lore, enregistré dans SIGIL_CONFIG ci-dessous. Seuls les réglages modifiés sont écrits, et ils s'appliquent au prochain déploiement.",
+  "app.environment.sigil.unreadable":
+    "SIGIL_CONFIG est défini, mais Lore ne peut pas le relire (il est stocké comme secret, ou n'est pas valide) : ce sont donc les valeurs par défaut. Enregistrer le remplace.",
+  "app.environment.sigil.analytics": "Pages vues",
+  "app.environment.sigil.analytics.desc":
+    "Visites, pages, référents et appareils.",
+  "app.environment.sigil.blights": "Erreurs",
+  "app.environment.sigil.blights.desc":
+    "Erreurs client et serveur, regroupées en blights.",
+  "app.environment.sigil.vitals": "Web vitals",
+  "app.environment.sigil.vitals.desc":
+    "Temps de chargement et d'interaction mesurés sur de vraies visites.",
+  "app.environment.sigil.feedback": "Retours",
+  "app.environment.sigil.feedback.desc":
+    "Proposer un lien pour envoyer un retour à ce projet.",
+  "app.environment.sigil.feedbackButton": "Bouton de retour",
+  "app.environment.sigil.feedbackButton.desc":
+    "Où se place le bouton intégré, ou masqué quand l'app affiche son propre lien.",
+  "app.environment.sigil.feedbackButton.bottomRight": "En bas à droite",
+  "app.environment.sigil.feedbackButton.bottomLeft": "En bas à gauche",
+  "app.environment.sigil.feedbackButton.hidden": "Masqué",
+  "app.environment.sigil.excludedPaths": "Masquer le bouton sur",
+  "app.environment.sigil.excludedPaths.desc":
+    "Un chemin par ligne. * correspond à un segment, ** à plusieurs.",
+  "app.environment.sigil.outsideProduction": "Rapporter hors production",
+  "app.environment.sigil.outsideProduction.desc":
+    "Envoyer aussi depuis un serveur hors production, comme la préproduction. Le navigateur ne rapporte toujours que depuis les pages de production.",
+  "app.environment.sigil.save": "Enregistrer",
+  "app.environment.sigil.savedNextDeploy":
+    "Enregistré. Effectif au prochain déploiement.",
+  "app.environment.sigil.redeploy.title": "Redéployer pour l'appliquer ?",
+  "app.environment.sigil.redeploy.description":
+    "SIGIL_CONFIG est enregistré, mais cette copie tourne avec l'ancien jusqu'au prochain déploiement. Redéployer $1 maintenant ?",
+  "app.environment.sigil.redeploy.latest":
+    "SIGIL_CONFIG est enregistré, mais cette copie tourne avec l'ancien jusqu'au prochain déploiement. Cette copie tourne sur latest, qui peut désormais pointer vers un build plus récent que celui en cours.",
+  "app.environment.sigil.redeploy.confirm": "Redéployer $1",
+  "app.environment.sigil.redeploy.later": "Plus tard",
   "app.environment.kind": "Type",
   "app.environment.kind.secret": "Secret",
   "app.environment.kind.variable": "Variable",
@@ -2033,7 +2072,7 @@ export default {
   "app.dashboard.neverReported":
     "Cette app n'a pas déclaré sa configuration. Les anciennes versions n'en envoient pas, et une app qui n'a jamais rapporté ne nous a rien dit non plus.",
   "app.dashboard.configHint":
-    "Ce que l'app envoie est décidé par SIGIL_CONFIG dans son propre déploiement, pas ici. Ce que Lore accepte se règle dans l'onglet Paramètres.",
+    "Ce que l'app envoie est décidé par SIGIL_CONFIG dans son propre déploiement. Quand Lore déploie cette copie, réglez-le dans l'onglet Environnement.",
   "app.dashboard.acceptsNothing": "Lore n'accepte rien de cette app",
   "app.artifacts": "Artefacts",
   "app.artifacts.loading": "Lecture de ce que cette app a construit…",

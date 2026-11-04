@@ -1,3 +1,4 @@
+import { sigilConfig } from "@alepha/lore/sigil";
 import { $inject } from "alepha";
 import {
   BAY_OWNED_SECRET_KEYS,
@@ -241,7 +242,13 @@ export class AppSecretService {
           .filter((declared) => declared.kind === "variable")
           .map((declared) => declared.name),
       );
-    const variable = variables.has(key);
+    // `SIGIL_CONFIG` is a variable whatever the manifest says (#Q3103): the
+    // reporting module declares it `secret: false` itself, so this is the
+    // same declaration read from `@alepha/lore` rather than from a build, and
+    // a copy with no deployed build yet keeps a value its Sigil switches can
+    // read back.
+    const variable =
+      variables.has(key) || key === AppSecretService.SIGIL_CONFIG_KEY;
 
     const values = {
       valueSealed: await this.seal.seal(input.value, AppSecretService.PURPOSE),
@@ -533,6 +540,43 @@ export class AppSecretService {
     if (value.length > AppSecretService.MAX_VALUE_LENGTH) {
       throw new BadRequestError(
         `${key} is longer than ${AppSecretService.MAX_VALUE_LENGTH} characters. The whole set goes up as bindings in one script upload, so an unbounded value fails the deploy rather than this request.`,
+      );
+    }
+    if (key === AppSecretService.SIGIL_CONFIG_KEY) {
+      this.assertSigilConfig(value);
+    }
+  }
+
+  /**
+   * The variable the Sigil features form writes (#Q3103).
+   */
+  public static readonly SIGIL_CONFIG_KEY = "SIGIL_CONFIG";
+
+  /**
+   * That `SIGIL_CONFIG` is a value the reporting module will accept.
+   *
+   * ⚠️ Checked here rather than left to the app because the app's answer
+   * comes too late: its `$env` parse refuses a malformed value at boot, so a
+   * typo saved on this tab deploys "successfully" and then answers 500, with
+   * the cause five layers away. Unknown fields pass, the way the app's own
+   * parse lets them through, so a copy running a newer `@alepha/lore` than
+   * this Lore can still be given its newer switches.
+   */
+  protected assertSigilConfig(value: string): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      throw new BadRequestError(
+        `SIGIL_CONFIG is not JSON. It is one object of switches, such as {"vitals":false}.`,
+      );
+    }
+    const result = sigilConfig.safeParse(parsed);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      const where = issue?.path.length ? ` at ${issue.path.join(".")}` : "";
+      throw new BadRequestError(
+        `SIGIL_CONFIG would be refused by the app when it boots${where}: ${issue?.message ?? "invalid value"}.`,
       );
     }
   }
