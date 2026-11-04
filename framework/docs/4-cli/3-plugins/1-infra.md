@@ -578,10 +578,6 @@ Adapter factories (`cloudflare`, `bay` and external factories such as `lore`), `
 
 Programmatic `InfraOrchestrator.up()`, `auth()` and `printUpSummary()` retain their method names and behavior. Adapter methods, JSON field names and adapter ids also stay unchanged. `name`, `project`, `default`, `secrets`, the explicit environment map and `.env.*` files preserve their meanings. Keep configured names to retain existing resources: the examples in this repository remain `alepha-docs-production`, `alepha-ui-production` and `alepha-shop-production`. The internal cache still uses `node_modules/.alepha/platform.json`; the rename does not invalidate its format or identity.
 
-### External consumers, not shipped by this repository
+### Apps and adapters outside the framework
 
-Lore has runtime imports to migrate, not just prose: its app config and deployment workflow; `@alepha/lore`'s CLI adapter, adapter tests and descriptor types; `@lore/deploy`'s runner, teardown, naming, rollback, asset-cache and secret services; its estate pull controller and rehearsal script. Replace the library imports and the renamed module/atom/classes/types using the table. Its external factory remains `lore()`; its remote build, secret and provisioning policies do not change because of this rename.
-
-The framework's release and nightly workflows also run the installed `@alepha/lore` CLI. A release of that CLI still importing the removed library path will fail to start. The owner has reserved [Q2607](https://lore.alepha.dev/alepha/quests/2607) for this compatibility work after E73; it is not a dependency gate for this epic, and the migration is not claimed as shipped here.
-
-Bay's repository has guide references in its README, installation instructions and introduction. Its Go host has no framework TypeScript imports to rename. Update that prose separately; Bay's host protocol and behavior remain unchanged. Other downstream apps, including Capacity and Mikanda, need their config helper/imports migrated before upgrading.
+An app or an external adapter that imports the library, its config helper or its descriptor types replaces those imports and the renamed module, atom, classes and types using the table before upgrading. The `lore()` factory keeps its name, and Lore's remote build, secret and provisioning policies do not change. Bay's host protocol and behavior do not change either.
