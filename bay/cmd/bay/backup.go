@@ -559,6 +559,13 @@ func fetchedPaths(f *backup.Fetched) []string {
 	return out
 }
 
+// beforeSecondOf is the last instant before t's second. Backup keys are
+// stamped to the second, so a backup taken in the same second as t, after it,
+// carries t's own stamp: a cut-off at t would let it through.
+func beforeSecondOf(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Second).Add(-time.Nanosecond)
+}
+
 // installBundle is backup.InstallBundle, a variable so a test can have it fail
 // without putting the data folder back, which no real filesystem does on cue.
 var installBundle = backup.InstallBundle
@@ -597,10 +604,10 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	// An instance that already started empty once may have backed that empty
 	// database up since: then the cut-off is when it did, as for a
 	// `bay restore` without a key.
-	cutoff := deployStart.UTC().Truncate(time.Second).Add(-time.Nanosecond)
+	cutoff := beforeSecondOf(deployStart)
 	if current, ok := s.store.Get(app.Key()); ok && current.RestorePending != nil {
-		if since := current.RestorePending.SinceTime(); !since.IsZero() && since.Before(cutoff) {
-			cutoff = since
+		if since := current.RestorePending.SinceTime(); !since.IsZero() && beforeSecondOf(since).Before(cutoff) {
+			cutoff = beforeSecondOf(since)
 		}
 	}
 	latest, found, err := mgr.Before(ctx, app.Name, app.Env, cutoff)

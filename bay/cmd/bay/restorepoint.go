@@ -78,7 +78,7 @@ func (s *server) resolveRestoreKey(ctx context.Context, mgr *backup.Manager, app
 	// maybe: "the latest" then means the latest before it started empty.
 	if at == "" && src.key() == app.Key() && app.RestorePending != nil {
 		if since := app.RestorePending.SinceTime(); !since.IsZero() {
-			when = since
+			when = beforeSecondOf(since)
 		}
 	}
 	if at != "" {
@@ -272,8 +272,12 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 	// were protecting have done their job, whether or not the app boots on it.
 	s.clearRestorePending(app.Key())
 	if err := s.start(app); err != nil {
-		return fail(http.StatusBadGateway, "database restored but the app did not come back: "+err.Error(),
-			map[string]any{"restored": key})
+		// The restore itself is done: recorded so, with the boot failure said,
+		// or the console would invite a second restore of data already back.
+		msg := "database restored but the app did not come back: " + err.Error()
+		rec.Status, rec.Error = "done", msg
+		s.recordRestore(app, rec)
+		return nil, restoreError{status: http.StatusBadGateway, msg: msg, extra: map[string]any{"restored": key}}
 	}
 	s.log.Info("database restored", "app", app.Key(), "key", key, "from", src.key(), "by", opts.Trigger)
 	rec.Status = "done"

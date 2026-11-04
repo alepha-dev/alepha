@@ -338,6 +338,11 @@ func TestARestoreThatDoesNotBootStillLiftsTheGuards(t *testing.T) {
 	if a := f.app(t); a.BackupHold != "" || a.RestorePending != nil {
 		t.Fatalf("still guarded after the data came back: hold = %q, pending = %v", a.BackupHold, a.RestorePending)
 	}
+	// The data is back: recorded as a restore done, the boot failure said
+	// beside it, never as a restore to try again.
+	if r := f.app(t).LastRestore; r == nil || r.Status != "done" || !strings.Contains(r.Error, "did not come back") {
+		t.Fatalf("want the restore recorded done with the boot failure, got %+v", r)
+	}
 }
 
 // The scheduler picks an instance, then waits for its lock while an
@@ -444,5 +449,18 @@ func TestAnAutoRestoreThatCannotPutTheDataBackFailsTheDeploy(t *testing.T) {
 	}
 	if a := f.app(t); a.BackupHold == "" || a.RestorePending == nil {
 		t.Fatalf("the guards must still be set: hold = %q, pending = %v", a.BackupHold, a.RestorePending)
+	}
+}
+
+// A backup stamped with the very second the instance started empty may have
+// been taken after it: the cut-off excludes that whole second.
+func TestTheCutOffExcludesTheWholeSecond(t *testing.T) {
+	since := time.Date(2026, 11, 4, 10, 0, 0, 500_000_000, time.UTC)
+	sameSecond := since.Truncate(time.Second) // the stamp of a backup taken at 10:00:00.9
+	if !beforeSecondOf(since).Before(sameSecond) {
+		t.Fatalf("a backup stamped %s must fall after the cut-off %s", sameSecond, beforeSecondOf(since))
+	}
+	if earlier := sameSecond.Add(-time.Second); beforeSecondOf(since).Before(earlier) {
+		t.Fatalf("a backup from the second before must still be eligible")
 	}
 }
