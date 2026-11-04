@@ -411,15 +411,13 @@ export class AppService {
     instance: AppInstance,
     estateId: string | null,
   ): Promise<AppInstance> {
-    // ⚠️ Any move forgets which estate the copy last deployed to: moved away
-    // and back without a deploy, the name may meanwhile be another project's
-    // instance there, and only a deploy (which checks the name) may vouch again.
+    // ⚠️ A move keeps `resourceEstateId`, the estate the copy last deployed
+    // to: its instance still runs there under its name, which
+    // `ResourceNameService.assertFree` keeps from any other copy until this one
+    // deploys elsewhere. Its Backups tab acts only where both agree.
     if (estateId === null) {
-      await this.instances.updateById(instance.id, {
-        estateId: null,
-        resourceEstateId: null,
-      });
-      return { ...instance, estateId: undefined, resourceEstateId: undefined };
+      await this.instances.updateById(instance.id, { estateId: null });
+      return { ...instance, estateId: undefined };
     }
 
     const grant = await this.grants.findOne({
@@ -435,11 +433,8 @@ export class AppService {
     if (estateId === instance.estateId) {
       return instance;
     }
-    await this.instances.updateById(instance.id, {
-      estateId,
-      resourceEstateId: null,
-    });
-    return { ...instance, estateId, resourceEstateId: undefined };
+    await this.instances.updateById(instance.id, { estateId });
+    return { ...instance, estateId };
   }
 
   /**

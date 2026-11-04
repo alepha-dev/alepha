@@ -8,6 +8,7 @@ import {
   EstateEventService,
   EstateInventoryService,
 } from "../src/api/index.ts";
+import { ResourceNameService } from "../src/api/services/ResourceNameService.ts";
 import {
   bootStackSpec,
   createInstance,
@@ -319,22 +320,43 @@ describe("BackupController", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("does not give a copy moved away and back its old instance again", async ({
+  it("keeps a moved copy's name on the estate it last ran on, so nobody else deploys there under it", async ({
     expect,
   }) => {
-    // Moved off E and back, without a deploy in between: on E the name may now
-    // belong to another project's copy (it took the slug meanwhile), so only a
-    // new deploy - which checks the name is free - may hand the tab back.
+    // Moved off E without a deploy: its instance still runs on E under its
+    // name. Another project deriving the same name (it took the slug this one
+    // was renamed away from) must not deploy there, or its Backups tab would
+    // drive this copy's instance.
     const { w, estate, instance } = await deployed();
     const elsewhere = await lentBayEstate(w);
     const apps = alepha.inject(AppService);
     const moved = await apps.setEstate(instance as never, elsewhere.id);
-    await apps.setEstate(moved, estate.id);
 
+    const other = await stackWorld(alepha);
+    await other.rows.grants.create({
+      estateId: estate.id,
+      projectId: other.project.id,
+    });
+    const theirs = await createInstance(alepha, other, "minpricing", "production");
+    await other.rows.instances.updateById(theirs.id, {
+      estateId: estate.id,
+      resourceName: instance.resourceName ?? `p${w.project.id}-minpricing-production`,
+    });
+    await expect(
+      alepha
+        .inject(ResourceNameService)
+        .resolve(
+          (await other.rows.instances.findById(theirs.id)) as never,
+          estate,
+        ),
+    ).rejects.toThrow(/already named/);
+
+    // Moved back, nothing else could have taken the name: the tab drives it again.
+    await apps.setEstate(moved, estate.id);
     const view = await api.getAppBackup(
       { params: params(w), query: {} },
       { user: w.user },
     );
-    expect(view.status).toBe("not-deployed");
+    expect(view.status).not.toBe("not-deployed");
   });
 });

@@ -332,9 +332,25 @@ describe("EstateCommandController, the name a Bay deploy sends", () => {
 
     const after = await ctx.repos.instances.findById(setup.instance.id);
     expect(after?.resourceName).toBe(`${setup.project.slug}-demo-production`);
-    // The estate goes with the name: the Backups tab acts on the instance
-    // only where the copy was deployed under it.
-    expect(after?.resourceEstateId).toBe(setup.estate.id);
+  });
+
+  it("vouches for the copy on its estate once the deploy is done, never when queued", async ({
+    expect,
+  }) => {
+    const setup = await lentSetup(ctx, true);
+    const command = await deployOf(ctx, setup);
+
+    // Queued, refused or failed, the deploy replaced nothing on the machine:
+    // whatever runs under that name there is not yet this copy.
+    const queued = await ctx.repos.instances.findById(setup.instance.id);
+    expect(queued?.resourceEstateId).toBeUndefined();
+
+    const service = ctx.alepha.inject(EstateCommandService);
+    await service.ack(setup.estate.id, { id: command.id, status: "running" });
+    await service.ack(setup.estate.id, { id: command.id, status: "done" });
+
+    const done = await ctx.repos.instances.findById(setup.instance.id);
+    expect(done?.resourceEstateId).toBe(setup.estate.id);
   });
 
   it("sends the stored project segment after the project is renamed", async ({
