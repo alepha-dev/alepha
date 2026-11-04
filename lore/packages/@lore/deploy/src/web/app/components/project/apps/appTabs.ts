@@ -10,6 +10,7 @@ export type AppTabRoute =
   | "appArtifacts"
   | "appDeploy"
   | "appEnvironment"
+  | "appSigil"
   | "appBackups"
   | "appSettings";
 
@@ -22,6 +23,7 @@ export type AppTabLabelKey =
   | "app.tab.artifacts"
   | "app.tab.deploy"
   | "app.tab.environment"
+  | "app.tab.sigil"
   | "app.tab.backups"
   | "app.tab.settings";
 
@@ -156,6 +158,18 @@ export const APP_TABS: AppTab[] = [
     labelKey: "app.tab.environment",
     unlockedBy: (instance) =>
       !!instance.estateId || !!instance.stackEnvironmentId,
+    option: "deploy",
+  },
+  // After Environment, whose `SIGIL_CONFIG` it writes (#Q3103). It needs a
+  // sigil AND somewhere Lore deploys to: for a copy Lore only hears from,
+  // what the app sends is decided in its own deploy, which Lore cannot
+  // change. `deploy`, not `track`: it is a deploy setting.
+  {
+    route: "appSigil",
+    labelKey: "app.tab.sigil",
+    unlockedBy: (instance) =>
+      !!instance.sigil &&
+      (!!instance.estateId || !!instance.stackEnvironmentId),
     option: "deploy",
   },
   // After Environment: what a deploy leaves behind. An estate only, never a

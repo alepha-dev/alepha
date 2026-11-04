@@ -118,6 +118,33 @@ describe("the instance's tab set", () => {
     expect(stacked).not.toContain("appBackups");
   });
 
+  it("adds Sigil only for a copy with a sigil that Lore deploys (#Q3103)", ({
+    expect,
+  }) => {
+    // A sigil alone is a copy Lore only hears from: what it sends is decided
+    // in its own deploy, so there is nothing here to switch.
+    expect(routes(anInstance(["beacon"]))).not.toContain("appSigil");
+    // Somewhere to deploy with no sigil collects nothing.
+    expect(
+      routes(anInstance(undefined, { estateId: crypto.randomUUID() })),
+    ).not.toContain("appSigil");
+
+    const deployed = routes(
+      anInstance(["beacon"], { estateId: crypto.randomUUID() }),
+    );
+    expect(deployed.indexOf("appSigil")).toBe(
+      deployed.indexOf("appEnvironment") + 1,
+    );
+    expect(
+      routes(
+        anInstance(["beacon"], { stackEnvironmentId: crypto.randomUUID() }),
+      ),
+    ).toContain("appSigil");
+    expect(APP_TABS.find((it) => it.route === "appSigil")?.option).toBe(
+      "deploy",
+    );
+  });
+
   it("keeps Settings last in every combination", ({ expect }) => {
     // What makes the bar stable as an instance gains capabilities: tabs appear
     // and disappear BETWEEN Overview and Settings rather than at the edge.

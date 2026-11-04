@@ -426,6 +426,58 @@ describe("a deployed copy's environment", () => {
     });
   });
 
+  describe("SIGIL_CONFIG (#Q3103)", () => {
+    /**
+     * The app's own `$env` parse refuses a bad value at boot, after a deploy
+     * that reported success. So the write refuses it first.
+     */
+    it("refuses a value that is not JSON", async ({ expect }) => {
+      const w = await world();
+
+      await expect(set(w, "SIGIL_CONFIG", "vitals=false")).rejects.toThrow(
+        /SIGIL_CONFIG is not JSON/,
+      );
+    });
+
+    it("refuses a value the app would refuse at boot, naming the field", async ({
+      expect,
+    }) => {
+      const w = await world();
+
+      await expect(
+        set(w, "SIGIL_CONFIG", '{"feedbackButton":"top-middle"}'),
+      ).rejects.toThrow(/refused by the app when it boots at feedbackButton/);
+      await expect(set(w, "sigil_config", '{"vitals":"no"}')).rejects.toThrow(
+        /at vitals/,
+      );
+      expect((await list(w)).items).toEqual([]);
+    });
+
+    it("stores a valid one, and lets through a field this Lore does not know", async ({
+      expect,
+    }) => {
+      const w = await world();
+
+      await set(w, "SIGIL_CONFIG", '{"vitals":false,"someNewerSwitch":true}');
+
+      expect((await list(w)).items.map((item) => item.key)).toEqual([
+        "SIGIL_CONFIG",
+      ]);
+    });
+
+    it("is a variable with no build declaring it, so its switches read back", async ({
+      expect,
+    }) => {
+      const w = await world();
+
+      await set(w, "SIGIL_CONFIG", '{"vitals":false}');
+
+      const [item] = (await list(w)).items;
+      expect(item?.kind).toBe("variable");
+      expect(item?.value).toBe('{"vitals":false}');
+    });
+  });
+
   describe("the names Bay writes itself", () => {
     /**
      * Points the copy at a Bay estate lent to its project.
