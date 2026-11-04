@@ -181,6 +181,8 @@ describe("WorkspaceCompiler.compileDesktop", () => {
       "bun",
       "build",
       "--compile",
+      "--no-compile-autoload-dotenv",
+      "--no-compile-autoload-bunfig",
       "--target=bun-darwin-arm64",
       "--minify",
       "--outfile=fixture",
@@ -312,7 +314,7 @@ describe("WorkspaceCompiler.compileDesktop", () => {
   }) => {
     const { shell, compiler, distUnchanged } = await setup();
     shell.errors.set(
-      "bun build --compile --target=bun-darwin-arm64 --minify --outfile=fixture desktop-shell.js desktop-supervisor.js desktop-worker.js",
+      "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-darwin-arm64 --minify --outfile=fixture desktop-shell.js desktop-supervisor.js desktop-worker.js",
       "bun: compile failed",
     );
 
@@ -336,7 +338,7 @@ describe("WorkspaceCompiler.compileDesktop", () => {
 
     expect(adapter.calls).toEqual([]);
     expect(shell.calls[0].command).toMatch(
-      /^bun build --compile --target=bun-\S+ --minify --outfile=fixture index\.bun\.js$/,
+      /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-\S+ --minify --outfile=fixture index\.bun\.js$/,
     );
     expect(
       fs.files.has("/my project/dist/Fixture.app/Contents/MacOS/fixture"),

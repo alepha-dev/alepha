@@ -107,6 +107,37 @@ export interface DataTableBaseProps<
    */
   pageSizes?: number[];
   /**
+   * `false` shows every row on one page, with no footer: no size picker and
+   * no pager. For a short list a reader wants whole, such as an app's
+   * environment variables, where "page 1 of 1" is noise and a twenty-first
+   * row on a second page is a row nobody finds.
+   *
+   * ⚠️ Static `data` only. A `fetch` table is paged by the server, so it
+   * keeps its footer whatever this says: hiding it would hide rows.
+   *
+   * @default true
+   */
+  pagination?: boolean;
+  /**
+   * Shade every other row, for a wide table whose rows are hard to follow
+   * across.
+   *
+   * @default false
+   */
+  striped?: boolean;
+  /**
+   * How `rowActions` render: `"menu"`, a three-dots menu at the end of the
+   * row, or `"inline"`, one outlined icon button per action, named by a
+   * tooltip and red when `destructive`.
+   *
+   * Inline suits a row with two or three actions the reader uses often
+   * (edit, remove); past that the row turns into a toolbar. A group still
+   * opens a menu, after the buttons.
+   *
+   * @default "menu"
+   */
+  rowActionsDisplay?: "menu" | "inline";
+  /**
    * Stable row identifier. Defaults to `item.id`.
    *
    * Rows with neither fall back to their position in the current page, which

@@ -16,12 +16,21 @@ export const ESTATE_PROTOCOL_VERSION = 1;
  * interval it names. The CPU/RAM series switch is deliberately absent: it is
  * Lore-side only, and the machine pushes the gauge regardless.
  */
+/**
+ * Optional parts of the protocol this Lore takes, named on every `welcome`
+ * and `config`. A machine sends a feature's frames only to a Lore that lists
+ * it: `events` is the `event` frame (backups, the bucket, restores).
+ */
+export const ESTATE_FEATURES = ["events"] as const;
+
 export const estateWelcomeFrameSchema = z.object({
   type: z.enum(["welcome", "config"]),
   protocol: z.literal(ESTATE_PROTOCOL_VERSION),
   estate: z.object({ id: z.uuid(), slug: z.string() }),
   deployAllowed: z.boolean(),
   statsIntervalSeconds: z.integer(),
+  /** Absent from an older Lore, which a machine reads as "none". */
+  features: z.array(z.enum(ESTATE_FEATURES)).optional(),
 });
 
 export type EstateWelcomeFrame = Infer<typeof estateWelcomeFrameSchema>;

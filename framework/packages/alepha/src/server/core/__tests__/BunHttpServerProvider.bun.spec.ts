@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { $hook, Alepha, z } from "alepha";
 
 import { $action, $route, AlephaServer, ServerProvider } from "../index.ts";
+import { BunHttpServerProvider } from "../providers/BunHttpServerProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
 
@@ -236,6 +241,54 @@ describe("BunHttpServerProvider", () => {
         expect(response.status).toBe(200);
         expect(await response.text()).toBe("hello");
       });
+    }
+  });
+
+  it("serves HTTPS with the certificate its tls() hook gives", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "alepha-bun-tls-"));
+    try {
+      execFileSync(
+        "openssl",
+        [
+          "req",
+          "-x509",
+          "-newkey",
+          "rsa:2048",
+          "-nodes",
+          "-days",
+          "1",
+          "-subj",
+          "/CN=localhost",
+          "-addext",
+          "subjectAltName=DNS:localhost",
+          "-keyout",
+          join(dir, "key.pem"),
+          "-out",
+          join(dir, "cert.pem"),
+        ],
+        { stdio: "ignore" },
+      );
+      const cert = readFileSync(join(dir, "cert.pem"), "utf8");
+      const key = readFileSync(join(dir, "key.pem"), "utf8");
+      class TlsServer extends BunHttpServerProvider {
+        protected override tls() {
+          return { cert, key };
+        }
+      }
+      class App {
+        hello = $route({ path: "/hello", handler: () => "secure" });
+      }
+      alepha = Alepha.create({ env: { NODE_ENV: "test" } });
+      alepha.with({ provide: ServerProvider, use: TlsServer });
+      await alepha.with(App).start();
+
+      const server = alepha.inject(ServerProvider);
+      expect(server.hostname).toStartWith("https://");
+      const url = server.hostname.replace(/\/\/[^:]+:/, "//localhost:");
+      const response = await fetch(`${url}/hello`, { tls: { ca: cert } });
+      expect(await response.text()).toBe("secure");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

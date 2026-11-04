@@ -1,0 +1,8 @@
+{
+  "bucket": "bucket",
+  "lastProbeAt": "2026-11-02T14:49:15Z",
+  "since": "2026-11-02T14:49:15Z",
+  "status": "degraded",
+  "lastError": "s3: dial tcp: connection refused",
+  "failures": 1
+}

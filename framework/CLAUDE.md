@@ -157,7 +157,7 @@ Not obvious from the code, so read them before writing any.
 - **Never `Date.now()`**: inject `DateTimeProvider` and call `this.dateTime.nowMillis()`, which makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime`. `travel()` also fires every `$job` cron in the container: assert end state, not call counts.
 - **Never throw `Error`**: `AlephaError` (from `"alepha"`) for a plain failure, an `$error` constant for one a caller can act on. **Never write an error class**: declare it with `$error({ name, schema })` or `Parent.extend({ name })` (`check:conventions`).
 - **No code outside classes**: no standalone functions or constants in service files, so everything stays substitutable.
-- **Never `private`**, always `protected`. No `_` prefix on class members.
+- **Prefer `protected` to `private`** where you can, so a subclass or a spec can reach the member. `private` is for the specific cases that need it. No `_` prefix on class members.
 - **Never a single-line JSDoc** (`/** text */`): always the multi-line form.
 - **One schema per file.** The one exemption is a table filter's `schema`, inline in a `DataTable`'s `filters.fields` record. A schema naming a domain type is imported, never redeclared, and only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel (hence `orderStatusSchema.ts` in `@alepha/commerce`).
 - Rename files with `git mv`.

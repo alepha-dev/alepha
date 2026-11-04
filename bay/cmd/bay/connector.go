@@ -217,6 +217,7 @@ func (s *server) connectorLoop(ctx context.Context) {
 	acts := newActions(s)
 	client := &connector.Client{
 		Store:   connector.NewStore(s.root),
+		Events:  s.events,
 		Status:  s.connectorStatus,
 		Log:     s.log,
 		Reload:  s.connectorReload,

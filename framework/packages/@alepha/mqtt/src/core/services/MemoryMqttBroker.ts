@@ -5,6 +5,10 @@ import type {
   MqttQoS,
   MqttWill,
 } from "../providers/MqttClientProvider.ts";
+import type {
+  MemoryMqttListener,
+  MemoryMqttListenOptions,
+} from "./MemoryMqttListener.ts";
 import { MqttTopicMatcher } from "./MqttTopicMatcher.ts";
 
 /**
@@ -230,6 +234,26 @@ export class MemoryMqttBroker {
         subscription.id === undefined ? undefined : [subscription.id],
       );
     }
+  }
+
+  /**
+   * Opens a socket on the loopback for clients in other processes (MQTT
+   * 3.1.1 and 5, plaintext or TLS), with an optional login check. Node
+   * runtimes only.
+   *
+   * ```ts
+   * const listener = await broker.listen({
+   *   authenticate: ({ username, password }) => check(username, password),
+   * });
+   * listener.url; // mqtt://127.0.0.1:53817
+   * ```
+   */
+  public async listen(
+    options: MemoryMqttListenOptions = {},
+  ): Promise<MemoryMqttListener> {
+    const { MemoryMqttListenerServer } =
+      await import("./MemoryMqttListener.ts");
+    return new MemoryMqttListenerServer(this, options).listen();
   }
 
   /**

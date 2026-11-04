@@ -117,7 +117,7 @@ its `.env` too.
 
 An enrolled host keeps an outbound websocket to Lore, and nothing listens for
 it. The estate secret is stored at mode `0600` and authenticates the machine;
-what Lore can ask is a closed list of seven verbs, none of which takes a path,
+what Lore can ask is a closed list of twelve verbs, none of which takes a path,
 a command or an argument list, and deploys stay refused until the estate's
 owner allows them. Exec is never a verb. See
 [Lore connector](/bay/docs/guides-lore-connector).

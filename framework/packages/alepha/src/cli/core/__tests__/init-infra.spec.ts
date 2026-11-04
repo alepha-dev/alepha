@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { CliProvider } from "alepha/command";
+import { CliProvider, CommandError } from "alepha/command";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -117,6 +117,9 @@ describe("init --infra", () => {
       ).rejects.toThrow(
         /alepha\.config\.ts already exists[\s\S]*defineConfig[\s\S]*production: cloudflare[\s\S]*--force/,
       );
+      await expect(
+        cli.run(command.init, { root: "/project", argv: "--infra cf" }),
+      ).rejects.toBeInstanceOf(CommandError);
       expect(fs.writeFileCalls).toHaveLength(writes);
       expect(shell.calls).toHaveLength(0);
       expect(fs.getFileContent("/project/alepha.config.ts")).toBe(config);

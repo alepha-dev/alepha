@@ -1,10 +1,11 @@
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
@@ -18,6 +19,8 @@ import type { AppSecretController } from "../../../../../api/controllers/AppSecr
 import type { DeclaredEnvKey } from "../../../../../api/schemas/declaredEnvKeySchema.ts";
 
 export interface AppEnvironmentAddProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   projectId: number;
   instanceId: string;
   /**
@@ -32,7 +35,8 @@ export interface AppEnvironmentAddProps {
 }
 
 /**
- * Set a variable or a secret.
+ * Set a variable or a secret, in a dialog opened from the Environment tab's
+ * "Add variable" button.
  *
  * The name **autocompletes from what the app declares** (#Q2467), each
  * suggestion carrying its `$env` description and whether it is a secret or a
@@ -85,28 +89,35 @@ const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
       // Cleared on success, and only on success: a refused name is one the
       // operator wants to correct rather than retype.
       form.reset();
+      props.onOpenChange(false);
       toaster.success(tr("app.environment.saved"));
     },
   });
   const { loading } = useFormState(form, ["loading"]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{tr("app.environment.add")}</CardTitle>
-        <CardDescription>
-          {tr("app.environment.add.description")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog
+      open={props.open}
+      onOpenChange={(open) => {
+        if (!open) form.reset();
+        props.onOpenChange(open);
+      }}
+    >
+      <DialogContent>
         <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
             void form.submit();
           }}
         >
-          <div className="flex-1" data-testid="app-environment-key">
+          <DialogHeader>
+            <DialogTitle>{tr("app.environment.add")}</DialogTitle>
+            <DialogDescription>
+              {tr("app.environment.add.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <div data-testid="app-environment-key">
             <Control
               input={form.input.key}
               label={tr("app.environment.key")}
@@ -116,22 +127,31 @@ const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
               createNewEntry
             />
           </div>
-          <div className="flex-1" data-testid="app-environment-value">
+          <div data-testid="app-environment-value">
             <Control
               input={form.input.value}
               label={tr("app.environment.value")}
             />
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            data-testid="app-environment-save"
-          >
-            {tr("app.environment.save")}
-          </Button>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={() => props.onOpenChange(false)}
+            >
+              {tr("app.environment.import.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              data-testid="app-environment-save"
+            >
+              {tr("app.environment.save")}
+            </Button>
+          </DialogFooter>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 

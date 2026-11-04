@@ -224,3 +224,52 @@ func TestMutateRejectsUnknownApp(t *testing.T) {
 		t.Fatal("recording against an unknown app must fail loudly, not silently no-op")
 	}
 }
+
+func TestBackupReportFieldsCountFailuresAndSurviveRedeploy(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Upsert(App{Name: "a", Env: "production"}); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Unix(1700000000, 0)
+	for i := 0; i < 3; i++ {
+		if err := s.RecordBackupFailureAt("a/production", "target", "dial tcp: refused", at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, _ := s.Get("a/production")
+	if got.BackupFailure == nil || got.BackupFailure.Consecutive != 3 || got.BackupFailure.Stage != "target" {
+		t.Fatalf("three failures in a row, stage kept: %+v", got.BackupFailure)
+	}
+
+	rec := BackupRecord{At: "2024-01-01T00:00:00Z", Key: "k", RawBytes: 42, Databases: []DatabaseRecord{{Path: "data/app.db", Tables: 3}}}
+	if err := s.RecordBackup("a/production", rec); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetBackupCatalog("a/production", BackupCatalog{ListedAt: rec.At, Count: 4}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordRestore("a/production", RestoreRecord{At: rec.At, Key: "k", Status: "done"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// A redeploy builds a fresh App: none of this may be lost.
+	if err := s.Upsert(App{Name: "a", Env: "production"}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.Get("a/production")
+	if got.BackupFailure != nil || got.LastBackupError != "" {
+		t.Fatalf("a success clears the failure: %+v %q", got.BackupFailure, got.LastBackupError)
+	}
+	if got.LastBackup == nil || got.LastBackup.RawBytes != 42 || len(got.LastBackup.Databases) != 1 {
+		t.Fatalf("last backup lost: %+v", got.LastBackup)
+	}
+	if got.BackupCatalog == nil || got.BackupCatalog.Count != 4 {
+		t.Fatalf("catalog lost: %+v", got.BackupCatalog)
+	}
+	if got.LastRestore == nil || got.LastRestore.Status != "done" {
+		t.Fatalf("last restore lost: %+v", got.LastRestore)
+	}
+}

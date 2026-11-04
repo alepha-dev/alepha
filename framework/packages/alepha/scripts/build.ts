@@ -376,6 +376,27 @@ class AlephaPackageBuilderCli {
         );
       });
 
+      // A devDependency is bundled into the JS, so a consumer never installs
+      // it, and a declaration naming it does not resolve there: the type
+      // silently becomes `any`, or fails under `skipLibCheck: false`
+      // (#Q3093). Refused here, while the leak is one file to fix.
+      await run("declaration imports", async () => {
+        const leaks = await findUndeclaredTypeImports(
+          this.fs.join(root, this.dist),
+          pkgData,
+          external,
+        );
+        if (leaks.length > 0) {
+          throw new AlephaError(
+            [
+              `${leaks.length} declaration file(s) of ${packageName} import a package its consumers do not install:`,
+              ...leaks.map((leak) => `  ${leak}`),
+              "Type the member with a local interface, or make it private, so the declaration does not name the package.",
+            ].join("\n"),
+          );
+        }
+      });
+
       // Files a built module reaches through `new URL("<file>", import.meta.url)`
       // at runtime. The bundler never sees them, so they are copied next to
       // the entry that names them. `jsdomProject` points Vitest at
@@ -489,6 +510,85 @@ function stringify(value: unknown): string {
     (_, source, flags) =>
       `new RegExp(${JSON.stringify(JSON.parse(`"${source}"`))}, ${JSON.stringify(flags)})`,
   );
+}
+
+/**
+ * devDependencies a declaration may name, because the consumer installs them:
+ * the module that names them is opt-in, and its guide or its error message
+ * says to install the package.
+ */
+const CONSUMER_INSTALLED_TYPES = new Set([
+  // Types only, installed by an app that targets Cloudflare Workers.
+  "@cloudflare/workers-types",
+  // Loaded with `createRequire` by the pglite driver, which says to install it.
+  "@electric-sql/pglite",
+  // `alepha/testing/faker` and `alepha/testing/react`: the testing guides
+  // have the user install them.
+  "@faker-js/faker",
+  "@testing-library/react",
+  "@testing-library/dom",
+]);
+
+/**
+ * Every `<file>: <package>` where a published declaration imports a package
+ * the build bundles: a devDependency that is not also a dependency or a peer,
+ * not kept external, and not one of {@link CONSUMER_INSTALLED_TYPES}. A
+ * package the manifest does not list at all (`zod` in a package that gets it
+ * through `alepha`) is not bundled, so it is not this check's concern.
+ * `__tests__` folders are skipped: their declarations are not part of any
+ * export. Comments are stripped first, since JSDoc prose quotes code.
+ */
+async function findUndeclaredTypeImports(
+  distDir: string,
+  pkg: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
+  },
+  external: (string | RegExp)[],
+): Promise<string[]> {
+  const installed = new Set([
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.peerDependencies ?? {}),
+    ...CONSUMER_INSTALLED_TYPES,
+  ]);
+  const bundled = new Set(
+    Object.keys(pkg.devDependencies ?? {}).filter(
+      (name) =>
+        !installed.has(name) &&
+        !external.some((rule) =>
+          typeof rule === "string" ? rule === name : rule.test(name),
+        ),
+    ),
+  );
+  const leaks: string[] = [];
+
+  const scan = async (dir: string): Promise<void> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "__tests__") await scan(path);
+        continue;
+      }
+      if (!entry.name.endsWith(".d.ts")) continue;
+      const content = removeComments(await readFile(path, "utf8"));
+      const specifiers = content.matchAll(
+        /(?:\bfrom\s+|\bimport\s*\(\s*|^import\s+)["']([^"']+)["']/gm,
+      );
+      for (const [, specifier] of specifiers) {
+        const parts = specifier.split("/");
+        const name = specifier.startsWith("@")
+          ? parts.slice(0, 2).join("/")
+          : parts[0];
+        if (bundled.has(name)) {
+          leaks.push(`${path.slice(distDir.length + 1)}: ${name}`);
+        }
+      }
+    }
+  };
+
+  await scan(distDir);
+  return [...new Set(leaks)].sort();
 }
 
 async function getAllFiles(dir: string): Promise<string[]> {

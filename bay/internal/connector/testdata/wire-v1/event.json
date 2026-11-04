@@ -1,0 +1,9 @@
+{
+  "type": "event",
+  "id": "evt-01JB6Q3V9W2X5Y7Z8A1B2C3D4E",
+  "kind": "backup.failed",
+  "at": "2026-11-01T03:00:12Z",
+  "app": "lore",
+  "env": "production",
+  "data": { "stage": "upload", "error": "s3: connection refused", "consecutive": 2 }
+}

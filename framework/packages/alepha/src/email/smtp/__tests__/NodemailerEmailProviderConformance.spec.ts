@@ -1,8 +1,10 @@
 import { Alepha } from "alepha";
-import type { Transporter } from "nodemailer";
 
 import { emailProviderConformance } from "../../core/__tests__/emailProviderConformance.ts";
-import { NodemailerEmailProvider } from "../providers/NodemailerEmailProvider.ts";
+import {
+  NodemailerEmailProvider,
+  type SmtpTransporter,
+} from "../providers/NodemailerEmailProvider.ts";
 
 interface SentMail {
   from?: string;
@@ -32,8 +34,8 @@ class RecordingTransport {
 class TestProvider extends NodemailerEmailProvider {
   public readonly transport = new RecordingTransport();
 
-  protected override createTransporter(): Transporter {
-    return this.transport as unknown as Transporter;
+  protected override createTransporter(): SmtpTransporter {
+    return this.transport as unknown as SmtpTransporter;
   }
 }
 

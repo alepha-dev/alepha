@@ -1,11 +1,11 @@
 import { Alepha } from "alepha";
 import { EmailError } from "alepha/email";
-import type { Transporter } from "nodemailer";
 import { describe, expect, it } from "vitest";
 
 import {
   NodemailerEmailProvider,
   nodemailerEmailOptions,
+  type SmtpTransporter,
 } from "../providers/NodemailerEmailProvider.ts";
 
 /**
@@ -57,12 +57,12 @@ class TestProvider extends NodemailerEmailProvider {
   >[] = [];
   public created = 0;
 
-  protected override createTransporter(): Transporter {
+  protected override createTransporter(): SmtpTransporter {
     this.created++;
     // Record what the REAL mapping produces — not a copy of it — so a
     // regression in `buildTransporterConfig` fails these assertions.
     this.configs.push(this.buildTransporterConfig());
-    return this.transport as unknown as Transporter;
+    return this.transport as unknown as SmtpTransporter;
   }
 
   public config() {

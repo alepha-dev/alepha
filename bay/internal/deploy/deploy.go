@@ -36,6 +36,7 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
+	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/headers"
 	"github.com/alepha-dev/bay/internal/manifest"
 	"github.com/alepha-dev/bay/internal/naming"
@@ -98,6 +99,11 @@ type Options struct {
 	// stack that supplies its own DATABASE_URL (its Postgres) is the user
 	// bringing a database, so Bay provisions no SQLite for the member.
 	StackVars map[string]string
+	// BackupPolicy is the backup policy this deploy declares for the app
+	// (`--backup-policy`), already decoded and validated as untrusted input by
+	// the caller. Recorded on the instance as its app layer; nil drops any
+	// earlier declaration, because it describes this release.
+	BackupPolicy *backuppolicy.Policy
 }
 
 // Result reports what was deployed.
@@ -349,6 +355,9 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		// nightly import — can be told apart from one that has been abandoned.
 		// Both read as zero traffic; only one of them should be deleted.
 		Crons: len(m.Cron),
+		// The app's own layer of its backup policy. Only meaningful when Bay
+		// owns a database to back up.
+		BackupDeclared: opts.BackupPolicy,
 	}
 	if err := store.Upsert(app); err != nil {
 		return nil, err

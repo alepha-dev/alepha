@@ -30,9 +30,9 @@ verified before it leaves the host, compressed, uploaded under the instance's
 prefix. An empty dump is a failure, never an upload: a hook that wrote
 nothing looks exactly like a database with nothing in it.
 
-⚠️ The dump is held in memory, as the snapshot is: the S3 client signs whole
-bodies. Fine for the databases a small VPS runs; a dump of many gigabytes
-needs a streaming upload first.
+⚠️ The dump is held in memory, unlike a SQLite snapshot (streamed from disk
+with PutFile): the hook hands it over as bytes. Fine for the databases a small
+VPS runs; a dump of many gigabytes needs the hook to write to a file first.
 */
 func (m *Manager) BackupDump(ctx context.Context, app, env string, d Dumper) (*Result, error) {
 	raw, err := d.Dump(ctx)

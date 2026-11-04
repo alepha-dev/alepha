@@ -200,9 +200,11 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
         sortValues[column.sortKey ?? key] = column.sortValue;
       }
     }
+    // `pagination={false}`: one page holding every row.
+    const unpaged = props.pagination === false;
     return paginateLocal(props.data, {
-      page,
-      size,
+      page: unpaged ? 0 : page,
+      size: unpaged ? Math.max(props.data.length, 1) : size,
       sort: sortParam,
       sortValues,
       filters: form?.currentValues,
@@ -215,6 +217,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     props.data,
     props.columns,
     props.filter,
+    props.pagination,
     page,
     size,
     sortParam,

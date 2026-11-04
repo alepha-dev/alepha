@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { estateInventoryBackupSchema } from "./estateInventoryBackupSchema.ts";
+
 /**
  * One instance as the machine reports it, wire format v1.
  *
@@ -55,6 +57,13 @@ export const estateInventoryAppSchema = z.object({
   backupStale: z.boolean().optional(),
   /** The same cap the ack frame puts on `reason`, for the same reason. */
   lastBackupError: z.string().max(2000).optional(),
+  /**
+   * The whole backup picture (policy, bucket, last run and its databases,
+   * restore points, verify, restore): absent from a Bay older than its
+   * backup policies, and from a static site. The four flat fields above stay
+   * for the consoles that read them.
+   */
+  backup: estateInventoryBackupSchema.optional(),
 
   lastRequestAt: z.string().max(40).optional(),
   crons: z.integer().min(0).optional(),

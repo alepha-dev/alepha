@@ -91,7 +91,7 @@ func imageSpec(app state.App, env map[string]string) runner.Spec {
 			Port:        app.ContainerPort,
 			HostPort:    app.UpstreamPort(),
 			MemoryBytes: memoryOf(app),
-			PidsLimit:   256,
+			PidsLimit:   int64(pidsOf(app)),
 			NanoCPUs:    nanoCPUsFor(runtime.NumCPU()),
 			StopGrace:   stopGrace,
 		},
@@ -300,16 +300,49 @@ func (s *server) handleRelax(w http.ResponseWriter, r *http.Request) {
 cmdHarden is `bay harden`:
 
 	bay harden <name/env> --relax writable-rootfs[,capabilities]   # lift defaults, explicitly
-	bay harden <name/env> --clear                                  # back to every default
+	bay harden <name/env> --clear                                  # drop every --relax; memory, pids and mounts stay
+	bay harden <name/env> --pids 1024|default                      # process/thread ceiling
+	bay harden <name/env> --mount /tmp/.X11-unix,/srv/x:rw|none    # host paths, same path inside
 */
 func cmdHarden(args []string) error {
-	usage := errors.New("usage: bay harden <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default)")
+	usage := errors.New("usage: bay harden <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default | --pids 1024|default | --mount /path[:rw][,...]|none)")
 	if len(args) < 2 {
 		return usage
 	}
 	key, err := instanceKey(args, "harden")
 	if err != nil {
 		return err
+	}
+	if args[1] == "--pids" {
+		if len(args) < 3 {
+			return usage
+		}
+		body, _ := json.Marshal(map[string]string{"pids": args[2]})
+		res, err := call(http.MethodPut, controlHost+"/apps/"+key+"/pids", strings.NewReader(string(body)))
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+		return nil
+	}
+	if args[1] == "--mount" {
+		if len(args) < 3 {
+			return usage
+		}
+		mounts, err := parseHostMounts(args[2])
+		if err != nil {
+			return err
+		}
+		if mounts == nil {
+			mounts = []state.HostMount{}
+		}
+		body, _ := json.Marshal(map[string]any{"mounts": mounts})
+		res, err := call(http.MethodPut, controlHost+"/apps/"+key+"/mounts", strings.NewReader(string(body)))
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+		return nil
 	}
 	if args[1] == "--memory" {
 		if len(args) < 3 {

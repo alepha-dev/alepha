@@ -334,6 +334,25 @@ describe("EstateCommandController, the name a Bay deploy sends", () => {
     expect(after?.resourceName).toBe(`${setup.project.slug}-demo-production`);
   });
 
+  it("vouches for the copy on its estate once the deploy is done, never when queued", async ({
+    expect,
+  }) => {
+    const setup = await lentSetup(ctx, true);
+    const command = await deployOf(ctx, setup);
+
+    // Queued, refused or failed, the deploy replaced nothing on the machine:
+    // whatever runs under that name there is not yet this copy.
+    const queued = await ctx.repos.instances.findById(setup.instance.id);
+    expect(queued?.resourceEstateId).toBeUndefined();
+
+    const service = ctx.alepha.inject(EstateCommandService);
+    await service.ack(setup.estate.id, { id: command.id, status: "running" });
+    await service.ack(setup.estate.id, { id: command.id, status: "done" });
+
+    const done = await ctx.repos.instances.findById(setup.instance.id);
+    expect(done?.resourceEstateId).toBe(setup.estate.id);
+  });
+
   it("sends the stored project segment after the project is renamed", async ({
     expect,
   }) => {
@@ -475,6 +494,34 @@ describe("EstateCommandController, logs", () => {
       { user: owner },
     );
     expect(listed.items).toEqual([]);
+  });
+
+  it("refuses a restore or a policy change while the machine is offline", async ({
+    expect,
+  }) => {
+    const owner = await createUser(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-restore-off", true);
+    const send = (body: object) =>
+      ctx.commands.enqueueEstateCommand(
+        { params: { estateId: estate.id }, body: body as never },
+        { user: owner },
+      );
+    const target = { app: "demo", environment: "production" };
+
+    await expect(
+      send({ ...target, kind: "restore", reason: "wrong import" }),
+    ).rejects.toThrow(/not connected/);
+    await expect(
+      send({ ...target, kind: "backup-policy", policy: null }),
+    ).rejects.toThrow(/not connected/);
+
+    await online(ctx, estate);
+    const command = await send({
+      ...target,
+      kind: "restore",
+      reason: "wrong import",
+    });
+    expect(command.kind).toBe("restore");
   });
 
   it("queues a bounded ask while the machine is connected, defaulting the line count", async ({

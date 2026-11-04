@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 
+import { bayBackupOptionsSchema } from "./bayBackupOptions.ts";
 import { environmentOptionsSchema } from "./environmentOptions.ts";
 
 /**
@@ -64,6 +65,22 @@ export const bayEnvironmentOptionsSchema = environmentOptionsSchema.extend({
    * `$BAY_STACK` overrides, the same way `$BAY_HOST` overrides `host`.
    */
   stack: z.text().optional(),
+  /**
+   * This app's own backup policy on the Bay, sent with each deploy
+   * (`bay deploy --backup-policy`).
+   *
+   * Bay backs up the SQLite databases under the app's `data/` to the host's
+   * bucket by itself; this sets when and how many are kept, e.g.
+   * `{ enabled: true, schedule: { every: "6h" }, onDeploy: true,
+   * retention: { keep: 10, daily: 7, weekly: 4 } }`. Anything left out
+   * comes from the host's defaults (`bay config backup`), and an operator
+   * override (`bay backup config`, or Lore) still wins over it.
+   *
+   * It describes this release: removing it and deploying again drops the
+   * app's earlier declaration. Refused for a static site, which has no
+   * database.
+   */
+  backup: bayBackupOptionsSchema.optional(),
 });
 
 export type BayEnvironmentOptions = Infer<typeof bayEnvironmentOptionsSchema>;

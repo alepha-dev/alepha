@@ -1,0 +1,11 @@
+{
+  "type": "command",
+  "id": "7a3d9e21-4c6b-4f80-a1d2-9e8f7c6b5a43",
+  "kind": "restore",
+  "app": "lore",
+  "environment": "production",
+  "restore": {
+    "key": "lore/production/2026/11/01/030000Z.tar.zst",
+    "reason": "rows deleted by a bad migration"
+  }
+}

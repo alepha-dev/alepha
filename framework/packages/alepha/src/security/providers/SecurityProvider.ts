@@ -9,8 +9,6 @@ import {
 import { SecretProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { ForbiddenError } from "alepha/server";
-import type { JSONWebKeySet, JWTPayload } from "jose";
-import type { JWTVerifyOptions } from "jose/jwt/verify";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
@@ -18,6 +16,11 @@ import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
+import type {
+  JSONWebKeySet,
+  JWTPayload,
+  JWTVerifyOptions,
+} from "../interfaces/Jose.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { PermissionCatalogue } from "../schemas/permissionCatalogueSchema.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";

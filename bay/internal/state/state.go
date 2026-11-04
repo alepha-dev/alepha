@@ -12,7 +12,16 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/alepha-dev/bay/internal/backuppolicy"
 )
+
+// HostMount is a host path bind-mounted at the same path into an instance's
+// container, read-only unless ReadOnly is false.
+type HostMount struct {
+	Path     string `json:"path"`
+	ReadOnly bool   `json:"readOnly"`
+}
 
 // App is one deployed application instance (app + env).
 type App struct {
@@ -97,6 +106,47 @@ type App struct {
 	// LastBackupError is when and why the most recent attempt failed. Cleared on
 	// the next success.
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// LastBackup is what the last successful backup was: its size, how long
+	// it took, what asked for it and what each database held. Reported to
+	// Lore; nil for a backup taken before Bay recorded it.
+	LastBackup *BackupRecord `json:"lastBackup,omitempty"`
+	// BackupFailure is the structured side of LastBackupError: the stage and
+	// how many attempts in a row have failed. Nil after a success.
+	BackupFailure *BackupFailure `json:"backupFailure,omitempty"`
+	// BackupCatalog is what the instance's prefix held the last time Bay
+	// listed it (after each backup, or when asked), so an inventory says how
+	// many backups exist without an S3 call per push.
+	BackupCatalog *BackupCatalog `json:"backupCatalog,omitempty"`
+	// LastRestore is the last restore into this instance, whatever asked for
+	// it and whether it worked.
+	LastRestore *RestoreRecord `json:"lastRestore,omitempty"`
+	// LastVerifyAt is when a restore test (`bay backup verify`, or the
+	// policy's verify.every) last ran, RFC3339 UTC, whatever its outcome;
+	// LastVerifyKey the backup it read; LastVerifyError why it failed, empty
+	// when it passed.
+	LastVerifyAt    string `json:"lastVerifyAt,omitempty"`
+	LastVerifyKey   string `json:"lastVerifyKey,omitempty"`
+	LastVerifyError string `json:"lastVerifyError,omitempty"`
+	// RestorePending is set when Bay created an empty database for this
+	// instance but could not find out whether a backup should have been
+	// restored into it (no destination yet, bucket unreachable, download or
+	// install failed). Nil means nothing is pending.
+	//
+	// What it guards is retention. The app keeps running and its new data
+	// keeps being backed up, but every one of those backups is newer than the
+	// real ones, so `keep N` would delete the real data N runs later. While
+	// this is set and a backup older than `Since` exists, pruning is skipped.
+	RestorePending *RestorePending `json:"restorePending,omitempty"`
+
+	// BackupDeclared is the backup policy the app's deploy asked for
+	// (`--backup-policy`), already validated as untrusted input. Replaced on
+	// every deploy, like Crons: it describes the release, so a deploy that
+	// declares nothing drops it.
+	BackupDeclared *backuppolicy.Policy `json:"backupDeclared,omitempty"`
+	// BackupOverride is the operator's policy for this instance (`bay backup
+	// config`). Above the app's own declaration, and kept across deploys: it is
+	// a decision about the instance, not about one release.
+	BackupOverride *backuppolicy.Policy `json:"backupOverride,omitempty"`
 	// BackupHold is when and why the schedule must leave this app alone: a deploy
 	// created its database empty and could not restore the snapshot that may
 	// exist. Backing that database up would make it the newest snapshot, and the
@@ -171,6 +221,15 @@ type App struct {
 	// default (512 MiB): a JVM service, an app with a large cache. Zero means
 	// the default. Set by `bay harden --memory`.
 	MemoryBytes int64 `json:"memoryBytes,omitempty"`
+	// PidsLimit is this instance's ceiling on processes and threads when it is
+	// not Bay's default (256): an app driving a browser runs a few hundred
+	// threads. Zero means the default. Set by `bay harden --pids`.
+	PidsLimit int `json:"pidsLimit,omitempty"`
+	// HostMounts are host paths an operator handed to this instance with
+	// `bay harden --mount`, each at the same path inside its container: a
+	// display socket, a browser install shared with the host. Never set by a
+	// deploy; recorded so `bay status` shows the app sees more than its own.
+	HostMounts []HostMount `json:"hostMounts,omitempty"`
 
 	// Stack and Service are set on a stack member: the instance is service
 	// Service of stack environment Stack/Env, named "<stack>.<service>".
@@ -190,6 +249,102 @@ type App struct {
 	// from the revision at deploy time. A service member with a hook has
 	// Backups set, so the schedule takes it like any app database.
 	BackupHook *BackupHook `json:"backupHook,omitempty"`
+}
+
+// RestorePending records when and why an instance started on an empty
+// database without its backups having been checked.
+type RestorePending struct {
+	// Since is RFC3339 UTC. Backups taken before it predate the empty
+	// database, so they are the ones worth protecting.
+	Since  string `json:"since"`
+	Reason string `json:"reason"`
+}
+
+// SinceTime parses Since; the zero time when it cannot be read.
+func (p RestorePending) SinceTime() time.Time {
+	t, _ := time.Parse(time.RFC3339, p.Since)
+	return t
+}
+
+// BackupRecord is one successful backup as Bay saw it happen.
+type BackupRecord struct {
+	At          string `json:"at"`
+	Key         string `json:"key"`
+	Kind        string `json:"kind,omitempty"`
+	Trigger     string `json:"trigger,omitempty"`
+	Tag         string `json:"tag,omitempty"`
+	Release     string `json:"release,omitempty"`
+	RawBytes    int64  `json:"rawBytes,omitempty"`
+	StoredBytes int64  `json:"storedBytes,omitempty"`
+	DurationMs  int64  `json:"durationMs,omitempty"`
+	Files       int    `json:"files,omitempty"`
+	// Databases is what each SQLite file held, from the bundle's manifest.
+	Databases []DatabaseRecord `json:"databases,omitempty"`
+	// Anomalies are what looked wrong compared with the backup before it
+	// (a database much smaller, one gone, a table emptied). The backup is
+	// stored all the same: a warning, never a refusal.
+	Anomalies []string `json:"anomalies,omitempty"`
+}
+
+// DatabaseRecord is one database of a backup: metadata only, never data.
+type DatabaseRecord struct {
+	Path        string            `json:"path"`
+	RawBytes    int64             `json:"rawBytes"`
+	StoredBytes int64             `json:"storedBytes"`
+	SHA256      string            `json:"sha256,omitempty"`
+	Integrity   string            `json:"integrity,omitempty"`
+	Tables      int               `json:"tables"`
+	PageSize    int64             `json:"pageSize,omitempty"`
+	Pages       int64             `json:"pages,omitempty"`
+	FreePages   int64             `json:"freePages,omitempty"`
+	JournalMode string            `json:"journalMode,omitempty"`
+	TopTables   []TableCount      `json:"topTables,omitempty"`
+	Migrations  []MigrationRecord `json:"migrations,omitempty"`
+}
+
+// TableCount is one table's row count.
+type TableCount struct {
+	Table string `json:"table"`
+	Rows  int64  `json:"rows"`
+}
+
+// MigrationRecord is a migration journal found in a database.
+type MigrationRecord struct {
+	Table string `json:"table"`
+	Count int64  `json:"count"`
+	Last  string `json:"last,omitempty"`
+}
+
+// BackupFailure is the last failed attempt, structured.
+type BackupFailure struct {
+	At          string `json:"at"`
+	Stage       string `json:"stage,omitempty"`
+	Message     string `json:"message"`
+	Consecutive int    `json:"consecutive"`
+}
+
+// BackupCatalog is a summary of an instance's backups prefix.
+type BackupCatalog struct {
+	ListedAt   string `json:"listedAt"`
+	Count      int    `json:"count"`
+	TotalBytes int64  `json:"totalBytes"`
+	OldestAt   string `json:"oldestAt,omitempty"`
+	NewestAt   string `json:"newestAt,omitempty"`
+}
+
+// RestoreRecord is one restore into an instance.
+type RestoreRecord struct {
+	At  string `json:"at"`
+	Key string `json:"key,omitempty"`
+	// From is the instance whose backup was read, when not this one.
+	From    string `json:"from,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Trigger string `json:"trigger,omitempty"`
+	// Status is "done" or "failed"; Error says why it failed.
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+	// PreRestoreKey is the backup taken of the data the restore replaced.
+	PreRestoreKey string `json:"preRestoreKey,omitempty"`
 }
 
 // BackupHook is one service's dump declaration: postgres, or a command.
@@ -305,6 +460,9 @@ type State struct {
 	// RegistryMirror is a pull-through mirror for Docker Hub images
 	// (`bay config registry-mirror`): rate limits, company policy.
 	RegistryMirror string `json:"registryMirror,omitempty"`
+	// Backup is the global backup policy (`bay config backup`), above the
+	// built-in defaults and below each app's own. Nil sets nothing.
+	Backup *backuppolicy.Policy `json:"backup,omitempty"`
 }
 
 // S3Target addresses an S3-compatible bucket (R2, MinIO, AWS).
@@ -400,6 +558,19 @@ func (s *Store) Upsert(app App) error {
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
+			app.LastBackup = a.LastBackup
+			app.BackupFailure = a.BackupFailure
+			app.BackupCatalog = a.BackupCatalog
+			app.LastRestore = a.LastRestore
+			app.LastVerifyAt = a.LastVerifyAt
+			app.LastVerifyKey = a.LastVerifyKey
+			app.LastVerifyError = a.LastVerifyError
+			// A redeploy onto the existing database changes nothing about
+			// whether the backups taken before it still need protecting.
+			app.RestorePending = a.RestorePending
+			// The operator's backup policy outlives releases; the app's own
+			// declaration (BackupDeclared) comes with each deploy instead.
+			app.BackupOverride = a.BackupOverride
 			app.BackupHold = a.BackupHold
 			// Traffic history belongs to the instance, not the release. Resetting
 			// it here would make every app read "no traffic ever" right after a
@@ -421,6 +592,8 @@ func (s *Store) Upsert(app App) error {
 			app.UID = a.UID
 			app.Relaxed = a.Relaxed
 			app.MemoryBytes = a.MemoryBytes
+			app.PidsLimit = a.PidsLimit
+			app.HostMounts = a.HostMounts
 			// A member redeployed through the ordinary deploy path is still a
 			// member of its stack.
 			if app.Stack == "" {
@@ -469,13 +642,33 @@ func (s *Store) RecordLastRequest(key string, at time.Time) error {
 
 // RecordBackupSuccess stamps a completed backup.
 func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
+	return s.RecordBackup(key, BackupRecord{At: at.UTC().Format(time.RFC3339), Key: s3Key})
+}
+
+// RecordBackup stamps a completed backup with what is known about it.
+func (s *Store) RecordBackup(key string, rec BackupRecord) error {
 	return s.mutate(key, func(a *App) {
-		a.LastBackupAt = at.UTC().Format(time.RFC3339)
-		a.LastBackupKey = s3Key
+		a.LastBackupAt = rec.At
+		a.LastBackupKey = rec.Key
 		// Cleared on success so a stale reason never outlives the failure.
 		a.LastBackupError = ""
-		a.BackupHold = ""
+		a.BackupFailure = nil
+		r := rec
+		a.LastBackup = &r
+		// Only a backup somebody asked for says this database is the one.
+		// The safety copies a restore or a deploy take first say nothing of
+		// the kind: lifting the hold on one would let the schedule save an
+		// empty database over the backups the hold protects.
+		if LiftsBackupHold(rec.Trigger) {
+			a.BackupHold = ""
+		}
 	})
+}
+
+// LiftsBackupHold says whether a backup taken for trigger vouches for the
+// database, and so gives the app back to the schedule.
+func LiftsBackupHold(trigger string) bool {
+	return trigger == "manual" || trigger == "console"
 }
 
 // HoldBackups keeps the schedule off an app. See `App.BackupHold`.
@@ -498,9 +691,87 @@ func (s *Store) ClearBackupHold(key string) error {
 // "backups are failing" from "the scheduler stopped" — without it the two look
 // identical from the outside.
 func (s *Store) RecordBackupFailure(key, reason string, at time.Time) error {
+	return s.RecordBackupFailureAt(key, "", reason, at)
+}
+
+// RecordBackupFailureAt is RecordBackupFailure with the stage that failed
+// kept apart, counting how many attempts in a row have now failed.
+func (s *Store) RecordBackupFailureAt(key, stage, message string, at time.Time) error {
 	return s.mutate(key, func(a *App) {
-		a.LastBackupError = at.UTC().Format(time.RFC3339) + ": " + reason
+		reason := message
+		if stage != "" {
+			reason = stage + ": " + message
+		}
+		stamp := at.UTC().Format(time.RFC3339)
+		a.LastBackupError = stamp + ": " + reason
+		consecutive := 1
+		if a.BackupFailure != nil {
+			consecutive = a.BackupFailure.Consecutive + 1
+		}
+		a.BackupFailure = &BackupFailure{At: stamp, Stage: stage, Message: message, Consecutive: consecutive}
 	})
+}
+
+// SetBackupCatalog records what the instance's backups prefix holds.
+func (s *Store) SetBackupCatalog(key string, c BackupCatalog) error {
+	return s.mutate(key, func(a *App) { a.BackupCatalog = &c })
+}
+
+// RecordRestore records a restore into the instance, done or failed.
+func (s *Store) RecordRestore(key string, r RestoreRecord) error {
+	return s.mutate(key, func(a *App) { a.LastRestore = &r })
+}
+
+// RecordVerify stores a restore test's outcome; failure is "" when it passed.
+func (s *Store) RecordVerify(key, s3Key, failure string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		a.LastVerifyAt = at.UTC().Format(time.RFC3339)
+		a.LastVerifyKey = s3Key
+		a.LastVerifyError = failure
+	})
+}
+
+// SetRestorePending marks an instance as started empty without its backups
+// checked.
+//
+// An instance already pending keeps its original `Since`: the backups taken
+// in between are of the empty database, and moving `Since` forward would
+// start protecting those instead of the real ones.
+func (s *Store) SetRestorePending(key, reason string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		since := at.UTC().Format(time.RFC3339)
+		if a.RestorePending != nil && a.RestorePending.Since != "" {
+			since = a.RestorePending.Since
+		}
+		a.RestorePending = &RestorePending{Since: since, Reason: reason}
+	})
+}
+
+// ClearRestorePending ends the guard: restored, dismissed, or nothing to
+// protect.
+func (s *Store) ClearRestorePending(key string) error {
+	return s.mutate(key, func(a *App) { a.RestorePending = nil })
+}
+
+// SetBackupOverride records (or, with nil, clears) the operator's backup
+// policy for one instance.
+func (s *Store) SetBackupOverride(key string, p *backuppolicy.Policy) error {
+	return s.mutate(key, func(a *App) { a.BackupOverride = p })
+}
+
+// BackupPolicy is the global backup layer, nil when nothing is set.
+func (s *Store) BackupPolicy() *backuppolicy.Policy {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.Backup
+}
+
+// SetBackupPolicy records (or, with nil, clears) the global backup layer.
+func (s *Store) SetBackupPolicy(p *backuppolicy.Policy) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state.Backup = p
+	return s.flush()
 }
 
 // SetStorageBackend records where an app's blobs live, after a migration has
@@ -574,6 +845,17 @@ func (s *Store) EnsureUID(key string) (int, error) {
 // SetMemory records an instance's memory ceiling; zero restores the default.
 func (s *Store) SetMemory(key string, bytes int64) error {
 	return s.mutate(key, func(a *App) { a.MemoryBytes = bytes })
+}
+
+// SetPidsLimit records an instance's process/thread ceiling; zero restores the
+// default.
+func (s *Store) SetPidsLimit(key string, limit int) error {
+	return s.mutate(key, func(a *App) { a.PidsLimit = limit })
+}
+
+// SetHostMounts replaces the host paths handed to an instance; nil clears them.
+func (s *Store) SetHostMounts(key string, mounts []HostMount) error {
+	return s.mutate(key, func(a *App) { a.HostMounts = mounts })
 }
 
 // SetRelaxed records which hardening defaults are lifted for an instance.

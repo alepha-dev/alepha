@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/schedule"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 // statusLine is one instance as `bay status --json` reports it.
@@ -38,9 +40,19 @@ type statusLine struct {
 	BackupAge       string `json:"backupAge,omitempty"`
 	BackupStale     bool   `json:"backupStale"`
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// LastVerifyAt and LastVerifyError are the last restore test. Additive.
+	LastVerifyAt    string `json:"lastVerifyAt,omitempty"`
+	LastVerifyError string `json:"lastVerifyError,omitempty"`
+	// RestorePending is set while the instance runs on a database Bay created
+	// empty without checking its backups. Additive: absent otherwise.
+	RestorePending *state.RestorePending `json:"restorePending,omitempty"`
 	// NotBackedUp names the stack volumes this member mounts that no hook
 	// covers. Not a problem, a fact said every time.
 	NotBackedUp []string `json:"notBackedUp,omitempty"`
+	// BackupPolicy is the effective backup policy and which layer set each
+	// field. Absent for an app with no Bay-managed database, and from an older
+	// `serve` that has no policies.
+	BackupPolicy *backuppolicy.Effective `json:"backupPolicy,omitempty"`
 
 	// Problems is the same set the human view marks with a warning sign, in
 	// words. Present so a monitor never has to infer severity from the fields:
@@ -62,20 +74,24 @@ a clock a caller cannot move is arithmetic nobody can test.
 */
 func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLine {
 	line := statusLine{
-		App:           a.Name,
-		Env:           a.Env,
-		Domains:       a.Domains,
-		Release:       a.Release,
-		Running:       a.Running,
-		Static:        a.Static,
-		LastRequestAt: a.LastRequestAt,
-		IdleFor:       idleFor(a.LastRequestAt, now),
-		Crons:         a.Crons,
-		Backups:       a.Backups,
-		LastBackupAt:  a.LastBackupAt,
-		NotBackedUp:   a.NotBackedUp,
-		Problems:      []string{},
+		App:            a.Name,
+		Env:            a.Env,
+		Domains:        a.Domains,
+		Release:        a.Release,
+		Running:        a.Running,
+		Static:         a.Static,
+		LastRequestAt:  a.LastRequestAt,
+		IdleFor:        idleFor(a.LastRequestAt, now),
+		Crons:          a.Crons,
+		Backups:        a.Backups,
+		LastBackupAt:   a.LastBackupAt,
+		LastVerifyAt:   a.LastVerifyAt,
+		NotBackedUp:    a.NotBackedUp,
+		RestorePending: a.RestorePending,
+		BackupPolicy:   a.BackupPolicy,
+		Problems:       []string{},
 	}
+	interval = backupIntervalFor(a, interval)
 	if u := a.Usage; u != nil {
 		line.Restarts = u.Restarts
 		line.MemoryBytes = u.MemoryBytes
@@ -92,8 +108,8 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 		line.Problems = append(line.Problems, fmt.Sprintf("restarted %d time(s)", line.Restarts))
 	}
 	if a.Backups {
-		stale, age := schedule.Stale(a.LastBackupAt, now, interval)
-		if a.LastBackupAt != "" {
+		stale, _ := schedule.Stale(a.LastBackupAt, now, interval)
+		if age, ok := backupAge(a.LastBackupAt, now); ok {
 			line.BackupAge = age.Round(time.Minute).String()
 		}
 		line.BackupStale = stale
@@ -104,10 +120,52 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	if a.LastBackupError != "" {
 		line.Problems = append(line.Problems, "last backup attempt failed: "+a.LastBackupError)
 	}
+	// A backup that does not read back is no backup, however recent.
+	if a.LastVerifyError != "" {
+		line.LastVerifyError = a.LastVerifyError
+		line.Problems = append(line.Problems, "restore test failed: "+a.LastVerifyError)
+	}
+	// A problem, not a note: someone has to decide between the old backups and
+	// the new database, and until they do retention is off for this instance.
+	if p := a.RestorePending; p != nil {
+		line.Problems = append(line.Problems, restorePendingProblem(a.Key(), *p))
+	}
 	if a.BackupHold != "" {
 		line.Problems = append(line.Problems, "scheduled backups are held after a failed restore: "+a.BackupHold)
 	}
 	return line
+}
+
+/*
+backupIntervalFor is what this app's staleness is judged against: its own
+effective policy when the server sent one, the host-wide interval otherwise (an
+older `serve`). Zero when the policy turns scheduled backups off, which
+`schedule.Stale` reads as "never stale": an app somebody switched off on purpose
+must not be flagged every run.
+*/
+func backupIntervalFor(a listedApp, fallback time.Duration) time.Duration {
+	if p := a.BackupPolicy; p != nil {
+		if !p.Enabled {
+			return 0
+		}
+		return p.LongestGap()
+	}
+	return fallback
+}
+
+// backupAge is how long ago the last backup ran, whatever the schedule: an app
+// whose policy turns scheduling off still has an age worth showing.
+func backupAge(last string, now time.Time) (time.Duration, bool) {
+	at, err := time.Parse(time.RFC3339, last)
+	if err != nil {
+		return 0, false
+	}
+	return now.Sub(at), true
+}
+
+func restorePendingProblem(key string, p state.RestorePending) string {
+	return "started on an empty database without checking its backups (" + p.Reason + ", since " + p.Since +
+		"); pruning paused - run `bay restore " + key + "` or `bay restore " + key + " --dismiss`"
 }
 
 // printStatusJSON writes the machine view and fails the same way the human one

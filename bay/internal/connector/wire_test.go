@@ -44,7 +44,8 @@ func TestWireServerFramesDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if welcome.Type != "welcome" || welcome.Protocol != Protocol || welcome.Estate.Slug != "ovh-1" ||
-		welcome.DeployAllowed || welcome.StatsIntervalSeconds != 1800 {
+		welcome.DeployAllowed || welcome.StatsIntervalSeconds != 1800 ||
+		!hasFeature(welcome.Features, EventsFeature) {
 		t.Fatalf("welcome decoded wrong: %+v", welcome)
 	}
 
@@ -99,6 +100,27 @@ func TestWireServerFramesDecode(t *testing.T) {
 		t.Fatalf("logs decoded wrong: %+v", logs.Logs)
 	}
 
+	// The backup verbs that carry an ask: the point to restore and why, and
+	// an operator policy passed through as raw JSON for Bay to validate.
+	restore, err := decodeFrame(fixture(t, "command-restore.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restore.Kind != "restore" || restore.Restore == nil ||
+		restore.Restore.Key != "lore/production/2026/11/01/030000Z.tar.zst" ||
+		restore.Restore.Reason == "" || restore.Restore.DryRun {
+		t.Fatalf("restore decoded wrong: %+v", restore.Restore)
+	}
+	policy, err := decodeFrame(fixture(t, "command-backup-policy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var parsed map[string]any
+	if policy.Kind != "backup-policy" || json.Unmarshal(policy.Policy, &parsed) != nil ||
+		parsed["schedule"] == nil || parsed["retention"] == nil {
+		t.Fatalf("backup-policy decoded wrong: %s", policy.Policy)
+	}
+
 	// A refresh: a type and nothing else. A field here would make it a
 	// request with arguments, which is the shape that becomes a command.
 	query, err := decodeFrame(fixture(t, "query.json"))
@@ -122,6 +144,11 @@ func TestWireClientFramesEncode(t *testing.T) {
 			"artifact digest mismatch: got 0123456789ab…, expected 9f86d081884c…")},
 		{"stats.json", Stats{Type: "stats", CPUPercent: 34.5, MemoryPercent: 61, At: "2026-09-05T12:00:00Z"}},
 		{"inventory.json", sampleInventoryFrame()},
+		{"event.json", Event{
+			Type: "event", ID: "evt-01JB6Q3V9W2X5Y7Z8A1B2C3D4E", Kind: "backup.failed",
+			At: "2026-11-01T03:00:12Z", App: "lore", Env: "production",
+			Data: map[string]any{"stage": "upload", "error": "s3: connection refused", "consecutive": 2},
+		}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -173,6 +200,46 @@ func sampleInventoryFrame() Inventory {
 				Backups: true, LastBackupAt: "2026-09-06T03:00:00Z",
 				LastRequestAt: "2026-09-06T11:59:41Z", Crons: 3,
 				Problems: []string{},
+				Backup: &InventoryBackup{
+					State: "ok",
+					Policy: &InventoryBackupPolicy{
+						Enabled: true, Schedule: "every 6h", Retention: "7 daily, 4 weekly, 6 monthly",
+						EverySecs: 21600, Timezone: "Europe/Paris", OnDeploy: true, Prune: "after-backup",
+						VerifyEvery: 604800,
+						Sources:     map[string]string{"schedule": "operator", "retention": "app"},
+					},
+					Target: &InventoryBackupTarget{
+						Status: "ok", Since: "2026-09-01T00:00:00Z", LastProbeAt: "2026-09-06T11:55:00Z",
+						Bucket: "lore-backups",
+					},
+					NextAt: "2026-09-06T15:00:00Z",
+					Last: &InventoryBackupRun{
+						At: "2026-09-06T09:00:00Z", Key: "apps/lore-production/db/20260906T090000Z/manifest.json",
+						Kind: "bundle", Trigger: "schedule", Tag: "pre-upgrade", Release: "r-2026-09-06-1",
+						RawBytes: 52428800, StoredBytes: 9437184, DurationMs: 2140, Files: 1,
+						Databases: []InventoryDatabase{{
+							Path: "app.db", RawBytes: 52428800, StoredBytes: 9437184,
+							SHA256:    "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+							Integrity: "ok", Tables: 42, Pages: 12800, PageSize: 4096, JournalMode: "wal",
+							TopTables:  []InventoryTableRows{{Table: "deals", Rows: 18234}},
+							Migrations: []InventoryMigration{{Table: "migrations", Count: 31, Last: "20260901_brave_lions"}},
+						}},
+						Anomalies: []string{"deals shrank by 62% since the previous backup"},
+					},
+					Catalog: &InventoryBackupCatalog{
+						ListedAt: "2026-09-06T09:00:05Z", Count: 38, TotalBytes: 358612992,
+						OldestAt: "2026-03-06T03:00:00Z", NewestAt: "2026-09-06T09:00:00Z",
+					},
+					Verify: &InventoryBackupVerify{
+						At: "2026-09-05T04:00:00Z", Key: "apps/lore-production/db/20260905T030000Z/manifest.json", OK: true,
+					},
+					Restore: &InventoryRestore{
+						At: "2026-08-20T10:12:00Z", Key: "apps/lore-production/db/20260820T030000Z/manifest.json",
+						Reason: "rows deleted by a bad migration", Trigger: "console", Status: "done",
+						PreRestoreKey: "apps/lore-production/db/20260820T101155Z/manifest.json",
+					},
+					NotCovered: []string{"uploads/ (files outside the database)"},
+				},
 			},
 			{
 				App: "docs", Env: "production", Runtime: "static",
@@ -200,6 +267,15 @@ func sampleInventoryFrame() Inventory {
 					"not running",
 					"restarted 5 time(s)",
 					"last backup attempt failed: 2026-09-06T03:00:12Z: upload to s3 failed: 503",
+				},
+				Backup: &InventoryBackup{
+					State:  "failing",
+					Target: &InventoryBackupTarget{Status: "down", Since: "2026-09-06T02:45:00Z", LastError: "upload to s3 failed: 503"},
+					Failure: &InventoryBackupFailure{
+						At: "2026-09-06T03:00:12Z", Stage: "upload", Message: "upload to s3 failed: 503", Consecutive: 3,
+					},
+					Verify:         &InventoryBackupVerify{At: "2026-09-04T04:00:00Z", OK: false, Error: "app.db: integrity check failed"},
+					RestorePending: &InventoryRestorePending{Since: "2026-09-06T08:00:00Z", Reason: "interrupted restore"},
 				},
 			},
 		},

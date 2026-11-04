@@ -411,6 +411,10 @@ export class AppService {
     instance: AppInstance,
     estateId: string | null,
   ): Promise<AppInstance> {
+    // ⚠️ A move keeps `resourceEstateId`, the estate the copy last deployed
+    // to: its instance still runs there under its name, which
+    // `ResourceNameService.assertFree` keeps from any other copy until this one
+    // deploys elsewhere. Its Backups tab acts only where both agree.
     if (estateId === null) {
       await this.instances.updateById(instance.id, { estateId: null });
       return { ...instance, estateId: undefined };
@@ -426,6 +430,9 @@ export class AppService {
       throw new NotFoundError("This project has no such estate");
     }
 
+    if (estateId === instance.estateId) {
+      return instance;
+    }
     await this.instances.updateById(instance.id, { estateId });
     return { ...instance, estateId };
   }

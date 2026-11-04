@@ -1,6 +1,6 @@
 {
   "name": "@alepha/mqtt",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "description": "MQTT 5 client and topic provider for Alepha framework.",
   "keywords": [
     "alepha",
@@ -58,18 +58,19 @@
     "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "dependencies": {
-    "mqtt": "^5.16.1"
+    "mqtt": "^5.16.1",
+    "mqtt-packet": "^9.0.2"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
-    "alepha": "0.34.0",
+    "alepha": "0.35.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },
   "peerDependencies": {
-    "alepha": "^0.34.0"
+    "alepha": "^0.35.0"
   },
   "engines": {
     "node": ">=24.0.0"

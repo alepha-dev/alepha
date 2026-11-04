@@ -8,7 +8,6 @@ import {
   type EmailSendResult,
 } from "alepha/email";
 import { $logger } from "alepha/logger";
-import type { Transporter } from "nodemailer";
 import nodemailer from "nodemailer";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -129,7 +128,7 @@ export class NodemailerEmailProvider implements EmailProvider {
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();
   protected readonly options = $store(nodemailerEmailOptions);
-  protected transporter: Transporter | null = null;
+  protected transporter: SmtpTransporter | null = null;
 
   protected get host(): string {
     const host = this.env.EMAIL_HOST;
@@ -167,7 +166,7 @@ export class NodemailerEmailProvider implements EmailProvider {
     return from;
   }
 
-  protected getTransporter(): Transporter {
+  protected getTransporter(): SmtpTransporter {
     if (!this.transporter) {
       this.transporter = this.createTransporter();
     }
@@ -253,7 +252,7 @@ export class NodemailerEmailProvider implements EmailProvider {
     };
   }
 
-  protected createTransporter(): Transporter {
+  protected createTransporter(): SmtpTransporter {
     const transporterConfig = this.buildTransporterConfig();
 
     this.log.debug("Creating Nodemailer transporter", {
@@ -300,4 +299,36 @@ export class NodemailerEmailProvider implements EmailProvider {
     on: "stop",
     handler: () => this.close(),
   });
+}
+
+/**
+ * The part of a nodemailer transport this provider calls.
+ *
+ * nodemailer is bundled into `alepha`, so a consumer has no `nodemailer` for a
+ * declaration file to import from: `transporter` and `createTransporter()`
+ * are typed by this instead, which nodemailer's `Transporter` satisfies.
+ */
+export interface SmtpTransporter {
+  sendMail(mail: SmtpMail): Promise<{ messageId: string; response: string }>;
+  verify(): Promise<unknown>;
+  close(): void;
+}
+
+/**
+ * The message fields this provider hands to {@link SmtpTransporter.sendMail}.
+ */
+export interface SmtpMail {
+  from?: string;
+  to?: string | string[];
+  subject?: string;
+  html?: string;
+  text?: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+  attachments?: Array<{
+    filename?: string;
+    content?: string | Buffer;
+    contentType?: string;
+    cid?: string;
+  }>;
 }

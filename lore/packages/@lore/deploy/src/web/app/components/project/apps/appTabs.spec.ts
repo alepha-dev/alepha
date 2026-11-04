@@ -99,10 +99,23 @@ describe("the instance's tab set", () => {
       "appArtifacts",
       "appDeploy",
       "appEnvironment",
+      "appBackups",
       "appSettings",
     ]);
     expect(routes(anInstance())).not.toContain("appDeploy");
     expect(routes(anInstance())).not.toContain("appEnvironment");
+  });
+
+  it("adds Backups for an estate, never for a stack environment", ({
+    expect,
+  }) => {
+    // Backups are Bay's: a copy deployed through a stack has Deploy and
+    // Environment, and no Bay instance to back up.
+    const stacked = routes(
+      anInstance(undefined, { stackEnvironmentId: crypto.randomUUID() }),
+    );
+    expect(stacked).toContain("appDeploy");
+    expect(stacked).not.toContain("appBackups");
   });
 
   it("keeps Settings last in every combination", ({ expect }) => {
@@ -171,7 +184,7 @@ describe("the instance's tab set", () => {
     // either vanishing because somebody turned TELEMETRY off is a support
     // ticket nobody diagnoses, and it is exactly what the implicit
     // `apps.track` on every gated tab used to do.
-    for (const route of ["appDeploy", "appEnvironment"]) {
+    for (const route of ["appDeploy", "appEnvironment", "appBackups"]) {
       expect(APP_TABS.find((it) => it.route === route)?.option).toBe("deploy");
     }
 
@@ -184,6 +197,7 @@ describe("the instance's tab set", () => {
       "appArtifacts",
       "appDeploy",
       "appEnvironment",
+      "appBackups",
       "appSettings",
     ]);
     expect(routesOf({ track: true, deploy: false })).toEqual([

@@ -26,25 +26,69 @@ const { DatabaseSync } = require("node:sqlite");
 const [cmd, a, b] = process.argv.slice(2);
 const quote = (p) => "'" + String(p).replace(/'/g, "''") + "'";
 
-function inspect(path) {
+const ident = (n) => '"' + String(n).replace(/"/g, '""') + '"';
+
+// full adds what a manifest records about the data: pages, row counts of the
+// biggest tables and the migration journals. Off for a verify, where only
+// soundness matters and counting every row of a restored database is waste.
+function inspect(path, full, journalMode) {
   const db = new DatabaseSync(path, { readOnly: true });
-  const integrity = db.prepare("PRAGMA integrity_check").get().integrity_check;
-  const tables = db.prepare(
-    "SELECT count(*) c FROM sqlite_master WHERE type='table'"
-  ).get().c;
-  db.close();
-  return { integrity, tables };
+  try {
+    const integrity = db.prepare("PRAGMA integrity_check").get().integrity_check;
+    const tables = db.prepare(
+      "SELECT count(*) c FROM sqlite_master WHERE type='table'"
+    ).get().c;
+    const out = { integrity, tables };
+    if (!full) return out;
+    out.pageSize = db.prepare("PRAGMA page_size").get().page_size;
+    out.pages = db.prepare("PRAGMA page_count").get().page_count;
+    out.freePages = db.prepare("PRAGMA freelist_count").get().freelist_count;
+    if (journalMode) out.journalMode = journalMode;
+    const names = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' ORDER BY name"
+    ).all().map((r) => r.name);
+    const rows = [];
+    for (const name of names) {
+      try {
+        rows.push({ table: name, rows: Number(db.prepare("SELECT count(*) c FROM " + ident(name)).get().c) });
+      } catch {} // a virtual table whose module this runtime lacks
+    }
+    rows.sort((x, y) => y.rows - x.rows || (x.table < y.table ? -1 : 1));
+    out.tableRows = rows.slice(0, 50);
+    if (rows.length > 50) out.tableRowsTruncated = true;
+    const migrations = [];
+    for (const name of names) {
+      if (name !== "__drizzle_migrations" && !/^migrations_/.test(name)) continue;
+      try {
+        const cols = db.prepare("PRAGMA table_info(" + ident(name) + ")").all().map((c) => c.name);
+        const m = { table: name, count: Number(db.prepare("SELECT count(*) c FROM " + ident(name)).get().c) };
+        const col = ["name", "hash", "created_at"].find((c) => cols.includes(c));
+        if (col) {
+          const last = db.prepare("SELECT " + ident(col) + " v FROM " + ident(name) + " ORDER BY rowid DESC LIMIT 1").get();
+          if (last && last.v != null) m.last = String(last.v);
+        }
+        migrations.push(m);
+      } catch {}
+    }
+    if (migrations.length) out.migrations = migrations;
+    return out;
+  } finally {
+    db.close();
+  }
 }
 
 if (cmd === "snapshot") {
   if (!a || !b) { console.error("snapshot needs <src> <dest>"); process.exit(2); }
   const db = new DatabaseSync(a, { readOnly: true });
+  // The source's journal mode: the copy VACUUM INTO writes is always in
+  // rollback mode, so asking it would say nothing about the app.
+  const journalMode = db.prepare("PRAGMA journal_mode").get().journal_mode;
   db.exec("VACUUM INTO " + quote(b));
   db.close();
-  console.log(JSON.stringify(inspect(b)));
+  console.log(JSON.stringify(inspect(b, true, journalMode)));
 } else if (cmd === "verify") {
   if (!a) { console.error("verify needs <db>"); process.exit(2); }
-  console.log(JSON.stringify(inspect(a)));
+  console.log(JSON.stringify(inspect(a, false)));
 } else {
   console.error("unknown command: " + cmd);
   process.exit(2);
@@ -55,6 +99,30 @@ if (cmd === "snapshot") {
 type Inspection struct {
 	Integrity string `json:"integrity"`
 	Tables    int    `json:"tables"`
+
+	// What a snapshot also reports, for the manifest. Empty after a verify.
+	PageSize           int64        `json:"pageSize,omitempty"`
+	Pages              int64        `json:"pages,omitempty"`
+	FreePages          int64        `json:"freePages,omitempty"`
+	JournalMode        string       `json:"journalMode,omitempty"`
+	TableRows          []TableRows  `json:"tableRows,omitempty"`
+	TableRowsTruncated bool         `json:"tableRowsTruncated,omitempty"`
+	Migrations         []Migrations `json:"migrations,omitempty"`
+}
+
+// TableRows is one table's row count, the biggest 50 tables of a database.
+type TableRows struct {
+	Table string `json:"table"`
+	Rows  int64  `json:"rows"`
+}
+
+// Migrations is a migration journal found in a database: Alepha's
+// `migrations_<schema>` or drizzle's `__drizzle_migrations`, with its last
+// entry when it has a column that names one.
+type Migrations struct {
+	Table string `json:"table"`
+	Count int64  `json:"count"`
+	Last  string `json:"last,omitempty"`
 }
 
 // OK reports whether SQLite considers the file sound.

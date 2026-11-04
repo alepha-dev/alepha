@@ -1,7 +1,7 @@
 import { basename, dirname } from "node:path";
 
 import { $inject, AlephaError } from "alepha";
-import type { RunnerMethod } from "alepha/command";
+import { CommandError, type RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
@@ -439,6 +439,9 @@ export class ProjectScaffolder {
    * aliases and plugin list, which cost the whole TypeScript compiler as a
    * dependency (#Q3085), for a one-time change the user can paste. `--force`
    * still replaces the file with the template.
+   *
+   * A `CommandError`, like init's other refusals: the CLI prints its message
+   * and exits 1, where a plain `AlephaError` reads as a crash, stack and all.
    */
   protected async refuseInfraOverExistingConfig(
     root: string,
@@ -451,7 +454,7 @@ export class ProjectScaffolder {
     ) {
       return;
     }
-    throw new AlephaError(
+    throw new CommandError(
       [
         "alepha.config.ts already exists, so --infra will not touch it.",
         "Add Cloudflare yourself, without duplicating an existing infra() registration:",
@@ -807,7 +810,7 @@ export class ProjectScaffolder {
       // Allow a directory that only has package.json (common for monorepo packages)
       const meaningful = files.filter((f) => f !== "package.json");
       if (this.hasProjectContent(meaningful)) {
-        throw new AlephaError(
+        throw new CommandError(
           `Target directory is not empty (${root}). Use --force to overwrite existing files.`,
         );
       }
@@ -835,7 +838,7 @@ export class ProjectScaffolder {
     // surface as a missing /admin much later.
     const saas = (flags.preset ?? "default") === "saas";
     if (saas && !web) {
-      throw new AlephaError(
+      throw new CommandError(
         "The saas preset needs the web module, which is skipped for expo projects (expo owns its own client runtime). Use the default preset here.",
       );
     }

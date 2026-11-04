@@ -1,0 +1,20 @@
+{
+  "app": "demo/production",
+  "createdAt": "2026-11-02T14:49:15.355696383Z",
+  "files": [
+    {
+      "integrity": "ok",
+      "manifestTables": 3,
+      "path": "app.db",
+      "tables": 3
+    },
+    {
+      "integrity": "ok",
+      "manifestTables": 3,
+      "path": "queue/jobs.db",
+      "tables": 3
+    }
+  ],
+  "key": "apps/demo-production/db/20261102T144915Z/manifest.json",
+  "ok": true
+}

@@ -25,6 +25,7 @@ import {
   ESTATE_SLUG_PATTERN,
 } from "../schemas/estateSlugSchema.ts";
 import {
+  ESTATE_FEATURES,
   ESTATE_PROTOCOL_VERSION,
   type EstateWelcomeFrame,
 } from "../schemas/estateWelcomeFrameSchema.ts";
@@ -116,6 +117,7 @@ export class EstateService {
       estate: { id: estate.id, slug: estate.slug },
       deployAllowed: estate.deployAllowed,
       statsIntervalSeconds: estate.statsIntervalSeconds,
+      features: [...ESTATE_FEATURES],
     };
   }
 

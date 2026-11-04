@@ -48,6 +48,7 @@ export const ROUTES_APP = new Set([
   "appExplore",
   "appArtifacts",
   "appDeploy",
+  "appBackups",
   "appEnvironment",
   "appSettings",
 ]);
@@ -215,6 +216,7 @@ export const SECTION_HREF_ROUTES: Record<
   appArtifacts: "projectApps",
   projectArtifact: "projectArtifacts",
   appDeploy: "projectApps",
+  appBackups: "projectApps",
   appEnvironment: "projectApps",
   appSettings: "projectApps",
 };
@@ -291,6 +293,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   appExplore: "project.menu.apps",
   appArtifacts: "project.menu.apps",
   appDeploy: "project.menu.apps",
+  appBackups: "project.menu.apps",
   appEnvironment: "project.menu.apps",
   appSettings: "project.menu.apps",
   ...Object.fromEntries(

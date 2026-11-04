@@ -12,6 +12,10 @@ export * from "./providers/MemoryMqttClientProvider.ts";
 export * from "./providers/MqttClientProvider.ts";
 export * from "./providers/MqttJsClientProvider.ts";
 export * from "./services/MemoryMqttBroker.ts";
+export type {
+  MemoryMqttListener,
+  MemoryMqttListenOptions,
+} from "./services/MemoryMqttListener.ts";
 export * from "./services/MqttActivation.ts";
 export * from "./services/MqttTopicMatcher.ts";
 

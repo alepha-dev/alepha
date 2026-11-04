@@ -1,18 +1,9 @@
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  TimeAgo,
-} from "@alepha/ui";
+import { Badge, Button, TimeAgo } from "@alepha/ui";
 import { DataTable } from "@alepha/ui/table";
 import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { FileUp, KeyRound, Pencil, Trash2 } from "lucide-react";
+import { FileUp, KeyRound, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { AppSecretController } from "../../../../../api/controllers/AppSecretController.ts";
@@ -26,6 +17,11 @@ import {
 
 /**
  * The Environment tab: what this deployed copy runs with, as one table.
+ *
+ * Laid out after Cloudflare's own "Variables and secrets": the title and its
+ * count lead the table's toolbar, Add and Import sit at its end, and each row
+ * shows its edit and remove buttons rather than a menu, since those are the
+ * only two things a row does.
  *
  * ## Secrets and variables (#Q2467)
  *
@@ -59,6 +55,7 @@ const AppEnvironment = () => {
   const secretApi = useClient<AppSecretController>();
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
+  const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
 
   const { data, loading, error } = useQuery(
@@ -98,154 +95,178 @@ const AppEnvironment = () => {
   const canDeploy = can("deploy:manage");
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <Card data-testid="app-environment">
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div className="flex flex-col gap-1.5">
-            <CardTitle className="text-base">{tr("app.environment")}</CardTitle>
-            <CardDescription>
-              {tr("app.environment.description")}
-            </CardDescription>
-          </div>
-          {canDeploy ? (
-            <Button
-              variant="outlined"
-              size="sm"
-              onClick={() => setImporting(true)}
-              data-testid="app-environment-import"
-            >
-              <FileUp className="size-4" aria-hidden />
-              {tr("app.environment.import")}
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          {/*
-            The error state is the card's own, and the empty one is not it:
-            folding them together is how "nothing set" comes to read as
-            "something is broken".
-          */}
-          {loading && !data ? (
-            <p className="text-muted-foreground text-sm">
-              {tr("app.environment.loading")}
-            </p>
-          ) : error ? (
-            <p className="text-muted-foreground text-sm">
-              {tr("app.environment.error")}
-            </p>
-          ) : (
-            <DataTable<AppEnvironmentItem>
-              data={items}
-              rowKey={(row) => row.id}
-              defaultSort={{ field: "key", direction: "asc" }}
-              emptyState={{
-                icon: KeyRound,
-                title: tr("app.environment.empty"),
-              }}
-              rowActions={(row) =>
-                canDeploy
-                  ? [
-                      {
-                        icon: Pencil,
-                        label: tr(
-                          row.kind === "variable"
-                            ? "app.environment.edit"
-                            : "app.environment.replace",
-                        ),
-                        disabled: () => actions.busy,
-                        onClick: (item: AppEnvironmentItem) =>
-                          void actions.edit(item),
-                      },
-                      {
-                        icon: Trash2,
-                        label: tr("app.environment.remove"),
-                        destructive: true,
-                        disabled: () => actions.busy,
-                        onClick: (item: AppEnvironmentItem) =>
-                          void actions.remove(item),
-                      },
-                    ]
-                  : []
-              }
-              columns={{
-                key: {
-                  label: tr("app.environment.key"),
-                  sortable: true,
-                  cell: (row) => (
-                    <span className="font-mono text-sm">{row.key}</span>
-                  ),
-                },
-                kind: {
-                  label: tr("app.environment.kind"),
-                  sortable: true,
-                  cell: (row) => (
-                    <Badge variant="tint">
-                      {tr(
-                        row.kind === "variable"
-                          ? "app.environment.kind.variable"
-                          : "app.environment.kind.secret",
-                      )}
-                    </Badge>
-                  ),
-                },
-                value: {
-                  label: tr("app.environment.value"),
-                  cell: (row) =>
-                    row.kind === "variable" ? (
-                      <span
-                        className="block truncate font-mono text-xs"
-                        title={row.value}
-                      >
-                        {row.value}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">
-                        {row.valuePrefix
-                          ? tr("app.environment.masked", {
-                              args: [row.valuePrefix],
-                            })
-                          : tr("app.environment.masked.short")}
-                      </span>
-                    ),
-                },
-                updatedAt: {
-                  label: tr("app.environment.updated"),
-                  sortable: true,
-                  cell: (row) => (
-                    <TimeAgo
-                      value={row.updatedAt}
-                      className="text-muted-foreground text-xs"
-                    />
-                  ),
-                },
-              }}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {canDeploy ? (
-        <AppEnvironmentAdd
-          projectId={project.id}
-          instanceId={instance.id}
-          declared={declared}
-          taken={taken}
-        />
-      ) : (
+    <div className="flex flex-col gap-4 p-4" data-testid="app-environment">
+      {/*
+        The error state is the tab's own, and the empty one is not it:
+        folding them together is how "nothing set" comes to read as
+        "something is broken".
+      */}
+      {loading && !data ? (
         <p className="text-muted-foreground text-sm">
-          {tr("app.environment.notAllowed")}
+          {tr("app.environment.loading")}
         </p>
+      ) : error ? (
+        <p className="text-muted-foreground text-sm">
+          {tr("app.environment.error")}
+        </p>
+      ) : (
+        <DataTable<AppEnvironmentItem>
+          data={items}
+          rowKey={(row) => row.id}
+          defaultSort={{ field: "key", direction: "asc" }}
+          hideColumnPicker
+          hideActionsMenu
+          cellPadding="large"
+          // A copy carries at most a hundred keys: one list, no pager.
+          pagination={false}
+          striped
+          chromeClassName="bg-card"
+          rowActionsDisplay="inline"
+          rowActions={(row) =>
+            canDeploy
+              ? [
+                  {
+                    icon: Pencil,
+                    label: tr(
+                      row.kind === "variable"
+                        ? "app.environment.edit"
+                        : "app.environment.replace",
+                    ),
+                    disabled: () => actions.busy,
+                    onClick: (item: AppEnvironmentItem) =>
+                      void actions.edit(item),
+                  },
+                  {
+                    icon: Trash2,
+                    label: tr("app.environment.remove"),
+                    destructive: true,
+                    disabled: () => actions.busy,
+                    onClick: (item: AppEnvironmentItem) =>
+                      void actions.remove(item),
+                  },
+                ]
+              : []
+          }
+          leading={
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-medium">{tr("app.environment")}</h2>
+              {items.length > 0 ? (
+                <Badge variant="tint">{items.length}</Badge>
+              ) : null}
+            </div>
+          }
+          help={<p>{tr("app.environment.description")}</p>}
+          toolbar={
+            canDeploy ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  onClick={() => setImporting(true)}
+                  data-testid="app-environment-import"
+                >
+                  <FileUp className="size-4" aria-hidden />
+                  {tr("app.environment.import")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  onClick={() => setAdding(true)}
+                  data-testid="app-environment-add"
+                >
+                  <Plus className="size-4" aria-hidden />
+                  {tr("app.environment.add")}
+                </Button>
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs">
+                {tr("app.environment.notAllowed")}
+              </span>
+            )
+          }
+          emptyState={{
+            icon: KeyRound,
+            title: tr("app.environment.empty"),
+          }}
+          columns={{
+            kind: {
+              label: tr("app.environment.kind"),
+              sortable: true,
+              className: "w-28",
+              cell: (row) =>
+                tr(
+                  row.kind === "variable"
+                    ? "app.environment.kind.variable"
+                    : "app.environment.kind.secret",
+                ),
+            },
+            key: {
+              label: tr("app.environment.key"),
+              sortable: true,
+              cell: (row) => (
+                <span className="font-mono text-sm">{row.key}</span>
+              ),
+            },
+            value: {
+              label: tr("app.environment.value"),
+              cell: (row) =>
+                row.kind === "variable" ? (
+                  <span
+                    className="block max-w-md truncate font-mono text-sm"
+                    title={row.value}
+                  >
+                    {row.value}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
+                    <Lock className="size-3.5" aria-hidden />
+                    <span className="italic">
+                      {tr("app.environment.encrypted")}
+                    </span>
+                    {row.valuePrefix ? (
+                      <span className="text-xs">
+                        {tr("app.environment.masked", {
+                          args: [row.valuePrefix],
+                        })}
+                      </span>
+                    ) : null}
+                  </span>
+                ),
+            },
+            updatedAt: {
+              label: tr("app.environment.updated"),
+              sortable: true,
+              className: "w-32",
+              cell: (row) => (
+                <TimeAgo
+                  value={row.updatedAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ),
+            },
+          }}
+        />
       )}
 
       {canDeploy ? (
-        <AppEnvironmentImport
-          open={importing}
-          onOpenChange={setImporting}
-          projectId={project.id}
-          instanceId={instance.id}
-          taken={taken}
-          reserved={data?.reserved ?? []}
-        />
+        <>
+          <AppEnvironmentAdd
+            open={adding}
+            onOpenChange={setAdding}
+            projectId={project.id}
+            instanceId={instance.id}
+            declared={declared}
+            taken={taken}
+          />
+          <AppEnvironmentImport
+            open={importing}
+            onOpenChange={setImporting}
+            projectId={project.id}
+            instanceId={instance.id}
+            taken={taken}
+            reserved={data?.reserved ?? []}
+          />
+        </>
       ) : null}
     </div>
   );
