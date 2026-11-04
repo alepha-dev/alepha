@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -73,18 +74,24 @@ func TestHostMounts(t *testing.T) {
 
 	s := runtimesFixture(t, `[{"runtime": "node", "entry": "index.node.js", "runtimeVersion": "26"}]`)
 	s.runner = &imageFakeRunner{fakeRunner: newFakeRunner()}
-	s.controlSocket = filepath.Join(t.TempDir(), "control.sock")
+	s.root = realDir(t, s.root)
+	s.controlSocket = filepath.Join(realDir(t, t.TempDir()), "control.sock")
 	instance := filepath.Join(s.root, "apps", "api-production")
 	own := filepath.Join(instance, "browsers")
 	if err := os.MkdirAll(own, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	for _, dir := range ownMounted {
+		if err := os.MkdirAll(filepath.Join(instance, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 	other := filepath.Join(s.root, "apps", "other-production", "data")
 	if err := os.MkdirAll(other, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	outside := t.TempDir()
-	link := filepath.Join(t.TempDir(), "link")
+	outside := realDir(t, t.TempDir())
+	link := filepath.Join(realDir(t, t.TempDir()), "link")
 	if err := os.Symlink(outside, link); err != nil {
 		t.Fatal(err)
 	}
@@ -103,15 +110,52 @@ func TestHostMounts(t *testing.T) {
 	}
 
 	t.Run("refuses paths that would reach past the app", func(t *testing.T) {
-		for _, bad := range []string{
-			"/", "relative", outside + "/../x", "/etc", "/run", "/var/run/docker.sock", "/proc/self",
-			"/var", "/var/lib",
-			s.root, filepath.Dir(s.root), instance, other, link, filepath.Dir(s.controlSocket),
-			filepath.Join(outside, "missing"),
+		// Each with the reason it must be refused for, so none passes for
+		// another (a temp folder behind a symlink refuses everything).
+		for bad, why := range map[string]string{
+			"/":                                "other than /",
+			"relative":                         "absolute",
+			outside + "/../x":                  "clean",
+			"/app":                             "the container already has",
+			"/tmp":                             "the container already has",
+			s.root:                             "it contains " + s.root,
+			filepath.Dir(s.root):               "it contains ",
+			instance:                           "own directory",
+			filepath.Join(instance, "data"):    "already mounted",
+			filepath.Join(instance, "scratch"): "already mounted",
+			other:                              "own directory",
+			link:                               "symlink",
+			filepath.Dir(s.controlSocket):      "it contains " + s.controlSocket,
+			filepath.Join(outside, "missing"):  "no such file",
 		} {
 			body := `{"mounts": [{"path": "` + bad + `", "readOnly": true}]}`
-			if code, msg := put(body); code != 400 {
+			code, msg := put(body)
+			if code != 400 {
 				t.Errorf("%q accepted: %d %s", bad, code, msg)
+			} else if !strings.Contains(msg, why) {
+				t.Errorf("%q refused for another reason than %q: %s", bad, why, msg)
+			}
+		}
+		// The host's own trees: their reasons hold on Linux only, where /etc
+		// and /var are no symlinks and /run exists.
+		for bad, why := range map[string]string{
+			"/etc":                 "nothing under /etc",
+			"/run":                 "nothing under /run",
+			"/var/run/docker.sock": "",
+			"/proc/self":           "",
+			"/var":                 "it contains /var/",
+			"/var/lib":             "it contains /var/lib/",
+			"/home":                "nothing under /home",
+			"/var/spool":           "nothing under /var/spool",
+		} {
+			if runtime.GOOS != "linux" {
+				why = ""
+			}
+			code, msg := put(`{"mounts": [{"path": "` + bad + `", "readOnly": true}]}`)
+			if code != 400 {
+				t.Errorf("%q accepted: %d %s", bad, code, msg)
+			} else if !strings.Contains(msg, why) {
+				t.Errorf("%q refused for another reason than %q: %s", bad, why, msg)
 			}
 		}
 		if code, _ := put(`{"mounts": [{"path": "` + outside + `"}, {"path": "` + outside + `"}]}`); code != 400 {
@@ -122,7 +166,7 @@ func TestHostMounts(t *testing.T) {
 	t.Run("refuses a path others could swap for a symlink after the check", func(t *testing.T) {
 		// Docker binds the path again on every restart without asking Bay: a
 		// folder others may write to lets them swap it for a link to /etc.
-		shared := filepath.Join(t.TempDir(), "shared")
+		shared := filepath.Join(realDir(t, t.TempDir()), "shared")
 		inside := filepath.Join(shared, "media")
 		if err := os.MkdirAll(inside, 0o755); err != nil {
 			t.Fatal(err)
@@ -148,7 +192,7 @@ func TestHostMounts(t *testing.T) {
 
 	t.Run("a Bay root behind a symlink is guarded by its real path", func(t *testing.T) {
 		real := s.root
-		linked := filepath.Join(t.TempDir(), "bay")
+		linked := filepath.Join(realDir(t, t.TempDir()), "bay")
 		if err := os.Symlink(real, linked); err != nil {
 			t.Fatal(err)
 		}
@@ -193,4 +237,15 @@ func TestHostMounts(t *testing.T) {
 			}
 		}
 	})
+}
+
+// realDir is dir with its symlinks resolved: a mount is refused when it goes
+// through one, and macOS keeps its temp folders under /var, a symlink.
+func realDir(t *testing.T, dir string) string {
+	t.Helper()
+	real, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return real
 }
