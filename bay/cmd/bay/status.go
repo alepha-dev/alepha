@@ -148,7 +148,7 @@ func backupIntervalFor(a listedApp, fallback time.Duration) time.Duration {
 		if !p.Enabled {
 			return 0
 		}
-		return p.Every
+		return p.LongestGap()
 	}
 	return fallback
 }

@@ -288,6 +288,29 @@ func (e Effective) KeepsEverything() bool {
 		e.Weekly == 0 && e.Monthly == 0 && e.Yearly == 0 && e.MaxAge == 0)
 }
 
+/*
+LongestGap is the longest a healthy schedule leaves between two backups, what
+staleness is judged against. Every alone understates it: minGap holds a run
+back (for at and cron it skips a slot, so up to one more gap), and a window
+holds a due run until it opens, up to the hours it stays closed.
+*/
+func (e Effective) LongestGap() time.Duration {
+	gap := max(e.Every, e.MinGap)
+	if e.Cron != "" || len(e.At) > 0 {
+		gap = e.Every + e.MinGap
+	}
+	if e.Window != "" {
+		if w, err := schedule.ParseWindow(e.Window); err == nil {
+			open := w.To - w.From
+			if open <= 0 {
+				open += 24 * 60
+			}
+			gap += time.Duration(24*60-open) * time.Minute
+		}
+	}
+	return gap
+}
+
 // Location is the policy's timezone, UTC when unset or unknown.
 func (e Effective) Location() *time.Location {
 	if loc, err := time.LoadLocation(e.Timezone); err == nil && e.Timezone != "" {

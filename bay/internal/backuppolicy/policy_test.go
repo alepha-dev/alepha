@@ -260,3 +260,23 @@ func TestTheAppCannotShrinkTheGlobalRetention(t *testing.T) {
 		t.Fatalf("the operator may lower its own retention: %+v", op)
 	}
 }
+
+// Staleness is judged against the longest gap the schedule really leaves:
+// "every 1h" inside a two-hour window backs up once a day.
+func TestLongestGapCountsTheWindowAndMinGap(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		e    Effective
+		want time.Duration
+	}{
+		{"every", Effective{Every: 6 * time.Hour}, 6 * time.Hour},
+		{"every in a window", Effective{Every: time.Hour, Window: "02:00-04:00"}, 23 * time.Hour},
+		{"window across midnight", Effective{Every: time.Hour, Window: "23:00-01:00"}, 23 * time.Hour},
+		{"minGap over every", Effective{Every: time.Hour, MinGap: 12 * time.Hour}, 12 * time.Hour},
+		{"slots skipped by minGap", Effective{Every: 12 * time.Hour, At: []string{"03:00", "15:00"}, MinGap: 13 * time.Hour}, 25 * time.Hour},
+	} {
+		if got := c.e.LongestGap(); got != c.want {
+			t.Errorf("%s: LongestGap = %s, want %s", c.name, got, c.want)
+		}
+	}
+}
