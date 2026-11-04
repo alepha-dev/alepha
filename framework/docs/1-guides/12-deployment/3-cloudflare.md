@@ -410,6 +410,8 @@ export default defineConfig({
 
 `build.cloudflare.config` is merged over the generated config. `alepha deploy` sends only the fields its API upload knows: compatibility settings, `vars`, `triggers`, one custom-domain route, `assets` (`not_found_handling`, `run_worker_first`), `observability`, `placement`, `limits`, and the D1, R2, KV, queue, Analytics Engine, `send_email`, Workers AI, service, Hyperdrive and Durable Object bindings. Any other top-level field (`vectorize`, `browser`, `tail_consumers`...), a zone route or a second custom domain fails the deploy by name before anything is uploaded, rather than shipping a Worker without it.
 
+`alepha deploy` uploads each server module's source map beside it, as `wrangler deploy` does since 4.150, so Workers Logs, real-time logs, Tail Workers and Workers Issues show your source files and lines instead of the bundle's. The maps cost no CPU, bundle size or cold start. A module whose map is missing, unreadable or over Cloudflare's size cap is uploaded without it. `upload_source_maps: false` in `build.cloudflare.config` leaves the maps out; `true` makes a missing map fail the deploy instead.
+
 ## Full Example
 
 ```bash
