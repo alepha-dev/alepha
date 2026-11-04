@@ -251,7 +251,7 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 	if err := s.stopForMaintenance(app.Key()); err != nil {
 		return fail(http.StatusInternalServerError, "stop app: "+err.Error(), nil)
 	}
-	untouched, err := backup.InstallBundle(fetched, dataDir)
+	untouched, err := installBundle(fetched, dataDir)
 	if err != nil {
 		// The app was stopped above; a refused install must not also be an
 		// outage. InstallBundle puts back what it had already replaced, and

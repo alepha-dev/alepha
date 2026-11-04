@@ -106,7 +106,7 @@ func TestAutoRestoreThatCouldNotCheckMarksTheInstancePending(t *testing.T) {
 	down.Close()
 	pointAt(t, f, down.URL)
 
-	out := f.server.maybeAutoRestore(context.Background(), f.app(t), "/nonexistent/app.db", time.Now())
+	out, _ := f.server.maybeAutoRestore(context.Background(), f.app(t), "/nonexistent/app.db", time.Now())
 
 	if out["restorePending"] != true {
 		t.Fatalf("the deploy response must say a restore is pending, got %v", out)
@@ -140,7 +140,7 @@ func TestAutoRestoreThatFoundNoBackupIsNotPending(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := f.server.maybeAutoRestore(context.Background(), f.app(t), "/nonexistent/app.db", time.Now())
+	out, _ := f.server.maybeAutoRestore(context.Background(), f.app(t), "/nonexistent/app.db", time.Now())
 
 	if out["restorePending"] != nil {
 		t.Fatalf("no backup found is a checked answer, not a pending one: %v", out)

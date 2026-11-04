@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -103,7 +104,7 @@ func TestAFailedAutoRestoreWarnsTheDeploy(t *testing.T) {
 	bucket := newRecoveryBucket(t, f)
 	bucket.down.Store(true)
 
-	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
+	restore, _ := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	warning, _ := restore["warning"].(string)
 	if !strings.Contains(warning, "bay restore demo/production") {
@@ -116,7 +117,7 @@ func TestAFailedAutoRestoreWarnsTheDeploy(t *testing.T) {
 func TestAFirstDeployWithNothingToRestoreIsNotHeld(t *testing.T) {
 	f := newBackupFixture(t)
 
-	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
+	restore, _ := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	if _, warned := restore["warning"]; warned {
 		t.Fatalf("nothing failed, got %v", restore)
@@ -376,7 +377,7 @@ func TestASecondAutoRestoreSkipsBackupsOfTheEmptyDatabase(t *testing.T) {
 	bucket.newer.Store("apps/" + naming.Instance("demo", "production") + "/db/" +
 		time.Now().UTC().Add(-time.Minute).Format("20060102T150405Z") + ".sqlite.gz")
 
-	out := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
+	out, _ := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
 
 	if got, _ := out["database"].(string); !strings.Contains(got, "20260101T000000Z") {
 		t.Fatalf("want the snapshot from before the empty start, got %v", out)
@@ -394,9 +395,54 @@ func TestAFirstDeployNeverRestoresABackupTakenSinceItBegan(t *testing.T) {
 	bucket.newer.Store("apps/" + naming.Instance("demo", "production") + "/db/" +
 		deployStart.UTC().Format("20060102T150405Z") + ".sqlite.gz")
 
-	restore := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), deployStart)
+	restore, _ := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), deployStart)
 
 	if got, _ := restore["database"].(string); !strings.Contains(got, "20260101T000000Z") {
 		t.Fatalf("must restore the backup from before the deploy, got %v", restore)
+	}
+}
+
+// halfRestore has the next installs fail the way a rollback that could not put
+// the data folder back does.
+func halfRestore(t *testing.T) {
+	t.Helper()
+	installBundle = func(*backup.Fetched, string) ([]string, error) {
+		return nil, &backup.NotRolledBackError{Err: errors.New("rename: input/output error")}
+	}
+	t.Cleanup(func() { installBundle = backup.InstallBundle })
+}
+
+// A restore whose install could not be undone leaves the app stopped: its data
+// folder is in neither state, and booting it there is what the guard is for.
+func TestARestoreThatCannotPutTheDataBackLeavesTheAppStopped(t *testing.T) {
+	f, _, _ := bundleFixture(t)
+	if rec := f.backup(t); rec.Code != http.StatusOK {
+		t.Fatalf("backup: %d %s", rec.Code, rec.Body)
+	}
+	halfRestore(t)
+	starts := f.runner.starts
+
+	_, err := f.server.restoreInstance(t.Context(), f.app(t), nil, restoreOptions{Reason: "test", Trigger: "cli"})
+	if err == nil || !strings.Contains(err.Error(), "left stopped") {
+		t.Fatalf("want the restore to say the app stays stopped, got %v", err)
+	}
+	if f.runner.starts != starts {
+		t.Fatal("the app was started on a half-restored data folder")
+	}
+}
+
+// The same holds when it is a deploy's auto-restore that could not undo itself.
+func TestAnAutoRestoreThatCannotPutTheDataBackFailsTheDeploy(t *testing.T) {
+	f := newBackupFixture(t)
+	newRecoveryBucket(t, f)
+	halfRestore(t)
+
+	restore, err := f.server.maybeAutoRestore(t.Context(), f.app(t), f.databasePath(), time.Now())
+	var notBack *backup.NotRolledBackError
+	if !errors.As(err, &notBack) {
+		t.Fatalf("want the half restore returned to the deploy, got %v (%v)", err, restore)
+	}
+	if a := f.app(t); a.BackupHold == "" || a.RestorePending == nil {
+		t.Fatalf("the guards must still be set: hold = %q, pending = %v", a.BackupHold, a.RestorePending)
 	}
 }

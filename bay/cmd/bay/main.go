@@ -1516,7 +1516,14 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// empty file — never over an existing database.
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
-		restore = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart)
+		var halfRestored error
+		restore, halfRestored = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart)
+		if halfRestored != nil {
+			return nil, &deployFailure{Status: http.StatusInternalServerError,
+				Err: fmt.Errorf("%s is left stopped: the auto-restore failed half way and could not put the data folder back, so the app is not started on it: %w",
+					res.App.Key(), halfRestored),
+				Detail: map[string]any{"release": res.Release, "restore": restore}}
+		}
 	}
 
 	if blueGreen {

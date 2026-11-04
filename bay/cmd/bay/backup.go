@@ -559,6 +559,10 @@ func fetchedPaths(f *backup.Fetched) []string {
 	return out
 }
 
+// installBundle is backup.InstallBundle, a variable so a test can have it fail
+// without putting the data folder back, which no real filesystem does on cue.
+var installBundle = backup.InstallBundle
+
 // maybeAutoRestore pulls the latest backup when Bay has just created an empty
 // database — the disaster-recovery path: fresh VPS, configure the bucket, deploy.
 //
@@ -567,20 +571,23 @@ func fetchedPaths(f *backup.Fetched) []string {
 //
 // A failure does not fail the deploy: the app starts on the empty database. See
 // `startedEmptyUnchecked` for what keeps that from costing the snapshot it missed.
-func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string, deployStart time.Time) map[string]any {
+// The one exception is an install that could not put back what it had already
+// replaced (a `backup.NotRolledBackError`, returned as is): the data folder is
+// then in neither state, and the app must not be started on it.
+func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string, deployStart time.Time) (map[string]any, error) {
 	// The scheduler takes the same lock: without it, it could back the empty
 	// database up between its creation and the restore.
 	defer s.lockBackup(app.Key())()
 	mgr, _, err := s.backupManager()
 	if err != nil {
 		s.log.Error("backup config unusable, skipping auto-restore", "err", err)
-		return s.startedEmptyUnchecked(app, "backup destination unusable")
+		return s.startedEmptyUnchecked(app, "backup destination unusable"), nil
 	}
 	if mgr == nil {
 		// Pending too: the usual disaster recovery configures the bucket AFTER
 		// the first deploy, and that bucket may hold the previous machine's
 		// backups.
-		return s.startedEmptyUnchecked(app, "no backup destination configured")
+		return s.startedEmptyUnchecked(app, "no backup destination configured"), nil
 	}
 
 	// Never a backup taken since this deploy began: the empty database exists
@@ -599,35 +606,40 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	latest, found, err := mgr.Before(ctx, app.Name, app.Env, cutoff)
 	if err != nil {
 		s.log.Error("could not list backups", "app", app.Key(), "err", err)
-		return s.startedEmptyUnchecked(app, "could not reach the bucket")
+		return s.startedEmptyUnchecked(app, "could not reach the bucket"), nil
 	}
 	if !found {
 		s.log.Info("no backup to restore", "app", app.Key())
 		// Checked and nothing there: a genuinely new app, nothing to protect.
 		s.clearRestorePending(app.Key())
-		return map[string]any{"database": "empty (no backup found)"}
+		return map[string]any{"database": "empty (no backup found)"}, nil
 	}
 
 	runtime, _, err := s.appPaths(app)
 	if err != nil {
-		return s.startedEmptyUnchecked(app, err.Error())
+		return s.startedEmptyUnchecked(app, err.Error()), nil
 	}
 	key, kind, err := backup.RestoreKey(app.Name, app.Env, latest.Key)
 	if err != nil {
-		return s.startedEmptyUnchecked(app, err.Error())
+		return s.startedEmptyUnchecked(app, err.Error()), nil
 	}
 	fetched, cleanup, err := mgr.FetchAny(ctx, key, kind, runtime)
 	if err != nil {
 		s.log.Error("auto-restore failed", "app", app.Key(), "key", latest.Key, "err", err)
-		return s.startedEmptyUnchecked(app, "restore failed: "+err.Error())
+		return s.startedEmptyUnchecked(app, "restore failed: "+err.Error()), nil
 	}
 	defer cleanup()
 
 	// Into the folder of the database Bay just created: a bundle holds every
 	// database the app had there.
-	if _, err := backup.InstallBundle(fetched, filepath.Dir(dbPath)); err != nil {
+	if _, err := installBundle(fetched, filepath.Dir(dbPath)); err != nil {
 		s.log.Error("auto-restore install failed", "app", app.Key(), "err", err)
-		return s.startedEmptyUnchecked(app, "install failed: "+err.Error())
+		restore := s.startedEmptyUnchecked(app, "install failed: "+err.Error())
+		var notBack *backup.NotRolledBackError
+		if errors.As(err, &notBack) {
+			return restore, err
+		}
+		return restore, nil
 	}
 	s.clearRestorePending(app.Key())
 	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key)
@@ -638,7 +650,7 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
 		"files":       fetchedPaths(fetched),
 		"notRestored": []string{"storage/ (uploaded files)"},
-	}
+	}, nil
 }
 
 /*
