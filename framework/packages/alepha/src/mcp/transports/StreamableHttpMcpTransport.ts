@@ -35,14 +35,21 @@ export const mcpStreamableHttpOptions = $atom({
      */
     path: z.text({ default: "/mcp" }),
     /**
-     * Allow-list of `Origin` header values accepted on incoming requests.
-     * Empty array (default) means "allow any". When set, browser-originated
-     * requests with a non-matching `Origin` are rejected with 403 Forbidden,
-     * blocking DNS-rebinding attacks against localhost MCP servers.
+     * Allow-list of `Origin` header values accepted on incoming requests. A
+     * request carrying any other `Origin` is rejected with 403 Forbidden,
+     * which blocks DNS-rebinding attacks (Streamable HTTP: a server MUST
+     * validate `Origin`).
      *
-     * Server-to-server callers (no `Origin` header) are always allowed.
+     * - Empty (the default): same-origin only. An `Origin` equal to the
+     *   request's own origin (scheme, host and port of the request URL) is
+     *   accepted, and so is a loopback `Origin` (`localhost`, `*.localhost`,
+     *   `127.0.0.0/8`, `[::1]`, any port) when the request's own host is
+     *   loopback too.
+     * - A list: exactly those origins, compared after normalisation.
+     * - `["*"]`: any origin, the explicit opt-out.
      *
-     * Spec 2025-11-25, PR #1439.
+     * Server-to-server callers (no `Origin` header) are always allowed. An
+     * opaque `Origin: null` is foreign, never "no Origin".
      */
     allowedOrigins: z.array(z.text()).default([]),
     /**
@@ -115,8 +122,8 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  *   which is what a dual-era client falls back to `initialize` on. Every
  *   JSON-RPC error keeps HTTP 200.
  *
- * Also: requests with a non-allow-listed `Origin` header are rejected with 403
- * (spec 2025-11-25, PR #1439). See {@link mcpStreamableHttpOptions.allowedOrigins}.
+ * Also: a request whose `Origin` header is neither its own origin nor
+ * allow-listed is rejected with 403. See {@link mcpStreamableHttpOptions.allowedOrigins}.
  *
  * @example
  * ```ts
@@ -182,13 +189,13 @@ export class StreamableHttpMcpTransport {
     },
     handler: async (request) => {
       try {
-        // Origin allow-list check (spec 2025-11-25 / PR #1439).
+        // Origin check (Streamable HTTP: a server MUST validate Origin).
+        // Decided before the body is parsed, hence the plain JSON 403.
         const originRaw = request.headers.origin;
         const origin = Array.isArray(originRaw) ? originRaw[0] : originRaw;
         if (
-          origin &&
-          this.options.allowedOrigins.length > 0 &&
-          !this.options.allowedOrigins.includes(origin)
+          origin !== undefined &&
+          !this.isOriginAllowed(origin, this.requestUrl(request))
         ) {
           this.log.warn("Rejected MCP request with non-allowed Origin", {
             origin,
@@ -209,10 +216,7 @@ export class StreamableHttpMcpTransport {
         // `resource_metadata` URL to discover the authorization server —
         // without it, discovery never starts. The URL MUST be absolute.
         if (this.options.requireAuth && !request.user) {
-          const url =
-            typeof request.url === "string"
-              ? new URL(request.url)
-              : request.url;
+          const url = this.requestUrl(request);
           const resourceMetadataUrl = `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
           this.log.debug("Rejecting unauthenticated MCP request", {
             resourceMetadataUrl,
@@ -414,6 +418,80 @@ export class StreamableHttpMcpTransport {
     request.reply.body = JSON.stringify({
       error: "Method Not Allowed. Use POST for MCP messages.",
     });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Origin validation
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The request URL as a `URL`, whichever shape the runtime handed over.
+   */
+  protected requestUrl(request: { url: string | URL }): URL {
+    return typeof request.url === "string" ? new URL(request.url) : request.url;
+  }
+
+  /**
+   * Whether a request carrying this `Origin` header may be served.
+   *
+   * With an empty {@link mcpStreamableHttpOptions.allowedOrigins}, only the
+   * request's own origin, or a loopback origin when the request itself
+   * targets a loopback host. The Host header is what DNS rebinding cannot
+   * turn into a loopback name while the browser targets a public one, so it
+   * stands in for the bound address, which workerd does not expose.
+   */
+  protected isOriginAllowed(origin: string, url: URL): boolean {
+    const allowed = this.options.allowedOrigins;
+    if (allowed.includes("*")) {
+      return true;
+    }
+    const normalised = this.normaliseOrigin(origin);
+    if (normalised === undefined) {
+      // `null` (an opaque origin) and anything unparsable: foreign.
+      return false;
+    }
+    if (allowed.length > 0) {
+      return allowed.some((it) => this.normaliseOrigin(it) === normalised);
+    }
+    const own = this.normaliseOrigin(`${url.protocol}//${url.host}`);
+    if (normalised === own) {
+      return true;
+    }
+    return (
+      this.isLoopbackHost(url.hostname) &&
+      this.isLoopbackHost(new URL(normalised).hostname)
+    );
+  }
+
+  /**
+   * An origin as `scheme://host[:port]`, lowercased with the default port
+   * dropped (the `URL` parser does both). `undefined` for `null` or a value
+   * that is not an http(s) origin.
+   */
+  protected normaliseOrigin(origin: string): string | undefined {
+    try {
+      const url = new URL(origin);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return undefined;
+      }
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * `localhost`, `*.localhost`, `127.0.0.0/8` or `[::1]`.
+   */
+  protected isLoopbackHost(hostname: string): boolean {
+    const host = hostname.toLowerCase();
+    return (
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host === "[::1]" ||
+      host === "::1" ||
+      /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
+    );
   }
 
   // -------------------------------------------------------------------------------------------------------------

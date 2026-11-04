@@ -586,18 +586,20 @@ Transports are opt-in: wire the one you need.
 
 The `mcpStreamableHttpOptions` atom configures it:
 
-| Option                 | Default                                   | Description                                                                                                                                                                                  |
-| ---------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`                 | `"/mcp"`                                  | Endpoint path. Keep it outside `/api`, which belongs to the `$action` dispatcher.                                                                                                            |
-| `allowedOrigins`       | `[]` (any)                                | `Origin` values a browser request may carry; any other is a 403 (DNS-rebinding guard). Requests with no `Origin` always pass.                                                                |
-| `requireAuth`          | `false`                                   | Refuse an unauthenticated POST with `401` and an RFC 9728 `WWW-Authenticate` challenge, which MCP clients use to find the OAuth server. `$realm({ features: { oauth: true } })` turns it on. |
-| `resourceMetadataPath` | `"/.well-known/oauth-protected-resource"` | Protected-resource metadata document advertised in that challenge.                                                                                                                           |
+| Option                 | Default                                   | Description                                                                                                                                                                                                                 |
+| ---------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                 | `"/mcp"`                                  | Endpoint path. Keep it outside `/api`, which belongs to the `$action` dispatcher.                                                                                                                                           |
+| `allowedOrigins`       | `[]` (same-origin)                        | `Origin` values a browser request may carry; any other is a 403 (DNS-rebinding guard). Empty means same-origin, plus loopback when the request host is loopback. `["*"]` allows any. Requests with no `Origin` always pass. |
+| `requireAuth`          | `false`                                   | Refuse an unauthenticated POST with `401` and an RFC 9728 `WWW-Authenticate` challenge, which MCP clients use to find the OAuth server. `$realm({ features: { oauth: true } })` turns it on.                                |
+| `resourceMetadataPath` | `"/.well-known/oauth-protected-resource"` | Protected-resource metadata document advertised in that challenge.                                                                                                                                                          |
 
 ```typescript
 import { mcpStreamableHttpOptions } from "alepha/mcp";
 
 alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
 ```
+
+⚠️ **Origin is validated by default** (since 0.36). An empty `allowedOrigins` used to allow any origin; it now accepts only the request's own origin (scheme, host and port, compared after normalisation), and a loopback origin on any port when the server is reached on a loopback host. `Origin: null` is refused. MCP clients such as claude.ai and Claude Code connect server-to-server and send no `Origin`, so they are unaffected; a browser-hosted inspector pointed at a remote server needs its origin listed, or `["*"]` to opt out.
 
 ⚠️ **Set `path` before wiring the transport.** The transport declares its routes when it is constructed, and `.with(StreamableHttpMcpTransport)` constructs it at once, so a `path` written afterwards is never read. `allowedOrigins`, `requireAuth` and `resourceMetadataPath` are read on every request and can change at any time.
 
