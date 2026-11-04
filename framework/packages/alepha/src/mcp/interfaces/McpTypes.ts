@@ -51,20 +51,40 @@ export interface McpCapabilities {
 }
 
 /**
- * Spec 2025-11-25: optional `description` aligns with the MCP registry's
- * `server.json` format and provides human-readable context during init.
+ * The schema's `Implementation`: who a server or a client is.
+ *
+ * `name` is the programmatic identifier, `title` the display label. The
+ * optional `description` (2025-11-25) aligns with the MCP registry's
+ * `server.json`; `icons` and `websiteUrl` are for client UIs.
  */
-export interface McpServerInfo {
+export interface McpImplementation {
   name: string;
   version: string;
+  /**
+   * Human-friendly display label. Distinct from `name`.
+   */
+  title?: string;
   description?: string;
+  /**
+   * Icons a client may show beside the name (SEP-973).
+   */
+  icons?: McpIcon[];
+  /**
+   * The implementation's home page.
+   */
+  websiteUrl?: string;
 }
 
-export interface McpClientInfo {
-  name: string;
-  version: string;
-  description?: string;
-}
+/**
+ * A server's identity, sent on `initialize` and in a modern result's
+ * `io.modelcontextprotocol/serverInfo`.
+ */
+export type McpServerInfo = McpImplementation;
+
+/**
+ * A client's self-reported identity. Unverified.
+ */
+export type McpClientInfo = McpImplementation;
 
 /**
  * Icon descriptor (spec 2025-11-25 / SEP-973). Mirrors web app manifest
@@ -123,6 +143,10 @@ export interface McpInitializeResult {
   protocolVersion: string;
   capabilities: McpCapabilities;
   serverInfo: McpServerInfo;
+  /**
+   * How to use this server, for the agent (see `McpServerProvider.instructions`).
+   */
+  instructions?: string;
 }
 
 /**
@@ -178,6 +202,10 @@ export interface McpCacheHints {
 export interface McpDiscoverResult {
   supportedVersions: string[];
   capabilities: McpCapabilities;
+  /**
+   * How to use this server, for the agent (see `McpServerProvider.instructions`).
+   */
+  instructions?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -276,13 +304,10 @@ export type McpContent =
   | (McpContentBase & { type: "image"; data: string; mimeType: string })
   | (McpContentBase & { type: "audio"; data: string; mimeType: string })
   | (McpContentBase & { type: "resource"; resource: McpResourceContent })
-  | (McpContentBase & {
-      type: "resource_link";
-      uri: string;
-      name: string;
-      description?: string;
-      mimeType?: string;
-    });
+  | (McpContentBase &
+      Omit<McpResourceDescriptor, "annotations" | "_meta"> & {
+        type: "resource_link";
+      });
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Resource Types
@@ -297,6 +322,11 @@ export interface McpResourceDescriptor {
   title?: string;
   description?: string;
   mimeType?: string;
+  /**
+   * The raw content's size in bytes, before any encoding, when known. Lets a
+   * client estimate context use before reading.
+   */
+  size?: number;
   /**
    * Optional icons (spec 2025-11-25 / SEP-973).
    */
@@ -325,6 +355,11 @@ export interface McpResourceTemplateDescriptor {
   title?: string;
   description?: string;
   mimeType?: string;
+  /**
+   * The raw content's size in bytes, before any encoding, when known. Lets a
+   * client estimate context use before reading.
+   */
+  size?: number;
   /**
    * Optional icons (spec 2025-11-25 / SEP-973).
    */
@@ -378,6 +413,10 @@ export interface McpPromptDescriptor {
 
 export interface McpPromptArgument {
   name: string;
+  /**
+   * Human-friendly display label. Distinct from `name`.
+   */
+  title?: string;
   description?: string;
   required?: boolean;
 }

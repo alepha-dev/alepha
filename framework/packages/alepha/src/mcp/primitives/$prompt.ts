@@ -234,11 +234,17 @@ export class PromptPrimitive<T extends ZObject> extends Primitive<
       // The description lives on the inner schema; peel optional/nullable/default
       // wrappers so `z.number({ description }).optional()` still surfaces it.
       const prop = z.schema.unwrap(propSchema) as Record<string, unknown>;
-      args.push({
+      const argument: McpPromptArgument = {
         name,
         description: prop.description as string | undefined,
         required: !z.schema.isOptional(propSchema),
-      });
+      };
+      // `title` rides on zod's `.meta()` registry, merged across wrappers.
+      const title = z.schema.meta(propSchema).title;
+      if (typeof title === "string" && title) {
+        argument.title = title;
+      }
+      args.push(argument);
     }
 
     return args;

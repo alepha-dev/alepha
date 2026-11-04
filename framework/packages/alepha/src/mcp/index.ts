@@ -72,6 +72,7 @@ export type {
   // Context type for auth/headers
   McpContext,
   McpDiscoverResult,
+  McpImplementation,
   McpInitializeParams,
   McpInitializeResult,
   McpJsonSchema,

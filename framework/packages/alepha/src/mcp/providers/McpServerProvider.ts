@@ -97,6 +97,16 @@ export class McpServerProvider {
   };
 
   /**
+   * How to use this server, in a few sentences for the agent: where to start,
+   * what the tools are for, what to avoid. Sent as `instructions` on
+   * `server/discover` and on the legacy `initialize`; omitted when empty.
+   *
+   * Set it the same way as {@link serverInfo}, by assignment at configure
+   * time. Keep it short: a client may inject it into every conversation.
+   */
+  public instructions = "";
+
+  /**
    * Maximum number of entries returned by one `tools/list`, `resources/list`,
    * `resources/templates/list` or `prompts/list` call. Beyond it the response
    * carries a `nextCursor` the client passes back to fetch the next page.
@@ -820,6 +830,7 @@ export class McpServerProvider {
       protocolVersion: negotiated,
       capabilities: this.getCapabilities(),
       serverInfo: this.serverInfo,
+      ...(this.instructions ? { instructions: this.instructions } : {}),
     };
   }
 
@@ -837,6 +848,7 @@ export class McpServerProvider {
     return {
       supportedVersions: this.getSupportedVersions(),
       capabilities: this.getCapabilities(),
+      ...(this.instructions ? { instructions: this.instructions } : {}),
     };
   }
 

@@ -193,6 +193,7 @@ class Resources {
 | `uri`         | `string`   | Required. Unique identifier (e.g. `app://projects`, `file:///readme`).                                              |
 | `description` | `string`   | What this resource contains.                                                                                        |
 | `mimeType`    | `string`   | Content type. Defaults to `text/plain`.                                                                             |
+| `size`        | `number`   | Raw content size in bytes, when known, so a client can estimate context use before reading.                         |
 | `handler`     | `function` | Receives `{ context }`. Returns `{ text }` for text content or `{ blob }` (a `Uint8Array`) for binary.              |
 | `name`        | `string`   | Display name. Defaults to the property key.                                                                         |
 | `title`       | `string`   | Human-friendly display name for client pickers.                                                                     |
@@ -288,16 +289,16 @@ class Prompts {
 
 **Options:**
 
-| Option        | Type       | Description                                             |
-| ------------- | ---------- | ------------------------------------------------------- |
-| `description` | `string`   | What this prompt does.                                  |
-| `args`        | `ZObject`  | Zod schema for template arguments.                      |
-| `handler`     | `function` | Returns an array of `{ role, content }` messages.       |
-| `name`        | `string`   | Override the prompt name. Defaults to the property key. |
-| `complete`    | `function` | Suggests values for an argument, see below.             |
-| `title`       | `string`   | Human-friendly display name for client prompt pickers.  |
-| `icons`       | `array`    | Icons shown in client prompt lists.                     |
-| `_meta`       | `object`   | Arbitrary metadata passed through on the descriptor.    |
+| Option        | Type       | Description                                                                                 |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------- |
+| `description` | `string`   | What this prompt does.                                                                      |
+| `args`        | `ZObject`  | Zod schema for template arguments; each field's `description` and `title` reach the client. |
+| `handler`     | `function` | Returns an array of `{ role, content }` messages.                                           |
+| `name`        | `string`   | Override the prompt name. Defaults to the property key.                                     |
+| `complete`    | `function` | Suggests values for an argument, see below.                                                 |
+| `title`       | `string`   | Human-friendly display name for client prompt pickers.                                      |
+| `icons`       | `array`    | Icons shown in client prompt lists.                                                         |
+| `_meta`       | `object`   | Arbitrary metadata passed through on the descriptor.                                        |
 
 A message's `content` is a string (sent as a text block), one MCP content block, or an array of them.
 
@@ -355,6 +356,35 @@ Then register the module alongside your other modules:
 ```typescript
 run(Alepha.create().with(AlephaServer).with(MyAppApi).with(MyAppMcp));
 ```
+
+### Identity and instructions
+
+`McpServerProvider` says who the server is and how an agent should use it. Set both at configure time:
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { McpServerProvider } from "alepha/mcp";
+
+class McpIdentity {
+  protected readonly mcpServer = $inject(McpServerProvider);
+
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      this.mcpServer.serverInfo = {
+        name: "tasks",
+        title: "Tasks",
+        version: "1.4.0",
+        websiteUrl: "https://tasks.example.com",
+      };
+      this.mcpServer.instructions =
+        "Call list_projects first; every other tool takes a project id.";
+    },
+  });
+}
+```
+
+`serverInfo` (the schema's `Implementation`: `name`, `version`, and optionally `title`, `description`, `icons`, `websiteUrl`) is sent on `initialize` and in every modern result's `_meta`. `instructions` is sent on `server/discover` and `initialize`, and omitted when empty. Keep it short: a client may inject it into every conversation. Without either, the server introduces itself as `alepha-mcp` `1.0.0`.
 
 ## Using DI in Tools
 
