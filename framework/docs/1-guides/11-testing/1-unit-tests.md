@@ -1,6 +1,6 @@
 # Unit Tests
 
-Alepha uses Vitest as the test runner. Every `alepha init` scaffolds a Vitest config and a sample test file - Vitest ships embedded in `alepha`, so there is nothing to install.
+Alepha uses Vitest as the test runner. Every new project scaffolds a Vitest config and a sample test file - Vitest ships embedded in `alepha`, so there is nothing to install.
 
 The scaffolded config turns on Vitest's `globals: true`, and Alepha relies on it at runtime: that is how `Alepha.create()` finds `beforeAll` and `afterAll` (see [Lifecycle Management](#lifecycle-management)). The scaffolded `tsconfig.json` does not declare the global types, though, so specs import what they use, as the starter spec does:
 
@@ -15,10 +15,10 @@ To write specs without that line, add `"types": ["vitest/globals"]` to `compiler
 Every Alepha project is scaffolded with test support - no flag needed:
 
 ```bash
-alepha init my-app
+npm create alepha my-app
 ```
 
-`init` writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` to the project directory) and a starter `test/dummy.spec.ts` - there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
+The scaffold writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` to the project directory) and a starter `test/dummy.spec.ts` - there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
 
 Run tests with `alepha test`. An optional positional argument is forwarded to Vitest as a filename filter:
 

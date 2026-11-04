@@ -3,7 +3,7 @@
 Create a full-stack app with an explicit Cloudflare production environment, then deploy it:
 
 ```bash
-npx alepha init my-app --infra cf
+npm create alepha my-app -- --infra cf
 cd my-app
 npx alepha deploy
 ```
@@ -13,7 +13,7 @@ Initialization installs dependencies and writes configuration without cloud cred
 For local development only, omit `--infra` and start the dev server instead:
 
 ```bash
-npx alepha init my-app
+npm create alepha my-app
 cd my-app
 npm run dev
 ```
@@ -28,8 +28,13 @@ You need one of the following:
 ## Create a Project
 
 ```bash
-npx alepha init my-app --infra cf
+npm create alepha my-app -- --infra cf
 ```
+
+`create-alepha` has no dependencies of its own, so it starts fast and downloads
+the framework once, into the new project. `yarn create alepha`, `pnpm create alepha`
+and `bun create alepha` work too, and each picks its own package manager. With npm,
+flags go after `--` so npm forwards them; the other three need no separator.
 
 This creates a `my-app` directory with:
 
@@ -57,17 +62,15 @@ project, human or AI, already knows where things live. If you don't need the
 frontend, delete `src/web/`. A [preset](#presets) can add more on top of this
 base, but never moves it around.
 
-`--preset` adds features, and `--infra cf` (also `--infra cloudflare`) adds the Cloudflare production environment. `--pm` (`npm`, `yarn`, `pnpm` or `bun`) selects the package manager, which is otherwise detected from how you ran the command; `--force` replaces scaffolded files. For example, a Bun project:
+`--preset` adds features, and `--infra cf` (also `--infra cloudflare`) adds the Cloudflare production environment. `--pm` (`npm`, `yarn`, `pnpm` or `bun`) selects the package manager, which is otherwise detected from how you ran the command. For example, a Bun project:
 
 ```bash
-npx alepha@latest init my-app --pm=bun
+bun create alepha my-app
 ```
 
-`npm create alepha` is the alternative entry point. It takes the same `--preset`,
-`--infra` and `--pm` flags (after `--`, so npm forwards them) and asks for anything
-no flag has answered: the project name and the preset. To run it with no
-prompts at all (a CI, a Dockerfile, any script with no stdin), pass `--yes`,
-which answers every remaining question with its default:
+It asks for anything no flag has answered: the project name and the preset. To
+run it with no prompts at all (a CI, a Dockerfile, any script with no stdin),
+pass `--yes`, which answers every remaining question with its default:
 
 ```bash
 npm create alepha my-app -- --yes --infra cloudflare    # or -y
@@ -75,7 +78,10 @@ npm create alepha my-app -- --yes --infra cloudflare    # or -y
 
 Flags still win over `--yes`, so `--yes --preset saas` is promptless too. The
 project name is the one thing it cannot supply, since it has no default.
-`alepha init` never prompts and needs none of this.
+
+Already inside a project? `npx alepha init` runs the same scaffolding in place:
+it fills in whatever is missing, never prompts, and takes `--force` to replace
+scaffolded files.
 
 ## Run the Generated App
 
@@ -355,7 +361,7 @@ my-app/
 The layout above is fixed. A preset only decides what is mounted on top of it:
 
 ```bash
-npx alepha init my-app --preset=saas
+npm create alepha my-app -- --preset=saas
 ```
 
 `saas` adds `@alepha/ui` and three routers (sign-in at `/auth/*`, an account

@@ -47,7 +47,7 @@ existing project to fill in missing pieces (it additionally takes `--force`).
 ## Presets
 
 ```bash
-npm create alepha my-app --preset saas
+npm create alepha my-app -- --preset saas
 ```
 
 | Preset    | What you get                                                                                                                                     |

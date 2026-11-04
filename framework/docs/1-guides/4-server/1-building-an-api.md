@@ -7,7 +7,7 @@ Alepha provides type-safe HTTP endpoints through the `$action` primitive. Action
 Scaffold a new project:
 
 ```bash
-alepha init my-api
+npm create alepha my-api
 ```
 
 Every Alepha project ships with `src/api/` - a server entry point, a sample controller, and Zod schemas. Building an API-only service? Delete `src/web/` and the `WebModule` line from `main.server.ts`.

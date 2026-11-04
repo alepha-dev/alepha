@@ -20,15 +20,15 @@
 
 ## Creating a Project
 
-**ALWAYS run `npx alepha init my-app` to create a new Alepha project. Never hand-write the
+**ALWAYS run `npm create alepha my-app -- --yes` to create a new Alepha project. Never hand-write the
 project skeleton, config files, or entry points - the CLI generates them correctly and keeps
 them consistent with the installed version.**
 
 ```bash
-npx alepha init my-app                 # scaffold: API + React (SSR) + Tailwind, deps installed
-npx alepha init my-app --preset=saas   # the same, plus auth, account and admin
+npm create alepha my-app -- --yes                 # scaffold: API + React (SSR) + Tailwind, deps installed
+npm create alepha my-app -- --yes --preset=saas   # the same, plus auth, account and admin
 cd my-app
-npx alepha dev                         # start the dev server
+npx alepha dev                                    # start the dev server
 ```
 
 Every Alepha project has the **same** structure. `--preset` is the only choice, and a preset
@@ -39,16 +39,18 @@ decides what is _mounted_ on the layout below, never where anything lives:
 | `default` | The layout below: API module, web module (React SSR), Tailwind.                                                                                                                                                                                                                                                                                             |
 | `saas`    | The above plus `@alepha/ui` and the identity surface - sign-in at `/auth/*`, an account area at `/account/*`, an admin console at `/admin/*` - backed by a `$realm` in `src/api/Realm.ts`. It also mounts the ORM, generates the initial migration, and writes `ADMIN_EMAIL` into a gitignored `.env`. Refused for Expo projects, which have no web module. |
 
-The remaining options are `--pm <yarn|npm|pnpm|bun>` and `--force` (`-f`).
+`--yes` answers the remaining questions with their defaults, so the command never waits on
+stdin. With npm, every flag goes after `--`; `yarn create`, `pnpm create` and `bun create`
+need no separator. The remaining option is `--pm <yarn|npm|pnpm|bun>`.
 Building an API-only service? Generate the project, then delete `src/web/`,
 `src/main.browser.ts` and `src/main.css`, and drop `WebModule` from `src/main.server.ts`.
 
-Run `alepha init` (no path) inside an existing project to fill in whatever is missing - it
-never overwrites without `--force`.
+Inside an existing project, run `npx alepha init` (no path) to fill in whatever is missing - it
+never overwrites without `--force` (`-f`).
 
 ### Rules
 
-- ALWAYS scaffold new projects with `alepha init`, never by hand
+- ALWAYS scaffold new projects with `npm create alepha`, never by hand
 - use TypeScript (strict mode)
 - use oxlint for linting and oxfmt for formatting
 - use Vitest for testing

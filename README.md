@@ -24,7 +24,7 @@ so the same build ships to Cloudflare Workers or to a container on any machine.<
 </div>
 
 ```bash
-npx alepha init my-app --infra cf
+npm create alepha my-app -- --infra cf
 ```
 
 ## A table, an API and a page
@@ -88,7 +88,7 @@ Leaving is a flag, not a rewrite.
 
 ```text
 Read https://alepha.dev/llms.txt, then create an Alepha app in ./my-app with
-`npx alepha init my-app --infra cf`. Add a page that counts its views in the
+`npm create alepha my-app -- --yes --infra cf`. Add a page that counts its views in the
 database, run it with `npx alepha dev`, and tell me how to deploy it.
 ```
 
@@ -111,8 +111,7 @@ curl -sSL https://alepha.dev/bay/install.sh | sudo sh
 Planning built for AI agents first, over MCP: quests and epics for the work, folios for the decisions, sigils for what a deployed app reports, estates for where it runs. Your agent knows why the code is the way it is. Lore is itself an Alepha app, running at [lore.alepha.dev](https://lore.alepha.dev).
 
 ```bash
-npm i -g @alepha/lore
-lore login
+npx @alepha/lore login
 ```
 
 MIT licensed, see [LICENSE](LICENSE).
