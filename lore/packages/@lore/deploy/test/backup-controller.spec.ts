@@ -337,10 +337,16 @@ describe("BackupController", () => {
       estateId: estate.id,
       projectId: other.project.id,
     });
-    const theirs = await createInstance(alepha, other, "minpricing", "production");
+    const theirs = await createInstance(
+      alepha,
+      other,
+      "minpricing",
+      "production",
+    );
     await other.rows.instances.updateById(theirs.id, {
       estateId: estate.id,
-      resourceName: instance.resourceName ?? `p${w.project.id}-minpricing-production`,
+      resourceName:
+        instance.resourceName ?? `p${w.project.id}-minpricing-production`,
     });
     await expect(
       alepha

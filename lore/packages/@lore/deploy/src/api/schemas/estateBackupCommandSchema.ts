@@ -71,12 +71,10 @@ export const estateBackupCommandBodySchema = z.union(variants({}));
  * machine's own instance name, project segment included.
  */
 export const estateBackupCommandTargetedSchema = z.union(
-  variants(
-    {
-      app: z.string().min(1).max(100),
-      environment: z.string().min(1).max(100),
-    },
-  ),
+  variants({
+    app: z.string().min(1).max(100),
+    environment: z.string().min(1).max(100),
+  }),
 );
 
 export type EstateBackupCommandBody = Infer<
