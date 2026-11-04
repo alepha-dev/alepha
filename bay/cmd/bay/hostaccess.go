@@ -45,13 +45,20 @@ func parsePids(raw string) (int, error) {
 }
 
 // hostMountDenied are host trees no app is ever handed, nor any path inside
-// them or any folder above them: the system itself, the container engine, and
-// /run (control sockets, Bay's own among them). Mounting /var/lib would hand
+// them or any folder above them: the system itself, the users' homes, the
+// container engines, cron's spool, and /run (control sockets, Bay's own among
+// them). Mounting /var/lib would hand
 // /var/lib/docker over just as surely as mounting it by name.
 var hostMountDenied = []string{
-	"/bin", "/boot", "/dev", "/etc", "/lib", "/lib32", "/lib64", "/proc", "/root",
-	"/run", "/sbin", "/sys", "/usr", "/var/lib/containerd", "/var/lib/docker", "/var/run",
+	"/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib32", "/lib64", "/proc", "/root",
+	"/run", "/sbin", "/sys", "/usr", "/var/lib/containerd", "/var/lib/containers",
+	"/var/lib/docker", "/var/run", "/var/spool",
 }
+
+// ownMounted are the folders of an instance Bay already mounts into its
+// container (writablePaths): handing one over again would give Docker the
+// same mount point twice, and the container would not start.
+var ownMounted = []string{"data", "scratch", "storage"}
 
 // within reports whether path is dir or inside it.
 func within(path, dir string) bool {
@@ -126,12 +133,18 @@ anyone who could make it one later (swapProof), so what is checked is what
 Docker mounts on every restart. It may not be inside, or contain, a denied tree, Bay's
 root or its control socket: mounting /opt would hand every other app's data
 over. Inside Bay's root, only a path inside the app's own instance directory
-is accepted. Guarded paths are checked as given and as their symlinks
+is accepted, and not one Bay already mounts there (ownMounted); nor may it
+land on the container's release or its /tmp. Guarded paths are checked as given and as their symlinks
 resolve.
 */
 func (s *server) checkHostMount(app state.App, path string) error {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
 		return fmt.Errorf("mount %q: give an absolute, clean path other than /", path)
+	}
+	// Mounted at the same path inside, so it may not land on the release or
+	// replace the container's own /tmp.
+	if within(path, releaseMount) || path == "/tmp" {
+		return fmt.Errorf("mount %q: the container already has %s", path, path)
 	}
 	if _, err := os.Lstat(path); err != nil {
 		return fmt.Errorf("mount %q: %w", path, err)
@@ -167,6 +180,11 @@ func (s *server) checkHostMount(app state.App, path string) error {
 			instance := filepath.Join(root, "apps", naming.Instance(app.Name, app.Env))
 			if path == instance || !within(path, instance) {
 				return fmt.Errorf("mount %q: inside Bay's root, only a path inside %s's own directory", path, app.Key())
+			}
+			for _, dir := range ownMounted {
+				if mounted := filepath.Join(instance, dir); within(path, mounted) {
+					return fmt.Errorf("mount %q: %s is already mounted into the app", path, mounted)
+				}
 			}
 		}
 	}

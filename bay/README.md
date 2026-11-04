@@ -52,8 +52,9 @@ browser needs more, and an operator grants exactly that per instance:
 `bay runtimes set <name/env> <image>` (an image with the browser in it),
 `bay harden <name/env> --memory 1g`, `bay harden <name/env> --pids 1024`, and
 `bay harden <name/env> --mount /tmp/.X11-unix` (a host path at the same path
-inside, read-only unless `:rw`; never Bay's root or socket, `/etc`, `/run`, the
-container engine, or another app's directory). `bay status` lists each one.
+inside, read-only unless `:rw`; never Bay's root or socket, `/etc`, `/run`,
+`/home`, `/var/spool`, the container engine, another app's directory, or a
+folder Bay already mounts). `bay status` lists each one.
 
 ## Two things worth knowing before reading the code
 
