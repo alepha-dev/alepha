@@ -102,6 +102,20 @@ schema: {
 }
 ```
 
+## Alepha Extensions
+
+Each operation also carries what Alepha knows about it, under `x-alepha-*` keys. Standard OpenAPI viewers ignore them; an explorer that knows Alepha reads them. A key with nothing to say is left out.
+
+| Key                    | Value                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x-alepha-action`      | `{ name, group }`: the `$action` as `useClient` names it, and its raw group (`admin:files`)                                                             |
+| `x-alepha-middlewares` | The names of the middlewares the action runs through, in order (`["$secure", "$rateLimit"]`)                                                            |
+| `x-alepha-security`    | `{ roles?, permissions? }` when a middleware gates the action: any one role admits, every permission is required. `{}` means a signed-in user is enough |
+| `x-alepha-errors`      | The names of the declared `errors` of a strict action (`["NOT_FOUND"]`)                                                                                 |
+| `x-alepha-timeout`     | The deadline in milliseconds, the action's own or the global one                                                                                        |
+
+`x-alepha-security` is read from the middlewares' `meta`, not from their names: `$secure` sets `MIDDLEWARE_ROLES` and `MIDDLEWARE_PERMISSIONS` (comma-separated, exported from `alepha`) alongside `MIDDLEWARE_PROTECTED`, and a gate of your own documents itself by setting the same keys.
+
 ## Security in OpenAPI
 
 Actions that carry the `$secure` middleware (`use: [$secure(...)]`) are documented with a Bearer JWT security requirement; the `bearerAuth` scheme is emitted whenever at least one such action exists. Actions without `$secure` carry no security requirement.

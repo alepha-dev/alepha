@@ -85,6 +85,12 @@ export interface OpenApiDocument {
 }
 
 export interface OpenApiOperation {
+  /**
+   * Vendor extensions. Alepha writes `x-alepha-action`, `x-alepha-middlewares`,
+   * `x-alepha-security`, `x-alepha-errors` and `x-alepha-timeout`; see
+   * `ServerSwaggerProvider.documentAlephaMetadata`.
+   */
+  [extension: `x-${string}`]: unknown;
   tags?: string[];
   summary?: string;
   description?: string;
