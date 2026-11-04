@@ -2482,6 +2482,13 @@ export abstract class Repository<T extends ZObject> {
       return timeout;
     }
 
+    // Same reason: D1's 50 MB result cap arrives wrapped by drizzle, and it
+    // must not be reported as a generic 500 nobody can act on.
+    const tooLarge = this.errorParser.resultTooLarge(error);
+    if (tooLarge) {
+      return tooLarge;
+    }
+
     if (!(error instanceof Error)) {
       return new DbError(message, { cause: error });
     }

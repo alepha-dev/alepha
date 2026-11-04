@@ -11,6 +11,7 @@ export * from "./errors/DbDeadlockError.ts";
 export * from "./errors/DbEntityNotFoundError.ts";
 export * from "./errors/DbForeignKeyError.ts";
 export * from "./errors/DbNotNullError.ts";
+export * from "./errors/DbResultTooLargeError.ts";
 export * from "./errors/DbTableNotFoundError.ts";
 export * from "./errors/DbTimeoutError.ts";
 export * from "./errors/DbTooManyParametersError.ts";

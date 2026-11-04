@@ -3,6 +3,7 @@ import { DbConnectionError } from "../errors/DbConnectionError.ts";
 import { DbDeadlockError } from "../errors/DbDeadlockError.ts";
 import { DbForeignKeyError } from "../errors/DbForeignKeyError.ts";
 import { DbNotNullError } from "../errors/DbNotNullError.ts";
+import { DbResultTooLargeError } from "../errors/DbResultTooLargeError.ts";
 import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
 import { DbTooManyParametersError } from "../errors/DbTooManyParametersError.ts";
 
@@ -100,6 +101,61 @@ export class DbErrorParser {
    */
   public tooManyParameters(error: Error): DbTooManyParametersError {
     return new DbTooManyParametersError(undefined, { cause: error });
+  }
+
+  /**
+   * The driver's "result too large" answer, found anywhere in `error`'s cause
+   * chain (drizzle demotes the driver's error to `cause`), or `undefined`.
+   *
+   * D1 answers `D1 query result exceeded the maximum response size limit of
+   * 50 MB`, matched as a substring since the binding may prefix it
+   * (`D1_ERROR: ...`). The error names the statement, never its parameters,
+   * which may carry user data: `query` when given, else drizzle's
+   * `Failed query` wrapper's own `query`.
+   */
+  public resultTooLarge(
+    error: unknown,
+    query?: string,
+  ): DbResultTooLargeError | undefined {
+    const found = DbResultTooLargeError.find(error);
+    if (found) {
+      return found;
+    }
+
+    let statement = query;
+    let current: unknown = error;
+    // Bounded, so a cause chain looping on itself cannot hang the error path.
+    for (let depth = 0; depth < 10; depth++) {
+      if (!(current instanceof Error)) {
+        return undefined;
+      }
+      const carried = (current as { query?: unknown }).query;
+      if (statement === undefined && typeof carried === "string") {
+        statement = carried;
+      }
+      if (
+        current.message
+          .toLowerCase()
+          .includes("query result exceeded the maximum response size")
+      ) {
+        return new DbResultTooLargeError(
+          statement
+            ? `Query result exceeded the maximum response size: ${this.summarize(statement)}`
+            : undefined,
+          { cause: error },
+        );
+      }
+      current = current.cause;
+    }
+    return undefined;
+  }
+
+  /**
+   * A statement on one line, cut at 200 characters.
+   */
+  protected summarize(query: string): string {
+    const flat = query.replace(/\s+/g, " ").trim();
+    return flat.length > 200 ? `${flat.slice(0, 200)}...` : flat;
   }
 
   /**
