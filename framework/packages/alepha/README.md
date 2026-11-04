@@ -19,7 +19,7 @@ Alepha is a full-stack TypeScript framework: database, API, jobs and React with 
 ## 1. Create a project
 
 ```bash
-npm create alepha my-app -- --infra cf
+npm create alepha my-app
 cd my-app
 npx alepha dev
 ```
@@ -123,7 +123,7 @@ Start on Cloudflare's free tier, move to your own server when the bill says so, 
 
 ```text
 Read https://alepha.dev/llms.txt, then create an Alepha app in ./my-app with
-`npm create alepha my-app -- --yes --infra cf`. Add a page that counts its views in the
+`npm create alepha my-app -- --yes`. Add a page that counts its views in the
 database, run it with `npx alepha dev`, and tell me how to deploy it.
 ```
 
