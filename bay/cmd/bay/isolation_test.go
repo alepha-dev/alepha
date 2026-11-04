@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -45,11 +46,16 @@ type policyS3 struct {
 	writes int
 	// slowBucket answers nothing for its requests until the caller gives up.
 	slowBucket string
-	closing    chan struct{}
-	srv        *httptest.Server
+	// regions pins a bucket to a region: a request signed for another one is
+	// refused as malformed (400), as AWS does.
+	regions map[string]string
+	// seedFails answers 500 to every write of an isolation seed.
+	seedFails bool
+	closing   chan struct{}
+	srv       *httptest.Server
 }
 
-var credentialRe = regexp.MustCompile(`Credential=([^/]+)/`)
+var credentialRe = regexp.MustCompile(`Credential=([^/]+)/[^/]+/([^/]+)/`)
 
 func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 	t.Helper()
@@ -70,6 +76,15 @@ func newPolicyS3(t *testing.T, grants map[string][]string) *policyS3 {
 			return
 		}
 		bucket, key, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
+		if want, ok := p.regions[bucket]; ok && m[2] != want {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("<Error><Code>AuthorizationHeaderMalformed</Code></Error>"))
+			return
+		}
+		if p.seedFails && r.Method == http.MethodPut && strings.HasSuffix(key, probeSeed) {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if r.URL.Query().Has("versioning") {
 			status, ok := p.versioning[bucket]
 			if !ok {
@@ -309,6 +324,11 @@ func TestKeysAlreadyHeldElsewhereAreAlwaysRefused(t *testing.T) {
 		if rec.Code != http.StatusConflict {
 			t.Fatalf("%s must be refused, got %d: %s", k, rec.Code, rec.Body)
 		}
+	}
+	if _, failure := f.server.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: deployableArtifact(t), Name: "other", Env: "production",
+	}); failure != nil {
+		t.Fatalf("deploy failed: %v", failure)
 	}
 	if err := f.server.store.SetInstanceStorage("other/production", &state.S3Target{
 		Endpoint: p.srv.URL, Bucket: "bay-blobs", AccessKey: "other-key", SecretKey: "s", Region: "auto"}, false); err != nil {
@@ -600,5 +620,173 @@ func TestAWideKeyIsRememberedAsWide(t *testing.T) {
 	}
 	if raw, _ := os.ReadFile(filepath.Join(f.root, "state.json")); strings.Contains(string(raw), "wideInstanceStorage") {
 		t.Fatalf("an isolated key replacing it must clear the mark: %s", raw)
+	}
+}
+
+// Two spellings of one service are one service: a wide key registered as
+// localhost against backups at 127.0.0.1 was tried nowhere, and passed.
+func TestAnotherSpellingOfTheEndpointIsStillProbed(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	alias := strings.Replace(p.srv.URL, "127.0.0.1", "LOCALHOST", 1) + "/"
+	rec := putInstanceStorage(t, f, instanceBody(alias, "bay-blobs", "wide-key", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "reachable") {
+		t.Fatalf("a wide key on another spelling of the endpoint must be refused, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+func TestS3ServiceSeesThroughSpellings(t *testing.T) {
+	for _, same := range [][2]string{
+		{"http://127.0.0.1:9000", "http://localhost:9000/"},
+		{"https://minio.example.com", "https://MINIO.example.com:443"},
+		{"https://s3.amazonaws.com", "https://s3.eu-west-3.amazonaws.com"},
+		{"https://acc.r2.cloudflarestorage.com", "https://ACC.eu.r2.cloudflarestorage.com"},
+		{"http://[::1]:9000", "http://127.0.0.1:9000"},
+	} {
+		if !sameS3Service(same[0], same[1]) {
+			t.Errorf("%s and %s are one service", same[0], same[1])
+		}
+	}
+	for _, other := range [][2]string{
+		{"http://127.0.0.1:9000", "http://127.0.0.1:9001"},
+		{"https://acc.r2.cloudflarestorage.com", "https://other.r2.cloudflarestorage.com"},
+		{"https://minio.example.com", "https://s3.amazonaws.com"},
+	} {
+		if sameS3Service(other[0], other[1]) {
+			t.Errorf("%s and %s are two services", other[0], other[1])
+		}
+	}
+}
+
+// Nothing to try the key against, while the host keeps data elsewhere, is not
+// a proof: it may be the same service under a name Bay cannot see through.
+func TestAKeyTriedAgainstNothingIsNotIsolated(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	elsewhere := &state.S3Target{Endpoint: "https://elsewhere.example", Bucket: "backups", AccessKey: "backup-key", SecretKey: "s", Region: "auto"}
+	if err := f.server.store.SetS3(&state.S3Config{S3Target: *elsewhere, Keep: 7}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.server.store.SetStorage(nil); err != nil {
+		t.Fatal(err)
+	}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "demo-bucket", "own-bucket", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "tried against nothing") {
+		t.Fatalf("zero checks must not pass as isolated, got %d: %s", rec.Code, rec.Body)
+	}
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "demo-bucket", "own-bucket", `,"allowWide":true`)); rec.Code != http.StatusOK {
+		t.Fatalf("--allow-wide-key stores it, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// A key works in every region; the probe must sign for the bucket's, or a
+// multi-region host can never prove anything.
+func TestProbesSignForTheBucketsRegion(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.regions = map[string]string{"backups": "eu-west-3"}
+	b := *f.server.store.S3()
+	b.Region = "eu-west-3"
+	if err := f.server.store.SetS3(&b); err != nil {
+		t.Fatal(err)
+	}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", ""))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a scoped key must be proved against a bucket in another region, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// A switch that fails leaves the record as the .env still is: a stored key
+// the app never got makes every later deploy treat the bucket as its own.
+func TestAFailedSwitchStoresNothing(t *testing.T) {
+	f, p := isolationFixture(t, true)
+	f.server.repoint = func(string, string, string, *state.S3Target) error { return errors.New("disk full") }
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", ""))
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	if got := f.server.store.InstanceStorage("demo/production"); got != nil {
+		t.Fatalf("the key must not stay stored: %+v", got)
+	}
+	if got := instanceEnv(t, f)["S3_ACCESS_KEY_ID"]; got != "global-key" {
+		t.Fatalf("the app keeps the key it had, got %q", got)
+	}
+}
+
+// The swap restarts the app: a rollback watch still running from a deploy
+// would read that as the new release failing.
+func TestTheSwitchEndsTheRollbackWatch(t *testing.T) {
+	f, p := isolationFixture(t, true)
+	watch := f.server.beginWatch("demo/production")
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", "")); rec.Code != http.StatusOK {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	if watch.Err() == nil {
+		t.Fatal("the rollback watch must be cancelled by the switch")
+	}
+}
+
+// Not while a restore or a deploy works on the instance.
+func TestTheKeyIsNotChangedWhileTheInstanceIsBusy(t *testing.T) {
+	f, p := isolationFixture(t, true)
+	if _, ok := f.server.claimInstance("demo/production", "restore"); !ok {
+		t.Fatal("claim")
+	}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "demo-key", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "restore") {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// The proof takes up to two minutes; what it ends on must still hold.
+func TestAKeyIsNotStoredForAnAppRemovedMeanwhile(t *testing.T) {
+	f, _ := isolationFixture(t, false)
+	k := &state.S3Target{Endpoint: "https://s3.example", Bucket: "b", AccessKey: "k1", SecretKey: "s"}
+	if err := f.server.store.SetInstanceStorage("gone/production", k, false); err == nil {
+		t.Fatal("a key must not be stored for an instance that does not exist")
+	}
+	if err := f.server.store.SetInstanceStorage("demo/production", k, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, failure := f.server.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: deployableArtifact(t), Name: "other", Env: "production",
+	}); failure != nil {
+		t.Fatalf("deploy failed: %v", failure)
+	}
+	if err := f.server.store.SetInstanceStorage("other/production", k, false); err == nil {
+		t.Fatal("one key must not be stored for two instances")
+	}
+}
+
+// A key that may write but not read its own uploads breaks the app the
+// moment it serves one.
+func TestAKeyThatCannotReadItsOwnPrefixIsRefused(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.grants["no-read"] = []string{"PUT " + demoPrefix, "LIST " + demoPrefix, "DELETE " + demoPrefix}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "no-read", ""))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "cannot read") {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// A seed that failed in passing leaves the get proving nothing: a key that
+// reads without listing gets 403 on a made-up name and would pass.
+func TestAFailedSeedLeavesTheLocationUnverified(t *testing.T) {
+	f, p := isolationFixture(t, false)
+	p.seedFails = true
+	p.grants["reader-key"] = []string{demoPrefix, "GET backups/"}
+	rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "bay-blobs", "reader-key", ""))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "seed:") {
+		t.Fatalf("a location whose seed failed must be unverified, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// An app on a bucket of its own is told where its uploads are, not the
+// host-wide bucket's name.
+func TestNotBackedUpNamesTheAppsOwnBucket(t *testing.T) {
+	f, p := isolationFixture(t, true)
+	if rec := putInstanceStorage(t, f, instanceBody(p.srv.URL, "demo-bucket", "own-bucket", `,"moved":true`)); rec.Code != http.StatusOK {
+		t.Fatalf("got %d: %s", rec.Code, rec.Body)
+	}
+	app, _ := f.server.store.Get("demo/production")
+	if got := strings.Join(notBackedUp(f.server.store, app), "\n"); !strings.Contains(got, "demo-bucket") {
+		t.Fatalf("got %s", got)
 	}
 }

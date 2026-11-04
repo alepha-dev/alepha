@@ -67,7 +67,7 @@ func notBackedUp(store *state.Store, app state.App) []string {
 	out := []string{".env (secrets)"}
 	if blobsLiveInObjectStorage(app) {
 		where := "the configured bucket"
-		if cfg := store.Storage(); cfg != nil {
+		if cfg := store.StorageFor(app.Key()); cfg != nil {
 			where = cfg.Bucket
 		}
 		// "The blobs are in bucket X" is a different claim from "not covered",

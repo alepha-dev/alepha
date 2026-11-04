@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,13 +58,16 @@ type isolationCheck struct {
 }
 
 type isolationReport struct {
-	// Works is the positive half: the key can write, list and delete under
+	// Works is the positive half: the key can write, list, read and delete under
 	// its own prefix. A key that cannot is refused whatever else is true.
 	Works     bool             `json:"works"`
 	WorkError string           `json:"workError,omitempty"`
 	Checks    []isolationCheck `json:"checks"`
-	// Isolated is true only when every check came back denied.
+	// Isolated is true only when every check came back denied, and there was
+	// something to check when the host holds data elsewhere.
 	Isolated bool `json:"isolated"`
+	// Unproved says why a report with no failing check is still not isolated.
+	Unproved string `json:"unproved,omitempty"`
 }
 
 // storageHolders is every credential-holding target on the host: what the
@@ -89,16 +94,18 @@ type foreignLocation struct {
 }
 
 /*
-foreignLocations lists, for instance `key`, every place on the same endpoint
+foreignLocations lists, for instance `key`, every place on the same S3 service
 that holds data that is not its own.
 
-Same endpoint only: a key is minted by one S3 service and means nothing to
+Same service only: a key is minted by one S3 service and means nothing to
 another, so trying it elsewhere would only produce noise reported as safety.
+Endpoints are compared as services (sameS3Service), not as strings: a key
+registered as http://localhost:9000 against backups at http://127.0.0.1:9000,
+or on an AWS regional host against the global one, would otherwise be tried
+nowhere and pass.
 */
 func foreignLocations(hosts storageHolders, key string, own state.S3Target) []foreignLocation {
-	sameEndpoint := func(t state.S3Target) bool {
-		return strings.TrimRight(t.Endpoint, "/") == strings.TrimRight(own.Endpoint, "/")
-	}
+	sameEndpoint := func(t state.S3Target) bool { return sameS3Service(t.Endpoint, own.Endpoint) }
 	var out []foreignLocation
 	seen := map[string]bool{}
 	add := func(what string, t state.S3Target, prefix string) {
@@ -156,6 +163,46 @@ func foreignLocations(hosts storageHolders, key string, own state.S3Target) []fo
 	return out
 }
 
+/*
+s3Service names the S3 service an endpoint reaches, so two spellings of one
+service compare equal: the host lowercased, its default port made explicit,
+every loopback name one; every AWS host is AWS (an IAM key works in every
+region of the account) and an R2 host is its account.
+*/
+func s3Service(endpoint string) string {
+	raw := strings.TrimSpace(endpoint)
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Hostname() == "" {
+		return strings.ToLower(strings.TrimRight(endpoint, "/"))
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	port := u.Port()
+	if port == "" {
+		port = map[string]string{"http": "80", "https": "443"}[strings.ToLower(u.Scheme)]
+	}
+	switch {
+	case host == "amazonaws.com" || strings.HasSuffix(host, ".amazonaws.com") ||
+		strings.HasSuffix(host, ".amazonaws.com.cn"):
+		return "aws"
+	case strings.HasSuffix(host, ".r2.cloudflarestorage.com"):
+		account, _, _ := strings.Cut(host, ".")
+		return "r2:" + account
+	case host == "localhost" || strings.HasSuffix(host, ".localhost") || host == "::1":
+		host = "loopback"
+	default:
+		if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+			host = "loopback"
+		}
+	}
+	return host + ":" + port
+}
+
+// sameS3Service says whether two endpoints reach one S3 service.
+func sameS3Service(a, b string) bool { return s3Service(a) == s3Service(b) }
+
 // probeIsolation runs the positive and negative tests for one instance key.
 func probeIsolation(ctx context.Context, hosts storageHolders, key string, own state.S3Target) isolationReport {
 	name, env, _ := strings.Cut(key, "/")
@@ -175,6 +222,8 @@ func probeIsolation(ctx context.Context, hosts storageHolders, key string, own s
 		deleted := false
 		if err := probeOp(ctx, func(c context.Context) error { _, err := client.ListPage(c, prefix, 1); return err }); err != nil {
 			report.WorkError = "cannot list " + prefix + ": " + err.Error()
+		} else if err := probeOp(ctx, func(c context.Context) error { _, err := client.Get(c, probe); return err }); err != nil {
+			report.WorkError = "cannot read under " + prefix + ": " + err.Error()
 		} else if err := probeOp(ctx, func(c context.Context) error { return client.Delete(c, probe) }); err != nil {
 			report.WorkError = "cannot delete under " + prefix + ": " + err.Error()
 		} else {
@@ -189,8 +238,33 @@ func probeIsolation(ctx context.Context, hosts storageHolders, key string, own s
 		}
 	}
 
-	report.Checks, report.Isolated = probeLocations(ctx, own, foreignLocations(hosts, key, own))
+	locs := foreignLocations(hosts, key, own)
+	report.Checks, report.Isolated = probeLocations(ctx, own, locs)
+	if len(locs) == 0 && hosts.holdsOtherThan(key) {
+		// Nothing on this service to try it against while the host keeps data
+		// elsewhere: either it really is another service, or the same one
+		// under a name s3Service cannot see through (a CNAME, an IP). Zero
+		// checks proves nothing either way.
+		report.Isolated = false
+		report.Unproved = "nothing else Bay holds is on " + own.Endpoint +
+			", so the key was tried against nothing; if it is another S3 service, --allow-wide-key stores it"
+	}
 	return report
+}
+
+// holdsOtherThan says whether the host keeps any data an instance key could
+// reach other than `key`'s own: the backups, the host-wide apps bucket, or
+// another instance's bucket.
+func (h storageHolders) holdsOtherThan(key string) bool {
+	if h.backups != nil || h.storage != nil {
+		return true
+	}
+	for other := range h.instances {
+		if other != key {
+			return true
+		}
+	}
+	return false
 }
 
 // probeObject is the key every probe writes, under the prefix it tries;
@@ -248,23 +322,32 @@ it wrote.
 */
 func tryLocation(ctx context.Context, cred state.S3Target, loc foreignLocation) isolationCheck {
 	check := isolationCheck{What: loc.what, Bucket: loc.target.Bucket, Prefix: loc.prefix}
+	// Signed for the bucket's region, not the key's: on AWS a key works in
+	// every region, and a request signed for another one is refused as
+	// malformed, which would read as "unverified" on every multi-region host.
 	c, err := s3.New(s3.Config{Endpoint: loc.target.Endpoint, Bucket: loc.target.Bucket,
-		AccessKey: cred.AccessKey, SecretKey: cred.SecretKey, Region: cred.Region})
+		AccessKey: cred.AccessKey, SecretKey: cred.SecretKey, Region: loc.target.Region})
 	if err != nil {
 		check.Result, check.Error = "unverified", err.Error()
 		return check
 	}
 	key := loc.prefix + probeObject
 	readKey, seeded := key, false
+	var errs []string
 	if holder, err := s3.New(s3.Config{Endpoint: loc.target.Endpoint, Bucket: loc.target.Bucket,
 		AccessKey: loc.target.AccessKey, SecretKey: loc.target.SecretKey, Region: loc.target.Region}); err == nil {
 		seed := loc.prefix + probeSeed
-		if probeOp(ctx, func(op context.Context) error { return holder.Put(op, seed, []byte("bay isolation seed")) }) == nil {
+		switch err := probeOp(ctx, func(op context.Context) error { return holder.Put(op, seed, []byte("bay isolation seed")) }); {
+		case err == nil:
 			readKey, seeded = seed, true
 			defer removeProbe(ctx, loc.target, seed)
+		case !s3.IsDenied(err):
+			// Not the holder being read-only (where the made-up key stands in),
+			// a seed that did not happen: without it a 403 on the get could be
+			// AWS hiding a missing key from a key that may read everything.
+			errs = append(errs, "seed: "+err.Error())
 		}
 	}
-	var errs []string
 	try := func(op string, err error) {
 		var se *s3.StatusError
 		switch {
@@ -342,6 +425,13 @@ func (s *server) handleSetInstanceStorage(w http.ResponseWriter, r *http.Request
 	}
 	target := body.S3Target
 	key := app.Key()
+	// One change of an instance's key at a time, and none while a deploy or a
+	// restore works on it: the swap stops and restarts the app.
+	if holder, ok := s.claimInstance(key, "storage-key"); !ok {
+		writeError(w, http.StatusConflict, key+" is busy ("+holder+"): try again once it is done")
+		return
+	}
+	defer s.releaseInstance(key)
 
 	// Refusals that no flag lifts: these are not "could not prove it", they
 	// are "proved it is shared".
@@ -399,8 +489,11 @@ func (s *server) handleSetInstanceStorage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// What to put back if the switch fails: the instance's OWN record (nil
+	// when it was on the host-wide key), not StorageFor's fallback.
+	prevOwn, prevWide := s.store.InstanceStorage(key), s.store.InstanceStorageWide(key)
 	if err := s.store.SetInstanceStorage(key, &target, !report.Isolated); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusConflict, "not stored: "+err.Error())
 		return
 	}
 	if !report.Isolated {
@@ -413,7 +506,11 @@ func (s *server) handleSetInstanceStorage(w http.ResponseWriter, r *http.Request
 	// rewrites it; leaving it there would make the new key decorative.
 	if app.StorageBackend == deploy.BackendS3 {
 		if err := s.swapStorageKey(app, instance, &target); err != nil {
-			writeError(w, http.StatusInternalServerError, "key stored, but the app was not switched to it: "+err.Error(),
+			// The record goes back to what the .env still holds: a stored key
+			// the app does not have would make every later deploy read its
+			// bucket as one the app brought itself, and never hand it the key.
+			_ = s.store.SetInstanceStorage(key, prevOwn, prevWide)
+			writeError(w, http.StatusInternalServerError, "the app was not switched to this key, so it was not stored: "+err.Error(),
 				map[string]any{"isolation": report})
 			return
 		}
@@ -434,7 +531,9 @@ func (s *server) swapStorageKey(app state.App, instance string, target *state.S3
 	defer s.holdDuring(app.Key())()
 	wasRunning := s.runner.Running(app.Key())
 	if wasRunning {
-		_ = s.runner.Stop(app.Key(), stopGrace)
+		// stopForMaintenance ends a rollback watch still running after a
+		// deploy: it would read the stop as the new release failing.
+		_ = s.stopForMaintenance(app.Key())
 	}
 	if err := repoint(instance, app.Name, app.Env, target); err != nil {
 		if wasRunning {

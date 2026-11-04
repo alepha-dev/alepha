@@ -1047,6 +1047,14 @@ func (s *Store) InstanceStorage(key string) *S3Target {
 	return nil
 }
 
+// InstanceStorageWide says whether the instance's own key was stored with
+// `--allow-wide-key`.
+func (s *Store) InstanceStorageWide(key string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.WideInstanceStorage[key]
+}
+
 // AllInstanceStorage returns every instance's own credential, copied, keyed
 // by "name/env". The isolation probe needs the whole set: a new key has to
 // be shown unable to reach each of the others.
@@ -1064,9 +1072,31 @@ func (s *Store) AllInstanceStorage() map[string]S3Target {
 
 // SetInstanceStorage records (or, with nil, removes) an instance's own upload
 // credential. wide says it was stored although its isolation proof failed.
+//
+// Recording one is refused when the instance no longer exists or another
+// instance holds the same key, checked here under the lock: the proof before
+// it takes up to two minutes, and a `bay remove` or a second `bay config
+// s3:apps` in between would otherwise be undone or doubled.
 func (s *Store) SetInstanceStorage(key string, cfg *S3Target, wide bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if cfg != nil {
+		exists := false
+		for _, a := range s.state.Apps {
+			if a.Key() == key {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			return fmt.Errorf("%s no longer exists", key)
+		}
+		for other, t := range s.state.InstanceStorage {
+			if other != key && SameCredential(t, cfg) {
+				return fmt.Errorf("this key is already %s's", other)
+			}
+		}
+	}
 	delete(s.state.WideInstanceStorage, key)
 	if cfg == nil {
 		delete(s.state.InstanceStorage, key)
