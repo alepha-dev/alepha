@@ -16,11 +16,11 @@ import {
 } from "./sigilConfigVariable.ts";
 import type { AppEnvironmentItem } from "./useAppEnvironmentActions.ts";
 
-export interface AppEnvironmentSigilProps {
+export interface AppSigilFeaturesProps {
   /**
-   * The copy's `SIGIL_CONFIG` row, as the Environment table read it, or
+   * The copy's `SIGIL_CONFIG` row, as the Environment endpoint lists it, or
    * `undefined` when it has none. Mount this keyed by that row's `updatedAt`,
-   * so a save from either place re-seeds the switches.
+   * so a save re-seeds the switches.
    */
   stored: AppEnvironmentItem | undefined;
 }
@@ -28,16 +28,15 @@ export interface AppEnvironmentSigilProps {
 /**
  * What this copy's Sigil collects, as switches over `SIGIL_CONFIG` (#Q3103).
  *
- * ## Why here, and why only here
+ * ## Why only for a copy Lore deploys
  *
  * The Overview's capabilities card is read-only on purpose: for an app Lore
  * only hears from, what it sends is decided in its own deploy, and a switch
  * the sink cannot honour is worse than none. A copy Lore DEPLOYS is the one
- * case where Lore holds that deploy, so the switches belong on the tab that
- * holds its variables, which is exactly the tab gated on having an estate or
- * a stack environment. They write the same `SIGIL_CONFIG` row the table
- * below lists, through the same endpoint, so there is one source of truth
- * and no second path to keep in step.
+ * case where Lore holds that deploy, which is what the Sigil tab is gated on.
+ * The switches write the same `SIGIL_CONFIG` row the Environment tab lists,
+ * through the same endpoint, so there is one source of truth and no second
+ * path to keep in step.
  *
  * ## A variable changes nothing until the next deploy
  *
@@ -48,7 +47,7 @@ export interface AppEnvironmentSigilProps {
  * This is not the sigil's `kinds`, which decides what Lore ACCEPTS and is
  * enforced at ingest whatever the app sends.
  */
-const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
+const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
   const dialog = useDialog();
@@ -105,24 +104,24 @@ const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
 
       const tag = instance.version;
       if (!tag) {
-        toaster.success(tr("app.environment.sigil.savedNextDeploy"));
+        toaster.success(tr("app.sigil.savedNextDeploy"));
         return;
       }
       const redeploy = await dialog.confirm({
-        title: tr("app.environment.sigil.redeploy.title"),
+        title: tr("app.sigil.redeploy.title"),
         description: tr(
           tag === "latest"
-            ? "app.environment.sigil.redeploy.latest"
-            : "app.environment.sigil.redeploy.description",
+            ? "app.sigil.redeploy.latest"
+            : "app.sigil.redeploy.description",
           { args: [tag] },
         ),
-        confirmLabel: tr("app.environment.sigil.redeploy.confirm", {
+        confirmLabel: tr("app.sigil.redeploy.confirm", {
           args: [tag],
         }),
-        cancelLabel: tr("app.environment.sigil.redeploy.later"),
+        cancelLabel: tr("app.sigil.redeploy.later"),
       });
       if (!redeploy) {
-        toaster.success(tr("app.environment.sigil.savedNextDeploy"));
+        toaster.success(tr("app.sigil.savedNextDeploy"));
         return;
       }
       await deployApi.startDeploy({ params: target, body: { tag } });
@@ -136,7 +135,7 @@ const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
   }
 
   return (
-    <div data-testid="app-environment-sigil" className="flex flex-col gap-2">
+    <div data-testid="app-sigil-features" className="flex flex-col gap-2">
       <AutoForm
         form={form}
         layout="row"
@@ -145,14 +144,14 @@ const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
         disabled={!can("deploy:manage")}
         disabledIfPristine
         requiredMarker={false}
-        submitLabel={tr("app.environment.sigil.save")}
+        submitLabel={tr("app.sigil.save")}
         groups={[
           {
-            title: tr("app.environment.sigil.title"),
+            title: tr("app.sigil.title"),
             description: tr(
               state === "unreadable"
-                ? "app.environment.sigil.unreadable"
-                : "app.environment.sigil.description",
+                ? "app.sigil.unreadable"
+                : "app.sigil.description",
             ),
             fields: [
               "analytics",
@@ -167,42 +166,42 @@ const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
         ]}
         fields={{
           analytics: {
-            label: tr("app.environment.sigil.analytics"),
-            description: tr("app.environment.sigil.analytics.desc"),
+            label: tr("app.sigil.analytics"),
+            description: tr("app.sigil.analytics.desc"),
           },
           blights: {
-            label: tr("app.environment.sigil.blights"),
-            description: tr("app.environment.sigil.blights.desc"),
+            label: tr("app.sigil.blights"),
+            description: tr("app.sigil.blights.desc"),
           },
           vitals: {
-            label: tr("app.environment.sigil.vitals"),
-            description: tr("app.environment.sigil.vitals.desc"),
+            label: tr("app.sigil.vitals"),
+            description: tr("app.sigil.vitals.desc"),
           },
           feedback: {
-            label: tr("app.environment.sigil.feedback"),
-            description: tr("app.environment.sigil.feedback.desc"),
+            label: tr("app.sigil.feedback"),
+            description: tr("app.sigil.feedback.desc"),
           },
           feedbackButton: {
-            label: tr("app.environment.sigil.feedbackButton"),
-            description: tr("app.environment.sigil.feedbackButton.desc"),
+            label: tr("app.sigil.feedbackButton"),
+            description: tr("app.sigil.feedbackButton.desc"),
             items: [
               {
                 value: "bottom-right",
-                label: tr("app.environment.sigil.feedbackButton.bottomRight"),
+                label: tr("app.sigil.feedbackButton.bottomRight"),
               },
               {
                 value: "bottom-left",
-                label: tr("app.environment.sigil.feedbackButton.bottomLeft"),
+                label: tr("app.sigil.feedbackButton.bottomLeft"),
               },
               {
                 value: "hidden",
-                label: tr("app.environment.sigil.feedbackButton.hidden"),
+                label: tr("app.sigil.feedbackButton.hidden"),
               },
             ],
           },
           feedbackButtonExcludedPaths: {
-            label: tr("app.environment.sigil.excludedPaths"),
-            description: tr("app.environment.sigil.excludedPaths.desc"),
+            label: tr("app.sigil.excludedPaths"),
+            description: tr("app.sigil.excludedPaths.desc"),
             area: true,
             rows: 3,
             placeholder: "/feedback/**",
@@ -211,8 +210,8 @@ const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
             inputProps: { className: "w-72 font-mono text-sm" },
           },
           reportOutsideProduction: {
-            label: tr("app.environment.sigil.outsideProduction"),
-            description: tr("app.environment.sigil.outsideProduction.desc"),
+            label: tr("app.sigil.outsideProduction"),
+            description: tr("app.sigil.outsideProduction.desc"),
           },
         }}
       />
@@ -220,4 +219,4 @@ const AppEnvironmentSigil = (props: AppEnvironmentSigilProps) => {
   );
 };
 
-export default AppEnvironmentSigil;
+export default AppSigilFeatures;

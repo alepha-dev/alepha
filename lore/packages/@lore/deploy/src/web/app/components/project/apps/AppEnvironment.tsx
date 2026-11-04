@@ -10,7 +10,6 @@ import type { AppSecretController } from "../../../../../api/controllers/AppSecr
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppEnvironmentAdd from "./AppEnvironmentAdd.tsx";
 import AppEnvironmentImport from "./AppEnvironmentImport.tsx";
-import AppEnvironmentSigil from "./AppEnvironmentSigil.tsx";
 import {
   type AppEnvironmentItem,
   useAppEnvironmentActions,
@@ -94,23 +93,9 @@ const AppEnvironment = () => {
   // Rank, not ownership: `deploy:manage` is its own permission and an owner
   // may have granted it to a rank. ⚠️ Never the boundary.
   const canDeploy = can("deploy:manage");
-  // The Sigil switches (#Q3103), for a copy that reports or whose build can:
-  // a sigil, a declared SIGIL_CONFIG, or one already set by hand.
-  const sigilConfig = items.find((item) => item.key === "SIGIL_CONFIG");
-  const showSigil =
-    !!instance.sigil ||
-    !!sigilConfig ||
-    declared.some((key) => key.name === "SIGIL_CONFIG");
 
   return (
     <div className="flex flex-col gap-4 p-4" data-testid="app-environment">
-      {data && showSigil ? (
-        <AppEnvironmentSigil
-          // Re-seeded by a save from either the switches or the table.
-          key={`${instance.id}-${sigilConfig?.updatedAt ?? "unset"}`}
-          stored={sigilConfig}
-        />
-      ) : null}
       {/*
         The error state is the tab's own, and the empty one is not it:
         folding them together is how "nothing set" comes to read as

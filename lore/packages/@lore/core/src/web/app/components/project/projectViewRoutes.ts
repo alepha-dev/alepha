@@ -50,6 +50,7 @@ export const ROUTES_APP = new Set([
   "appDeploy",
   "appBackups",
   "appEnvironment",
+  "appSigil",
   "appSettings",
 ]);
 
@@ -218,6 +219,7 @@ export const SECTION_HREF_ROUTES: Record<
   appDeploy: "projectApps",
   appBackups: "projectApps",
   appEnvironment: "projectApps",
+  appSigil: "projectApps",
   appSettings: "projectApps",
 };
 
@@ -295,6 +297,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   appDeploy: "project.menu.apps",
   appBackups: "project.menu.apps",
   appEnvironment: "project.menu.apps",
+  appSigil: "project.menu.apps",
   appSettings: "project.menu.apps",
   ...Object.fromEntries(
     ROUTES_SETTINGS.map((route) => [route, "project.menu.settings"]),
