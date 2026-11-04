@@ -20,6 +20,7 @@ import {
 import { useCallback } from "react";
 
 import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
+import type { ShowcaseController } from "@/showcase/ShowcaseController.ts";
 import { Showcase } from "@/web/components/Showcase.tsx";
 import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
 
@@ -152,11 +153,7 @@ const fetchNothing = async (): Promise<Page<ShowcaseMember>> => ({
 
 const Basic = () => {
   const toast = useToast();
-  const client = useClient() as unknown as {
-    findShowcaseMembers: (a: {
-      query: Record<string, unknown>;
-    }) => Promise<Page<ShowcaseMember>>;
-  };
+  const client = useClient<ShowcaseController>();
 
   const fetcher = useCallback(
     async (params: {
