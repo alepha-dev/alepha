@@ -132,7 +132,9 @@ database.
 built-in (`serve --backup-interval`, keep 14) < global (`bay config backup`)
 < app (`bay deploy --backup-policy`, replaced by every deploy) < operator
 (`bay backup config <name/env>`, kept across deploys). A layer sets only what
-it names; the rest comes from below.
+it names; the rest comes from below. The app's retention may keep more than
+the global one, never less: a deploy cannot delete the history the operator
+asked for.
 
 ```json
 {
@@ -211,7 +213,9 @@ dismissed; `verify.passed|failed`; `target.down|up`), spooled in `connector-even
 (500 newest) and sent only to a Lore whose welcome lists the `events` feature.
 The console's verbs are the CLI's, through the same functions:
 `backup` (with a tag), `backups-list`, `backup-verify`, `target-probe`,
-`backup-policy` (the operator layer) and `restore` (a reason, or a dry run).
+`backup-policy` (the operator layer, sent from the estate owner's console
+only: a project declares its policy at deploy) and `restore` (a reason, or a
+dry run).
 The two writes are refused while the estate's `deployAllowed` is off, and a
 restore and a deploy of one instance refuse each other with a 409.
 
