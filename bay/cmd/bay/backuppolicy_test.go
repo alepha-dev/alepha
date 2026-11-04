@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/backuppolicy"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -291,5 +292,34 @@ func TestAConsoleDeployKeepsTheDeclaredPolicy(t *testing.T) {
 	app := f.app(t)
 	if app.BackupDeclared == nil || app.BackupDeclared.Schedule == nil || app.BackupDeclared.Schedule.Every != "6h" {
 		t.Fatalf("the console deploy wiped the declared policy, got %+v", app.BackupDeclared)
+	}
+}
+
+// "Keep everything, for 400 days" keeps what is younger and deletes what is
+// older, rather than being refused at every backup while the bucket grows.
+func TestMaxAgeAloneKeepsEverythingYoungerThanIt(t *testing.T) {
+	eff := backuppolicy.Resolve((&server{}).builtInBackupLayer(), backuppolicy.Layer{Source: backuppolicy.Global,
+		Policy: &backuppolicy.Policy{Retention: &backuppolicy.Retention{Keep: backuppolicy.Int(0), Daily: backuppolicy.Int(0),
+			Weekly: backuppolicy.Int(0), Monthly: backuppolicy.Int(0), Yearly: backuppolicy.Int(0), Hourly: backuppolicy.Int(0), MaxAge: "30d"}}})
+	if eff.KeepsEverything() {
+		t.Fatalf("a maxAge prunes: %+v", eff)
+	}
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	var entries []backup.Entry
+	for d := range 60 {
+		ts := now.Add(-time.Duration(d) * 24 * time.Hour)
+		entries = append(entries, backup.Entry{Key: ts.Format("20060102"), Timestamp: ts, Kind: backup.KindBundle})
+	}
+	kept := 0
+	for _, d := range backup.PlanRetention(entries, nil, retentionRules(eff), now) {
+		if d.Keep {
+			kept++
+			if now.Sub(d.Entry.Timestamp) > 30*24*time.Hour {
+				t.Errorf("%s is older than 30d and kept: %v", d.Entry.Key, d.Reasons)
+			}
+		}
+	}
+	if kept != 31 {
+		t.Fatalf("want the 31 backups of the last 30 days kept, got %d", kept)
 	}
 }

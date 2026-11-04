@@ -68,9 +68,18 @@ const defaultVerifyEvery = "7d"
 const defaultKeepPreDeploy = 5
 
 // retentionRules turns a policy into what package backup prunes with.
+//
+// A policy that counts nothing but sets maxAge ("keep everything, for 400
+// days") keeps every backup younger than that: as rules it is keep-all capped
+// by maxAge, which package backup would otherwise refuse as keeping nothing in
+// particular, and the bucket would grow forever.
 func retentionRules(p backuppolicy.Effective) backup.Rules {
+	keep := p.Keep
+	if p.MaxAge > 0 && keep == 0 && p.Hourly == 0 && p.Daily == 0 && p.Weekly == 0 && p.Monthly == 0 && p.Yearly == 0 {
+		keep = backuppolicy.MaxKeep
+	}
 	return backup.Rules{
-		Keep: p.Keep, Hourly: p.Hourly, Daily: p.Daily, Weekly: p.Weekly, Monthly: p.Monthly, Yearly: p.Yearly,
+		Keep: keep, Hourly: p.Hourly, Daily: p.Daily, Weekly: p.Weekly, Monthly: p.Monthly, Yearly: p.Yearly,
 		MaxAge: p.MaxAge, KeepPreDeploy: p.KeepPreDeploy, KeepTagged: p.KeepTagged, Location: p.Location(),
 	}
 }
