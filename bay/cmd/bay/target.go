@@ -14,7 +14,7 @@ discovered.
 
 Without it, a bucket that went down at 1am is found at 3am by the first
 scheduled backup, reported as that app's failure, and found again by every
-other app's — N failures for one cause, none of them saying "the bucket". With
+other app's: N failures for one cause, none of them saying "the bucket". With
 it, the bucket has a status of its own, a probe every few minutes, one event
 when it goes down and one when it comes back, and a backup failure can say
 which of the two broke.

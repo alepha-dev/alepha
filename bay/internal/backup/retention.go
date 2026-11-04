@@ -115,7 +115,7 @@ Pure, so `bay backups --plan` shows exactly what the next prune will do.
 
 Two safety nets sit on top of the rules: the newest complete backup is always
 kept, and when the newest is under half the size of the largest of the last
-30 days — data/ emptied, a broken migration — the newest backup of normal size
+30 days (data/ emptied, a broken migration), the newest backup of normal size
 is kept too, so the rotation cannot push the good state out.
 */
 func PlanRetention(complete, incomplete []Entry, r Rules, now time.Time) []Decision {

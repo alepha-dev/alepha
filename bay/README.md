@@ -66,9 +66,9 @@ from the deploy. The worst failure of a backup system is somebody believing it
 covers more than it does.
 
 **A backup never sits in memory.** The snapshot is compressed file to file and
-streamed to the bucket — in one PUT up to 16 MiB, as a multipart upload in
+streamed to the bucket (in one PUT up to 16 MiB, as a multipart upload in
 16 MiB parts beyond (a failed part is retried, a failed upload aborted so no
-invisible parts stay billed) — then checked with HEAD: it counts only when the
+invisible parts stay billed), then checked with HEAD: it counts only when the
 bucket reports the size that was sent. A restore streams back through gunzip
 into a file, and a download cut short is an error, never a smaller database.
 The size of a database is bounded by the disk, not by Bay's RAM.
@@ -114,7 +114,7 @@ fails the restore goes on, and the replaced files are still kept on disk as
 newest, or `--key`/`--at`), checks each file's sha256, opens it with SQLite
 and compares its table count with the manifest, without touching the app.
 `--all` tests every app and exits non-zero if one fails. The policy's
-`verify.every` (7 days by default, `off` to disable, 1h–90d) runs it on its
+`verify.every` (7 days by default, `off` to disable, 1h to 90d) runs it on its
 own, one app per scheduler tick; a failure is retried after 6h. The last
 result shows in the app's state (`lastVerifyAt`, `lastVerifyError`).
 
@@ -184,13 +184,13 @@ prune would delete, and why.
 
 A field this Bay does not enforce is refused rather than stored, so a policy
 never reads as doing more than it does. The app layer is untrusted input: it
-is checked before the upload is staged (every 5m–31d, keep 1–365 per rule) and a bad one
+is checked before the upload is staged (every 5m to 31d, keep 1 to 365 per rule) and a bad one
 refuses the deploy. From an Alepha project, the app layer is the environment's
 `backup` option in `alepha.config.ts` (`bay({ host, backup: { … } })`), which
 `alepha deploy` sends as `--backup-policy`; leaving it out sends nothing, so
 the next deploy drops the earlier declaration. `--backup-interval 0` turns scheduling off by default, and
 any layer can turn it back on for one app; `enabled: false` stops the schedule
-only — `bay backup` still works, and the app is not reported stale.
+only: `bay backup` still works, and the app is not reported stale.
 `bay status` and the inventory show the effective policy with the layer behind
 each value, and judge staleness against the app's own interval. A legacy
 `bay config s3 --keep N` is the global keep until `bay config backup --keep`

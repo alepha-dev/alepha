@@ -27,12 +27,12 @@ The backup policy, in layers (see package backuppolicy):
     kept, Bay pruning, no backup on deploy.
   - global is `bay config backup`, plus the older `bay config s3:backups
     --keep`, which still counts as the global retention when the policy itself
-    sets none — so a host configured before policies existed prunes exactly as
+    sets none, so a host configured before policies existed prunes exactly as
     it did.
   - app is what the deploy declared (`bay deploy --backup-policy`), untrusted.
   - operator is `bay backup config <name/env>`, for one instance.
 
-Every consumer — the scheduler, retention, `bay status`, the inventory —
+Every consumer (the scheduler, retention, `bay status`, the inventory)
 reads `effectiveBackupPolicy`, so none of them can disagree about an app.
 */
 
@@ -270,7 +270,7 @@ func policyLine(p backuppolicy.Effective) string {
 	}
 	when := p.ScheduleWords() + " (" + string(p.Sources.Schedule) + ")"
 	if !p.Enabled {
-		when = "schedule off (" + string(p.Sources.Enabled) + ") — only `bay backup` takes one"
+		when = "schedule off (" + string(p.Sources.Enabled) + "): only `bay backup` takes one"
 	}
 	if p.OnDeploy {
 		when += ", and before each deploy (" + string(p.Sources.OnDeploy) + ")"

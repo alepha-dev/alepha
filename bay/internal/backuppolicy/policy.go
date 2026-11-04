@@ -7,7 +7,7 @@ kept, decided in layers.
 Each layer sets only the fields it cares about and leaves the rest to the one
 below. The effective value of every field is reported together with the layer
 it came from, because "kept 3 backups" is a fact nobody can act on until they
-know who decided it — the app's author, the host's operator, or nobody.
+know who decided it: the app's author, the host's operator, or nobody.
 
 Only the fields Bay enforces are declared. A policy field that is stored but
 not acted on is worse than none: whoever set `at: 03:00` would read it back

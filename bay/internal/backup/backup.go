@@ -363,7 +363,7 @@ func copyFileSync(src, dst string) error {
 
 /*
 Prune applies the retention rules: it deletes what Plan says goes, and returns
-it so the caller can report it — retention that happens invisibly is
+it so the caller can report it: retention that happens invisibly is
 indistinguishable from backups going missing.
 
 Rules that keep nothing in particular are refused rather than read as "keep

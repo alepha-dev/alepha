@@ -17,8 +17,8 @@ import (
 /*
 Restore and the restore test.
 
-A restore reads one backup — the newest, the one named by --key, the newest
-at or before --at, of this instance or of the one named by --from — verifies
+A restore reads one backup (the newest, the one named by --key, the newest
+at or before --at, of this instance or of the one named by --from), verifies
 every database in it, takes a pre-restore backup of the data it is about to
 replace, then stops the app, swaps the files and starts it again. --dry-run
 stops after the verify and says what would change.

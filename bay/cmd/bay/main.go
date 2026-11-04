@@ -2279,7 +2279,7 @@ func cmdStatus(args []string) error {
 			}
 			if stale {
 				problems++
-				fmt.Printf("           ⚠ stale — expected every %s\n", backuppolicy.FormatDuration(every))
+				fmt.Printf("           ⚠ stale: expected every %s\n", backuppolicy.FormatDuration(every))
 			}
 		}
 		if a.LastBackupError != "" {

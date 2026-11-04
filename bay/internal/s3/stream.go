@@ -27,7 +27,7 @@ PutFile uploads the file at path to key without holding it in memory.
 A file up to PartSize goes in one PUT; a larger one as a multipart upload of
 PartSize parts, so memory stays flat whatever the database weighs and a
 network hiccup costs one part, not the whole upload. Either way the body is
-read twice — once to hash it for the signature, once to send it — which is
+read twice (once to hash it for the signature, once to send it), which is
 the price of signing the payload rather than sending it unsigned.
 
 The object is then checked with HEAD: an upload is only done when the bucket

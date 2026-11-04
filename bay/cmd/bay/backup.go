@@ -871,7 +871,7 @@ func (s *server) handleRestoreDismiss(w http.ResponseWriter, r *http.Request) {
 //
 // The interval is only the built-in default now: each app's effective policy
 // (global, app-declared, operator) decides its own, so the loop runs even when
-// `--backup-interval 0` turned the default off — an operator may still have
+// `--backup-interval 0` turned the default off; an operator may still have
 // switched one app on.
 func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
