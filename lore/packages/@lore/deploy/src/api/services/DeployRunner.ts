@@ -63,7 +63,7 @@ export interface DeployRequest {
   credential: {
     apiToken: string;
     accountId: string;
-    jurisdiction?: "eu" | "fedramp";
+    jurisdiction?: "eu" | "us" | "fedramp";
   };
 
   /**

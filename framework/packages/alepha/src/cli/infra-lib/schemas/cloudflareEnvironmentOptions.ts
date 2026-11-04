@@ -26,13 +26,19 @@ export const cloudflareEnvironmentOptionsSchema =
       )
       .optional(),
     /**
-     * Cloudflare data jurisdiction for R2 buckets and D1 databases.
+     * Cloudflare data jurisdiction for R2 buckets, D1 databases, KV
+     * namespaces and queues.
      * - "eu": data stays within the EU
+     * - "us": data stays within the United States
      * - "fedramp": FedRAMP-authorized regions
+     *
+     * Under a jurisdiction the KV namespace and queue names carry it as a
+     * suffix (`<name>-eu`), since a jurisdiction is fixed at creation and a
+     * global resource of the old name must never be reused.
      *
      * Omit for the default (global) jurisdiction.
      */
-    jurisdiction: z.enum(["eu", "fedramp"]).optional(),
+    jurisdiction: z.enum(["eu", "us", "fedramp"]).optional(),
     /**
      * Cloudflare account ID to deploy into.
      *

@@ -103,7 +103,7 @@ describe("platform environments", () => {
     }) => {
       const orchestrator = await resolve({
         production: cloudflare(),
-        staging: cloudflare({ jurisdiction: "us" as never }),
+        staging: cloudflare({ jurisdiction: "apac" as never }),
       });
 
       await expect(

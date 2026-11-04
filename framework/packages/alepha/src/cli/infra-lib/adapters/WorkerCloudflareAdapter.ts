@@ -47,7 +47,7 @@ import {
 export interface WorkerCloudflareCredential {
   apiToken: string;
   accountId: string;
-  jurisdiction?: "eu" | "fedramp";
+  jurisdiction?: "eu" | "us" | "fedramp";
 }
 
 /**
@@ -239,11 +239,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     }
 
     if (ctx.resources.hasKV) {
-      const name = ctx.naming.kv();
+      const name = ctx.naming.kv(this.jurisdictionOf());
       tasks.push({
         name: `provision kv (${name})`,
         handler: async () => {
           const namespace = await api.ensureKV(name);
+          if (this.jurisdictionOf()) {
+            await this.warnGlobalLeftBehind(api, "kv", ctx.naming.kv());
+          }
           this.provisioned.CLOUDFLARE_KV_NAME = name;
           this.provisioned.CLOUDFLARE_KV_ID = namespace.id;
           this.provisionedResources.kv = { name, id: namespace.id };
@@ -252,7 +255,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     }
 
     if (ctx.resources.hasQueue) {
-      const name = ctx.naming.queue();
+      const name = ctx.naming.queue(this.jurisdictionOf());
       tasks.push({
         name: `provision queue (${name})`,
         handler: async () => {
@@ -260,6 +263,9 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
           // names one Cloudflare does not have is refused at bind time.
           const dlq = `${name}-dlq`;
           await Promise.all([api.ensureQueue(name), api.ensureQueue(dlq)]);
+          if (this.jurisdictionOf()) {
+            await this.warnGlobalLeftBehind(api, "queue", ctx.naming.queue());
+          }
           this.provisioned.CLOUDFLARE_QUEUE_NAME = name;
           this.provisionedResources.queue = name;
           this.provisionedResources.dlq = dlq;
@@ -288,6 +294,31 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
 
   protected jurisdictionOf(): string | undefined {
     return this.credential?.jurisdiction;
+  }
+
+  /**
+   * Names the global resource an environment left behind when it moved under
+   * a jurisdiction.
+   *
+   * Under a jurisdiction the KV namespace and queue carry it as a suffix, so
+   * the global one of the unsuffixed name is never reused, and it is not
+   * migrated or deleted either: pre-v1, its data stays where it was. The
+   * deploy says so rather than leave it to be found in the dashboard.
+   */
+  protected async warnGlobalLeftBehind(
+    api: CloudflareProvisionClient,
+    kind: "kv" | "queue",
+    globalName: string,
+  ): Promise<void> {
+    const found =
+      kind === "kv"
+        ? (await api.listKV()).some((it) => it.title === globalName)
+        : (await api.listQueues()).some((it) => it.queue_name === globalName);
+    if (found) {
+      this.log.warn(
+        `The global ${kind === "kv" ? "KV namespace" : "queue"} '${globalName}' is left behind: under a jurisdiction this environment uses its own, suffixed one. Its data is not migrated; delete it by hand once it is no longer needed.`,
+      );
+    }
   }
 
   /**

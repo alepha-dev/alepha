@@ -127,4 +127,43 @@ describe("NamingService", () => {
       expect(ctx.worker()).toBe("acme-portal-staging");
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // jurisdiction suffix (#Q3060)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("jurisdiction", () => {
+    it("leaves the KV and queue names alone without a jurisdiction", () => {
+      const naming = createNaming("acme", "production");
+
+      expect(naming.kv()).toBe("acme-production");
+      expect(naming.queue()).toBe("acme-production");
+      expect(naming.kv(undefined)).toBe("acme-production");
+    });
+
+    it("suffixes the KV and queue names with the jurisdiction", () => {
+      const naming = createNaming("acme", "production");
+
+      expect(naming.kv("eu")).toBe("acme-production-eu");
+      expect(naming.kv("us")).toBe("acme-production-us");
+      expect(naming.queue("fedramp")).toBe("acme-production-fedramp");
+    });
+
+    it("never suffixes the other resources", () => {
+      const naming = createNaming("acme", "production");
+
+      expect(naming.d1()).toBe("acme-production");
+      expect(naming.r2()).toBe("acme-production");
+      expect(naming.worker()).toBe("acme-production");
+    });
+
+    it("shortens the base, not the suffix, so the queue and its DLQ fit 63 characters", () => {
+      const naming = createNaming("a".repeat(40), "b".repeat(40));
+
+      const queue = naming.queue("fedramp");
+      expect(queue.endsWith("-fedramp")).toBe(true);
+      expect(`${queue}-dlq`.length).toBeLessThanOrEqual(63);
+      expect(queue).not.toMatch(/--/);
+    });
+  });
 });

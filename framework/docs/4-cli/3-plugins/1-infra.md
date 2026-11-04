@@ -82,7 +82,7 @@ From `alepha/cli/infra`. Node only.
 | -------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `domain`       | `string`                      | Custom domain, attached as a Cloudflare Custom Domain. A plain host: a wildcard is refused. Omit to use `*.workers.dev`.    |
 | `services`     | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`.                                                            |
-| `jurisdiction` | `"eu" \| "fedramp"`           | Cloudflare data jurisdiction for R2 buckets and D1 databases.                                                               |
+| `jurisdiction` | `"eu" \| "us" \| "fedramp"`   | Cloudflare data jurisdiction for R2 buckets, D1 databases, KV namespaces and queues. See [Jurisdictions](#jurisdictions).   |
 | `accountId`    | `string`                      | Cloudflare account ID. Falls back to `CLOUDFLARE_ACCOUNT_ID`, then to the token's account when it is scoped to exactly one. |
 
 ### `bay()`
@@ -116,6 +116,14 @@ export default defineConfig({
 ```
 
 Settings shared by several environments repeat per environment; a plain `const` holding them is the way to share them.
+
+### Jurisdictions
+
+`jurisdiction` keeps an environment's data inside one region: `eu`, `us` or `fedramp`. It applies to every resource the deploy creates: the D1 database, the R2 bucket, the KV namespace and the job queue with its dead-letter queue.
+
+Cloudflare sets a jurisdiction when a resource is created and never changes it afterwards. So under a jurisdiction the KV namespace and the queues carry it in their names, as a suffix: `myapp-production-eu`, `myapp-production-eu-dlq`. A global namespace or queue of the unsuffixed name is never reused, and the first deploy under a jurisdiction creates fresh ones in it. Without a jurisdiction the names have no suffix, as before.
+
+The global KV namespace or queue an environment used before it moved under a jurisdiction is not migrated or deleted: the deploy names it once, and its data stays where it was. Delete it by hand when nothing needs it. The bindings follow the new resources, so `env.<BINDING>` in app code does not change. D1 and R2 keep their names: they already took the jurisdiction at creation.
 
 ## Secrets
 
