@@ -1,0 +1,20 @@
+{
+  "backups": [
+    {
+      "at": "2026-11-02T14:49:15Z",
+      "bytes": 937,
+      "files": 2,
+      "key": "apps/demo-production/db/20261102T144915Z/manifest.json",
+      "kind": "bundle",
+      "tag": "pre-upgrade"
+    }
+  ],
+  "catalog": {
+    "count": 1,
+    "listedAt": "2026-11-02T14:49:15Z",
+    "newestAt": "2026-11-02T14:49:15Z",
+    "oldestAt": "2026-11-02T14:49:15Z",
+    "totalBytes": 937
+  },
+  "truncated": 12
+}

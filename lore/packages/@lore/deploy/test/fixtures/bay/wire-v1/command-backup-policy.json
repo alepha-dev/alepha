@@ -1,0 +1,11 @@
+{
+  "type": "command",
+  "id": "5b8e2c17-9d4a-4e63-b0f1-2a3c4d5e6f70",
+  "kind": "backup-policy",
+  "app": "lore",
+  "environment": "production",
+  "policy": {
+    "schedule": { "every": "6h", "timezone": "Europe/Paris" },
+    "retention": { "daily": 7, "weekly": 4 }
+  }
+}

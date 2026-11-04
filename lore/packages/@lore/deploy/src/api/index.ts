@@ -7,6 +7,7 @@ import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AppController } from "./controllers/AppController.ts";
 import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
+import { BackupController } from "./controllers/BackupController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
@@ -248,6 +249,7 @@ export const LoreDeployApi = $module({
     EstateController,
     ProjectEstateController,
     EstateCommandController,
+    BackupController,
     EstateSocketController,
     EstatePullController,
     AdminEstateController,
@@ -264,6 +266,7 @@ export { AdminEstateController } from "./controllers/AdminEstateController.ts";
 export { AppController } from "./controllers/AppController.ts";
 export { AppSecretController } from "./controllers/AppSecretController.ts";
 export { ArtifactController } from "./controllers/ArtifactController.ts";
+export { BackupController } from "./controllers/BackupController.ts";
 export { BlightController } from "./controllers/BlightController.ts";
 export { DeployController } from "./controllers/DeployController.ts";
 export { EstateCommandController } from "./controllers/EstateCommandController.ts";
@@ -310,6 +313,7 @@ export { DeployService } from "./services/DeployService.ts";
 export { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 export { EstateCommandService } from "./services/EstateCommandService.ts";
 export { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
+export { EstateEventService } from "./services/EstateEventService.ts";
 export { EstateInventoryService } from "./services/EstateInventoryService.ts";
 export { EstateService } from "./services/EstateService.ts";
 export { EstateStatsService } from "./services/EstateStatsService.ts";

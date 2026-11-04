@@ -204,6 +204,20 @@ export const appInstances = $entity({
      */
     resourceName: z.string().max(100).optional(),
     /**
+     * The estate this copy last deployed to under {@link resourceName}.
+     *
+     * ⚠️ `estateId` alone says where the copy will deploy NEXT, not what it
+     * runs as there: a copy moved to another estate keeps its stored name,
+     * and on that estate the name may already be another project's instance
+     * (a project renamed away from a slug that a new project took). Anything
+     * that acts on the running instance by name - the Backups tab's commands
+     * and restores - requires this to equal `estateId`.
+     *
+     * A logical reference, not a `db.ref`: a foreign key here would be a
+     * rebuild of `app_instances`, a cascade parent (see `apps/lore/CLAUDE.md`).
+     */
+    resourceEstateId: z.uuid().optional(),
+    /**
      * Whether this copy's data may be deleted with it.
      *
      * ## ⚠️ Decided at CREATE and never afterwards

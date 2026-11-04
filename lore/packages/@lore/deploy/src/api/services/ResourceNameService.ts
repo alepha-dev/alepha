@@ -1,4 +1,5 @@
 import { projects } from "@lore/core/schemas";
+import { $hook } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
@@ -48,6 +49,43 @@ export class ResourceNameService {
     }
     return name;
   }
+
+  /**
+   * A Bay deploy that came back `done` vouches for its copy: it now runs as
+   * its name on that estate (`resourceEstateId`), which is what lets its
+   * Backups tab drive the instance.
+   *
+   * ⚠️ **On success, never when queued.** A deploy refused, failed or timed
+   * out never replaced what ran under that name, which may be another
+   * project's instance (a copy moved away and still running there): vouching
+   * at queue time handed its backups and restores to whoever clicked deploy.
+   */
+  protected readonly onCommandProgressed = $hook({
+    on: "estate:command:progressed",
+    handler: async ({ command }) => {
+      if (command.kind !== "deploy" || command.status !== "done") {
+        return;
+      }
+      const { app, environment, project } = command.payload;
+      if (!app || !environment) {
+        return;
+      }
+      const name = project
+        ? `${project}-${app}-${environment}`
+        : `${app}-${environment}`;
+      const copy = await this.instances.findOne({
+        where: {
+          estateId: { eq: command.estateId },
+          resourceName: { eq: name },
+        },
+      });
+      if (copy && copy.resourceEstateId !== command.estateId) {
+        await this.instances.updateById(copy.id, {
+          resourceEstateId: command.estateId,
+        });
+      }
+    },
+  });
 
   /**
    * The project segment a Bay deploy sends, taken from the stored name.
@@ -141,9 +179,15 @@ export class ResourceNameService {
     if (scope.length === 0) {
       return;
     }
+    // A copy moved away keeps running under its name where it last deployed
+    // (`resourceEstateId`) until somebody removes it there: that name is not
+    // free either.
     const holder = await this.instances.findOne({
       where: {
-        estateId: { inArray: scope },
+        or: [
+          { estateId: { inArray: scope } },
+          { resourceEstateId: { inArray: scope } },
+        ],
         resourceName: { eq: name },
         id: { ne: instance.id },
       },

@@ -45,7 +45,7 @@ func TestSignMatchesAWSPublishedVectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			c.sign(req, "/", tc.query, nil)
+			c.sign(req, "/", tc.query, sha256Hex(nil))
 
 			want := "AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request, " +
 				"SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=" + tc.want

@@ -101,6 +101,36 @@ export const estateCommandPayloadSchema = z.object({
    * stack member's estate comes from its stack environment, not its row.
    */
   instanceId: z.uuid().optional(),
+  /** A label on a console `backup`, kept with the backup and by retention. */
+  tag: z
+    .string()
+    .max(64)
+    .regex(/^[A-Za-z0-9._-]+$/)
+    .optional(),
+  /**
+   * A `backup-policy`'s operator layer, the policy Bay reads in
+   * `internal/backuppolicy` (`schedule`, `retention`, `window`, `onDeploy`,
+   * `prune`, `verify`…). Bay validates it field by field and refuses the
+   * command with its own words, so Lore bounds only its size here. `null`
+   * removes the layer, and the app's own policy applies again.
+   */
+  policy: z.record(z.string().max(40), z.any()).nullable().optional(),
+  /**
+   * Which backup a `restore` or a `backup-verify` reads, the way
+   * `bay restore` names one: a `key`, or the newest at or before `at` (read
+   * in `tz`), optionally from another instance (`from`, `<app>/<env>`). A
+   * real restore needs a `reason`, which Bay records with it.
+   */
+  restore: z
+    .object({
+      key: z.string().max(500).optional(),
+      at: z.string().max(40).optional(),
+      tz: z.string().max(100).optional(),
+      from: z.string().max(201).optional(),
+      reason: z.string().max(500).optional(),
+      dryRun: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export type EstateCommandPayload = Infer<typeof estateCommandPayloadSchema>;

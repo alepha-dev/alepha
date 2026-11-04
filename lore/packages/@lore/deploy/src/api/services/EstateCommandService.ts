@@ -2,7 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { ForbiddenError } from "alepha/server";
+import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import {
   type EstateCommand,
@@ -98,6 +98,16 @@ export class EstateCommandService {
     // because it is a read: if it has not come back in a minute, nobody is
     // still looking at the page that asked.
     logs: 60,
+    // A listing of the bucket under one prefix: seconds, unless the bucket
+    // is slow or down, which is what `target-probe` is for.
+    "backups-list": 120,
+    // Downloads the backup and opens every database in it.
+    "backup-verify": 900,
+    "target-probe": 60,
+    "backup-policy": 60,
+    // Fetches, verifies, takes a pre-restore backup, stops the app, swaps
+    // the databases and starts it again.
+    restore: 1800,
   };
 
   protected readonly log = $logger();
@@ -113,7 +123,11 @@ export class EstateCommandService {
    * deploy stores the copy's name ahead of the command, and a deploy the
    * estate refuses must not leave a name behind.
    */
-  public assertAccepts(estate: Estate, kind: EstateCommandKind): void {
+  public assertAccepts(
+    estate: Estate,
+    kind: EstateCommandKind,
+    payload?: EstateCommandPayload,
+  ): void {
     if (estate.type !== "bay") {
       // The queue exists because a bay machine dials in and asks for work.
       // A cloudflare estate has no connector to come for it, so without this
@@ -133,6 +147,21 @@ export class EstateCommandService {
         `Estate "${estate.slug}" does not accept deploys; its owner has to allow them first`,
       );
     }
+    const writes =
+      kind === "backup-policy" ||
+      (kind === "restore" && !payload?.restore?.dryRun);
+    if (writes && !estate.deployAllowed) {
+      throw new ForbiddenError(
+        `Estate "${estate.slug}" does not accept changes to its apps; its owner has to allow deploys first`,
+      );
+    }
+    if (kind === "restore" && !payload?.restore?.dryRun) {
+      if (!payload?.restore?.reason?.trim()) {
+        throw new BadRequestError(
+          "A restore replaces the app's databases and needs a reason, which the machine records with it",
+        );
+      }
+    }
   }
 
   /**
@@ -149,7 +178,7 @@ export class EstateCommandService {
     input: { kind: EstateCommandKind; payload: EstateCommandPayload },
     requestedBy?: string,
   ): Promise<EstateCommand> {
-    this.assertAccepts(estate, input.kind);
+    this.assertAccepts(estate, input.kind, input.payload);
     const created = await this.commands.create({
       estateId: estate.id,
       kind: input.kind,
@@ -358,6 +387,11 @@ export class EstateCommandService {
         ? { baseDomain: command.payload.baseDomain }
         : {}),
       ...(command.payload.service ? { service: command.payload.service } : {}),
+      ...(command.payload.tag ? { tag: command.payload.tag } : {}),
+      ...(command.kind === "backup-policy"
+        ? { policy: command.payload.policy ?? null }
+        : {}),
+      ...(command.payload.restore ? { restore: command.payload.restore } : {}),
       ...(command.payload.logs ? { logs: command.payload.logs } : {}),
     };
   }

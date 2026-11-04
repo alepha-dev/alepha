@@ -29,6 +29,8 @@ const SERVER_FRAMES = [
   "command-start.json",
   "command-backup.json",
   "command-logs.json",
+  "command-restore.json",
+  "command-backup-policy.json",
   "query.json",
 ];
 
@@ -39,6 +41,7 @@ const CLIENT_FRAMES = [
   "ack-failed.json",
   "stats.json",
   "inventory.json",
+  "event.json",
 ];
 
 const load = (name: string): unknown =>

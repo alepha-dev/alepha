@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,7 +19,6 @@ import (
 	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/s3"
-	"github.com/alepha-dev/bay/internal/schedule"
 	"github.com/alepha-dev/bay/internal/state"
 )
 
@@ -87,13 +85,13 @@ func notBackedUp(store *state.Store, app state.App) []string {
 }
 
 /*
-appPaths resolves the runtime the backup helper runs with, and the managed
-database path, for an app.
+appPaths resolves the runtime the backup helper runs with, and the app's
+data/ folder: every SQLite database in it is backed up, and nothing outside it.
 
 The helper runs in the app's own runtime image, so the SQLite that reads the
 database is the one that wrote it.
 */
-func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dbPath string, err error) {
+func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dataDir string, err error) {
 	if app.Image != "" {
 		return nil, "", fmt.Errorf("%s is an image app: Bay provisions no database for it, so there is nothing to back up", app.Key())
 	}
@@ -111,7 +109,7 @@ func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dbPath str
 		return nil, "", err
 	}
 	return &imageInterpreter{tasks: tasks, image: sel.Ref, command: m.Runtime,
-		scratch: filepath.Join(s.root, "tmp")}, filepath.Join(instance, "data", "app.db"), nil
+		scratch: filepath.Join(s.root, "tmp")}, filepath.Join(instance, "data"), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +138,10 @@ func (s *server) registerBackupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /apps/{name}/{env}/backup", s.handleBackup)
 	mux.HandleFunc("GET /apps/{name}/{env}/backups", s.handleListBackups)
 	mux.HandleFunc("POST /apps/{name}/{env}/restore", s.handleRestore)
+	mux.HandleFunc("POST /apps/{name}/{env}/restore/dismiss", s.handleRestoreDismiss)
+	mux.HandleFunc("POST /apps/{name}/{env}/backup/verify", s.handleVerifyBackup)
+	mux.HandleFunc("POST /backups/verify", s.handleVerifyAll)
+	s.registerBackupPolicyRoutes(mux)
 }
 
 func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +187,8 @@ type backupOutcome struct {
 	Result      *backup.Result
 	Pruned      []backup.Entry
 	NotBackedUp []string
+	// PruneSuspended says why retention was skipped, empty when it ran.
+	PruneSuspended string
 }
 
 /*
@@ -206,6 +210,17 @@ sequential for its own reasons - it spawns a runtime per app on a 2-vCPU box).
 minutes, and holding that lock would queue an unrelated restart behind it.
 */
 func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutcome, error) {
+	return s.backupInstanceAs(ctx, app, "manual", "")
+}
+
+// backupInstanceAs is backupInstance saying what asked for it, which the
+// bundle's manifest records ("manual", "schedule", "console", "deploy"), and
+// with the tag its directory carries (backup.TagPreDeploy, an operator's
+// label, or none).
+func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, tag string) (backupOutcome, error) {
+	if err := backup.ValidTag(tag); err != nil {
+		return backupOutcome{}, backupRefused{err.Error()}
+	}
 	// A static site has nothing Bay can snapshot. Trying anyway used to record
 	// a failure that only a success can clear, so `bay status` reported the
 	// site as broken on every run, forever.
@@ -219,13 +234,22 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		return backupOutcome{}, backupRefused{
 			app.Key() + " declares no database Bay provisioned, so there is nothing to snapshot"}
 	}
-	mgr, cfg, err := s.backupManager()
+	mgr, _, err := s.backupManager()
 	if err != nil || mgr == nil {
 		return backupOutcome{}, backupRefused{"backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set"}
 	}
 
 	unlock := s.lockBackup(app.Key())
 	defer unlock()
+	// Read again under the lock: the scheduler decided on a copy taken before
+	// it waited, and an auto-restore that failed meanwhile has held the
+	// instance. Backing the empty database up now would make it the latest.
+	if current, ok := s.store.Get(app.Key()); ok && current.BackupHold != "" && !takenDespiteHold(trigger) {
+		return backupOutcome{}, backupRefused{app.Key() + " is held (" + current.BackupHold + "): run `bay restore " +
+			app.Key() + "` or `bay restore " + app.Key() + " --dismiss` first"}
+	}
+	started := time.Now()
+	var manifest *backup.Manifest
 
 	// Recorded on the same terms as the scheduled path, success and failure
 	// alike. Before this, a backup taken by hand touched the store not at all:
@@ -240,32 +264,47 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		// A stack service: its own hook, in its own container. A stopped
 		// stack has no container to run it in, and that is a refusal: the
 		// operator stopped it, the backup did not fail.
+		if tag != "" {
+			return backupOutcome{}, backupRefused{"a service dump is one object and takes no tag; tags apply to database bundles"}
+		}
 		if se, ok := s.store.StackEnv(app.Stack, app.Env); ok && se.Stopped {
 			return backupOutcome{}, backupRefused{app.Stack + "/" + app.Env + " is stopped: start it to back up " + app.Service}
 		}
 		res, err = mgr.BackupDump(ctx, app.Name, app.Env, serviceDumper{container: runner.ContainerName(app.Key()), hook: *app.BackupHook})
 		if err != nil {
-			s.recordBackupFailure(app.Key(), "backup", err)
+			s.recordBackupFailure(ctx, app, "backup", err)
 			return backupOutcome{}, err
 		}
 		notCovered = serviceNotBackedUp(app)
 	} else {
-		runtime, dbPath, err := s.appPaths(app)
+		runtime, dataDir, err := s.appPaths(app)
 		if err != nil {
-			s.recordBackupFailure(app.Key(), "resolve paths", err)
+			s.recordBackupFailure(ctx, app, "resolve paths", err)
 			return backupOutcome{}, err
 		}
-		res, err = mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
+		res, manifest, err = mgr.BackupBundle(ctx, app.Name, app.Env, runtime, dataDir,
+			backup.BundleMeta{Release: app.Release, Trigger: trigger, Tag: tag, Bay: version})
 		if err != nil {
-			s.recordBackupFailure(app.Key(), "backup", err)
+			s.recordBackupFailure(ctx, app, "backup", err)
 			return backupOutcome{}, err
 		}
 	}
-	if err := s.store.RecordBackupSuccess(app.Key(), res.Key, time.Now()); err != nil {
+	finished := time.Now()
+	rec := backupRecord(res, manifest, trigger, tag, app.Release, finished.Sub(started), finished)
+	var previous *state.BackupRecord
+	if current, ok := s.store.Get(app.Key()); ok {
+		previous = current.LastBackup
+	}
+	rec.Anomalies = backupAnomalies(previous, rec)
+	if err := s.store.RecordBackup(app.Key(), rec); err != nil {
 		// The bytes are in the bucket; only the bookkeeping failed. Reported as a
 		// successful backup, because refusing here would tell an operator their
 		// data is not safe when it is.
 		s.log.Error("backup succeeded but recording it failed", "app", app.Key(), "err", err)
+	}
+	// A backup that succeeds proves the bucket answers.
+	if s.targets != nil {
+		s.targets.set(s, "ok", "", "")
 	}
 
 	// Retention runs here and not on a schedule of its own: pruning is only
@@ -273,9 +312,19 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 	// deleted is what keeps retention from being indistinguishable from backups
 	// quietly disappearing. A failed prune must not look like a failed backup:
 	// the data is safe.
+	//
+	// The rules are the app's effective policy, not the bucket's: two apps on
+	// one bucket may keep different histories. No rule at all, or a bucket
+	// whose lifecycle rules expire backups, and Bay deletes nothing.
 	var pruned []backup.Entry
-	if cfg.Keep > 0 {
-		pruned, err = mgr.Prune(ctx, app.Name, app.Env, cfg.Keep)
+	suspended := ""
+	policy := s.effectiveBackupPolicy(app)
+	prunes := !policy.KeepsEverything()
+	if prunes {
+		suspended = s.pruneSuspended(ctx, mgr, app.Key(), app.Name, app.Env)
+	}
+	if prunes && suspended == "" {
+		pruned, err = mgr.Prune(ctx, app.Name, app.Env, retentionRules(policy))
 		if err != nil {
 			s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", err)
 		}
@@ -283,14 +332,75 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 
 	s.log.Info("backup stored", "app", app.Key(), "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
+	s.refreshCatalog(ctx, mgr, app)
+
+	s.emit("backup.completed", &app, map[string]any{
+		"key": rec.Key, "kind": rec.Kind, "trigger": trigger, "tag": tag, "release": rec.Release,
+		"rawBytes": rec.RawBytes, "storedBytes": rec.StoredBytes, "durationMs": rec.DurationMs, "files": rec.Files,
+	})
+	if len(pruned) > 0 {
+		keys := make([]string, 0, len(pruned))
+		for i, p := range pruned {
+			if i == 50 {
+				break
+			}
+			keys = append(keys, p.Key)
+		}
+		s.emit("backup.pruned", &app, map[string]any{"count": len(pruned), "keys": keys})
+	}
+	if len(rec.Anomalies) > 0 {
+		s.log.Warn("backup looks unlike the previous one", "app", app.Key(), "anomalies", joinAnomalies(rec.Anomalies))
+		s.emit("backup.anomaly", &app, map[string]any{"key": rec.Key, "anomalies": rec.Anomalies})
+	}
 
 	return backupOutcome{
-		Result: res,
-		Pruned: pruned,
+		Result:         res,
+		Pruned:         pruned,
+		PruneSuspended: suspended,
 		// What is NOT covered has to be stated, every time. The worst failure
 		// of a backup system is someone believing they are covered.
 		NotBackedUp: append(notCovered, notBackedUpVolumes(s.uncoveredVolumes(app.Stack, app.Env))...),
 	}, nil
+}
+
+/*
+pruneSuspended is the retention guard for an instance marked RestorePending:
+non-empty (the reason) when pruning must be skipped this time.
+
+Read from the store rather than the `app` the caller holds, which may be a
+copy taken before the deploy marked it.
+
+The guard lifts itself once there is nothing left to protect: no backup older
+than the moment the empty database appeared. Listing failed is "keep
+everything" - deleting backups on a guess is the one thing this must not do.
+*/
+func (s *server) pruneSuspended(ctx context.Context, mgr *backup.Manager, key, name, env string) string {
+	current, ok := s.store.Get(key)
+	if !ok || current.RestorePending == nil {
+		return ""
+	}
+	pending := *current.RestorePending
+	entries, err := mgr.List(ctx, name, env)
+	if err != nil {
+		s.log.Warn("pruning skipped: restore pending and backups could not be listed", "app", key, "err", err)
+		return "restore pending since " + pending.Since + " (" + pending.Reason + "); backups could not be listed"
+	}
+	since := pending.SinceTime()
+	older := 0
+	for _, e := range entries {
+		if since.IsZero() || e.Timestamp.Before(since) {
+			older++
+		}
+	}
+	if older == 0 {
+		s.log.Info("restore pending lifted: no backup predates the empty database", "app", key)
+		s.clearRestorePending(key)
+		return ""
+	}
+	s.log.Warn("pruning skipped: backups older than the empty database are kept until `bay restore` or `bay restore --dismiss`",
+		"app", key, "since", pending.Since, "reason", pending.Reason, "older", older)
+	return fmt.Sprintf("restore pending since %s (%s); %d older backup(s) kept: run `bay restore %s` or `bay restore %s --dismiss`",
+		pending.Since, pending.Reason, older, key, key)
 }
 
 /*
@@ -326,7 +436,7 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "unknown app")
 		return
 	}
-	out, err := s.backupInstance(r.Context(), app)
+	out, err := s.backupInstanceAs(r.Context(), app, "manual", r.URL.Query().Get("tag"))
 	if err != nil {
 		var refused backupRefused
 		if errors.As(err, &refused) {
@@ -337,15 +447,21 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"key":         out.Result.Key,
 		"rawBytes":    out.Result.RawBytes,
 		"storedBytes": out.Result.StoredBytes,
 		"tables":      out.Result.Tables,
+		"kind":        out.Result.Kind,
+		"files":       out.Result.Files,
 		"integrity":   "ok",
 		"pruned":      keys(out.Pruned),
 		"notBackedUp": out.NotBackedUp,
-	})
+	}
+	if out.PruneSuspended != "" {
+		resp["pruneSuspended"] = out.PruneSuspended
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
@@ -359,6 +475,20 @@ func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
 		return
 	}
+	describe := func(e backup.Entry) map[string]any {
+		m := map[string]any{
+			"key": e.Key, "at": e.Timestamp.Format(time.RFC3339), "storedBytes": e.Size,
+			"kind": e.Kind, "files": e.Files,
+		}
+		if e.Tag != "" {
+			m["tag"] = e.Tag
+		}
+		return m
+	}
+	if r.URL.Query().Get("plan") != "" {
+		s.writeRetentionPlan(w, r, mgr, app, describe)
+		return
+	}
 	entries, err := mgr.List(r.Context(), app.Name, app.Env)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -366,107 +496,79 @@ func (s *server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]map[string]any, 0, len(entries))
 	for _, e := range entries {
-		out = append(out, map[string]any{
-			"key": e.Key, "at": e.Timestamp.Format(time.RFC3339), "storedBytes": e.Size,
-		})
+		out = append(out, describe(e))
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+/*
+writeRetentionPlan answers `bay backups --plan`: what the next prune would
+keep and delete, and why, deleting nothing. A retention change is checked
+here before it costs a backup.
+*/
+func (s *server) writeRetentionPlan(w http.ResponseWriter, r *http.Request, mgr *backup.Manager, app state.App, describe func(backup.Entry) map[string]any) {
+	policy := s.effectiveBackupPolicy(app)
+	resp := map[string]any{"policy": policyLine(policy)}
+	if policy.KeepsEverything() {
+		resp["prunes"] = false
+		entries, err := mgr.List(r.Context(), app.Name, app.Env)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp["keep"], resp["delete"] = len(entries), 0
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	plan, err := mgr.Plan(r.Context(), app.Name, app.Env, retentionRules(policy), time.Now())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	backups := make([]map[string]any, 0, len(plan))
+	kept, deleted := 0, 0
+	for _, d := range plan {
+		m := describe(d.Entry)
+		m["keep"], m["reasons"] = d.Keep, d.Reasons
+		if d.Incomplete {
+			m["incomplete"] = true
+		}
+		if d.Keep {
+			kept++
+		} else {
+			deleted++
+		}
+		backups = append(backups, m)
+	}
+	resp["prunes"], resp["keep"], resp["delete"], resp["backups"] = true, kept, deleted, backups
+	if reason := s.pruneSuspended(r.Context(), mgr, app.Key(), app.Name, app.Env); reason != "" {
+		resp["pruneSuspended"] = reason
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // handleRestore replaces an app's database with a backup.
 //
 // Destructive and explicit: it stops the app, sets the current database aside
 // rather than deleting it, and only then installs the restored copy.
-func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
-	app, ok := s.store.Get(r.PathValue("name") + "/" + r.PathValue("env"))
-	if !ok {
-		writeError(w, http.StatusNotFound, "unknown app")
-		return
+func fetchedPaths(f *backup.Fetched) []string {
+	out := make([]string, 0, len(f.Files))
+	for _, file := range f.Files {
+		out = append(out, file.Path)
 	}
-	if r.URL.Query().Get("confirm") != "yes" {
-		writeError(w, http.StatusPreconditionRequired, "restoring overwrites the live database; repeat with ?confirm=yes")
-		return
-	}
-	mgr, _, err := s.backupManager()
-	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
-		return
-	}
-	runtime, dbPath, err := s.appPaths(app)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	key := r.URL.Query().Get("key")
-	if key == "" {
-		latest, found, err := mgr.Latest(r.Context(), app.Name, app.Env)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		if !found {
-			writeError(w, http.StatusNotFound, "no backup found for this app")
-			return
-		}
-		key = latest.Key
-	}
-
-	// Verified before the app is touched: a corrupt backup must not cost the
-	// working database.
-	restored, cleanup, err := mgr.Fetch(r.Context(), key, runtime)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer cleanup()
-
-	// A restore swaps the database under the app, so it has to stop. Requests
-	// wait rather than fail for the length of it.
-	defer s.holdDuring(app.Key())()
-
-	if err := s.stopForMaintenance(app.Key()); err != nil {
-		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
-		return
-	}
-	if err := backup.Install(restored, dbPath); err != nil {
-		// The app was stopped above; a refused install must not also be an
-		// outage. When the live database is still in place (setting it aside
-		// is the first step, and it is the one that failed) the app comes
-		// back on it. Otherwise the database is already set aside and the
-		// app stays stopped rather than booting on a half-written file.
-		msg := "install: " + err.Error()
-		if _, statErr := os.Stat(dbPath); statErr == nil {
-			if startErr := s.start(app); startErr != nil {
-				msg += "; and the app did not come back: " + startErr.Error()
-			} else {
-				msg += "; the app is back on its current database"
-			}
-		} else {
-			msg += "; the app is left stopped, its database is set aside next to " + dbPath
-		}
-		writeError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	// The database is back, whether or not the app follows it.
-	if err := s.store.ClearBackupHold(app.Key()); err != nil {
-		s.log.Error("could not give a restored app back to the schedule", "app", app.Key(), "err", err)
-	}
-	if err := s.start(app); err != nil {
-		writeError(w, http.StatusBadGateway,
-			"database restored but the app did not come back: "+err.Error(),
-			map[string]any{"restored": key},
-		)
-		return
-	}
-	s.log.Info("database restored", "app", app.Key(), "key", key)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"restored":    key,
-		"app":         app.Key(),
-		"previousDb":  "kept alongside as app.db.before-restore-*",
-		"notRestored": []string{"storage/ (uploaded files)"},
-	})
+	return out
 }
+
+// beforeSecondOf is the last instant before t's second. Backup keys are
+// stamped to the second, so a backup taken in the same second as t, after it,
+// carries t's own stamp: a cut-off at t would let it through.
+func beforeSecondOf(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Second).Add(-time.Nanosecond)
+}
+
+// installBundle is backup.InstallBundle, a variable so a test can have it fail
+// without putting the data folder back, which no real filesystem does on cue.
+var installBundle = backup.InstallBundle
 
 // maybeAutoRestore pulls the latest backup when Bay has just created an empty
 // database — the disaster-recovery path: fresh VPS, configure the bucket, deploy.
@@ -475,72 +577,144 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 // separates "recovery" from "a redeploy silently reverted my data".
 //
 // A failure does not fail the deploy: the app starts on the empty database. See
-// `autoRestoreFailed` for what keeps that from costing the snapshot it missed.
-func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string) map[string]any {
+// `startedEmptyUnchecked` for what keeps that from costing the snapshot it missed.
+// The one exception is an install that could not put back what it had already
+// replaced (a `backup.NotRolledBackError`, returned as is): the data folder is
+// then in neither state, and the app must not be started on it.
+func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string, deployStart time.Time) (map[string]any, error) {
+	// The scheduler takes the same lock: without it, it could back the empty
+	// database up between its creation and the restore.
+	defer s.lockBackup(app.Key())()
 	mgr, _, err := s.backupManager()
 	if err != nil {
 		s.log.Error("backup config unusable, skipping auto-restore", "err", err)
-		return s.autoRestoreFailed(app, "backup destination unusable")
+		return s.startedEmptyUnchecked(app, "backup destination unusable"), nil
 	}
 	if mgr == nil {
-		return map[string]any{"database": "empty (no backup destination configured)"}
+		// Pending too: the usual disaster recovery configures the bucket AFTER
+		// the first deploy, and that bucket may hold the previous machine's
+		// backups.
+		return s.startedEmptyUnchecked(app, "no backup destination configured"), nil
 	}
 
-	latest, found, err := mgr.Latest(ctx, app.Name, app.Env)
+	// Never a backup taken since this deploy began: the empty database exists
+	// from deploy.Run on, and the schedule can snapshot it before this lock is
+	// taken - on a first deploy as much as after a failed recovery. Key
+	// timestamps are to the second, so that whole second is excluded too.
+	// An instance that already started empty once may have backed that empty
+	// database up since: then the cut-off is when it did, as for a
+	// `bay restore` without a key.
+	cutoff := beforeSecondOf(deployStart)
+	if current, ok := s.store.Get(app.Key()); ok && current.RestorePending != nil {
+		if since := current.RestorePending.SinceTime(); !since.IsZero() && beforeSecondOf(since).Before(cutoff) {
+			cutoff = beforeSecondOf(since)
+		}
+	}
+	latest, found, err := mgr.Before(ctx, app.Name, app.Env, cutoff)
 	if err != nil {
 		s.log.Error("could not list backups", "app", app.Key(), "err", err)
-		return s.autoRestoreFailed(app, "could not reach the bucket")
+		return s.startedEmptyUnchecked(app, "could not reach the bucket"), nil
 	}
 	if !found {
 		s.log.Info("no backup to restore", "app", app.Key())
-		return map[string]any{"database": "empty (no backup found)"}
+		// Checked and nothing there: a genuinely new app, nothing to protect.
+		s.clearRestorePending(app.Key())
+		return map[string]any{"database": "empty (no backup found)"}, nil
 	}
 
 	runtime, _, err := s.appPaths(app)
 	if err != nil {
-		return s.autoRestoreFailed(app, err.Error())
+		return s.startedEmptyUnchecked(app, err.Error()), nil
 	}
-	restored, cleanup, err := mgr.Fetch(ctx, latest.Key, runtime)
+	key, kind, err := backup.RestoreKey(app.Name, app.Env, latest.Key)
+	if err != nil {
+		return s.startedEmptyUnchecked(app, err.Error()), nil
+	}
+	fetched, cleanup, err := mgr.FetchAny(ctx, key, kind, runtime)
 	if err != nil {
 		s.log.Error("auto-restore failed", "app", app.Key(), "key", latest.Key, "err", err)
-		return s.autoRestoreFailed(app, "restore failed: "+err.Error())
+		return s.startedEmptyUnchecked(app, "restore failed: "+err.Error()), nil
 	}
 	defer cleanup()
 
-	if err := backup.Install(restored, dbPath); err != nil {
+	// Into the folder of the database Bay just created: a bundle holds every
+	// database the app had there.
+	if _, err := installBundle(fetched, filepath.Dir(dbPath)); err != nil {
 		s.log.Error("auto-restore install failed", "app", app.Key(), "err", err)
-		return s.autoRestoreFailed(app, "install failed: "+err.Error())
+		restore := s.startedEmptyUnchecked(app, "install failed: "+err.Error())
+		var notBack *backup.NotRolledBackError
+		if errors.As(err, &notBack) {
+			return restore, err
+		}
+		return restore, nil
 	}
+	s.clearRestorePending(app.Key())
 	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key)
+	s.recordRestore(app, state.RestoreRecord{Key: latest.Key, Trigger: "deploy", Status: "done",
+		Reason: "empty database on deploy, latest backup restored"})
 	return map[string]any{
 		"database":    "restored from " + latest.Key,
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
+		"files":       fetchedPaths(fetched),
 		"notRestored": []string{"storage/ (uploaded files)"},
-	}
+	}, nil
 }
 
 /*
-autoRestoreFailed answers a deploy left on an empty database when a backup may
-exist, and holds the schedule.
+startedEmptyUnchecked is the deploy going ahead on an empty database when Bay
+could not find out whether a backup should have been restored into it.
 
-Nothing retries, because a database now exists. And `LastBackupAt` is empty on
-a new host, so within a minute the schedule would snapshot that empty database
-and make it the latest, which is what the next plain `bay restore` installs.
-The hold keeps the real snapshot the latest until somebody decides.
+The deploy is not refused: an app that cannot start because a bucket is down
+is an outage of its own. Two guards keep the real backups instead:
+
+  - the schedule is held (`BackupHold`): `LastBackupAt` is empty on a new
+    host, so within a minute the schedule would snapshot the empty database
+    and make it the latest, which is what the next plain `bay restore`
+    installs;
+  - the instance is marked `RestorePending`, which stops retention from
+    deleting the backups taken before it, should anything back it up.
 
 `warning` is what `alepha deploy` prints: it keeps nothing else of this answer.
 */
-func (s *server) autoRestoreFailed(app state.App, why string) map[string]any {
-	if err := s.store.HoldBackups(app.Key(), why, time.Now()); err != nil {
+func (s *server) startedEmptyUnchecked(app state.App, reason string) map[string]any {
+	s.log.Warn("app started on an EMPTY database, its backups were not checked; "+
+		"scheduled backups are held and pruning is paused for it until `bay restore` or `bay restore --dismiss`",
+		"app", app.Key(), "reason", reason)
+	now := time.Now()
+	if err := s.store.HoldBackups(app.Key(), reason, now); err != nil {
 		s.log.Error("could not hold the backups of an unrestored app", "app", app.Key(), "err", err)
 	}
+	if err := s.store.SetRestorePending(app.Key(), reason, now); err != nil {
+		s.log.Error("could not record the pending restore", "app", app.Key(), "err", err)
+	}
+	s.emit("restore.pending", &app, map[string]any{"reason": clip(reason)})
 	return map[string]any{
-		"database": "empty (" + why + ")",
+		"database":       "empty (" + reason + ")",
+		"restorePending": true,
 		"warning": fmt.Sprintf(
-			"%[1]s started on an EMPTY database: no backup was restored (%[2]s). Scheduled backups are held, "+
-				"so the last snapshot stays the latest: run `bay restore %[1]s` to bring it back, or "+
-				"`bay backup %[1]s` to keep this database and resume them",
-			app.Key(), why),
+			"%[1]s started on an EMPTY database: no backup was restored (%[2]s). Scheduled backups are held "+
+				"and old backups are kept, so the last snapshot stays the latest: run `bay restore %[1]s` to bring it back, "+
+				"or `bay restore %[1]s --dismiss` to keep this database and resume them",
+			app.Key(), reason),
+		"next": "old backups are kept (pruning paused); run `bay restore " + app.Key() + "` to recover them, or `bay restore " + app.Key() + " --dismiss` to keep the new database",
+	}
+}
+
+// takenDespiteHold says whether a backup for trigger runs on a held instance:
+// one someone asked for (which then lifts the hold), and the pre-restore copy,
+// which the restore that follows makes moot. Never the schedule's, nor a
+// deploy's: both would store the empty database as the newest snapshot.
+func takenDespiteHold(trigger string) bool {
+	return state.LiftsBackupHold(trigger) || trigger == "restore"
+}
+
+func (s *server) clearRestorePending(key string) {
+	if err := s.store.ClearRestorePending(key); err != nil {
+		s.log.Error("could not clear the pending restore", "app", key, "err", err)
+	}
+	// Restored or dismissed: either way somebody decided, so the schedule resumes.
+	if err := s.store.ClearBackupHold(key); err != nil {
+		s.log.Error("could not give the app back to the schedule", "app", key, "err", err)
 	}
 }
 
@@ -603,11 +777,21 @@ func cmdConfigS3(args []string) error {
 }
 
 func cmdBackup(args []string) error {
-	key, err := appKeyArg(args, "bay backup <name/env>")
+	key, err := appKeyArg(args, "bay backup <name/env> [--tag NAME]")
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/backup", nil)
+	if err := checkFlags(args[1:], nil, map[string]bool{"--tag": true}); err != nil {
+		return err
+	}
+	path := controlHost + "/apps/" + key + "/backup"
+	if tag := flagValue(args, "--tag"); tag != "" {
+		if err := backup.ValidTag(tag); err != nil {
+			return err
+		}
+		path += "?tag=" + tag
+	}
+	res, err := call(http.MethodPost, path, nil)
 	if err != nil {
 		return err
 	}
@@ -616,11 +800,18 @@ func cmdBackup(args []string) error {
 }
 
 func cmdBackups(args []string) error {
-	key, err := appKeyArg(args, "bay backups <name/env>")
+	key, err := appKeyArg(args, "bay backups <name/env> [--plan]")
 	if err != nil {
 		return err
 	}
-	res, err := call(http.MethodGet, controlHost+"/apps/"+key+"/backups", nil)
+	if err := checkFlags(args[1:], map[string]bool{"--plan": true}, nil); err != nil {
+		return err
+	}
+	path := controlHost + "/apps/" + key + "/backups"
+	if hasFlag(args, "--plan") {
+		path += "?plan=1"
+	}
+	res, err := call(http.MethodGet, path, nil)
 	if err != nil {
 		return err
 	}
@@ -628,23 +819,42 @@ func cmdBackups(args []string) error {
 	return nil
 }
 
-func cmdRestore(args []string) error {
-	key, err := appKeyArg(args, "bay restore <name/env> [--key <backup-key>]")
-	if err != nil {
-		return err
+/*
+handleRestoreDismiss lifts a pending restore without restoring: the operator
+has looked and the database the app started with is the one to keep.
+
+Retention resumes from the next backup, and that is what eventually deletes
+the old backups - which is why this, too, wants ?confirm=yes.
+*/
+func (s *server) handleRestoreDismiss(w http.ResponseWriter, r *http.Request) {
+	app, ok := s.store.Get(r.PathValue("name") + "/" + r.PathValue("env"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown app")
+		return
 	}
-	url := controlHost + "/apps/" + key + "/restore?confirm=yes"
-	for i := 0; i < len(args)-1; i++ {
-		if args[i] == "--key" {
-			url += "&key=" + neturl.QueryEscape(args[i+1])
-		}
+	if app.RestorePending == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"app": app.Key(), "restorePending": false})
+		return
 	}
-	res, err := call(http.MethodPost, url, nil)
-	if err != nil {
-		return err
+	if r.URL.Query().Get("confirm") != "yes" {
+		writeError(w, http.StatusPreconditionRequired, "dismissing resumes retention, which will delete the backups taken before "+app.RestorePending.Since+"; repeat with ?confirm=yes")
+		return
 	}
-	fmt.Println(res)
-	return nil
+	if err := s.store.ClearRestorePending(app.Key()); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Keeping this database is the decision the hold was waiting for.
+	if err := s.store.ClearBackupHold(app.Key()); err != nil {
+		s.log.Error("could not give the app back to the schedule", "app", app.Key(), "err", err)
+	}
+	s.log.Warn("pending restore dismissed; retention resumes", "app", app.Key(), "since", app.RestorePending.Since)
+	s.emit("restore.dismissed", &app, map[string]any{"since": app.RestorePending.Since, "reason": clip(app.RestorePending.Reason)})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"app":            app.Key(),
+		"restorePending": false,
+		"dismissed":      *app.RestorePending,
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -658,30 +868,48 @@ func cmdRestore(args []string) error {
 // process already owns and flushes atomically. With a timer, one invocation
 // would write the timestamp and another would read it, and "did it stop?" —
 // the question that actually protects data — would have two sources of truth.
+//
+// The interval is only the built-in default now: each app's effective policy
+// (global, app-declared, operator) decides its own, so the loop runs even when
+// `--backup-interval 0` turned the default off; an operator may still have
+// switched one app on.
 func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		// Loud, because silence here is indistinguishable from a working
 		// schedule right up until someone needs a backup.
-		s.log.Warn("scheduled backups are OFF (--backup-interval 0); " +
-			"nothing is backed up unless you run `bay backup`")
-		return
+		s.log.Warn("scheduled backups are OFF by default (--backup-interval 0); " +
+			"only apps whose backup policy turns them on are backed up")
+	} else {
+		s.log.Info("scheduled backups on", "default interval", interval)
 	}
-	s.log.Info("scheduled backups on", "interval", interval)
 
 	// The tick is only a prompt to re-examine state, never the schedule itself —
-	// that lives in `schedule.Due`, read from the recorded timestamp. So a run
+	// that lives in the policy's `Spec().Decide`, read from the recorded
+	// timestamp. So a run
 	// missed while Bay was down is taken on the first tick after boot, through
 	// the same code path as any other run.
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	s.runDueBackups(ctx, interval)
+	// The bucket is asked first, so a target that is down at boot is reported
+	// as such before the first backup fails against it.
+	var probedAt time.Time
+	probe := func() {
+		if s.targets != nil && time.Since(probedAt) >= targetProbeEvery {
+			probedAt = time.Now()
+			s.targets.probe(ctx, s)
+		}
+	}
+	probe()
+	s.runDueBackups(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			s.runDueBackups(ctx, interval)
+			probe()
+			s.runDueBackups(ctx)
+			s.runDueVerifies(ctx)
 		}
 	}
 }
@@ -692,7 +920,7 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 // `VACUUM INTO`, then gzips and uploads. Doing several at once on a 2-vCPU box
 // would compete with the apps it is meant to protect. Being sequential also
 // makes overlapping runs impossible without a lock.
-func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
+func (s *server) runDueBackups(ctx context.Context) {
 	// Asked once per tick only to decide whether there is anything to do at
 	// all; `backupInstance` resolves its own manager per run, so a
 	// `bay config s3:backups` between two ticks takes effect on the next one.
@@ -710,14 +938,47 @@ func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
 		if !app.Backups {
 			continue
 		}
-		// `bay status` says so: see `autoRestoreFailed`.
+		// `bay status` says so: see `startedEmptyUnchecked`.
 		if app.BackupHold != "" {
 			continue
 		}
-		if !schedule.Due(app.LastBackupAt, now, interval) {
+		policy := s.effectiveBackupPolicy(app)
+		if !policy.Enabled {
 			continue
 		}
-		s.backupOne(ctx, app)
+		if retry, ok := s.backupRetries[app.Key()]; ok && now.Before(retry.at) {
+			continue
+		}
+		// An unreadable timestamp counts as never: backing up once too often
+		// beats silently never backing up again.
+		last, _ := time.Parse(time.RFC3339, app.LastBackupAt)
+		if !policy.Spec().Decide(last, app.Key(), now).Due {
+			continue
+		}
+		s.backupOne(ctx, app, now)
+	}
+}
+
+// backupRetry is the scheduler's memory of an instance whose scheduled
+// backups keep failing.
+type backupRetry struct {
+	failures int
+	at       time.Time
+}
+
+/*
+retryBackoff is how long the scheduler waits after the n-th failure in a row:
+1m, 5m, then every 15m. Without it, a bucket that is down (or a database that
+no longer opens) meant one attempt and one stored failure every minute.
+*/
+func retryBackoff(failures int) time.Duration {
+	switch {
+	case failures <= 1:
+		return time.Minute
+	case failures == 2:
+		return 5 * time.Minute
+	default:
+		return 15 * time.Minute
 	}
 }
 
@@ -726,12 +987,23 @@ func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
 // The outcome is already recorded and logged there; a refusal reaching here is
 // a state `runDueBackups` filtered for and is worth one debug line, not a
 // stored failure.
-func (s *server) backupOne(ctx context.Context, app state.App) {
-	if _, err := s.backupInstance(ctx, app); err != nil {
-		var refused backupRefused
-		if errors.As(err, &refused) {
-			s.log.Debug("scheduled backup skipped", "app", app.Key(), "reason", refused.Error())
+func (s *server) backupOne(ctx context.Context, app state.App, now time.Time) {
+	_, err := s.backupInstanceAs(ctx, app, "schedule", "")
+	var refused backupRefused
+	switch {
+	case err == nil:
+		delete(s.backupRetries, app.Key())
+	case errors.As(err, &refused):
+		s.log.Debug("scheduled backup skipped", "app", app.Key(), "reason", refused.Error())
+	default:
+		if s.backupRetries == nil {
+			s.backupRetries = map[string]backupRetry{}
 		}
+		r := s.backupRetries[app.Key()]
+		r.failures++
+		r.at = now.Add(retryBackoff(r.failures))
+		s.backupRetries[app.Key()] = r
+		s.log.Warn("scheduled backup will be retried", "app", app.Key(), "failures", r.failures, "at", r.at.Format(time.RFC3339))
 	}
 }
 
@@ -744,10 +1016,22 @@ func (s *server) backupOne(ctx context.Context, app state.App) {
 // what failed and at which stage is the same question either way, and a line
 // saying "scheduled" about a backup someone just typed would send whoever reads
 // it looking for a timer that had nothing to do with it.
-func (s *server) recordBackupFailure(key, stage string, cause error) {
-	reason := stage + ": " + cause.Error()
+//
+// A failure while talking to the bucket is checked against it: when the probe
+// fails too, the stage is "target", which is what tells "the bucket is down"
+// apart from "this app's backup is broken".
+func (s *server) recordBackupFailure(ctx context.Context, app state.App, stage string, cause error) {
+	if stage == "backup" {
+		stage = s.failureStage(ctx, stage, cause)
+	}
+	key := app.Key()
 	s.log.Error("backup failed", "app", key, "stage", stage, "err", cause)
-	if err := s.store.RecordBackupFailure(key, reason, time.Now()); err != nil {
+	if err := s.store.RecordBackupFailureAt(key, stage, cause.Error(), time.Now()); err != nil {
 		s.log.Error("could not record the backup failure", "app", key, "err", err)
 	}
+	consecutive := 1
+	if current, ok := s.store.Get(key); ok && current.BackupFailure != nil {
+		consecutive = current.BackupFailure.Consecutive
+	}
+	s.emit("backup.failed", &app, map[string]any{"stage": stage, "error": clip(cause.Error()), "consecutive": consecutive})
 }

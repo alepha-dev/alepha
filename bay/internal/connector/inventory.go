@@ -84,6 +84,15 @@ type InventoryApp struct {
 	LastBackupAt    string `json:"lastBackupAt,omitempty"`
 	BackupStale     bool   `json:"backupStale,omitempty"`
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// RestorePendingSince is set while the instance runs on a database Bay
+	// created empty without checking its backups; pruning is paused for it.
+	RestorePendingSince  string `json:"restorePendingSince,omitempty"`
+	RestorePendingReason string `json:"restorePendingReason,omitempty"`
+	// Backup is the whole backup picture of the instance: policy, bucket,
+	// last run, catalog, last restore test and restore. Nil when Bay owns no
+	// database for it (static site, BYO database). The flat fields above
+	// stay for a Lore that does not read this block yet.
+	Backup *InventoryBackup `json:"backup,omitempty"`
 
 	LastRequestAt string `json:"lastRequestAt,omitempty"`
 	Crons         int    `json:"crons,omitempty"`
@@ -95,4 +104,131 @@ type InventoryApp struct {
 	Stack       string `json:"stack,omitempty"`
 	Service     string `json:"service,omitempty"`
 	ServiceKind string `json:"serviceKind,omitempty"`
+}
+
+/*
+InventoryBackup is an instance's backups as the console shows them.
+
+Timestamps, never durations (see inventoryRow), and bounded: at most 20
+databases, 5 tables and 5 migration journals each, strings cut at 500
+characters. Counts and sizes come from the last listing Bay stored, never
+from an S3 call per push.
+*/
+type InventoryBackup struct {
+	// State is the one word the console colours: unconfigured (no bucket),
+	// restore-pending, off, failing, never, stale, ok.
+	State  string                 `json:"state"`
+	Policy *InventoryBackupPolicy `json:"policy,omitempty"`
+	Target *InventoryBackupTarget `json:"target,omitempty"`
+	// NextAt is when the schedule next takes one; empty when off.
+	NextAt string `json:"nextAt,omitempty"`
+
+	Last    *InventoryBackupRun     `json:"last,omitempty"`
+	Failure *InventoryBackupFailure `json:"failure,omitempty"`
+	Catalog *InventoryBackupCatalog `json:"catalog,omitempty"`
+	Verify  *InventoryBackupVerify  `json:"verify,omitempty"`
+	Restore *InventoryRestore       `json:"restore,omitempty"`
+
+	RestorePending *InventoryRestorePending `json:"restorePending,omitempty"`
+	// NotCovered is what a backup of this instance deliberately leaves out.
+	NotCovered []string `json:"notCovered,omitempty"`
+}
+
+type InventoryBackupPolicy struct {
+	Enabled     bool   `json:"enabled"`
+	Schedule    string `json:"schedule"`
+	Retention   string `json:"retention"`
+	EverySecs   int64  `json:"everySeconds,omitempty"`
+	Timezone    string `json:"timezone,omitempty"`
+	OnDeploy    bool   `json:"onDeploy"`
+	Prune       string `json:"prune,omitempty"`
+	VerifyEvery int64  `json:"verifyEverySeconds,omitempty"`
+	// Sources says which layer (builtin, global, app, operator) set each part.
+	Sources map[string]string `json:"sources,omitempty"`
+}
+
+type InventoryBackupTarget struct {
+	Status      string `json:"status"`
+	Since       string `json:"since,omitempty"`
+	LastProbeAt string `json:"lastProbeAt,omitempty"`
+	LastError   string `json:"lastError,omitempty"`
+	Bucket      string `json:"bucket,omitempty"`
+}
+
+type InventoryBackupRun struct {
+	At          string              `json:"at"`
+	Key         string              `json:"key"`
+	Kind        string              `json:"kind,omitempty"`
+	Trigger     string              `json:"trigger,omitempty"`
+	Tag         string              `json:"tag,omitempty"`
+	Release     string              `json:"release,omitempty"`
+	RawBytes    int64               `json:"rawBytes,omitempty"`
+	StoredBytes int64               `json:"storedBytes,omitempty"`
+	DurationMs  int64               `json:"durationMs,omitempty"`
+	Files       int                 `json:"files,omitempty"`
+	Databases   []InventoryDatabase `json:"databases,omitempty"`
+	Anomalies   []string            `json:"anomalies,omitempty"`
+}
+
+type InventoryDatabase struct {
+	Path        string               `json:"path"`
+	RawBytes    int64                `json:"rawBytes"`
+	StoredBytes int64                `json:"storedBytes"`
+	SHA256      string               `json:"sha256,omitempty"`
+	Integrity   string               `json:"integrity,omitempty"`
+	Tables      int                  `json:"tables"`
+	Pages       int64                `json:"pages,omitempty"`
+	PageSize    int64                `json:"pageSize,omitempty"`
+	JournalMode string               `json:"journalMode,omitempty"`
+	TopTables   []InventoryTableRows `json:"topTables,omitempty"`
+	Migrations  []InventoryMigration `json:"migrations,omitempty"`
+}
+
+type InventoryTableRows struct {
+	Table string `json:"table"`
+	Rows  int64  `json:"rows"`
+}
+
+type InventoryMigration struct {
+	Table string `json:"table"`
+	Count int64  `json:"count"`
+	Last  string `json:"last,omitempty"`
+}
+
+type InventoryBackupFailure struct {
+	At          string `json:"at"`
+	Stage       string `json:"stage,omitempty"`
+	Message     string `json:"message"`
+	Consecutive int    `json:"consecutive"`
+}
+
+type InventoryBackupCatalog struct {
+	ListedAt   string `json:"listedAt"`
+	Count      int    `json:"count"`
+	TotalBytes int64  `json:"totalBytes"`
+	OldestAt   string `json:"oldestAt,omitempty"`
+	NewestAt   string `json:"newestAt,omitempty"`
+}
+
+type InventoryBackupVerify struct {
+	At    string `json:"at"`
+	Key   string `json:"key,omitempty"`
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+}
+
+type InventoryRestore struct {
+	At            string `json:"at"`
+	Key           string `json:"key,omitempty"`
+	From          string `json:"from,omitempty"`
+	Reason        string `json:"reason,omitempty"`
+	Trigger       string `json:"trigger,omitempty"`
+	Status        string `json:"status"`
+	Error         string `json:"error,omitempty"`
+	PreRestoreKey string `json:"preRestoreKey,omitempty"`
+}
+
+type InventoryRestorePending struct {
+	Since  string `json:"since"`
+	Reason string `json:"reason,omitempty"`
 }

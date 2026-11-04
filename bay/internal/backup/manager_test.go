@@ -54,7 +54,7 @@ func TestPruneKeepsTheNewest(t *testing.T) {
 	srv.Seed(prefix+"notes.txt", nil)
 	m := New(srv.Client(t))
 
-	removed, err := m.Prune(context.Background(), "lore", "production", 2)
+	removed, err := m.Prune(context.Background(), "lore", "production", Rules{Keep: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestPruneKeepsTheNewest(t *testing.T) {
 
 	// Under the limit is a no-op that touches nothing.
 	before := srv.Requests(http.MethodDelete)
-	if removed, err := m.Prune(context.Background(), "lore", "production", 5); err != nil || removed != nil {
+	if removed, err := m.Prune(context.Background(), "lore", "production", Rules{Keep: 5}); err != nil || removed != nil {
 		t.Fatalf("Prune under the limit = %v, %v", removed, err)
 	}
 	if srv.Requests(http.MethodDelete) != before {
@@ -83,7 +83,7 @@ func TestPruneKeepsTheNewest(t *testing.T) {
 func TestPruneRefusesToKeepNothing(t *testing.T) {
 	srv := s3test.New(t)
 	seedBackups(srv, "20260801T000000Z")
-	if _, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", 0); err == nil {
+	if _, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", Rules{Keep: 0}); err == nil {
 		t.Fatal("keep=0 would delete every backup; it must be refused")
 	}
 	if len(srv.Keys()) != 1 {
@@ -100,7 +100,7 @@ func TestPruneReportsWhatItRemovedBeforeAFailure(t *testing.T) {
 		}
 		return 0
 	}
-	removed, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", 1)
+	removed, err := New(srv.Client(t)).Prune(context.Background(), "lore", "production", Rules{Keep: 1})
 	if err == nil {
 		t.Fatal("want the delete failure surfaced")
 	}
@@ -109,12 +109,15 @@ func TestPruneReportsWhatItRemovedBeforeAFailure(t *testing.T) {
 	}
 }
 
-func TestInstallSetsTheOldDatabaseAsideWithItsWAL(t *testing.T) {
+func TestInstallSetsTheOldDatabaseAsideWithItsSidecars(t *testing.T) {
 	dir := t.TempDir()
 	live := filepath.Join(dir, "data", "app.sqlite")
 	write(t, live, "old")
 	write(t, live+"-wal", "old-wal")
 	write(t, live+"-shm", "old-shm")
+	// A hot rollback journal, left by an app killed mid-write: SQLite would
+	// play it back onto the restored database.
+	write(t, live+"-journal", "old-journal")
 	restored := filepath.Join(dir, "restored.sqlite")
 	write(t, restored, "new")
 
@@ -124,7 +127,7 @@ func TestInstallSetsTheOldDatabaseAsideWithItsWAL(t *testing.T) {
 	if got := read(t, live); got != "new" {
 		t.Fatalf("live database = %q", got)
 	}
-	for _, sidecar := range []string{live + "-wal", live + "-shm"} {
+	for _, sidecar := range []string{live + "-wal", live + "-shm", live + "-journal"} {
 		if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
 			t.Fatalf("%s must not sit next to the restored database", sidecar)
 		}
@@ -133,12 +136,12 @@ func TestInstallSetsTheOldDatabaseAsideWithItsWAL(t *testing.T) {
 	asides, _ := filepath.Glob(live + ".before-restore-*")
 	var main string
 	for _, a := range asides {
-		if !strings.HasSuffix(a, "-wal") && !strings.HasSuffix(a, "-shm") {
+		if !strings.HasSuffix(a, "-wal") && !strings.HasSuffix(a, "-shm") && !strings.HasSuffix(a, "-journal") {
 			main = a
 		}
 	}
-	if main == "" || read(t, main) != "old" || read(t, main+"-wal") != "old-wal" || read(t, main+"-shm") != "old-shm" {
-		t.Fatalf("the previous database and its WAL/SHM must be kept together, got %v", asides)
+	if main == "" || read(t, main) != "old" || read(t, main+"-wal") != "old-wal" || read(t, main+"-shm") != "old-shm" || read(t, main+"-journal") != "old-journal" {
+		t.Fatalf("the previous database and its sidecars must be kept together, got %v", asides)
 	}
 }
 
@@ -276,6 +279,54 @@ console.log(db.prepare("SELECT body FROM notes").get().body);
 `, target)
 	if strings.TrimSpace(out) != "kept across the round trip" {
 		t.Fatalf("restored database reads %q", out)
+	}
+}
+
+// A database larger than one part goes up as a multipart upload and comes back
+// byte for byte: the path every database over 16 MiB takes in production,
+// exercised here with 16 KiB parts.
+func TestBackupOverSeveralPartsRoundTrips(t *testing.T) {
+	node := nodeWithSQLite(t)
+	dir := t.TempDir()
+	live := filepath.Join(dir, "app.sqlite")
+	runNode(t, node, `
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync(process.argv[1]);
+db.exec("PRAGMA journal_mode=WAL; CREATE TABLE blobs(body BLOB);");
+const insert = db.prepare("INSERT INTO blobs VALUES (randomblob(200))");
+db.exec("BEGIN");
+for (let i = 0; i < 2000; i++) insert.run();
+db.exec("COMMIT");
+`, live)
+
+	srv := s3test.New(t)
+	srv.PartSize = 16 << 10
+	m := New(srv.Client(t))
+	ctx := context.Background()
+
+	res, err := m.Backup(ctx, "lore", "production", HostRuntime(node), live)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StoredBytes <= srv.PartSize {
+		t.Fatalf("the fixture must exceed one part to test anything, stored %d", res.StoredBytes)
+	}
+	if srv.Requests(http.MethodPost) < 2 || srv.PendingUploads() != 0 {
+		t.Fatalf("want a completed multipart upload, got %d POSTs and %d pending", srv.Requests(http.MethodPost), srv.PendingUploads())
+	}
+
+	path, cleanup, err := m.Fetch(ctx, res.Key, HostRuntime(node))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	out := runNode(t, node, `
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync(process.argv[1], { readOnly: true });
+console.log(db.prepare("SELECT count(*) AS n FROM blobs").get().n);
+`, path)
+	if strings.TrimSpace(out) != "2000" {
+		t.Fatalf("restored database has %q rows, want 2000", out)
 	}
 }
 

@@ -1,4 +1,5 @@
-// Package s3 is a minimal S3 client: put, get, list, delete.
+// Package s3 is a minimal S3 client: put, get, head, list, delete, and
+// multipart uploads streamed from a file.
 //
 // Hand-rolled SigV4 rather than the AWS SDK. Bay needs four operations, and the
 // SDK would add tens of megabytes and a large dependency tree to a binary whose
@@ -14,6 +15,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,12 +32,22 @@ type Config struct {
 	AccessKey string
 	SecretKey string
 	Region    string // "auto" for R2
+	// PartSize is the multipart part size; files no larger go up in one PUT.
+	// Zero means DefaultPartSize. S3 refuses parts under 5 MiB except the
+	// last, so only tests set it lower.
+	PartSize int64
 }
+
+// DefaultPartSize bounds the memory and the retry cost of one upload request.
+const DefaultPartSize int64 = 16 << 20
 
 // Client talks to one bucket.
 type Client struct {
 	cfg  Config
 	http *http.Client
+	// stream has no overall deadline: a download of many gigabytes outlives
+	// any fixed timeout. It still gives up on a server that never answers.
+	stream *http.Client
 	// now is the signing clock. A field rather than a direct time.Now() call so
 	// the tests can pin the signature to AWS's published vectors.
 	now func() time.Time
@@ -48,8 +60,18 @@ func New(cfg Config) (*Client, error) {
 	if cfg.Region == "" {
 		cfg.Region = "auto"
 	}
+	if cfg.PartSize <= 0 {
+		cfg.PartSize = DefaultPartSize
+	}
 	cfg.Endpoint = strings.TrimRight(cfg.Endpoint, "/")
-	return &Client{cfg: cfg, http: &http.Client{Timeout: 10 * time.Minute}, now: time.Now}, nil
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = 2 * time.Minute
+	return &Client{
+		cfg:    cfg,
+		http:   &http.Client{Timeout: 10 * time.Minute, Transport: transport},
+		stream: &http.Client{Transport: transport},
+		now:    time.Now,
+	}, nil
 }
 
 // Object is one entry of a listing.
@@ -150,6 +172,12 @@ func (c *Client) List(ctx context.Context, prefix string) ([]Object, error) {
 // ---------------------------------------------------------------------------
 
 func (c *Client) do(ctx context.Context, method, key string, query url.Values, body []byte) (*http.Response, error) {
+	return c.send(ctx, c.http, method, key, query, bytes.NewReader(body), int64(len(body)), sha256Hex(body))
+}
+
+// send signs and sends one request whose body is read from r: size bytes whose
+// SHA-256 the caller already knows, so a file never has to sit in memory.
+func (c *Client) send(ctx context.Context, client *http.Client, method, key string, query url.Values, r io.Reader, size int64, payloadHash string) (*http.Response, error) {
 	// Path-style addressing: R2 supports it and it avoids DNS games with
 	// bucket names.
 	path := "/" + c.cfg.Bucket
@@ -167,23 +195,25 @@ func (c *Client) do(ctx context.Context, method, key string, query url.Values, b
 		target.RawQuery = query.Encode()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, target.String(), bytes.NewReader(body))
+	if size == 0 {
+		r = http.NoBody
+	}
+	req, err := http.NewRequestWithContext(ctx, method, target.String(), r)
 	if err != nil {
 		return nil, err
 	}
-	req.ContentLength = int64(len(body))
+	req.ContentLength = size
 
-	c.sign(req, path, query, body)
-	return c.http.Do(req)
+	c.sign(req, path, query, payloadHash)
+	return client.Do(req)
 }
 
 // sign applies AWS Signature Version 4 to the request.
-func (c *Client) sign(req *http.Request, path string, query url.Values, body []byte) {
+func (c *Client) sign(req *http.Request, path string, query url.Values, payloadHash string) {
 	now := c.now().UTC()
 	amzDate := now.Format("20060102T150405Z")
 	dateStamp := now.Format("20060102")
 
-	payloadHash := sha256Hex(body)
 	req.Header.Set("Host", req.URL.Host)
 	req.Header.Set("X-Amz-Content-Sha256", payloadHash)
 	req.Header.Set("X-Amz-Date", amzDate)
@@ -296,5 +326,22 @@ func expect(res *http.Response, codes ...int) error {
 		}
 	}
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
-	return fmt.Errorf("s3: %s: %s", res.Status, strings.TrimSpace(string(body)))
+	return &StatusError{Code: res.StatusCode, Status: res.Status, Body: strings.TrimSpace(string(body))}
+}
+
+// StatusError is an S3 answer that was not one of the expected codes, typed
+// so a caller can tell "the bucket said no" from "the bucket did not answer".
+type StatusError struct {
+	Code   int
+	Status string
+	Body   string
+}
+
+func (e *StatusError) Error() string { return "s3: " + e.Status + ": " + e.Body }
+
+// IsDenied reports whether err is S3 refusing the credential (401/403), as
+// opposed to a network failure or a missing bucket.
+func IsDenied(err error) bool {
+	var se *StatusError
+	return errors.As(err, &se) && (se.Code == http.StatusForbidden || se.Code == http.StatusUnauthorized)
 }

@@ -462,6 +462,26 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
           `(${detail.slice(0, 200)})`,
       );
     }
+    if (/unknown flag "--backup-policy"/i.test(detail)) {
+      // The same refusal as above, from a `bay` that predates per-app backup
+      // policies. Refused while the artifact was still on stdin.
+      return new AlephaError(
+        `Signed in to ${host}, but its \`bay\` does not know \`--backup-policy\`, so this ` +
+          "environment's `backup` option has nowhere to go. Upgrade `bay` on the host (see " +
+          "https://github.com/alepha-dev/alepha/blob/main/bay/INSTALL.md), or remove `backup` " +
+          "for now. Nothing was deployed  -  the release that was serving still is. " +
+          `(${detail.slice(0, 200)})`,
+      );
+    }
+    if (/backup policy declared by the app/i.test(detail)) {
+      // Bay applies an app's policy within bounds the host keeps (keep at
+      // most 365 per rule, never everything forever, no lifecycle pruning)
+      // and checks it before staging the upload.
+      return new AlephaError(
+        `${host} refused this environment's \`backup\` option: ${detail.slice(0, 300)}. ` +
+          "Fix it in alepha.config.ts. Nothing was deployed  -  the release that was serving still is.",
+      );
+    }
     if (/no control socket found/i.test(detail)) {
       return new AlephaError(
         `Signed in to ${host}, but Bay never found its own control socket  -  nothing was passed via ` +
@@ -753,6 +773,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     const stack = this.stack(ctx);
     const domains = this.domains(ctx);
     this.socket(ctx);
+    const backupPolicy = this.backupPolicy(ctx);
 
     await this.validateDeployArtifact(ctx);
 
@@ -817,6 +838,9 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
         if (secretsPath) {
           args.push("--secrets-file", secretsPath);
         }
+        if (backupPolicy) {
+          args.push("--backup-policy", backupPolicy);
+        }
 
         let answer: string;
         try {
@@ -851,6 +875,36 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
       },
     });
     return url;
+  }
+
+  /**
+   * The environment's `backup` option as the JSON `--backup-policy` takes,
+   * or `undefined` when there is none to send.
+   *
+   * Inline rather than staged like the secrets: it is no secret, and `quote`
+   * single-quotes it for the remote shell. Bay decodes it strictly and
+   * applies its own bounds for an app's layer, so its refusal (see
+   * {@link explain}) is the authoritative check; the schema only catches the
+   * shape. Sending nothing is meaningful too: Bay drops the declaration an
+   * earlier release made, because the policy describes this release.
+   *
+   * Refused for a static site rather than dropped: it has no process and no
+   * database, so a policy there is a config mistake worth hearing about.
+   */
+  protected backupPolicy(
+    ctx: InfraContext<BayEnvironmentOptions>,
+  ): string | undefined {
+    const backup = ctx.options.backup;
+    if (!backup || Object.keys(backup).length === 0) {
+      return undefined;
+    }
+    if (this.slices.isStaticBuild(this.buildOptions)) {
+      throw new AlephaError(
+        `Environment "${ctx.env}" sets \`backup\`, but ${ctx.project} is a static site: it has no ` +
+          "database for Bay to back up. Remove `backup` from this environment in alepha.config.ts.",
+      );
+    }
+    return JSON.stringify(backup);
   }
 
   /**

@@ -72,6 +72,27 @@ type Command struct {
 	// goes into that member alone, blue/green, and nothing else of the stack
 	// is touched.
 	Service string `json:"service,omitempty"`
+	// Tag labels a console `backup`; empty for an untagged one.
+	Tag string `json:"tag,omitempty"`
+	// Policy is a `backup-policy`'s operator layer: an object sets it, JSON
+	// null (or absent) clears it.
+	Policy json.RawMessage `json:"policy,omitempty"`
+	// Restore says which backup a `restore` or `backup-verify` reads.
+	Restore *RestoreAsk `json:"restore,omitempty"`
+}
+
+/*
+RestoreAsk names a backup the way `bay restore` does: Key or At (read in Tz,
+the policy's timezone by default), neither for the newest; From for another
+instance's data. Reason is required for a real restore and recorded with it.
+*/
+type RestoreAsk struct {
+	Key    string `json:"key,omitempty"`
+	At     string `json:"at,omitempty"`
+	Tz     string `json:"tz,omitempty"`
+	From   string `json:"from,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	DryRun bool   `json:"dryRun,omitempty"`
 }
 
 // StackRoute is one full domain one service of a stack environment answers on.
@@ -155,22 +176,26 @@ type serverFrame struct {
 		ID   string `json:"id"`
 		Slug string `json:"slug"`
 	} `json:"estate,omitempty"`
-	DeployAllowed        bool `json:"deployAllowed,omitempty"`
-	StatsIntervalSeconds int  `json:"statsIntervalSeconds,omitempty"`
+	DeployAllowed        bool     `json:"deployAllowed,omitempty"`
+	StatsIntervalSeconds int      `json:"statsIntervalSeconds,omitempty"`
+	Features             []string `json:"features,omitempty"`
 
 	// command
-	ID          string        `json:"id,omitempty"`
-	Kind        string        `json:"kind,omitempty"`
-	App         string        `json:"app,omitempty"`
-	Environment string        `json:"environment,omitempty"`
-	Project     string        `json:"project,omitempty"`
-	Artifact    *Artifact     `json:"artifact,omitempty"`
-	Logs        *LogsAsk      `json:"logs,omitempty"`
-	Stack       string        `json:"stack,omitempty"`
-	Revision    int           `json:"revision,omitempty"`
-	Routes      *[]StackRoute `json:"routes,omitempty"`
-	BaseDomain  string        `json:"baseDomain,omitempty"`
-	Service     string        `json:"service,omitempty"`
+	ID          string          `json:"id,omitempty"`
+	Kind        string          `json:"kind,omitempty"`
+	App         string          `json:"app,omitempty"`
+	Environment string          `json:"environment,omitempty"`
+	Project     string          `json:"project,omitempty"`
+	Artifact    *Artifact       `json:"artifact,omitempty"`
+	Logs        *LogsAsk        `json:"logs,omitempty"`
+	Stack       string          `json:"stack,omitempty"`
+	Revision    int             `json:"revision,omitempty"`
+	Routes      *[]StackRoute   `json:"routes,omitempty"`
+	BaseDomain  string          `json:"baseDomain,omitempty"`
+	Service     string          `json:"service,omitempty"`
+	Tag         string          `json:"tag,omitempty"`
+	Policy      json.RawMessage `json:"policy,omitempty"`
+	Restore     *RestoreAsk     `json:"restore,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -257,6 +282,8 @@ type Client struct {
 	Reload <-chan struct{}
 	// Gauge reads the host for the stats frames; nil pushes nothing.
 	Gauge Gauge
+	// Events is the spool of events waiting for Lore; nil sends none.
+	Events *EventSpool
 	// Version is what `bay version` prints, carried on the inventory frame so
 	// the console can say which Bay reported. It enters here rather than
 	// being read: `version` is a package main variable stamped at link time
@@ -294,6 +321,14 @@ type Client struct {
 
 	inventoryMu   sync.Mutex
 	lastInventory time.Time
+
+	// eventsOK is whether the Lore on the current connection said it takes
+	// event frames. Reset on every dial: a Lore rolled back to a version
+	// without them must not be sent one.
+	eventsOK atomic.Bool
+	// flushMu keeps one flush at a time: the welcome and the append loop both
+	// flush, and two at once would send the same pending events twice.
+	flushMu sync.Mutex
 }
 
 // ensureChannels creates the kick channels exactly once, so a kick that
@@ -422,6 +457,7 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 		return false
 	}
 
+	c.eventsOK.Store(false)
 	c.setConn(conn)
 	defer c.dropConn(conn)
 	// Cancelling closes the socket. Nothing else wakes the read below, which
@@ -452,6 +488,7 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 	defer stopPings()
 	go c.pingLoop(pingCtx, conn)
 	go c.statsLoop(pingCtx)
+	go c.eventsLoop(pingCtx)
 
 	// The machine speaks first.
 	if err := c.Send(map[string]string{"type": "hello"}); err != nil {
@@ -516,6 +553,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			Slug:                 frame.Estate.Slug,
 			DeployAllowed:        frame.DeployAllowed,
 			StatsIntervalSeconds: frame.StatsIntervalSeconds,
+			Features:             frame.Features,
 			ReceivedAt:           c.Now(),
 		}
 		if err := c.Store.SaveWelcome(w); err != nil {
@@ -533,11 +571,15 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		if c.Handler != nil {
 			c.Handler.Welcome(w)
 		}
+		c.eventsOK.Store(hasFeature(frame.Features, EventsFeature))
+		// What happened while nobody was listening goes first thing.
+		go c.flushEvents()
 	case "command":
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
 			Project:     frame.Project,
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
-			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service}
+			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service,
+			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one

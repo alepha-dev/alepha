@@ -16,6 +16,7 @@ import {
   EstateStatsService,
   WebSocketEstateCommandTransport,
   EstateController,
+  EstateEventService,
   EstateSocketController,
 } from "../src/api/index.ts";
 import {
@@ -434,5 +435,134 @@ describe("EstateSocketController, liveness", () => {
     const row = await rowOf(ctx, minted.id);
     expect(row.disconnectedAt).toBeDefined();
     expect(ctx.service.isOnline(row)).toBe(false);
+  });
+});
+
+/**
+ * Bay's backup events: offered in the welcome, kept once per id (Bay
+ * replays its unacknowledged events after a reconnect), and listed per app
+ * with the estate-wide ones (an app-less event, a bucket down, concerns
+ * every app on the machine).
+ */
+describe("EstateSocketController, events", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  const event = (id: string, extra: Record<string, unknown> = {}) => ({
+    type: "event",
+    id,
+    kind: "backup.completed",
+    at: new Date().toISOString(),
+    app: "lore",
+    env: "production",
+    data: { key: "lore/production/k.tar.zst", bytes: 1024 },
+    ...extra,
+  });
+
+  it("offers events in the welcome and keeps each id once", async ({
+    expect,
+  }) => {
+    const events = ctx.alepha.inject(EstateEventService);
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-events");
+    const client = await connect(ctx, minted.secret);
+    await hello(client);
+
+    const welcome = client.frames.find((frame) => frame.type === "welcome");
+    expect(welcome?.features).toEqual(["events"]);
+
+    send(client, event("evt-1"));
+    send(client, event("evt-1"));
+    send(client, event("evt-2", { app: "other" }));
+    send(
+      client,
+      event("evt-3", { kind: "target.down", app: undefined, env: undefined }),
+    );
+    let rows: Awaited<ReturnType<EstateEventService["list"]>> = [];
+    const deadline = Date.now() + 2_000;
+    while (Date.now() < deadline) {
+      rows = await events.list(minted.id, { limit: 200 });
+      if (rows.length >= 3) break;
+      await delay(20);
+    }
+    await delay(100);
+    rows = await events.list(minted.id, { limit: 200 });
+    expect(rows.map((row) => row.eventId).sort()).toEqual([
+      "evt-1",
+      "evt-2",
+      "evt-3",
+    ]);
+    expect(rows.find((row) => row.eventId === "evt-1")?.data).toEqual({
+      key: "lore/production/k.tar.zst",
+      bytes: 1024,
+    });
+
+    const forLore = await events.list(minted.id, {
+      app: "lore",
+      env: "production",
+    });
+    expect(forLore.map((row) => row.eventId).sort()).toEqual([
+      "evt-1",
+      "evt-3",
+    ]);
+
+    await close(client);
+  });
+
+  it("keeps one of two deliveries of an event that race each other", async ({
+    expect,
+  }) => {
+    const events = ctx.alepha.inject(EstateEventService);
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-events-race");
+    const estate = await rowOf(ctx, minted.id);
+    const frame = {
+      type: "event" as const,
+      id: "evt-race",
+      kind: "backup.completed",
+      at: new Date().toISOString(),
+    };
+
+    const kept = await Promise.all([
+      events.record(estate, frame),
+      events.record(estate, frame),
+    ]);
+    expect(kept.filter(Boolean)).toHaveLength(1);
+    expect(await events.list(minted.id)).toHaveLength(1);
+  });
+
+  it("keeps an oversized payload as a marker, not the payload", async ({
+    expect,
+  }) => {
+    const events = ctx.alepha.inject(EstateEventService);
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-events-big");
+    const estate = await rowOf(ctx, minted.id);
+
+    const kept = await events.record(estate, {
+      type: "event",
+      id: "evt-big",
+      kind: "backup.completed",
+      at: new Date().toISOString(),
+      data: { blob: "x".repeat(EstateEventService.MAX_DATA_BYTES + 1) },
+    });
+    expect(kept).toBe(true);
+    const [row] = await events.list(minted.id);
+    expect(row?.data).toMatchObject({ truncated: true });
+    expect(
+      await events.record(estate, {
+        type: "event",
+        id: "evt-big",
+        kind: "backup.completed",
+        at: new Date().toISOString(),
+      }),
+    ).toBe(false);
   });
 });

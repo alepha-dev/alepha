@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { estateAckFrameSchema } from "./estateAckFrameSchema.ts";
+import { estateEventFrameSchema } from "./estateEventFrameSchema.ts";
 import { estateHelloFrameSchema } from "./estateHelloFrameSchema.ts";
 import { estateInventoryFrameSchema } from "./estateInventoryFrameSchema.ts";
 import { estateStatsFrameSchema } from "./estateStatsFrameSchema.ts";
@@ -16,6 +17,7 @@ export const estateClientFrameSchema = z.union([
   estateAckFrameSchema,
   estateStatsFrameSchema,
   estateInventoryFrameSchema,
+  estateEventFrameSchema,
 ]);
 
 export type EstateClientFrame = Infer<typeof estateClientFrameSchema>;
