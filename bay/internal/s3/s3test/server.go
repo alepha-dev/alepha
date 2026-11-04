@@ -40,6 +40,10 @@ type Server struct {
 	// returned as is, with an S3-style error body.
 	Fail func(r *http.Request) int
 
+	// Versioning is what GET ?versioning reports: "Enabled", "Suspended", or
+	// "" for never turned on.
+	Versioning string
+
 	mu      sync.Mutex
 	objects map[string][]byte
 	// uploads holds multipart uploads in progress: id → key and parts.
@@ -141,6 +145,13 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case key != "" && (q.Has("uploads") || q.Has("uploadId")):
 		s.multipart(w, r, key)
+	case r.Method == http.MethodGet && key == "" && q.Has("versioning"):
+		w.Header().Set("Content-Type", "application/xml")
+		body := `<?xml version="1.0" encoding="UTF-8"?><VersioningConfiguration>`
+		if s.Versioning != "" {
+			body += "<Status>" + s.Versioning + "</Status>"
+		}
+		_, _ = io.WriteString(w, body+"</VersioningConfiguration>")
 	case r.Method == http.MethodGet && key == "":
 		s.list(w, r)
 	case r.Method == http.MethodPut:
@@ -203,6 +214,9 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request) {
 	page := s.PageSize
 	if page <= 0 {
 		page = 1000
+	}
+	if mk, err := strconv.Atoi(q.Get("max-keys")); err == nil && mk > 0 && mk < page {
+		page = mk
 	}
 	end := min(start+page, len(keys))
 

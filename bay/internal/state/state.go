@@ -434,6 +434,18 @@ type State struct {
 	// exist to prevent. Pointing both at the same bucket is fine and expected —
 	// the key layouts do not collide — but they must be different credentials.
 	Storage *S3Target `json:"storage,omitempty"`
+	// InstanceStorage is one app instance's OWN upload credential, keyed by
+	// "name/env", used instead of `Storage` for that instance (and only it).
+	//
+	// A map here rather than a field on App: App is what `GET /apps` and the
+	// status views serialise, and a secret must never ride along with them.
+	// Set by `bay config s3:apps <name/env>`, which proves before storing it
+	// that the key cannot reach the backups or any other app's blobs.
+	InstanceStorage map[string]*S3Target `json:"instanceStorage,omitempty"`
+	// WideInstanceStorage marks the instance keys stored with
+	// `--allow-wide-key`: known not to be isolated, so `bay doctor
+	// --probe-keys` warns about them instead of failing.
+	WideInstanceStorage map[string]bool `json:"wideInstanceStorage,omitempty"`
 	// RuntimeLocks maps a runtime image tag ("node:26-slim") to the reference
 	// `bay runtimes update` last resolved it to ("node:26-slim@sha256:...").
 	//
@@ -911,6 +923,11 @@ func (s *Store) Remove(key string) (App, bool, error) {
 	for i, a := range s.state.Apps {
 		if a.Key() == key {
 			s.state.Apps = append(s.state.Apps[:i], s.state.Apps[i+1:]...)
+			// A credential outliving its app would be handed to the next
+			// app deployed under the same name, which may not be the same
+			// owner.
+			delete(s.state.InstanceStorage, key)
+			delete(s.state.WideInstanceStorage, key)
 			return a, true, s.flush()
 		}
 	}
@@ -983,11 +1000,18 @@ func (s *Store) SetS3(cfg *S3Config) error {
 func (s *Store) CredentialsShared() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.state.S3 == nil || s.state.Storage == nil {
+	if s.state.S3 == nil {
 		return false
 	}
-	return s.state.S3.AccessKey == s.state.Storage.AccessKey &&
-		s.state.S3.SecretKey == s.state.Storage.SecretKey
+	if SameCredential(&s.state.S3.S3Target, s.state.Storage) {
+		return true
+	}
+	for _, t := range s.state.InstanceStorage {
+		if SameCredential(&s.state.S3.S3Target, t) {
+			return true
+		}
+	}
+	return false
 }
 
 // Storage returns the bucket hosted apps write their blobs to, or nil.
@@ -1002,6 +1026,103 @@ func (s *Store) Storage() *S3Target {
 	}
 	copied := *s.state.Storage
 	return &copied
+}
+
+// SameCredential reports whether two targets hold the same key pair.
+func SameCredential(a, b *S3Target) bool {
+	if a == nil || b == nil || a.AccessKey == "" {
+		return false
+	}
+	return a.AccessKey == b.AccessKey && a.SecretKey == b.SecretKey
+}
+
+// InstanceStorage returns the instance's own upload credential, or nil.
+func (s *Store) InstanceStorage(key string) *S3Target {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if t := s.state.InstanceStorage[key]; t != nil {
+		copied := *t
+		return &copied
+	}
+	return nil
+}
+
+// InstanceStorageWide says whether the instance's own key was stored with
+// `--allow-wide-key`.
+func (s *Store) InstanceStorageWide(key string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.WideInstanceStorage[key]
+}
+
+// AllInstanceStorage returns every instance's own credential, copied, keyed
+// by "name/env". The isolation probe needs the whole set: a new key has to
+// be shown unable to reach each of the others.
+func (s *Store) AllInstanceStorage() map[string]S3Target {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make(map[string]S3Target, len(s.state.InstanceStorage))
+	for k, t := range s.state.InstanceStorage {
+		if t != nil {
+			out[k] = *t
+		}
+	}
+	return out
+}
+
+// SetInstanceStorage records (or, with nil, removes) an instance's own upload
+// credential. wide says it was stored although its isolation proof failed.
+//
+// Recording one is refused when the instance no longer exists or another
+// instance holds the same key, checked here under the lock: the proof before
+// it takes up to two minutes, and a `bay remove` or a second `bay config
+// s3:apps` in between would otherwise be undone or doubled.
+func (s *Store) SetInstanceStorage(key string, cfg *S3Target, wide bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if cfg != nil {
+		exists := false
+		for _, a := range s.state.Apps {
+			if a.Key() == key {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			return fmt.Errorf("%s no longer exists", key)
+		}
+		for other, t := range s.state.InstanceStorage {
+			if other != key && SameCredential(t, cfg) {
+				return fmt.Errorf("this key is already %s's", other)
+			}
+		}
+	}
+	delete(s.state.WideInstanceStorage, key)
+	if cfg == nil {
+		delete(s.state.InstanceStorage, key)
+	} else {
+		if s.state.InstanceStorage == nil {
+			s.state.InstanceStorage = map[string]*S3Target{}
+		}
+		copied := *cfg
+		s.state.InstanceStorage[key] = &copied
+		if wide {
+			if s.state.WideInstanceStorage == nil {
+				s.state.WideInstanceStorage = map[string]bool{}
+			}
+			s.state.WideInstanceStorage[key] = true
+		}
+	}
+	return s.flush()
+}
+
+// StorageFor is the upload target an instance is given: its own key when it
+// has one, else the host-wide `Storage`, else nil (blobs on disk).
+func (s *Store) StorageFor(key string) *S3Target {
+	if t := s.InstanceStorage(key); t != nil {
+		return t
+	}
+	return s.Storage()
 }
 
 // SetStorage records where hosted apps put their blobs.

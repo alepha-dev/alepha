@@ -98,12 +98,20 @@ apps on them.
 
 Backups and app uploads use **two different S3 credentials**
 (`bay config s3:backups` and `bay config s3:apps`). Every app that declares a
-bucket is handed the apps key; if it were also the backups key, any compromised
+bucket is handed an apps key; if it were also the backups key, any compromised
 app could delete every backup. `bay config s3` uses one key for both, warns, and
 is flagged by `bay status`. See [Backups](/bay/docs/guides-backups#where-backups-go).
 
-Both keys sit in clear in `state.json`, at mode `0600`, and the apps key in each
-such app's `.env` too.
+The host-wide apps key is shared by every app that has no key of its own, so
+each of them can read and delete the others' uploads. `bay config s3:apps
+<name/env>` gives an instance its own key, stored only after S3 proves it is
+refused, for list, get, put and delete, outside `apps/<name>-<env>/blobs/`,
+its own backups under `apps/<name>-<env>/db/` included; a key already held by the backups, the
+host-wide target or another app is refused, and the host-wide `s3:apps`
+refuses a key an app already holds on its own.
+
+Every key sits in clear in `state.json`, at mode `0600`, and an app's key in
+its `.env` too.
 
 ## The Lore connector
 

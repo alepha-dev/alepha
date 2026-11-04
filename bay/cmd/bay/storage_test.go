@@ -617,7 +617,9 @@ func TestGetConfigStorageReportsUnconfigured(t *testing.T) {
 // `bay config s3` still exists and sets BOTH from one credential. That is the
 // convenient path and the less safe one: an app handed a key that also reaches
 // the backup bucket can delete its own backups. Allowed, because a one-operator
-// fleet should not need two tokens to get started — but never silent.
+// fleet should not need two tokens to get started, but never silent. The
+// separate subcommands refuse it unless --allow-shared-key (isolation_test.go);
+// `bay config s3` passes that flag itself.
 func TestSharedCredentialIsReportedAsShared(t *testing.T) {
 	f := newDeployFixture(t)
 	blobs := fakeS3(t)

@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -113,6 +114,78 @@ func (c *Client) Delete(ctx context.Context, key string) error {
 	}
 	defer res.Body.Close()
 	return expect(res, http.StatusNoContent, http.StatusOK, http.StatusNotFound)
+}
+
+/*
+Versioning reports the bucket's versioning status: "Enabled", "Suspended", or
+"" for a bucket on which it was never turned on.
+
+Asked because a blob bucket without it keeps only the current version: code
+that deletes or overwrites the wrong key has lost it everywhere, and no backup
+of Bay's covers blobs. Some providers (R2) do not implement the call; that
+comes back as an error, which callers must read as "unknown", not "off".
+*/
+func (c *Client) Versioning(ctx context.Context) (string, error) {
+	res, err := c.do(ctx, http.MethodGet, "", url.Values{"versioning": {""}}, nil)
+	if err != nil {
+		return "", err
+	}
+	raw, readErr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err := expect(res, http.StatusOK); err != nil {
+		return "", err
+	}
+	if readErr != nil {
+		return "", readErr
+	}
+	var parsed struct {
+		Status string `xml:"Status"`
+	}
+	if err := xml.Unmarshal(raw, &parsed); err != nil {
+		return "", fmt.Errorf("s3: parse versioning: %w", err)
+	}
+	return parsed.Status, nil
+}
+
+/*
+ListPage returns at most max objects under prefix, in one request.
+
+For probes: whether a key may list a prefix is answered by the first page, and
+following continuation tokens through a large bucket only turns a slow answer
+into a timeout reported as "unreachable".
+*/
+func (c *Client) ListPage(ctx context.Context, prefix string, max int) ([]Object, error) {
+	q := url.Values{}
+	q.Set("list-type", "2")
+	q.Set("prefix", prefix)
+	q.Set("max-keys", strconv.Itoa(max))
+	res, err := c.do(ctx, http.MethodGet, "", q, nil)
+	if err != nil {
+		return nil, err
+	}
+	raw, readErr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err := expect(res, http.StatusOK); err != nil {
+		return nil, err
+	}
+	if readErr != nil {
+		return nil, readErr
+	}
+	var parsed struct {
+		Contents []struct {
+			Key          string    `xml:"Key"`
+			Size         int64     `xml:"Size"`
+			LastModified time.Time `xml:"LastModified"`
+		} `xml:"Contents"`
+	}
+	if err := xml.Unmarshal(raw, &parsed); err != nil {
+		return nil, fmt.Errorf("s3: parse listing: %w", err)
+	}
+	out := make([]Object, 0, len(parsed.Contents))
+	for _, o := range parsed.Contents {
+		out = append(out, Object{Key: o.Key, Size: o.Size, LastModified: o.LastModified})
+	}
+	return out, nil
 }
 
 // List returns every object under prefix, following continuation tokens.
@@ -329,8 +402,11 @@ func expect(res *http.Response, codes ...int) error {
 	return &StatusError{Code: res.StatusCode, Status: res.Status, Body: strings.TrimSpace(string(body))}
 }
 
-// StatusError is an S3 answer that was not one of the expected codes, typed
-// so a caller can tell "the bucket said no" from "the bucket did not answer".
+// StatusError is an S3 answer that was not one of the expected codes.
+//
+// Typed so a caller can tell "the bucket said no" from "the bucket did not
+// answer": an isolation probe needs exactly that difference, because a denied
+// listing is the proof it is looking for and a timeout proves nothing.
 type StatusError struct {
 	Code   int
 	Status string

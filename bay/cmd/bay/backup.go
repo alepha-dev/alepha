@@ -67,7 +67,7 @@ func notBackedUp(store *state.Store, app state.App) []string {
 	out := []string{".env (secrets)"}
 	if blobsLiveInObjectStorage(app) {
 		where := "the configured bucket"
-		if cfg := store.Storage(); cfg != nil {
+		if cfg := store.StorageFor(app.Key()); cfg != nil {
 			where = cfg.Bucket
 		}
 		// "The blobs are in bucket X" is a different claim from "not covered",
@@ -145,9 +145,18 @@ func (s *server) registerBackupRoutes(mux *http.ServeMux) {
 }
 
 func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
-	var body state.S3Config
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+	var req struct {
+		state.S3Config
+		AllowShared bool `json:"allowShared,omitempty"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+		return
+	}
+	body := req.S3Config
+	if reason := s.backupKeyShared(&body.S3Target); reason != "" && !req.AllowShared {
+		writeError(w, http.StatusConflict, reason+": an app holding it could delete every backup on this host. "+
+			"Mint a separate key for backups, or pass --allow-shared-key to accept the risk")
 		return
 	}
 	if body.Keep == 0 {
@@ -168,6 +177,22 @@ func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
 	}
 	s.log.Info("backup destination configured", "endpoint", body.Endpoint, "bucket", body.Bucket, "keep", body.Keep)
 	writeJSON(w, http.StatusOK, map[string]any{"configured": true, "keep": body.Keep})
+}
+
+// backupKeyShared names the app-side holder of `target`'s key, empty if none.
+// Every key in s3:apps (host-wide or per instance) is written into an app's
+// .env, so the backup key being one of them is the backup bucket being
+// writable - and deletable - by a hosted app.
+func (s *server) backupKeyShared(target *state.S3Target) string {
+	if state.SameCredential(s.store.Storage(), target) {
+		return "this is also the s3:apps key handed to every app"
+	}
+	for key, t := range s.store.AllInstanceStorage() {
+		if state.SameCredential(&t, target) {
+			return "this is also " + key + "'s upload key"
+		}
+	}
+	return ""
 }
 
 /*
@@ -731,7 +756,12 @@ func keys(entries []backup.Entry) []string {
 // ---------------------------------------------------------------------------
 
 func cmdConfigS3(args []string) error {
-	cfg := state.S3Config{S3Target: state.S3Target{Region: "auto"}, Keep: defaultKeep}
+	var cfg struct {
+		state.S3Config
+		AllowShared bool `json:"allowShared,omitempty"`
+	}
+	cfg.S3Config = state.S3Config{S3Target: state.S3Target{Region: "auto"}, Keep: defaultKeep}
+	cfg.AllowShared = hasFlag(args, "--allow-shared-key")
 	for i := 0; i < len(args)-1; i++ {
 		switch args[i] {
 		case "--endpoint":

@@ -37,13 +37,33 @@ func (s *server) registerStorageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /config/storage", s.handleConfigStorage)
 	mux.HandleFunc("GET /config/storage", s.handleGetConfigStorage)
 	mux.HandleFunc("POST /apps/{name}/{env}/storage/migrate", s.handleMigrateStorage)
+	s.registerIsolationRoutes(mux)
 }
 
 func (s *server) handleConfigStorage(w http.ResponseWriter, r *http.Request) {
-	var body state.S3Target
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+	var req struct {
+		state.S3Target
+		AllowShared bool `json:"allowShared,omitempty"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
+	}
+	body := req.S3Target
+	// This key goes into every app's .env. If it is also the backup key, any
+	// hosted app can delete every backup - the one thing the split prevents.
+	if b := s.store.S3(); b != nil && state.SameCredential(&b.S3Target, &body) && !req.AllowShared {
+		writeError(w, http.StatusConflict, "this is the BACKUP key: every app is given this one, so any app could delete every backup on this host. "+
+			"Mint a separate key, or pass --allow-shared-key to accept the risk")
+		return
+	}
+	// An app's own key handed to every app undoes the isolation it was proved
+	// to give, and no flag makes that a reasonable trade.
+	for other, t := range s.store.AllInstanceStorage() {
+		if state.SameCredential(&t, &body) {
+			writeError(w, http.StatusConflict, "this key is "+other+"'s own upload key: as the host-wide key every app would hold it. Mint a separate one")
+			return
+		}
 	}
 	if body.Region == "" {
 		// What R2 wants, and what nobody remembers to pass.
@@ -116,7 +136,7 @@ func (s *server) handleMigrateStorage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "unknown app")
 		return
 	}
-	cfg := s.store.Storage()
+	cfg := s.store.StorageFor(app.Key())
 	if cfg == nil {
 		writeError(w, http.StatusPreconditionFailed,
 			"no blob storage is configured: run `bay config s3:apps --endpoint URL --bucket NAME` "+
@@ -292,10 +312,11 @@ func cmdStorageMigrate(args []string) error {
 // exists to prevent.
 //
 // Allowed anyway. A one-operator fleet should not have to mint two tokens
-// before it can store its first file, and refusing would only teach people to
-// paste the same credential into both subcommands — the same outcome, with the
-// warning skipped. So it is offered, said out loud here, and reported by
-// `bay status` for as long as it is true.
+// before it can store its first file. The separate subcommands refuse a key
+// already used by the other half unless given --allow-shared-key; this one
+// passes that flag itself, because asking for one key for both IS the
+// explicit choice. Said out loud here, and reported by `bay status` for as
+// long as it is true.
 func cmdConfigS3Both(args []string) error {
 	fmt.Fprintln(os.Stderr,
 		"⚠ one credential for BOTH app storage and backups.\n"+
@@ -304,6 +325,7 @@ func cmdConfigS3Both(args []string) error {
 			"      bay config s3:backups --endpoint URL --bucket NAME   # BAY_S3_*\n"+
 			"      bay config s3:apps    --endpoint URL --bucket NAME   # BAY_STORAGE_*")
 
+	args = append(args, "--allow-shared-key")
 	if err := cmdConfigS3(args); err != nil {
 		return err
 	}
@@ -316,7 +338,12 @@ func cmdConfigS3Both(args []string) error {
 }
 
 func cmdConfigStorage(args []string) error {
-	cfg := state.S3Target{Region: "auto"}
+	var cfg struct {
+		state.S3Target
+		AllowShared bool `json:"allowShared,omitempty"`
+	}
+	cfg.S3Target = state.S3Target{Region: "auto"}
+	cfg.AllowShared = hasFlag(args, "--allow-shared-key")
 	for i := 0; i < len(args)-1; i++ {
 		switch args[i] {
 		case "--endpoint":

@@ -27,6 +27,9 @@ type check struct {
 	Name   string
 	OK     bool
 	Detail string
+	// Warn marks a check that is not OK but does not fail doctor: a risk the
+	// operator should know about, on a host that still works.
+	Warn bool
 }
 
 // minFreeDisk is the floor below which a deploy is likely to fail halfway:
@@ -43,7 +46,7 @@ the deploy itself cannot name.
 */
 func cmdDoctor(args []string) error {
 	root := "/opt/bay/data"
-	if err := checkFlags(args, map[string]bool{},
+	if err := checkFlags(args, map[string]bool{"--probe-keys": true},
 		map[string]bool{"--root": true, "--control-socket": true}); err != nil {
 		return err
 	}
@@ -52,7 +55,7 @@ func cmdDoctor(args []string) error {
 			root = args[i+1]
 		}
 	}
-	checks := runDoctor(root)
+	checks := runDoctor(root, hasFlag(args, "--probe-keys"))
 	failed := printChecks(os.Stdout, checks)
 	if failed > 0 {
 		return fmt.Errorf("%d check(s) failed", failed)
@@ -60,7 +63,7 @@ func cmdDoctor(args []string) error {
 	return nil
 }
 
-func runDoctor(root string) []check {
+func runDoctor(root string, probeKeys bool) []check {
 	var checks []check
 	docker, err := runner.NewDocker("")
 	checks = append(checks, dockerReachable(err))
@@ -71,15 +74,21 @@ func runDoctor(root string) []check {
 	checks = append(checks, composePlugin())
 	checks = append(checks, portFree(80), portFree(443))
 	checks = append(checks, diskFree(root))
+	checks = append(checks, storageChecks(root, probeKeys)...)
 	return checks
 }
 
-// printChecks writes one line per check and returns how many failed.
+// printChecks writes one line per check and returns how many failed;
+// warnings are printed, not counted.
 func printChecks(w io.Writer, checks []check) int {
 	failed := 0
 	for _, c := range checks {
 		mark := "ok  "
-		if !c.OK {
+		switch {
+		case c.OK:
+		case c.Warn:
+			mark = "WARN"
+		default:
 			mark = "FAIL"
 			failed++
 		}

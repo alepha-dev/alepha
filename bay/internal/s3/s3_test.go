@@ -128,3 +128,30 @@ func TestListErrorStatusIsAnError(t *testing.T) {
 		t.Fatal("an error status on a listing must not read as an empty bucket")
 	}
 }
+
+func TestVersioningReportsTheBucketStatus(t *testing.T) {
+	for _, want := range []string{"Enabled", "Suspended", ""} {
+		srv := s3test.New(t)
+		srv.Versioning = want
+		got, err := srv.Client(t).Versioning(context.Background())
+		if err != nil || got != want {
+			t.Fatalf("Versioning() = %q, %v; want %q", got, err, want)
+		}
+	}
+}
+
+// A refusal and an outage must not look alike: the isolation proof counts the
+// first as evidence and the second as none.
+func TestIsDeniedTellsARefusalFromAnOutage(t *testing.T) {
+	srv := s3test.New(t)
+	srv.Fail = func(*http.Request) int { return http.StatusForbidden }
+	_, err := srv.Client(t).List(context.Background(), "")
+	if !s3.IsDenied(err) {
+		t.Fatalf("403 must be IsDenied, got %v", err)
+	}
+	srv.Fail = func(*http.Request) int { return http.StatusInternalServerError }
+	_, err = srv.Client(t).List(context.Background(), "")
+	if err == nil || s3.IsDenied(err) {
+		t.Fatalf("500 must not be IsDenied, got %v", err)
+	}
+}

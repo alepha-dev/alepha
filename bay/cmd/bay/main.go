@@ -159,6 +159,9 @@ func main() {
 		switch {
 		case len(os.Args) > 2 && os.Args[2] == "s3:backups":
 			err = cmdConfigS3(os.Args[3:])
+		case len(os.Args) > 3 && os.Args[2] == "s3:apps" && !strings.HasPrefix(os.Args[3], "--"):
+			// `s3:apps <name/env>`: a key for that instance alone.
+			err = cmdConfigInstanceStorage(os.Args[3:])
 		case len(os.Args) > 2 && os.Args[2] == "s3:apps":
 			err = cmdConfigStorage(os.Args[3:])
 		case len(os.Args) > 2 && os.Args[2] == "s3":
@@ -292,7 +295,10 @@ func usageText() string {
   bay version
   bay doctor  [--root /opt/bay/data]
               # can this host run Bay: Docker, cgroup v2, compose, ports
-              # 80/443, free disk. One line per check; exits 1 on a failure
+              # 80/443, free disk, and every configured bucket: reachable,
+              # backup key held by no app, versioning on the blob bucket,
+              # each app's own key still isolated. One line per check;
+              # exits 1 on a failure
   bay runtimes                    # pinned runtime images, and what each app runs
               # an app runs its archive in node:<major>-slim / oven/bun:<major>-slim,
               # the major its manifest records; a major Bay lacks is refused
@@ -312,13 +318,24 @@ func usageText() string {
               # those for this app only, recorded and flagged by "bay status";
               # the app restarts with it. Image apps keep their image's user.
               # --memory lifts or lowers the 512m ceiling (64m..64g) for this app
-  bay config s3:backups --endpoint URL --bucket NAME [--keep N]
+  bay config s3:backups --endpoint URL --bucket NAME [--keep N] [--allow-shared-key]
                 # where BACKUPS go. Credentials from BAY_S3_ACCESS_KEY /
-                # BAY_S3_SECRET_KEY. Never handed to an app.
+                # BAY_S3_SECRET_KEY. Never handed to an app: refused if an app
+                # already holds it, unless --allow-shared-key.
   bay config s3:apps --endpoint URL --bucket NAME
                 # where hosted APPS put their blobs. Credentials from
                 # BAY_STORAGE_ACCESS_KEY / BAY_STORAGE_SECRET_KEY. Every app
-                # that declares a bucket is given these.
+                # that declares a bucket is given these. Refused if it is the
+                # backup key, unless --allow-shared-key.
+  bay config s3:apps <name/env> --endpoint URL --bucket NAME [--allow-wide-key] [--moved]
+                # a key for THIS app only (same env vars). Bay proves it with S3
+                # itself: it must write under apps/<name>-<env>/blobs/ and be
+                # REFUSED on the backups and every other app's prefix, or it is
+                # not stored. --allow-wide-key stores a key that failed that
+                # (R2 scopes tokens per bucket: use one bucket per app there).
+                # --moved: you already copied its blobs to the new bucket.
+  bay config s3:apps <name/env> (--check|--clear)
+                # re-run the isolation proof / fall back to the host-wide key
   bay config s3 --endpoint URL --bucket NAME [--keep N]
                 # both of the above, from ONE credential. Convenient and less
                 # safe: an app given that key can delete every backup here.
@@ -1498,7 +1515,9 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		// Read per deploy rather than captured at boot, so `bay config s3:apps`
 		// takes effect on the next deploy without restarting the proxy — the
 		// same contract `backupManager` has.
-		Storage:         s.store.Storage(),
+		// The instance's own key when it has one (`bay config s3:apps
+		// <name/env>`), so no other app's credential ever lands in its .env.
+		Storage:         s.store.StorageFor(key),
 		MigratedStorage: opts.MigratedStorage,
 		Secrets:         secrets,
 		StackVars:       stackVars,

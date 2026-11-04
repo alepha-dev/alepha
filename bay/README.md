@@ -76,6 +76,28 @@ that is never the backup one) or they are not shared at all, and secrets come
 from the deploy. The worst failure of a backup system is somebody believing it
 covers more than it does.
 
+**One upload key per app, proved by S3.** The `s3:apps` key is written into
+every app's `.env`, so on its own any app can read and delete every other
+app's uploads: `apps/<name>-<env>/blobs/` is a convention, not a permission.
+`bay config s3:apps <name/env> --endpoint … --bucket …` gives one instance a
+key of its own, and Bay stores it only after trying it: it must write, list,
+read and delete under its own prefix, and be **refused** (401/403) when listing or
+reading an object Bay plants in the host backups, every other app's backups and
+every other app's uploads on the same S3 service - including apps still on the
+host-wide key. Endpoints are compared as services (`localhost` is `127.0.0.1`,
+every AWS region is AWS), and each bucket is probed in its own region. A probe
+that succeeds is a leak; one that times out (10 s per call) proves nothing, and
+neither does a key tried against nothing while the host keeps data elsewhere -
+all refuse the key (`--allow-wide-key` stores it anyway, remembers it, and
+`doctor --probe-keys` then warns instead of failing). The key is stored only
+once the app's `.env` holds it, and never while a deploy or a restore works on
+the app. R2 scopes a token to a
+bucket, not a prefix: there, isolation means one bucket per app. A key already
+held by the backups, the host-wide `s3:apps` or another app is always refused
+(the host-wide `s3:apps` likewise refuses an app's own key),
+and `s3:apps` / `s3:backups` refuse each other's key unless
+`--allow-shared-key`.
+
 **A backup never sits in memory.** The snapshot is compressed file to file and
 streamed to the bucket (in one PUT up to 16 MiB, as a multipart upload in
 16 MiB parts beyond (a failed part is retried, a failed upload aborted so no
