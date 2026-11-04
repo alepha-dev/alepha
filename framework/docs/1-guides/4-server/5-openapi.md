@@ -18,26 +18,24 @@ class App {
 }
 ```
 
-This serves:
-
-- Interactive Swagger UI at `/docs`
-- OpenAPI JSON at `/docs/json`
+This serves the OpenAPI JSON at `/docs/json`. `$swagger` serves no viewer: point any OpenAPI viewer at that route. A viewer built on `@alepha/ui`, aware of the app's session and permissions, is planned as `$uiSwagger` from `@alepha/ui/swagger`.
 
 ## Configuration
 
 The `$swagger` primitive accepts these options:
 
-| Option        | Default                                            | Description                                                                                 |
-| ------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `info`        | `{ title: "API Documentation", version: "1.0.0" }` | OpenAPI info block                                                                          |
-| `prefix`      | `"/docs"`                                          | Base path for documentation endpoints                                                       |
-| `disabled`    | `false`                                            | Disable documentation entirely                                                              |
-| `excludeTags` | `[]`                                               | Tag names to hide from documentation                                                        |
-| `ui`          | `true`                                             | Enable/disable Swagger UI, or pass UI options (`root`, `persistAuthorization`, `initOAuth`) |
-| `rewrite`     | -                                                  | Function to modify the generated OpenAPI document                                           |
-| `servers`     | server hostname                                    | OpenAPI `servers` array                                                                     |
+| Option        | Default                                            | Description                                       |
+| ------------- | -------------------------------------------------- | ------------------------------------------------- |
+| `info`        | `{ title: "API Documentation", version: "1.0.0" }` | OpenAPI info block                                |
+| `prefix`      | `"/docs"`                                          | Base path for documentation endpoints             |
+| `disabled`    | `false`                                            | Disable documentation entirely                    |
+| `excludeTags` | `[]`                                               | Tag names to hide from documentation              |
+| `rewrite`     | -                                                  | Function to modify the generated OpenAPI document |
+| `servers`     | server hostname                                    | OpenAPI `servers` array                           |
 
-`ui: false` serves the JSON document alone. Pass an object to configure the UI: `persistAuthorization` (default `true`) keeps the token you enter across reloads, and `root` points at your own Swagger UI assets. Only the first `$swagger` in the app is read, and on a serverless runtime only the JSON document and the UI's initializer are served, since there is no filesystem to serve the UI's assets from.
+Only the first `$swagger` in the app is read. The document is built in memory and served from a route, so it works the same on every runtime, serverless included.
+
+The `ui` option is gone: the Swagger UI that `alepha` used to vendor was removed. Drop `ui` from your `$swagger` call.
 
 ### Custom Prefix
 
@@ -46,7 +44,7 @@ docs = $swagger({
   prefix: "/api-docs",
   info: { title: "My API", version: "2.0.0" },
 });
-// Swagger UI at /api-docs, JSON at /api-docs/json
+// JSON at /api-docs/json
 ```
 
 ### Excluding Tags
@@ -121,20 +119,3 @@ An action that declares [`errors`](/docs/guides-server-typed-errors) documents t
 An action with a timeout, its own or the global one, documents the `503` of its `TimeoutError`, with or without `errors`. Without `errors`, no other error response is documented beyond the `400` and the `401` of a secured action.
 
 Keys you never want in the document can be stripped everywhere with the `swaggerOptions` atom: `alepha.store.mut(swaggerOptions, (o) => ({ ...o, excludeKeys: ["internalNote"] }))`.
-
-## OAuth Configuration
-
-Pass OAuth initialization options for the Swagger UI:
-
-```typescript
-docs = $swagger({
-  info: { title: "My API", version: "1.0.0" },
-  ui: {
-    initOAuth: {
-      clientId: "my-client-id",
-      appName: "My App",
-      usePkceWithAuthorizationCodeGrant: true,
-    },
-  },
-});
-```

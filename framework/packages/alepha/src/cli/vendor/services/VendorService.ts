@@ -646,12 +646,7 @@ export class VendorService {
   /**
    * Directories to ignore during diff comparisons.
    */
-  protected readonly ignoredPaths = [
-    "__tests__",
-    "assets/swagger-ui",
-    "node_modules",
-    "dist",
-  ];
+  protected readonly ignoredPaths = ["__tests__", "node_modules", "dist"];
 
   /**
    * Check if a file path should be ignored during diff.

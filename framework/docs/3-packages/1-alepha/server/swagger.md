@@ -15,10 +15,11 @@ Automatic API documentation generation.
 **Features:**
 
 - Swagger/OpenAPI configuration
-- Routes: `GET /docs` (UI), `GET /docs/json` (spec) - prefix configurable via `$swagger({ prefix })`
+- Route: `GET /docs/json` (the OpenAPI document) - prefix configurable via `$swagger({ prefix })`
+- No viewer: point any OpenAPI viewer at the JSON route
 
 ## API Reference
 
 ### Primitives
 
-- [`$swagger`](/docs/reference-primitives-$swagger) - Creates an OpenAPI/Swagger documentation primitive with interactive UI.
+- [`$swagger`](/docs/reference-primitives-$swagger) - Creates an OpenAPI documentation primitive.
