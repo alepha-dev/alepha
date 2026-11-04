@@ -1,5 +1,10 @@
 import { Alepha, AlephaError, z } from "alepha";
-import { $action, BadRequestError, ServerProvider } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  NotFoundError,
+  ServerProvider,
+} from "alepha/server";
 import { describe, it } from "vitest";
 
 import { ServerLinksProvider } from "../index.ts";
@@ -349,5 +354,54 @@ describe("POST /api/_batch", () => {
     } finally {
       await alepha.stop();
     }
+  });
+  it("names a failed entry and carries the batch's request id (#Q3104)", async ({
+    expect,
+  }) => {
+    class App {
+      missing = $action({
+        path: "/missing",
+        method: "GET",
+        schema: { response: z.text() },
+        handler: () => {
+          throw new NotFoundError("No such file");
+        },
+      });
+      broken = $action({
+        path: "/broken",
+        method: "GET",
+        schema: { response: z.text() },
+        handler: () => {
+          throw new AlephaError("internal detail");
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+    await alepha.start();
+
+    const res = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/_batch`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-request-id": "req-batch-q3104",
+        },
+        body: JSON.stringify([{ action: "missing" }, { action: "broken" }]),
+      },
+    );
+
+    const data = await res.json();
+
+    expect(data[0]).toStrictEqual({
+      action: "missing",
+      status: 404,
+      error: "No such file",
+      name: "NOT_FOUND",
+      requestId: "req-batch-q3104",
+    });
+    expect(data[1].status).toBe(500);
+    expect(data[1].requestId).toBe("req-batch-q3104");
   });
 });

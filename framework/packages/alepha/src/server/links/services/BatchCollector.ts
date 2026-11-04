@@ -117,14 +117,20 @@ export class BatchCollector {
       for (let i = 0; i < batch.length; i++) {
         const result = allResults[indexMap[i]];
         if (result.status >= 400) {
+          // Rebuilt the way `HttpClient.responseError` rebuilds a single
+          // request's error: the registered class by name, and the request
+          // id in its data (#Q3104).
+          const data: { status: number; requestId?: string } = {
+            status: result.status,
+          };
+          if (result.requestId) data.requestId = result.requestId;
           batch[i].reject(
-            new HttpError(
-              { status: result.status },
-              {
-                message:
-                  result.error ?? `${result.action} failed (${result.status})`,
-              },
-            ),
+            HttpError.fromJSON({
+              name: result.name ?? HttpError.name,
+              message:
+                result.error ?? `${result.action} failed (${result.status})`,
+              data,
+            }),
           );
         } else {
           batch[i].resolve(result.data);
@@ -207,4 +213,6 @@ interface BatchResponse {
   status: number;
   data?: any;
   error?: string;
+  name?: string;
+  requestId?: string;
 }

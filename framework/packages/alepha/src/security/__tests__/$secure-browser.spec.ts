@@ -147,6 +147,36 @@ describe("$secure (browser)", () => {
       });
     });
 
+    it("lets the user the browser was handed through (#Q3105)", async ({
+      expect,
+    }) => {
+      // The copy a server render writes for the browser, not one set by hand:
+      // the realm must survive `serialize`, or no hydrated user ever matches.
+      const hydrated = currentUserAtom.options.serialize!({
+        id: "1",
+        name: "Alice",
+        realm: "github",
+        ownership: { kind: "self" } as never,
+      });
+      expect(hydrated?.realm).toBe("github");
+      expect(hydrated).not.toHaveProperty("ownership");
+
+      const alepha = Alepha.create();
+      class App {
+        fn = $pipeline({
+          use: [$secure({ issuers: ["github"] })],
+          handler: async () => "ok",
+        });
+      }
+      const app = alepha.inject(App);
+      await alepha.start();
+
+      await alepha.context.run(async () => {
+        alepha.store.set(currentUserAtom, hydrated);
+        expect(await app.fn()).toBe("ok");
+      });
+    });
+
     it("should call handler when user realm matches", async ({ expect }) => {
       const alepha = Alepha.create();
 

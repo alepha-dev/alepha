@@ -7,6 +7,7 @@ import {
   Alepha,
   MIDDLEWARE_PROTECTED,
   type MiddlewareMetadata,
+  TimeoutError,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -21,6 +22,8 @@ import {
   $sse,
   BadRequestError,
   type ClientRequestEntry,
+  errorNameByStatus,
+  HttpError,
   type ClientRequestOptions,
   type RequestConfigSchema,
   ServerTimingProvider,
@@ -221,6 +224,13 @@ export class ServerLinksProvider {
           status: z.integer(),
           data: z.any().optional(),
           error: z.text().optional(),
+          /**
+           * A failed entry's error name, as the single-request path sends
+           * it, so the client rebuilds the same class (#Q3104).
+           */
+          name: z.text().optional(),
+          /** The batch request's id, the one its logs and reports carry. */
+          requestId: z.text().optional(),
         }),
       ),
     },
@@ -249,6 +259,8 @@ export class ServerLinksProvider {
         status: number;
         data?: any;
         error?: string;
+        name?: string;
+        requestId?: string;
       }> = [];
 
       for (const [i, result] of results.entries()) {
@@ -285,12 +297,33 @@ export class ServerLinksProvider {
             status >= 500 && this.alepha.isProduction()
               ? "Internal Server Error"
               : message,
+          // What the single-request path answers with, so a batched read
+          // fails the way the same read alone does: the same class on the
+          // client, and the reference a person can quote to support
+          // (#Q3104). It used to arrive as a bare status and message.
+          name: this.errorName(reason, status),
+          requestId: request.requestId,
         });
       }
 
       return entries;
     },
   });
+
+  /**
+   * The name `ServerRouterProvider.errorHandler` would put on the wire for
+   * this error: a declared error's own, a bare `HttpError` named by its
+   * status, anything else by its status when it is a known one.
+   */
+  protected errorName(error: unknown, status: number): string | undefined {
+    if (error instanceof HttpError || error instanceof TimeoutError) {
+      const name = HttpError.toJSON(error).name;
+      return name === HttpError.name
+        ? (errorNameByStatus[status] ?? name)
+        : name;
+    }
+    return errorNameByStatus[status];
+  }
 
   /**
    * Announces a sub-request failure on `server:request:error`, the way the

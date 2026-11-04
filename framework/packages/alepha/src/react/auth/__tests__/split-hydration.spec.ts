@@ -83,7 +83,7 @@ describe("split hydration", () => {
     expect(own).toHaveProperty("alepha.server.request.apiLinks");
   });
 
-  it("writes a client projection of the user: no realm, credential, ownership, scope or token", async ({
+  it("writes a client projection of the user: its realm, but no credential, ownership, scope or token", async ({
     expect,
   }) => {
     const { app, get } = await boot();
@@ -96,8 +96,9 @@ describe("split hydration", () => {
     const user = JSON.parse(html.match(PRIVATE)![1])["alepha.security.user"];
 
     expect(user.roles).toEqual(["user"]);
+    // The browser `$secure({ issuers })` reads it (#Q3105).
+    expect(typeof user.realm).toBe("string");
     for (const field of [
-      "realm",
       "credential",
       "ownership",
       "permissionScope",

@@ -1,4 +1,5 @@
 import { Alepha, type FileLike } from "alepha";
+import { HttpClient, HttpError, NotFoundError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { BatchCollector } from "../services/BatchCollector.ts";
@@ -37,6 +38,49 @@ describe("BatchCollector", () => {
 
     expect(results).toEqual(["upload", "list"]);
     expect(direct).toEqual(["upload", "list"]);
+  });
+
+  it("rejects a failed entry as its own class, with its request id (#Q3104)", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const http = alepha.inject(HttpClient);
+    http.fetch = (async () => ({
+      data: [
+        { action: "ok", status: 200, data: "fine" },
+        {
+          action: "missing",
+          status: 404,
+          error: "No such file",
+          name: "NOT_FOUND",
+          requestId: "req-batch-q3104",
+        },
+        { action: "old", status: 503, error: "Internal Server Error" },
+      ],
+    })) as any;
+    const collector = alepha.inject(BatchCollector);
+    const entry = (action: string) => ({
+      action,
+      directCall: async () => action,
+    });
+
+    const [ok, missing, old] = await Promise.allSettled([
+      collector.add(entry("ok")),
+      collector.add(entry("missing")),
+      collector.add(entry("old")),
+    ]);
+
+    expect(ok).toStrictEqual({ status: "fulfilled", value: "fine" });
+    const error = (missing as PromiseRejectedResult).reason;
+    expect(error).toBeInstanceOf(NotFoundError);
+    expect(error.message).toBe("No such file");
+    expect(error.status).toBe(404);
+    expect(error.data.requestId).toBe("req-batch-q3104");
+    // A server that predates the fields still rejects as an HttpError.
+    const legacy = (old as PromiseRejectedResult).reason;
+    expect(legacy).toBeInstanceOf(HttpError);
+    expect(legacy.status).toBe(503);
+    expect(legacy.data.requestId).toBeUndefined();
   });
 
   it("should deduplicate identical entries", ({ expect }) => {
