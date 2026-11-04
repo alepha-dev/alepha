@@ -1,4 +1,3 @@
-assets/swagger-ui
 
 # Materialised by the "Copy package docs" step in release.yml, listed in
 # `files`, and shipped in the tarball. Never tracked: CHANGELOG.md is a copy of

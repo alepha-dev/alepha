@@ -1,6 +1,3 @@
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import {
   $atom,
   $hook,
@@ -31,8 +28,6 @@ import {
   ServerRouterProvider,
   statusTextByStatus,
 } from "alepha/server";
-import { ServerStaticProvider } from "alepha/server/static";
-import { FileSystemProvider } from "alepha/system";
 
 import {
   $swagger,
@@ -72,13 +67,11 @@ declare module "alepha" {
 
 export class ServerSwaggerProvider {
   public static readonly id: string = "alepha.server.ServerSwaggerProvider";
-  protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly options = $store(swaggerOptions);
-  protected readonly fs = $inject(FileSystemProvider);
 
   public json?: OpenApiDocument;
 
@@ -121,11 +114,7 @@ export class ServerSwaggerProvider {
 
     this.configureSwaggerApi(prefix, json);
 
-    if (options.ui !== false) {
-      await this.configureSwaggerUi(prefix, options);
-    } else {
-      this.log.info(`Swagger API available at ${prefix}/json`);
-    }
+    this.log.info(`OpenAPI document available at ${prefix}/json`);
 
     return json;
   }
@@ -643,88 +632,6 @@ export class ServerSwaggerProvider {
       },
       handler: () => json,
     });
-  }
-
-  protected async configureSwaggerUi(
-    prefix: string,
-    options: SwaggerPrimitiveOptions,
-  ): Promise<void> {
-    const ui = typeof options.ui === "object" ? options.ui : {};
-    const persistAuth = ui.persistAuthorization !== false;
-    const initializer = `
-window.onload = function() {
-	window.ui = SwaggerUIBundle({
-		url: "${prefix}/json",
-		dom_id: '#swagger-ui',
-		deepLinking: true,
-		persistAuthorization: ${persistAuth},
-		presets: [
-			SwaggerUIBundle.presets.apis,
-			SwaggerUIStandalonePreset
-		],
-		plugins: [
-			SwaggerUIBundle.plugins.DownloadUrl
-		],
-		layout: "BaseLayout"
-	});
-
-  document.body.style.backgroundColor = "#f2f2f2";
-
-	const options = ${JSON.stringify(ui)};
-
-	if (options.initOAuth) {
-		ui.initOAuth(options.initOAuth);
-	}
-};
-		`.trim();
-
-    if (!this.alepha.isServerless()) {
-      const dirname = fileURLToPath(import.meta.url);
-
-      const root = await this.getAssetPath(
-        ui.root,
-        // TODO: resolve the asset directory from the package root instead of probing relative paths
-        join(dirname, "../../assets/swagger-ui"),
-        join(dirname, "../../../assets/swagger-ui"),
-        join(dirname, "../../../../assets/swagger-ui"),
-        join(dirname, "../../../../../assets/swagger-ui"),
-      );
-
-      if (!root) {
-        this.log.warn(`Failed to locate Swagger UI assets for path ${prefix}`);
-        return;
-      }
-
-      await this.serverStaticProvider.createStaticServer({
-        path: prefix,
-        root,
-      });
-    }
-
-    this.serverRouterProvider.createRoute({
-      method: "GET",
-      path: `${prefix}/swagger-initializer.js`,
-      handler: ({ reply }) => {
-        reply.headers["content-type"] = "application/javascript; charset=utf-8";
-        return initializer;
-      },
-    });
-
-    this.log.info("SwaggerUI OK", {
-      url: `${this.serverProvider.hostname}${prefix}`,
-    });
-  }
-
-  protected async getAssetPath(
-    ...paths: (string | undefined)[]
-  ): Promise<string | undefined> {
-    for (const path of paths) {
-      if (!path) continue;
-      const exists = await this.fs.exists(path);
-      if (exists) {
-        return path;
-      }
-    }
   }
 
   public removePrivateFields<T extends Record<string, any>>(

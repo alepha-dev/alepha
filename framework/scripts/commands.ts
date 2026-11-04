@@ -175,9 +175,8 @@ export class AlephaCommands {
       //
       // It rewrites only what the generators own, which is the point: the
       // diff it leaves is the one to stage. It also materialises the
-      // untracked outputs a fresh worktree lacks (`../docs/.gen`,
-      // `packages/alepha/assets/swagger-ui`), which `lint` and the suite
-      // both read.
+      // untracked outputs a fresh worktree lacks (`../docs/.gen`), which
+      // `lint` and the suite both read.
       await run(`yarn copy`);
       await run([
         `yarn typecheck`,
