@@ -368,10 +368,15 @@ test.describe("The Bay console", () => {
     // changes before the request is sent, and asserting on that would pass
     // roughly 3 ms early. This is the race a green CI over a red local run
     // is made of.
+    //
+    // The restart's own request, by its body: the instance page also reads
+    // through POST /api/_batch (its Backups panel), and waiting for any POST
+    // resolved on that read, then navigated away and cancelled the restart.
     const queued = page.waitForResponse(
       (response) =>
         response.url().includes("/api/") &&
-        response.request().method() === "POST",
+        response.request().method() === "POST" &&
+        (response.request().postData() ?? "").includes('"restart"'),
       { timeout: 20_000 },
     );
     await page.getByTestId("bay-action-restart").click();
