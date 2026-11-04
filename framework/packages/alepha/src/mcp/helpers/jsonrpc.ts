@@ -107,6 +107,7 @@ export const JsonRpcErrorCodes = {
  */
 export const McpProtocolErrorCodes = {
   HEADER_MISMATCH: -32020,
+  MISSING_REQUIRED_CLIENT_CAPABILITY: -32021,
   UNSUPPORTED_PROTOCOL_VERSION: -32022,
 } as const;
 

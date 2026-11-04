@@ -610,6 +610,92 @@ export interface McpContext<T = unknown> {
    * Undefined on a legacy request.
    */
   clientCapabilities?: Record<string, unknown>;
+
+  /**
+   * Ask the user for input (MRTR elicitation). Present on `tools/call`,
+   * `resources/read` and `prompts/get`, on both eras: a client that cannot be
+   * asked resolves `{ action: "unavailable" }`. See {@link McpElicit} for the
+   * replay rule.
+   */
+  elicit?: McpElicit;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Elicitation (MRTR, spec 2026-07-28)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A form question: the client renders `schema` as a form and returns what the
+ * user typed.
+ *
+ * The schema is a flat `z.object` of `z.text()`, `z.number()`, `z.integer()`,
+ * `z.boolean()` and `z.enum()` fields, optional or defaulted at will: that is
+ * all a client is required to render. Anything else is refused with an
+ * `AlephaError` at the first `elicit` that uses it.
+ */
+export interface McpElicitFormRequest<T extends ZObject = ZObject> {
+  message: string;
+  schema: T;
+  /**
+   * Refuse the request instead of resolving `unavailable` when the client
+   * cannot be asked: a modern client that did not declare form elicitation
+   * gets `-32021`, a legacy one a `-31003` refusal naming the capability.
+   */
+  required?: boolean;
+}
+
+/**
+ * A URL question: the client opens `url` for the user (a sign-in, a payment)
+ * and reports whether they went through with it. No content comes back.
+ */
+export interface McpElicitUrlRequest {
+  message: string;
+  url: string;
+  /**
+   * As on {@link McpElicitFormRequest.required}, for URL elicitation.
+   */
+  required?: boolean;
+}
+
+/**
+ * How an `elicit` resolved: the user accepted (with the form's content),
+ * declined, or cancelled; or `unavailable`, when the client cannot be asked
+ * at all (a legacy client, or a modern one that did not declare the mode).
+ */
+export type McpElicitResult<T = Record<string, unknown>> =
+  | { action: "accept"; content: T }
+  | { action: "decline" }
+  | { action: "cancel" }
+  | { action: "unavailable" };
+
+/**
+ * `context.elicit`: ask the user something, from a tool, a resource or a
+ * prompt.
+ *
+ * ⚠️ **The handler is replayed.** The first call that has no answer stops the
+ * handler and answers the request with an `InputRequiredResult`; the client
+ * retries with the answer and the handler runs again from the top, every
+ * `elicit` already answered resolving at once. So **do side effects after
+ * the last `elicit`**: everything before it runs once per round trip.
+ */
+export interface McpElicit {
+  <T extends ZObject>(
+    request: McpElicitFormRequest<T>,
+  ): Promise<McpElicitResult<Infer<T>>>;
+  (request: McpElicitUrlRequest): Promise<McpElicitResult<undefined>>;
+}
+
+/**
+ * The result a modern `tools/call`, `resources/read` or `prompts/get` gets
+ * when its handler needs an answer (SEP-2322): the client asks the user and
+ * retries the same call with `inputResponses` (same keys) and the exact
+ * `requestState`.
+ */
+export interface McpInputRequiredResult {
+  resultType: "input_required";
+  inputRequests?: Record<string, { method: string; params: unknown }>;
+  requestState?: string;
+  _meta?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

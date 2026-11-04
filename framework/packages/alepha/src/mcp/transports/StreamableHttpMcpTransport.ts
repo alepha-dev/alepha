@@ -417,6 +417,7 @@ export class StreamableHttpMcpTransport {
     }
     switch (response.error.code) {
       case McpProtocolErrorCodes.HEADER_MISMATCH:
+      case McpProtocolErrorCodes.MISSING_REQUIRED_CLIENT_CAPABILITY:
       case McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION:
         return 400;
       case JsonRpcErrorCodes.METHOD_NOT_FOUND:

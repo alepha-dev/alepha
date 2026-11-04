@@ -525,6 +525,61 @@ request, and the context carries it: `context.protocolVersion`,
 `undefined` on a legacy request, which states them once in `initialize` and is
 not remembered by this stateless server.
 
+## Asking the User: Elicitation
+
+A tool, a resource or a prompt can ask the user something mid-call: confirm a destructive action, pick between options, sign in somewhere. `context.elicit` asks; under MCP 2026-07-28 this is MRTR (multi round-trip requests): the server answers the call with `resultType: "input_required"`, the client asks the user, and retries the same call with the answer.
+
+```typescript
+import { z } from "alepha";
+import { $tool } from "alepha/mcp";
+
+class DeployTools {
+  rollback = $tool({
+    description: "Roll an app back to its previous deploy.",
+    annotations: { destructiveHint: true },
+    schema: {
+      params: z.object({ app: z.text() }),
+      result: z.text(),
+    },
+    handler: async ({ params, context }) => {
+      const answer = await context!.elicit!({
+        message: `Roll ${params.app} back to its previous deploy?`,
+        schema: z.object({
+          confirm: z.boolean({ title: "Roll back" }),
+          reason: z.text({ title: "Why" }).optional(),
+        }),
+      });
+      if (answer.action === "unavailable") {
+        return "This client cannot ask for confirmation; nothing was rolled back.";
+      }
+      if (answer.action !== "accept" || !answer.content.confirm) {
+        return "Kept the current deploy.";
+      }
+      // Side effects only now, after the last elicit.
+      await this.deploys.rollback(params.app, answer.content.reason);
+      return `Rolled ${params.app} back.`;
+    },
+  });
+}
+```
+
+⚠️ **The handler is replayed.** Each round trip runs the handler again from the top: every `elicit` already answered resolves at once, and the first unanswered one asks. A dialogue of several questions is just several `await context.elicit(...)` in a row, and **every side effect belongs after the last `elicit`**, since everything before it runs once per round trip.
+
+`elicit` resolves one of four actions:
+
+| Action        | Meaning                                                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `accept`      | The user answered. `content` is the form's values, validated against the schema (an invalid answer is asked again).               |
+| `decline`     | The user said no.                                                                                                                 |
+| `cancel`      | The user dismissed the question.                                                                                                  |
+| `unavailable` | The client cannot be asked: a legacy (2025-11-25 and earlier) client, or a modern one that did not declare that elicitation mode. |
+
+- **Form mode** takes a `schema`: a flat `z.object` of `z.text()`, `z.number()`, `z.integer()`, `z.boolean()` and `z.enum()` fields, optional or defaulted. That is all a client must render; anything else throws an `AlephaError` at the first `elicit`.
+- **URL mode** takes a `url` instead (`{ message, url }`): the client opens it for the user and reports `accept`, `decline` or `cancel`, with no content.
+- **`required: true`** refuses the call instead of resolving `unavailable`: a modern client gets `-32021` (`MissingRequiredClientCapability`, HTTP 400) with `data.requiredCapabilities`, a legacy one a `-31003` refusal naming the capability.
+
+The answers given so far travel in `requestState`, sealed with AES-GCM under `APP_SECRET`, so the server keeps no state: a state that does not decrypt, has expired (`McpServerProvider.requestStateTtl`, 10 minutes), or names another user, method or params is `-32602`. A retry's result is never cached. A handler that catches every error must rethrow `McpInputRequiredSignal`, or the question is never asked.
+
 ## Error Handling
 
 Throw errors in handlers and they are returned as tool results the AI can read:

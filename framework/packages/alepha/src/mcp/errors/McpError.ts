@@ -182,3 +182,47 @@ export const McpForbiddenError = McpError.extend({
 });
 
 export type McpForbiddenError = InstanceType<typeof McpForbiddenError>;
+
+/**
+ * A request the server can only serve with a capability the client did not
+ * declare in `io.modelcontextprotocol/clientCapabilities` (spec 2026-07-28,
+ * `MissingRequiredClientCapability`). `rpcData.requiredCapabilities` names
+ * what is missing, in the capabilities object's own shape. HTTP 400.
+ *
+ * ```ts
+ * throw new McpMissingRequiredClientCapabilityError({
+ *   rpcData: { requiredCapabilities: { elicitation: { form: {} } } },
+ * });
+ * ```
+ */
+export const McpMissingRequiredClientCapabilityError = McpError.extend({
+  name: "MCP_MISSING_REQUIRED_CLIENT_CAPABILITY",
+  default: { code: McpProtocolErrorCodes.MISSING_REQUIRED_CLIENT_CAPABILITY },
+  message: "Missing required client capability",
+});
+
+export type McpMissingRequiredClientCapabilityError = InstanceType<
+  typeof McpMissingRequiredClientCapabilityError
+>;
+
+/**
+ * Not an error: the signal `context.elicit` throws to stop a handler that
+ * needs an answer it does not have yet. `McpServerProvider` catches it and
+ * answers the request with an `InputRequiredResult` (MRTR, spec 2026-07-28);
+ * the client retries with the answer and the handler runs again from the top.
+ *
+ * A handler that catches every error must rethrow this one, or the question
+ * is never asked.
+ */
+export const McpInputRequiredSignal = $error({
+  name: "MCP_INPUT_REQUIRED",
+  schema: z.object({
+    key: z.text(),
+    inputRequest: z.any(),
+  }),
+  message: "Input required",
+});
+
+export type McpInputRequiredSignal = InstanceType<
+  typeof McpInputRequiredSignal
+>;
