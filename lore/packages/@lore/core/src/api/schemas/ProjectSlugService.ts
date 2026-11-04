@@ -1,7 +1,7 @@
 /**
  * Derives and validates a project's URL identity.
  *
- * A slug is a **root-level path segment** (`/sds/quests/19`), so it is unique
+ * A slug is a **root-level path segment** (`/demo/quests/19`), so it is unique
  * across the whole instance and must not collide with any static route the
  * router registers at the root.
  *

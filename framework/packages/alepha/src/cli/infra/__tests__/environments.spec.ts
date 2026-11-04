@@ -124,7 +124,7 @@ describe("platform environments", () => {
       // Domain is the only binding, and Cloudflare refuses a wildcard one at
       // deploy with a message naming nothing about this configuration.
       const orchestrator = await resolve({
-        production: cloudflare({ domain: "*.club.alepha.dev" }),
+        production: cloudflare({ domain: "*.acme.alepha.dev" }),
       });
 
       await expect(

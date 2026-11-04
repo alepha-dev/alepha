@@ -392,7 +392,7 @@ export class EstateService {
    * With a `projectId` the question is narrower: only that project's instances
    * block a detach. Without one, any instance anywhere blocks a delete.
    *
-   * The message names the instances (`club/production, club/staging`) rather
+   * The message names the instances (`acme/production, acme/staging`) rather
    * than counting them, because the operator's next action is to open each one
    * and repoint it. Capped so a project with fifty instances does not answer
    * with a paragraph.

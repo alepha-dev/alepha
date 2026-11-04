@@ -14,11 +14,11 @@ This is the `CacheProvider` a Cloudflare Worker gets by default.
 
 ## Why the default moved off KV
 
-For an app with a database, KV was the wrong default on every axis
-(feedback #Q2151, folio #F1273). Reads are $0.50 per million keys against
-$0.001 per million rows on D1, a 500x difference; writes are $5.00 against
-$1.00; KV is eventually consistent where D1 is strongly consistent; KV
-clamps every TTL to a 60 second floor.
+For an app with a database, KV was the wrong default on every axis.
+Reads are $0.50 per million keys against $0.001 per million rows on D1, a
+500x difference; writes are $5.00 against $1.00; KV is eventually
+consistent where D1 is strongly consistent; KV clamps every TTL to a 60
+second floor.
 
 And KV is the only one of the four providers that cannot implement `incr`
 atomically. `CloudflareKVProvider.incr` documents that against itself:

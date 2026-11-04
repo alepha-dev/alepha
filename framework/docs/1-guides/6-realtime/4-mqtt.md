@@ -177,13 +177,13 @@ import { $subscriber, $topic } from "alepha/topic";
 
 class DeviceStatus {
   status = $topic({
-    name: "mcs/v1/{site}/{device}/status",
+    name: "transit/v1/{site}/{device}/status",
     provider: MqttTopicProvider,
     schema: {
       params: z.object({ site: z.text(), device: z.text() }),
       payload: z.object({ state: z.enum(["ok", "degraded", "down"]) }),
     },
-    mqtt: { qos: 1, share: "mcs" },
+    mqtt: { qos: 1, share: "transit" },
   });
 
   onStatus = $subscriber({
@@ -205,7 +205,7 @@ Register `AlephaTopicMqtt` (it brings `AlephaMqtt` and `alepha/topic`).
   nothing is added to it. The `mqttTopicOptions` atom's `prefix` (empty by
   default) is joined with `/` when an app does want one.
 - **Params are `+` wildcards.** A subscriber on
-  `mcs/v1/{site}/{device}/status` subscribes to `mcs/v1/+/+/status` and
+  `transit/v1/{site}/{device}/status` subscribes to `transit/v1/+/+/status` and
   receives the params of each message's topic. `publish({ params, payload })`
   fills them in. `wait()` works on a templated name too, and its `filter`
   sees the params.
@@ -221,7 +221,7 @@ Register `AlephaTopicMqtt` (it brings `AlephaMqtt` and `alepha/topic`).
 
 Without `share`, every instance of the app receives every device message,
 which is right for a notification fan-out and wrong for ingestion: three
-instances write each status three times. `mqtt: { share: "mcs" }` makes the
+instances write each status three times. `mqtt: { share: "transit" }` makes the
 instances one group, and the broker hands each message to one of them. On
 that instance, the topic's `handler` and every `$subscriber` run. `wait()`
 never joins the group, so a one-shot listener does not steal a message from
@@ -245,7 +245,7 @@ import { $topic } from "alepha/topic";
 
 class DeviceCommands {
   command = $topic({
-    name: "mcs/v1/{site}/{device}/cmd",
+    name: "transit/v1/{site}/{device}/cmd",
     provider: MqttTopicProvider,
     schema: {
       params: z.object({ site: z.text(), device: z.text() }),
@@ -280,7 +280,7 @@ sequenceDiagram
   participant B as Broker
   participant D as Device
   App->>B: SUBSCRIBE reply topic, on the first request
-  App->>B: PUBLISH mcs/v1/s1/d7/cmd, Response Topic, Correlation Data
+  App->>B: PUBLISH transit/v1/s1/d7/cmd, Response Topic, Correlation Data
   B->>D: deliver the command
   D->>B: PUBLISH the reply to the Response Topic, same Correlation Data
   B->>App: deliver the reply
@@ -300,7 +300,7 @@ schema, what the `handler` or a `$subscriber` returns is the reply:
 
 ```typescript
 command = $topic({
-  name: "mcs/v1/{site}/{device}/cmd",
+  name: "transit/v1/{site}/{device}/cmd",
   provider: MqttTopicProvider,
   schema: { params, payload, response },
   handler: async ({ params, payload }) => {

@@ -22,7 +22,7 @@ const setup = async () => {
   const shell = alepha.inject(MemoryShellProvider);
   await fs.writeFile(packageFile("assets/app.icns"), "default-icns");
   await fs.writeFile(packageFile("THIRD_PARTY_NOTICES.md"), "MIT");
-  await fs.writeFile("/my project/stage/dist/loom", "executable");
+  await fs.writeFile("/my project/stage/dist/notepad", "executable");
   await fs.writeFile(
     "/my project/package.json",
     JSON.stringify({ version: "2.4.1-rc.3" }),
@@ -39,11 +39,11 @@ const setup = async () => {
 const input = {
   root: "/my project",
   stage: "/my project/stage",
-  binary: "/my project/stage/dist/loom",
-  executable: "loom",
-  config: { name: "Loom & Co", identifier: "dev.alepha.loom" },
+  binary: "/my project/stage/dist/notepad",
+  executable: "notepad",
+  config: { name: "Notepad & Co", identifier: "dev.alepha.notepad" },
 };
-const app = "/my project/stage/Loom & Co.app";
+const app = "/my project/stage/Notepad & Co.app";
 
 describe("DesktopBundleBuilder", () => {
   it("lays out the bundle with the executable, default icon, migrations, notices and plist", async ({
@@ -53,7 +53,9 @@ describe("DesktopBundleBuilder", () => {
 
     expect(await builder.build(input)).toBe(app);
 
-    expect(fs.getFileContent(`${app}/Contents/MacOS/loom`)).toBe("executable");
+    expect(fs.getFileContent(`${app}/Contents/MacOS/notepad`)).toBe(
+      "executable",
+    );
     expect(fs.getFileContent(`${app}/Contents/Resources/app.icns`)).toBe(
       "default-icns",
     );
@@ -67,13 +69,13 @@ describe("DesktopBundleBuilder", () => {
     ).toBe("MIT");
     const plist = fs.getFileContent(`${app}/Contents/Info.plist`)!;
     expect(plist).toContain(
-      "<key>CFBundleName</key>\n  <string>Loom &amp; Co</string>",
+      "<key>CFBundleName</key>\n  <string>Notepad &amp; Co</string>",
     );
     expect(plist).toContain(
-      "<key>CFBundleExecutable</key>\n  <string>loom</string>",
+      "<key>CFBundleExecutable</key>\n  <string>notepad</string>",
     );
     expect(plist).toContain(
-      "<key>CFBundleIdentifier</key>\n  <string>dev.alepha.loom</string>",
+      "<key>CFBundleIdentifier</key>\n  <string>dev.alepha.notepad</string>",
     );
     expect(plist).toContain(
       "<key>CFBundleVersion</key>\n  <string>2.4.1</string>",
@@ -150,7 +152,7 @@ describe("DesktopBundleBuilder", () => {
         "--sign",
         "-",
         "--timestamp=none",
-        `${app}/Contents/MacOS/loom`,
+        `${app}/Contents/MacOS/notepad`,
       ],
       ["codesign", "--force", "--sign", "-", "--timestamp=none", app],
       ["codesign", "--verify", "--strict", "--verbose=2", app],
@@ -169,7 +171,7 @@ describe("DesktopBundleBuilder", () => {
 
     const icon = await setup();
     icon.shell.errors.set(
-      "iconutil -c icns /my project/stage/app.iconset -o /my project/stage/Loom & Co.app/Contents/Resources/app.icns",
+      "iconutil -c icns /my project/stage/app.iconset -o /my project/stage/Notepad & Co.app/Contents/Resources/app.icns",
       "Invalid Iconset",
     );
     await expect(
@@ -183,7 +185,7 @@ describe("DesktopBundleBuilder", () => {
   it("refuses an --output naming a bundle", async ({ expect }) => {
     const { builder } = await setup();
     await expect(
-      builder.build({ ...input, executable: "loom.app" }),
+      builder.build({ ...input, executable: "notepad.app" }),
     ).rejects.toThrow("drop the '.app'");
   });
 

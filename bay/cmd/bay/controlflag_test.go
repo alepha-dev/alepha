@@ -26,7 +26,7 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 	t.Run("list does not take it for a service", func(t *testing.T) {
 		socket, query := recordingControlAPI(t)
 
-		if err := cmdStackBackup("list", []string{"mcs/production", "--control-socket", socket}); err != nil {
+		if err := cmdStackBackup("list", []string{"crm/production", "--control-socket", socket}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -38,7 +38,7 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 	t.Run("list still narrows to a service", func(t *testing.T) {
 		socket, query := recordingControlAPI(t)
 
-		if err := cmdStackBackup("list", []string{"mcs/production", "db", "--control-socket", socket}); err != nil {
+		if err := cmdStackBackup("list", []string{"crm/production", "db", "--control-socket", socket}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -50,7 +50,7 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 	t.Run("list refuses a flag it does not know", func(t *testing.T) {
 		recordingControlAPI(t)
 
-		if err := cmdStackBackup("list", []string{"mcs/production", "--servcie", "db"}); err == nil {
+		if err := cmdStackBackup("list", []string{"crm/production", "--servcie", "db"}); err == nil {
 			t.Fatal("a typo must not become a service name")
 		}
 	})
@@ -59,7 +59,7 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 		socket, query := recordingControlAPI(t)
 
 		err := cmdStackBackup("restore", []string{
-			"mcs/production", "db", "20261024T120000Z.dump.gz", "--yes", "--control-socket", socket})
+			"crm/production", "db", "20261024T120000Z.dump.gz", "--yes", "--control-socket", socket})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,7 +75,7 @@ func TestStackCommandsLeaveTheControlFlagOutOfTheirArguments(t *testing.T) {
 	t.Run("logs does not take it for a service", func(t *testing.T) {
 		socket, query := recordingControlAPI(t)
 
-		_ = cmdStack([]string{"logs", "mcs/production", "--control-socket", socket})
+		_ = cmdStack([]string{"logs", "crm/production", "--control-socket", socket})
 
 		if strings.Contains(*query, "control-socket") {
 			t.Fatalf("called %q", *query)
@@ -85,9 +85,9 @@ func TestStackCommandsLeaveTheControlFlagOutOfTheirArguments(t *testing.T) {
 	t.Run("deploy does not refuse it", func(t *testing.T) {
 		socket, query := recordingControlAPI(t)
 
-		_ = cmdStack([]string{"deploy", "mcs/production", "--control-socket", socket})
+		_ = cmdStack([]string{"deploy", "crm/production", "--control-socket", socket})
 
-		if !strings.Contains(*query, "/stacks/mcs/production/deploy") {
+		if !strings.Contains(*query, "/stacks/crm/production/deploy") {
 			t.Fatalf("the deploy never reached the control API, called %q", *query)
 		}
 	})
@@ -116,7 +116,7 @@ func TestStackExecLeavesTheControlFlagOutOfTheContainerCommand(t *testing.T) {
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	err := cmdStack([]string{"exec", "mcs/production", "db", "psql", "-U", "app", "--control-socket", "/run/bay/control.sock"})
+	err := cmdStack([]string{"exec", "crm/production", "db", "psql", "-U", "app", "--control-socket", "/run/bay/control.sock"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -164,11 +164,11 @@ export class DeployShell {
     });
 
     // The app pages contribute the instance as ONE crumb, so the header reads
-    // "Project > Apps > club / b14-production": an instance is the pair
+    // "Project > Apps > acme / east-production": an instance is the pair
     // `(app, env)`, and one crumb says so (#Q2466).
     //
     // It replaced two crumbs, an inert app label and a linked env. There is
-    // no app page: `/apps/club` redirects to a sibling instance, so a link
+    // no app page: `/apps/acme` redirects to a sibling instance, so a link
     // there moved the reader sideways.
     this.shell.registerCrumb({
       order: 10,

@@ -24,14 +24,14 @@ describe("DesktopPaths", () => {
     const paths = Alepha.create().with(AlephaDesktopShell).inject(DesktopPaths);
     paths.home = "/Users/a";
 
-    expect(paths.dataDir("dev.alepha.loom")).toBe(
-      "/Users/a/Library/Application Support/dev.alepha.loom",
+    expect(paths.dataDir("dev.alepha.notepad")).toBe(
+      "/Users/a/Library/Application Support/dev.alepha.notepad",
     );
-    expect(paths.logFile("dev.alepha.loom")).toBe(
-      "/Users/a/Library/Logs/dev.alepha.loom/app.log",
+    expect(paths.logFile("dev.alepha.notepad")).toBe(
+      "/Users/a/Library/Logs/dev.alepha.notepad/app.log",
     );
-    expect(paths.lockFile("dev.alepha.loom")).toBe(
-      "/Users/a/Library/Application Support/dev.alepha.loom/instance.lock",
+    expect(paths.lockFile("dev.alepha.notepad")).toBe(
+      "/Users/a/Library/Application Support/dev.alepha.notepad/instance.lock",
     );
   });
 });

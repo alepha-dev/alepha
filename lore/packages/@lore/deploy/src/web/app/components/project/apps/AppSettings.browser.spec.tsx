@@ -43,7 +43,7 @@ const anInstance = (over: Partial<AppInstanceResource> = {}) =>
   ({
     id: "00000000-0000-4000-8000-000000000010",
     projectId: 1,
-    app: "club",
+    app: "acme",
     env: "production",
     ephemeral: false,
     createdAt: "2026-08-01T10:00:00.000Z",
@@ -188,7 +188,7 @@ describe("the instance Settings tab", () => {
     await waitFor(() => expect(writes()).toHaveLength(1));
     expect(writes()[0]).toMatchObject({
       action: "updateApp",
-      params: { projectId: 1, app: "club", env: "production" },
+      params: { projectId: 1, app: "acme", env: "production" },
       body: { env: "staging" },
     });
   });
@@ -214,7 +214,7 @@ describe("the instance Settings tab", () => {
     ).toEqual(["staging"]);
     await waitFor(() =>
       expect(router.state.url.pathname).toBe(
-        "/alepha/apps/club/staging/settings",
+        "/alepha/apps/acme/staging/settings",
       ),
     );
   });

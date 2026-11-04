@@ -17,7 +17,7 @@ export const projects = $entity({
     /**
      * URL identity. Derived from `title` on create and on every rename by
      * `ProjectSlugService`, and unique across the whole instance because the
-     * slug is a **root-level** path segment (`/sds/quests/19`).
+     * slug is a **root-level** path segment (`/demo/quests/19`).
      *
      * Declared `.optional()` with NO `db.default(...)` on purpose: a column
      * DEFAULT triggers the D1 `projects` table rebuild that cascade-wipes

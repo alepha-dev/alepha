@@ -10,7 +10,7 @@ import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
  * that shows a figure and the order that charges it can never disagree.
  *
  * A line config is what varies between two lines of the same product: the
- * court and the interval of "Padel, 90 minutes". It comes from the buyer, so
+ * court and the interval of "Tennis, 90 minutes". It comes from the buyer, so
  * it is parsed by the kind's `lineSchema` and judged by its `validateLine`
  * both when it enters a cart and again when the order is created.
  */

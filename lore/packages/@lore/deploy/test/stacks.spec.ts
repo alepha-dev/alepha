@@ -191,11 +191,11 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const stack = await createStack(alepha, w, { name: "mcs" });
+      const stack = await createStack(alepha, w, { name: "crm" });
       const staging = await createEnvironment(alepha, w, stack.id, {
         env: "staging",
       });
-      const api = await createInstance(alepha, w, "mcs-api", "staging");
+      const api = await createInstance(alepha, w, "crm-api", "staging");
       const params = {
         projectId: w.project.id,
         stackId: stack.id,
@@ -211,7 +211,7 @@ describe("stacks", () => {
           )
       ).data;
       expect(joined.members).toEqual([
-        { id: api.id, app: "mcs-api", env: "staging" },
+        { id: api.id, app: "crm-api", env: "staging" },
       ]);
       expect(
         (await w.rows.instances.findById(api.id))?.stackEnvironmentId,
@@ -222,7 +222,7 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const stack = await createStack(alepha, w, { name: "mcs" });
+      const stack = await createStack(alepha, w, { name: "crm" });
       const production = await createEnvironment(alepha, w, stack.id, {
         env: "production",
       });
@@ -230,8 +230,8 @@ describe("stacks", () => {
       const otherProd = await createEnvironment(alepha, w, other.id, {
         env: "production",
       });
-      const staging = await createInstance(alepha, w, "mcs-api", "staging");
-      const prod = await createInstance(alepha, w, "mcs-api", "production");
+      const staging = await createInstance(alepha, w, "crm-api", "staging");
+      const prod = await createInstance(alepha, w, "crm-api", "production");
       const controller = alepha.inject(StackController);
       const attach = (
         environmentId: string,
@@ -254,7 +254,7 @@ describe("stacks", () => {
       const foreign = await createInstance(
         alepha,
         elsewhere,
-        "mcs-api",
+        "crm-api",
         "production",
       );
       await expect(attach(production.id, stack.id, foreign.id)).rejects.toThrow(
@@ -271,11 +271,11 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const stack = await createStack(alepha, w, { name: "mcs" });
+      const stack = await createStack(alepha, w, { name: "crm" });
       const production = await createEnvironment(alepha, w, stack.id, {
         env: "production",
       });
-      const api = await createInstance(alepha, w, "mcs-api", "production");
+      const api = await createInstance(alepha, w, "crm-api", "production");
       await alepha.inject(StackController).attachStackMember.fetch(
         {
           params: {

@@ -18,7 +18,7 @@ const anInstance = (
   ({
     id: "00000000-0000-4000-8000-000000000010",
     projectId: 1,
-    app: "club",
+    app: "acme",
     env: "production",
     createdAt: "2026-08-01T10:00:00.000Z",
     updatedAt: "2026-08-01T10:00:00.000Z",

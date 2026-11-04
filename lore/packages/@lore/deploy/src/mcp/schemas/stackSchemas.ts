@@ -5,7 +5,7 @@ const stackNameSchema = z
   .string()
   .min(1)
   .max(64)
-  .describe("The stack's name, as `stack_list` returns it (`umami`, `mcs`).");
+  .describe("The stack's name, as `stack_list` returns it (`umami`, `crm`).");
 
 const envNameSchema = z
   .string()

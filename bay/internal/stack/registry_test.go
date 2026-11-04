@@ -12,27 +12,27 @@ import (
 func TestRegistries(t *testing.T) {
 	t.Run("a credential is stored 0600 in the stack's own Docker config, hosts listed, secret not", func(t *testing.T) {
 		root := t.TempDir()
-		if err := SetCredential(root, "mcs", "staging", "Registry.Acme.io", "ci", "s3cret"); err != nil {
+		if err := SetCredential(root, "crm", "staging", "Registry.Acme.io", "ci", "s3cret"); err != nil {
 			t.Fatal(err)
 		}
-		path := filepath.Join(DockerConfigDir(root, "mcs", "staging"), "config.json")
+		path := filepath.Join(DockerConfigDir(root, "crm", "staging"), "config.json")
 		info, err := os.Stat(path)
 		if err != nil || info.Mode().Perm() != 0o600 {
 			t.Fatalf("config: %v %v", info, err)
 		}
-		hosts, _ := RegistryHosts(root, "mcs", "staging")
+		hosts, _ := RegistryHosts(root, "crm", "staging")
 		if strings.Join(hosts, ",") != "registry.acme.io" {
 			t.Fatalf("hosts = %v", hosts)
 		}
-		if other, _ := RegistryHosts(root, "mcs", "production"); len(other) != 0 {
+		if other, _ := RegistryHosts(root, "crm", "production"); len(other) != 0 {
 			t.Fatal("a credential leaked to another environment")
 		}
 	})
 
 	t.Run("the Engine API header carries the credential for that registry only", func(t *testing.T) {
 		root := t.TempDir()
-		_ = SetCredential(root, "mcs", "staging", "registry.acme.io", "ci", "s3cret")
-		header, err := RegistryAuthFor(root, "mcs", "staging", "registry.acme.io/team/api:1@sha256:x")
+		_ = SetCredential(root, "crm", "staging", "registry.acme.io", "ci", "s3cret")
+		header, err := RegistryAuthFor(root, "crm", "staging", "registry.acme.io/team/api:1@sha256:x")
 		if err != nil || header == "" {
 			t.Fatalf("header = %q, err = %v", header, err)
 		}
@@ -42,7 +42,7 @@ func TestRegistries(t *testing.T) {
 		if auth["username"] != "ci" || auth["password"] != "s3cret" || auth["serveraddress"] != "registry.acme.io" {
 			t.Fatalf("auth = %v", auth)
 		}
-		if public, _ := RegistryAuthFor(root, "mcs", "staging", "postgres:17"); public != "" {
+		if public, _ := RegistryAuthFor(root, "crm", "staging", "postgres:17"); public != "" {
 			t.Fatal("a public image got a credential")
 		}
 	})

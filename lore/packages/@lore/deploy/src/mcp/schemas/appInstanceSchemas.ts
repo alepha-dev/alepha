@@ -14,7 +14,7 @@ import { appInstanceResourceSchema } from "../../api/schemas/appInstanceResource
  * `appNameSchema` on the way in, and a description promising more than the
  * handler accepts costs the caller a 400 it cannot see coming.
  */
-const APP_RULE = `A slug, not a title: lowercase letters, digits and interior hyphens only (\`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$\`), at most ${APP_NAME_MAX_LENGTH} characters. Leading and trailing whitespace is trimmed and capitals are lowercased, so \`Club\` is accepted and stored as \`club\`; a space, an underscore or any other character is refused.`;
+const APP_RULE = `A slug, not a title: lowercase letters, digits and interior hyphens only (\`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$\`), at most ${APP_NAME_MAX_LENGTH} characters. Leading and trailing whitespace is trimmed and capitals are lowercased, so \`Acme\` is accepted and stored as \`acme\`; a space, an underscore or any other character is refused.`;
 
 /**
  * One deployed copy of an app, as an agent sees it.
@@ -44,7 +44,7 @@ export const appInstanceListResultSchema = z.object({
   apps: z
     .array(z.string())
     .describe(
-      "The distinct app names in this project, from the rows above. Offer one of these before inventing a new name: there is no app entity, so `clbu` beside `club` is silently a second app that nothing complains about.",
+      "The distinct app names in this project, from the rows above. Offer one of these before inventing a new name: there is no app entity, so `acem` beside `acme` is silently a second app that nothing complains about.",
     ),
 });
 
@@ -65,10 +65,10 @@ export const appInstanceGetResultSchema = appInstanceSchema;
 
 export const appInstanceCreateParamsSchema = projectParamsSchema.extend({
   app: appNameSchema.describe(
-    `Which app this is a copy of, e.g. \`club\`. ${APP_RULE} Required, with no default: there is no app entity to look one up from.`,
+    `Which app this is a copy of, e.g. \`acme\`. ${APP_RULE} Required, with no default: there is no app entity to look one up from.`,
   ),
   env: appNameSchema.describe(
-    `Which copy, e.g. \`production\`, \`staging\`, \`b14-production\`. ${APP_RULE} **Required, and deliberately without a default**: omitting it on an app that already has a \`production\` would either collide or silently make a second copy, and both are worse than being asked.`,
+    `Which copy, e.g. \`production\`, \`staging\`, \`east-production\`. ${APP_RULE} **Required, and deliberately without a default**: omitting it on an app that already has a \`production\` would either collide or silently make a second copy, and both are worse than being asked.`,
   ),
   url: z
     .string()

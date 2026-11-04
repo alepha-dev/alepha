@@ -11,7 +11,7 @@ import { appInstances } from "./appInstances.ts";
  * This quest was drafted against a project-grain `environments (projectId,
  * name)` table, which was rejected (folio #1185, "Rejected 2"). The deploy
  * target is `app_instances (projectId, app, env)`, so a secret set belongs to
- * one app in one environment: `docs` has no business carrying `club`'s Stripe
+ * one app in one environment: `docs` has no business carrying `acme`'s Stripe
  * key, and the blast radius of a leaked set is one app rather than every app
  * in the environment.
  *

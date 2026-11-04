@@ -154,16 +154,16 @@ describe("projectViewRoutes", () => {
     // and it redirects nowhere: a loader redirect on the project root is the
     // shape #156 was about, and a per-project landing setting is the one
     // feedback #2066 rejected.
-    // `/sds/` with the trailing slash, which is what a `path: "/"` child of
+    // `/demo/` with the trailing slash, which is what a `path: "/"` child of
     // the project shell builds - Activity produced exactly this string while
     // it held the root, so the move changed the route NAME at `/` and nothing
     // about the URL a bare project link resolves to.
     expect(
-      router.path("projectDashboard", { params: { projectSlug: "sds" } }),
-    ).toBe("/sds/");
+      router.path("projectDashboard", { params: { projectSlug: "demo" } }),
+    ).toBe("/demo/");
     expect(
-      router.path("projectActivity", { params: { projectSlug: "sds" } }),
-    ).toBe("/sds/activity");
+      router.path("projectActivity", { params: { projectSlug: "demo" } }),
+    ).toBe("/demo/activity");
 
     await alepha.stop();
   });

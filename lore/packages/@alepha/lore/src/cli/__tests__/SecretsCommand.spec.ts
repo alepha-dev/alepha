@@ -27,7 +27,7 @@ describe("lore secrets", () => {
         LOG_LEVEL: "error",
         LORE_API_KEY: "k",
         LORE_URL: "",
-        LORE_PROJECT: "club",
+        LORE_PROJECT: "acme",
         HOME: "/nonexistent",
       },
     })
@@ -173,8 +173,8 @@ describe("lore secrets", () => {
       [
         "APP_SECRET=one",
         "# a comment",
-        'CLUB_DEPLOY_ENV=\'{"EMAIL_FROM":"a@b.c"}\'',
-        "SIGIL_KEY=sg_club_old",
+        'ACME_DEPLOY_ENV=\'{"EMAIL_FROM":"a@b.c"}\'',
+        "SIGIL_KEY=sg_acme_old",
         "TURNSTILE_SITE_KEY=",
       ].join("\n"),
     );
@@ -186,7 +186,7 @@ describe("lore secrets", () => {
 
     expect(sent.map((it) => [it.key, it.value])).toEqual([
       ["APP_SECRET", "one"],
-      ["CLUB_DEPLOY_ENV", '{"EMAIL_FROM":"a@b.c"}'],
+      ["ACME_DEPLOY_ENV", '{"EMAIL_FROM":"a@b.c"}'],
     ]);
     expect(printed.some((line) => line.includes("SIGIL_KEY"))).toBe(true);
     expect(printed.some((line) => line.includes("TURNSTILE_SITE_KEY"))).toBe(

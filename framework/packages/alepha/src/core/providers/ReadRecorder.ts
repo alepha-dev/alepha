@@ -30,7 +30,7 @@ export interface RecordedRead {
 export type ReadVerdict = "shared" | "variant" | "personal";
 
 /**
- * Records, for one request, the reads that make a page personal (#E78).
+ * Records, for one request, the reads that make a page personal.
  *
  * Installed in the request's store fork by the page handler
  * ({@link StateManager.startRecording}); every nested fork reaches it through

@@ -207,7 +207,7 @@ describe("OAuthClientService wildcard redirect_uri", () => {
     const client = await service.register({
       realm: "users",
       clientName: "Pooled Client",
-      redirectUris: ["https://*.alepha.club/auth/callback"],
+      redirectUris: ["https://*.example.app/auth/callback"],
       scopes: ["openid"],
     });
     return { service, client };
@@ -219,17 +219,17 @@ describe("OAuthClientService wildcard redirect_uri", () => {
     expect(
       service.isRedirectUriAllowed(
         client,
-        "https://b14.alepha.club/auth/callback",
+        "https://east.example.app/auth/callback",
       ),
     ).toBe(true);
     // The wildcard stands for a label, not for "zero or more labels".
     expect(
-      service.isRedirectUriAllowed(client, "https://alepha.club/auth/callback"),
+      service.isRedirectUriAllowed(client, "https://example.app/auth/callback"),
     ).toBe(false);
     expect(
       service.isRedirectUriAllowed(
         client,
-        "https://a.b.alepha.club/auth/callback",
+        "https://a.b.example.app/auth/callback",
       ),
     ).toBe(false);
   });
@@ -239,15 +239,15 @@ describe("OAuthClientService wildcard redirect_uri", () => {
   }) => {
     const { service, client } = await setup();
 
-    // Every one of these parses to a host that is NOT under alepha.club: `/`,
+    // Every one of these parses to a host that is NOT under example.app: `/`,
     // `?`, `#` and `\` all terminate the authority in WHATWG URL parsing, so a
     // dot-free character class over the raw string is not a host check.
     for (const candidate of [
-      "https://[2001:db8::1]/.alepha.club/auth/callback",
-      "https://2130706433/.alepha.club/auth/callback",
-      "https://evil?.alepha.club/auth/callback",
-      "https://evil#.alepha.club/auth/callback",
-      "https://evil\\.alepha.club/auth/callback",
+      "https://[2001:db8::1]/.example.app/auth/callback",
+      "https://2130706433/.example.app/auth/callback",
+      "https://evil?.example.app/auth/callback",
+      "https://evil#.example.app/auth/callback",
+      "https://evil\\.example.app/auth/callback",
     ]) {
       expect(
         service.isRedirectUriAllowed(client, candidate),
@@ -283,7 +283,7 @@ describe("OAuthClientService redirect_uri validation", () => {
 
     for (const uri of [
       "https://claude.ai/api/mcp/auth_callback",
-      "https://*.alepha.club/auth/callback",
+      "https://*.example.app/auth/callback",
       "http://127.0.0.1:39127/callback/1jIsan8OFNhz",
       "http://127.0.0.1/callback",
       "http://[::1]:39127/callback",
@@ -325,9 +325,9 @@ describe("OAuthClientService redirect_uri validation", () => {
     const { register } = await setup();
 
     for (const uri of [
-      "https://alepha.club/*/callback",
-      "https://*.*.alepha.club/callback",
-      "https://user*@alepha.club/callback",
+      "https://example.app/*/callback",
+      "https://*.*.example.app/callback",
+      "https://user*@example.app/callback",
     ]) {
       await expect(register(uri), `must refuse ${uri}`).rejects.toThrow(
         OAuthClientMetadataError,

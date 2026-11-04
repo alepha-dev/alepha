@@ -132,7 +132,7 @@ export const APP_TABS: AppTab[] = [
   // what the instance collects, so an instance with no sigil still has a build
   // history.
   //
-  // ⚠️ Artifacts belong to the APP, so every instance of `club` shows the
+  // ⚠️ Artifacts belong to the APP, so every instance of `acme` shows the
   // identical list and nothing on screen says why. Carried knowingly: on an
   // instance page the list reads as "what can I deploy here", and a badge
   // explaining the difference would be a control that changes nothing.

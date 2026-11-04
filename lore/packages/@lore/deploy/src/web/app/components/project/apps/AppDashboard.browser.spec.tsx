@@ -261,7 +261,7 @@ describe("AppDashboard", () => {
     const { getByTestId, queryByTestId } = await show({
       id: "00000000-0000-4000-8000-000000000011",
       projectId: 1,
-      app: "club",
+      app: "acme",
       env: "production",
       ephemeral: false,
       createdAt: "2026-08-01T10:00:00.000Z",

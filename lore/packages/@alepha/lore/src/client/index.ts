@@ -18,12 +18,12 @@ import { LoreDeployService } from "./services/LoreDeployService.ts";
  * const alepha = Alepha.create().with(AlephaLoreClient);
  * const lore = alepha.inject(LoreDeployService);
  *
- * // A club owner signs up with the slug "wassup":
+ * // A tenant signs up with the slug "riverside":
  * const { url } = await lore.deploy({
- *   app: "club",
- *   env: "wassup",
+ *   app: "acme",
+ *   env: "riverside",
  *   tag: "latest",
- *   domain: "wassup.club.example",
+ *   domain: "riverside.acme.example",
  * });
  * ```
  *

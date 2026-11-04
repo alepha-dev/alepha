@@ -255,11 +255,11 @@ describe("dashboard apps tiles", () => {
   });
 
   describe("the apps slot", () => {
-    it("is absent with no sigil (Everyday)", async ({ expect }) => {
+    it("is absent with no sigil", async ({ expect }) => {
       expect(await slots()).toEqual([]);
     });
 
-    it("is absent when every app is silent (Lindocara)", async ({ expect }) => {
+    it("is absent when every app is silent", async ({ expect }) => {
       await copy("site", "production", ["blights"], 24 * 40);
 
       expect(await slots()).toEqual([]);

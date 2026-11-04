@@ -101,7 +101,7 @@ describe("AppVitalsCard", () => {
   });
 
   /**
-   * club-staging rated its LCP off seven samples, and mobile-staging off one.
+   * acme-staging rated its LCP off seven samples, and mobile-staging off one.
    * Both cards were identical to the one built on 346.
    */
   it("refuses to rate a reading that rests on too few samples", async ({

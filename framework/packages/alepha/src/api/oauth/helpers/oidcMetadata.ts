@@ -1,7 +1,7 @@
 /**
  * OpenID Connect Discovery 1.0 — provider metadata document
  * (`/.well-known/openid-configuration`). `baseUrl` is the absolute origin of
- * the OIDC provider (e.g. https://alepha.club).
+ * the OIDC provider (e.g. https://example.app).
  */
 export const buildOpenIdConfiguration = (baseUrl: string) => ({
   issuer: baseUrl,

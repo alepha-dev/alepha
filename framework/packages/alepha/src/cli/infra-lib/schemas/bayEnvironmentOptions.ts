@@ -45,15 +45,15 @@ export const bayEnvironmentOptionsSchema = environmentOptionsSchema.extend({
    */
   socket: z.text().optional(),
   /**
-   * The Bay stack this app is deployed into, e.g. `"mcs"`.
+   * The Bay stack this app is deployed into, e.g. `"crm"`.
    *
    * A stack is a `compose.yml` applied on the Bay (`bay stack deploy`, or
    * `lore stack deploy`): the app runs as the service whose
    * `x-lore: { app: <name> }` names it, next to Postgres, Redis or anything
    * else the file declares. The environment's name is the stack
-   * environment's, so `alepha deploy staging` deploys into `mcs/staging`
+   * environment's, so `alepha deploy staging` deploys into `crm/staging`
    * and redeploys only this app's service, as
-   * `bay deploy mcs/staging/<service> -`.
+   * `bay deploy crm/staging/<service> -`.
    *
    * The stack must have been deployed first: the service is found by asking
    * the Bay, and a stack environment that does not exist yet has none. With

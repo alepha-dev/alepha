@@ -359,8 +359,8 @@ export class DeployRouter {
    *
    * ⚠️ **Two segments, `/apps/:app/:env`, and never a joined slug.**
    * `APP_NAME_PATTERN` allows hyphens inside both halves, so
-   * `/apps/club-b14-production` is genuinely ambiguous between `club` +
-   * `b14-production` and `club-b14` + `production`. Both are legal rows that
+   * `/apps/acme-east-production` is genuinely ambiguous between `acme` +
+   * `east-production` and `acme-east` + `production`. Both are legal rows that
    * can coexist in one project, since the unique key is the pair, and both
    * produce that identical slug: a lookup returns two rows and picks one
    * arbitrarily. The collision is silent, so it can never be the URL.

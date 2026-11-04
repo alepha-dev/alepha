@@ -28,7 +28,7 @@ const AppArtifacts = () => {
       {/*
         Keyed on the APP, not the instance: `artifacts.app` is a plain string
         and a build is pushed once for an app, not once per deployed copy.
-        Every instance of `club` therefore shows the same list, which is the
+        Every instance of `acme` therefore shows the same list, which is the
         model the entity argues for and the reason promotion is expressible at
         all.
       */}

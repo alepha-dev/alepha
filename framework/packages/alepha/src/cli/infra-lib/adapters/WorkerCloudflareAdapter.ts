@@ -197,7 +197,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    *
    * ⚠️ **Concurrently.** Each resource is its own list-then-create against its
    * own API, and none reads what another produced, so running them one after
-   * the other only added their latencies: 4 s of a first club deploy were a
+   * the other only added their latencies: 4 s of a first deploy were a
    * D1 then an R2 that could have been one wait. Handed to `run` as an array,
    * which the CLI's `Runner` and Lore's `DeployRunner.runner` both run in
    * parallel while still logging one line per resource.

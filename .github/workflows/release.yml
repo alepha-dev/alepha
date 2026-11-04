@@ -269,10 +269,10 @@ jobs:
         run: yarn copy
 
       # This job installs no Bun (every Verify job does, through
-      # `.github/actions/setup`), so no workspace here may build with it. Loom,
-      # whose build is `bun build --compile`, was the one that did: it made
-      # the 0.29.0 release die in this step on `bun: not found`, and it has
-      # since left the repository for ~/git/loom.
+      # `.github/actions/setup`), so no workspace here may build with it. A
+      # workspace whose build was `bun build --compile` made the 0.29.0
+      # release die in this step on `bun: not found`; it has since left the
+      # repository.
       - name: Build
         run: yarn build
 

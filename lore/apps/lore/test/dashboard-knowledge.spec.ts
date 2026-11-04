@@ -28,7 +28,7 @@ class KnowledgeRepositories extends TestEntityRepositories {
 
 /**
  * The Knowledge tiles of #E77 (#Q2658): before them a Knowledge-only project
- * (Lanthanides) had no tile at all.
+ * had no tile at all.
  */
 describe("dashboard knowledge tiles", () => {
   let alepha: Alepha;

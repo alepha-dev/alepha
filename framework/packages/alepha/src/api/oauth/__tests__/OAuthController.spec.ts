@@ -631,7 +631,7 @@ describe("OAuthController refresh_token grant", () => {
     expect(typeof tokenBody.id_token).toBe("string");
 
     // 2) refresh_token grant — MUST return a fresh id_token so an id_token-based
-    //    relying party (the stateless Club RP forwards the id_token as Bearer)
+    //    relying party (a stateless RP that forwards the id_token as Bearer)
     //    actually renews its identity, not just the access token.
     const refreshResp = await fetch(`${hostname}/oauth/token`, {
       method: "POST",
@@ -1079,7 +1079,7 @@ describe("OAuth consent cannot be skipped by the request", () => {
     expect,
   }) => {
     const { app, hostname, service } = await boot();
-    const redirectUri = "https://app.alepha.club/auth/callback";
+    const redirectUri = "https://app.example.app/auth/callback";
     const client = await service.register({
       realm: "users",
       clientName: "First Party",

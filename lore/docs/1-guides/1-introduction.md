@@ -64,9 +64,9 @@ unless it was created with a permission scope of its own.
 ## Apps and their instances
 
 An **app** is a name rather than a record. What Lore stores is one **instance**
-per deployed copy: the pair `(app, env)`, so `club/production` and `club/staging`
+per deployed copy: the pair `(app, env)`, so `acme/production` and `acme/staging`
 are two instances of one app and nothing else has to exist for them to be. The
-environment half is a free label, not a fixed list, so `b14-production` and
+environment half is a free label, not a fixed list, so `east-production` and
 `eu-staging` are as valid as `staging`, and how finely you slice your fleet is
 your decision rather than the schema's.
 

@@ -176,19 +176,19 @@ host, where the app is the service marked `x-lore: { app: <name> }`. Give `bay()
 ```typescript
 infra({
   environments: {
-    staging: bay({ host: "deploy@bay.example.com", stack: "mcs" }),
+    staging: bay({ host: "deploy@bay.example.com", stack: "crm" }),
   },
 });
 ```
 
-`alepha deploy --env staging` then asks the Bay which service of `mcs/staging` runs this app and
+`alepha deploy --env staging` then asks the Bay which service of `crm/staging` runs this app and
 redeploys that service alone, blue/green, leaving Postgres and Redis running:
 
 ```bash
-ssh -o BatchMode=yes deploy@bay.example.com 'bay deploy mcs/staging/api -' < myapp-latest.tar.zst
+ssh -o BatchMode=yes deploy@bay.example.com 'bay deploy crm/staging/api -' < myapp-latest.tar.zst
 ```
 
-The stack environment must exist first (`bay stack deploy mcs/staging compose.yml` on the host, or
+The stack environment must exist first (`bay stack deploy crm/staging compose.yml` on the host, or
 `lore stack deploy`). `domain` is not used: a stack service is routed by its stack (`x-lore.routes`,
 `bay stack route`). `alepha infra status` reports the service, and `alepha infra down` refuses: a
 stack is taken down as a whole, with `bay stack destroy`. `BAY_STACK` overrides `stack`, like

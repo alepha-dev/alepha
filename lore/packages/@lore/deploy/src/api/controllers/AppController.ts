@@ -44,8 +44,8 @@ export type { AppInstanceResource };
  * outer position.
  *
  * ⚠️ Two segments and never a joined slug. `APP_NAME_PATTERN` allows hyphens
- * inside both halves, so `club-b14-production` is genuinely ambiguous between
- * `club` + `b14-production` and `club-b14` + `production`; both are legal rows
+ * inside both halves, so `acme-east-production` is genuinely ambiguous between
+ * `acme` + `east-production` and `acme-east` + `production`; both are legal rows
  * that can coexist, and a lookup by the joined string returns two and picks
  * one. The collision is silent, so it can never be the URL.
  */
@@ -165,8 +165,8 @@ export class AppController {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
         /**
-         * The app, e.g. `club`. Trimmed and lowercased before it is validated,
-         * so `Club` is accepted and stored as `club` rather than refused.
+         * The app, e.g. `acme`. Trimmed and lowercased before it is validated,
+         * so `Acme` is accepted and stored as `acme` rather than refused.
          */
         app: appNameSchema,
         /**

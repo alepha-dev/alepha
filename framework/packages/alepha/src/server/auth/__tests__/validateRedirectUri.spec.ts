@@ -34,8 +34,8 @@ describe("validateRedirectUri", () => {
     });
   });
 
-  describe("with COOKIE_PARENT_DOMAIN=.club.alepha.dev", () => {
-    const env = { COOKIE_PARENT_DOMAIN: ".club.alepha.dev" };
+  describe("with COOKIE_PARENT_DOMAIN=.acme.alepha.dev", () => {
+    const env = { COOKIE_PARENT_DOMAIN: ".acme.alepha.dev" };
     it("still accepts relative paths", async ({ expect }) => {
       const p = await setup(env);
       expect(p.probeValidate("/admin")).toBe("/admin");
@@ -50,29 +50,29 @@ describe("validateRedirectUri", () => {
     });
     it("rejects http (must be https)", async ({ expect }) => {
       const p = await setup(env);
-      expect(p.probeValidate("http://viscapadel.club.alepha.dev/admin")).toBe(
+      expect(p.probeValidate("http://riverside.acme.alepha.dev/admin")).toBe(
         "/",
       );
     });
     it("accepts subdomain under the parent domain", async ({ expect }) => {
       const p = await setup(env);
-      expect(p.probeValidate("https://viscapadel.club.alepha.dev/admin")).toBe(
-        "https://viscapadel.club.alepha.dev/admin",
+      expect(p.probeValidate("https://riverside.acme.alepha.dev/admin")).toBe(
+        "https://riverside.acme.alepha.dev/admin",
       );
     });
     it("accepts the bare parent domain", async ({ expect }) => {
       const p = await setup(env);
-      expect(p.probeValidate("https://club.alepha.dev/dashboard")).toBe(
-        "https://club.alepha.dev/dashboard",
+      expect(p.probeValidate("https://acme.alepha.dev/dashboard")).toBe(
+        "https://acme.alepha.dev/dashboard",
       );
     });
     it("rejects look-alike domains (suffix match without dot boundary)", async ({
       expect,
     }) => {
       const p = await setup(env);
-      expect(p.probeValidate("https://notclub.alepha.dev/x")).toBe("/");
+      expect(p.probeValidate("https://notacme.alepha.dev/x")).toBe("/");
       expect(
-        p.probeValidate("https://evil-club.alepha.dev.attacker.com/x"),
+        p.probeValidate("https://evil-acme.alepha.dev.attacker.com/x"),
       ).toBe("/");
     });
   });

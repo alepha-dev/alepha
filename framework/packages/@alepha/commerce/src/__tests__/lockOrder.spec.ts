@@ -77,7 +77,7 @@ const legs = (ctx: Ctx, capacity = 1) =>
   ctx.catalog.create({
     kind: "test-legs",
     slug: `legs-${randomUUID()}`,
-    name: "Padel, 60 minutes",
+    name: "Tennis, 60 minutes",
     price: 2000,
     published: true,
     config: { capacity },

@@ -108,17 +108,17 @@ describe("alepha/api/users - TotpService", () => {
       totp.otpauthUri({
         secret: RFC_SECRET,
         account: "ada@example.com",
-        issuer: "Capacity Portal",
+        issuer: "Acme Portal",
       }),
     );
 
     expect(uri.protocol).toBe("otpauth:");
     expect(uri.host).toBe("totp");
     expect(decodeURIComponent(uri.pathname)).toBe(
-      "/Capacity Portal:ada@example.com",
+      "/Acme Portal:ada@example.com",
     );
     expect(uri.searchParams.get("secret")).toBe(RFC_SECRET);
-    expect(uri.searchParams.get("issuer")).toBe("Capacity Portal");
+    expect(uri.searchParams.get("issuer")).toBe("Acme Portal");
     expect(uri.searchParams.get("algorithm")).toBe("SHA1");
     expect(uri.searchParams.get("digits")).toBe("6");
     expect(uri.searchParams.get("period")).toBe("30");
@@ -133,7 +133,7 @@ describe("alepha/api/users - TotpService", () => {
       totp.otpauthUri({
         secret: RFC_SECRET,
         account: "ada@example.com",
-        issuer: "Capacity Portal",
+        issuer: "Acme Portal",
       }),
     );
 

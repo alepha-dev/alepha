@@ -213,7 +213,7 @@ export class D1MigrationsService {
    * ## Why, and why only here
    *
    * An import is five round trips (init, upload, ingest, poll, and the
-   * bookkeeping query), about 1.2 s. A first deploy of a club copy carried 26
+   * bookkeeping query), about 1.2 s. A first deploy of a fresh copy carried 26
    * migrations and spent 31.7 s of its 45 s run in this loop, so a new copy
    * paid most of its deploy time for round trips rather than for SQL.
    *

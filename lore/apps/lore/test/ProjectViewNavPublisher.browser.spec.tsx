@@ -100,8 +100,8 @@ describe("what the palette is offered", () => {
     expect,
   }) => {
     const alepha = await mount([
-      anInstance("club", "production"),
-      anInstance("club", "b14-production"),
+      anInstance("acme", "production"),
+      anInstance("acme", "east-production"),
     ]);
 
     await waitFor(() =>
@@ -113,13 +113,13 @@ describe("what the palette is offered", () => {
         // carries it.
         { label: "Notifications", href: "/alepha/inbox", kind: "page" },
         {
-          label: "club / production",
-          href: "/alepha/apps/club/production",
+          label: "acme / production",
+          href: "/alepha/apps/acme/production",
           kind: "app",
         },
         {
-          label: "club / b14-production",
-          href: "/alepha/apps/club/b14-production",
+          label: "acme / east-production",
+          href: "/alepha/apps/acme/east-production",
           kind: "app",
         },
       ]),
@@ -129,17 +129,17 @@ describe("what the palette is offered", () => {
   it("renders both halves, so siblings are not identical rows", async ({
     expect,
   }) => {
-    // `matchProjectNav` matches on the label, so typing `b14` has to find one.
+    // `matchProjectNav` matches on the label, so typing `east` has to find one.
     const alepha = await mount([
-      anInstance("club", "production"),
-      anInstance("club", "staging"),
+      anInstance("acme", "production"),
+      anInstance("acme", "staging"),
     ]);
 
     await waitFor(() => {
       const labels = (alepha.store.get(projectNavAtom) ?? [])
         .filter((entry) => entry.kind === "app")
         .map((entry) => entry.label);
-      expect(labels).toEqual(["club / production", "club / staging"]);
+      expect(labels).toEqual(["acme / production", "acme / staging"]);
     });
   });
 

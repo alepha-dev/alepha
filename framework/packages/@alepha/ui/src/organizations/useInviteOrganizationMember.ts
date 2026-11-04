@@ -12,9 +12,9 @@ export interface InviteOrganizationMember {
    * `metadata` is the application's own, stored on the invitation row and
    * handed back on `organization:invitation:accepted`. The framework never
    * reads it: it is how an application carries a fact of its own alongside the
-   * rank - Alepha Club puts the club ROLES it is inviting somebody as there,
+   * rank - a sports app may put the ROLES it is inviting somebody as there,
    * because a rank says what you may do as staff and a role says whether you
-   * are a coach, and the framework has no business knowing that club has
+   * are a coach, and the framework has no business knowing that the app has
    * coaches.
    *
    * Resolves `{ ok: true }` once sent, `{ ok: false, reason: "cancelled" }`

@@ -8,8 +8,8 @@ import { z } from "alepha";
  * create body was stripped with the rest of the undeclared keys, so the
  * account landed in the default realm, and a `realm=` query was never read,
  * so a listing answered with the caller's realm. Both look like success. A
- * downstream production (Mikanda) acquired two accounts in a realm whose door
- * does not open its back office that way.
+ * downstream production acquired two accounts in a realm whose door does not
+ * open its back office that way.
  *
  * Declared rather than left undeclared, so the key is refused with a message
  * naming the parameter, and a typed client cannot pass it at all. Optional,

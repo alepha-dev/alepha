@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 
-import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
 import type { ShowcaseController } from "@/showcase/ShowcaseController.ts";
+import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
 import { Showcase } from "@/web/components/Showcase.tsx";
 import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
 

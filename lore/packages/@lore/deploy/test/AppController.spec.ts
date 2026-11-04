@@ -84,13 +84,13 @@ describe("AppController", () => {
     const created = await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "  Club ", env: "B14-Production" },
+        body: { app: "  Acme ", env: "East-Production" },
       },
       { user: ownerToken(project) },
     );
 
-    expect(created.app).toBe("club");
-    expect(created.env).toBe("b14-production");
+    expect(created.app).toBe("acme");
+    expect(created.env).toBe("east-production");
     expect(created.sigil).toBeUndefined();
   });
 
@@ -103,7 +103,7 @@ describe("AppController", () => {
       ctx.controller.createApp(
         {
           params: { projectId: project.id },
-          body: { app: "club", env: "b14 production" },
+          body: { app: "acme", env: "east production" },
         },
         { user: ownerToken(project) },
       ),
@@ -116,7 +116,7 @@ describe("AppController", () => {
     await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user },
     );
@@ -125,7 +125,7 @@ describe("AppController", () => {
       ctx.controller.createApp(
         {
           params: { projectId: project.id },
-          body: { app: "club", env: "production" },
+          body: { app: "acme", env: "production" },
         },
         { user },
       ),
@@ -141,8 +141,8 @@ describe("AppController", () => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     for (const [app, env] of [
-      ["club", "production"],
-      ["club", "staging"],
+      ["acme", "production"],
+      ["acme", "staging"],
       ["docs", "production"],
     ]) {
       await ctx.controller.createApp(
@@ -157,11 +157,11 @@ describe("AppController", () => {
     );
 
     expect(listed.items).toHaveLength(3);
-    expect(listed.apps).toEqual(["club", "docs"]);
+    expect(listed.apps).toEqual(["acme", "docs"]);
     // Ordered by the pair, which is what the flat list reads in.
     expect(listed.items.map((it) => `${it.app}/${it.env}`)).toEqual([
-      "club/production",
-      "club/staging",
+      "acme/production",
+      "acme/staging",
       "docs/production",
     ]);
   });
@@ -177,9 +177,9 @@ describe("AppController", () => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     for (const [app, env] of [
-      ["club", "a-staging"],
-      ["club", "production"],
-      ["docs", "b14-preview"],
+      ["acme", "a-staging"],
+      ["acme", "production"],
+      ["docs", "east-preview"],
       ["docs", "staging"],
     ]) {
       await ctx.controller.createApp(
@@ -194,9 +194,9 @@ describe("AppController", () => {
     );
 
     // `production` wins even though `a-staging` sorts before it.
-    expect(defaultAppInstance(items, "club")?.env).toBe("production");
+    expect(defaultAppInstance(items, "acme")?.env).toBe("production");
     // No production: the first env by name.
-    expect(defaultAppInstance(items, "docs")?.env).toBe("b14-preview");
+    expect(defaultAppInstance(items, "docs")?.env).toBe("east-preview");
     // A bare name that names nothing is a 404 in the loader.
     expect(defaultAppInstance(items, "nothing")).toBeUndefined();
 
@@ -219,13 +219,13 @@ describe("AppController", () => {
     const created = await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user },
     );
     const sigil = await ctx.repos.sigils.create({
       projectId: project.id,
-      name: "club/production",
+      name: "acme/production",
       tokenHash: "hash-1",
       tokenPrefix: "sg_test_",
       kinds: ["beacon"],
@@ -234,7 +234,7 @@ describe("AppController", () => {
 
     const read = await ctx.controller.getApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
       },
       { user },
     );
@@ -252,14 +252,14 @@ describe("AppController", () => {
     await ctx.controller.createApp(
       {
         params: { projectId: theirs.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user: ownerToken(theirs) },
     );
 
     await expect(
       ctx.controller.getApp(
-        { params: { projectId: mine.id, app: "club", env: "production" } },
+        { params: { projectId: mine.id, app: "acme", env: "production" } },
         { user: ownerToken(mine) },
       ),
     ).rejects.toThrow(/not found/i);
@@ -273,13 +273,13 @@ describe("AppController", () => {
     const created = await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "staging" },
+        body: { app: "acme", env: "staging" },
       },
       { user },
     );
     const sigil = await ctx.repos.sigils.create({
       projectId: project.id,
-      name: "club/staging",
+      name: "acme/staging",
       tokenHash: "hash-2",
       tokenPrefix: "sg_test_",
       kinds: [],
@@ -288,15 +288,15 @@ describe("AppController", () => {
 
     const renamed = await ctx.controller.updateApp(
       {
-        params: { projectId: project.id, app: "club", env: "staging" },
-        body: { env: "b14-production" },
+        params: { projectId: project.id, app: "acme", env: "staging" },
+        body: { env: "east-production" },
       },
       { user },
     );
 
-    expect(renamed.env).toBe("b14-production");
+    expect(renamed.env).toBe("east-production");
     expect((await ctx.repos.sigils.getById(sigil.id)).name).toBe(
-      "club/b14-production",
+      "acme/east-production",
     );
   });
 
@@ -308,20 +308,20 @@ describe("AppController", () => {
     await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production", url: "https://club.example" },
+        body: { app: "acme", env: "production", url: "https://acme.example" },
       },
       { user },
     );
 
     const updated = await ctx.controller.updateApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: { app: "lore" },
       },
       { user },
     );
 
-    expect(updated.url).toBe("https://club.example");
+    expect(updated.url).toBe("https://acme.example");
   });
 
   it("refuses an estate the project was never lent", async ({ expect }) => {
@@ -332,7 +332,7 @@ describe("AppController", () => {
     await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user },
     );
@@ -346,7 +346,7 @@ describe("AppController", () => {
     await expect(
       ctx.controller.updateApp(
         {
-          params: { projectId: project.id, app: "club", env: "production" },
+          params: { projectId: project.id, app: "acme", env: "production" },
           body: { estateId: estate.id },
         },
         { user },
@@ -360,7 +360,7 @@ describe("AppController", () => {
     });
     const pointed = await ctx.controller.updateApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: { estateId: estate.id },
       },
       { user },
@@ -381,7 +381,7 @@ describe("AppController", () => {
     await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user },
     );
@@ -397,7 +397,7 @@ describe("AppController", () => {
     });
     await ctx.controller.updateApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: { estateId: estate.id },
       },
       { user },
@@ -410,7 +410,7 @@ describe("AppController", () => {
     // hands the handler a already-parsed object.
     const cleared = await ctx.controller.updateApp.fetch(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: { estateId: null },
       },
       { user },
@@ -418,7 +418,7 @@ describe("AppController", () => {
 
     expect(cleared.data.estate).toBeUndefined();
     const stored = await ctx.repos.instances.findOne({
-      where: { projectId: { eq: project.id }, app: { eq: "club" } },
+      where: { projectId: { eq: project.id }, app: { eq: "acme" } },
     });
     expect(stored?.estateId ?? null).toBeNull();
   });
@@ -429,13 +429,13 @@ describe("AppController", () => {
     const created = await ctx.controller.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user },
     );
     const sigil = await ctx.repos.sigils.create({
       projectId: project.id,
-      name: "club/production",
+      name: "acme/production",
       tokenHash: "hash-3",
       tokenPrefix: "sg_test_",
       kinds: [],
@@ -444,7 +444,7 @@ describe("AppController", () => {
 
     await ctx.controller.deleteApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: {},
       },
       { user },
