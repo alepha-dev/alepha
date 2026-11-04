@@ -114,6 +114,7 @@ Left out on purpose:
   - `-wal`, `-shm`, `-journal`: the snapshot reads through them already;
   - `*.before-restore-*`: the copies a restore sets aside, which would
     otherwise be backed up - and restored over the live data - forever;
+  - `*.restoring`: a restore's copy left behind by a crash, never the app's;
   - hidden files and folders (`.home`, `.cache`...), reported in `skipped`
     (a folder once, not its contents): a browser's profile and the system's
     key stores live there as SQLite files, and they are neither the app's
@@ -174,7 +175,7 @@ func DiscoverSQLite(dataDir string) (files, skipped []string, err error) {
 }
 
 func sqliteCandidate(name string) bool {
-	for _, suffix := range []string{"-wal", "-shm", "-journal"} {
+	for _, suffix := range append([]string{".restoring"}, sqliteSidecars...) {
 		if strings.HasSuffix(name, suffix) {
 			return false
 		}
@@ -502,11 +503,12 @@ func rollback(installed []installedFile) error {
 		if d.aside == "" {
 			continue // there was nothing before: removing the restored file is the rollback
 		}
-		for _, suffix := range []string{"", "-wal", "-shm"} {
+		for _, suffix := range append([]string{""}, sqliteSidecars...) {
 			if err := os.Rename(d.aside+suffix, d.live+suffix); err != nil && !os.IsNotExist(err) {
 				errs = append(errs, err)
 			}
 		}
+		syncDir(filepath.Dir(d.live))
 	}
 	return errors.Join(errs...)
 }

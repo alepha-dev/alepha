@@ -109,12 +109,15 @@ func TestPruneReportsWhatItRemovedBeforeAFailure(t *testing.T) {
 	}
 }
 
-func TestInstallSetsTheOldDatabaseAsideWithItsWAL(t *testing.T) {
+func TestInstallSetsTheOldDatabaseAsideWithItsSidecars(t *testing.T) {
 	dir := t.TempDir()
 	live := filepath.Join(dir, "data", "app.sqlite")
 	write(t, live, "old")
 	write(t, live+"-wal", "old-wal")
 	write(t, live+"-shm", "old-shm")
+	// A hot rollback journal, left by an app killed mid-write: SQLite would
+	// play it back onto the restored database.
+	write(t, live+"-journal", "old-journal")
 	restored := filepath.Join(dir, "restored.sqlite")
 	write(t, restored, "new")
 
@@ -124,7 +127,7 @@ func TestInstallSetsTheOldDatabaseAsideWithItsWAL(t *testing.T) {
 	if got := read(t, live); got != "new" {
 		t.Fatalf("live database = %q", got)
 	}
-	for _, sidecar := range []string{live + "-wal", live + "-shm"} {
+	for _, sidecar := range []string{live + "-wal", live + "-shm", live + "-journal"} {
 		if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
 			t.Fatalf("%s must not sit next to the restored database", sidecar)
 		}
@@ -133,12 +136,12 @@ func TestInstallSetsTheOldDatabaseAsideWithItsWAL(t *testing.T) {
 	asides, _ := filepath.Glob(live + ".before-restore-*")
 	var main string
 	for _, a := range asides {
-		if !strings.HasSuffix(a, "-wal") && !strings.HasSuffix(a, "-shm") {
+		if !strings.HasSuffix(a, "-wal") && !strings.HasSuffix(a, "-shm") && !strings.HasSuffix(a, "-journal") {
 			main = a
 		}
 	}
-	if main == "" || read(t, main) != "old" || read(t, main+"-wal") != "old-wal" || read(t, main+"-shm") != "old-shm" {
-		t.Fatalf("the previous database and its WAL/SHM must be kept together, got %v", asides)
+	if main == "" || read(t, main) != "old" || read(t, main+"-wal") != "old-wal" || read(t, main+"-shm") != "old-shm" || read(t, main+"-journal") != "old-journal" {
+		t.Fatalf("the previous database and its sidecars must be kept together, got %v", asides)
 	}
 }
 

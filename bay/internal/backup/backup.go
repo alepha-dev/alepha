@@ -261,20 +261,22 @@ func install(restored, livePath string) (aside string, err error) {
 			os.Remove(tmp)
 			return "", fmt.Errorf("set aside existing database: %w", err)
 		}
-		// The WAL and SHM belong to the database just set aside: an app killed
-		// at the end of its grace period leaves committed frames in the WAL,
-		// and deleting it dropped them from the only safety copy. They follow
-		// the file under its new name, where SQLite looks for them.
-		for _, suffix := range []string{"-wal", "-shm"} {
+		// The sidecars belong to the database just set aside: an app killed at
+		// the end of its grace period leaves committed frames in the WAL, or a
+		// hot rollback journal, and deleting it dropped them from the only
+		// safety copy. They follow the file under its new name, where SQLite
+		// looks for them.
+		for _, suffix := range sqliteSidecars {
 			if err := os.Rename(livePath+suffix, aside+suffix); err != nil && !os.IsNotExist(err) {
 				return "", undoInstall(tmp, aside, livePath, fmt.Errorf("set aside %s: %w", livePath+suffix, err))
 			}
 		}
 	}
 
-	// A stale write-ahead log next to a fresh database is worse than either
-	// alone: SQLite would replay it onto pages it does not belong to.
-	for _, sidecar := range []string{livePath + "-wal", livePath + "-shm"} {
+	// A stale write-ahead log or hot journal next to a fresh database is worse
+	// than either alone: SQLite would replay it onto pages it does not belong to.
+	for _, suffix := range sqliteSidecars {
+		sidecar := livePath + suffix
 		if err := os.Remove(sidecar); err != nil && !os.IsNotExist(err) {
 			return "", undoInstall(tmp, aside, livePath, fmt.Errorf("remove %s: %w", sidecar, err))
 		}
@@ -282,7 +284,23 @@ func install(restored, livePath string) (aside string, err error) {
 	if err := os.Rename(tmp, livePath); err != nil {
 		return "", undoInstall(tmp, aside, livePath, err)
 	}
+	// The renames live in the folder's entries: until the folder is synced, a
+	// power cut can bring back the old names, or no app.db at all.
+	syncDir(filepath.Dir(livePath))
 	return aside, nil
+}
+
+// sqliteSidecars are the files SQLite keeps next to a database, which belong
+// to it and to no other.
+var sqliteSidecars = []string{"-wal", "-shm", "-journal"}
+
+// syncDir flushes a folder's entries. It is best effort: a filesystem that
+// cannot sync a directory has nothing more to offer.
+func syncDir(dir string) {
+	if d, err := os.Open(dir); err == nil {
+		d.Sync()
+		d.Close()
+	}
 }
 
 // undoInstall puts back what install had set aside, so a refused install
@@ -293,11 +311,12 @@ func undoInstall(tmp, aside, livePath string, cause error) error {
 		return cause
 	}
 	var errs []error
-	for _, suffix := range []string{"", "-wal", "-shm"} {
+	for _, suffix := range append([]string{""}, sqliteSidecars...) {
 		if err := os.Rename(aside+suffix, livePath+suffix); err != nil && !os.IsNotExist(err) {
 			errs = append(errs, err)
 		}
 	}
+	syncDir(filepath.Dir(livePath))
 	if err := errors.Join(errs...); err != nil {
 		return &NotRolledBackError{Err: fmt.Errorf("%w; and putting the database back failed: %v", cause, err)}
 	}

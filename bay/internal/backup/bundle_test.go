@@ -20,6 +20,8 @@ func TestDiscoverFindsDatabasesByHeaderAndSkipsTheRest(t *testing.T) {
 	write(t, filepath.Join(data, "app.db-wal"), db)
 	write(t, filepath.Join(data, "app.db-shm"), db)
 	write(t, filepath.Join(data, "app.db.before-restore-20260801T000000Z"), db)
+	write(t, filepath.Join(data, "app.db.restoring"), db) // a crashed restore's copy
+	write(t, filepath.Join(data, "app.db-journal"), db)
 	write(t, filepath.Join(data, "queue", "jobs.anything"), db) // found by its header, whatever its name
 	write(t, filepath.Join(data, "notes.txt"), "not a database")
 	write(t, filepath.Join(data, "fresh.sqlite"), "") // created, never written: still a database
