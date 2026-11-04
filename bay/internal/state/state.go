@@ -16,6 +16,13 @@ import (
 	"github.com/alepha-dev/bay/internal/backuppolicy"
 )
 
+// HostMount is a host path bind-mounted at the same path into an instance's
+// container, read-only unless ReadOnly is false.
+type HostMount struct {
+	Path     string `json:"path"`
+	ReadOnly bool   `json:"readOnly"`
+}
+
 // App is one deployed application instance (app + env).
 type App struct {
 	Name string `json:"name"`
@@ -214,6 +221,15 @@ type App struct {
 	// default (512 MiB): a JVM service, an app with a large cache. Zero means
 	// the default. Set by `bay harden --memory`.
 	MemoryBytes int64 `json:"memoryBytes,omitempty"`
+	// PidsLimit is this instance's ceiling on processes and threads when it is
+	// not Bay's default (256): an app driving a browser runs a few hundred
+	// threads. Zero means the default. Set by `bay harden --pids`.
+	PidsLimit int `json:"pidsLimit,omitempty"`
+	// HostMounts are host paths an operator handed to this instance with
+	// `bay harden --mount`, each at the same path inside its container: a
+	// display socket, a browser install shared with the host. Never set by a
+	// deploy; recorded so `bay status` shows the app sees more than its own.
+	HostMounts []HostMount `json:"hostMounts,omitempty"`
 
 	// Stack and Service are set on a stack member: the instance is service
 	// Service of stack environment Stack/Env, named "<stack>.<service>".
@@ -564,6 +580,8 @@ func (s *Store) Upsert(app App) error {
 			app.UID = a.UID
 			app.Relaxed = a.Relaxed
 			app.MemoryBytes = a.MemoryBytes
+			app.PidsLimit = a.PidsLimit
+			app.HostMounts = a.HostMounts
 			// A member redeployed through the ordinary deploy path is still a
 			// member of its stack.
 			if app.Stack == "" {
@@ -815,6 +833,17 @@ func (s *Store) EnsureUID(key string) (int, error) {
 // SetMemory records an instance's memory ceiling; zero restores the default.
 func (s *Store) SetMemory(key string, bytes int64) error {
 	return s.mutate(key, func(a *App) { a.MemoryBytes = bytes })
+}
+
+// SetPidsLimit records an instance's process/thread ceiling; zero restores the
+// default.
+func (s *Store) SetPidsLimit(key string, limit int) error {
+	return s.mutate(key, func(a *App) { a.PidsLimit = limit })
+}
+
+// SetHostMounts replaces the host paths handed to an instance; nil clears them.
+func (s *Store) SetHostMounts(key string, mounts []HostMount) error {
+	return s.mutate(key, func(a *App) { a.HostMounts = mounts })
 }
 
 // SetRelaxed records which hardening defaults are lifted for an instance.

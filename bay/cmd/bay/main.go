@@ -306,7 +306,7 @@ func usageText() string {
               # compose file and reach app services, from the next stack deploy
   bay stack env list <stack>/<env>   # names only
   bay stack env unset <stack>/<env> KEY...
-  bay harden  <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default)
+  bay harden  <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default | --pids 1024|default | --mount /path[:rw][,...]|none)
               # an archive app runs as its own uid, with no capabilities, on a
               # read-only root filesystem (a 64 MB /tmp). --relax lifts one of
               # those for this app only, recorded and flagged by "bay status";
@@ -1083,6 +1083,8 @@ func (s *server) controlMux() *http.ServeMux {
 	mux.HandleFunc("PUT /apps/{name}/{env}/runtime-image", s.handleRuntimeImage)
 	mux.HandleFunc("PUT /apps/{name}/{env}/relax", s.handleRelax)
 	mux.HandleFunc("PUT /apps/{name}/{env}/memory", s.handleMemory)
+	mux.HandleFunc("PUT /apps/{name}/{env}/pids", s.handlePids)
+	mux.HandleFunc("PUT /apps/{name}/{env}/mounts", s.handleHostMounts)
 	s.registerStackRoutes(mux)
 	mux.HandleFunc("GET /runtimes", s.handleRuntimes)
 	mux.HandleFunc("POST /runtimes/update", s.handleRuntimesUpdate)
@@ -2220,6 +2222,16 @@ func cmdStatus(args []string) error {
 		}
 		if a.MemoryBytes > 0 {
 			fmt.Printf("  memory   %d MiB  (set by bay harden --memory; the default is 512)\n", a.MemoryBytes>>20)
+		}
+		if a.PidsLimit > 0 {
+			fmt.Printf("  pids     %d  (set by bay harden --pids; the default is %d)\n", a.PidsLimit, defaultPids)
+		}
+		for _, m := range a.HostMounts {
+			mode := "read-only"
+			if !m.ReadOnly {
+				mode = "read-write"
+			}
+			fmt.Printf("  host     %s  (%s, set by bay harden --mount)\n", m.Path, mode)
 		}
 		if len(a.Relaxed) > 0 {
 			problems++
