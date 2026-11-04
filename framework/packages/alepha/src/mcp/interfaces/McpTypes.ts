@@ -168,8 +168,11 @@ export interface McpRequestMeta {
   clientInfo?: McpClientInfo;
   /**
    * The capabilities the client declares for this request
-   * (`io.modelcontextprotocol/clientCapabilities`). `{}` when absent: the
-   * spec forbids inferring a capability the client did not declare.
+   * (`io.modelcontextprotocol/clientCapabilities`). The field is required on a
+   * modern request, and `McpServerProvider.checkModernRequest` refuses one
+   * without it before routing, so a served request always has the declared
+   * value here. The `{}` default only shows to a caller that reads the
+   * metadata without that check.
    */
   clientCapabilities: Record<string, unknown>;
 }

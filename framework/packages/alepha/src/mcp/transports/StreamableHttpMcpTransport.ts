@@ -73,12 +73,22 @@ export const mcpStreamableHttpOptions = $atom({
     resourceMetadataPath: z.text({
       default: "/.well-known/oauth-protected-resource",
     }),
+    /**
+     * Milliseconds between SSE comment keep-alives (`: keep-alive`) on a
+     * progress stream while the handler runs. A slow tool with sparse
+     * progress would otherwise be cut by a proxy's idle timeout. `0` disables
+     * them.
+     *
+     * @default 15000
+     */
+    keepAliveInterval: z.integer().default(15_000),
   }),
   default: {
     path: "/mcp",
     allowedOrigins: [],
     requireAuth: false,
     resourceMetadataPath: "/.well-known/oauth-protected-resource",
+    keepAliveInterval: 15_000,
   },
   serverOnly: true,
 });
@@ -148,6 +158,12 @@ export class StreamableHttpMcpTransport {
   protected readonly log = $logger();
   protected readonly options = $store(mcpStreamableHttpOptions);
   protected readonly mcpServer = $inject(McpServerProvider);
+
+  /**
+   * The keep-alive timers of the streams currently open. Each is removed when
+   * its stream ends, so a non-empty set after every stream closed is a leak.
+   */
+  protected readonly keepAlives = new Set<ReturnType<typeof setInterval>>();
 
   /**
    * GET on the MCP endpoint is not supported in this transport. Returning
@@ -305,7 +321,7 @@ export class StreamableHttpMcpTransport {
         if (modern && rpcRequest.id !== undefined) {
           const rejection =
             this.validateModernHeaders(rpcRequest, headers) ??
-            this.mcpServer.checkModernRequest(modern) ??
+            this.mcpServer.checkModernRequest(modern, rpcRequest) ??
             (this.mcpServer.handlesMethod(rpcRequest.method, true)
               ? undefined
               : new McpMethodNotFoundError({ method: rpcRequest.method }));
@@ -315,15 +331,20 @@ export class StreamableHttpMcpTransport {
               message: rejection.message,
               ...this.describeRequestShape(rpcRequest, headers),
             });
-            return this.replyJson(
-              request,
-              createErrorResponse(rpcRequest.id, {
-                code: rejection.data.code,
-                message: rejection.message,
-                data: rejection.data.rpcData,
-              }),
-              true,
-            );
+            const response = createErrorResponse(rpcRequest.id, {
+              code: rejection.data.code,
+              message: rejection.message,
+              data: rejection.data.rpcData,
+            });
+            this.replyJson(request, response, true);
+            // Every rejection decided here is a malformed or unservable
+            // request (HTTP 400), except an unknown method (404): a -32602
+            // for a missing clientCapabilities must not keep the 200 a tool
+            // not found gets, since nothing was routed.
+            if (request.reply.status === 200) {
+              request.reply.status = 400;
+            }
+            return;
           }
         }
 
@@ -729,6 +750,7 @@ export class StreamableHttpMcpTransport {
 
     const encoder = new TextEncoder();
     const context = this.buildContext(request);
+    let stopKeepAlive = (): void => {};
 
     return new ReadableStream({
       start: (controller) => {
@@ -743,6 +765,28 @@ export class StreamableHttpMcpTransport {
             // The stream is already gone; nothing useful left to do.
             open = false;
           }
+        };
+
+        // SSE comments are ignored by every client and keep an idle
+        // connection alive through proxies. Cleared on the final response,
+        // on a handler failure and on client disconnect (cancel, below).
+        const interval = this.options.keepAliveInterval;
+        const keepAlive =
+          interval > 0
+            ? setInterval(() => {
+                if (!open) return;
+                try {
+                  controller.enqueue(encoder.encode(": keep-alive\n\n"));
+                } catch {
+                  open = false;
+                }
+              }, interval)
+            : undefined;
+        if (keepAlive !== undefined) this.keepAlives.add(keepAlive);
+        stopKeepAlive = () => {
+          if (keepAlive === undefined) return;
+          clearInterval(keepAlive);
+          this.keepAlives.delete(keepAlive);
         };
 
         const streamContext: McpContext = {
@@ -778,6 +822,7 @@ export class StreamableHttpMcpTransport {
           })
           .finally(() => {
             open = false;
+            stopKeepAlive();
             try {
               controller.close();
             } catch {
@@ -789,6 +834,7 @@ export class StreamableHttpMcpTransport {
       // 2026-07-28 that IS the cancellation signal, so route it to the same
       // place `notifications/cancelled` goes.
       cancel: () => {
+        stopKeepAlive();
         if (rpcRequest.id !== undefined) {
           this.mcpServer.cancelRequest(rpcRequest.id, context.clientKey);
         }

@@ -179,7 +179,7 @@ describe("Dual-era MCP", () => {
 
       await callWhoami(
         mcp,
-        {},
+        { _meta: { "io.modelcontextprotocol/clientCapabilities": {} } },
         { headers: { "mcp-protocol-version": MODERN } },
       );
 
@@ -187,11 +187,46 @@ describe("Dual-era MCP", () => {
       await alepha.stop();
     });
 
-    it("reads absent clientCapabilities as {}, never as a missing request", async () => {
+    it("refuses a modern request without clientCapabilities with -32602, before routing", async () => {
       const { alepha, mcp } = await provider(dualEra());
 
       const res = await callWhoami(mcp, {
         _meta: { "io.modelcontextprotocol/protocolVersion": MODERN },
+      });
+
+      expect(res?.error?.code).toBe(-32602);
+      expect(res?.error?.message).toContain(
+        "io.modelcontextprotocol/clientCapabilities",
+      );
+      expect(seen).toBeUndefined();
+      await alepha.stop();
+    });
+
+    it("refuses a clientCapabilities that is not an object", async () => {
+      const { alepha, mcp } = await provider(dualEra());
+
+      for (const value of [[], "all", 1, null]) {
+        forget();
+        const res = await callWhoami(mcp, {
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": MODERN,
+            "io.modelcontextprotocol/clientCapabilities": value,
+          },
+        });
+        expect(res?.error?.code).toBe(-32602);
+        expect(seen).toBeUndefined();
+      }
+      await alepha.stop();
+    });
+
+    it("serves an empty clientCapabilities: declared nothing is not missing", async () => {
+      const { alepha, mcp } = await provider(dualEra());
+
+      const res = await callWhoami(mcp, {
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": MODERN,
+          "io.modelcontextprotocol/clientCapabilities": {},
+        },
       });
 
       expect(res?.error).toBeUndefined();

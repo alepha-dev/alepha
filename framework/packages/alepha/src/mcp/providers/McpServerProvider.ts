@@ -407,15 +407,25 @@ export class McpServerProvider {
   }
 
   /**
-   * Why a modern request cannot be served at all, before it is routed: today,
-   * a protocol version outside {@link protocolVersions}. `undefined` when it
-   * can be.
+   * Why a modern request cannot be served at all, before it is routed: a
+   * protocol version outside {@link protocolVersions} (-32022), or a missing
+   * `io.modelcontextprotocol/clientCapabilities` (-32602), which 2026-07-28
+   * makes a required request `_meta` field. `undefined` when it can be.
+   *
+   * The capabilities are read from the raw request rather than from `modern`:
+   * {@link resolveModernRequest} stays a pure reader and defaults them to
+   * `{}`, so only the request can tell "declared nothing" from "said nothing".
+   * A present value that is not an object (an array, a string) is refused the
+   * same way.
    *
    * Public for the same reason as {@link resolveModernRequest}: the HTTP
    * transport answers these with a 400, and has to know before it opens a
    * response stream.
    */
-  public checkModernRequest(modern: McpRequestMeta): McpError | undefined {
+  public checkModernRequest(
+    modern: McpRequestMeta,
+    request: JsonRpcRequest,
+  ): McpError | undefined {
     if (!this.protocolVersions.includes(modern.protocolVersion)) {
       return new McpUnsupportedProtocolVersionError({
         rpcData: {
@@ -423,6 +433,15 @@ export class McpServerProvider {
           requested: modern.protocolVersion,
         },
       });
+    }
+    const declared =
+      this.requestMeta(request)?.["io.modelcontextprotocol/clientCapabilities"];
+    if (!this.isPlainObject(declared)) {
+      return new McpInvalidParamsError(
+        declared === undefined
+          ? "Invalid params: missing required _meta field io.modelcontextprotocol/clientCapabilities"
+          : "Invalid params: _meta field io.modelcontextprotocol/clientCapabilities must be an object",
+      );
     }
     return undefined;
   }
@@ -499,7 +518,7 @@ export class McpServerProvider {
     // put in the context: on a legacy request all three stay undefined.
     const modern = this.resolveModernRequest(request, context?.headers);
     if (modern) {
-      const rejection = this.checkModernRequest(modern);
+      const rejection = this.checkModernRequest(modern, request);
       if (rejection) {
         return createErrorResponse(id, this.toJsonRpcError(rejection));
       }

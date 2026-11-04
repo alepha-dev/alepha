@@ -622,6 +622,7 @@ The `mcpStreamableHttpOptions` atom configures it:
 | `allowedOrigins`       | `[]` (same-origin)                        | `Origin` values a browser request may carry; any other is a 403 (DNS-rebinding guard). Empty means same-origin, plus loopback when the request host is loopback. `["*"]` allows any. Requests with no `Origin` always pass. |
 | `requireAuth`          | `false`                                   | Refuse an unauthenticated POST with `401` and an RFC 9728 `WWW-Authenticate` challenge, which MCP clients use to find the OAuth server. `$realm({ features: { oauth: true } })` turns it on.                                |
 | `resourceMetadataPath` | `"/.well-known/oauth-protected-resource"` | Protected-resource metadata document advertised in that challenge.                                                                                                                                                          |
+| `keepAliveInterval`    | `15000`                                   | Milliseconds between SSE comment keep-alives on a progress stream while a tool runs, so a proxy idle timeout does not cut a slow call. `0` disables them.                                                                   |
 
 ```typescript
 import { mcpStreamableHttpOptions } from "alepha/mcp";
@@ -718,6 +719,10 @@ What a modern request gets that a legacy one never does:
   `Mcp-Name` on `tools/call`, `resources/read` and `prompts/get`, must be present
   and must match the body (`Mcp-Name` may be sent as `=?base64?...?=`). A missing
   or disagreeing header is `400` with `-32020`.
+- **A required `io.modelcontextprotocol/clientCapabilities`** in `_meta`. A
+  modern request without it, or with a value that is not an object, is refused
+  before routing with `-32602` (and `400` on HTTP). An empty object is fine: it
+  declares nothing.
 - **HTTP statuses for protocol failures**: an unsupported version is `400` with
   `-32022` listing what is supported, an unknown method (`ping` included, which
   2026-07-28 removed) is `404` with `-32601`. Every other JSON-RPC error, and
