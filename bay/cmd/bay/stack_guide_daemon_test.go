@@ -72,16 +72,16 @@ func TestStackPostgresRedisDaemon(t *testing.T) {
 
 	env := "pr" + strconv.FormatInt(time.Now().UnixNano()%1e9, 36)
 	t.Cleanup(func() {
-		_ = d.Remove(memberKey("mcs", env, "web"), true)
-		_ = d.DiscardCandidate(memberKey("mcs", env, "web"))
-		_ = stack.Down(stack.Dir(root, "mcs", env), naming.StackProject("mcs", env), true)
+		_ = d.Remove(memberKey("crm", env, "web"), true)
+		_ = d.DiscardCandidate(memberKey("crm", env, "web"))
+		_ = stack.Down(stack.Dir(root, "crm", env), naming.StackProject("crm", env), true)
 	})
 
 	compose, err := os.ReadFile(filepath.Join("testdata", "postgres-redis", "compose.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := stack.SetVars(root, "mcs", env, map[string]string{
+	if _, err := stack.SetVars(root, "crm", env, map[string]string{
 		"POSTGRES_PASSWORD": "s3cret",
 		"DATABASE_URL":      "postgres://app:s3cret@db:5432/app",
 		"REDIS_URL":         "redis://redis:6379",
@@ -89,7 +89,7 @@ func TestStackPostgresRedisDaemon(t *testing.T) {
 		t.Fatal(err)
 	}
 	bundles := t.TempDir()
-	out, err := s.deployStack(context.Background(), stackDeployOptions{Stack: "mcs", Env: env,
+	out, err := s.deployStack(context.Background(), stackDeployOptions{Stack: "crm", Env: env,
 		Bundle: tarGz(t, bundles, "r1.tar.gz", map[string]string{"compose.yml": string(compose)})})
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestStackPostgresRedisDaemon(t *testing.T) {
 	if len(out.Pending) != 1 {
 		t.Fatalf("outcome = %+v", out)
 	}
-	if web, _ := s.store.Get(memberKey("mcs", env, "web")); web.StackApp != "myapp" {
+	if web, _ := s.store.Get(memberKey("crm", env, "web")); web.StackApp != "myapp" {
 		t.Fatalf("web member = %+v", web)
 	}
 
@@ -106,12 +106,12 @@ func TestStackPostgresRedisDaemon(t *testing.T) {
 		"index.node.js": probeApp,
 	})
 	if _, failure := s.deployArtifact(context.Background(), deployArtifactOptions{
-		Artifact: artifact, Name: state.MemberName("mcs", "web"), Env: env}); failure != nil {
+		Artifact: artifact, Name: state.MemberName("crm", "web"), Env: env}); failure != nil {
 		t.Fatalf("deploy: %v", failure)
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, front.URL+"/", nil)
-	req.Host = "mcs-" + env + ".bay.test"
+	req.Host = "crm-" + env + ".bay.test"
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)

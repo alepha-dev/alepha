@@ -12,7 +12,7 @@ import { PaymentProvider } from "../providers/PaymentProvider.ts";
 import { PaymentService } from "../services/PaymentService.ts";
 
 const SWEEP_JOB = "system.payments.expire-stale-intents";
-const CLUB_ACCOUNT = "acct_club";
+const VENUE_ACCOUNT = "acct_venue";
 
 /**
  * Stripe's account scoping, in memory. A session created on a connected
@@ -150,10 +150,10 @@ describe("payments on a connected account", () => {
   it("records the account a session was created on", async ({ expect }) => {
     const ctx = await setup();
 
-    const onClub = await ctx.openSession(0, { stripeAccount: CLUB_ACCOUNT });
+    const onVenue = await ctx.openSession(0, { stripeAccount: VENUE_ACCOUNT });
     const onPlatform = await ctx.openSession(0);
 
-    expect(onClub.providerAccount).toBe(CLUB_ACCOUNT);
+    expect(onVenue.providerAccount).toBe(VENUE_ACCOUNT);
     expect(onPlatform.providerAccount).toBeUndefined();
   });
 
@@ -161,7 +161,7 @@ describe("payments on a connected account", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const intent = await ctx.openSession(45, { stripeAccount: CLUB_ACCOUNT });
+    const intent = await ctx.openSession(45, { stripeAccount: VENUE_ACCOUNT });
     ctx.provider.paid.add(intent.providerRef!);
 
     await ctx.sweep();
@@ -174,13 +174,13 @@ describe("payments on a connected account", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const onClub = await ctx.openSession(45, { stripeAccount: CLUB_ACCOUNT });
+    const onVenue = await ctx.openSession(45, { stripeAccount: VENUE_ACCOUNT });
     const onPlatform = await ctx.openSession(45);
 
     await ctx.sweep();
 
     expect(ctx.jobErrors).toEqual([]);
-    for (const intent of [onClub, onPlatform]) {
+    for (const intent of [onVenue, onPlatform]) {
       expect((await ctx.payments.getIntent(intent.id)).status).toBe("expired");
       expect(ctx.provider.wasExpired(intent.providerRef!)).toBe(true);
     }
@@ -191,11 +191,11 @@ describe("payments on a connected account", () => {
   }) => {
     const ctx = await setup();
     const toCapture = await ctx.openSession(0, {
-      stripeAccount: CLUB_ACCOUNT,
+      stripeAccount: VENUE_ACCOUNT,
       authorize: true,
     });
     const toVoid = await ctx.openSession(0, {
-      stripeAccount: CLUB_ACCOUNT,
+      stripeAccount: VENUE_ACCOUNT,
       authorize: true,
     });
     await ctx.payments.handleWebhookEvent(toCapture.id, "authorized");
@@ -214,7 +214,7 @@ describe("payments on a connected account", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const intent = await ctx.openSession(0, { stripeAccount: CLUB_ACCOUNT });
+    const intent = await ctx.openSession(0, { stripeAccount: VENUE_ACCOUNT });
     await ctx.payments.handleWebhookEvent(intent.id, "captured");
 
     await ctx.payments.refund(intent.id, 1500);

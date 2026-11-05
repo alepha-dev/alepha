@@ -9,8 +9,8 @@ import { MemoryUpdaterAdapter } from "@alepha/capacitor/ota";
 ## Overview
 
 The pinned updater's behaviour, in memory, for specs of the real
-`OtaProvider`: the semantics measured on the simulator and the emulator
-(#Q2524), Android's where the platforms differ.
+`OtaProvider`: the semantics measured on the simulator and the emulator,
+Android's where the platforms differ.
 
 - `check()` answers what a spec queued in `answers`, decoded as the
   plugin decodes it (`session_key` into `sessionKey`);

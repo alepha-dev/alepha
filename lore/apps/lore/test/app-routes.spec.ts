@@ -145,25 +145,25 @@ describe("the route table", () => {
   });
 
   // ⚠️ Two segments since Apps v3, and the app half deliberately CONTAINS a
-  // hyphen: `club-b14` + `production` and `club` + `b14-production` are two
+  // hyphen: `acme-east` + `production` and `acme` + `east-production` are two
   // legal rows that a joined slug would render identically, which is why the
   // route never joined them.
-  const app = "club-b14";
+  const app = "acme-east";
   const env = "production";
 
   it("resolves the per-instance page and each of its tabs", ({ expect }) => {
-    const params = { projectSlug: "sds", app, env };
+    const params = { projectSlug: "demo", app, env };
 
-    expect(router.path("projectApps", { params })).toBe("/sds/apps");
-    expect(router.path("app", { params })).toBe(`/sds/apps/${app}/${env}/`);
+    expect(router.path("projectApps", { params })).toBe("/demo/apps");
+    expect(router.path("app", { params })).toBe(`/demo/apps/${app}/${env}/`);
     expect(router.path("projectAppRedirect", { params })).toBe(
-      `/sds/apps/${app}`,
+      `/demo/apps/${app}`,
     );
     expect(router.path("appAnalytics", { params })).toBe(
-      `/sds/apps/${app}/${env}/analytics`,
+      `/demo/apps/${app}/${env}/analytics`,
     );
     expect(router.path("appVitals", { params })).toBe(
-      `/sds/apps/${app}/${env}/vitals`,
+      `/demo/apps/${app}/${env}/vitals`,
     );
     // ⚠️ `:analyticsDimension`, not `:dimension`: the router keeps one key per
     // path position, so two routes naming the same position differently
@@ -174,28 +174,28 @@ describe("the route table", () => {
       router.path("appAnalyticsDimension", {
         params: { ...params, analyticsDimension: "path" },
       }),
-    ).toBe(`/sds/apps/${app}/${env}/analytics/path`);
+    ).toBe(`/demo/apps/${app}/${env}/analytics/path`);
     expect(router.path("appExplore", { params })).toBe(
-      `/sds/apps/${app}/${env}/explore`,
+      `/demo/apps/${app}/${env}/explore`,
     );
     expect(router.path("appArtifacts", { params })).toBe(
-      `/sds/apps/${app}/${env}/artifacts`,
+      `/demo/apps/${app}/${env}/artifacts`,
     );
     expect(router.path("appSettings", { params })).toBe(
-      `/sds/apps/${app}/${env}/settings`,
+      `/demo/apps/${app}/${env}/settings`,
     );
   });
 
   it("puts quests under /quests and drops the /p prefix", ({ expect }) => {
-    const params = { projectSlug: "sds", shortId: "19" };
+    const params = { projectSlug: "demo", shortId: "19" };
 
-    expect(router.path("project", { params })).toBe("/sds");
-    expect(router.path("projectQuest", { params })).toBe("/sds/quests/19");
+    expect(router.path("project", { params })).toBe("/demo");
+    expect(router.path("projectQuest", { params })).toBe("/demo/quests/19");
     expect(router.path("projectQuestGraph", { params })).toBe(
-      "/sds/quests/19/graph",
+      "/demo/quests/19/graph",
     );
     expect(router.path("projectFeedbackRequest", { params })).toBe(
-      "/sds/request",
+      "/demo/request",
     );
   });
 
@@ -271,7 +271,7 @@ describe("the route table", () => {
     // `:segment` in the result means the route's shape changed — not that this
     // test forgot to supply something.
     const params = {
-      projectSlug: "sds",
+      projectSlug: "demo",
       app,
       env,
       shortId: "3",
@@ -308,7 +308,7 @@ describe("the route table", () => {
     expect,
   }) => {
     const pageApi = alepha.inject(ReactPageProvider);
-    const params = { projectSlug: "sds", app, env, shortId: "3" };
+    const params = { projectSlug: "demo", app, env, shortId: "3" };
 
     const unreserved = new Set<string>();
     for (const page of pageApi.getPages()) {
@@ -316,7 +316,7 @@ describe("the route table", () => {
       const first = path.split("/").find(Boolean);
       // Skip the project subtree itself (it resolves to the sample slug) and
       // the wildcard catch-all.
-      if (!first || first === "sds" || first.startsWith("*")) {
+      if (!first || first === "demo" || first.startsWith("*")) {
         continue;
       }
       if (!slugs.isReserved(first)) {

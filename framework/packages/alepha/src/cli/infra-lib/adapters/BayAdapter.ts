@@ -644,10 +644,10 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
    * project actually uses.
    *
    * `yarn` was hardcoded, so deploying an npm, pnpm or bun workspace failed at
-   * the build step with the package manager's own error  -  for lindocara, a
-   * yarn complaint about a lockfile that does not exist because the project
-   * has a `package-lock.json`. Nothing in the message mentioned Bay, the
-   * adapter, or yarn being an assumption.
+   * the build step with the package manager's own error  -  for one downstream
+   * app, a yarn complaint about a lockfile that does not exist because the
+   * project has a `package-lock.json`. Nothing in the message mentioned Bay,
+   * the adapter, or yarn being an assumption.
    *
    * Each manager has its own way to run a binary out of `node_modules/.bin`,
    * and only yarn takes it bare. `npm run alepha` was the first attempt at this

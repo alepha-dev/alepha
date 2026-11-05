@@ -5,7 +5,6 @@ import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer, type RequestConfigSchema } from "alepha/server";
 import { AlephaServerEtag } from "alepha/server/etag";
-import { AlephaServerStatic } from "alepha/server/static";
 
 import { $swagger } from "./primitives/$swagger.ts";
 import { ServerSwaggerProvider } from "./providers/ServerSwaggerProvider.ts";
@@ -43,7 +42,8 @@ declare module "alepha/server" {
  *
  * **Features:**
  * - Swagger/OpenAPI configuration
- * - Routes: `GET /docs` (UI), `GET /docs/json` (spec) - prefix configurable via `$swagger({ prefix })`
+ * - Route: `GET /docs/json` (the OpenAPI document) - prefix configurable via `$swagger({ prefix })`
+ * - No viewer: point any OpenAPI viewer at the JSON route
  *
  * @module alepha.server.swagger
  */
@@ -54,8 +54,6 @@ export const AlephaServerSwagger = $module({
   register: (alepha) => {
     alepha.with(AlephaServer);
     alepha.with(AlephaServerEtag);
-    alepha.with(AlephaServerStatic);
     alepha.with(ServerSwaggerProvider);
-    alepha.store.push("alepha.build.assets", "alepha");
   },
 });

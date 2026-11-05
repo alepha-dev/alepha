@@ -19,8 +19,8 @@ export interface PermissionMatrixProps {
    * The rows, already grouped and already filtered.
    *
    * ⚠️ **Filtering is the caller's job.** Lore hides the permissions of a
-   * capability that is switched off; Alepha Club has no capability concept and
-   * shows all of its groups. A `capabilities` prop here would be a
+   * capability that is switched off; another app may have no capability concept
+   * and show all of its groups. A `capabilities` prop here would be a
    * Lore-shaped idea that every other consumer passes `undefined` to forever,
    * so this component renders the groups it is handed and asks nothing about
    * where they came from.
@@ -76,8 +76,8 @@ export interface PermissionMatrixProps {
  * a checkbox at each crossing.
  *
  * It lives here rather than in either application because two of them need the
- * same table. Lore renders it for a project's ranks; Alepha Club renders it for
- * the club's. What differs between them is entirely in the props.
+ * same table. Lore renders it for a project's ranks; another app renders it
+ * for its own. What differs between them is entirely in the props.
  *
  * ## What the component deliberately does not know
  *

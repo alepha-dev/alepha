@@ -35,8 +35,8 @@ to the project, and that estate must have **Allow deploys** on.
 
 ```mermaid
 flowchart LR
-  Revision[Revision 3] -->|deploy| Env1[mcs/production]
-  Revision -->|deploy| Env2[mcs/staging]
+  Revision[Revision 3] -->|deploy| Env1[crm/production]
+  Revision -->|deploy| Env2[crm/staging]
   Env1 --> Estate1[Estate]
   Env2 --> Estate2[Estate]
 ```
@@ -129,15 +129,15 @@ and nothing of the Compose file is applied.
 An app names its stack in `alepha.config.ts`:
 
 ```ts
-lore({ stack: "mcs" });
+lore({ stack: "crm" });
 ```
 
-`alepha deploy staging` then puts the app into `mcs/staging`, creating the copy if
+`alepha deploy staging` then puts the app into `crm/staging`, creating the copy if
 needed and making it a member. The stack and the environment must already exist,
 so deploy the stack there once first.
 
-A copy joins the environment of its own environment name: `mcs-api/staging` can
-join `mcs/staging`, never `mcs/production`. It belongs to one environment at a
+A copy joins the environment of its own environment name: `crm-api/staging` can
+join `crm/staging`, never `crm/production`. It belongs to one environment at a
 time, and it takes its estate from that environment rather than from its own
 **Settings** tab.
 

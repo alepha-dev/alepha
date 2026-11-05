@@ -44,7 +44,7 @@ export interface AppCreateDialogProps {
  * ## Why the app field is a combobox and the env field is not
  *
  * The one real cost of having no `apps` table is that a typo silently creates a
- * second app: `club` and `clbu` are two apps and nothing complains. Offering
+ * second app: `acme` and `acem` are two apps and nothing complains. Offering
  * the names that already exist is the whole mitigation, and `createNewEntry`
  * makes starting a new one an explicit row rather than the default. The
  * environment has no such list worth offering - every instance of an app has a

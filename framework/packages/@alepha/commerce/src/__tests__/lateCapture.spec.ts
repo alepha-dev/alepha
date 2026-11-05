@@ -59,25 +59,25 @@ const slot = (court: string) => ({
   endsAt: "2030-01-05T19:30:00.000Z",
 });
 
-const aClub = async (ctx: Ctx) => {
+const aVenue = async (ctx: Ctx) => {
   const court = `court-${randomUUID()}`;
-  const padel = await ctx.catalog.create({
+  const tennis = await ctx.catalog.create({
     kind: "test-court",
-    slug: `padel-${randomUUID()}`,
-    name: "Padel, 90 minutes",
+    slug: `tennis-${randomUUID()}`,
+    name: "Tennis, 90 minutes",
     price: 3000,
     published: true,
     config: { courts: [court] },
   });
   const balls = await ctx.catalog.create({
     slug: `balls-${randomUUID()}`,
-    name: "Balles de padel",
+    name: "Tennis balls",
     price: 900,
     published: true,
     config: { trackStock: true },
   });
   await ctx.stock.recordIntake(balls.id, 5);
-  return { padel, balls, court };
+  return { tennis, balls, court };
 };
 
 /**
@@ -85,14 +85,14 @@ const aClub = async (ctx: Ctx) => {
  */
 const reachPayment = async (
   ctx: Ctx,
-  club: Awaited<ReturnType<typeof aClub>>,
+  venue: Awaited<ReturnType<typeof aVenue>>,
 ) => {
   const cart = await ctx.carts.resolve(ctx.carts.newToken());
-  await ctx.carts.add(cart.id, club.padel.id, 1, slot(club.court));
-  await ctx.carts.add(cart.id, club.balls.id, 1);
+  await ctx.carts.add(cart.id, venue.tennis.id, 1, slot(venue.court));
+  await ctx.carts.add(cart.id, venue.balls.id, 1);
   const opened = await ctx.checkout.start(cart.id);
   const { session, handoff } = await ctx.checkout.pay(opened.id, {
-    returnUrl: "https://club.example/merci",
+    returnUrl: "https://shop.example/thanks",
   });
   return { sessionId: opened.id, orderId: session.orderId!, handoff };
 };
@@ -224,11 +224,11 @@ describe("a capture that lands after its hold expired", () => {
       expect,
     }) => {
       const ctx = await setup(backend);
-      const club = await aClub(ctx);
-      const late = await reachPayment(ctx, club);
+      const venue = await aVenue(ctx);
+      const late = await reachPayment(ctx, venue);
       await expireHolds(ctx, late.orderId);
 
-      const winner = await reachPayment(ctx, club);
+      const winner = await reachPayment(ctx, venue);
 
       const strays: string[] = [];
       ctx.alepha.events.on("commerce:capture:strayDetected", (event) => {
@@ -247,7 +247,7 @@ describe("a capture that lands after its hold expired", () => {
       );
 
       // Nothing of the failed settlement stayed: no ball sold, no claim.
-      expect(await ctx.stock.onHand(club.balls.id)).toBe(5);
+      expect(await ctx.stock.onHand(venue.balls.id)).toBe(5);
       expect(
         (await ctx.resources.claimsOf(late.orderId)).map((it) => it.status),
       ).toEqual(["released"]);
@@ -266,8 +266,8 @@ describe("a capture that lands after its hold expired", () => {
 
     it("sells the slot when nobody took it meanwhile", async ({ expect }) => {
       const ctx = await setup(backend);
-      const club = await aClub(ctx);
-      const late = await reachPayment(ctx, club);
+      const venue = await aVenue(ctx);
+      const late = await reachPayment(ctx, venue);
       await expireHolds(ctx, late.orderId);
 
       await ctx.payments.handleWebhookEvent(late.handoff.intentId, "captured");
@@ -277,7 +277,7 @@ describe("a capture that lands after its hold expired", () => {
       expect(
         (await ctx.resources.claimsOf(late.orderId)).map((it) => it.status),
       ).toEqual(["released", "consumed"]);
-      expect(await ctx.stock.onHand(club.balls.id)).toBe(4);
+      expect(await ctx.stock.onHand(venue.balls.id)).toBe(4);
     });
   });
 });

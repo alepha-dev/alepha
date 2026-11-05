@@ -205,10 +205,10 @@ describe("one item, two legs, one sale", () => {
       const ctx = await setup(backend);
       const train = await aTrain(ctx);
       const court = `court-${randomUUID()}`;
-      const padel = await ctx.catalog.create({
+      const tennis = await ctx.catalog.create({
         kind: "test-court",
-        slug: `padel-${randomUUID()}`,
-        name: "Padel, 90 minutes",
+        slug: `tennis-${randomUUID()}`,
+        name: "Tennis, 90 minutes",
         price: 3000,
         published: true,
         config: { courts: [court] },
@@ -225,7 +225,7 @@ describe("one item, two legs, one sale", () => {
       const { orderId, handoff } = await reachPayment(ctx, [
         { productId: guide.id },
         {
-          productId: padel.id,
+          productId: tennis.id,
           lineConfig: {
             resourceIds: [court],
             startsAt: at("18:00"),

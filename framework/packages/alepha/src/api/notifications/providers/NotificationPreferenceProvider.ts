@@ -24,7 +24,7 @@
  *
  * @example
  * ```typescript
- * class ClubPreferences extends NotificationPreferenceProvider {
+ * class TenantPreferences extends NotificationPreferenceProvider {
  *   protected readonly repo = $repository(preferenceEntity);
  *
  *   public override async allows(options: NotificationPreferenceOptions) {
@@ -49,7 +49,7 @@
  * ```typescript
  * alepha.with({
  *   provide: NotificationPreferenceProvider,
- *   use: ClubPreferences,
+ *   use: TenantPreferences,
  * });
  * ```
  */

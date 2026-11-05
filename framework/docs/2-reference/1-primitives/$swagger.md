@@ -8,23 +8,22 @@ import { $swagger } from "alepha/server/swagger";
 
 ## Overview
 
-Creates an OpenAPI/Swagger documentation primitive with interactive UI.
+Creates an OpenAPI documentation primitive.
 
-Automatically generates API documentation from your $action primitives and serves
-an interactive Swagger UI for testing endpoints. Supports customization, tag filtering,
-and OAuth configuration.
+Generates an OpenAPI 3 document from your $action primitives and serves it as
+JSON at `<prefix>/json`. Supports customization and tag filtering. It serves no
+viewer: point any OpenAPI viewer at the JSON route.
 
 ## Options
 
-| Option        | Type                          | Required | Description                                                 |
-| ------------- | ----------------------------- | -------- | ----------------------------------------------------------- |
-| `info`        | `OpenApiDocument["info"]`     | No       |                                                             |
-| `prefix`      | `string`                      | No       |                                                             |
-| `disabled`    | `boolean`                     | No       | If true, docs will be disabled.                             |
-| `excludeTags` | `string[]`                    | No       | Tags to exclude from the documentation.                     |
-| `servers`     | `OpenApiServer[]`             | No       | Server URLs for the API                                     |
-| `ui`          | `boolean \| SwaggerUiOptions` | No       | Enable Swagger UI.                                          |
-| `rewrite`     | `Object`                      | No       | Function to rewrite the OpenAPI document before serving it. |
+| Option        | Type                      | Required | Description                                                 |
+| ------------- | ------------------------- | -------- | ----------------------------------------------------------- |
+| `info`        | `OpenApiDocument["info"]` | No       |                                                             |
+| `prefix`      | `string`                  | No       |                                                             |
+| `disabled`    | `boolean`                 | No       | If true, docs will be disabled.                             |
+| `excludeTags` | `string[]`                | No       | Tags to exclude from the documentation.                     |
+| `servers`     | `OpenApiServer[]`         | No       | Server URLs for the API                                     |
+| `rewrite`     | `Object`                  | No       | Function to rewrite the OpenAPI document before serving it. |
 
 ## Examples
 

@@ -178,7 +178,7 @@ test.describe("Project capabilities", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ app: "club", env: "production" }),
+          body: JSON.stringify({ app: "acme", env: "production" }),
         });
         return r.ok;
       },
@@ -186,7 +186,7 @@ test.describe("Project capabilities", () => {
     );
     expect(created).toBe(true);
 
-    await page.goto(`/${slug}/apps/club/production/settings`);
+    await page.goto(`/${slug}/apps/acme/production/settings`);
     await page.waitForLoadState("networkidle");
     await page
       .getByRole("button", { name: "Create a sigil", exact: true })
@@ -206,7 +206,7 @@ test.describe("Project capabilities", () => {
       headers: { Authorization: `Bearer ${token}` },
       data: {
         environment: "production",
-        host: "club.example.com",
+        host: "acme.example.com",
         events: [
           { kind: "feedback", title: "dropped", description: "on the floor" },
         ],
@@ -235,7 +235,7 @@ test.describe("Project capabilities", () => {
     // And the app's Settings tab says so, which is the whole point: from both
     // ends the app looks healthy, because `absorb` stamps `lastSeenAt` for a
     // batch every gate rejected.
-    await page.goto(`/${slug}/apps/club/production/settings`);
+    await page.goto(`/${slug}/apps/acme/production/settings`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(/feedback is not collected/i)).toBeVisible({
       timeout: 15_000,

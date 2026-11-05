@@ -10,7 +10,7 @@ export const cloudflareEnvironmentOptionsSchema =
   environmentOptionsSchema.extend({
     /**
      * Worker-to-worker service bindings, e.g.
-     * `[{ binding: "CLUB", service: "club-staging" }]`.
+     * `[{ binding: "ACME", service: "acme-staging" }]`.
      *
      * Exposed on the runtime `env` (Alepha store key `cloudflare.env`).
      * Use a binding to fetch() a sibling Worker on the same zone: plain

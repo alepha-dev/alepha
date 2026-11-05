@@ -243,9 +243,9 @@ describe("WebSocketRoom hosting a $room engine", () => {
   /**
    * The watchdog rebuilds a `RoomSocket` from the deserialized attachment, not
    * from the original `fetch` request, so the query hint an application relied
-   * on to identify the joining entity (e.g. lindocara's `?hero=`) must survive
-   * that round-trip too  -  otherwise a room that outlives one isolate reset
-   * loses `conn.query` on every connection it rehydrates.
+   * on to identify the joining entity (e.g. a multiplayer game's `?hero=`)
+   * must survive that round-trip too  -  otherwise a room that outlives one
+   * isolate reset loses `conn.query` on every connection it rehydrates.
    */
   it("resets volatile room state and data bags while retaining attachment identity", async () => {
     const { room, ctx } = await setup();

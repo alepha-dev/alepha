@@ -13,7 +13,7 @@ import { ReleaseContentService } from "./ReleaseContentService.ts";
 
 /**
  * Open releases whose every quest is done: shipped work nobody has published
- * yet (#Q2654). Club had three on 2026-10-14, Lore one (folio #F1364).
+ * yet (#Q2654), see folio #F1364.
  *
  * From `ReleaseContentService.openProgressOf`, the same counts the
  * orientation index reads.

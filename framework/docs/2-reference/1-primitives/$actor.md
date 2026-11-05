@@ -11,8 +11,8 @@ import { $actor } from "alepha/actor";
 Declare independent default and keyed actor state from an atom descriptor.
 
 The atom supplies a stable name, schema and default, not live actor storage.
-Node and Bun default to per-container Memory; Redis requires explicit
-selection. Every identity carries `alepha.name`, so two apps on one backend
+On Node and Bun, `REDIS_URL` selects Redis; without it, state is
+per-container Memory. Every identity carries `alepha.name`, so two apps on one backend
 never share state. Workerd uses a native Durable Object and fails if unbound.
 Browser and native client execution is unsupported.
 

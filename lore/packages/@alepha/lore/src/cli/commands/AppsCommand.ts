@@ -359,7 +359,7 @@ export class AppsCommand {
    * lore apps redeploy --app portal --suffix=-staging
    * ```
    *
-   * For a project that runs one copy per tenant (a club, a shop), where a new
+   * For a project that runs one copy per tenant (a shop, a school), where a new
    * build has to reach all of them: push once with `lore artifacts push`, then
    * this. Each copy is started and followed in turn, exactly as `deploy --tag`
    * would.
@@ -499,7 +499,7 @@ export class AppsCommand {
 
     // ⚠️ First, and before anything is built. An app or env that was never
     // enrolled is a refusal, not a creation: minting a deploy target as a
-    // side effect of a typo in `--env` is how `clbu` gets deployed to.
+    // side effect of a typo in `--env` is how `acem` gets deployed to.
     const instance = await this.deployer.loadInstance(projectId, app, env);
     const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
 

@@ -101,12 +101,12 @@ func TestStackRoutesAPI(t *testing.T) {
 
 func TestStackCLIHelpers(t *testing.T) {
 	t.Run("a member deploy becomes the member app's deploy", func(t *testing.T) {
-		args, ok := memberDeployArgs([]string{"mcs/staging/api", "-"})
-		if !ok || strings.Join(args, " ") != "- --name mcs.api --env staging" {
+		args, ok := memberDeployArgs([]string{"crm/staging/api", "-"})
+		if !ok || strings.Join(args, " ") != "- --name crm.api --env staging" {
 			t.Fatalf("args = %v", args)
 		}
-		args, _ = memberDeployArgs([]string{"mcs/staging/api", "--image", "r@sha256:x", "--port", "3000"})
-		if strings.Join(args, " ") != "--image r@sha256:x --port 3000 --name mcs.api --env staging" {
+		args, _ = memberDeployArgs([]string{"crm/staging/api", "--image", "r@sha256:x", "--port", "3000"})
+		if strings.Join(args, " ") != "--image r@sha256:x --port 3000 --name crm.api --env staging" {
 			t.Fatalf("args = %v", args)
 		}
 		if _, ok := memberDeployArgs([]string{"app.tar.zst", "--name", "x"}); ok {

@@ -426,7 +426,7 @@ test.describe("Apps", () => {
 
       // The app field is a combobox over the names that already exist, with an
       // explicit create-new row: without it a typo silently makes a second app,
-      // since `club` and `clbu` are two apps and nothing complains.
+      // since `acme` and `acem` are two apps and nothing complains.
       await dialog.getByRole("combobox").click();
       // ⚠️ The popup is a portal, so it is not under the dialog, and BOTH the
       // trigger and the popup's search field carry `role="combobox"` - reaching

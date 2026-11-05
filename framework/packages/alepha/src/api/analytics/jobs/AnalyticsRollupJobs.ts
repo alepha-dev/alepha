@@ -48,7 +48,7 @@ export class AnalyticsRollupJobs {
    *
    * Counted in the source tier's buckets, because the rows a fold moves are
    * buckets times distinct keys, whatever the resolution. Measured in the
-   * #Q2751 benchmark on Postgres with the MCS hub's two datasets at 10k
+   * #Q2751 benchmark on Postgres with a device hub's two datasets at 10k
    * devices (about 73k keys a bucket): a fold costs about 0.24 s a bucket
    * for both datasets together, so 36 buckets on each of two backlogged
    * tiers stays under half the job's 30 s timeout. The old cap, 336, took

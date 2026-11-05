@@ -24,7 +24,7 @@ flowchart LR
 | app ports               | loopback only       | bound to `127.0.0.1`, never to every interface                                   |
 | control socket          | root, `bay-control` | a unix socket; no TCP port, no token                                             |
 | SSH                     | whoever you allow   | the only remote way to drive Bay                                                 |
-| Lore connector          | nothing inbound     | the host dials out; seven fixed verbs                                            |
+| Lore connector          | nothing inbound     | the host dials out; twelve fixed verbs                                           |
 
 Apps bind to loopback deliberately. Docker publishes on every interface by
 default, and its iptables rules run before the host firewall's, so a default

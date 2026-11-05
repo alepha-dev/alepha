@@ -1,7 +1,7 @@
 # mobile
 
 The test bed of `@alepha/capacitor`: the app the native shell is built and
-proven on ([epic E9](https://lore.alepha.dev/alepha/epics/9)). It is never
+proven on. It is never
 deployed and never submitted to a store.
 
 It was scaffolded with `alepha init --preset saas` and carries what a real
@@ -104,15 +104,11 @@ Android needs a JDK 21 (`JAVA_HOME` at Android Studio's
 `Contents/jbr/Contents/Home` works) and the Android SDK. iOS needs Xcode with
 the iOS platform its SDK names (Xcode > Settings > Components).
 
-The full device run (simulators, an emulator and one physical phone per
-platform) is [#Q2525](https://lore.alepha.dev/alepha/quests/2525).
-
 ## The OTA conformance harness
 
 `scripts/ota-conformance.ts` checks the pinned live updater
 (`@capgo/capacitor-updater` 8.52.1) on a simulator or emulator against a local
-fixture service, with no Capgo account and no `ota-api` in between
-([#Q2524](https://lore.alepha.dev/alepha/quests/2524)). It serves the
+fixture service, with no Capgo account and no `ota-api` in between. It serves the
 updater's endpoints over HTTPS, logs every request it receives, and seals test
 bundles with the publisher's own code and a test-only key pair kept in
 `node_modules/.ota-conformance/`: healthy ones, a broken one that never

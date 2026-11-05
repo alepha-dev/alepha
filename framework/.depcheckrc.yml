@@ -12,7 +12,6 @@ ignores:
   - "jsdom"
   - "@vitest/coverage-v8"
   - "drizzle-kit"
-  - "swagger-ui-dist"
   - "vite"
   # Reached through `createRequire(import.meta.url)("vite-bundle-analyzer")`
   # in `ViteUtils.importAnalyzer`, so depcheck sees no import at all. Lazy

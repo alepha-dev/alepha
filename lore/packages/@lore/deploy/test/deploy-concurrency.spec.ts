@@ -223,7 +223,7 @@ describe("a deploy that finds no free slot", () => {
       await alepha.inject(AppController).createApp.fetch(
         {
           params: { projectId: project.id },
-          body: { app: "my-app", env: "b14-preview" },
+          body: { app: "my-app", env: "east-preview" },
         },
         { user },
       )

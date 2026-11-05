@@ -90,7 +90,7 @@ export class AppService {
    * `(projectId, name)`, and read as a display label by
    * `BlightController.listBlights`, `InsightsController.labels`,
    * `DashboardMetricRegistry.scopeNames`, `LoreAudits` and MCP `sigil_list`.
-   * Two instances of `club` with two sigils cannot both be named `club`.
+   * Two instances of `acme` with two sigils cannot both be named `acme`.
    *
    * `/` is outside `APP_NAME_PATTERN`, so a mirror can never collide with a
    * pre-v3 name, and `(app, env)` is unique, so the mirror satisfies the
@@ -345,7 +345,7 @@ export class AppService {
    *
    * One method for both halves because they are one uniqueness rule and one
    * mirror: renaming them in two calls would leave a window where the pair is
-   * `club/staging` in this table and `club/production` in `sigils`, and nothing
+   * `acme/staging` in this table and `acme/production` in `sigils`, and nothing
    * would ever repair it.
    *
    * An omitted half means "leave it alone", the shape every update body in this

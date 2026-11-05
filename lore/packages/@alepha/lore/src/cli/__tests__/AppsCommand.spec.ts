@@ -424,7 +424,7 @@ describe("lore apps deploy", () => {
     // ⚠️ The near-miss is the case that matters. `app_instances` is unique on
     // `(projectId, app, env)` and each half is lowercased, so `--env Production`
     // lands on the existing row while `--env prod` does not - and creating one
-    // as a side effect of the typo is how `clbu` gets deployed to.
+    // as a side effect of the typo is how `acem` gets deployed to.
     const { fs, shell, cli, command, started } = aCloudflareCopy();
     await aWorkspace(fs);
 

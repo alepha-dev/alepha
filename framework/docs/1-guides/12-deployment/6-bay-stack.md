@@ -6,7 +6,7 @@ restarts, it moves into a **stack**: a `compose.yml` applied on the same VPS, wh
 Redis run from their official images and the app runs beside them. Bay still runs the app itself,
 blue/green, from the same `.tar.zst` artifact, and still does the proxy, TLS and backups.
 
-This guide takes an app from SQLite to a stack named `mcs`, with a production and a staging
+This guide takes an app from SQLite to a stack named `crm`, with a production and a staging
 environment on one machine.
 
 ## The compose file
@@ -86,14 +86,14 @@ this page run on the host and find Bay through `BAY_SOCKET`: the installer puts 
 `/run/bay/control.sock`.
 
 ```bash
-ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack env set mcs/production -' <<'EOF'
+ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack env set crm/production -' <<'EOF'
 POSTGRES_PASSWORD=a-long-random-password
 DATABASE_URL=postgres://app:a-long-random-password@db:5432/app
 REDIS_URL=redis://redis:6379
 EOF
 ```
 
-Then the same for `mcs/staging`, with its own password. `bay stack env list mcs/production` shows
+Then the same for `crm/staging`, with its own password. `bay stack env list crm/production` shows
 the names, never the values.
 
 The app sees Bay's own keys first (`APP_SECRET`, `SERVER_PORT`, ...), then its own secrets (from
@@ -107,10 +107,10 @@ The stack goes first: it creates the network, the volumes, Postgres and Redis, a
 waiting for its first artifact.
 
 ```bash
-ssh deploy@bay.example.com 'mkdir -p mcs'
-scp compose.yml deploy@bay.example.com:mcs/
-ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack deploy mcs/production mcs/compose.yml'
-ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack deploy mcs/staging mcs/compose.yml'
+ssh deploy@bay.example.com 'mkdir -p crm'
+scp compose.yml deploy@bay.example.com:crm/
+ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack deploy crm/production crm/compose.yml'
+ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack deploy crm/staging crm/compose.yml'
 ```
 
 The file gets a directory of its own because `bay stack deploy` packs the whole directory it sits
@@ -127,8 +127,8 @@ export default defineConfig({
     infra({
       name: "myapp",
       environments: {
-        production: bay({ host: "deploy@bay.example.com", stack: "mcs" }),
-        staging: bay({ host: "deploy@bay.example.com", stack: "mcs" }),
+        production: bay({ host: "deploy@bay.example.com", stack: "crm" }),
+        staging: bay({ host: "deploy@bay.example.com", stack: "crm" }),
       },
     }),
   ],
@@ -139,14 +139,14 @@ export default defineConfig({
 alepha deploy --env staging
 ```
 
-`alepha deploy` builds and packs as usual, asks the Bay which service of `mcs/staging` runs
+`alepha deploy` builds and packs as usual, asks the Bay which service of `crm/staging` runs
 `myapp`, and redeploys that one service, blue/green: the new release starts beside the old one and
 takes the traffic once healthy. Postgres and Redis keep running. `alepha infra status --env staging`
 reports the service and the secrets set on it.
 
 A later change to `compose.yml` (a new service, a new Postgres tag) is a `bay stack deploy` again.
 It recreates only the services whose definition changed, and restarts the app service with the new
-network and variables. `bay stack rollback mcs/production --to 1` reapplies an earlier revision with
+network and variables. `bay stack rollback crm/production --to 1` reapplies an earlier revision with
 the image digests it ran.
 
 ### From Lore
@@ -165,15 +165,15 @@ deployed with `alepha deploy` as above, or from Lore with `lore deploy`.
 
 ## Production and staging on one VPS
 
-Each environment is its own Compose project (`mcs-production`, `mcs-staging`): its own network,
+Each environment is its own Compose project (`crm-production`, `crm-staging`): its own network,
 volumes, variables and containers. Staging cannot reach production's Postgres, and destroying
 staging leaves production untouched.
 
-Each gets a base domain, `mcs.<bay's domain>` for production and `mcs-staging.<bay's domain>` for
+Each gets a base domain, `crm.<bay's domain>` for production and `crm-staging.<bay's domain>` for
 staging, which `@` resolves against. Serve a real domain from a service with a route:
 
 ```bash
-ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack route mcs/production web myapp.com'
+ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack route crm/production web myapp.com'
 ```
 
 The `domain` option of `bay()` is not used in a stack: routes belong to the stack, so they survive
@@ -182,15 +182,15 @@ every app deploy.
 ## What backups cover
 
 - **Postgres** is dumped with `pg_dump` inside its container, on Bay's backup schedule, because the
-  file declares `x-lore.backup`. `bay backup list mcs/production db` lists the dumps and
-  `bay backup restore mcs/production db <backup>` restores one, on the host.
+  file declares `x-lore.backup`. `bay backup list crm/production db` lists the dumps and
+  `bay backup restore crm/production db <backup>` restores one, on the host.
 - **Redis** is not backed up: it holds caches, sessions and locks that the app rebuilds. Declare a
   `x-lore.backup` command for it if yours holds anything else.
 - **Uploads** go where they go on a lone app: Bay's apps bucket when one is configured, else the
   instance's `storage/` directory on the host's disk, which no backup covers. `bay config s3:apps`
   then `bay storage migrate` moves them to a bucket (see [Bay backups](/bay/docs/guides-backups)).
 
-`bay stack volumes mcs/production` lists every volume with the hook that covers it, and names the
+`bay stack volumes crm/production` lists every volume with the hook that covers it, and names the
 ones nothing covers rather than staying silent about them.
 
 ## Taking it down
@@ -200,7 +200,7 @@ file naming a service Bay no longer runs. Remove the service from `compose.yml` 
 stack, or take the whole environment down on the host:
 
 ```bash
-ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack destroy mcs/staging'
+ssh deploy@bay.example.com 'BAY_SOCKET=/run/bay/control.sock bay stack destroy crm/staging'
 ```
 
 A plain destroy removes the containers, the routes and the revisions, and keeps the volumes, the

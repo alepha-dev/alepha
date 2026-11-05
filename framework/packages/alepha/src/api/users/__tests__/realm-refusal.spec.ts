@@ -21,7 +21,7 @@ const suffix = () => Math.random().toString(36).slice(2, 8);
  * Both natural spellings used to be accepted and ignored: a `realm` field in
  * a create body was stripped, so the account landed in the default realm, and
  * a `realm=` query was dropped, so a listing answered with the caller's realm.
- * That is how two accounts came to exist in a downstream production (Mikanda)
+ * That is how two accounts came to exist in a downstream production
  * in a realm whose door does not open the back office. A refusal naming the
  * parameter is the whole fix.
  */

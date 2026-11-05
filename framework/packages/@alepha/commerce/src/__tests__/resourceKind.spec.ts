@@ -42,14 +42,14 @@ type Ctx = Awaited<ReturnType<typeof setup>>;
 const at = (hhmm: string) => `2030-01-05T${hhmm}:00.000Z`;
 
 /**
- * A club with two courts of its own, named apart from every other test's.
+ * A venue with two courts of its own, named apart from every other test's.
  */
-const aClub = async (ctx: Ctx) => {
+const aVenue = async (ctx: Ctx) => {
   const courts = [`court-${randomUUID()}`, `court-${randomUUID()}`];
   const product = await ctx.catalog.create({
     kind: "test-court",
-    slug: `padel-${randomUUID()}`,
-    name: "Padel, 90 minutes",
+    slug: `tennis-${randomUUID()}`,
+    name: "Tennis, 90 minutes",
     price: 3000,
     published: true,
     config: { courts },
@@ -75,7 +75,7 @@ const anItem = (lineConfig: CourtLine): OrderItemEntity => ({
   orderId: randomUUID(),
   productId: randomUUID(),
   kind: "test-court",
-  name: "Padel, 90 minutes",
+  name: "Tennis, 90 minutes",
   unitPrice: 3000,
   quantity: 1,
   lineConfig,
@@ -90,7 +90,7 @@ const payFor = async (
   await ctx.carts.add(cart.id, productId, 1, lineConfig);
   const opened = await ctx.checkout.start(cart.id);
   return ctx.checkout.pay(opened.id, {
-    returnUrl: "https://club.example/merci",
+    returnUrl: "https://shop.example/thanks",
   });
 };
 
@@ -100,7 +100,7 @@ describe("resource kind", () => {
       expect,
     }) => {
       const ctx = await setup(backend);
-      const { product, courts } = await aClub(ctx);
+      const { product, courts } = await aVenue(ctx);
 
       const { session, handoff } = await payFor(
         ctx,
@@ -133,7 +133,7 @@ describe("resource kind", () => {
       expect,
     }) => {
       const ctx = await setup(backend);
-      const { product, courts } = await aClub(ctx);
+      const { product, courts } = await aVenue(ctx);
 
       const order = await ctx.orders.create({
         status: "paid",
@@ -166,7 +166,7 @@ describe("resource kind", () => {
       expect,
     }) => {
       const ctx = await setup(backend);
-      const { courts } = await aClub(ctx);
+      const { courts } = await aVenue(ctx);
       await ctx.resources.claim(courts[1], {
         ...line([]),
         capacity: 1,
@@ -197,7 +197,7 @@ describe("resource kind", () => {
 
   it("holds a line once, however often reserve() runs", async ({ expect }) => {
     const ctx = await setup("sqlite");
-    const { courts } = await aClub(ctx);
+    const { courts } = await aVenue(ctx);
     const item = anItem(line(courts));
 
     await ctx.kind.reserve(item);
@@ -210,7 +210,7 @@ describe("resource kind", () => {
     expect,
   }) => {
     const ctx = await setup("sqlite");
-    const { product, courts } = await aClub(ctx);
+    const { product, courts } = await aVenue(ctx);
     const cart = await ctx.carts.resolve(ctx.carts.newToken());
 
     await expect(

@@ -15,7 +15,7 @@ import {
  * `lore deploy status` and `lore deploy rollback`: read a run, take it back.
  *
  * ```bash
- * lore deploy status --app club --env production -p alepha
+ * lore deploy status --app acme --env production -p alepha
  * lore deploy rollback --deployment 0190... -p alepha
  * ```
  *

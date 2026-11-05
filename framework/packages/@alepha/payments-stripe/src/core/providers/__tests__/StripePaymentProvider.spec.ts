@@ -391,11 +391,11 @@ describe("StripePaymentProvider", () => {
             productName: "Frais de dossier",
           },
         ],
-        successUrl: "https://club.test/ok",
-        cancelUrl: "https://club.test/ko",
-        customerEmail: "ana@club.test",
+        successUrl: "https://acme.test/ok",
+        cancelUrl: "https://acme.test/ko",
+        customerEmail: "ana@acme.test",
         metadata: { orderId: "o_1" },
-        stripeAccount: "acct_club",
+        stripeAccount: "acct_venue",
       });
 
       expect(result).toEqual({
@@ -404,7 +404,7 @@ describe("StripePaymentProvider", () => {
       });
       expect(calls[0]).toEqual({
         call: "checkout",
-        options: { stripeAccount: "acct_club" },
+        options: { stripeAccount: "acct_venue" },
         params: {
           mode: "subscription",
           line_items: [
@@ -426,10 +426,10 @@ describe("StripePaymentProvider", () => {
               },
             },
           ],
-          success_url: "https://club.test/ok",
-          cancel_url: "https://club.test/ko",
+          success_url: "https://acme.test/ok",
+          cancel_url: "https://acme.test/ko",
           customer: undefined,
-          customer_email: "ana@club.test",
+          customer_email: "ana@acme.test",
           metadata: { orderId: "o_1" },
           subscription_data: { metadata: { orderId: "o_1" } },
         },
@@ -477,13 +477,13 @@ describe("StripePaymentProvider", () => {
           currency: "eur",
           unitAmount: 7900,
           interval: "month",
-          productName: "Alepha Club",
+          productName: "Acme",
           taxBehavior: "exclusive",
         },
         successUrl: "https://app.test/ok",
         cancelUrl: "https://app.test/ko",
-        customerEmail: "owner@club.test",
-        metadata: { clubId: "c_1" },
+        customerEmail: "owner@acme.test",
+        metadata: { venueId: "c_1" },
         trialPeriodDays: 30,
         automaticTax: true,
         taxIdCollection: true,
@@ -498,13 +498,13 @@ describe("StripePaymentProvider", () => {
             currency: "eur",
             unit_amount: 7900,
             recurring: { interval: "month" },
-            product_data: { name: "Alepha Club" },
+            product_data: { name: "Acme" },
             tax_behavior: "exclusive",
           },
         },
       ]);
       expect(params.subscription_data).toEqual({
-        metadata: { clubId: "c_1" },
+        metadata: { venueId: "c_1" },
         trial_period_days: 30,
       });
       expect(params.automatic_tax).toEqual({ enabled: true });
@@ -523,7 +523,7 @@ describe("StripePaymentProvider", () => {
           currency: "eur",
           unitAmount: 7900,
           interval: "month",
-          productName: "Alepha Club",
+          productName: "Acme",
         },
         successUrl: "https://app.test/ok",
         cancelUrl: "https://app.test/ko",
@@ -608,7 +608,7 @@ describe("StripePaymentProvider", () => {
                       currency: "eur",
                       product: {
                         id: "prod_auto",
-                        name: "Alepha Club",
+                        name: "Acme",
                         active: false,
                       },
                       tax_behavior: "unspecified",
@@ -646,7 +646,7 @@ describe("StripePaymentProvider", () => {
             currency: "eur",
             unit_amount: 0,
             recurring: { interval: "month", interval_count: 1 },
-            product_data: { name: "Alepha Club" },
+            product_data: { name: "Acme" },
           },
         },
         {
@@ -676,7 +676,7 @@ describe("StripePaymentProvider", () => {
     it("schedules, clears, reads and cancels a subscription on the account", async () => {
       const provider = make();
       const calls = provider.recordBilling();
-      const account = { stripeAccount: "acct_club" };
+      const account = { stripeAccount: "acct_venue" };
 
       await provider.setSubscriptionCancelAt("sub_1", 1_800_000_000, account);
       await provider.setSubscriptionCancelAt("sub_1", null, account);
@@ -715,18 +715,18 @@ describe("StripePaymentProvider", () => {
       const created = provider.stubAccounts({ id: "acct_1", metadata: {} });
 
       await provider.createConnectAccount({
-        displayName: "Padel Aix",
-        metadata: { clubSlug: "padel-aix" },
+        displayName: "Riverside Tennis",
+        metadata: { venueSlug: "riverside" },
       });
 
-      expect(created[0]?.metadata).toEqual({ clubSlug: "padel-aix" });
+      expect(created[0]?.metadata).toEqual({ venueSlug: "riverside" });
     });
 
     it("sends no metadata when none is given", async () => {
       const provider = make();
       const created = provider.stubAccounts({ id: "acct_1", metadata: {} });
 
-      await provider.createConnectAccount({ displayName: "Padel Aix" });
+      await provider.createConnectAccount({ displayName: "Riverside Tennis" });
 
       expect(created[0]).not.toHaveProperty("metadata");
     });
@@ -735,14 +735,14 @@ describe("StripePaymentProvider", () => {
       const provider = make();
       provider.stubAccounts({
         id: "acct_2",
-        display_name: "Padel Aix",
-        metadata: { clubSlug: "padel-aix" },
+        display_name: "Riverside Tennis",
+        metadata: { venueSlug: "riverside" },
       });
 
       await expect(provider.getConnectAccount("acct_2")).resolves.toEqual({
         id: "acct_2",
-        displayName: "Padel Aix",
-        metadata: { clubSlug: "padel-aix" },
+        displayName: "Riverside Tennis",
+        metadata: { venueSlug: "riverside" },
       });
     });
   });
@@ -754,16 +754,16 @@ describe("StripePaymentProvider", () => {
 
       await expect(
         provider.retrieveSessionStatus("cs_test_1", {
-          stripeAccount: "acct_club",
+          stripeAccount: "acct_venue",
         }),
       ).resolves.toBe("captured");
       await expect(
-        provider.retrieveSessionStatus("pi_1", { stripeAccount: "acct_club" }),
+        provider.retrieveSessionStatus("pi_1", { stripeAccount: "acct_venue" }),
       ).resolves.toBe("captured");
 
       expect(calls).toEqual([
-        { id: "cs_test_1", requestOptions: { stripeAccount: "acct_club" } },
-        { id: "pi_1", requestOptions: { stripeAccount: "acct_club" } },
+        { id: "cs_test_1", requestOptions: { stripeAccount: "acct_venue" } },
+        { id: "pi_1", requestOptions: { stripeAccount: "acct_venue" } },
       ]);
     });
 

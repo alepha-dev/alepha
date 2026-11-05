@@ -48,14 +48,14 @@ export interface StockFigures {
  * product, which is the product's own figure when it has no variants and the
  * total across them when it has.
  *
- * Ported from Club's `StockService`, which learned the hard way that a counter
- * column oversells: two concurrent sales read the same snapshot, both see
- * enough, both write.
+ * Ported from a downstream app's `StockService`, which learned the hard way
+ * that a counter column oversells: two concurrent sales read the same
+ * snapshot, both see enough, both write.
  *
  * ### One of two inventory shapes
  *
  * This is **fungible stock**: a quantity on a product, where any unit will do.
- * Three padel balls, a t-shirt in size M. When what is sold is a particular
+ * Three tennis balls, a t-shirt in size M. When what is sold is a particular
  * thing for a particular time (court 3 on Saturday from 18:00, seat 12A on the
  * Lyon leg, room 204 on the night of the 4th) a count cannot express it: use
  * `ResourceService`, which holds claims on a named resource over an

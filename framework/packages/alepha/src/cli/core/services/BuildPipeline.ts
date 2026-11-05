@@ -11,7 +11,6 @@ import { metaOptions } from "../atoms/metaOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 import type { BuildManifest } from "../schemas/buildManifest.ts";
-import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
@@ -82,7 +81,6 @@ export class BuildPipeline {
   protected readonly tasks: BuildTask[] = [
     $inject(BuildClientTask),
     $inject(BuildServerTask),
-    $inject(BuildAssetsTask),
     $inject(BuildPwaTask),
     $inject(BuildPrerenderTask),
     // Before the target-specific config tasks: `dist/` exists by now, and

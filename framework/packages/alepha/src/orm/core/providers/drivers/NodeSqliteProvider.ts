@@ -336,10 +336,9 @@ export class NodeSqliteProvider extends DatabaseProvider {
     // a rebuild of a parent table silently empties its children.
     //
     // That is not hypothetical. Regenerating a schema for one app produced
-    // a migration that rebuilt `roadmap_items` and `team_members`, and
-    // wiped 2434 rows across five child tables — capacity allocations,
-    // availability, activity tracking, planning phases, skill allocations —
-    // with no error and a "Migration OK" log line.
+    // a migration that rebuilt `projects` and `users`, and wiped 2434 rows
+    // across five child tables (tasks, comments, attachments, time entries,
+    // audit entries) with no error and a "Migration OK" log line.
     //
     // Setting the pragma out here, before drizzle opens its transaction, is
     // the sequence SQLite's own "Making Other Kinds Of Table Schema Changes"

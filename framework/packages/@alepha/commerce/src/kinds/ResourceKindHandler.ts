@@ -10,7 +10,7 @@ import {
 } from "../services/ResourceService.ts";
 
 /**
- * The kind that binds a sale to an interval on a named resource: a padel
+ * The kind that binds a sale to an interval on a named resource: a tennis
  * court, a train seat, a hotel room, a coworking desk, a place on a course.
  * This is what makes all of them the same code.
  *
@@ -40,7 +40,7 @@ import {
  *
  * ### The product is not the slot
  *
- * "Padel, 90 minutes" is the product. The court and the interval are chosen
+ * "Tennis, 90 minutes" is the product. The court and the interval are chosen
  * when the line is added to the cart, and live on the line (`lineConfig`), not
  * on the product. Modelling each slot as its own product row is the mistake
  * this design exists to prevent: the catalogue becomes unbounded (every court

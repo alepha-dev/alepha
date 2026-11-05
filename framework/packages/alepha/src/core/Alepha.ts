@@ -2023,15 +2023,6 @@ export interface State {
    * This is automatically attached if Alepha#create() detects a test environment and global 'onTestFinished' is available.
    */
   "alepha.test.onTestFinished"?: (fn: () => unknown) => void;
-
-  /**
-   * List of static assets to be copied to the output directory during the build process.
-   *
-   * Used for Alepha-based applications that require static assets.
-   *
-   * See cli/services/ViteUtils for more details.
-   */
-  "alepha.build.assets"?: Array<string>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

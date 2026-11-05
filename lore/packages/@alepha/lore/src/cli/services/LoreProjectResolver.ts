@@ -44,7 +44,7 @@ import type { LoreRefusalContext } from "./LoreRefusals.ts";
  *
  * ⚠️ The env fallback is a REMOTE read, not a constant. `production` stopped
  * being a safe client-side default the moment environments became rows: a
- * project may run `b14-production` and have no `production` at all. It reads
+ * project may run `east-production` and have no `production` at all. It reads
  * the APP's rows - the only thing that knows how many environments that app
  * has - and falls back to the word only for an app with no rows, where every
  * answer is equally wrong and the refusal downstream is the useful one.

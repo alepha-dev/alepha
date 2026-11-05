@@ -78,11 +78,11 @@ const setup = async () => {
 
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
-const padel = (ctx: Ctx) =>
+const tennis = (ctx: Ctx) =>
   ctx.catalog.create({
     kind: "test-slot",
-    slug: `padel-${randomUUID()}`,
-    name: "Padel, 90 minutes",
+    slug: `tennis-${randomUUID()}`,
+    name: "Tennis, 90 minutes",
     price: 2000,
     published: true,
     config: { courts: ["court-1", "court-2"] },
@@ -104,7 +104,7 @@ const aCart = async (ctx: Ctx) => ctx.carts.resolve(ctx.carts.newToken());
 describe("cart line", () => {
   it("holds two slots of one product as two lines", async ({ expect }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const cart = await aCart(ctx);
 
     await ctx.carts.add(cart.id, product.id, 1, {
@@ -128,7 +128,7 @@ describe("cart line", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const cart = await aCart(ctx);
 
     await ctx.carts.add(cart.id, product.id, 1, {
@@ -171,7 +171,7 @@ describe("cart line", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const ring = await aRing(ctx);
     const cart = await aCart(ctx);
 
@@ -200,7 +200,7 @@ describe("cart line", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const [mine, theirs] = [await aCart(ctx), await aCart(ctx)];
     const slot = (court: string) => ({ court, startsAt: saturday("10:00") });
 
@@ -227,7 +227,7 @@ describe("cart line", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const cart = await aCart(ctx);
     await ctx.carts.add(cart.id, product.id, 1, {
       court: "court-1",
@@ -244,7 +244,7 @@ describe("cart line", () => {
 
     const opened = await ctx.checkout.start(cart.id);
     const { session } = await ctx.checkout.pay(opened.id, {
-      returnUrl: "https://club.example/merci",
+      returnUrl: "https://shop.example/thanks",
     });
     const order = await ctx.orders.getById(session.orderId!);
     const items = await ctx.orders.itemsOf(order.id);
@@ -262,7 +262,7 @@ describe("cart line", () => {
 
   it("judges the line again when the order is created", async ({ expect }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
 
     await expect(
       ctx.orders.create({
@@ -292,7 +292,7 @@ describe("cart line", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const ring = await aRing(ctx);
     const cart = await aCart(ctx);
     const soon = new Date(ctx.dateTime.nowMillis() + 3_600_000).toISOString();
@@ -315,7 +315,7 @@ describe("cart line", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const product = await padel(ctx);
+    const product = await tennis(ctx);
     const [guest, account] = [await aCart(ctx), await aCart(ctx)];
     const soon = new Date(ctx.dateTime.nowMillis() + 3_600_000).toISOString();
 

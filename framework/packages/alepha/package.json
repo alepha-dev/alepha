@@ -1035,8 +1035,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "node scripts/build.ts",
-    "build:check": "yarn build --check",
-    "copy": "node scripts/copy-swagger.ts"
+    "build:check": "yarn build --check"
   },
   "dependencies": {
     "@redis/client": "^6.3.1",
@@ -1080,7 +1079,6 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "s3mini": "^1.0.3",
-    "swagger-ui-dist": "^5.34.1",
     "tailwindcss": "^4.3.3",
     "tsdown": "^0.23.4",
     "typescript": "^7.0.2",

@@ -205,7 +205,7 @@ HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/que
 ## ⚠️ `/:projectSlug` is a **root-level** param — three consequences
 
 Since 2026-08-13 a project is addressed by a slug derived from its title, at the
-root: `/sds/quests/19`, not `/p/2/q/19`. The `/p` prefix is **deleted, not
+root: `/demo/quests/19`, not `/p/2/q/19`. The `/p` prefix is **deleted, not
 redirected**, and a rename **frees the old slug** for anyone else to take (the
 settings page gates it behind a confirmation that says so). Slugs are unique
 across the whole instance, so two projects can never share a title — anywhere,

@@ -125,7 +125,7 @@ The plugin strips non-production files during sync and ignores them during diff:
 
 **Files:** `*.spec.ts`, `*.spec.tsx`, `LICENSE`
 
-**Directories:** `__tests__/`, `node_modules/`, `dist/`, `assets/swagger-ui/`
+**Directories:** `__tests__/`, `node_modules/`, `dist/`
 
 `tsdown.config.ts` is kept, because a vendored package builds itself with it, but the diff ignores it, as it does the `dist/` that build produces.
 

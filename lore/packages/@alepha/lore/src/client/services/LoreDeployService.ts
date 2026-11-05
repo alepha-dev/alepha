@@ -45,7 +45,7 @@ export interface LoreDeployInput {
    */
   app: string;
   /**
-   * Which copy of it. A free slug - `production`, `b14-staging`, `wassup`.
+   * Which copy of it. A free slug - `production`, `east-staging`, `riverside`.
    */
   env: string;
   /**
@@ -61,7 +61,7 @@ export interface LoreDeployInput {
    */
   project?: string;
   /**
-   * The host this copy answers on, e.g. `wassup.club.example`.
+   * The host this copy answers on, e.g. `riverside.acme.example`.
    *
    * **The same `domain` `alepha.config.ts` declares per environment.** The
    * static path reads it from a committed file and this one reads it from the
@@ -142,10 +142,10 @@ export interface LoreDeployInput {
  * const lore = alepha.inject(LoreDeployService);
  *
  * const { url } = await lore.deploy({
- *   app: "club",
- *   env: "wassup",
+ *   app: "acme",
+ *   env: "riverside",
  *   tag: "latest",
- *   domain: "wassup.club.example",
+ *   domain: "riverside.acme.example",
  * });
  * ```
  *
@@ -400,7 +400,7 @@ export class LoreDeployService {
     const label = "[a-z0-9]([a-z0-9-]*[a-z0-9])?";
     if (!new RegExp(`^${label}(\\.${label})+$`).test(domain)) {
       throw new AlephaError(
-        `"${raw}" is not a hostname. Pass the host on its own - \`wassup.club.example\` - with no scheme, no port and no path: it becomes this copy's Cloudflare custom domain, the same \`domain\` an environment declares in alepha.config.ts.`,
+        `"${raw}" is not a hostname. Pass the host on its own - \`riverside.acme.example\` - with no scheme, no port and no path: it becomes this copy's Cloudflare custom domain, the same \`domain\` an environment declares in alepha.config.ts.`,
       );
     }
     return domain;

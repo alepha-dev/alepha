@@ -301,7 +301,7 @@ export class CloudflareProvisionClient {
 
   /**
    * `locationHint` places a NEW bucket, as it does a D1 database: without one
-   * Cloudflare picks the region nearest the request, which put a French club's
+   * Cloudflare picks the region nearest the request, which put a French app's
    * bucket in WNAM (#Q2954). A location is fixed at creation, so an existing
    * bucket keeps its own. Under a jurisdiction the `cf-r2-jurisdiction` header
    * decides placement and the hint is not sent.

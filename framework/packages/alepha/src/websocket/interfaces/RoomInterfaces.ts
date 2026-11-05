@@ -38,15 +38,15 @@ export interface RoomSocket {
   /**
    * The upgrade URL's query parameters, verbatim (last value per key). The
    * roomId is already extracted from these, but an application may carry extra
-   * identity hints here (e.g. lindocara's `?hero=` beside `?roomId=`) that its
-   * `onJoin` re-validates server-side. Untrusted client input by definition —
-   * never authorize from it without re-derivation.
+   * identity hints here (e.g. a multiplayer game's `?hero=` beside
+   * `?roomId=`) that its `onJoin` re-validates server-side. Untrusted client
+   * input by definition — never authorize from it without re-derivation.
    */
   readonly query?: Readonly<Record<string, string>>;
   /**
-   * Per-connection mutable bag the application owns (e.g. lindocara stores the
-   * hero id, last acked input seq, AOI cursor here). Never serialized by the
-   * engine.
+   * Per-connection mutable bag the application owns (e.g. a multiplayer game
+   * stores the hero id, last acked input seq, AOI cursor here). Never
+   * serialized by the engine.
    */
   data: Record<string, unknown>;
   /**
@@ -81,7 +81,7 @@ export interface RoomConnection {
  */
 export interface RoomContext<TClient extends TWSObject, TState> {
   /**
-   * This room's id (e.g. lindocara's `partyId:mapId`).
+   * This room's id (e.g. a multiplayer game's `partyId:mapId`).
    */
   readonly roomId: string;
   /**
@@ -118,10 +118,10 @@ export interface RoomContext<TClient extends TWSObject, TState> {
 /**
  * A server-side method callable on a room from outside it (another room, the
  * main isolate, an HTTP action). This is the seam that lets a headless
- * coordinator room (lindocara's `GameSession`) receive state mutations pushed
- * up from a world room, and lets a presence room (`HeroPresence`) expose
- * acquire/renew/release. On Cloudflare each call is a Durable Object RPC; on
- * Node it is a direct in-process method call.
+ * coordinator room (a multiplayer game's `GameSession`) receive state
+ * mutations pushed up from a world room, and lets a presence room
+ * (`HeroPresence`) expose acquire/renew/release. On Cloudflare each call is a
+ * Durable Object RPC; on Node it is a direct in-process method call.
  */
 export type RoomMethod<TClient extends TWSObject, TState> = (
   room: RoomContext<TClient, TState>,
@@ -132,9 +132,10 @@ export type RoomMethod<TClient extends TWSObject, TState> = (
  * Options for the {@link $room} primitive — a stateful, optionally
  * tick-driven room.
  *
- * With `tickHz > 0` it is an authoritative simulation room (lindocara's
- * `World`). With `tickHz` omitted/0 it is a headless coordinator addressed by
- * id and reached through `methods` (lindocara's `GameSession` / `HeroPresence`).
+ * With `tickHz > 0` it is an authoritative simulation room (a multiplayer
+ * game's `World`). With `tickHz` omitted/0 it is a headless coordinator
+ * addressed by id and reached through `methods` (that game's `GameSession` /
+ * `HeroPresence`).
  */
 export interface RoomPrimitiveOptions<
   TClient extends TWSObject,

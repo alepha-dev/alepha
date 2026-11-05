@@ -29,7 +29,7 @@ Lore when the list stops being fixed.
 | Thing            | What it is                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------- |
 | **Estate**       | A Bay machine or Cloudflare account you lend to a project. Yours, not the project's.   |
-| **App instance** | One deployed copy, named by a pair: an app and an environment. `club` in `production`. |
+| **App instance** | One deployed copy, named by a pair: an app and an environment. `acme` in `production`. |
 | **Artifact**     | A build somebody pushed, named by a tag. Immutable, except `latest`.                   |
 | **Deployment**   | One run of "put these bytes on that copy", with its log.                               |
 
@@ -59,7 +59,7 @@ Open **Apps** and create one. You type two names - the app and the environment -
 and nothing else happens: no credential is minted, no cloud resource is created.
 The row is a statement that this copy exists.
 
-Both halves are free slugs. `production`, `staging`, `b14-production`,
+Both halves are free slugs. `production`, `staging`, `east-production`,
 `eu-staging` and `pr-1841` are all legal, so you slice a fleet as finely as you
 want to.
 
@@ -70,13 +70,13 @@ Doing so is what makes its **Deploy** and **Environment** tabs appear.
 
 A copy's first deploy names everything it creates: the Worker, the D1 database,
 the bucket, the cache namespace and the queue are all
-`<project>-<app>-<env>`, such as `club-shop-production`. The copy's Overview
+`<project>-<app>-<env>`, such as `acme-shop-production`. The copy's Overview
 shows it under **Resources**.
 
 ⚠️ **That name is fixed on the first deploy and never changes.** Cloudflare
 cannot rename a database, so a name that followed the project would create an
 empty one beside the live one. Renaming the project, the app or the
-environment afterwards moves nothing: `club-shop-production` keeps its name
+environment afterwards moves nothing: `acme-shop-production` keeps its name
 under a project now called `shop`, and only copies deployed for the first time
 after the rename take the new one. A destroy keeps it too, so a copy deployed
 again comes back to its own database.

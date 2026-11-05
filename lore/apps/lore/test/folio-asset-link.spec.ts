@@ -25,7 +25,7 @@ const nonImageCsv: AttachmentRef = {
   size: 8_192,
 };
 
-const PROJECT_SLUG = "sds";
+const PROJECT_SLUG = "demo";
 
 describe("rewriteFolioWikiLinks — assets/ references", () => {
   it("rewrites ![alt](assets/<name>) to the file URL", ({ expect }) => {

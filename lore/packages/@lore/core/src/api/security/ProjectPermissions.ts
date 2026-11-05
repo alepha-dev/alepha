@@ -35,8 +35,8 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * ## What moved upstream
  *
  * The application half - the catalogue, the role grant, the `ownership` bypass
- * and the permission scope - is `EffectivePermissionsProvider`, because Club
- * needs exactly that and a second implementation of one rule is the thing this
+ * and the permission scope - is `EffectivePermissionsProvider`, because a downstream
+ * app needs exactly that and a second implementation of one rule is the thing this
  * class exists to argue against. What stays here is what is Lore's: the rank
  * and the capability, expressed as two narrowing factors.
  */

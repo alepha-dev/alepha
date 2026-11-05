@@ -15,9 +15,9 @@ import { afterEach, beforeEach, describe, it } from "vitest";
  * every `ON DELETE CASCADE` fires: rebuilding a parent silently empties
  * its children, with no error and a "Migration OK" log line.
  *
- * This cost a real app 2434 rows across five tables in a dry run —
- * capacity allocations, availability, activity tracking, planning phases
- * and skill allocations — from a schema change that touched none of them.
+ * This cost a real app 2434 rows across five tables in a dry run (tasks,
+ * comments, attachments, time entries and audit entries), from a schema
+ * change that touched none of them.
  *
  * The providers fix it by setting the pragma on the connection *before*
  * drizzle opens its transaction, which is the sequence SQLite's own

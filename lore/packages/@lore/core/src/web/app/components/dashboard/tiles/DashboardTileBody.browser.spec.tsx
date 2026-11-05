@@ -205,8 +205,8 @@ describe("DashboardTileBody", () => {
         "status",
         value({
           rows: [
-            { id: "club/production", title: "club", state: "ok" },
-            { id: "club/staging", title: "club", state: "bad" },
+            { id: "acme/production", title: "acme", state: "ok" },
+            { id: "acme/staging", title: "acme", state: "bad" },
           ],
         }),
       );

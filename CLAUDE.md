@@ -40,3 +40,10 @@ A step's own `working-directory` is relative to the repository root, so it names
 ## The workflow
 
 The framework's rules apply to the whole repository: a worktree per epic, small commits staged by explicit path, each naming its quest as `#Q<n>`, push the branch to verify, merge to main when green. See "The workflow" in `framework/CLAUDE.md`.
+
+## What the repository may name
+
+The repository is public. Two rules hold in every file, in every product (#Q3117):
+
+- **Never name an external project.** No app, client or side project outside this repository appears anywhere: not in docs, JSDoc, comments, CLI help, error messages, UI strings, test names or fixtures, CLAUDE.md files or workflow comments. Lore, Bay and Alepha are the only projects that may be named. Say what the case is instead ("a downstream app", "a multi-tenant app", "a point-of-sale app"), and use neutral slugs in examples and fixtures (`acme`, `myapp`, `crm`, `example.app`), never a real project's name, domain or tenant.
+- **Lore references stay out of user docs.** `#Q`, `#E`, `#F`, `Q2607`, "epic E9" and links to `lore.alepha.dev/alepha/{quests,epics,folios}` are welcome in code comments, commit messages and `CHANGELOG.md`, and never in what a user reads as documentation: the guides under every product's `docs/`, README files, and the JSDoc that generates `framework/docs/2-reference` and `framework/docs/3-packages`. Lore's own guides may show the `#Q12` syntax, since documenting it is their subject. Internal planning (who reserved what, which epic gates which) is not user documentation either, with or without a number.

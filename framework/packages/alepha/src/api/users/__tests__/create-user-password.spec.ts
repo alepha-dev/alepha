@@ -21,7 +21,7 @@ const suffix = () => Math.random().toString(36).slice(2, 8);
  * refused the password in the second, the account already existed with no
  * credential. A bootstrap written as "create if missing, skip if it exists"
  * then skipped that passwordless row forever, and correcting the password in
- * its configuration changed nothing. Found downstream in Mikanda.
+ * its configuration changed nothing. Found in a downstream app.
  */
 describe("createUser with a password", () => {
   const boot = async () => {

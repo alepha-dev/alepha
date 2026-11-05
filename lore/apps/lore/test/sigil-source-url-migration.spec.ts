@@ -109,14 +109,14 @@ describe("the stored sourceUrl cleanup migration", () => {
             );
       const rows: Array<[number, string]> = [
         // The case the quest was filed for: a reset token in the query.
-        [1, "https://club.alepha.dev/auth/reset-password?token=abc123"],
+        [1, "https://acme.alepha.dev/auth/reset-password?token=abc123"],
         // An OAuth implicit-flow access token lives in the fragment.
-        [2, "https://club.alepha.dev/callback#access_token=xyz"],
+        [2, "https://acme.alepha.dev/callback#access_token=xyz"],
         // Both, in the order a URL actually puts them.
-        [3, "https://club.alepha.dev/a?b=1#c"],
+        [3, "https://acme.alepha.dev/a?b=1#c"],
         // Already clean: must come out byte-identical, since this migration
         // runs against databases that are mostly clean rows.
-        [4, "https://club.alepha.dev/auth/login"],
+        [4, "https://acme.alepha.dev/auth/login"],
         // The empty string is the column's own default.
         [5, ""],
       ];
@@ -136,10 +136,10 @@ describe("the stored sourceUrl cleanup migration", () => {
         db.prepare(`SELECT source_url FROM ${table} WHERE id = ?`).get(id)
           .source_url;
 
-      expect(urlOf(1)).toBe("https://club.alepha.dev/auth/reset-password");
-      expect(urlOf(2)).toBe("https://club.alepha.dev/callback");
-      expect(urlOf(3)).toBe("https://club.alepha.dev/a");
-      expect(urlOf(4)).toBe("https://club.alepha.dev/auth/login");
+      expect(urlOf(1)).toBe("https://acme.alepha.dev/auth/reset-password");
+      expect(urlOf(2)).toBe("https://acme.alepha.dev/callback");
+      expect(urlOf(3)).toBe("https://acme.alepha.dev/a");
+      expect(urlOf(4)).toBe("https://acme.alepha.dev/auth/login");
       expect(urlOf(5)).toBe("");
     }
 

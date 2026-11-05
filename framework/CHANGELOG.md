@@ -234,9 +234,7 @@
 - **cli**: migrations apply drops the --provider it ignored, and the starter spec uses describe + it #Q2662 (`dc6815df`)
 - **orm**: a relational getOne or getById miss is a 404 DbEntityNotFoundError, and paginate types a join filter #Q2662 (`937ce662`)
 
-## [Unreleased]
-
-### Breaking Changes
+### Migration notes
 
 - **errors are `$error` constants**: every error is declared with `$error({ name, schema, default?, message? })` (from `alepha`) or derived with `Parent.extend({ name, ... })`; writing an error class is refused by `check:conventions`. Names are SCREAMING_SNAKE (`NOT_FOUND`, `MFA_REQUIRED`, `DB_ENTITY_NOT_FOUND`). Constructors follow `Error`: `new X(data, { message, cause })`, or `new X("message", { cause })` when every data key is optional; a positional cause (`new NotFoundError("m", err)`) becomes `{ cause: err }`. An error's fields live in `data`: `error.data.redirect`, `error.data.exitCode`, `error.data.code` (MCP), `error.data.column` (ORM); `HttpError` keeps `status` as a shortcut for `data.status`. `HttpError.is` is `isHttpError`; `DbTimeoutError.from` is `DbTimeoutError.find`; `DbXError.fromDatabaseError` moved to the `DbErrorParser` service; `SchemaValidationError.value` / `.cause.instancePath` are `data.message` / `data.path`. The ORM, commerce, bucket and payment errors are `HttpError` descendants, so a strict `$action` can declare them.
 - **error wire shape**: a failed request answers `{ name, message, data, cause? }`, the status and `requestId` inside `data`, replacing `{ error, status, message, details, data, requestId }`. A one-off `new HttpError({ status })` is named after its status (`PAYLOAD_TOO_LARGE`).

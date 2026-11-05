@@ -60,7 +60,7 @@ export class DeployRegistry {
    * it waited in the queue.
    *
    * ⚠️ The wait is the one cost no step line can show, because every line
-   * after this one is timed from `startedAt`. A first deploy of a club copy
+   * after this one is timed from `startedAt`. A first deploy of one copy
    * spent 5.6 s there before its first line, which is time a user waits
    * through all the same.
    */

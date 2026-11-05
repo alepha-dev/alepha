@@ -82,10 +82,10 @@ describe("D1TimeoutProvider", () => {
     const { timeouts, time } = await boot();
     const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
-    const pending = wrapped.prepare('select "id", "slug" from "club"').all();
+    const pending = wrapped.prepare('select "id", "slug" from "team"').all();
     // oxlint-disable-next-line vitest/valid-expect
     const settled = expect(pending).rejects.toThrow(
-      'D1 query timed out: select "id", "slug" from "club"',
+      'D1 query timed out: select "id", "slug" from "team"',
     );
 
     await time.travel([6, "seconds"]);

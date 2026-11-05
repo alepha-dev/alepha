@@ -168,13 +168,13 @@ describe("the Apps list", () => {
     // A blank cell breaks sorting on every other column, and sorting is most
     // of what a flat list is for.
     const { view } = await mount([
-      anInstance("club", "production"),
-      anInstance("club", "b14-production"),
+      anInstance("acme", "production"),
+      anInstance("acme", "east-production"),
       anInstance("lore", "production"),
     ]);
 
     await waitFor(() => expect(rowText(view)).toHaveLength(3));
-    expect(rowText(view).filter((text) => text.includes("club"))).toHaveLength(
+    expect(rowText(view).filter((text) => text.includes("acme"))).toHaveLength(
       2,
     );
   });
@@ -186,9 +186,9 @@ describe("the Apps list", () => {
     // `lastSeenAt`, ever, so it rendered as silent forever - the UI reporting
     // a fault where there is a configuration.
     const { view } = await mount([
-      anInstance("club", "production"),
-      anInstance("club", "staging", withSigil(agoHours(1))),
-      anInstance("club", "old", withSigil(agoHours(24 * 8))),
+      anInstance("acme", "production"),
+      anInstance("acme", "staging", withSigil(agoHours(1))),
+      anInstance("acme", "old", withSigil(agoHours(24 * 8))),
     ]);
 
     await waitFor(() => expect(rowText(view)).toHaveLength(3));
@@ -201,7 +201,7 @@ describe("the Apps list", () => {
   it("labels the dot for a reader, not only by colour", async ({ expect }) => {
     // Colour is the only carrier left since Reports and Last seen were cut,
     // and green against amber is the pair deuteranopia hits hardest.
-    const { view } = await mount([anInstance("club", "production")]);
+    const { view } = await mount([anInstance("acme", "production")]);
 
     await waitFor(() => expect(rowText(view)).toHaveLength(1));
     const dot = view.container.querySelector("[role=img][data-state]")!;
@@ -211,10 +211,10 @@ describe("the Apps list", () => {
 
   it("filters on the env half as well as the app half", async ({ expect }) => {
     // What makes a tenant-ish substring find anything at all: the app is
-    // called `club` and only the env carries `b14`.
+    // called `acme` and only the env carries `east`.
     const { view } = await mount([
-      anInstance("club", "production"),
-      anInstance("club", "b14-production"),
+      anInstance("acme", "production"),
+      anInstance("acme", "east-production"),
       anInstance("lore", "production"),
     ]);
 
@@ -222,10 +222,10 @@ describe("the Apps list", () => {
     const search = view.container.querySelector<HTMLInputElement>(
       'input[aria-label="Search"]',
     )!;
-    fireEvent.change(search, { target: { value: "b14" } });
+    fireEvent.change(search, { target: { value: "east" } });
 
     await waitFor(() => expect(rowText(view)).toHaveLength(1));
-    expect(rowText(view)[0]).toContain("b14-production");
+    expect(rowText(view)[0]).toContain("east-production");
   });
 
   /**
@@ -238,7 +238,7 @@ describe("the Apps list", () => {
     const A_FLEET = () => [
       anInstance("api", "production", withSigil(agoHours(1))),
       anInstance("api", "staging", withSigil(agoHours(24 * 8))),
-      anInstance("club", "production"),
+      anInstance("acme", "production"),
     ];
 
     /**
@@ -290,7 +290,7 @@ describe("the Apps list", () => {
       await pick("Environment", "production");
 
       await waitFor(() => expect(rowText(view)).toHaveLength(2));
-      expect(rowText(view).some((text) => text.includes("club"))).toBe(true);
+      expect(rowText(view).some((text) => text.includes("acme"))).toBe(true);
       expect(rowText(view).some((text) => text.includes("staging"))).toBe(
         false,
       );
@@ -314,20 +314,20 @@ describe("the Apps list", () => {
     });
 
     it("matches an app exactly, never as a substring", async ({ expect }) => {
-      // The built-in field matching would keep `clubhouse` for a pick of
-      // `club`. A single select means equality, which is why `app` is
+      // The built-in field matching would keep `acmeworks` for a pick of
+      // `acme`. A single select means equality, which is why `app` is
       // answered in the callback rather than left to the property pass.
       const { view } = await mount([
-        anInstance("club", "production"),
-        anInstance("clubhouse", "production"),
+        anInstance("acme", "production"),
+        anInstance("acmeworks", "production"),
       ]);
       await waitFor(() => expect(rowText(view)).toHaveLength(2));
 
-      await pick("App", "club");
+      await pick("App", "acme");
 
       await waitFor(() => expect(rowText(view)).toHaveLength(1));
-      expect(rowText(view)[0]).toContain("club");
-      expect(rowText(view)[0]).not.toContain("clubhouse");
+      expect(rowText(view)[0]).toContain("acme");
+      expect(rowText(view)[0]).not.toContain("acmeworks");
     });
 
     it("ANDs the filters, and clearing one widens without clearing the rest", async ({
@@ -350,7 +350,7 @@ describe("the Apps list", () => {
         within(list)
           .getAllByRole("option")
           .map((option) => option.textContent),
-      ).toEqual(["api", "club"]);
+      ).toEqual(["acme", "api"]);
       fireEvent.keyDown(list, { key: "Escape" });
 
       // The bar's own cross, which empties the filter and leaves it on the
@@ -502,7 +502,7 @@ describe("the Apps list", () => {
       expect,
     }) => {
       const { view } = await mount([
-        anInstance("club", "production", { url: "https://club.example.com" }),
+        anInstance("acme", "production", { url: "https://acme.example.com" }),
       ]);
 
       const link = await waitFor(() => {
@@ -510,7 +510,7 @@ describe("the Apps list", () => {
         expect(found).not.toBeNull();
         return found!;
       });
-      expect(link.getAttribute("href")).toBe("https://club.example.com");
+      expect(link.getAttribute("href")).toBe("https://acme.example.com");
       // ⚠️ All three, and none of them decoration. `noopener` because
       // `_blank` otherwise hands `window.opener` to a page Lore does not
       // control; `nofollow` because a deployed copy is not an endorsement
@@ -535,7 +535,7 @@ describe("the Apps list", () => {
       expect,
     }) => {
       const { alepha, view } = await mount([
-        anInstance("club", "production", { url: "https://club.example.com" }),
+        anInstance("acme", "production", { url: "https://acme.example.com" }),
       ]);
 
       const link = await waitFor(() => {
@@ -573,7 +573,7 @@ describe("the Apps list", () => {
      * nowhere says the opposite.
      */
     it("leaves an unknown address as plain text", async ({ expect }) => {
-      const { view } = await mount([anInstance("club", "production")]);
+      const { view } = await mount([anInstance("acme", "production")]);
 
       await waitFor(() => expect(rowText(view)).toHaveLength(1));
       expect(addressOf(view)).toBeNull();

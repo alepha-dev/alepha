@@ -9,8 +9,8 @@ import { PermissionMatrix } from "../PermissionMatrix.tsx";
  * What these pin is what the component is NOT allowed to know.
  *
  * Two applications render this table for two different models: Lore hides the
- * permissions of a capability that is off, Alepha Club has no capabilities at
- * all; Lore has an owner rank, and the component must not. Each case below is
+ * permissions of a capability that is off, the other app has no capabilities
+ * at all; Lore has an owner rank, and the component must not. Each case below is
  * one of those boundaries, because a component that learns one of them is a
  * component the other consumer has to pass `undefined` to forever.
  *

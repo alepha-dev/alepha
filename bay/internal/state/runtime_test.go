@@ -146,9 +146,9 @@ func TestStacks(t *testing.T) {
 
 	t.Run("a member redeployed through the ordinary path stays a member", func(t *testing.T) {
 		s, _ := Open(filepath.Join(t.TempDir(), "state.json"))
-		_ = s.Upsert(App{Name: "mcs.api", Env: "staging", Port: 4100, Stack: "mcs", Service: "api", ServiceKind: "app"})
-		_ = s.Upsert(App{Name: "mcs.api", Env: "staging", Port: 4100, Release: "r2"})
-		if app, _ := s.Get("mcs.api/staging"); app.Stack != "mcs" || app.Service != "api" || app.ServiceKind != "app" {
+		_ = s.Upsert(App{Name: "crm.api", Env: "staging", Port: 4100, Stack: "crm", Service: "api", ServiceKind: "app"})
+		_ = s.Upsert(App{Name: "crm.api", Env: "staging", Port: 4100, Release: "r2"})
+		if app, _ := s.Get("crm.api/staging"); app.Stack != "crm" || app.Service != "api" || app.ServiceKind != "app" {
 			t.Fatalf("app = %+v", app)
 		}
 	})

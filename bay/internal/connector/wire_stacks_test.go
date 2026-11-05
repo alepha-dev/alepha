@@ -123,7 +123,7 @@ func TestWireMemberDeploy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if frame.Kind != "deploy" || frame.Stack != "mcs" || frame.Service != "api" || frame.App != "mcs-api" {
+		if frame.Kind != "deploy" || frame.Stack != "crm" || frame.Service != "api" || frame.App != "crm-api" {
 			t.Fatalf("decoded = %+v", frame)
 		}
 	})

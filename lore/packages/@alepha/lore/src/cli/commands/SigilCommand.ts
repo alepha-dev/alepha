@@ -16,7 +16,7 @@ import {
  * copy reports with.
  *
  * ```bash
- * lore sigil create --app club --env staging -p alepha
+ * lore sigil create --app acme --env staging -p alepha
  * lore sigil rotate 0190... -p alepha
  * ```
  *

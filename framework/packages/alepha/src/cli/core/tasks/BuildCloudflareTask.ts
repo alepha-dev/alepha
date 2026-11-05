@@ -142,7 +142,7 @@ export class BuildCloudflareTask extends BuildTask {
     // Slugify the dir basename  -  wrangler rejects names that aren't
     // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
     // Without this, running `alepha build --runtime=workerd` in a dir like
-    // `My App` or `club-0.0.2` produces an unusable `wrangler.jsonc`.
+    // `My App` or `acme-0.0.2` produces an unusable `wrangler.jsonc`.
     //
     // This is a build-time PLACEHOLDER, not the deployed worker name. A
     // build is environment-agnostic  -  the same artifact ships to staging

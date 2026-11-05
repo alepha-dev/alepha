@@ -8,9 +8,10 @@ describe("CloudflareEmailDetector", () => {
   const detector = new CloudflareEmailDetector();
 
   /**
-   * The regression (Club #Q675): string lookups moved from class names to
-   * stable ids and the provider had none, so detection returned false for an
-   * app that registers it and the build dropped `send_email`.
+   * The regression, found in a downstream app: string lookups moved from
+   * class names to stable ids and the provider had none, so detection
+   * returned false for an app that registers it and the build dropped
+   * `send_email`.
    */
   it("detects an app that registers alepha.email.cloudflare", ({ expect }) => {
     const alepha = Alepha.create().with(AlephaEmailCloudflare);

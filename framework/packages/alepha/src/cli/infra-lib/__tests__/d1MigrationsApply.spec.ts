@@ -264,7 +264,7 @@ describe("d1MigrationsApply", () => {
   });
 
   /**
-   * A first deploy of a club copy carried 26 migrations and spent 31.7 s of a
+   * A first deploy of a fresh copy carried 26 migrations and spent 31.7 s of a
    * 45 s run importing them one by one, about five round trips each.
    */
   describe("an empty database", () => {

@@ -9,7 +9,7 @@ import { uiAtom, type UiState } from "../atoms/uiAtom.ts";
  *
  * The server and the client's hydration pass both see the DEFAULT
  * preferences: the server never reads `uiAtom` at all, so a page whose markup
- * uses this stays shareable by the page cache (#E78), and the first client
+ * uses this stays shareable by the page cache, and the first client
  * render agrees with any prerendered or cached HTML. The visitor's real value
  * arrives on the first commit after hydration.
  *

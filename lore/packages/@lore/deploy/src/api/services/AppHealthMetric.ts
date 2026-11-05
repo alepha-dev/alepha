@@ -17,7 +17,7 @@ import { sigils } from "../entities/sigils.ts";
 
 /**
  * One pill per app copy (#Q2657): its last deployment, and whether its sigil
- * is reporting. Club has five copies across three apps.
+ * is reporting. A project may run several copies across several apps.
  *
  * A failed last deployment reads `bad`; a deployment queued or running
  * `accent`; a copy whose sigil is silent `warn`, with no sigil `neutral`,

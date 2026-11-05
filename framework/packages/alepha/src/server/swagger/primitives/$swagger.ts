@@ -2,11 +2,11 @@ import { createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
 /**
- * Creates an OpenAPI/Swagger documentation primitive with interactive UI.
+ * Creates an OpenAPI documentation primitive.
  *
- * Automatically generates API documentation from your $action primitives and serves
- * an interactive Swagger UI for testing endpoints. Supports customization, tag filtering,
- * and OAuth configuration.
+ * Generates an OpenAPI 3 document from your $action primitives and serves it as
+ * JSON at `<prefix>/json`. Supports customization and tag filtering. It serves no
+ * viewer: point any OpenAPI viewer at the JSON route.
  *
  * @example
  * ```ts
@@ -55,13 +55,6 @@ export interface SwaggerPrimitiveOptions {
   servers?: OpenApiServer[];
 
   /**
-   * Enable Swagger UI.
-   *
-   * @default true
-   */
-  ui?: boolean | SwaggerUiOptions;
-
-  /**
    * Function to rewrite the OpenAPI document before serving it.
    */
   rewrite?: (doc: OpenApiDocument) => void;
@@ -70,74 +63,6 @@ export interface SwaggerPrimitiveOptions {
 export interface OpenApiServer {
   url: string;
   description?: string;
-}
-
-export interface SwaggerUiOptions {
-  root?: string;
-
-  /**
-   * If true, the authorization data is persisted in browser localStorage.
-   *
-   * @default true
-   */
-  persistAuthorization?: boolean;
-
-  initOAuth?: {
-    /**
-     * Default clientId.
-     */
-    clientId?: string;
-
-    /**
-     * realm query parameter (for oauth1) added to authorizationUrl and tokenUrl.
-     */
-    realm?: string;
-
-    /**
-     * application name, displayed in authorization popup.
-     */
-    appName?: string;
-
-    /**
-     * scope separator for passing scopes, encoded before calling, default
-     * value is a space (encoded value %20).
-     *
-     * @default ' '
-     */
-    scopeSeparator?: string;
-
-    /**
-     * string array or scope separator (i.e. space) separated string of
-     * initially selected oauth scopes
-     *
-     * @default []
-     */
-    scopes?: string | string[];
-
-    /**
-     * Additional query parameters added to authorizationUrl and tokenUrl.
-     * MUST be an object
-     */
-    additionalQueryStringParams?: { [key: string]: any };
-
-    /**
-     * Only activated for the accessCode flow. During the authorization_code
-     * request to the tokenUrl, pass the Client Password using the HTTP Basic
-     * Authentication scheme (Authorization header with Basic
-     * base64encode(client_id + client_secret)).
-     *
-     * @default false
-     */
-    useBasicAuthenticationWithAccessCodeGrant?: boolean;
-
-    /**
-     * Only applies to Authorization Code flows. Proof Key for Code Exchange
-     * brings enhanced security for OAuth public clients.
-     *
-     * @default false
-     */
-    usePkceWithAuthorizationCodeGrant?: boolean;
-  };
 }
 
 export class SwaggerPrimitive extends Primitive<SwaggerPrimitiveOptions> {}

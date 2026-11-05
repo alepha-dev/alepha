@@ -1134,7 +1134,7 @@ export class FolioController {
       // be propagated to `updateById` as `null` so Drizzle writes NULL.
       // `undefined` would be silently dropped by the ORM update layer,
       // leaving the folio stuck in its current directory (regression
-      // hit while moving the Club Glossary to root — Alepha treats
+      // hit while moving a folio directory to root — Alepha treats
       // `undefined` as "no change" but `null` as "set NULL").
       // A present key holding `undefined` is "unchanged", not "move": the
       // MCP tool calls this action in process and passes every optional

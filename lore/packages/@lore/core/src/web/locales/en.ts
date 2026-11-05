@@ -1894,7 +1894,7 @@ export default {
     "Pick an app you already deploy, or start a new one. Lowercase letters, digits and hyphens.",
   "apps.create.env": "Environment",
   "apps.create.envDescription":
-    "Which copy: production, staging, b14-production. Free text, and nothing parses it.",
+    "Which copy: production, staging, east-production. Free text, and nothing parses it.",
   "apps.create.withSigil": "Create a sigil too",
   "apps.create.withSigilDescription":
     "Mints the key this copy reports with, shown once. You can always add one later from its Settings tab.",
@@ -2289,7 +2289,7 @@ export default {
   "blights.rules.settingsDescription":
     "Crashes whose message matches one of these substrings are dropped on arrival, before they ever reach the inbox.",
   "blights.rules.manage": "Manage rules",
-  "blights.rules.placeholder": "e.g. Unknown club",
+  "blights.rules.placeholder": "e.g. Unknown tenant",
   "blights.rules.add": "Add",
   "blights.rules.remove": "Remove rule",
   "blights.rules.loading": "Loading rules…",
