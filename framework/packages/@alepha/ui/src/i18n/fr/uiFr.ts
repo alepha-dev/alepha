@@ -1283,6 +1283,15 @@ export const uiFr: Record<string, string> = {
   "organizations.transfer.yourRank": "Votre nouveau rang",
 
   // The API explorer (`@alepha/ui/swagger`).
+  "swagger.access.allowed": "Vous pouvez l'appeler",
+  "swagger.access.denied": "Vos permissions ne le permettent pas",
+  "swagger.access.signIn": "Connectez-vous pour l'appeler",
+  "swagger.access.unknown": "Connecté ; accès vérifié à l'appel",
+  "swagger.credentials.description":
+    "Envoyé à la place de votre session. Conservé jusqu'au rechargement.",
+  "swagger.credentials.label": "Jeton porteur ou clé d'API",
+  "swagger.credentials.set": "Appels avec un jeton",
+  "swagger.credentials.title": "Identifiants",
   "swagger.deprecated": "obsolète",
   "swagger.emptyDocument": "Ce document ne contient aucune opération.",
   "swagger.error": "Le document OpenAPI n'a pas pu être lu",

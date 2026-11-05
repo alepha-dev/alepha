@@ -15,6 +15,11 @@ export interface SwaggerOperationViewProps {
   spec: OpenApiSpec;
   entry: SwaggerEntry;
   /**
+   * Shown at the end of the header line: where the explorer says whether the
+   * viewer may call the operation.
+   */
+  badge?: ReactNode;
+  /**
    * Rendered under the header, before the reference sections: where the
    * explorer puts its request panel.
    */
@@ -45,6 +50,7 @@ export const SwaggerOperationView = (props: SwaggerOperationViewProps) => {
               })}
             />
           )}
+          {props.badge}
           {operation.deprecated && (
             <Badge variant="tint" tone="warning">
               {tr("swagger.deprecated", { default: "deprecated" })}

@@ -2,16 +2,20 @@ import { AlephaError } from "alepha";
 import { useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { OpenApiDocument } from "alepha/server/swagger";
-import { FileJson } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronRight, FileJson, KeyRound } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "../core/Alert.tsx";
 import { Badge } from "../core/Badge.tsx";
 import { Skeleton } from "../core/Skeleton.tsx";
 import { OpenApiSpec } from "./OpenApiSpec.ts";
+import { SwaggerAccessBadge } from "./SwaggerAccessBadge.tsx";
+import { SwaggerCredentials } from "./SwaggerCredentials.tsx";
 import { SwaggerNav } from "./SwaggerNav.tsx";
 import { SwaggerOperationView } from "./SwaggerOperationView.tsx";
+import type { SwaggerRequest } from "./SwaggerRequestBuilder.ts";
 import { SwaggerTryIt } from "./SwaggerTryIt.tsx";
+import { useSwaggerAccess } from "./useSwaggerAccess.ts";
 
 export interface SwaggerExplorerProps {
   /**
@@ -19,6 +23,14 @@ export interface SwaggerExplorerProps {
    * `$swagger()`.
    */
   specUrl: string;
+
+  /**
+   * Where to sign in, linked from a gated operation when nobody is signed
+   * in. `/auth/login` is `AuthRouter`'s sign-in page.
+   *
+   * @default "/auth/login"
+   */
+  signIn?: string;
 }
 
 /**
@@ -29,11 +41,17 @@ export interface SwaggerExplorerProps {
  * server render fetching its own origin is a self-subrequest, which fails.
  * The server render paints the frame and its skeleton. The selection follows
  * the URL hash (`#operationId`), so an operation can be linked to.
+ *
+ * Requests go out as the viewer: same-origin, the browser sends the session
+ * cookie, which the server turns into the `Authorization` it checks. A token
+ * typed in the credentials panel replaces it. Each gated operation says
+ * whether the signed-in user may call it (`useSwaggerAccess`).
  */
 export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
   const { tr } = useI18n();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | undefined>();
+  const [token, setToken] = useState("");
 
   const { data, error, loading } = useQuery(
     {
@@ -78,6 +96,17 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
   };
 
   const entry = spec?.find(selected) ?? spec?.entries[0];
+  const access = useSwaggerAccess(spec);
+  const prepare = useCallback(
+    (request: SwaggerRequest): SwaggerRequest =>
+      token
+        ? {
+            ...request,
+            headers: { ...request.headers, authorization: `Bearer ${token}` },
+          }
+        : request,
+    [token],
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6">
@@ -100,6 +129,20 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
             {spec.description}
           </p>
         )}
+        <details className="group/credentials basis-full">
+          <summary className="text-muted-foreground hover:text-foreground flex w-fit cursor-pointer list-none items-center gap-1 text-xs [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="size-3.5 transition-transform group-open/credentials:rotate-90" />
+            <KeyRound className="size-3.5" />
+            {token
+              ? tr("swagger.credentials.set", {
+                  default: "Calling with a token",
+                })
+              : tr("swagger.credentials.title", { default: "Credentials" })}
+          </summary>
+          <div className="pt-2 pl-5">
+            <SwaggerCredentials onChange={setToken} />
+          </div>
+        </details>
       </header>
 
       {error && !spec ? (
@@ -131,8 +174,22 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
           </aside>
           <main className="min-w-0">
             {entry ? (
-              <SwaggerOperationView spec={spec} entry={entry}>
-                <SwaggerTryIt key={entry.id} spec={spec} entry={entry} />
+              <SwaggerOperationView
+                spec={spec}
+                entry={entry}
+                badge={
+                  <SwaggerAccessBadge
+                    access={token ? "open" : access(entry)}
+                    signIn={props.signIn ?? "/auth/login"}
+                  />
+                }
+              >
+                <SwaggerTryIt
+                  key={entry.id}
+                  spec={spec}
+                  entry={entry}
+                  prepare={prepare}
+                />
               </SwaggerOperationView>
             ) : (
               <p className="text-muted-foreground text-sm">

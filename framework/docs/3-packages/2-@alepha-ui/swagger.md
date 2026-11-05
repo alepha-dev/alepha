@@ -21,3 +21,7 @@ app that lays the explorer out itself.
 ### Primitives
 
 - [`$uiSwagger`](/docs/reference-primitives-$uiswagger) - An API explorer page, reading the app's OpenAPI document.
+
+### React Hooks
+
+- [`useSwaggerAccess`](/docs/reference-react-hooks-useswaggeraccess) - Answers `SwaggerAccess` for each operation, against the current user.

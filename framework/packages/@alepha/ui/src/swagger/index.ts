@@ -19,9 +19,17 @@ export {
   type SwaggerSecurity,
 } from "./OpenApiSpec.ts";
 export {
+  SwaggerAccessBadge,
+  type SwaggerAccessBadgeProps,
+} from "./SwaggerAccessBadge.tsx";
+export {
   SwaggerAlephaMeta,
   type SwaggerAlephaMetaProps,
 } from "./SwaggerAlephaMeta.tsx";
+export {
+  SwaggerCredentials,
+  type SwaggerCredentialsProps,
+} from "./SwaggerCredentials.tsx";
 export {
   SwaggerExplorer,
   type SwaggerExplorerProps,
@@ -64,3 +72,4 @@ export {
   SwaggerSchemaView,
   type SwaggerSchemaViewProps,
 } from "./SwaggerSchemaView.tsx";
+export { type SwaggerAccess, useSwaggerAccess } from "./useSwaggerAccess.ts";

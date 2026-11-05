@@ -14,7 +14,10 @@ describe("$uiSwagger", () => {
     const app = Alepha.create().with(AlephaReactRouter).inject(App);
     expect(app.docs.options.name).toBe("swagger");
     expect(app.docs.options.path).toBe("/docs");
-    expect(app.docs.options.props?.()).toEqual({ specUrl: "/docs/json" });
+    expect(app.docs.options.props?.()).toEqual({
+      specUrl: "/docs/json",
+      signIn: "/auth/login",
+    });
     expect(app.docs.options.head).toEqual({ title: "API" });
     expect(typeof app.docs.options.lazy).toBe("function");
   });
@@ -33,6 +36,7 @@ describe("$uiSwagger", () => {
     expect(app.docs.options.path).toBe("/developers/api");
     expect(app.docs.options.props?.()).toEqual({
       specUrl: "https://api.example.com/openapi.json",
+      signIn: "/auth/login",
     });
     expect(app.docs.options.head).toEqual({ title: "Example API" });
   });

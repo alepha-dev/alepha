@@ -15,7 +15,10 @@ An API explorer page, reading the app's OpenAPI document.
 lists the operations by tag with a search, and shows each in full:
 parameters, request body, responses, their schemas, and what Alepha
 declared about it (the action, who may call it, middlewares, declared
-errors, timeout) from the `x-alepha-*` extensions.
+errors, timeout) from the `x-alepha-*` extensions. Each operation can be
+called from a form built from its schemas, as the signed-in user (the
+session cookie) or with a token typed in, and a gated one says whether the
+viewer's permissions reach it.
 
 The page and the document share the `/docs` prefix by default, which is
 fine: the page is `/docs`, the document `/docs/json`.
@@ -37,10 +40,11 @@ explorer only when someone opens it.
 
 ## Options
 
-| Option  | Type           | Required | Description                                                                                                                           |
-| ------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`  | `string`       | No       | The page's name in the router, for `router.push(name)`.                                                                               |
-| `path`  | `string`       | No       | Where the explorer is mounted.                                                                                                        |
-| `spec`  | `string`       | No       | Where the OpenAPI document is served: `&lt;prefix&gt;/json` of the app's `$swagger`, or any OpenAPI 3 document the browser may fetch. |
-| `title` | `string`       | No       | The browser tab's title.                                                                                                              |
-| `use`   | `Middleware[]` | No       | Middlewares guarding the page, `[$secure({ roles: ["admin"] })]` for an explorer only the team should see                             |
+| Option   | Type           | Required | Description                                                                                                                           |
+| -------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`   | `string`       | No       | The page's name in the router, for `router.push(name)`.                                                                               |
+| `path`   | `string`       | No       | Where the explorer is mounted.                                                                                                        |
+| `spec`   | `string`       | No       | Where the OpenAPI document is served: `&lt;prefix&gt;/json` of the app's `$swagger`, or any OpenAPI 3 document the browser may fetch. |
+| `title`  | `string`       | No       | The browser tab's title.                                                                                                              |
+| `signIn` | `string`       | No       | Where to sign in, linked from a gated operation when nobody is signed in.                                                             |
+| `use`    | `Middleware[]` | No       | Middlewares guarding the page, `[$secure({ roles: ["admin"] })]` for an explorer only the team should see                             |

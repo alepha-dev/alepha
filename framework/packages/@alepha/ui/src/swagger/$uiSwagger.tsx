@@ -34,6 +34,13 @@ export interface UiSwaggerOptions {
   title?: string;
 
   /**
+   * Where to sign in, linked from a gated operation when nobody is signed in.
+   *
+   * @default "/auth/login"
+   */
+  signIn?: string;
+
+  /**
    * Middlewares guarding the page, `[$secure({ roles: ["admin"] })]` for an
    * explorer only the team should see. The OpenAPI document itself is served
    * by `$swagger`: guard that route too, or the JSON stays public.
@@ -49,7 +56,10 @@ export interface UiSwaggerOptions {
  * lists the operations by tag with a search, and shows each in full:
  * parameters, request body, responses, their schemas, and what Alepha
  * declared about it (the action, who may call it, middlewares, declared
- * errors, timeout) from the `x-alepha-*` extensions.
+ * errors, timeout) from the `x-alepha-*` extensions. Each operation can be
+ * called from a form built from its schemas, as the signed-in user (the
+ * session cookie) or with a token typed in, and a gated one says whether the
+ * viewer's permissions reach it.
  *
  * The page and the document share the `/docs` prefix by default, which is
  * fine: the page is `/docs`, the document `/docs/json`.
@@ -73,12 +83,13 @@ export const $uiSwagger = (
   options: UiSwaggerOptions = {},
 ): PagePrimitive<any, SwaggerExplorerProps> => {
   const specUrl = options.spec ?? "/docs/json";
+  const signIn = options.signIn ?? "/auth/login";
   return $page<any, SwaggerExplorerProps>({
     name: options.name ?? "swagger",
     path: options.path ?? "/docs",
     use: options.use,
     head: { title: options.title ?? "API" },
-    props: () => ({ specUrl }),
+    props: () => ({ specUrl, signIn }),
     lazy: () => import("./SwaggerExplorer.tsx"),
   });
 };
