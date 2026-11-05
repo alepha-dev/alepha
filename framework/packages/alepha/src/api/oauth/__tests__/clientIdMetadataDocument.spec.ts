@@ -251,9 +251,9 @@ describe("CIMD: resolving a URL client id", () => {
       ),
     );
 
-    expect((await authorize(CLIENT_ID, "http://localhost/callback")).status).toBe(
-      400,
-    );
+    expect(
+      (await authorize(CLIENT_ID, "http://localhost/callback")).status,
+    ).toBe(400);
     await alepha.stop();
   });
 
