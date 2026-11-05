@@ -87,10 +87,18 @@ export const useDataTableRefresh = <T>(
     setRefreshKey((k) => k + 1);
   }, []);
 
+  // The spinner's one-second timer, cleared on unmount: a table that is gone
+  // must not take a state update (in a jsdom spec, it lands after teardown).
+  const spinTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => () => clearTimeout(spinTimer.current), []);
+
   const handleRefreshClick = useCallback(() => {
     setIsRefreshing(true);
     refresh();
-    setTimeout(() => setIsRefreshing(false), 1000);
+    clearTimeout(spinTimer.current);
+    spinTimer.current = setTimeout(() => setIsRefreshing(false), 1000);
   }, [refresh]);
 
   // React to the external `refreshSignal` prop. The first render seeds the
