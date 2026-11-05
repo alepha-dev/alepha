@@ -99,9 +99,10 @@ export class ServerBodyParserProvider {
             return;
           }
         } else {
-          stream = Readable.toWeb(
-            nodeReq as Readable,
-          ) as unknown as ReadableStream;
+          // The plain Node request: read it as a Node stream. Wrapping it in
+          // `Readable.toWeb` cost a Web Streams adapter, a promise per chunk
+          // and a copy, which made POST the slowest path next to Express.
+          return this.parseNodeRequest(nodeReq as Readable, request, route);
         }
       }
 
@@ -151,6 +152,158 @@ export class ServerBodyParserProvider {
     },
   });
 
+  /**
+   * The body of a plain Node request, read from its own stream, with the
+   * same size limits and the same errors as the Web stream path.
+   */
+  protected parseNodeRequest(
+    nodeReq: Readable,
+    request: { headers: Record<string, string>; body: unknown },
+    route: { schema?: { body?: ZType } },
+  ): Promise<void> | undefined {
+    const schema = route.schema?.body;
+    if (!schema) {
+      return;
+    }
+
+    const contentType = request.headers["content-type"] ?? "";
+    if (!contentType.startsWith("multipart/")) {
+      const contentLength = request.headers["content-length"];
+      if (contentLength) {
+        const size = Number.parseInt(contentLength, 10);
+        if (!Number.isNaN(size) && size > this.options.limit) {
+          throw new HttpError(
+            { status: 413 },
+            { message: "Request body size limit exceeded" },
+          );
+        }
+      }
+    }
+
+    const kind = this.bodyKind(request.headers, schema);
+    if (!kind) {
+      return;
+    }
+
+    return (
+      this.nodeStreamToBuffer(nodeReq)
+        .then((buffer) => this.parseBuffer(kind, buffer, request.headers))
+        // Assigns onto the request and hands nothing on, like the Web path.
+        // oxlint-disable-next-line promise/always-return
+        .then((body) => {
+          if (body) {
+            request.body = body;
+          }
+        })
+        .catch((error) => {
+          if (error instanceof HttpError) {
+            throw error;
+          }
+          throw new HttpError(
+            { status: 400 },
+            { message: "Failed to parse request body", cause: error },
+          );
+        })
+    );
+  }
+
+  /**
+   * Which parser a body takes, from its content type and the route's
+   * schema, the same order {@link parse} follows. `undefined` reads nothing.
+   */
+  protected bodyKind(
+    headers: Record<string, string>,
+    schema: ZType,
+  ): "text" | "json" | "urlencoded" | undefined {
+    const contentType = headers["content-type"];
+    if (!contentType) return undefined;
+    if (contentType.startsWith("text/plain") || z.schema.isString(schema)) {
+      return "text";
+    }
+    if (contentType.startsWith("application/json")) return "json";
+    if (contentType.startsWith("application/x-www-form-urlencoded")) {
+      return "urlencoded";
+    }
+    return undefined;
+  }
+
+  protected async parseBuffer(
+    kind: "text" | "json" | "urlencoded",
+    buffer: Buffer,
+    headers: Record<string, string>,
+  ): Promise<object | string> {
+    const inflated = await this.maybeDecompress(
+      buffer,
+      headers["content-encoding"],
+    );
+    const text = inflated.toString("utf-8");
+    if (kind === "json") {
+      return JSON.parse(text);
+    }
+    if (kind === "urlencoded") {
+      return this.urlEncodedToObject(text);
+    }
+    return text;
+  }
+
+  /**
+   * A Node stream read to the end into one Buffer, refused past the size
+   * limit like {@link streamToBuffer}.
+   */
+  protected nodeStreamToBuffer(stream: Readable): Promise<Buffer> {
+    const limit = this.options.limit;
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      let total = 0;
+      let settled = false;
+
+      const cleanup = () => {
+        stream.off("data", onData);
+        stream.off("end", onEnd);
+        stream.off("error", onError);
+        stream.off("close", onClose);
+      };
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const onData = (chunk: Buffer | string) => {
+        const buffer = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+        total += buffer.length;
+        if (total > limit) {
+          this.log.warn(`Body size limit exceeded: ${total} > ${limit}`);
+          // Stop reading; the rest of the upload is discarded with the request.
+          stream.pause();
+          fail(
+            new HttpError(
+              { status: 413 },
+              { message: "Request body size limit exceeded" },
+            ),
+          );
+          return;
+        }
+        chunks.push(buffer);
+      };
+      const onEnd = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(chunks.length === 1 ? chunks[0] : Buffer.concat(chunks, total));
+      };
+      const onError = (error: Error) => fail(error);
+      // A client that aborts mid-upload closes without `end`.
+      const onClose = () =>
+        fail(new Error("Request closed before its body ended"));
+
+      stream.on("data", onData);
+      stream.on("end", onEnd);
+      stream.on("error", onError);
+      stream.on("close", onClose);
+    });
+  }
+
   public async parse(
     stream: ReadableStream,
     headers: Record<string, string>,
@@ -190,6 +343,13 @@ export class ServerBodyParserProvider {
     contentEncoding?: string,
   ): Promise<object> {
     const text = await this.parseText(stream, contentEncoding);
+    return this.urlEncodedToObject(text);
+  }
+
+  /**
+   * A form-urlencoded body as an object: a repeated key becomes an array.
+   */
+  protected urlEncodedToObject(text: string): object {
     const params = new URLSearchParams(text);
     const result: Record<string, string | string[]> = {};
 
