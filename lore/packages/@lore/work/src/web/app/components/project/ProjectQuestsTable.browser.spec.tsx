@@ -824,6 +824,20 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         within(confirm).getAllByRole("button").at(-1) as HTMLElement,
       );
 
+      // The delete is held behind its Undo toast (#Q3118): nothing is sent
+      // until the toast closes, and closing it by hand is "I meant it".
+      const undoToast = await waitFor(() => {
+        const found = [
+          ...document.querySelectorAll("[data-sonner-toast]"),
+        ].find((toast) => toast.textContent?.includes("#Q1 deleted"));
+        if (!found) throw new Error("no undo toast yet");
+        return found as HTMLElement;
+      });
+      expect(links.deletes).toBe(0);
+      fireEvent.click(
+        within(undoToast).getByRole("button", { name: /close/i }),
+      );
+
       const message = "This quest is in a published release (spec)";
       await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
       await new Promise((resolve) => setTimeout(resolve, 100));

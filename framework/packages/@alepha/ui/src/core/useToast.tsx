@@ -30,6 +30,20 @@ export interface ToastOptions {
    * Secondary description line under the main message.
    */
   description?: string;
+  /**
+   * Reuse an id to replace a toast in place rather than stacking a second
+   * one: a "Shelving..." toast that becomes "Shelved" keeps its slot.
+   */
+  id?: string | number;
+  /**
+   * Called when the reader closes the toast (the close button, a swipe).
+   * Not called on an action click or a timeout.
+   */
+  onDismiss?: () => void;
+  /**
+   * Called when the toast times out on its own.
+   */
+  onAutoClose?: () => void;
 }
 
 /**
@@ -38,11 +52,22 @@ export interface ToastOptions {
  * for code that picks the intent dynamically.
  */
 export interface Toast {
-  show(message: string, intent?: ToastIntent, options?: ToastOptions): void;
+  /**
+   * Returns the toast's id, for `dismiss` or to replace it with `id`.
+   */
+  show(
+    message: string,
+    intent?: ToastIntent,
+    options?: ToastOptions,
+  ): string | number;
   success(message: string, options?: ToastOptions): void;
   error(message: string, options?: ToastOptions): void;
   warning(message: string, options?: ToastOptions): void;
   info(message: string, options?: ToastOptions): void;
+  /**
+   * Close one toast by the id a call above returned, or every toast.
+   */
+  dismiss(id?: string | number): void;
 }
 
 /**
@@ -80,7 +105,7 @@ const toast: Toast = {
     if (intent === "warning") return sonner.warning(message, opts);
     if (intent === "info") return sonner.info(message, opts);
     // Neutral "primary" — sonner exposes `.message` for the unflavoured toast.
-    sonner.message(message, opts);
+    return sonner.message(message, opts);
   },
   success(message, options) {
     sonner.success(message, toSonner(options));
@@ -93,6 +118,9 @@ const toast: Toast = {
   },
   info(message, options) {
     sonner.info(message, toSonner(options));
+  },
+  dismiss(id) {
+    sonner.dismiss(id);
   },
 };
 

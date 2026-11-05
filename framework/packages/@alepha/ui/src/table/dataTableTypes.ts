@@ -17,6 +17,7 @@ import type {
   DataTableFilterOperatorPreset,
   DataTableFilterOperatorValue,
 } from "./DataTableFilterOperator.tsx";
+import type { OptimisticRows } from "./useOptimisticRows.ts";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -95,9 +96,20 @@ export interface ColumnDef<T> {
  * A row deleted from its own menu may be ticked, and a selection that
  * survives the delete points at a row that no longer exists.
  */
-export interface RowActionContext {
+export interface RowActionContext<T = any> {
+  /**
+   * Back to page one and fetch: what a filter change does.
+   */
   refresh: () => void;
+  /**
+   * Fetch the page again where the reader is, rows kept on screen meanwhile.
+   */
+  reload: () => void;
   clearSelection: () => void;
+  /**
+   * Change rows on screen before the server answers. See `OptimisticRows`.
+   */
+  optimistic: OptimisticRows<T>;
 }
 
 export interface RowAction<T> {
@@ -148,9 +160,11 @@ export type RowActionEntry<T> = RowAction<T> | RowActionGroup<T>;
  * Context passed to every bulk-action `onClick`. `clearSelection()`
  * empties the checkbox set; `refresh()` re-fires the current fetch.
  */
-export interface BulkActionContext {
+export interface BulkActionContext<T = any> {
   refresh: () => void;
+  reload: () => void;
   clearSelection: () => void;
+  optimistic: OptimisticRows<T>;
 }
 
 /**

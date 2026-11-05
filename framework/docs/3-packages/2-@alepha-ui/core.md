@@ -30,3 +30,4 @@ shell. Load the stylesheet once, at the app's entry: `@alepha/ui/styles.css`.
 
 - [`useDialog`](/docs/reference-react-hooks-usedialog) - Imperative dialog API. Returns an object with:
 - [`useIsMobile`](/docs/reference-react-hooks-useismobile) - The shadcn version this started from seeds `undefined` and fills it in from
+- [`useUndoable`](/docs/reference-react-hooks-useundoable) - Optimistic writes with an Undo toast.

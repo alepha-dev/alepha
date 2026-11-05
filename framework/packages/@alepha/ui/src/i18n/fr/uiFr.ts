@@ -62,6 +62,7 @@ export const uiFr: Record<string, string> = {
   "useDialog.cancel": "Annuler",
   "useDialog.confirm": "Confirmer",
   "useDialog.ok": "OK",
+  "undoable.undo": "Annuler",
 
   // The data table: toolbar, selection, empty state.
   "dataTable.bulkMenu.empty": "Rien à choisir",

@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
   useDialog,
   useToast,
+  useUndoable,
   UserAvatar,
 } from "@alepha/ui";
 import {
@@ -19,6 +20,7 @@ import {
   type BulkAction,
   type BulkActionContext,
   type BulkMenuAction,
+  type RowActionContext,
 } from "@alepha/ui/table";
 import {
   currentProjectAtom,
@@ -112,8 +114,9 @@ const ProjectQuestsTable = () => {
   const dateFormatter = useInject(DateTimeProvider);
   const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
-  const dialog = useDialog();
   const toaster = useToast();
+  const undoable = useUndoable();
+  const dialog = useDialog();
   // Shared with every surface that names a member, under
   // `["project-users", projectId]` (#E59, #Q2331), rather than a second copy
   // of the same read in an effect.
@@ -180,158 +183,170 @@ const ProjectQuestsTable = () => {
     [questApi],
   );
 
-  const acceptAction = useAction<
-    [quest: QuestResource, refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, quest, refresh) => {
-        await questMutations.accept(quest.id);
-        refresh();
-      },
-    },
-    [questMutations],
-  );
+  const ref = (quest: QuestResource) => formatReference("quest", quest.shortId);
 
-  const shelveAction = useAction<
-    [quest: QuestResource, refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, quest, refresh) => {
-        // Same warning QuestView gives: shelving a quest others depend on
-        // leaves them blocked with no path forward. The questline is fetched
-        // on click rather than per row - a table of 25 quests should not
-        // cost 25 extra requests for a menu entry most rows never open.
-        //
-        // ⚠️ Still swallowed, on purpose: a warning that could not be read
-        // must not block the shelve it would have warned about.
-        const questline = await questApi
-          .getQuestLine({ params: { id: quest.id } })
-          .catch(() => ({ dependents: [] }));
-        const blocked = questline.dependents.filter((d) => !d.completedAt);
-        const confirmed = await dialog.confirm({
-          title: tr("quest.view.shelve.title"),
-          description: blocked.length
-            ? tr("quest.view.shelve.confirmWithDependents", {
-                args: [
-                  blocked
-                    .map((d) => formatReference("quest", d.shortId))
-                    .join(", "),
-                ],
-              })
-            : tr("quest.view.shelve.confirm"),
-          confirmLabel: tr("quest.view.shelve.confirmButton"),
-          cancelLabel: tr("common.cancel"),
-        });
-        if (!confirmed) return;
-        await questMutations.shelve(quest.id);
-        refresh();
-      },
-    },
-    [questApi, questMutations, dialog, tr],
-  );
+  /**
+   * Prototype: every row transition below is optimistic. The row changes on
+   * screen in the same frame as the click, the toast says so and offers
+   * Undo, and the request follows. A reversible write (accept, shelve,
+   * unshelve) is sent at once and Undo sends its inverse; a delete has no
+   * inverse, so it is held until the toast closes and Undo never sends it.
+   */
+  // Not `useAction`s: an optimistic change must reach the screen in the
+  // click's own frame, and `useAction` awaits its begin listeners before the
+  // handler runs (80 ms measured in dev). `undoable.run` reports its own
+  // failures through the same `react:action:error` channel.
+  const accept = (quest: QuestResource, ctx: RowActionContext<QuestResource>) =>
+    void undoable.run({
+      message: tr("board.undo.accepted", { args: [ref(quest)] }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () =>
+        ctx.optimistic.patch(quest, {
+          ...quest,
+          acceptedAt: dateFormatter.nowISOString(),
+          metadata: { ...quest.metadata, status: "in_progress" },
+        }),
+      commit: () => questMutations.accept(quest.id),
+      undo: () => questMutations.unassign(quest.id),
+    });
 
-  const unshelveAction = useAction<
-    [quest: QuestResource, refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, quest, refresh) => {
-        await questMutations.unshelve(quest.id);
-        refresh();
-      },
-    },
-    [questMutations],
-  );
+  const shelve = (
+    quest: QuestResource,
+    ctx: RowActionContext<QuestResource>,
+  ) => {
+    // No confirm any more: Undo is the safety net. The one thing the confirm
+    // said that Undo cannot, "this leaves others blocked", is read beside the
+    // write and follows as a warning if it applies. A warning that could not
+    // be read stays quiet.
+    void questApi
+      .getQuestLine({ params: { id: quest.id } })
+      .then((line) =>
+        line.dependents
+          .filter((d) => !d.completedAt)
+          .map((d) => formatReference("quest", d.shortId)),
+      )
+      .then((blocked) => {
+        if (blocked.length > 0) {
+          toaster.warning(
+            tr("board.undo.blocks", { args: [blocked.join(", ")] }),
+          );
+        }
+      })
+      .catch(() => null);
+    void undoable.run({
+      message: tr("board.undo.shelved", { args: [ref(quest)] }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ctx.optimistic.remove(quest),
+      commit: () => questMutations.shelve(quest.id),
+      undo: () => questMutations.unshelve(quest.id),
+    });
+  };
 
-  const removeAction = useAction<
-    [quest: QuestResource, refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, quest, refresh) => {
-        const confirmed = await dialog.confirm({
-          title: tr("board.confirm-delete-title"),
-          description: tr("board.confirm-delete-message"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        await questMutations.remove(quest.id);
-        refresh();
-      },
-    },
-    [questMutations, dialog, tr],
-  );
+  const unshelve = (
+    quest: QuestResource,
+    ctx: RowActionContext<QuestResource>,
+  ) =>
+    void undoable.run({
+      message: tr("board.undo.unshelved", { args: [ref(quest)] }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ctx.optimistic.remove(quest),
+      commit: () => questMutations.unshelve(quest.id),
+      undo: () => questMutations.shelve(quest.id),
+    });
+
+  // Confirm AND Undo, for the one irreversible verb: the confirm catches the
+  // misclick, the Undo catches "wrong row". Deferred: the delete goes out when
+  // the toast closes, so Undo is a real undo with no server-side trash.
+  const remove = async (
+    quest: QuestResource,
+    ctx: RowActionContext<QuestResource>,
+  ) => {
+    const confirmed = await dialog.confirm({
+      title: tr("board.confirm-delete-title"),
+      description: tr("board.confirm-delete-message"),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    void undoable.run({
+      message: tr("board.undo.deleted", { args: [ref(quest)] }),
+      undoLabel: tr("board.undo.undo"),
+      intent: "primary",
+      apply: () => ctx.optimistic.remove(quest),
+      commit: () => questMutations.remove(quest.id),
+    });
+  };
 
   // The bulk writes settle per id through `settleBulk` and report refusals
   // in `useBulkReport`, so they do not throw for a refused row; they are
   // actions for the busy state and for anything failing outside that.
   const count = (ids: number[]) => String(ids.length);
 
-  const shelveManyAction = useAction<
-    [selected: QuestResource[], ctx: BulkActionContext],
-    void
-  >(
-    {
-      handler: async (_ctx, selected, ctx) => {
-        // Only a `todo` quest can be shelved, and the server refuses the
-        // rest one by one. They are counted here and never sent, so an
-        // accepted row in the selection costs a note, not the batch.
-        const eligible = selected.filter(
-          (quest) =>
-            !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
-        );
-        const skipped = selected.length - eligible.length;
-        if (eligible.length === 0) {
-          toaster.error(tr("board.bulk.shelve.none"));
-          return;
-        }
-        const outcome = await questMutations.shelveMany(
-          eligible.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.shelved", { args: [count(outcome.done)] }),
-          skipped > 0
-            ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
-            : undefined,
-        );
-        ctx.refresh();
-        ctx.clearSelection();
+  const shelveMany = (
+    selected: QuestResource[],
+    ctx: BulkActionContext<QuestResource>,
+  ) => {
+    // Only a `todo` quest can be shelved, and the server refuses the
+    // rest one by one. They are counted here and never sent, so an
+    // accepted row in the selection costs a note, not the batch.
+    const eligible = selected.filter(
+      (quest) => !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
+    );
+    const skipped = selected.length - eligible.length;
+    if (eligible.length === 0) {
+      toaster.error(tr("board.bulk.shelve.none"));
+      return;
+    }
+    const ids = eligible.map((quest) => quest.id);
+    let done: number[] = [];
+    ctx.clearSelection();
+    void undoable.run({
+      message: tr("board.undo.bulkShelved", { args: [count(ids)] }),
+      description:
+        skipped > 0
+          ? tr("board.bulk.shelve.skipped", { args: [String(skipped)] })
+          : undefined,
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ctx.optimistic.remove(eligible),
+      commit: async () => {
+        const outcome = await questMutations.shelveMany(ids);
+        done = outcome.done;
+        // A refused row comes back on its own: the settle reloads the
+        // page and the server still lists it.
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-    },
-    [questMutations, reportBulk, toaster, tr],
-  );
+      undo: () => questMutations.unshelveMany(done),
+    });
+  };
 
-  const unshelveManyAction = useAction<
-    [selected: QuestResource[], ctx: BulkActionContext],
-    void
-  >(
-    {
-      handler: async (_ctx, selected, ctx) => {
-        const eligible = selected.filter((quest) => quest.shelvedAt);
-        const skipped = selected.length - eligible.length;
-        if (eligible.length === 0) {
-          toaster.error(tr("board.bulk.unshelve.none"));
-          return;
-        }
-        const outcome = await questMutations.unshelveMany(
-          eligible.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.unshelved", { args: [count(outcome.done)] }),
-          skipped > 0
-            ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
-            : undefined,
-        );
-        ctx.refresh();
-        ctx.clearSelection();
+  const unshelveMany = (
+    selected: QuestResource[],
+    ctx: BulkActionContext<QuestResource>,
+  ) => {
+    const eligible = selected.filter((quest) => quest.shelvedAt);
+    const skipped = selected.length - eligible.length;
+    if (eligible.length === 0) {
+      toaster.error(tr("board.bulk.unshelve.none"));
+      return;
+    }
+    const ids = eligible.map((quest) => quest.id);
+    let done: number[] = [];
+    ctx.clearSelection();
+    void undoable.run({
+      message: tr("board.undo.bulkUnshelved", { args: [count(ids)] }),
+      description:
+        skipped > 0
+          ? tr("board.bulk.unshelve.skipped", { args: [String(skipped)] })
+          : undefined,
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ctx.optimistic.remove(eligible),
+      commit: async () => {
+        const outcome = await questMutations.unshelveMany(ids);
+        done = outcome.done;
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-    },
-    [questMutations, reportBulk, toaster, tr],
-  );
+      undo: () => questMutations.shelveMany(done),
+    });
+  };
 
   const attachToReleaseAction = useAction<
     [
@@ -360,47 +375,36 @@ const ProjectQuestsTable = () => {
     [questMutations, reportBulk, tr],
   );
 
-  const removeManyAction = useAction<
-    [selected: QuestResource[], ctx: BulkActionContext],
-    void
-  >(
-    {
-      handler: async (_ctx, selected, ctx) => {
-        const n = String(selected.length);
-        const confirmed = await dialog.confirm({
-          title: tr("board.bulk.delete.title", { args: [n] }),
-          description: tr("board.confirm-delete-message"),
-          confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        const outcome = await questMutations.removeMany(
-          selected.map((quest) => quest.id),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.deleted", { args: [count(outcome.done)] }),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
+  const removeMany = async (
+    selected: QuestResource[],
+    ctx: BulkActionContext<QuestResource>,
+  ) => {
+    const n = String(selected.length);
+    const confirmed = await dialog.confirm({
+      title: tr("board.bulk.delete.title", { args: [n] }),
+      description: tr("board.confirm-delete-message"),
+      confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
+      cancelLabel: tr("common.cancel"),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    const ids = selected.map((quest) => quest.id);
+    ctx.clearSelection();
+    void undoable.run({
+      message: tr("board.undo.bulkDeleted", { args: [count(ids)] }),
+      undoLabel: tr("board.undo.undo"),
+      intent: "primary",
+      apply: () => ctx.optimistic.remove(selected),
+      commit: async () => {
+        const outcome = await questMutations.removeMany(ids);
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-    },
-    [questMutations, reportBulk, dialog, tr],
-  );
+    });
+  };
 
   // Page-wide (#E59 rule 10): every row and bulk write waits while any of
   // them runs. The bulk bar has no disabled state, so its buttons hide.
-  const busy =
-    setReleaseAction.loading ||
-    acceptAction.loading ||
-    shelveAction.loading ||
-    unshelveAction.loading ||
-    removeAction.loading ||
-    shelveManyAction.loading ||
-    unshelveManyAction.loading ||
-    attachToReleaseAction.loading ||
-    removeManyAction.loading;
+  const busy = setReleaseAction.loading || attachToReleaseAction.loading;
 
   const renderAvatar = (userId?: string) => {
     const user = userId ? users.find((u) => u.id === userId) : undefined;
@@ -548,7 +552,7 @@ const ProjectQuestsTable = () => {
       // selection of shelved rows has nothing for it to do (feedback #2063).
       visible: (selected) =>
         !busy && selected.some((quest) => !quest.shelvedAt),
-      onClick: (selected, ctx) => void shelveManyAction.run(selected, ctx),
+      onClick: (selected, ctx) => shelveMany(selected, ctx),
     });
   }
 
@@ -559,7 +563,7 @@ const ProjectQuestsTable = () => {
       // And this one only when at least one selected row is shelved. A mixed
       // selection shows both, each acting on the rows it fits.
       visible: (selected) => !busy && selected.some((quest) => quest.shelvedAt),
-      onClick: (selected, ctx) => void unshelveManyAction.run(selected, ctx),
+      onClick: (selected, ctx) => unshelveMany(selected, ctx),
     });
   }
 
@@ -589,7 +593,7 @@ const ProjectQuestsTable = () => {
       label: tr("board.bulk.delete"),
       destructive: true,
       visible: () => !busy,
-      onClick: (selected, ctx) => void removeManyAction.run(selected, ctx),
+      onClick: (selected, ctx) => void removeMany(selected, ctx),
     });
   }
 
@@ -1110,8 +1114,8 @@ const ProjectQuestsTable = () => {
                   disabled: () => busy,
                   onClick: (
                     _quest: QuestResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void acceptAction.run(quest, refresh),
+                    ctx: RowActionContext<QuestResource>,
+                  ) => accept(quest, ctx),
                 },
               ]
             : []),
@@ -1123,8 +1127,8 @@ const ProjectQuestsTable = () => {
                   disabled: () => busy,
                   onClick: (
                     _quest: QuestResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void shelveAction.run(quest, refresh),
+                    ctx: RowActionContext<QuestResource>,
+                  ) => shelve(quest, ctx),
                 },
               ]
             : []),
@@ -1136,8 +1140,8 @@ const ProjectQuestsTable = () => {
                   disabled: () => busy,
                   onClick: (
                     _quest: QuestResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void unshelveAction.run(quest, refresh),
+                    ctx: RowActionContext<QuestResource>,
+                  ) => unshelve(quest, ctx),
                 },
               ]
             : []),
@@ -1150,8 +1154,8 @@ const ProjectQuestsTable = () => {
                   disabled: () => busy,
                   onClick: (
                     _quest: QuestResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void removeAction.run(quest, refresh),
+                    ctx: RowActionContext<QuestResource>,
+                  ) => void remove(quest, ctx),
                 },
               ]
             : []),
