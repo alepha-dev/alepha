@@ -44,6 +44,7 @@
     "./calendar": "./src/calendar/index.ts",
     "./otp": "./src/otp/index.ts",
     "./resizable": "./src/resizable/index.ts",
+    "./swagger": "./src/swagger/index.ts",
     "./i18n/fr": "./src/i18n/fr/index.ts",
     "./styles.css": "./src/styles.css",
     "./package.json": "./package.json"
@@ -117,6 +118,10 @@
       "./resizable": {
         "types": "./dist/resizable/index.d.ts",
         "default": "./dist/resizable/index.js"
+      },
+      "./swagger": {
+        "types": "./dist/swagger/index.d.ts",
+        "default": "./dist/swagger/index.js"
       },
       "./i18n/fr": {
         "types": "./dist/i18n/fr/index.d.ts",
