@@ -22,6 +22,7 @@ import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
 import { RegistryCommand } from "./commands/RegistryCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
+import { RootCommand } from "./commands/RootCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { SigilCommand } from "./commands/SigilCommand.ts";
 import { StackCommand } from "./commands/StackCommand.ts";
@@ -129,6 +130,7 @@ export const AlephaLoreCli = $module({
     RegistryCommand,
     StackCommand,
     LoginCommand,
+    RootCommand,
   ],
 });
 

@@ -57,6 +57,8 @@ describe("the Lore CLI command surface", () => {
     const names = setup()
       .testGetTopLevelCommands()
       .map((command) => command.name)
+      // The root command (name `""`) is what a bare `lore` runs, not a verb.
+      .filter((name) => name !== "")
       .sort();
 
     expect(names).toEqual([

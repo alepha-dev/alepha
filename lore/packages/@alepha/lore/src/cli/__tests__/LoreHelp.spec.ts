@@ -150,28 +150,47 @@ describe("lore -h and lore help", () => {
     expect(out.text).toContain("Commands:");
   });
 
+  /**
+   * What the bin prints for `argv`, run the way the bin runs it.
+   */
+  const page = async (argv: string[]) => {
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", NO_COLOR: "true" },
+    })
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider })
+      .with(AlephaCommand)
+      .with(AlephaLoreCli);
+    alepha.store.mut(cliOptions, (options) => ({
+      ...options,
+      name: "lore",
+      argv,
+    }));
+    await alepha.start();
+    const exitCode = process.exitCode;
+    process.exitCode = 0;
+    return { text: alepha.inject(MemoryOutputProvider).text, exitCode };
+  };
+
+  /**
+   * With no root command, `CliProvider` returns silently on an empty argv,
+   * and a bare `lore` printed nothing with exit 0 (#Q3128).
+   */
+  it("prints the command list for a bare lore, as for lore --help", async ({
+    expect,
+  }) => {
+    const bare = await page([]);
+    const flag = await page(["--help"]);
+
+    expect(bare.text).toContain("Commands:");
+    expect(bare.text).toContain("quest");
+    expect(bare.text).toBe(flag.text);
+    expect(bare.exitCode).not.toBe(1);
+  });
+
   it("prints the same page for lore help quest create as for lore quest create -h", async ({
     expect,
   }) => {
-    const page = async (argv: string[]) => {
-      const alepha = Alepha.create({
-        env: { LOG_LEVEL: "error", NO_COLOR: "true" },
-      })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-        .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider })
-        .with(AlephaCommand)
-        .with(AlephaLoreCli);
-      alepha.store.mut(cliOptions, (options) => ({
-        ...options,
-        name: "lore",
-        argv,
-      }));
-      await alepha.start();
-      const exitCode = process.exitCode;
-      process.exitCode = 0;
-      return { text: alepha.inject(MemoryOutputProvider).text, exitCode };
-    };
-
     const word = await page(["help", "quest", "create"]);
     const flag = await page(["quest", "create", "-h"]);
 
