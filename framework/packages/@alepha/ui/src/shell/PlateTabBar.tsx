@@ -99,7 +99,13 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
         // the fold reads the same either way.
         // `overflow-x-auto` so a bar wider than a phone scrolls sideways
         // instead of widening the page; the tabs never wrap or shrink.
-        "bg-muted border-border flex gap-5 overflow-x-auto px-6 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        // `overflow-x: auto` computes `overflow-y` as `auto` too, so the bar
+        // is a vertical scroller as well: anything a pixel taller than it
+        // shows a vertical scrollbar wherever scrollbars are always visible
+        // (macOS "always show", Windows). `overflow-y-hidden` stops that, and
+        // the tabs carry no negative bottom margin, which is what used to
+        // overflow by one pixel and hide half of the active underline.
+        "bg-muted border-border flex gap-5 overflow-x-auto overflow-y-hidden px-6 shadow-[inset_0_1px_0_0_var(--bevel)]",
         props.divided !== false && "border-t",
       )}
       role={navigates ? "navigation" : "tablist"}
@@ -107,7 +113,7 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
       {props.tabs.map((tab) => {
         const active = tab.key === props.active;
         const className = cn(
-          "-mb-px inline-flex h-[42px] shrink-0 items-center gap-[7px] border-b-2 text-[13.5px] font-medium whitespace-nowrap transition-colors",
+          "inline-flex h-[42px] shrink-0 items-center gap-[7px] border-b-2 text-[13.5px] font-medium whitespace-nowrap transition-colors",
           active
             ? "border-primary text-foreground"
             : "text-muted-foreground hover:text-foreground border-transparent",
