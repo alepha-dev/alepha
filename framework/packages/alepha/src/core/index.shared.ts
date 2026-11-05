@@ -2,8 +2,10 @@
 
 export * from "./Alepha.ts";
 export * from "./AlephaCore.ts";
+export * from "./constants/MIDDLEWARE_PERMISSIONS.ts";
 export * from "./constants/MIDDLEWARE_PROTECTED.ts";
 export * from "./constants/MIDDLEWARE_RESPONSES.ts";
+export * from "./constants/MIDDLEWARE_ROLES.ts";
 export * from "./errors/AbortedError.ts";
 export * from "./errors/AlephaError.ts";
 export * from "./errors/AppNotStartedError.ts";

@@ -44,7 +44,8 @@ export default defineConfig({
     cloudflare: {
       config: {
         assets: {
-          run_worker_first: ["/api/*"],
+          // `/docs/json` is the OpenAPI document the API explorer page reads.
+          run_worker_first: ["/api/*", "/docs/json"],
           not_found_handling: "404-page",
         },
       },

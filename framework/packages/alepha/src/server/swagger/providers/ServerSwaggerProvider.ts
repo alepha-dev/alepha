@@ -7,14 +7,17 @@ import {
   type Infer,
   isTypeFile,
   isTypeStream,
+  MIDDLEWARE_PERMISSIONS,
   MIDDLEWARE_PROTECTED,
   MIDDLEWARE_RESPONSES,
+  MIDDLEWARE_ROLES,
   type MiddlewareMetadata,
   TimeoutError,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
+import { Duration } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   $action,
@@ -345,6 +348,8 @@ export class ServerSwaggerProvider {
         this.documentTimeout(operation, schema);
       }
 
+      this.documentAlephaMetadata(operation, route);
+
       const url = route.prefix + this.replacePathParams(route.path);
 
       openApi.paths[url] = {
@@ -411,6 +416,68 @@ export class ServerSwaggerProvider {
           },
         },
       };
+    }
+  }
+
+  /**
+   * Stamp what Alepha knows about an operation under `x-alepha-*` keys, which
+   * standard OpenAPI viewers ignore and `$uiSwagger` reads:
+   *
+   * - `x-alepha-action`: `{ name, group }`, the `$action` as `useClient` names it.
+   * - `x-alepha-middlewares`: the names of the middlewares it runs through, in order.
+   * - `x-alepha-security`: `{ roles?, permissions? }` when a middleware gates it
+   *   (`MIDDLEWARE_PROTECTED`): any one role admits, every permission is required.
+   *   Read from the `MIDDLEWARE_ROLES` / `MIDDLEWARE_PERMISSIONS` meta, never
+   *   from a middleware's name.
+   * - `x-alepha-errors`: the names of the declared errors, for a strict action.
+   * - `x-alepha-timeout`: the deadline in milliseconds, own or global.
+   *
+   * A key with nothing to say is left out.
+   */
+  protected documentAlephaMetadata(
+    operation: OpenApiOperation,
+    route: ActionPrimitive<RequestConfigSchema>,
+  ): void {
+    operation["x-alepha-action"] = { name: route.name, group: route.group };
+
+    const middlewares = route.middlewares.filter(
+      (m): m is MiddlewareMetadata => !!m,
+    );
+    if (middlewares.length) {
+      operation["x-alepha-middlewares"] = middlewares.map((m) => m.name);
+    }
+
+    const gates = middlewares.filter(
+      (m) => m.meta?.[MIDDLEWARE_PROTECTED] === "true",
+    );
+    if (gates.length) {
+      const list = (key: string): string[] => [
+        ...new Set(
+          gates.flatMap((m) =>
+            (m.meta?.[key] ?? "")
+              .split(",")
+              .map((it) => it.trim())
+              .filter(Boolean),
+          ),
+        ),
+      ];
+      const roles = list(MIDDLEWARE_ROLES);
+      const permissions = list(MIDDLEWARE_PERMISSIONS);
+      operation["x-alepha-security"] = {
+        ...(roles.length ? { roles } : {}),
+        ...(permissions.length ? { permissions } : {}),
+      };
+    }
+
+    if (route.errors !== undefined) {
+      operation["x-alepha-errors"] = route.errors.map(
+        (cls) => this.getErrorIdentity(cls as HttpErrorClass).code,
+      );
+    }
+
+    const timeout = route.timeout;
+    if (timeout !== undefined) {
+      operation["x-alepha-timeout"] = new Duration(timeout).asMilliseconds();
     }
   }
 
