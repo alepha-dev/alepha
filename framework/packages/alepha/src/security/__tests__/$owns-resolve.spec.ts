@@ -9,8 +9,8 @@ import { OwnedResourceProvider } from "../providers/OwnedResourceProvider.ts";
 
 // The shape this option exists for: a deployment holding exactly ONE of
 // something, whose routes therefore name it nowhere.
-const clubs = $entity({
-  name: "resolve_clubs",
+const workspaces = $entity({
+  name: "resolve_workspaces",
   schema: z.object({
     id: db.primaryKey(z.text()),
     createdBy: z.text(),
@@ -22,7 +22,7 @@ const members = $entity({
   name: "resolve_members",
   schema: z.object({
     id: db.primaryKey(z.text()),
-    clubId: z.text(),
+    workspaceId: z.text(),
     userId: z.text(),
   }),
 });
@@ -36,21 +36,21 @@ const createApp = (resolve: () => string | undefined | Promise<string>) => {
     env: { DATABASE_URL: "sqlite://:memory:" },
   });
 
-  class ClubService {
-    clubs = $repository(clubs);
+  class WorkspaceService {
+    workspaces = $repository(workspaces);
     members = $repository(members);
     owned = $inject(OwnedResourceProvider);
 
     read = $pipeline({
       use: [
         $owns({
-          repository: () => this.clubs,
-          // No `param`: nothing in the request names the club.
+          repository: () => this.workspaces,
+          // No `param`: nothing in the request names the workspace.
           resolve: () => resolve() as string,
           owner: "createdBy",
           via: {
             repository: () => this.members,
-            resource: "clubId",
+            resource: "workspaceId",
             user: "userId",
           },
         }),
@@ -59,12 +59,16 @@ const createApp = (resolve: () => string | undefined | Promise<string>) => {
     });
   }
 
-  return { alepha, service: alepha.inject(ClubService) };
+  return { alepha, service: alepha.inject(WorkspaceService) };
 };
 
-const seed = async (service: { clubs: any; members: any }) => {
-  await service.clubs.create({ id: "c1", createdBy: "u1", title: "Padel" });
-  await service.members.create({ id: "m1", clubId: "c1", userId: "u2" });
+const seed = async (service: { workspaces: any; members: any }) => {
+  await service.workspaces.create({
+    id: "c1",
+    createdBy: "u1",
+    title: "Design",
+  });
+  await service.members.create({ id: "m1", workspaceId: "c1", userId: "u2" });
 };
 
 const as = (alepha: Alepha, user: UserAccountToken) => {
@@ -83,7 +87,7 @@ describe("$owns resolve", () => {
 
     await alepha.context.run(async () => {
       as(alepha, owner);
-      expect(await service.read()).toBe("Padel");
+      expect(await service.read()).toBe("Design");
     });
   });
 
@@ -94,7 +98,7 @@ describe("$owns resolve", () => {
 
     await alepha.context.run(async () => {
       as(alepha, member);
-      expect(await service.read()).toBe("Padel");
+      expect(await service.read()).toBe("Design");
     });
   });
 
@@ -140,12 +144,12 @@ describe("$owns resolve", () => {
     expect(() =>
       alepha.inject(
         class {
-          clubs = $repository(clubs);
+          workspaces = $repository(workspaces);
           read = $pipeline({
             use: [
               $owns({
-                repository: () => this.clubs,
-                param: "clubId",
+                repository: () => this.workspaces,
+                param: "workspaceId",
                 resolve: () => "c1",
                 owner: "createdBy",
               }),
@@ -165,11 +169,11 @@ describe("$owns resolve", () => {
     expect(() =>
       alepha.inject(
         class {
-          clubs = $repository(clubs);
+          workspaces = $repository(workspaces);
           read = $pipeline({
             use: [
               $owns({
-                repository: () => this.clubs,
+                repository: () => this.workspaces,
                 owner: "createdBy",
               }),
             ],
@@ -190,11 +194,11 @@ describe("$owns resolve", () => {
     expect(() =>
       alepha.inject(
         class {
-          clubs = $repository(clubs);
+          workspaces = $repository(workspaces);
           read = $pipeline({
             use: [
               $owns({
-                repository: () => this.clubs,
+                repository: () => this.workspaces,
                 resolve: () => "c1",
                 from: "body",
                 owner: "createdBy",

@@ -12,7 +12,7 @@ export interface DashboardTileStatusProps {
 /**
  * A `status` tile: one pill per row, an app copy and its state.
  *
- * The pill's text is the row's `id` (`club/production`), else its badge as
+ * The pill's text is the row's `id` (`acme/production`), else its badge as
  * the locale names it (a board's synthesized "To do" lane), else its title;
  * its count when it has one; its tone is the state; the meta (a version, a
  * last deploy) is the hover.

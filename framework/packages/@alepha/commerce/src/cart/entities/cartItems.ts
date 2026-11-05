@@ -16,7 +16,7 @@ import { carts } from "./carts.ts";
  *
  * ### The line carries the offer
  *
- * Two lines of one product can differ: "Padel, 90 minutes" on court 2 on
+ * Two lines of one product can differ: "Tennis, 90 minutes" on court 2 on
  * Saturday at 18:00 and on court 5 on Sunday at 10:00 are one product and two
  * lines. What differs lives in {@link lineConfig}, and the unique index is
  * `(cartId, productId, lineKey)` so that two adds of the same `good`, or of the
@@ -29,7 +29,7 @@ import { carts } from "./carts.ts";
  * a 409 the storefront shows after re-reading availability. An `offers` table
  * earns its place when pricing is expensive to compute or quoted-versus-sold
  * has to be auditable (airlines need one because offers are shopped across
- * distributors); a single shop or club has neither problem, and a second
+ * distributors); a single shop has neither problem, and a second
  * expiry mechanism for the same hold would be one more thing to drift.
  */
 export const cartItems = $entity({

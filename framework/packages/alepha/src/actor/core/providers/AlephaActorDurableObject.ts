@@ -13,10 +13,12 @@ export class AlephaActorDurableObject extends DurableObject {
   }
   /**
    * Answers a JSON reply, `{ value }` or `{ error: { name, message } }`, and
-   * never throws. Thrown across RPC, an error loses its class, and under the
-   * compatibility date `alepha build` writes (2025-11-17) its message becomes
-   * "AlephaError: ...": as data, a reducer's refusal reaches the caller as
-   * it does on Memory and Redis.
+   * never throws. Thrown across RPC, an error loses its class: it arrives as a
+   * plain `Error`. At the compatibility date `alepha build` writes
+   * (2026-11-03) it keeps its `name` and `message`; at 2025-11-17, the date
+   * before, the message became "AlephaError: ..." (measured 2026-11-05 on
+   * workerd 1.20261103.1). As data, a reducer's refusal reaches the caller as
+   * it does on Memory and Redis, whatever the date.
    */
   public async executeActor(
     identity: string,

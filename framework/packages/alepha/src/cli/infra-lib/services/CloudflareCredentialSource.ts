@@ -78,7 +78,7 @@ export class CloudflareCredentialSource {
   public async resolve(options: {
     root: string;
     accountId?: string;
-    jurisdiction?: "eu" | "fedramp";
+    jurisdiction?: "eu" | "us" | "fedramp";
   }): Promise<ResolvedCloudflareCredential> {
     const { token, origin } = await this.token(options.root);
     const accountId = await this.accountId(token, origin, options);

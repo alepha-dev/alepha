@@ -129,8 +129,8 @@ export interface CapabilityDescriptor {
   /**
    * The `$permission` groups this capability owns.
    *
-   * Declared here because `$permission` stays capability-agnostic - Alepha
-   * Club is a second consumer with no capabilities at all - so the capability
+   * Declared here because `$permission` stays capability-agnostic - a second
+   * consumer has no capabilities at all - so the capability
    * declaration is the only place the mapping can live. Ranks fills the
    * vocabulary and filters the rank matrix by it.
    */

@@ -60,13 +60,13 @@ export class CloudflareProvisionClient {
 
   protected readonly apiToken: string;
   protected readonly accountId: string;
-  protected readonly jurisdiction?: "eu" | "fedramp";
+  protected readonly jurisdiction?: "eu" | "us" | "fedramp";
   protected readonly baseURL: string;
 
   constructor(options: {
     apiToken: string;
     accountId: string;
-    jurisdiction?: "eu" | "fedramp";
+    jurisdiction?: "eu" | "us" | "fedramp";
     baseURL?: string;
   }) {
     if (!options.apiToken) {
@@ -301,7 +301,7 @@ export class CloudflareProvisionClient {
 
   /**
    * `locationHint` places a NEW bucket, as it does a D1 database: without one
-   * Cloudflare picks the region nearest the request, which put a French club's
+   * Cloudflare picks the region nearest the request, which put a French app's
    * bucket in WNAM (#Q2954). A location is fixed at creation, so an existing
    * bucket keeps its own. Under a jurisdiction the `cf-r2-jurisdiction` header
    * decides placement and the hint is not sent.
@@ -336,7 +336,14 @@ export class CloudflareProvisionClient {
     }
     return await this.fetch<CloudflareKV>(
       `/accounts/${this.accountId}/storage/kv/namespaces`,
-      { method: "POST", body: { title } },
+      {
+        method: "POST",
+        // Set at creation only: Cloudflare cannot add or change it later.
+        body: {
+          title,
+          ...(this.jurisdiction ? { jurisdiction: this.jurisdiction } : {}),
+        },
+      },
     );
   }
 
@@ -355,7 +362,15 @@ export class CloudflareProvisionClient {
     }
     return await this.fetch<CloudflareQueue>(
       `/accounts/${this.accountId}/queues`,
-      { method: "POST", body: { queue_name: name } },
+      {
+        method: "POST",
+        // Set at creation only. A dead-letter queue must share its source's
+        // jurisdiction, and goes through here too, so it gets the same.
+        body: {
+          queue_name: name,
+          ...(this.jurisdiction ? { jurisdiction: this.jurisdiction } : {}),
+        },
+      },
     );
   }
 

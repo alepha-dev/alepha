@@ -46,7 +46,7 @@ const compose = [
   "  api:",
   "    depends_on: [cache]",
   "    x-lore:",
-  "      app: mcs-api",
+  "      app: crm-api",
   '      routes: ["@"]',
   "",
 ].join("\n");
@@ -78,13 +78,13 @@ describe("an app deploy inside a stack", () => {
       projectId: w.project.id,
     });
     const stack = await createStack(alepha, w, {
-      name: "mcs",
+      name: "crm",
       estateId: minted.id,
     });
     const env = await createEnvironment(alepha, w, stack.id, {
       env: "staging",
     });
-    const instance = await createInstance(alepha, w, "mcs-api", "staging");
+    const instance = await createInstance(alepha, w, "crm-api", "staging");
     await alepha.inject(StackController).attachStackMember.fetch(
       {
         params: {
@@ -113,7 +113,7 @@ describe("an app deploy inside a stack", () => {
     await alepha.inject(ArtifactController).pushArtifact.fetch(
       {
         params: { projectId: w.project.id },
-        body: { app: "mcs-api", tag: "1.0.0", file },
+        body: { app: "crm-api", tag: "1.0.0", file },
       },
       { user: w.user },
     );
@@ -155,9 +155,9 @@ describe("an app deploy inside a stack", () => {
     const frame = alepha.inject(EstateCommandService).frameOf(command);
     expect(frame).toMatchObject({
       kind: "deploy",
-      app: "mcs-api",
+      app: "crm-api",
       environment: "staging",
-      stack: "mcs",
+      stack: "crm",
       service: "api",
     });
     expect(Object.keys(frame).sort()).toEqual(
@@ -231,7 +231,7 @@ describe("an app deploy inside a stack", () => {
         {
           params: {
             projectId: a.w.project.id,
-            app: "mcs-api",
+            app: "crm-api",
             env: "staging",
           },
         },
@@ -241,7 +241,7 @@ describe("an app deploy inside a stack", () => {
       stack?: { name: string; env: string };
       stackEnvironmentId?: string;
     };
-    expect(resource.stack).toMatchObject({ name: "mcs", env: "staging" });
+    expect(resource.stack).toMatchObject({ name: "crm", env: "staging" });
     expect(resource.stackEnvironmentId).toBe(a.env.id);
   });
 

@@ -319,13 +319,13 @@ describe("ProjectEstateController, detaching", () => {
     await apps.createApp(
       {
         params: { projectId: project.id },
-        body: { app: "club", env: "production" },
+        body: { app: "acme", env: "production" },
       },
       { user: ada },
     );
     await apps.updateApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: { estateId: estate.id },
       },
       { user: ada },
@@ -336,11 +336,11 @@ describe("ProjectEstateController, detaching", () => {
         { params: { projectId: project.id, estateId: estate.id } },
         { user: ada },
       ),
-    ).rejects.toThrow(/club\/production/);
+    ).rejects.toThrow(/acme\/production/);
 
     await apps.updateApp(
       {
-        params: { projectId: project.id, app: "club", env: "production" },
+        params: { projectId: project.id, app: "acme", env: "production" },
         body: { estateId: null },
       },
       { user: ada },

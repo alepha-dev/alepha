@@ -47,8 +47,8 @@ func TestParseXLore(t *testing.T) {
 	})
 
 	t.Run("labels resolve against the base domain", func(t *testing.T) {
-		if ResolveRoute("@", "mcs-staging.alepha.dev") != "mcs-staging.alepha.dev" ||
-			ResolveRoute("auth", "mcs-staging.alepha.dev") != "auth.mcs-staging.alepha.dev" {
+		if ResolveRoute("@", "crm-staging.alepha.dev") != "crm-staging.alepha.dev" ||
+			ResolveRoute("auth", "crm-staging.alepha.dev") != "auth.crm-staging.alepha.dev" {
 			t.Fatal("route resolution")
 		}
 	})
@@ -63,7 +63,7 @@ func TestLoreRefusesAServiceDependingOnAnApp(t *testing.T) {
     image: busybox
     depends_on: [api]
 `})
-	l, err := Load(dir, "mcs-staging", nil)
+	l, err := Load(dir, "crm-staging", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

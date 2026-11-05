@@ -372,17 +372,17 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
 
   it("tracks a deployed copy, mints its sigil, and reads what it deployed", async () => {
     const { lore } = await ownProject();
-    const pair = ["--app", "club", "--env", "staging"];
+    const pair = ["--app", "acme", "--env", "staging"];
 
     await lore.run("apps instance create", pair);
-    expect(await lore.run("apps instance list")).toContain("club/staging");
+    expect(await lore.run("apps instance list")).toContain("acme/staging");
     await lore.run("apps instance update", [
       ...pair,
       "--url",
-      "https://club.example.com",
+      "https://acme.example.com",
     ]);
     expect((await lore.json("apps instance get", pair)).url).toBe(
-      "https://club.example.com",
+      "https://acme.example.com",
     );
     const nothing = await lore.fail("apps instance update", pair);
     expect(nothing?.message).toContain("Nothing to update");
@@ -390,7 +390,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const minted = await lore.json("sigil create", pair);
     expect(minted.token).toMatch(/^sg_/);
     const [sigil] = await lore.json("sigil list");
-    expect(sigil.name).toBe("club/staging");
+    expect(sigil.name).toBe("acme/staging");
     const rotated = await lore.json("sigil rotate", [sigil.id]);
     expect(rotated.token).not.toBe(minted.token);
 
@@ -402,7 +402,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     expect(await lore.run("artifacts list")).toContain("No artifacts.");
     const noBuild = await lore.fail("artifacts get", [
       "--app",
-      "club",
+      "acme",
       "--tag",
       "1.0.0",
     ]);
@@ -419,7 +419,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const keep = await lore.fail("apps instance delete", pair);
     expect(keep?.message).toContain("--yes");
     await lore.run("apps instance delete", [...pair, "--yes"]);
-    expect(await lore.run("apps instance list")).not.toContain("club/staging");
+    expect(await lore.run("apps instance list")).not.toContain("acme/staging");
   });
 
   it("writes, tests and deletes an automation, by the revision it read", async () => {

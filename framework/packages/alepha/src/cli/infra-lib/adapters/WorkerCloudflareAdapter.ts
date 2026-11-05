@@ -47,7 +47,7 @@ import {
 export interface WorkerCloudflareCredential {
   apiToken: string;
   accountId: string;
-  jurisdiction?: "eu" | "fedramp";
+  jurisdiction?: "eu" | "us" | "fedramp";
 }
 
 /**
@@ -197,7 +197,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    *
    * ⚠️ **Concurrently.** Each resource is its own list-then-create against its
    * own API, and none reads what another produced, so running them one after
-   * the other only added their latencies: 4 s of a first club deploy were a
+   * the other only added their latencies: 4 s of a first deploy were a
    * D1 then an R2 that could have been one wait. Handed to `run` as an array,
    * which the CLI's `Runner` and Lore's `DeployRunner.runner` both run in
    * parallel while still logging one line per resource.
@@ -239,11 +239,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     }
 
     if (ctx.resources.hasKV) {
-      const name = ctx.naming.kv();
+      const name = ctx.naming.kv(this.jurisdictionOf());
       tasks.push({
         name: `provision kv (${name})`,
         handler: async () => {
           const namespace = await api.ensureKV(name);
+          if (this.jurisdictionOf()) {
+            await this.warnGlobalLeftBehind(api, "kv", ctx.naming.kv());
+          }
           this.provisioned.CLOUDFLARE_KV_NAME = name;
           this.provisioned.CLOUDFLARE_KV_ID = namespace.id;
           this.provisionedResources.kv = { name, id: namespace.id };
@@ -252,7 +255,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     }
 
     if (ctx.resources.hasQueue) {
-      const name = ctx.naming.queue();
+      const name = ctx.naming.queue(this.jurisdictionOf());
       tasks.push({
         name: `provision queue (${name})`,
         handler: async () => {
@@ -260,6 +263,9 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
           // names one Cloudflare does not have is refused at bind time.
           const dlq = `${name}-dlq`;
           await Promise.all([api.ensureQueue(name), api.ensureQueue(dlq)]);
+          if (this.jurisdictionOf()) {
+            await this.warnGlobalLeftBehind(api, "queue", ctx.naming.queue());
+          }
           this.provisioned.CLOUDFLARE_QUEUE_NAME = name;
           this.provisionedResources.queue = name;
           this.provisionedResources.dlq = dlq;
@@ -288,6 +294,31 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
 
   protected jurisdictionOf(): string | undefined {
     return this.credential?.jurisdiction;
+  }
+
+  /**
+   * Names the global resource an environment left behind when it moved under
+   * a jurisdiction.
+   *
+   * Under a jurisdiction the KV namespace and queue carry it as a suffix, so
+   * the global one of the unsuffixed name is never reused, and it is not
+   * migrated or deleted either: pre-v1, its data stays where it was. The
+   * deploy says so rather than leave it to be found in the dashboard.
+   */
+  protected async warnGlobalLeftBehind(
+    api: CloudflareProvisionClient,
+    kind: "kv" | "queue",
+    globalName: string,
+  ): Promise<void> {
+    const found =
+      kind === "kv"
+        ? (await api.listKV()).some((it) => it.title === globalName)
+        : (await api.listQueues()).some((it) => it.queue_name === globalName);
+    if (found) {
+      this.log.warn(
+        `The global ${kind === "kv" ? "KV namespace" : "queue"} '${globalName}' is left behind: under a jurisdiction this environment uses its own, suffixed one. Its data is not migrated; delete it by hand once it is no longer needed.`,
+      );
+    }
   }
 
   /**
@@ -483,6 +514,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
               .join(", ")}. The entry must be one of the modules.`,
           );
         }
+
+        // After the entry check, which is about code modules only. Each map
+        // rides as its own `application/source-map` part, as wrangler sends
+        // it, so Workers Logs, Tail Workers and Workers Issues show source
+        // frames instead of bundled ones (#Q3061).
+        modules.push(...(await this.sourceMaps(distDir, modules, config)));
 
         // Resolved BEFORE the upload, so a consumer naming a queue the account
         // does not have refuses the deploy while nothing has changed yet.
@@ -858,8 +895,9 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   protected async modules(
     distDir: string,
     config: WranglerConfig,
-  ): Promise<Array<{ name: string; bytes: Uint8Array }>> {
-    const modules: Array<{ name: string; bytes: Uint8Array }> = [];
+  ): Promise<Array<{ name: string; bytes: Uint8Array; type?: string }>> {
+    const modules: Array<{ name: string; bytes: Uint8Array; type?: string }> =
+      [];
     const entries = await this.fs.ls(distDir, { recursive: true });
     const globs = this.moduleGlobs(config);
     for (const entry of entries) {
@@ -900,6 +938,150 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       );
     }
     return modules;
+  }
+
+  /**
+   * Cloudflare's caps on one source map: 15 MiB gzipped, 60 MiB as sent.
+   */
+  protected static readonly SOURCE_MAP_MAX_GZIPPED_BYTES = 15 * 1024 * 1024;
+  protected static readonly SOURCE_MAP_MAX_BYTES = 60 * 1024 * 1024;
+
+  /**
+   * The source map of each uploaded module, as wrangler (4.150+) uploads them
+   * by default: a part named `<module>.map`, typed `application/source-map`,
+   * its `file` set to the module and its `sources` stripped of leading `./`
+   * and `../`. Cloudflare applies them after the Worker runs, so they cost no
+   * CPU, bundle size or cold start.
+   *
+   * `upload_source_maps: false` opts out. Absent, a module whose
+   * `sourceMappingURL` points at a file that is not there (a Lore artifact
+   * keeps its maps in a separate archive), whose map does not parse,
+   * or whose map is over Cloudflare's caps is uploaded without its map, named
+   * in one log line: never a failed deploy, as wrangler's default is not.
+   * `true` is wrangler's strict mode: the same cases refuse the deploy.
+   */
+  protected async sourceMaps(
+    distDir: string,
+    modules: Array<{ name: string; bytes: Uint8Array }>,
+    config: WranglerConfig,
+  ): Promise<Array<{ name: string; bytes: Uint8Array; type: string }>> {
+    if (config.upload_source_maps === false) {
+      return [];
+    }
+    const maps: Array<{ name: string; bytes: Uint8Array; type: string }> = [];
+    const skipped: string[] = [];
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    for (const module of modules) {
+      const url = this.sourceMappingUrl(decoder.decode(module.bytes));
+      if (!url || url.startsWith("data:")) {
+        continue;
+      }
+      const dir = module.name.includes("/")
+        ? module.name.slice(0, module.name.lastIndexOf("/") + 1)
+        : "";
+      const path = this.joinRelative(`${dir}${url}`);
+      if (!path || !(await this.fs.exists(`${distDir}/${path}`))) {
+        skipped.push(`${module.name} (no ${url})`);
+        continue;
+      }
+      let map: { file?: string; sourceRoot?: string; sources?: string[] };
+      try {
+        map = JSON.parse(
+          decoder.decode(await this.fs.readFile(`${distDir}/${path}`)),
+        );
+      } catch {
+        skipped.push(`${module.name} (unreadable map)`);
+        continue;
+      }
+      map.file = module.name;
+      if (map.sourceRoot) {
+        map.sourceRoot = this.stripRelativePrefix(map.sourceRoot);
+      }
+      map.sources = (map.sources ?? []).map((source) =>
+        this.stripRelativePrefix(source),
+      );
+      const bytes = encoder.encode(JSON.stringify(map));
+      if (
+        bytes.byteLength > WorkerCloudflareAdapter.SOURCE_MAP_MAX_BYTES ||
+        (await this.gzippedSize(bytes)) >
+          WorkerCloudflareAdapter.SOURCE_MAP_MAX_GZIPPED_BYTES
+      ) {
+        skipped.push(`${module.name} (map over Cloudflare's size cap)`);
+        continue;
+      }
+      maps.push({
+        name: `${module.name}.map`,
+        bytes,
+        type: "application/source-map",
+      });
+    }
+    if (skipped.length > 0) {
+      if (config.upload_source_maps === true) {
+        throw new AlephaError(
+          `upload_source_maps is true, and ${skipped.length} module(s) have no usable source map: ${skipped.join(", ")}. Remove the key to upload without them.`,
+        );
+      }
+      // A Lore artifact carries no maps at all, so this can be every module:
+      // a count and the first few, not hundreds of names.
+      const shown = skipped.slice(0, 5).join(", ");
+      const more = skipped.length > 5 ? ` and ${skipped.length - 5} more` : "";
+      this.log.info(
+        `Uploading ${skipped.length} module(s) without a source map: ${shown}${more}`,
+      );
+    }
+    return maps;
+  }
+
+  /**
+   * The last `sourceMappingURL` comment of a module, as a bundler writes it.
+   */
+  protected sourceMappingUrl(code: string): string | undefined {
+    const matches = [
+      ...code.matchAll(/\/\/[#@] sourceMappingURL=([^\s'"]+)\s*$/gm),
+    ];
+    return matches.at(-1)?.[1];
+  }
+
+  /**
+   * `a/b/../c.map` as `a/c.map`; `undefined` for a path leaving the root.
+   */
+  protected joinRelative(path: string): string | undefined {
+    const parts: string[] = [];
+    for (const part of path.split("/")) {
+      if (part === "" || part === ".") continue;
+      if (part === "..") {
+        if (parts.length === 0) return undefined;
+        parts.pop();
+        continue;
+      }
+      parts.push(part);
+    }
+    return parts.join("/");
+  }
+
+  /**
+   * wrangler's `cleanPathPrefix`: leading `./`, `../` (and their Windows
+   * spellings) removed, so a source reads as a project path.
+   */
+  protected stripRelativePrefix(path: string): string {
+    let out = path;
+    for (;;) {
+      const next = out.replace(/^(\.\.?[\\/])+/, "");
+      if (next === out) return out;
+      out = next;
+    }
+  }
+
+  /**
+   * Gzipped byte length, through the web `CompressionStream` both Node and
+   * workerd have, since this adapter runs in Lore's deploy Worker too.
+   */
+  protected async gzippedSize(bytes: Uint8Array): Promise<number> {
+    const stream = new Blob([bytes as never])
+      .stream()
+      .pipeThrough(new CompressionStream("gzip"));
+    return (await new Response(stream).arrayBuffer()).byteLength;
   }
 
   /**
@@ -1028,6 +1210,8 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     "durable_objects",
     "migrations",
     "exports",
+    // Read by `sourceMaps`: absent or `true` uploads them, `false` opts out.
+    "upload_source_maps",
   ]);
 
   /**
@@ -1305,6 +1489,10 @@ interface WranglerConfig extends DurableObjectLifecycleConfig {
    * wrangler, while here the modules are read and posted directly.
    */
   rules?: Array<{ type?: string; globs?: string[] }>;
+  /**
+   * wrangler's key: `false` keeps the modules' source maps out of the upload.
+   */
+  upload_source_maps?: boolean;
   compatibility_date?: string;
   compatibility_flags?: string[];
   workers_dev?: boolean;

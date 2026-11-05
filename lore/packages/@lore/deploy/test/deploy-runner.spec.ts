@@ -187,12 +187,12 @@ describe("deploying an artifact from inside the Worker", () => {
       sha256: "a".repeat(64),
       fileId: "file-1",
     },
-    env: "b14-preview",
+    env: "east-preview",
     // ⚠️ The copy's stored name, `<project>-<app>-<env>`. The project segment
     // is what keeps two Lore projects that both call an app `my-app` off each
     // other's database. `DeployService.resourceNameOf` decides it once; here it
     // is given.
-    name: "acme-my-app-b14-preview",
+    name: "acme-my-app-east-preview",
     credential: { apiToken: "estate-token", accountId: "estate-account" },
     ...over,
   });
@@ -205,9 +205,9 @@ describe("deploying an artifact from inside the Worker", () => {
     await runner.run(request() as never);
 
     expect(calls).toEqual([
-      "provision:d1:acme-my-app-b14-preview",
+      "provision:d1:acme-my-app-east-preview",
       "migrate:CREATE TABLE t (id i",
-      "deploy:acme-my-app-b14-preview",
+      "deploy:acme-my-app-east-preview",
     ]);
   });
 
@@ -273,7 +273,7 @@ describe("deploying an artifact from inside the Worker", () => {
     await runner.run(request() as never);
 
     expect(calls.filter((it) => it.startsWith("provision:"))).toEqual([
-      "provision:r2:acme-my-app-b14-preview",
+      "provision:r2:acme-my-app-east-preview",
     ]);
     // No database means no migration either.
     expect(calls.some((it) => it.startsWith("migrate:"))).toBe(false);
@@ -310,14 +310,14 @@ describe("deploying an artifact from inside the Worker", () => {
       );
 
       await runner.run(
-        request({ name: "old-slug-my-app-b14-preview" }) as never,
+        request({ name: "old-slug-my-app-east-preview" }) as never,
       );
 
       expect(calls).toEqual([
-        "provision:d1:old-slug-my-app-b14-preview",
-        "provision:r2:old-slug-my-app-b14-preview",
+        "provision:d1:old-slug-my-app-east-preview",
+        "provision:r2:old-slug-my-app-east-preview",
         "migrate:CREATE TABLE t (id i",
-        "deploy:old-slug-my-app-b14-preview",
+        "deploy:old-slug-my-app-east-preview",
       ]);
     });
 
@@ -329,11 +329,11 @@ describe("deploying an artifact from inside the Worker", () => {
       const { runner, calls } = await withFakeCloudflare(await packed());
 
       await runner.run(
-        request({ env: "staging", name: "acme-my-app-b14-preview" }) as never,
+        request({ env: "staging", name: "acme-my-app-east-preview" }) as never,
       );
 
-      expect(calls).toContain("provision:d1:acme-my-app-b14-preview");
-      expect(calls).toContain("deploy:acme-my-app-b14-preview");
+      expect(calls).toContain("provision:d1:acme-my-app-east-preview");
+      expect(calls).toContain("deploy:acme-my-app-east-preview");
     });
   });
 
@@ -405,7 +405,7 @@ describe("deploying an artifact from inside the Worker", () => {
         }) as never,
       );
 
-      expect(calls).toContain("deploy:acme-my-app-b14-preview");
+      expect(calls).toContain("deploy:acme-my-app-east-preview");
     });
 
     it("refuses before provisioning anything when it differs", async ({
@@ -442,6 +442,37 @@ describe("deploying an artifact from inside the Worker", () => {
 
     await runner.run(request() as never);
 
-    expect(calls).toContain("deploy:acme-my-app-b14-preview");
+    expect(calls).toContain("deploy:acme-my-app-east-preview");
+  });
+
+  it("says it uploads no source maps when the build stored some, naming their size (#Q3061)", async ({
+    expect,
+  }) => {
+    const { runner } = await withFakeCloudflare(await packed());
+    const lines: string[] = [];
+    const registry = (runner as unknown as { registry: object }).registry;
+    Object.assign(registry, {
+      line: async (_deployment: string, text: string) => {
+        lines.push(text);
+      },
+    });
+    Object.assign((runner as unknown as { files: object }).files, {
+      getFileById: async () => ({ size: 5 * 1024 * 1024 }),
+    });
+
+    await runner.run(
+      request({
+        artifact: {
+          app: "my-app",
+          sha256: "a".repeat(64),
+          fileId: "file-1",
+          mapsFileId: "maps-1",
+        },
+      }) as never,
+    );
+
+    expect(lines).toContain(
+      "Source maps not uploaded: this deploy does not load the build's maps archive (5120 KB compressed), so Workers Logs show bundled frames",
+    );
   });
 });

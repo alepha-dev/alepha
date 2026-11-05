@@ -8,7 +8,7 @@ import { ReadRecorder } from "alepha";
 
 ## Overview
 
-Records, for one request, the reads that make a page personal (#E78).
+Records, for one request, the reads that make a page personal.
 
 Installed in the request's store fork by the page handler
 (`StateManager.startRecording`); every nested fork reaches it through

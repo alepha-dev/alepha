@@ -29,8 +29,8 @@ describe("DesktopCompileAdapter.preflight", () => {
     const { fs, adapter } = setup();
     await fs.writeFile("/my project/assets/icon.png", "png");
     const config = {
-      name: "Loom App",
-      identifier: "dev.alepha.loom",
+      name: "Notepad App",
+      identifier: "dev.alepha.notepad",
       icon: "assets/icon.png",
       window: { width: 1280, height: 860 },
     };
@@ -42,7 +42,7 @@ describe("DesktopCompileAdapter.preflight", () => {
     await expect(
       adapter.preflight({
         root,
-        config: { name: "../x", identifier: "loom" },
+        config: { name: "../x", identifier: "notepad" },
         target,
       }),
     ).rejects.toThrow(
@@ -114,7 +114,7 @@ describe("DesktopCompileAdapter.writeEntries", () => {
     expect,
   }) => {
     const { fs, adapter } = setup();
-    const config = { name: "Loom", identifier: "dev.alepha.loom" };
+    const config = { name: "Notepad", identifier: "dev.alepha.notepad" };
 
     const entries = await adapter.writeEntries({ dist: "/s/dist", config });
 

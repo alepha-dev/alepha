@@ -104,7 +104,7 @@ describe("Durable automation primitives on local D1", () => {
         path,
         JSON.stringify({
           name: "lore-durable-d1-test",
-          compatibility_date: "2026-01-01",
+          compatibility_date: "2026-11-03",
           d1_databases: [
             {
               binding: "DB",

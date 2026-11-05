@@ -28,7 +28,7 @@ import { LoreRankBounds } from "./LoreRankBounds.ts";
  *
  * ## Groups, and which capability owns each
  *
- * One group per surface, in the shape Alepha Club's own catalogue arrived at
+ * One group per surface, in the shape a downstream app's catalogue arrived at
  * (one group per nav destination, `view` gating the page). Which capability
  * owns a group is declared on the **capability**, in
  * `CapabilityRegistry.permissionGroups`, not here: `$permission` stays

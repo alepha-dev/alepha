@@ -8,8 +8,8 @@ import { $entity, db } from "alepha/orm";
  * it never lands in the Blights inbox.
  *
  * Scoped to the project (not the sigil) so one rule mutes a noisy error
- * across every sigil the project owns — e.g. a `pattern` of `"Unknown club"`
- * drops `Unknown club: bondy-padel/1`, `Unknown club: testemail`, … from any
+ * across every sigil the project owns — e.g. a `pattern` of `"Unknown tenant"`
+ * drops `Unknown tenant: east/1`, `Unknown tenant: testemail`, … from any
  * sigil at once. Matching is a plain case-insensitive `includes` (see
  * {@link BlightRuleService.matches}); the variable suffix after the prefix is
  * irrelevant.

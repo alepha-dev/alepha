@@ -37,7 +37,7 @@ export class ProjectRouter {
 
   project = $page({
     /**
-     * A **root-level** param: `/sds/quests/19`, not `/p/2/q/19`.
+     * A **root-level** param: `/demo/quests/19`, not `/p/2/q/19`.
      *
      * The router walks static children before the param child and backtracks on
      * failure (`RouterProvider.search`), so `/auth/login`, `/new-project` and
@@ -106,7 +106,7 @@ export class ProjectRouter {
         this.loaders.load(project),
 
         // ⚠️ ONE inbox count, and it is deliberately the cross-project one.
-        // Alepha and Odzala are open in the same session and a ping in one
+        // Two projects are open in the same session and a ping in one
         // must not be invisible from the other, so this passes NO scope. It
         // seeds `inboxUnreadAtom` before the first paint, which is what the
         // bell's own mount-fetch then does not have to do.

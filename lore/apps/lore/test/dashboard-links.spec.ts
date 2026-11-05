@@ -50,7 +50,7 @@ describe("dashboard drill-through links", () => {
    * carries the id and `/epics/:epicNumber` takes the other one.
    */
   const params = {
-    projectSlug: "sds",
+    projectSlug: "demo",
     app: "docs",
     env: "production",
     epicNumber: "46",
@@ -83,7 +83,7 @@ describe("dashboard drill-through links", () => {
       expect(
         router.path(link!.route, { params, query: link!.query }),
         `metric '${metric.key}' names a route that does not resolve`,
-      ).toMatch(/^\/sds/);
+      ).toMatch(/^\/demo/);
     }
   });
 
@@ -96,11 +96,11 @@ describe("dashboard drill-through links", () => {
     // filter — if someone "fixes" it, this fails.
     const link = catalog
       .get("activeQuests")
-      .link({ kind: "all" }, { projectSlug: "sds" });
+      .link({ kind: "all" }, { projectSlug: "demo" });
 
     expect(link).toEqual({
       route: "projectQuests",
-      params: { projectSlug: "sds" },
+      params: { projectSlug: "demo" },
       query: { status: "todo" },
     });
     // `/quests`, not `/`: the quest list moved off the project root when
@@ -108,7 +108,7 @@ describe("dashboard drill-through links", () => {
     // is why the move needed no change to the catalog — only to this
     // assertion, which is the one place the path is spelled out.
     expect(router.path(link!.route, { params, query: link!.query })).toBe(
-      "/sds/quests?status=todo",
+      "/demo/quests?status=todo",
     );
   });
 
@@ -122,15 +122,15 @@ describe("dashboard drill-through links", () => {
       .get("epicProgress")
       .link(
         { kind: "epic", epicId: 981 },
-        { projectSlug: "sds", epicNumber: 46 },
+        { projectSlug: "demo", epicNumber: 46 },
       );
 
     expect(link).toEqual({
       route: "projectEpic",
-      params: { projectSlug: "sds", epicNumber: "46" },
+      params: { projectSlug: "demo", epicNumber: "46" },
     });
     expect(router.path(link!.route, { params: link!.params })).toBe(
-      "/sds/epics/46",
+      "/demo/epics/46",
     );
   });
 
@@ -139,15 +139,15 @@ describe("dashboard drill-through links", () => {
       .get("releaseProgress")
       .link(
         { kind: "release", releaseId: 12 },
-        { projectSlug: "sds", releaseTag: "0.28.0" },
+        { projectSlug: "demo", releaseTag: "0.28.0" },
       );
 
     expect(link).toEqual({
       route: "projectRelease",
-      params: { projectSlug: "sds", releaseTag: "0.28.0" },
+      params: { projectSlug: "demo", releaseTag: "0.28.0" },
     });
     expect(router.path(link!.route, { params: link!.params })).toBe(
-      "/sds/releases/0.28.0",
+      "/demo/releases/0.28.0",
     );
   });
 
@@ -156,7 +156,7 @@ describe("dashboard drill-through links", () => {
       .get("tagCompletion")
       .link(
         { kind: "projects", projectIds: [1] },
-        { projectSlug: "sds", tag: "need-answer" },
+        { projectSlug: "demo", tag: "need-answer" },
       );
 
     // ⚠️ Deliberately disagrees with the count, like the active-quests tile:
@@ -164,11 +164,11 @@ describe("dashboard drill-through links", () => {
     // is LEFT rather than what is finished.
     expect(link).toEqual({
       route: "projectQuests",
-      params: { projectSlug: "sds" },
+      params: { projectSlug: "demo" },
       query: { tag: "need-answer", status: "todo,in_progress" },
     });
     expect(router.path(link!.route, { params, query: link!.query })).toBe(
-      "/sds/quests?tag=need-answer&status=todo%2Cin_progress",
+      "/demo/quests?tag=need-answer&status=todo%2Cin_progress",
     );
   });
 
@@ -199,7 +199,7 @@ describe("dashboard drill-through links", () => {
     expect(
       catalog
         .get("uniqueVisitors")
-        .link({ kind: "all" }, { projectSlug: "sds", app: "docs" }),
+        .link({ kind: "all" }, { projectSlug: "demo", app: "docs" }),
     ).toBeUndefined();
     expect(
       catalog.get("activeQuests").link({ kind: "all" }, {}),
@@ -209,14 +209,14 @@ describe("dashboard drill-through links", () => {
     expect(
       catalog
         .get("epicProgress")
-        .link({ kind: "epic", epicId: 1 }, { projectSlug: "sds" }),
+        .link({ kind: "epic", epicId: 1 }, { projectSlug: "demo" }),
     ).toBeUndefined();
     // `releases.tag` is optional at the column, so this is a real state and
     // not a defensive branch: better no link than `/releases/undefined`.
     expect(
       catalog
         .get("releaseProgress")
-        .link({ kind: "release", releaseId: 1 }, { projectSlug: "sds" }),
+        .link({ kind: "release", releaseId: 1 }, { projectSlug: "demo" }),
     ).toBeUndefined();
   });
 });

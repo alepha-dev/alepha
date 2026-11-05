@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
-const PROJECT_SLUG = "sds";
+const PROJECT_SLUG = "demo";
 
 const folio = (shortId: number, title: string) =>
   ({
@@ -100,7 +100,7 @@ describe("rewriteFolioWikiLinks - fenced code is untouched (#1261)", () => {
   it("leaves [[...]] inside a fenced block alone", () => {
     const input = "See [[#F1]].\n\n```ts\nconst a = [[1, 2]];\n```\n";
     expect(rewrite(input)).toBe(
-      "See [Roadmap](/sds/folios/1).\n\n```ts\nconst a = [[1, 2]];\n```\n",
+      "See [Roadmap](/demo/folios/1).\n\n```ts\nconst a = [[1, 2]];\n```\n",
     );
   });
 
@@ -120,7 +120,7 @@ describe("rewriteFolioWikiLinks - fenced code is untouched (#1261)", () => {
 
   it("still rewrites prose on the same line as an inline code span", () => {
     expect(rewrite("`[[#F1]]` renders [[#F1]]")).toBe(
-      "`[[#F1]]` renders [Roadmap](/sds/folios/1)",
+      "`[[#F1]]` renders [Roadmap](/demo/folios/1)",
     );
   });
 });

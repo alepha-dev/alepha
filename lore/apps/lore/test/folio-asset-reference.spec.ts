@@ -4,7 +4,7 @@ import { describe, it } from "vitest";
 
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
-const PROJECT_SLUG = "sds";
+const PROJECT_SLUG = "demo";
 
 const blobNamed = (name: string): AttachmentRef => ({
   fileId: "11111111-1111-1111-1111-111111111111",

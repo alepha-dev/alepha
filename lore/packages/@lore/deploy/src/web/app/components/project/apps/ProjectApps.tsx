@@ -140,8 +140,8 @@ const ProjectApps = () => {
   const filterFields = {
     /**
      * ⚠️ Matches the Name and the Env columns BOTH, which is what makes a
-     * tenant-ish substring like `b14` find anything at all: the app is called
-     * `club` and only the env half carries the tenant.
+     * tenant-ish substring like `east` find anything at all: the app is called
+     * `acme` and only the env half carries the tenant.
      *
      * Local state rather than URL-backed. The breadcrumb link that would have
      * wanted `?search=` was decided against in #1768, so nothing reads it from
@@ -353,8 +353,8 @@ const ProjectApps = () => {
         // and `env` included, even though they are named after properties.
         // Leaving them to the built-in pass would not work twice over: it
         // never runs once this prop is set, and it matches a string as a
-        // case-insensitive SUBSTRING, so picking `club` would also keep
-        // `clubhouse`. A single select means equality.
+        // case-insensitive SUBSTRING, so picking `acme` would also keep
+        // `acmeworks`. A single select means equality.
         //
         // `status` could not use it either way: it is derived by
         // `appLiveness`, not carried on the row.

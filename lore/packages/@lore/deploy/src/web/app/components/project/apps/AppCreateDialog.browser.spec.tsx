@@ -140,26 +140,26 @@ describe("AppCreateDialog", () => {
   };
 
   it("creates an instance and mints nothing", async ({ expect }) => {
-    const { links, created, view } = await mount([anInstance("club", "prod")], {
-      createApp: anInstance("club", "staging"),
+    const { links, created, view } = await mount([anInstance("acme", "prod")], {
+      createApp: anInstance("acme", "staging"),
     });
 
     // The combobox holds the app; the env is a plain field.
-    await pickApp("club");
+    await pickApp("acme");
     typeEnv("staging");
     fireEvent.click(view.getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(links.calls).toHaveLength(1));
     expect(links.calls[0]).toEqual({
       action: "createApp",
-      body: { app: "club", env: "staging" },
+      body: { app: "acme", env: "staging" },
     });
     // No `createSigil` beside it: the checkbox is off by default, and it must
     // stay that way - a required credential at creation is the model this epic
     // removed.
     expect(links.calls.map((it) => it.action)).not.toContain("createSigil");
     await waitFor(() =>
-      expect(created).toEqual([{ app: "club", env: "staging" }]),
+      expect(created).toEqual([{ app: "acme", env: "staging" }]),
     );
   });
 
@@ -167,11 +167,11 @@ describe("AppCreateDialog", () => {
     // Trimmed and lowercased before the round trip, so an operator learns the
     // rule without paying for a request. The server's check is the real one.
     const { links, view } = await mount([], {
-      createApp: anInstance("club", "b14-production"),
+      createApp: anInstance("acme", "east-production"),
     });
 
-    await pickApp("Club");
-    typeEnv("  B14-Production ");
+    await pickApp("Acme");
+    typeEnv("  East-Production ");
     fireEvent.click(view.getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(links.calls).toHaveLength(1));
@@ -182,8 +182,8 @@ describe("AppCreateDialog", () => {
     // `ephemeral: false` from the day the column landed, against a dialog
     // that has never sent it.
     expect(links.calls[0].body).toEqual({
-      app: "club",
-      env: "b14-production",
+      app: "acme",
+      env: "east-production",
     });
   });
 
@@ -194,7 +194,7 @@ describe("AppCreateDialog", () => {
     // dialog: carrying it across the navigation `onCreated` triggers would be a
     // second place to lose it.
     const { links, created, view } = await mount([], {
-      createApp: anInstance("club", "production"),
+      createApp: anInstance("acme", "production"),
       createSigil: {
         id: "00000000-0000-4000-8000-000000000099",
         tokenPrefix: "sg_alepha_ab",
@@ -204,7 +204,7 @@ describe("AppCreateDialog", () => {
       },
     });
 
-    await pickApp("club");
+    await pickApp("acme");
     // Base UI renders the box as a `span[role=checkbox]` over a hidden input,
     // and jsdom does not forward a click on the span to it.
     fireEvent.click(
@@ -228,7 +228,7 @@ describe("AppCreateDialog", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Done" }));
     await waitFor(() =>
-      expect(created).toEqual([{ app: "club", env: "production" }]),
+      expect(created).toEqual([{ app: "acme", env: "production" }]),
     );
   });
 
@@ -239,7 +239,7 @@ describe("AppCreateDialog", () => {
    * create.
    */
   it("writes a new array into the instances atom", async ({ expect }) => {
-    const existing = anInstance("club", "prod");
+    const existing = anInstance("acme", "prod");
     const { alepha, view } = await mount([existing], {
       createApp: anInstance("docs", "production"),
     });
@@ -250,7 +250,7 @@ describe("AppCreateDialog", () => {
     await waitFor(() => {
       const rows = alepha.store.get(currentInstancesAtom) ?? [];
       expect(rows.map((it) => `${it.app}/${it.env}`)).toEqual([
-        "club/prod",
+        "acme/prod",
         "docs/production",
       ]);
     });
@@ -263,10 +263,10 @@ describe("AppCreateDialog", () => {
     // by editing a value that is already on screen, so the message stays here
     // rather than going to a toast that outlives the dialog.
     const { created, view } = await mount([], {
-      createApp: new Error('"club/production" already exists'),
+      createApp: new Error('"acme/production" already exists'),
     });
 
-    await pickApp("club");
+    await pickApp("acme");
     fireEvent.click(view.getByRole("button", { name: "Create" }));
 
     await waitFor(() =>
@@ -275,7 +275,7 @@ describe("AppCreateDialog", () => {
     // Open, holding the app that was typed, and nothing was reported as
     // created.
     expect(document.querySelector("[role=dialog]")).toBeTruthy();
-    expect(document.body.textContent).toContain("club");
+    expect(document.body.textContent).toContain("acme");
     expect(created).toEqual([]);
   });
 });

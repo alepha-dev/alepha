@@ -111,7 +111,7 @@ test.describe("deploying through Lore", () => {
       { capabilities: ["apps"] },
     );
 
-    const appName = "club";
+    const appName = "acme";
     const envName = "production";
 
     await test.step("the deploy option is a real switch, not a Soon badge", async () => {

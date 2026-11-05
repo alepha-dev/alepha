@@ -157,9 +157,9 @@ describe("BuildCloudflareTask", () => {
     });
 
     it("refuses a wildcard domain rather than writing a Custom Domain Cloudflare rejects", () => {
-      // The zone Route that once served `*.club.alepha.dev` is gone (#Q2482):
+      // The zone Route that once served `*.acme.alepha.dev` is gone (#Q2482):
       // a Custom Domain is the only binding, and it cannot be a wildcard.
-      process.env.CLOUDFLARE_DOMAIN = "*.club.alepha.dev";
+      process.env.CLOUDFLARE_DOMAIN = "*.acme.alepha.dev";
 
       const wrangler: Record<string, any> = {};
       expect(() => createTask().testEnhanceDomain(ambient(), wrangler)).toThrow(
@@ -1488,9 +1488,9 @@ describe("BuildCloudflareTask", () => {
     });
 
     /**
-     * lindocara's shape: the realtime layer is `$room` only (no `$websocket`
-     * primitive at all). Without the union, the build emitted a worker with
-     * no upgrade branch, no DO binding and no DO class export.
+     * A multiplayer game app's shape: the realtime layer is `$room` only (no
+     * `$websocket` primitive at all). Without the union, the build emitted a
+     * worker with no upgrade branch, no DO binding and no DO class export.
      */
     it("wires a $room-only app exactly like a $websocket one", async () => {
       const { task, fs } = createTaskWithFs();

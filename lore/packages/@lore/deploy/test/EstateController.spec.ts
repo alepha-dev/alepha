@@ -412,7 +412,7 @@ describe("EstateController, the credential", () => {
     await expect(
       ctx.commands.enqueue(row, {
         kind: "restart",
-        payload: { app: "club", environment: "production" },
+        payload: { app: "acme", environment: "production" },
       }),
     ).rejects.toThrow(/Cloudflare/);
   });

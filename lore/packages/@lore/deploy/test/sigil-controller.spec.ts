@@ -229,14 +229,20 @@ describe("SigilController", () => {
     // render.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const instance = await createInstance(ctx, projectId, owner, "club", "b14");
+    const instance = await createInstance(
+      ctx,
+      projectId,
+      owner,
+      "acme",
+      "east",
+    );
 
     const created = await ctx.sigilController.createSigil.fetch(
       { params: { projectId }, body: instance },
       { user: owner },
     );
 
-    expect(created.data.name).toBe("club/b14");
+    expect(created.data.name).toBe("acme/east");
 
     const app = await ctx.appController.getApp.fetch(
       { params: { projectId, ...instance } },
@@ -254,7 +260,7 @@ describe("SigilController", () => {
 
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { app: "club", env: "production" } },
+        { params: { projectId }, body: { app: "acme", env: "production" } },
         { user: owner },
       ),
       404,
@@ -266,7 +272,7 @@ describe("SigilController", () => {
     // makes every aggregate wrong. Replacing one is `rotateSigil`.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const instance = await createInstance(ctx, projectId, owner, "club");
+    const instance = await createInstance(ctx, projectId, owner, "acme");
 
     await ctx.sigilController.createSigil.fetch(
       { params: { projectId }, body: instance },
@@ -295,7 +301,7 @@ describe("SigilController", () => {
     // and keeps the deployed copy: the four unlocked tabs go, the app does not.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    const instance = await createInstance(ctx, projectId, owner, "club");
+    const instance = await createInstance(ctx, projectId, owner, "acme");
     const created = await ctx.sigilController.createSigil.fetch(
       { params: { projectId }, body: instance },
       { user: owner },

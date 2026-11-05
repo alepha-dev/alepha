@@ -51,11 +51,43 @@ export class NamingContext {
     return this.prefix;
   }
 
-  public kv(): string {
-    return this.prefix;
+  /**
+   * The KV namespace title, suffixed with the jurisdiction when there is one.
+   *
+   * A jurisdiction is fixed when a namespace is created, so a global namespace
+   * of the unsuffixed name must never be adopted by a jurisdictioned
+   * environment: the suffix makes them two names.
+   */
+  public kv(jurisdiction?: string): string {
+    return this.jurisdictioned(this.prefix, jurisdiction, 512);
   }
 
-  public queue(): string {
-    return this.prefix;
+  /**
+   * The queue name, suffixed with the jurisdiction when there is one, for the
+   * reason {@link kv} gives.
+   *
+   * Under a jurisdiction the base is shortened so the name and its `-dlq`
+   * dead-letter queue both fit Cloudflare's 63 characters. Without one the
+   * name is unchanged, so no existing environment is renamed.
+   */
+  public queue(jurisdiction?: string): string {
+    return this.jurisdictioned(this.prefix, jurisdiction, 63 - "-dlq".length);
+  }
+
+  /**
+   * `<base>-<jurisdiction>` within `max` characters, shortening the base and
+   * never the suffix; the base alone without a jurisdiction.
+   */
+  protected jurisdictioned(
+    base: string,
+    jurisdiction: string | undefined,
+    max: number,
+  ): string {
+    if (!jurisdiction) {
+      return base;
+    }
+    const suffix = `-${jurisdiction}`;
+    const head = base.slice(0, max - suffix.length).replace(/-+$/, "");
+    return `${head}${suffix}`;
   }
 }

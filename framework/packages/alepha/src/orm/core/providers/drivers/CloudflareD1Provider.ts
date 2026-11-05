@@ -7,6 +7,7 @@ import type {
   D1Database,
   D1SessionBookmark,
 } from "../../interfaces/D1Database.ts";
+import { DbErrorParser } from "../../services/DbErrorParser.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { D1TimeoutProvider } from "./D1TimeoutProvider.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -40,6 +41,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
    */
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly timeouts = $inject(D1TimeoutProvider);
+  protected readonly errorParser = $inject(DbErrorParser);
 
   /**
    * Probed on `lore-production`: 100 placeholders run, 101 fail with `too
@@ -264,7 +266,14 @@ export class CloudflareD1Provider extends DatabaseProvider {
       // Raw `execute` bypasses `Repository.handleError`, so it has to do its
       // own unwrapping: drizzle demotes the driver error to `cause` and
       // throws its own `Failed query: ...` on top.
-      throw DbTimeoutError.find(error) ?? error;
+      throw (
+        DbTimeoutError.find(error) ??
+        this.errorParser.resultTooLarge(
+          error,
+          typeof query === "string" ? query : undefined,
+        ) ??
+        error
+      );
     }
   }
 

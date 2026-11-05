@@ -26,7 +26,7 @@ class Devices {
   received: Array<{ site: string; device: string; state: string }> = [];
 
   status = $topic({
-    name: "mcs/v1/{site}/{device}/status",
+    name: "transit/v1/{site}/{device}/status",
     provider: MqttTopicProvider,
     schema: {
       params: z.object({ site: z.text(), device: z.text() }),
@@ -103,7 +103,7 @@ describe("MqttTopicProvider", () => {
     const { client: device } = await createApp(broker);
 
     await device.publish(
-      "mcs/v1/paris/tvm-42/status",
+      "transit/v1/paris/tvm-42/status",
       JSON.stringify({ state: "ok", level: 3 }),
       { qos: 1 },
     );
@@ -120,14 +120,14 @@ describe("MqttTopicProvider", () => {
     const { service } = await createApp(broker, Devices);
     const { client: device } = await createApp(broker);
     const inbox = new MqttInbox();
-    await device.subscribe("mcs/v1/+/+/status", inbox.callback, { qos: 2 });
+    await device.subscribe("transit/v1/+/+/status", inbox.callback, { qos: 2 });
 
     await service?.status.publish({
       params: { site: "lyon", device: "gate-1" },
       payload: { state: "down", level: 0 },
     });
 
-    expect(inbox.messages[0].topic).toBe("mcs/v1/lyon/gate-1/status");
+    expect(inbox.messages[0].topic).toBe("transit/v1/lyon/gate-1/status");
     expect(JSON.parse(inbox.texts()[0])).toEqual({ state: "down", level: 0 });
     // The default QoS is 1.
     expect(inbox.messages[0].qos).toBe(1);
@@ -140,10 +140,10 @@ describe("MqttTopicProvider", () => {
     const { service } = await createApp(broker, Devices);
     const { client: device } = await createApp(broker);
 
-    await device.publish("mcs/v1/a/b/status", "not json");
-    await device.publish("mcs/v1/a/b/status", JSON.stringify({ state: 1 }));
+    await device.publish("transit/v1/a/b/status", "not json");
+    await device.publish("transit/v1/a/b/status", JSON.stringify({ state: 1 }));
     await device.publish(
-      "mcs/v1/a/b/status",
+      "transit/v1/a/b/status",
       JSON.stringify({ state: "ok", level: 1 }),
     );
 
@@ -164,7 +164,7 @@ describe("MqttTopicProvider", () => {
     await device.subscribe("#", inbox.callback);
 
     await device.publish(
-      "site-a/mcs/v1/x/y/status",
+      "site-a/transit/v1/x/y/status",
       JSON.stringify({ state: "ok", level: 1 }),
     );
     await service?.status.publish({
@@ -177,8 +177,8 @@ describe("MqttTopicProvider", () => {
       { site: "x", device: "z", state: "up" },
     ]);
     expect(inbox.messages.map((it) => it.topic)).toEqual([
-      "site-a/mcs/v1/x/y/status",
-      "site-a/mcs/v1/x/z/status",
+      "site-a/transit/v1/x/y/status",
+      "site-a/transit/v1/x/z/status",
     ]);
   });
 

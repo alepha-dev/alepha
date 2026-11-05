@@ -180,7 +180,7 @@ export class DeployTools {
    * The copy a pair names, or a refusal saying it does not exist.
    *
    * ⚠️ Refused, never created. Minting a deploy target as a side effect of a
-   * typo in `env` is how `clbu` gets deployed to, and epic #30 accepted the
+   * typo in `env` is how `acem` gets deployed to, and epic #30 accepted the
    * typo cost precisely because creation is always an explicit act.
    */
   protected async instanceOf(

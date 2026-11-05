@@ -1,5 +1,6 @@
 import {
   Building2,
+  FileJson,
   FormInput,
   Home as HomeIcon,
   ListTree,
@@ -365,6 +366,12 @@ export const NAV: NavGroup[] = [
             description: "Organization permissions by rank.",
           },
         ],
+      },
+      {
+        label: "API explorer",
+        icon: FileJson,
+        href: "/pages/developer/api",
+        description: "The site's OpenAPI document, browsed.",
       },
     ],
   },

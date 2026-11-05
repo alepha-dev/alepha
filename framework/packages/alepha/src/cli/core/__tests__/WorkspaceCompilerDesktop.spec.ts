@@ -355,13 +355,13 @@ describe("defineConfig({ desktop })", () => {
     const { buildOptions } = await import("../atoms/buildOptions.ts");
     const alepha = Alepha.create();
 
-    defineConfig({ desktop: { name: "Loom", identifier: "dev.alepha.loom" } })(
-      alepha,
-    );
+    defineConfig({
+      desktop: { name: "Notepad", identifier: "dev.alepha.notepad" },
+    })(alepha);
 
     expect(alepha.store.get(desktopOptions)).toEqual({
-      name: "Loom",
-      identifier: "dev.alepha.loom",
+      name: "Notepad",
+      identifier: "dev.alepha.notepad",
     });
     expect(alepha.store.get(buildOptions)).toEqual(
       buildOptions.options.default,

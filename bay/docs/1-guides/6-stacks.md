@@ -12,16 +12,16 @@ page is the Bay reference.
 
 ```mermaid
 flowchart LR
-  subgraph prod["mcs-production (network, volumes, variables)"]
+  subgraph prod["crm-production (network, volumes, variables)"]
     web["web (app: myapp)"] --> db[(Postgres)]
     web --> redis[(Redis)]
   end
-  subgraph staging["mcs-staging"]
+  subgraph staging["crm-staging"]
     web2["web (app: myapp)"] --> db2[(Postgres)]
     web2 --> redis2[(Redis)]
   end
-  proxy[Bay proxy] -->|mcs.bay.example.com| web
-  proxy -->|mcs-staging.bay.example.com| web2
+  proxy[Bay proxy] -->|crm.bay.example.com| web
+  proxy -->|crm-staging.bay.example.com| web2
 ```
 
 ## The compose file
@@ -108,7 +108,7 @@ the host.
 ## Environments
 
 A stack is deployed per environment, addressed as `<stack>/<env>`. Each one is
-its own Compose project (`mcs-production`, `mcs-staging`), with its own network,
+its own Compose project (`crm-production`, `crm-staging`), with its own network,
 volumes, variables and containers: a file cannot name production's Postgres, its
 volumes or its variables from staging, and destroying staging leaves production
 alone. That stops a mistake, not a hostile file: what the list above leaves
@@ -121,15 +121,15 @@ These commands, and every other `bay` command on this page, run on the host with
 
 ```bash
 export BAY_SOCKET=/run/bay/control.sock
-bay stack deploy mcs/production compose.yml     # or a directory, an archive, or - for stdin
-bay stack deploy mcs/production compose.yml --dry-run
-bay stack deploy mcs/production                 # reapply the current revision
+bay stack deploy crm/production compose.yml     # or a directory, an archive, or - for stdin
+bay stack deploy crm/production compose.yml --dry-run
+bay stack deploy crm/production                 # reapply the current revision
 ```
 
 ⚠️ **A bundle is a whole directory, never one file.** `compose.yml` as the
 argument packs the directory it sits in, leaving out only `.git`, `node_modules`
 and symlinks. So `scp compose.yml host:`, then
-`bay stack deploy mcs/production compose.yml` from your home directory, bundles
+`bay stack deploy crm/production compose.yml` from your home directory, bundles
 all of `$HOME`, `.ssh` included, into the revision. Give each stack a directory
 of its own. A bundle is capped at 16 MiB, uploaded and unpacked alike.
 
@@ -142,7 +142,7 @@ restarted with the new network and variables. A bad revision is undone by
 reapplying an earlier one, with the same digests:
 
 ```bash
-bay stack rollback mcs/production --to 3
+bay stack rollback crm/production --to 3
 ```
 
 `--keep-releases` bounds revisions too: by default Bay keeps the current one and
@@ -150,10 +150,10 @@ its predecessor, and deletes the older ones with the images only they pinned, so
 `--to` cannot reach further back.
 
 An app service waits for its first artifact. It comes from the project
-(`alepha deploy` with `bay({ stack: "mcs" })`), or by hand into one service:
+(`alepha deploy` with `bay({ stack: "crm" })`), or by hand into one service:
 
 ```bash
-bay deploy mcs/production/web myapp.tar.zst
+bay deploy crm/production/web myapp.tar.zst
 ```
 
 Either way only that service is replaced, blue/green; Postgres and Redis keep
@@ -162,9 +162,9 @@ running.
 ## Variables
 
 ```bash
-ssh HOST 'BAY_SOCKET=/run/bay/control.sock bay stack env set mcs/production -' < .env.stack.production
-bay stack env list mcs/production          # names only
-bay stack env unset mcs/production KEY...
+ssh HOST 'BAY_SOCKET=/run/bay/control.sock bay stack env set crm/production -' < .env.stack.production
+bay stack env list crm/production          # names only
+bay stack env unset crm/production KEY...
 ```
 
 Variables fill `${VAR}` in the compose file and reach app services, from the
@@ -178,9 +178,9 @@ Each environment gets a base domain: `<stack>.<base-domain>` for production,
 real domain is a route of the stack, so it survives every app deploy:
 
 ```bash
-bay stack route mcs/production web myapp.com
-bay stack route list mcs/production
-bay stack route remove mcs/production myapp.com
+bay stack route crm/production web myapp.com
+bay stack route list crm/production
+bay stack route remove crm/production myapp.com
 ```
 
 The `domain` option of `bay()` is not used for an app in a stack.
@@ -188,9 +188,9 @@ The `domain` option of `bay()` is not used for an app in a stack.
 ## Private registries
 
 ```bash
-ssh HOST 'BAY_SOCKET=/run/bay/control.sock bay stack registry add mcs/production ghcr.io --username bot' < token.txt
-bay stack registry list mcs/production      # hosts only
-bay stack registry remove mcs/production ghcr.io
+ssh HOST 'BAY_SOCKET=/run/bay/control.sock bay stack registry add crm/production ghcr.io --username bot' < token.txt
+bay stack registry list crm/production      # hosts only
+bay stack registry remove crm/production ghcr.io
 ```
 
 The password is read from stdin, and stored base64-encoded, not encrypted, in the
@@ -201,10 +201,10 @@ host's [registry mirror](/bay/docs/guides-operating#runtimes) when one is set.
 
 ```bash
 bay stack list                              # every stack environment
-bay stack ps mcs/production                 # services, kind, state, domains
-bay stack logs mcs/production db -n 500
-bay stack restart mcs/production web        # an app service blue/green, others in place
-bay stack exec mcs/production db psql -U app app
+bay stack ps crm/production                 # services, kind, state, domains
+bay stack logs crm/production db -n 500
+bay stack restart crm/production web        # an app service blue/green, others in place
+bay stack exec crm/production db psql -U app app
 ```
 
 `bay stack exec` is no control API call: it runs `docker exec -it` on the host,
@@ -225,13 +225,13 @@ Dumps ride the same schedule, upload and pruning as app
 [backups](/bay/docs/guides-backups); an empty or failing hook is a failed backup.
 
 ```bash
-bay backup list mcs/production db
-bay backup restore mcs/production db <backup>
-bay backup restore mcs/staging db <backup> --from mcs/production   # production data into staging
+bay backup list crm/production db
+bay backup restore crm/production db <backup>
+bay backup restore crm/staging db <backup> --from crm/production   # production data into staging
 ```
 
 A restore overwrites the service's data, so it asks you to type the target
-(`mcs/production/db`) to confirm; `--yes` skips the question in a script.
+(`crm/production/db`) to confirm; `--yes` skips the question in a script.
 
 A volume no hook covers is **named** in every backup response, in `bay status`
 and in `bay stack volumes` (with its size): "not backed up: volume
@@ -239,16 +239,16 @@ redisdata". Redis holding caches and sessions is fine to leave so; anything
 else deserves a hook.
 
 ```bash
-bay stack volumes mcs/production
+bay stack volumes crm/production
 ```
 
 ## Stopping and destroying
 
 ```bash
-bay stack stop mcs/staging       # durably out of service, apps included
-bay stack start mcs/staging      # back, from the current revision
-bay stack destroy mcs/staging    # remove containers, routes and revisions; volumes, variables, registries kept
-bay stack destroy mcs/staging --purge   # and delete the volumes, variables and registries (asks; --yes to skip)
+bay stack stop crm/staging       # durably out of service, apps included
+bay stack start crm/staging      # back, from the current revision
+bay stack destroy crm/staging    # remove containers, routes and revisions; volumes, variables, registries kept
+bay stack destroy crm/staging --purge   # and delete the volumes, variables and registries (asks; --yes to skip)
 ```
 
 Either way an app service's directory under `apps/`, its `.env` included, stays

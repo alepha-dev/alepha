@@ -244,11 +244,11 @@ When no request source names the row at all (a single-tenant deployment with exa
 
 ```typescript
 $owns({
-  repository: () => this.clubs,
-  resolve: async () => (await this.clubs.getOne({})).id,
+  repository: () => this.workspaces,
+  resolve: async () => (await this.workspaces.getOne({})).id,
   via: {
     repository: () => this.members,
-    resource: "clubId",
+    resource: "workspaceId",
     user: "userId",
   },
 });

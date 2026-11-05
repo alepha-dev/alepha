@@ -49,12 +49,12 @@ export interface ResourceClaim extends ResourceWindow {
  * ### Two inventory shapes
  *
  * - **Fungible stock** ({@link StockService}): a quantity on a product. Three
- *   padel balls, a t-shirt in size M. Any unit will do, so a count is enough.
+ *   tennis balls, a t-shirt in size M. Any unit will do, so a count is enough.
  * - **An interval claim on a named resource** (this service): what is sold is
  *   a particular thing for a particular time, and two sales collide only when
  *   they name the same resource over overlapping intervals.
  *
- * A counter on a product cannot express the second: one product ("Padel, 90
+ * A counter on a product cannot express the second: one product ("Tennis, 90
  * minutes") sells many courts at many times, and one seat sold from A to C
  * over a train running A to B to C consumes capacity on both legs. So the
  * claim lives on the resource, and the product never learns about slots.
@@ -258,8 +258,8 @@ export class ResourceService {
    * and only the ones ranked strictly before it count: the claim survives if
    * they leave room for it across its whole interval. N racers for a
    * capacity-N interval therefore leave exactly N claims, and the ones that
-   * lose are the ones that arrived last. For capacity 1 this is Club's
-   * `rank(b) < mine`.
+   * lose are the ones that arrived last. For capacity 1 this is the
+   * classic `rank(b) < mine` booking check.
    *
    * `(createdAt, id)` is the order of writing only because these databases
    * have one writer; see `StockService.holdFits` for why, and why Postgres
@@ -621,7 +621,7 @@ export class ResourceService {
    *
    * ⚠️ Unbounded on purpose, and it must stay so: never a `paginate()`, never
    * a `limit`. Every claim this read drops is one the fit test cannot see, so a
-   * page ceiling would declare a claim the winner by default. Club's own
+   * page ceiling would declare a claim the winner by default. A downstream
    * booking check was bitten by exactly that, twice. One query for the whole
    * set of resources, clipped to the window by the overlap test itself.
    */

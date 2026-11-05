@@ -136,7 +136,7 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 // Lore self-reports through its own sigil, so the floating feedback button
 // renders on every Lore page — including the feedback form itself, where it
 // offers to open the form you are already looking at. `*` matches within one
-// path segment, so this covers `/sds/request` and not `/sds/request/anything`.
+// path segment, so this covers `/demo/request` and not `/demo/request/anything`.
 // The estate command queue pushes over the estates websocket (epic #20).
 // Declared BEFORE `LoreDeployApi`, which registers the default transport that
 // reaches nothing: a substitution after the service is in use is refused.

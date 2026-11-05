@@ -1267,7 +1267,7 @@ describe("the worker-side Cloudflare adapter", () => {
       adapter.use(credential);
       await deployConfig(fs, {
         services: [
-          { binding: "CLUB", service: "club-staging" },
+          { binding: "ACME", service: "acme-staging" },
           { binding: "AUTH", service: "auth", entrypoint: "Sessions" },
         ],
       });
@@ -1277,8 +1277,8 @@ describe("the worker-side Cloudflare adapter", () => {
 
       expect(calls[0]!.bindings).toContainEqual({
         type: "service",
-        name: "CLUB",
-        service: "club-staging",
+        name: "ACME",
+        service: "acme-staging",
       });
       expect(calls[0]!.bindings).toContainEqual({
         type: "service",

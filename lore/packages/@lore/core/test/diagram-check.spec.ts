@@ -74,7 +74,7 @@ describe("the diagram check", () => {
     it("accepts brackets inside a label", ({ expect }) => {
       expect(
         check(
-          "flowchart TD\n  club[Club worker at {slug}.alepha.club] --> x[X]",
+          "flowchart TD\n  acme[Acme worker at {slug}.example.app] --> x[X]",
         ),
       ).toEqual([]);
       expect(

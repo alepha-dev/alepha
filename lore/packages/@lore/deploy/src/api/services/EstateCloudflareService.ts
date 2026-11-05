@@ -124,8 +124,8 @@ export class EstateCloudflareService {
    * custom domain, which `BuildCloudflareTask.enhanceDomain` emits as
    * `custom_domain: true` and Cloudflare serves from
    * `PUT /accounts/{id}/workers/domains` under "Workers Scripts: Edit": the
-   * `workers` probe already proves it. Wildcard hosts go away when Alepha
-   * Club goes mono-tenant after epic #1 (owner's ruling, 2026-09-06).
+   * `workers` probe already proves it. Wildcard hosts
+   * are out of scope (owner's ruling, 2026-09-06).
    *
    * ⚠️ **Verified against the deploy on 2026-09-07 (#1517), and unchanged.**
    * The contract above says this table moves when the real calls are known;

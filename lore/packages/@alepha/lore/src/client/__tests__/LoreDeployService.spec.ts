@@ -59,7 +59,7 @@ const setup = (routes: Record<string, (body?: any) => unknown> = {}) => {
       LOG_LEVEL: "error",
       LORE_URL: "https://lore.example.com",
       LORE_API_KEY: "k",
-      LORE_PROJECT: "club",
+      LORE_PROJECT: "acme",
     },
   })
     .with({ provide: LoreApiClient, use: FakeApi })
@@ -86,8 +86,8 @@ const setup = (routes: Record<string, (body?: any) => unknown> = {}) => {
 
 const anInstance = (over: Record<string, unknown> = {}) => ({
   id: "inst-1",
-  app: "club",
-  env: "wassup",
+  app: "acme",
+  env: "riverside",
   estateId: "est-1",
   ...over,
 });
@@ -96,17 +96,17 @@ const anInstance = (over: Record<string, unknown> = {}) => ({
  * The happy path's four routes, with the run already terminal.
  */
 const shipped = (over: Record<string, unknown> = {}) => ({
-  "GET /api/projects/1/apps/club/wassup": () => anInstance(),
+  "GET /api/projects/1/apps/acme/riverside": () => anInstance(),
   "POST /api/projects/1/apps/inst-1/deployments": () => ({
     id: "dep-1",
     status: "queued",
   }),
   "GET /api/projects/1/deployments/dep-1": () => ({
     id: "dep-1",
-    app: "club",
+    app: "acme",
     tag: "latest",
     status: "succeeded",
-    url: "https://wassup.club.example",
+    url: "https://riverside.acme.example",
     log: [{ text: "live" }],
     ...over,
   }),
@@ -117,11 +117,11 @@ describe("deploying from another server", () => {
     it("deploys an existing copy without creating anything", async () => {
       const { api, service } = setup(shipped());
 
-      const result = await service.deploy({ app: "club", env: "wassup" });
+      const result = await service.deploy({ app: "acme", env: "riverside" });
 
-      expect(result.url).toBe("https://wassup.club.example");
+      expect(result.url).toBe("https://riverside.acme.example");
       expect(api.calls.map((it) => `${it.method} ${it.path}`)).toEqual([
-        "GET /api/projects/1/apps/club/wassup",
+        "GET /api/projects/1/apps/acme/riverside",
         "POST /api/projects/1/apps/inst-1/deployments",
         "GET /api/projects/1/deployments/dep-1",
       ]);
@@ -143,24 +143,24 @@ describe("deploying from another server", () => {
           ],
         }),
         "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
-        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
         }),
         "GET /api/projects/1/deployments/dep-1": () => ({
           id: "dep-1",
-          app: "club",
+          app: "acme",
           tag: "latest",
           status: "succeeded",
-          url: "https://wassup.club.example",
+          url: "https://riverside.acme.example",
           log: [],
         }),
       });
 
-      const result = await service.deploy({ app: "club", env: "wassup" });
+      const result = await service.deploy({ app: "acme", env: "riverside" });
 
-      expect(result.url).toBe("https://wassup.club.example");
+      expect(result.url).toBe("https://riverside.acme.example");
       const patch = api.calls.find((it) => it.method === "PATCH");
       expect(patch?.body).toEqual({ estateId: "est-old" });
       // And the create itself carries no estate: two calls, because
@@ -168,7 +168,7 @@ describe("deploying from another server", () => {
       const created = api.calls.find(
         (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
       );
-      expect(created?.body).toEqual({ app: "club", env: "wassup" });
+      expect(created?.body).toEqual({ app: "acme", env: "riverside" });
     });
 
     it("takes the named estate when one is named", async () => {
@@ -180,21 +180,21 @@ describe("deploying from another server", () => {
           ],
         }),
         "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
-        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
         }),
         "GET /api/projects/1/deployments/dep-1": () => ({
           id: "dep-1",
-          app: "club",
+          app: "acme",
           tag: "latest",
           status: "succeeded",
           log: [],
         }),
       });
 
-      await service.deploy({ app: "club", env: "wassup", estate: "newer" });
+      await service.deploy({ app: "acme", env: "riverside", estate: "newer" });
 
       const patch = api.calls.find((it) => it.method === "PATCH");
       expect(patch?.body).toEqual({ estateId: "est-new" });
@@ -208,21 +208,21 @@ describe("deploying from another server", () => {
           items: [{ id: "est-old", slug: "only" }],
         }),
         "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
-        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
         }),
         "GET /api/projects/1/deployments/dep-1": () => ({
           id: "dep-1",
-          app: "club",
+          app: "acme",
           tag: "latest",
           status: "succeeded",
           log: [],
         }),
       });
 
-      await service.deploy({ app: "club", env: "wassup", estate: "  " });
+      await service.deploy({ app: "acme", env: "riverside", estate: "  " });
 
       const patch = api.calls.find((it) => it.method === "PATCH");
       expect(patch?.body).toEqual({ estateId: "est-old" });
@@ -239,42 +239,42 @@ describe("deploying from another server", () => {
           items: [{ id: "est-1", slug: "only" }],
         }),
         "POST /api/projects/1/apps": () => anInstance(),
-        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
         }),
         "GET /api/projects/1/deployments/dep-1": () => ({
           id: "dep-1",
-          app: "club",
+          app: "acme",
           tag: "latest",
           status: "succeeded",
-          url: "https://wassup.club.example",
+          url: "https://riverside.acme.example",
           log: [],
         }),
       });
 
       await service.deploy({
-        app: "club",
-        env: "wassup",
-        domain: "wassup.club.example",
+        app: "acme",
+        env: "riverside",
+        domain: "riverside.acme.example",
       });
 
       const created = api.calls.find(
         (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
       );
       expect(created?.body).toEqual({
-        app: "club",
-        env: "wassup",
-        url: "https://wassup.club.example",
+        app: "acme",
+        env: "riverside",
+        url: "https://riverside.acme.example",
       });
     });
 
     it.each([
-      "https://wassup.club.example",
-      "wassup.club.example/app",
-      "wassup.club.example:8080",
-      "wassup",
+      "https://riverside.acme.example",
+      "riverside.acme.example/app",
+      "riverside.acme.example:8080",
+      "riverside",
       "",
     ])("refuses %o, which is not a hostname", async (bad) => {
       // ⚠️ Before anything is written. A malformed host reaching the row would
@@ -287,7 +287,7 @@ describe("deploying from another server", () => {
       });
 
       await expect(
-        service.deploy({ app: "club", env: "wassup", domain: bad }),
+        service.deploy({ app: "acme", env: "riverside", domain: bad }),
       ).rejects.toThrow(/is not a hostname/);
       expect(
         api.calls.filter((it) => it.path === "/api/projects/1/apps"),
@@ -300,14 +300,14 @@ describe("deploying from another server", () => {
           items: [{ id: "est-1", slug: "only" }],
         }),
         "POST /api/projects/1/apps": () => anInstance(),
-        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
         }),
         "GET /api/projects/1/deployments/dep-1": () => ({
           id: "dep-1",
-          app: "club",
+          app: "acme",
           tag: "latest",
           status: "succeeded",
           log: [],
@@ -315,18 +315,18 @@ describe("deploying from another server", () => {
       });
 
       await service.deploy({
-        app: "club",
-        env: "wassup",
-        domain: "  Wassup.Club.Example  ",
+        app: "acme",
+        env: "riverside",
+        domain: "  Riverside.Acme.Example  ",
       });
 
       const created = api.calls.find(
         (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
       );
       expect(created?.body).toEqual({
-        app: "club",
-        env: "wassup",
-        url: "https://wassup.club.example",
+        app: "acme",
+        env: "riverside",
+        url: "https://riverside.acme.example",
       });
     });
 
@@ -340,8 +340,8 @@ describe("deploying from another server", () => {
 
       await expect(
         service.deploy({
-          app: "club",
-          env: "wassup",
+          app: "acme",
+          env: "riverside",
           estate: "somebody-elses",
         }),
       ).rejects.toThrow(/No estate called 'somebody-elses' is lent/);
@@ -355,7 +355,7 @@ describe("deploying from another server", () => {
       });
 
       await expect(
-        service.deploy({ app: "club", env: "wassup" }),
+        service.deploy({ app: "acme", env: "riverside" }),
       ).rejects.toThrow(/No estate is lent to this project/);
       expect(
         api.calls.filter((it) => it.path === "/api/projects/1/apps"),
@@ -371,8 +371,8 @@ describe("deploying from another server", () => {
       const { api, service } = setup(shipped());
 
       await service.deploy({
-        app: "club",
-        env: "wassup",
+        app: "acme",
+        env: "riverside",
         domain: "somewhere-else.example",
       });
 
@@ -391,7 +391,7 @@ describe("deploying from another server", () => {
       // the `app_instances` row. Folio #96 is the hole that closes.
       const { api, service } = setup(shipped());
 
-      await service.deploy({ app: "club", env: "wassup", tag: "1.2.3" });
+      await service.deploy({ app: "acme", env: "riverside", tag: "1.2.3" });
 
       const start = api.calls.find((it) => it.path.endsWith("/deployments"));
       expect(start?.body).toEqual({ tag: "1.2.3" });
@@ -400,7 +400,7 @@ describe("deploying from another server", () => {
     it("defaults the tag to latest", async () => {
       const { api, service } = setup(shipped());
 
-      await service.deploy({ app: "club", env: "wassup" });
+      await service.deploy({ app: "acme", env: "riverside" });
 
       const start = api.calls.find((it) => it.path.endsWith("/deployments"));
       expect(start?.body).toEqual({ tag: "latest" });
@@ -411,7 +411,7 @@ describe("deploying from another server", () => {
     it("polls until terminal and answers the log as lines", async () => {
       let reads = 0;
       const { service } = setup({
-        "GET /api/projects/1/apps/club/wassup": () => anInstance(),
+        "GET /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
@@ -419,19 +419,19 @@ describe("deploying from another server", () => {
         "GET /api/projects/1/deployments/dep-1": () => {
           reads++;
           return reads < 3
-            ? { id: "dep-1", app: "club", tag: "latest", status: "running" }
+            ? { id: "dep-1", app: "acme", tag: "latest", status: "running" }
             : {
                 id: "dep-1",
-                app: "club",
+                app: "acme",
                 tag: "latest",
                 status: "succeeded",
-                url: "https://wassup.club.example",
+                url: "https://riverside.acme.example",
                 log: [{ text: "uploading" }, { text: "live" }],
               };
         },
       });
 
-      const result = await service.deploy({ app: "club", env: "wassup" });
+      const result = await service.deploy({ app: "acme", env: "riverside" });
 
       expect(reads).toBe(3);
       expect(result.deployment.log).toEqual(["uploading", "live"]);
@@ -443,27 +443,27 @@ describe("deploying from another server", () => {
       );
 
       await expect(
-        service.deploy({ app: "club", env: "wassup" }),
+        service.deploy({ app: "acme", env: "riverside" }),
       ).rejects.toThrow(/The Worker upload was rejected\./);
     });
 
     it("gives up on its own deadline, saying the run continues", async () => {
       const { service } = setup({
-        "GET /api/projects/1/apps/club/wassup": () => anInstance(),
+        "GET /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
           status: "queued",
         }),
         "GET /api/projects/1/deployments/dep-1": () => ({
           id: "dep-1",
-          app: "club",
+          app: "acme",
           tag: "latest",
           status: "running",
         }),
       });
 
       await expect(
-        service.deploy({ app: "club", env: "wassup", timeoutMs: 10_000 }),
+        service.deploy({ app: "acme", env: "riverside", timeoutMs: 10_000 }),
       ).rejects.toThrow(/still running/);
     });
   });
@@ -473,14 +473,14 @@ describe("deploying from another server", () => {
       // ⚠️ A revoked key must not become "the copy is missing", or `create`
       // would mint one to paper over an outage.
       const { api, service } = setup();
-      api.routes["GET /api/projects/1/apps/club/wassup"] = () => {
+      api.routes["GET /api/projects/1/apps/acme/riverside"] = () => {
         throw new AlephaError("Forbidden", {
           cause: { status: 403 },
         });
       };
 
       await expect(
-        service.deploy({ app: "club", env: "wassup" }),
+        service.deploy({ app: "acme", env: "riverside" }),
       ).rejects.toThrow(/Forbidden/);
       expect(api.calls.filter((it) => it.method === "POST")).toEqual([]);
     });

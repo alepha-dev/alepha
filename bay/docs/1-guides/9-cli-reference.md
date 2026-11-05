@@ -13,7 +13,7 @@ for one command.
 
 An app instance is written `name/env`, a stack environment `stack/env`. A
 stack's service is the instance `stack.service/env`, as in
-`bay logs mcs.web/production`.
+`bay logs crm.web/production`.
 
 ## Server
 

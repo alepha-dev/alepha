@@ -427,8 +427,8 @@ export class StackService {
    * Makes an app instance a member of a stack environment.
    *
    * Refused unless the instance is of the stack's own project and carries the
-   * environment's own env name (`mcs-api/staging` joins `mcs/staging`, never
-   * `mcs/production`), and unless it is a member of no other environment:
+   * environment's own env name (`crm-api/staging` joins `crm/staging`, never
+   * `crm/production`), and unless it is a member of no other environment:
    * moving a copy between stacks is a detach then an attach, said out loud.
    */
   async attachInstance(

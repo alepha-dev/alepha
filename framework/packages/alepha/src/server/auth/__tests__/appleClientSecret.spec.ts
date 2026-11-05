@@ -18,12 +18,12 @@ describe("apple client secret", () => {
     const secret = await signAppleClientSecret({
       privateKeyPem: pem,
       teamId: "TEAM123456",
-      serviceId: "club.alepha.signin",
+      serviceId: "com.example.signin",
       keyId: "KEY1234567",
     });
     const claims = decodeJwt(secret);
     expect(claims.iss).toBe("TEAM123456");
-    expect(claims.sub).toBe("club.alepha.signin");
+    expect(claims.sub).toBe("com.example.signin");
     expect(claims.aud).toBe("https://appleid.apple.com");
     expect(typeof claims.exp).toBe("number");
 

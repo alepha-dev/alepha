@@ -76,7 +76,7 @@ export const sigilCreateParamsSchema = projectParamsSchema.extend({
     .max(APP_NAME_MAX_LENGTH)
     .optional()
     .describe(
-      `Which app to mint for. A slug, not a title: lowercase letters, digits and interior hyphens only (\`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$\`), at most ${APP_NAME_MAX_LENGTH} characters. Trimmed and lowercased, so \`Club\` is accepted and stored as \`club\`. Required in practice — it is optional here only so the deprecated \`name\` can stand in for it.`,
+      `Which app to mint for. A slug, not a title: lowercase letters, digits and interior hyphens only (\`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$\`), at most ${APP_NAME_MAX_LENGTH} characters. Trimmed and lowercased, so \`Acme\` is accepted and stored as \`acme\`. Required in practice — it is optional here only so the deprecated \`name\` can stand in for it.`,
     ),
   env: z
     .string()

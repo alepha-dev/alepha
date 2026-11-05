@@ -108,7 +108,7 @@ describe("DataTable (empty states)", () => {
     // with a different cause.
     await mount(
       <DataTable<Row, typeof filterFields>
-        data={[{ id: 1, title: "club" }]}
+        data={[{ id: 1, title: "venue" }]}
         columns={columns}
         filters={{
           fields: filterFields,

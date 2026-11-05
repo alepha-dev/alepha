@@ -73,7 +73,7 @@ describe("ServerSwaggerProvider - declared errors", () => {
     const api = alepha.inject(Api);
     const meta = (mw: Middleware) => mw[OPTIONS]?.meta;
     expect(api.strict.middlewares.map((m) => m.meta)).toEqual([
-      { protected: "true", responses: "401,403" },
+      { protected: "true", responses: "401,403", roles: "admin" },
       { responses: "429" },
     ]);
     expect(meta(api.nothingExpected.options.use![0])).toEqual({

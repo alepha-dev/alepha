@@ -205,7 +205,7 @@ export class LoreDeployer {
    * lowercases and pattern-checks each half, so `--env Production` normalises
    * onto an existing row while `--env prod` does not. The near-miss is the case
    * that matters: creating a deploy target as a side effect of a typo is how
-   * `clbu` gets deployed to, and epic #30 accepted the typo cost precisely
+   * `acem` gets deployed to, and epic #30 accepted the typo cost precisely
    * because creation is always an explicit act.
    */
   public async loadInstance(

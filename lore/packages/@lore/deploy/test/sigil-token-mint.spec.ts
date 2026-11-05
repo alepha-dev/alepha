@@ -35,14 +35,14 @@ describe("SigilTokenService.mint", () => {
   it("namespaces the token with the project's slug", async ({ expect }) => {
     const { probe, tokens } = await setup();
     const project = await probe.projects.create({
-      title: "Club",
-      slug: "club",
+      title: "Acme",
+      slug: "acme",
       createdBy: "00000000-0000-4000-8000-000000000001",
     });
 
     const { token } = await tokens.mint(project.id);
 
-    expect(sigilKeyProject(token)).toBe("club");
+    expect(sigilKeyProject(token)).toBe("acme");
   });
 
   it("refuses a project without a slug rather than mint the bare shape", async ({

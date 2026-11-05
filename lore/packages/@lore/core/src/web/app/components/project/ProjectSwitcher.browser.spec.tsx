@@ -85,7 +85,7 @@ describe("ProjectSwitcher", () => {
     const projects = [
       row(1, "Lore"),
       row(2, "Minorca", "2026-10-01T00:00:00.000Z"),
-      row(3, "Club"),
+      row(3, "Acme"),
     ];
     alepha.store.set(
       currentProjectAtom,
@@ -107,7 +107,7 @@ describe("ProjectSwitcher", () => {
       </AlephaContext.Provider>,
     );
     fireEvent.click(screen.getByTestId("project-switcher"));
-    await screen.findByText("Club");
+    await screen.findByText("Acme");
   };
 
   it("leaves an archived project out of the menu", async ({ expect }) => {

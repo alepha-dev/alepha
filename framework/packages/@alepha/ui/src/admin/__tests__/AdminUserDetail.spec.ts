@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { resolveUserDetailId } from "../AdminUserDetail.tsx";
 
 /**
- * `resolveUserDetailId` is the whole reason `~/git/club/apps/platform` keeps
- * working across a vendored `@alepha/ui` upgrade: it declares its user-detail
+ * `resolveUserDetailId` is what keeps a downstream app working across
+ * a vendored `@alepha/ui` upgrade when it declares its user-detail
  * route as `/users/:id` against this same component, while `AdminRouter`'s
  * own route declares `:userId`. Losing the `:id` fallback would resolve an
  * empty id for that application instead of failing loudly.

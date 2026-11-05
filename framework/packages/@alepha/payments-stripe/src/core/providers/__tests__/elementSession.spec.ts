@@ -17,7 +17,7 @@ import { StripePaymentProvider } from "../StripePaymentProvider.ts";
 const WEBHOOK_SECRET = "whsec_test_platform_secret";
 const CONNECT_SECRET = "whsec_test_connect_secret";
 const SWEEP_JOB = "system.payments.expire-stale-intents";
-const CLUB_ACCOUNT = "acct_club";
+const VENUE_ACCOUNT = "acct_venue";
 
 interface FakePaymentIntent {
   id: string;
@@ -195,21 +195,21 @@ describe("Payment Element sessions", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const { intentId, session } = await ctx.openElement(0, CLUB_ACCOUNT);
+    const { intentId, session } = await ctx.openElement(0, VENUE_ACCOUNT);
     expect((await ctx.payments.getIntent(intentId)).providerAccount).toBe(
-      CLUB_ACCOUNT,
+      VENUE_ACCOUNT,
     );
 
     const event = await ctx.provider.parseConnectWebhook(
       ctx.webhook(
         "payment_intent.succeeded",
         session.providerRef,
-        CLUB_ACCOUNT,
+        VENUE_ACCOUNT,
       ),
     );
     await ctx.payments.handleParsedWebhook(event);
 
-    expect(event.account).toBe(CLUB_ACCOUNT);
+    expect(event.account).toBe(VENUE_ACCOUNT);
     expect((await ctx.payments.getIntent(intentId)).status).toBe("captured");
   });
 
@@ -238,12 +238,12 @@ describe("Payment Element sessions", () => {
   }) => {
     const ctx = await setup();
     const onPlatform = await ctx.openElement(45);
-    const onClub = await ctx.openElement(45, CLUB_ACCOUNT);
+    const onVenue = await ctx.openElement(45, VENUE_ACCOUNT);
 
     await ctx.sweep();
 
     expect(ctx.jobErrors).toEqual([]);
-    for (const { intentId, session } of [onPlatform, onClub]) {
+    for (const { intentId, session } of [onPlatform, onVenue]) {
       expect((await ctx.payments.getIntent(intentId)).status).toBe("expired");
       expect(ctx.provider.paymentIntentsById.get(session.providerRef)).toEqual(
         expect.objectContaining({
@@ -258,7 +258,7 @@ describe("Payment Element sessions", () => {
     expect,
   }) => {
     const ctx = await setup();
-    const { intentId, session } = await ctx.openElement(45, CLUB_ACCOUNT);
+    const { intentId, session } = await ctx.openElement(45, VENUE_ACCOUNT);
     ctx.provider.paymentIntentsById.get(session.providerRef)!.status =
       "succeeded";
 

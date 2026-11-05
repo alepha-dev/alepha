@@ -50,7 +50,7 @@ describe("ProjectSlugService", () => {
     });
 
     it("allows an ordinary slug", ({ expect }) => {
-      expect(service().isReserved("sds")).toBe(false);
+      expect(service().isReserved("demo")).toBe(false);
       expect(service().isReserved("elf-summer")).toBe(false);
       // "project" alone is not in the fallback namespace.
       expect(service().isReserved("project-x")).toBe(false);
@@ -74,7 +74,7 @@ describe("projectTitleSchema", () => {
   });
 
   it("trims surrounding whitespace", ({ expect }) => {
-    expect(projectTitleSchema.parse("  SDS  ")).toBe("SDS");
+    expect(projectTitleSchema.parse("  DEMO  ")).toBe("DEMO");
   });
 
   it("accepts dashes and underscores", ({ expect }) => {

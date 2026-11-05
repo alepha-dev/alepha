@@ -1886,7 +1886,7 @@ export default {
     "Choisissez une application que vous déployez déjà, ou démarrez-en une nouvelle. Minuscules, chiffres et tirets.",
   "apps.create.env": "Environnement",
   "apps.create.envDescription":
-    "Quelle copie : production, staging, b14-production. Texte libre, rien ne l’interprète.",
+    "Quelle copie : production, staging, east-production. Texte libre, rien ne l’interprète.",
   "apps.create.withSigil": "Créer aussi un sigil",
   "apps.create.withSigilDescription":
     "Génère la clé avec laquelle cette copie remonte ses données, affichée une seule fois. Vous pourrez toujours en ajouter un plus tard depuis son onglet Réglages.",
@@ -2291,7 +2291,7 @@ export default {
   "blights.rules.settingsDescription":
     "Les crashs dont le message correspond à l'une de ces sous-chaînes sont écartés à l'arrivée, avant même d'atteindre la boîte de réception.",
   "blights.rules.manage": "Gérer les règles",
-  "blights.rules.placeholder": "ex. Unknown club",
+  "blights.rules.placeholder": "ex. Tenant inconnu",
   "blights.rules.add": "Ajouter",
   "blights.rules.remove": "Supprimer la règle",
   "blights.rules.loading": "Chargement des règles…",

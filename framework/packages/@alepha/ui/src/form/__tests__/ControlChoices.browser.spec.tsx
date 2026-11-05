@@ -11,7 +11,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { Control } from "../Control.tsx";
 
 /**
- * The field shapes MCS reached for and the kit did not have (#Q2760):
+ * The field shapes a downstream app reached for and the kit did not have
+ * (#Q2760):
  *
  * - a boolean switch draws no required marker: it always holds a value;
  * - `checkboxes` renders a multi-choice as one checkbox per option, every

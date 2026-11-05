@@ -13,7 +13,7 @@ import { EpicVisibilityService } from "./EpicVisibilityService.ts";
  * reaches inside it**, on D1 or anywhere else. Every filter over it is a
  * `like '%"value"%'` on the serialised blob, and `listQuestTags` reads the
  * whole column and folds it in memory for exactly this reason. #Q2083 asked
- * for a row count on Odzala before deciding; the answer is that "widen the
+ * for a row count on a large project before deciding; the answer is that "widen the
  * schema" was not an option, so the fold is not a compromise.
  *
  * ## Why it is a service

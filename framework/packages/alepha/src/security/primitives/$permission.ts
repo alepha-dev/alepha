@@ -18,7 +18,7 @@ import type { UserAccount } from "../schemas/userAccountInfoSchema.ts";
  * catalogue that numbers its permissions by their index in an array re-maps
  * every stored grant the moment somebody inserts one in the middle - and the
  * grants that move are not the ones being edited. This has a worked example:
- * a club whose receptionists woke up able to delete tournaments.
+ * an app whose front-desk staff woke up able to delete records.
  *
  * Say what the permission is called with {@link PermissionPrimitiveOptions.label};
  * that is the string a reader sees, and it can be changed freely.

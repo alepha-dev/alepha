@@ -4,8 +4,8 @@ import { $permission } from "alepha/security";
 /**
  * The realm this whole example exists to show.
  *
- * It is the "capacity" profile from the two-factor design: an internal tool
- * whose users are colleagues, with **no email provider at all**, so the second
+ * It is the internal-tool profile from the two-factor design: an app whose
+ * users are colleagues, with **no email provider at all**, so the second
  * factor has to be something the account carries on its own. That rules out
  * emailed codes and leaves TOTP, which needs no infrastructure beyond an
  * authenticator app the user already has.

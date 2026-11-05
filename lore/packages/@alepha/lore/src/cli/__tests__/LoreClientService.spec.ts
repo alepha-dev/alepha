@@ -172,7 +172,7 @@ describe("LoreClientService", () => {
       const service = create({ LORE_APP: "docs", LORE_ENV: "staging" });
 
       expect(service.appFromEnv("shop")).toBe("shop");
-      expect(service.envFromEnv("b14-production")).toBe("b14-production");
+      expect(service.envFromEnv("east-production")).toBe("east-production");
     });
 
     /**

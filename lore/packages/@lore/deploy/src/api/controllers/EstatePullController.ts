@@ -220,7 +220,7 @@ export class EstatePullController {
    * anything the machine sends.** The bearer proves which estate is asking,
    * `payload.app` / `payload.environment` say which of its instances, and the
    * `app_instances` row is matched on all three. An estate lent to two
-   * projects that each named `club/production` on it is therefore ambiguous,
+   * projects that each named `acme/production` on it is therefore ambiguous,
    * and ambiguity is refused rather than resolved by taking the first row: the
    * wrong answer here hands one project's production secrets to another's
    * machine.
@@ -296,7 +296,7 @@ export class EstatePullController {
         return {};
       }
       if (matches.length > 1) {
-        // Two projects lending one estate can each name `club/production` on
+        // Two projects lending one estate can each name `acme/production` on
         // it. That is ambiguity, and the wrong answer here hands one project's
         // production secrets to another's machine, so it is refused rather
         // than resolved by taking the first row.

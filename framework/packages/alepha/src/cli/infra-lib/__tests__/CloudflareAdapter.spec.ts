@@ -1040,11 +1040,11 @@ describe("CloudflareAdapter", () => {
           variables: [],
         }),
       );
-      // …but an orchestrator (Lore Deploy) injected CLUB_CONFIG_JSON into the
+      // …but an orchestrator (Lore Deploy) injected TENANT_CONFIG_JSON into the
       // per-deploy override file. It must still be pushed.
       await fs.writeFile(
         "/project/.env.production.local",
-        ["APP_SECRET=s1", 'CLUB_CONFIG_JSON={"id":"b14"}', ""].join("\n"),
+        ["APP_SECRET=s1", 'TENANT_CONFIG_JSON={"id":"east"}', ""].join("\n"),
       );
 
       const run = createMockRun();
@@ -1053,7 +1053,7 @@ describe("CloudflareAdapter", () => {
       const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name).sort()).toEqual([
         "APP_SECRET",
-        "CLUB_CONFIG_JSON",
+        "TENANT_CONFIG_JSON",
       ]);
     });
 

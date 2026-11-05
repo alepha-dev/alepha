@@ -92,7 +92,7 @@ const setup = async () => {
   const instance = await asUser(OWNER, () =>
     appApi.createApp({
       params: { projectId: project.id },
-      body: { app: "club", env: "production" },
+      body: { app: "acme", env: "production" },
     }),
   );
 
@@ -136,7 +136,7 @@ describe("Lore MCP - deploys", () => {
       await probe.instances.updateById(instance.id, { estateId: estate.id });
       await probe.artifacts.create({
         projectId: project.id,
-        app: "club",
+        app: "acme",
         tag: "0.28.0",
         runtime: "node",
         format: "archive",
@@ -147,7 +147,7 @@ describe("Lore MCP - deploys", () => {
       const run = await probe.deployments.create({
         projectId: project.id,
         instanceId: instance.id,
-        app: "club",
+        app: "acme",
         tag: "0.28.0",
         sha256: "a".repeat(64),
         status: "succeeded",
@@ -179,7 +179,7 @@ describe("Lore MCP - deploys", () => {
 
       const started: any = await call(
         deployTools.deploy_start,
-        { project: project.id, app: "club", env: "production", tag: "0.28.0" },
+        { project: project.id, app: "acme", env: "production", tag: "0.28.0" },
         shipper.id,
       );
       expect(started.id).toBeTruthy();
@@ -200,7 +200,7 @@ describe("Lore MCP - deploys", () => {
           deployTools.deploy_start,
           {
             project: project.id,
-            app: "club",
+            app: "acme",
             env: "production",
             tag: "0.28.0",
           },
@@ -287,13 +287,13 @@ describe("Lore MCP - deploys", () => {
   describe("naming a copy", () => {
     it("refuses a pair with no instance, and creates nothing", async () => {
       // Minting a deploy target as a side effect of a typo in `env` is how
-      // `clbu` gets deployed to.
+      // `acem` gets deployed to.
       const { deployTools, instanceTools, project, call } = await setup();
 
       await expect(
         call(deployTools.deploy_start, {
           project: project.id,
-          app: "club",
+          app: "acme",
           env: "prod",
         }),
       ).rejects.toThrow();
@@ -313,7 +313,7 @@ describe("Lore MCP - deploys", () => {
       await expect(
         call(deployTools.deploy_start, {
           project: project.id,
-          app: "club",
+          app: "acme",
           env: "production",
         }),
       ).rejects.toThrow(/has no estate/);
@@ -327,7 +327,7 @@ describe("Lore MCP - deploys", () => {
       await probe.deployments.create({
         projectId: project.id,
         instanceId: instance.id,
-        app: "club",
+        app: "acme",
         tag: "0.28.0",
         sha256: "a".repeat(64),
         status: "succeeded",
@@ -336,7 +336,7 @@ describe("Lore MCP - deploys", () => {
 
       const read: any = await call(deployTools.deploy_status, {
         project: project.id,
-        app: "club",
+        app: "acme",
         env: "production",
       });
 
@@ -353,7 +353,7 @@ describe("Lore MCP - deploys", () => {
       await expect(
         call(deployTools.deploy_status, {
           project: project.id,
-          app: "club",
+          app: "acme",
           env: "production",
         }),
       ).rejects.toThrow(/never been deployed/);

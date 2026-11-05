@@ -460,9 +460,9 @@ export interface OwnsOptions {
    *
    * ```ts
    * $ownsOrganization({
-   *   repository: () => this.clubs,
+   *   repository: () => this.workspaces,
    *   key: "organizationId",
-   *   resolve: () => this.clubs.getOne({}).then((club) => club.id),
+   *   resolve: () => this.workspaces.getOne({}).then((it) => it.id),
    *   requires: "staff:planning:delete",
    * })
    * ```
@@ -473,7 +473,7 @@ export interface OwnsOptions {
    * is declared rather than when it is first exercised.
    *
    * Returning nothing throws rather than denying. A resolver that finds no
-   * row is a wiring error, and "this deployment has no club row" must not
+   * row is a wiring error, and "this deployment has no workspace row" must not
    * reach the caller as "you are not allowed".
    *
    * It receives the guard's own context, so it is strictly more general than

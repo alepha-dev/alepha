@@ -9,8 +9,8 @@ describe("DesktopProtocol", () => {
     const init = {
       type: "init",
       version: 1,
-      name: "Loom",
-      identifier: "dev.alepha.loom",
+      name: "Notepad",
+      identifier: "dev.alepha.notepad",
       env: { NODE_ENV: "production" },
       defaults: {},
       paths: { data: "/a", logs: "/b", resources: "/c" },

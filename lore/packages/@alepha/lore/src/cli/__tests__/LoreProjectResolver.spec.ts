@@ -116,8 +116,8 @@ describe("LoreProjectResolver", () => {
     it("takes --env first, then LORE_ENV, and asks Lore for neither", async () => {
       const { resolver, listed } = create({ LORE_ENV: "staging" });
 
-      expect(await resolver.resolveEnv("b14-production", 1, "docs")).toBe(
-        "b14-production",
+      expect(await resolver.resolveEnv("east-production", 1, "docs")).toBe(
+        "east-production",
       );
       expect(await resolver.resolveEnv(undefined, 1, "docs")).toBe("staging");
       // The common path costs no request.
@@ -129,14 +129,14 @@ describe("LoreProjectResolver", () => {
       // place that app can go, so a setting that disagreed with it could only
       // ever be wrong.
       const { resolver, listed } = create({}, { id: 1 }, [
-        { app: "docs", env: "b14-production" },
+        { app: "docs", env: "east-production" },
         // Another app's rows are not this app's answer.
         { app: "lore", env: "staging" },
         { app: "lore", env: "production" },
       ]);
 
       expect(await resolver.resolveEnv(undefined, 7, "docs")).toBe(
-        "b14-production",
+        "east-production",
       );
       expect(listed).toEqual([7]);
     });

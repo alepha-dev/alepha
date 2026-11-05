@@ -92,7 +92,7 @@ export const withWorkerd = async <T>(
             name: options.name,
             // The date and flags `alepha build` writes. A newer date once
             // hid a Durable Object RPC bug, so the specs pin the build's.
-            compatibilityDate: "2025-11-17",
+            compatibilityDate: "2026-11-03",
             compatibilityFlags: ["nodejs_compat"],
             manifest: {
               mainModule: "worker.js",
