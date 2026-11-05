@@ -193,6 +193,73 @@ describe("EventManager", () => {
     });
   });
 
+  describe("dispatch() - emit without the async frame", () => {
+    it("returns nothing when every hook is synchronous, and has run them all", () => {
+      const eventManager = new EventManager();
+      const order: number[] = [];
+      eventManager.on("test:echoed", () => {
+        order.push(1);
+      });
+      eventManager.on("test:echoed", () => {
+        order.push(2);
+      });
+
+      const done = eventManager.dispatch("test:echoed", {});
+
+      expect(done).toBeUndefined();
+      expect(order).toEqual([1, 2]);
+    });
+
+    it("returns a promise once a hook is async, and keeps the hooks in order", async () => {
+      const eventManager = new EventManager();
+      const order: number[] = [];
+      eventManager.on("test:echoed", () => {
+        order.push(1);
+      });
+      eventManager.on("test:echoed", async () => {
+        await Promise.resolve();
+        order.push(2);
+      });
+      eventManager.on("test:echoed", () => {
+        order.push(3);
+      });
+
+      const done = eventManager.dispatch("test:echoed", {});
+
+      expect(done).toBeInstanceOf(Promise);
+      expect(order).toEqual([1]);
+      await done;
+      expect(order).toEqual([1, 2, 3]);
+    });
+
+    it("throws a synchronous hook's error as it was thrown", () => {
+      const eventManager = new EventManager();
+      const error = new TestError("boom");
+      eventManager.on("test:echoed", () => {
+        throw error;
+      });
+
+      expect(() => eventManager.dispatch("test:echoed", {})).toThrow(error);
+    });
+
+    it("reports instead of throwing with catchErrors, and runs the next hooks", () => {
+      const eventManager = new EventManager();
+      const order: number[] = [];
+      eventManager.on("test:echoed", () => {
+        throw new TestError("boom");
+      });
+      eventManager.on("test:echoed", () => {
+        order.push(2);
+      });
+
+      // The report goes to the logger; with none attached it is dropped.
+      const done = eventManager.dispatch("test:echoed", {}, true);
+
+      expect(done).toBeUndefined();
+      expect(order).toEqual([2]);
+    });
+  });
+
   describe("hook priorities", () => {
     it("should execute 'first' priority hooks before others", async () => {
       const eventManager = new EventManager();

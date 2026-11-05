@@ -360,6 +360,34 @@ export class EventManager {
     this.log?.error(message, error);
   }
 
+  /**
+   * {@link emit} without its `async` frame: runs the event's hooks and returns
+   * a promise only when one of them did, `undefined` when every hook ran
+   * synchronously. With `catchErrors`, a hook's failure is reported instead of
+   * thrown, as `emit`'s `catch` option does.
+   *
+   * For a hot path that emits on every request: `emit` always costs an async
+   * function and an `await`, even when no hook was async. Await the result
+   * only when there is one (`const done = dispatch(...); if (done) await done;`).
+   * A hook that throws synchronously, without `catchErrors`, throws from here.
+   */
+  public dispatch<T extends keyof Hooks>(
+    event: T,
+    payload: Hooks[T],
+    catchErrors?: boolean,
+  ): void | Promise<void> {
+    HookNamePolicy.assertCurrent(event);
+    const cacheKey = catchErrors
+      ? `${event as string}:catch`
+      : (event as string);
+    let executor = this.cache.get(cacheKey);
+    if (!executor) {
+      executor = this.compile(event, { catch: catchErrors });
+      this.cache.set(cacheKey, executor);
+    }
+    return executor(payload);
+  }
+
   public async emit<T extends keyof Hooks>(
     event: T,
     payload: Hooks[T],
@@ -385,20 +413,13 @@ export class EventManager {
       report?: EmitReport;
     } = {},
   ): Promise<void> {
-    HookNamePolicy.assertCurrent(event);
     // Fast path: auto-compiled executor
     if (!options.log) {
-      const cacheKey = options.catch
-        ? `${event as string}:catch`
-        : (event as string);
-      let executor = this.cache.get(cacheKey);
-      if (!executor) {
-        executor = this.compile(event, { catch: options.catch });
-        this.cache.set(cacheKey, executor);
-      }
-      await executor(payload);
+      await this.dispatch(event, payload, options.catch);
       return;
     }
+
+    HookNamePolicy.assertCurrent(event);
 
     // Slow path with logging (startup only)
     const events = this.resolve(event as string);
