@@ -6,6 +6,7 @@ import { $logger } from "alepha/logger";
 import type { Route } from "alepha/router";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";
+import { NodeServerRequestData } from "../helpers/NodeServerRequestData.ts";
 import type {
   NodeRequestEvent,
   ServerRequestData,
@@ -272,20 +273,18 @@ export class ServerProvider {
     // P0: Use manual query parsing - much faster than new URL() + URLSearchParams
     const query = this.parseQueryString(rawUrl);
 
-    // P1: Use cached URL base - avoids string concat on every request
-    // Create URL object (still needed for downstream code that uses url.pathname, etc.)
-    const urlBase = this.getUrlBase(headers);
-    const url = new URL(rawUrl, urlBase);
-
-    const request: ServerRequestData = {
+    // The URL is parsed only when something reads it (see
+    // NodeServerRequestData): the router matched on the raw string already.
+    const request = new NodeServerRequestData({
       method,
-      url,
+      rawUrl,
+      base: this.getUrlBase(headers),
       headers,
       params: params ?? {},
       query,
       signal: this.createNodeRequestSignal(res),
       raw: { node: nodeRequestEvent },
-    };
+    });
 
     const response = await route
       .handler(request)

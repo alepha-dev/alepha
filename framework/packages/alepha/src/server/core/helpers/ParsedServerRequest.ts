@@ -19,7 +19,6 @@ import { ServerReply } from "./ServerReply.ts";
  */
 export class ParsedServerRequest {
   public method: RouteMethod;
-  public url: URL;
   public raw: ServerRawRequest;
   public signal: AbortSignal;
   public headers: Record<string, string>;
@@ -41,6 +40,30 @@ export class ParsedServerRequest {
   protected readonly parser: ServerRequestParser;
   protected readonly data: ServerRequestData;
   protected cachedRequestId?: string;
+  protected assignedUrl?: URL;
+
+  /**
+   * The request URL, read from the data when first asked for: a Node
+   * request parses it lazily (see `NodeServerRequestData`), and copying it
+   * in the constructor parsed it for every request.
+   *
+   * An OWN enumerable accessor, defined per instance from one shared
+   * descriptor (no closure per request), not a getter on the prototype:
+   * code that copies a request with a spread (`{ ...request, headers }`)
+   * keeps its `url`, as it did when `url` was a plain field.
+   */
+  declare public url: URL;
+
+  protected static readonly URL_DESCRIPTOR: PropertyDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get(this: ParsedServerRequest): URL {
+      return this.assignedUrl ?? this.data.url;
+    },
+    set(this: ParsedServerRequest, url: URL) {
+      this.assignedUrl = url;
+    },
+  };
 
   public constructor(
     parser: ServerRequestParser,
@@ -50,7 +73,7 @@ export class ParsedServerRequest {
     this.parser = parser;
     this.data = data;
     this.method = data.method;
-    this.url = data.url;
+    Object.defineProperty(this, "url", ParsedServerRequest.URL_DESCRIPTOR);
     this.raw = data.raw;
     this.signal = signal;
     this.headers = data.headers;

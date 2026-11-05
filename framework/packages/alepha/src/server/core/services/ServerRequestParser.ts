@@ -1,6 +1,7 @@
 import { $env, $inject, Alepha, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 
+import { NodeServerRequestData } from "../helpers/NodeServerRequestData.ts";
 import { ParsedServerRequest } from "../helpers/ParsedServerRequest.ts";
 import type {
   RequestGeo,
@@ -59,7 +60,27 @@ export class ServerRequestParser {
   public createServerRequest(
     partialRawRequest: Partial<ServerRequestData>,
   ): ServerRequest {
-    const rawRequest = {
+    // A Node request's data is complete, and spreading it would read its
+    // lazy `url` (a spread invokes getters).
+    const rawRequest =
+      partialRawRequest instanceof NodeServerRequestData
+        ? partialRawRequest
+        : this.completeRequestData(partialRawRequest);
+    return new ParsedServerRequest(
+      this,
+      rawRequest,
+      rawRequest.signal ?? this.alepha.context.signal,
+    ) as unknown as ServerRequest;
+  }
+
+  /**
+   * A partial request (a direct `$action` call, a test, a Web request) with
+   * its missing fields defaulted.
+   */
+  protected completeRequestData(
+    partialRawRequest: Partial<ServerRequestData>,
+  ): ServerRequestData {
+    return {
       method: "GET",
       url: this.rootURL,
       headers: {},
@@ -67,11 +88,6 @@ export class ServerRequestParser {
       params: {},
       ...partialRawRequest,
     } as ServerRequestData;
-    return new ParsedServerRequest(
-      this,
-      rawRequest,
-      rawRequest.signal ?? this.alepha.context.signal,
-    ) as unknown as ServerRequest;
   }
 
   /**
@@ -380,7 +396,12 @@ export class ServerRequestParser {
     }
 
     // Check URL scheme
-    if (request.url.protocol === "https:") {
+    // A Node request knows its scheme without parsing its URL.
+    const scheme =
+      request instanceof NodeServerRequestData
+        ? request.scheme
+        : request.url.protocol;
+    if (scheme === "https:") {
       return "https";
     }
 

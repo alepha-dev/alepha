@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { isHttpError } from "../errors/HttpError.ts";
+import type { ServerRequest } from "../interfaces/ServerRequest.ts";
 import { LogRedaction } from "../services/LogRedaction.ts";
 
 export class ServerLoggerProvider {
@@ -28,6 +29,50 @@ export class ServerLoggerProvider {
     return this.redaction.path(url);
   }
 
+  /**
+   * {@link loggedPath} of a request, taken from the request line as Node
+   * received it when that gives the same text, so a Node request that
+   * nothing else asks the URL of never parses one (about 440 ns).
+   *
+   * The same text means: no character `URL` would percent-encode, no dot
+   * segment it would resolve, no leading `//`. Anything else, and every Web
+   * request, goes through the parsed URL as before.
+   */
+  protected requestPath(request: ServerRequest): string {
+    const raw = request.raw.node?.req.url;
+    if (
+      raw === undefined ||
+      !ServerLoggerProvider.PLAIN_TARGET.test(raw) ||
+      ServerLoggerProvider.DOT_SEGMENT.test(raw)
+    ) {
+      return this.loggedPath(request.url);
+    }
+    const mark = raw.indexOf("?");
+    if (mark < 0) {
+      return raw;
+    }
+    // `url.search` is empty for a bare trailing `?`: the pathname alone.
+    if (mark === raw.length - 1) {
+      return raw.slice(0, mark);
+    }
+    return raw.slice(0, mark) + this.redaction.query(raw.slice(mark));
+  }
+
+  /**
+   * A path and query `URL` leaves as they are: a path of unreserved, sub-delim,
+   * `:`, `@`, `%` and `/` characters not starting with `//`, then a query of
+   * the same plus `?`. Every character `URL` encodes in either (space, `"`,
+   * `#`, `<`, `>`, `'`, backtick, braces, `^`, `|`, `\`, non-ASCII) is left
+   * out, so a target holding one is parsed instead.
+   */
+  protected static readonly PLAIN_TARGET =
+    /^\/(?!\/)[A-Za-z0-9\-._~!$&()*+,;=:@%/]*(\?[A-Za-z0-9\-._~!$&()*+,;=:@%/?]*)?$/;
+
+  /**
+   * A `.` or `..` segment, or an encoded dot, which `URL` resolves.
+   */
+  protected static readonly DOT_SEGMENT = /\/\.|%2e/i;
+
   public readonly onRequest = $hook({
     on: "server:request:before",
     priority: "first",
@@ -38,7 +83,7 @@ export class ServerLoggerProvider {
 
       request.metadata.now = this.dateTime.nowMillis();
       // Kept for `Request completed`, which logs the same path.
-      request.metadata.loggedPath = this.loggedPath(request.url);
+      request.metadata.loggedPath = this.requestPath(request);
 
       // At debug: `Request completed` carries everything this line did, so
       // at info a request was two lines saying the same thing, and the log
@@ -107,7 +152,7 @@ export class ServerLoggerProvider {
 
       const data: Record<string, string | number> = {
         method: request.method,
-        path: request.metadata.loggedPath ?? this.loggedPath(request.url),
+        path: request.metadata.loggedPath ?? this.requestPath(request),
         status: response.status,
         duration: this.dateTime.nowMillis() - request.metadata.now,
       };
