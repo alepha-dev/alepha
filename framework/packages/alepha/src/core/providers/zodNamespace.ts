@@ -3,6 +3,7 @@ import * as mini from "zod/mini";
 import { config as zodConfig } from "zod/v4/core";
 import enLocale from "zod/v4/locales/en.js";
 
+import { ZodJitObjectFactory } from "../helpers/zodJitObject.ts";
 import { installZodChain } from "./zodChain.ts";
 
 // Re-activate zod's English error map. zod's classic entry does this as a module
@@ -263,7 +264,11 @@ export const toJSONSchema = ((schema: any, params?: any) =>
  */
 const coerceSchema = mini.coerce as unknown as typeof zod.coerce;
 
-const objectSchema = mini.object as unknown as typeof zod.object;
+/**
+ * `mini.object`, compiled on the server: see `ZodMiniJitObject`.
+ */
+const objectSchema = ((shape?: any, params?: any) =>
+  ZodJitObjectFactory.create(shape, params)) as unknown as typeof zod.object;
 
 const arraySchema = mini.array as unknown as typeof zod.array;
 

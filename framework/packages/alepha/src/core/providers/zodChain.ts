@@ -1,6 +1,8 @@
 import * as mini from "zod/mini";
 import { globalRegistry } from "zod/v4/core";
 
+import { ZodMiniJitObject } from "../helpers/zodJitObject.ts";
+
 /**
  * zod's classic method surface, on zod/mini's classes.
  *
@@ -282,6 +284,7 @@ export const installZodChain = (): void => {
     mini.ZodMiniDate,
     mini.ZodMiniArray,
     mini.ZodMiniObject,
+    ZodMiniJitObject,
     mini.ZodMiniUnion,
     mini.ZodMiniIntersection,
     mini.ZodMiniTuple,
