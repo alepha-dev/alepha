@@ -88,7 +88,7 @@ Exact pins are the exception, and each has its reason written down:
 
 - `@capgo/capacitor-updater` in `@alepha/capacitor` is pinned to the version
   whose over-the-air wire contract was proven on the iOS simulator and the
-  Android emulator (#Q2524). Bumping it means re-running
+  Android emulator. Bumping it means re-running
   `apps/examples/mobile/scripts/ota-conformance.ts` against the new version.
 - `sharp` in `@alepha/capacitor` is pinned, and `src/packaging.spec.ts`
   asserts it: it ships a native libvips binary per platform, so the version

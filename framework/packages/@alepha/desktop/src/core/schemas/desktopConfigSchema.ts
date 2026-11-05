@@ -7,7 +7,7 @@ import { type Infer, z } from "alepha";
  * - `name`: the display name, also the bundle's file name (`<name>.app`), so
  *   it is one safe path component: letters, digits, spaces, `.`, `_` and `-`,
  *   not starting with a dot;
- * - `identifier`: reverse-DNS, e.g. `dev.alepha.loom`. It names the per-user
+ * - `identifier`: reverse-DNS, e.g. `dev.alepha.notepad`. It names the per-user
  *   data and log folders and the instance lock, so changing it orphans the
  *   data written under the old one;
  * - `icon`: a PNG, relative to the project root. A default icon ships with
@@ -31,7 +31,7 @@ export const desktopConfigSchema = z.object({
     .string()
     .max(155)
     .regex(/^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z0-9][A-Za-z0-9-]*)+$/, {
-      message: "must be reverse-DNS, e.g. dev.alepha.loom",
+      message: "must be reverse-DNS, e.g. dev.alepha.notepad",
     }),
   icon: z.string().min(1).optional(),
   window: z

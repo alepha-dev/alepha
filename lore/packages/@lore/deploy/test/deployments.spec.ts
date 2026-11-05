@@ -107,7 +107,7 @@ const anInstance = async (
     await alepha
       .inject(AppController)
       .createApp.fetch(
-        { params: { projectId }, body: { app: "my-app", env: "b14-preview" } },
+        { params: { projectId }, body: { app: "my-app", env: "east-preview" } },
         { user },
       )
   ).data;
@@ -183,7 +183,7 @@ describe("a deployment", () => {
       await alepha.inject(AppController).createApp.fetch(
         {
           params: { projectId: project.id },
-          body: { app: "my-app", env: "b14-preview" },
+          body: { app: "my-app", env: "east-preview" },
         },
         { user },
       )
@@ -1035,9 +1035,9 @@ describe("a deployment", () => {
           run: async () => ({
             urls: ["https://example.test"],
             resources: {
-              worker: "my-app-b14-preview",
-              d1: { name: "my-app-b14-preview", id: "db-uuid" },
-              r2: "my-app-b14-preview",
+              worker: "my-app-east-preview",
+              d1: { name: "my-app-east-preview", id: "db-uuid" },
+              r2: "my-app-east-preview",
             },
           }),
         },
@@ -1047,9 +1047,9 @@ describe("a deployment", () => {
 
       const after = await rows.instances.findById(w.instance.id);
       expect(JSON.parse(after?.resources as string)).toEqual({
-        worker: "my-app-b14-preview",
-        d1: { name: "my-app-b14-preview", id: "db-uuid" },
-        r2: "my-app-b14-preview",
+        worker: "my-app-east-preview",
+        d1: { name: "my-app-east-preview", id: "db-uuid" },
+        r2: "my-app-east-preview",
       });
     });
 
@@ -1161,7 +1161,7 @@ describe("a deployment", () => {
 
       const asked = await deploy(w);
 
-      const expected = `${w.project.slug}-my-app-b14-preview`;
+      const expected = `${w.project.slug}-my-app-east-preview`;
       expect(asked.map((it) => it.name)).toEqual([expected]);
       const after = await alepha
         .inject(TestRows)
@@ -1175,7 +1175,7 @@ describe("a deployment", () => {
       const w = await world();
       await deployable(w);
       await deploy(w);
-      const original = `${w.project.slug}-my-app-b14-preview`;
+      const original = `${w.project.slug}-my-app-east-preview`;
 
       await alepha
         .inject(TestRows)
@@ -1194,7 +1194,7 @@ describe("a deployment", () => {
       const w = await world();
       await deployable(w);
       await deploy(w);
-      const original = `${w.project.slug}-my-app-b14-preview`;
+      const original = `${w.project.slug}-my-app-east-preview`;
       const rows = alepha.inject(TestRows);
       await rows.instances.updateById(w.instance.id, {
         resources: JSON.stringify({
@@ -1249,7 +1249,7 @@ describe("a deployment", () => {
       const after = await alepha
         .inject(TestRows)
         .instances.findById(w.instance.id);
-      expect(after?.resourceName).toBe(`${w.project.slug}-my-app-b14-preview`);
+      expect(after?.resourceName).toBe(`${w.project.slug}-my-app-east-preview`);
     });
 
     it("is refused when another copy in the same account already holds it", async ({
@@ -1298,7 +1298,7 @@ describe("a deployment", () => {
       const asked = await deploy(second);
 
       expect(asked.map((it) => it.name)).toEqual([
-        `${first.project.slug}-my-app-b14-preview`,
+        `${first.project.slug}-my-app-east-preview`,
       ]);
     });
   });
@@ -1978,7 +1978,7 @@ describe("rolling back", () => {
       { versionId: "v1" },
     );
     await rows.instances.updateById(instance.id, {
-      resourceName: "old-slug-my-app-b14-preview",
+      resourceName: "old-slug-my-app-east-preview",
     });
     const service = alepha.inject(RollbackService);
     Object.assign(service as unknown as Record<string, unknown>, {
@@ -1993,7 +1993,7 @@ describe("rolling back", () => {
     try {
       const plan = await service.plan(project.id, deployment.id);
       expect(plan.path).toBe("version");
-      expect(asked).toEqual(["old-slug-my-app-b14-preview"]);
+      expect(asked).toEqual(["old-slug-my-app-east-preview"]);
     } finally {
       CloudflareDeployClient.prototype.listVersions = original;
     }
@@ -2142,14 +2142,14 @@ describe("what a deployed copy reports as its version", () => {
     expect,
   }) => {
     // ⚠️ The case the newest-artifact shortcut gets wrong, and the mockup's
-    // own: `b14-staging` on `latest` beside siblings on `0.29.0`. Only a
+    // own: `east-staging` on `latest` beside siblings on `0.29.0`. Only a
     // per-instance row can express it.
     const { user, project, instance } = await aCopy();
     const sibling = (
       await alepha.inject(AppController).createApp.fetch(
         {
           params: { projectId: project.id },
-          body: { app: "my-app", env: "b14-staging" },
+          body: { app: "my-app", env: "east-staging" },
         },
         { user },
       )

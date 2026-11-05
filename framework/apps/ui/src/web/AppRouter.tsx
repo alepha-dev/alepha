@@ -62,6 +62,7 @@ export class AppRouter {
       this.adminAnalytics,
       this.adminPayments,
       this.adminAudits,
+      this.apiExplorer,
     ],
   });
 
@@ -455,5 +456,14 @@ export class AppRouter {
     static: true,
     head: { title: "Admin audit log - Alepha UI" },
     lazy: () => import("./pages/pages/admin/Audits.tsx"),
+  });
+
+  // ── Developer ────────────────────────────────────────────────────────────
+
+  apiExplorer = $page({
+    path: "/pages/developer/api",
+    static: true,
+    head: { title: "API explorer - Alepha UI" },
+    lazy: () => import("./pages/pages/developer/ApiExplorer.tsx"),
   });
 }

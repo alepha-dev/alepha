@@ -51,7 +51,6 @@ import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
 import { WorkspaceCompiler } from "./services/WorkspaceCompiler.ts";
 import { WorkspacePacker } from "./services/WorkspacePacker.ts";
-import { BuildAssetsTask } from "./tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "./tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "./tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "./tasks/BuildCompressTask.ts";
@@ -110,7 +109,6 @@ export * from "./services/DesktopAdapterResolver.ts";
 export * from "./services/DocsLibrary.ts";
 export * from "./services/WorkspaceCompiler.ts";
 export * from "./services/WorkspacePacker.ts";
-export * from "./tasks/BuildAssetsTask.ts";
 export * from "./tasks/BuildClientTask.ts";
 export * from "./tasks/BuildCloudflareTask.ts";
 export * from "./tasks/BuildCompressTask.ts";
@@ -175,7 +173,6 @@ export const AlephaCliServices = $module({
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.
-    BuildAssetsTask,
     BuildClientTask,
     BuildCloudflareTask,
     BuildCompressTask,

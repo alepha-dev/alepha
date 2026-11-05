@@ -20,7 +20,7 @@ bugfixes arrive through normal dependency updates.
 
 ## Import paths
 
-The package is sixteen modules, one subpath each. The primitives are the package
+The package is nineteen modules, one subpath each. The primitives are the package
 root; everything heavier is a subpath of its own, so an app loads only what it
 renders:
 
@@ -56,6 +56,7 @@ the module map and that `@alepha/ui` (the root) imports no other module.
 | `@alepha/ui/auth`      | `AuthRouter` and its pages, `TurnstileWidget`                                                                                                                                                                    |
 | `@alepha/ui/account`   | `AccountRouter`, `$pageAccount`, and the account pages                                                                                                                                                           |
 | `@alepha/ui/admin`     | `AdminRouter`, `$pageAdmin`, the admin pages and `AdminAnalytics`                                                                                                                                                |
+| `@alepha/ui/swagger`   | `$uiSwagger`, the API explorer page over the app's OpenAPI document, and its parts. See the section below                                                                                                        |
 | `@alepha/ui/chart`     | The recharts wrapper (`ChartContainer` and its parts). Opt-in                                                                                                                                                    |
 | `@alepha/ui/command`   | The command palette on Base UI's `Autocomplete` (`Command`, `CommandDialog`), ranked by cmdk's scorer. Opt-in                                                                                                    |
 | `@alepha/ui/calendar`  | The react-day-picker wrapper (`Calendar`). Opt-in                                                                                                                                                                |
@@ -255,6 +256,57 @@ The font is pinned rather than inherited. Layout needs node sizes before it can
 place anything, and node width comes from a generated per-character width table
 measured against Inter at one size; inheriting the surrounding face would make
 text and box disagree, differently on every surface.
+
+## API explorer
+
+`alepha/server/swagger` serves the OpenAPI document and nothing else
+(`$swagger`, at `/docs/json`). `@alepha/ui/swagger` is the viewer:
+
+```ts
+import { $uiSwagger } from "@alepha/ui/swagger";
+import { $swagger } from "alepha/server/swagger";
+
+class App {
+  openapi = $swagger({ info: { title: "Shop API", version: "1.0.0" } });
+  docs = $uiSwagger();
+}
+```
+
+`$uiSwagger()` mounts a page at `/docs` reading `/docs/json` (`path`, `spec`,
+`title`, `name`, `signIn` and `use` change that). The page is its own lazy
+chunk, so an app pays for it only when someone opens it. It shows:
+
+- the operations by tag, with a search over method, path, summary and action
+  name, an operation linkable by its hash (`/docs#createOrder`);
+- each operation in full: parameters, request body, responses and a tree of
+  their schemas, plus what Alepha declared about it from the `x-alepha-*`
+  extensions (the action, the roles and permissions it requires, its
+  middlewares, declared errors, timeout);
+- a **Try it** form built from the schemas with the `Control` components: a
+  field per parameter, the body field by field or as raw JSON, a file input
+  per binary part of a multipart body. The response shows its status, time,
+  size, headers and body, and a streamed body (server-sent events, a chunked
+  download) as it arrives;
+- whether the viewer may call each gated operation: sign in first, allowed,
+  or not allowed, read from the signed-in user's action registry (the answer
+  `useAuth().has()` gives).
+
+Requests go out as the viewer: same-origin, the browser sends the session
+cookie and the server turns it into the `Authorization` it checks, with no
+token to paste. The **Credentials** panel takes a bearer token or API key to
+send instead, for an app without sign-in or to call as another principal; it
+is kept in memory until the page reloads.
+
+The document is read in the browser, never by a page loader: on a Worker, a
+server render fetching its own origin is a self-subrequest, which fails. On
+Cloudflare with `run_worker_first`, list `/docs/json` so the request reaches
+the worker.
+
+Guard the page with `use: [$secure({ roles: ["admin"] })]` when only the
+team should see it, and remember that the document is a route of its own:
+`$swagger` does not hide it. The components (`SwaggerExplorer`,
+`SwaggerOperationView`, `SwaggerTryIt`, `OpenApiSpec`, ...) are exported for
+an app that lays the explorer out itself.
 
 ## Command palette
 

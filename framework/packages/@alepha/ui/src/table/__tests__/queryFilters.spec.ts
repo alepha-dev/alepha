@@ -151,26 +151,24 @@ describe("shareFiltersUrl", () => {
   const keys = ["search", "status", "limit", "archived"];
 
   it("puts the active filters on the page's own URL", () => {
-    const url = shareFiltersUrl("https://lore.alepha.dev/odzala/quests", keys, {
+    const url = shareFiltersUrl("https://lore.alepha.dev/atlas/quests", keys, {
       status: ["new"],
       search: "auth",
     });
 
     expect(url).toBe(
-      "https://lore.alepha.dev/odzala/quests?status=new&search=auth",
+      "https://lore.alepha.dev/atlas/quests?status=new&search=auth",
     );
   });
 
   it("leaves a comma readable rather than percent-encoded", () => {
     // The point of the feature is a link someone reads before clicking.
     // `?status=new%2Ctriaged` is what `URLSearchParams` writes on its own.
-    const url = shareFiltersUrl("https://lore.alepha.dev/odzala/quests", keys, {
+    const url = shareFiltersUrl("https://lore.alepha.dev/atlas/quests", keys, {
       status: ["new", "triaged"],
     });
 
-    expect(url).toBe(
-      "https://lore.alepha.dev/odzala/quests?status=new,triaged",
-    );
+    expect(url).toBe("https://lore.alepha.dev/atlas/quests?status=new,triaged");
   });
 
   it("keeps query params the page owns", () => {
@@ -178,35 +176,35 @@ describe("shareFiltersUrl", () => {
     // locale, a campaign tag. A share link that drops them lands somewhere
     // else.
     const url = shareFiltersUrl(
-      "https://lore.alepha.dev/odzala/quests?tab=open",
+      "https://lore.alepha.dev/atlas/quests?tab=open",
       keys,
       { status: ["new"] },
     );
 
     expect(url).toBe(
-      "https://lore.alepha.dev/odzala/quests?tab=open&status=new",
+      "https://lore.alepha.dev/atlas/quests?tab=open&status=new",
     );
   });
 
   it("drops a stale filter param the reader has since cleared", () => {
     const url = shareFiltersUrl(
-      "https://lore.alepha.dev/odzala/quests?status=done&tab=open",
+      "https://lore.alepha.dev/atlas/quests?status=done&tab=open",
       keys,
       { search: "auth" },
     );
 
     expect(url).toBe(
-      "https://lore.alepha.dev/odzala/quests?tab=open&search=auth",
+      "https://lore.alepha.dev/atlas/quests?tab=open&search=auth",
     );
   });
 
   it("returns the bare page URL when nothing is filtered", () => {
     const url = shareFiltersUrl(
-      "https://lore.alepha.dev/odzala/quests?status=done",
+      "https://lore.alepha.dev/atlas/quests?status=done",
       keys,
       {},
     );
 
-    expect(url).toBe("https://lore.alepha.dev/odzala/quests");
+    expect(url).toBe("https://lore.alepha.dev/atlas/quests");
   });
 });

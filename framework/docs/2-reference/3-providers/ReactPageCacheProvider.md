@@ -8,7 +8,7 @@ import { ReactPageCacheProvider } from "alepha/react/router";
 
 ## Overview
 
-The automatic page cache (#E78).
+The automatic page cache.
 
 Every server-rendered page whose render read nothing personal (see
 `ReadRecorder`) is cached, with no option: its shared bytes, everything but

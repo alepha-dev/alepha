@@ -440,8 +440,8 @@ func TestInstanceNameFoldsInTheProject(t *testing.T) {
 		project, app, want string
 	}{
 		// `alepha platform` sends no project and keeps its old identity.
-		{"", "club", "club"},
-		{"alepha", "club", "alepha-club"},
+		{"", "acme", "acme"},
+		{"alepha", "acme", "alepha-acme"},
 		{"acme", "api", "acme-api"},
 	} {
 		got := instanceName(connector.Command{Project: c.project, App: c.app})
@@ -520,10 +520,10 @@ func TestStackDeployAction(t *testing.T) {
 
 func TestInstanceNameOfAStackMember(t *testing.T) {
 	t.Run("a deploy naming a stack and a service lands on that member", func(t *testing.T) {
-		if got := instanceName(connector.Command{App: "mcs-api", Project: "mcs", Stack: "mcs", Service: "api"}); got != "mcs.api" {
+		if got := instanceName(connector.Command{App: "crm-api", Project: "crm", Stack: "crm", Service: "api"}); got != "crm.api" {
 			t.Fatalf("got %q", got)
 		}
-		if got := instanceName(connector.Command{App: "api", Project: "mcs"}); got != "mcs-api" {
+		if got := instanceName(connector.Command{App: "api", Project: "crm"}); got != "crm-api" {
 			t.Fatalf("got %q", got)
 		}
 	})

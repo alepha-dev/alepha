@@ -144,7 +144,8 @@ describe("boot health", () => {
   it("leaves the page's useId where the server put it", async ({ expect }) => {
     // The server renders the layer without the marker. Paired with it as a
     // sibling, the layer became the first of two children in the browser
-    // only, and every `useId` under it missed hydration (Club #Q704).
+    // only, and every `useId` under it missed hydration (found in a
+    // downstream app).
     const ids: string[] = [];
     const Field = () => {
       const id = useId();

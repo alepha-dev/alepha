@@ -162,9 +162,9 @@ func TestAppHasNoCustomUnmarshaller(t *testing.T) {
 }
 
 func TestDomainHelpers(t *testing.T) {
-	app := App{Name: "club", Env: "production", Domains: []string{"club.example", "www.club.example"}}
+	app := App{Name: "acme", Env: "production", Domains: []string{"acme.example", "www.acme.example"}}
 
-	if app.Domain() != "club.example" {
+	if app.Domain() != "acme.example" {
 		t.Fatalf("the canonical domain is the first, got %q", app.Domain())
 	}
 	for _, host := range app.Domains {
@@ -186,15 +186,15 @@ func TestEveryDomainRoutesAndIsClaimed(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := store.Upsert(App{
-		Name: "club", Env: "production",
-		Domains: []string{"club.example", "www.club.example"},
+		Name: "acme", Env: "production",
+		Domains: []string{"acme.example", "www.acme.example"},
 		Port:    4010,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("a secondary domain routes as hard as the first", func(t *testing.T) {
-		for _, host := range []string{"club.example", "www.club.example"} {
+		for _, host := range []string{"acme.example", "www.acme.example"} {
 			app, ok := store.ByDomain(host)
 			if !ok || app.Port != 4010 {
 				t.Fatalf("%s did not route to the app", host)
@@ -205,9 +205,9 @@ func TestEveryDomainRoutesAndIsClaimed(t *testing.T) {
 	t.Run("a secondary domain is claimed against other apps", func(t *testing.T) {
 		// An unchecked secondary would shadow another app just as completely as
 		// a canonical one.
-		owner, taken := store.ClaimedBy("www.club.example")
-		if !taken || owner != "club/production" {
-			t.Fatalf("want club/production to own it, got %q %v", owner, taken)
+		owner, taken := store.ClaimedBy("www.acme.example")
+		if !taken || owner != "acme/production" {
+			t.Fatalf("want acme/production to own it, got %q %v", owner, taken)
 		}
 	})
 }

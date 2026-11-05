@@ -23,7 +23,7 @@ const commandSchema = {
 
 class Controller {
   command = $topic({
-    name: "mcs/v1/{site}/{device}/cmd",
+    name: "transit/v1/{site}/{device}/cmd",
     provider: MqttTopicProvider,
     schema: commandSchema,
   });
@@ -31,7 +31,7 @@ class Controller {
 
 class Device {
   command = $topic({
-    name: "mcs/v1/{site}/{device}/cmd",
+    name: "transit/v1/{site}/{device}/cmd",
     provider: MqttTopicProvider,
     schema: commandSchema,
     handler: async ({ params, payload }) => ({
@@ -110,7 +110,7 @@ describe("MqttTopicProvider request/response", () => {
     const requests = await answerAsDevice(
       device,
       { done: false, by: "raw-device" },
-      "mcs/v1/+/+/cmd",
+      "transit/v1/+/+/cmd",
     );
 
     const result = await service?.command.request({
@@ -142,7 +142,7 @@ describe("MqttTopicProvider request/response", () => {
     });
 
     expect(seen.messages.map((it) => it.topic)).toEqual([
-      "site-a/mcs/v1/s/d/cmd",
+      "site-a/transit/v1/s/d/cmd",
       "acl/replies/controller-1",
     ]);
     expect(seen.messages[0].responseTopic).toBe("acl/replies/controller-1");
@@ -157,7 +157,7 @@ describe("MqttTopicProvider request/response", () => {
     const requests = await answerAsDevice(
       device,
       { done: true, by: "d" },
-      "mcs/v1/+/+/cmd",
+      "transit/v1/+/+/cmd",
     );
 
     for (let i = 0; i < 2; i++) {

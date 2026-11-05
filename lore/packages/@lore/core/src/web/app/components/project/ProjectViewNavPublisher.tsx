@@ -52,7 +52,7 @@ export interface ProjectViewNavPublisherProps {
  *
  * ⚠️ A palette row is an INSTANCE, so both halves render: three copies of one
  * app would otherwise be three identical rows. `matchProjectNav` matches on the
- * label, so typing `b14` finds `club / b14-production`.
+ * label, so typing `east` finds `acme / east-production`.
  *
  * ## ⚠️ Notifications is appended for the same reason
  *

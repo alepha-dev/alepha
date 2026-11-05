@@ -4,7 +4,9 @@ import {
   type Async,
   createMiddleware,
   MIDDLEWARE_PROTECTED,
+  MIDDLEWARE_PERMISSIONS,
   MIDDLEWARE_RESPONSES,
+  MIDDLEWARE_ROLES,
   type ProvidingMiddleware,
 } from "alepha";
 import {
@@ -224,6 +226,20 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
         options?.roles?.length || options?.permissions?.length
           ? "401,403"
           : "401",
+      ...(options?.roles?.length
+        ? { [MIDDLEWARE_ROLES]: options.roles.join(",") }
+        : {}),
+      ...(options?.permissions?.length
+        ? {
+            [MIDDLEWARE_PERMISSIONS]: options.permissions
+              .map((it) =>
+                typeof it === "string"
+                  ? it
+                  : [it.group, it.name].filter(Boolean).join(":"),
+              )
+              .join(","),
+          }
+        : {}),
     },
     handler: ({ alepha, next }) => {
       return async (...args: any[]) => {

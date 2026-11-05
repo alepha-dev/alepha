@@ -45,7 +45,7 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
   return (
     <Card data-testid="app-identity">
       <CardHeader>
-        {/* The plate above already carries `club / b14-production`, so this
+        {/* The plate above already carries `acme / east-production`, so this
             card names what it is rather than repeating it. */}
         <CardTitle className="text-base">
           {tr("app.dashboard.identity")}

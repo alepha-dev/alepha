@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
-const PROJECT_SLUG = "sds";
+const PROJECT_SLUG = "demo";
 
 const folio = (shortId: number, title: string) =>
   ({
@@ -95,7 +95,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [{ shortId: 3, title: "Lore Deploy" }],
     );
     expect(out.match(/#lore-broken:not-a-reference/g)).toHaveLength(5);
-    expect(out).not.toContain("/sds/");
+    expect(out).not.toContain("/demo/");
   });
 
   it("resolved links are NOT rewritten with broken markers", () => {
@@ -133,7 +133,7 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
       [],
       epics,
     );
-    expect(out).toBe("See [Lore Deploy](/sds/epics/3).");
+    expect(out).toBe("See [Lore Deploy](/demo/epics/3).");
   });
 
   it("an unknown epic gets its own broken reason, not the folio one", () => {
@@ -161,7 +161,7 @@ describe("rewriteFolioWikiLinks — typed references", () => {
       [],
       [{ shortId: 2, title: "Onboard" }],
     );
-    expect(out).toBe("See [Onboard](/sds/quests/2).");
+    expect(out).toBe("See [Onboard](/demo/quests/2).");
   });
 
   it("the letter is case-insensitive on the way in", () => {
@@ -171,7 +171,7 @@ describe("rewriteFolioWikiLinks — typed references", () => {
       [],
       [{ shortId: 2, title: "Onboard" }],
     );
-    expect(out).toBe("See [Onboard](/sds/quests/2).");
+    expect(out).toBe("See [Onboard](/demo/quests/2).");
   });
 
   it("[[#F1]] → a link to the folio", () => {
@@ -181,7 +181,7 @@ describe("rewriteFolioWikiLinks — typed references", () => {
       [folio(1, "Roadmap")],
       [],
     );
-    expect(out).toBe("See [Roadmap](/sds/folios/1).");
+    expect(out).toBe("See [Roadmap](/demo/folios/1).");
   });
 });
 
@@ -211,7 +211,7 @@ describe("rewriteFolioWikiLinks — feedback and release targets", () => {
 
   it("[[#P120]] → the inbox, naming the item", () => {
     expect(rewrite("See [[#P120]].")).toBe(
-      "See [Wrong colour](/sds/feedback?feedback=120).",
+      "See [Wrong colour](/demo/feedback?feedback=120).",
     );
   });
 
@@ -223,12 +223,12 @@ describe("rewriteFolioWikiLinks — feedback and release targets", () => {
 
   it("[[#R12]] → the release, by its tag", () => {
     expect(rewrite("See [[#R12]].")).toBe(
-      "See [0.28.0](/sds/releases/0.28.0).",
+      "See [0.28.0](/demo/releases/0.28.0).",
     );
   });
 
   it("[[#R13]] with no tag → resolved, linking to the list", () => {
-    expect(rewrite("See [[#R13]].")).toBe("See [Untagged](/sds/releases).");
+    expect(rewrite("See [[#R13]].")).toBe("See [Untagged](/demo/releases).");
   });
 
   it("[[#R999]] → release-not-found", () => {

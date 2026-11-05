@@ -8,7 +8,7 @@ import { recentFoliosFiltersSchema } from "../schemas/recentFoliosFiltersSchema.
 
 /**
  * Knowledge's first dashboard metrics (#E77, #Q2658): before them a
- * Knowledge-only project (Lanthanides, 49 folios) had no tile at all.
+ * knowledge-only project had no tile at all.
  * Declarative and browser-safe; injected by `LoreKnowledgeApi` and
  * `LoreKnowledgeWeb`. All `needs: knowledge`.
  */

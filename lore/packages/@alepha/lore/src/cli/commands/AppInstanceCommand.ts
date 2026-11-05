@@ -17,12 +17,12 @@ import {
  *
  * ```bash
  * lore apps instance list -p alepha
- * lore apps instance create --app club --env staging -p alepha
- * lore apps instance update --app club --env staging --url https://club.dev
+ * lore apps instance create --app acme --env staging -p alepha
+ * lore apps instance update --app acme --env staging --url https://acme.dev
  * ```
  *
  * An instance is the pair `(app, env)`, and both are always named: a guessed
- * environment on a write is how `clbu` gets a second copy, the reason
+ * environment on a write is how `acem` gets a second copy, the reason
  * `lore apps destroy` refuses to guess too.
  *
  * Named from the MCP tools by the one rule, with `app` read as `apps`, the
@@ -57,7 +57,7 @@ export class AppInstanceCommand {
   };
 
   protected static readonly PAIR_FLAGS = {
-    app: z.text({ description: "Which app, such as club." }),
+    app: z.text({ description: "Which app, such as acme." }),
     env: z.text({
       aliases: ["e"],
       description:

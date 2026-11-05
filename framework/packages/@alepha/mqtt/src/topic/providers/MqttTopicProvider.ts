@@ -116,13 +116,13 @@ declare module "alepha/topic" {
  *
  * ```ts
  * status = $topic({
- *   name: "mcs/v1/{site}/{device}/status",
+ *   name: "transit/v1/{site}/{device}/status",
  *   provider: MqttTopicProvider,
  *   schema: {
  *     params: z.object({ site: z.text(), device: z.text() }),
  *     payload: deviceStatusSchema,
  *   },
- *   mqtt: { qos: 1, share: "mcs" },
+ *   mqtt: { qos: 1, share: "transit" },
  * });
  * ```
  *

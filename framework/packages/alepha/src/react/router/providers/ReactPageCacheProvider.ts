@@ -22,7 +22,7 @@ import type {
 import { type PageRoute, ReactPageProvider } from "./ReactPageProvider.ts";
 
 /**
- * The automatic page cache (#E78).
+ * The automatic page cache.
  *
  * Every server-rendered page whose render read nothing personal (see
  * `ReadRecorder`) is cached, with no option: its shared bytes, everything but

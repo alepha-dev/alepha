@@ -326,7 +326,7 @@ export class LoreClientService {
    * ⚠️ Also `undefined` rather than a throw, and here the third step is a
    * REMOTE read: the app's own rows, in {@link LoreProjectResolver.resolveEnv}.
    * `production` as a client-side constant was wrong the moment environments
-   * became rows - a project may run `b14-production` and have no `production`
+   * became rows - a project may run `east-production` and have no `production`
    * at all - so the fallback cannot live in this file.
    *
    * `||` not `??`, same rule.

@@ -10,7 +10,7 @@ const setup = () => {
   let clock = 0;
   const admission = new DesktopAdmission({
     capability,
-    identifier: "dev.alepha.loom",
+    identifier: "dev.alepha.notepad",
     now: () => clock,
   });
   const request = (
@@ -51,7 +51,7 @@ describe("DesktopAdmission", () => {
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     const cookie = response.headers.get("set-cookie")!;
     expect(cookie).toMatch(
-      /^alepha_desktop_dev_alepha_loom=[0-9a-f]{64}; HttpOnly; SameSite=Strict; Path=\/$/,
+      /^alepha_desktop_dev_alepha_notepad=[0-9a-f]{64}; HttpOnly; SameSite=Strict; Path=\/$/,
     );
     expect(cookie).not.toContain(capability);
     expect(cookie).not.toMatch(/Domain|Secure/);
@@ -130,12 +130,12 @@ describe("DesktopAdmission", () => {
     );
     expect(
       second.request("/", {
-        headers: { cookie: `alepha_desktop_dev_alepha_loom=${capability}` },
+        headers: { cookie: `alepha_desktop_dev_alepha_notepad=${capability}` },
       })?.status,
     ).toBe(403);
     expect(
       second.request("/", {
-        headers: { cookie: "alepha_desktop_dev_alepha_loom=" },
+        headers: { cookie: "alepha_desktop_dev_alepha_notepad=" },
       })?.status,
     ).toBe(403);
   });

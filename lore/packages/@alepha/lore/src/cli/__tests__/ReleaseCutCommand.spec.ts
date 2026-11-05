@@ -76,7 +76,7 @@ describe("lore releases changelog and cut", () => {
       env: {
         LOG_LEVEL: "error",
         LORE_API_KEY: "lore_secret",
-        LORE_PROJECT: "club",
+        LORE_PROJECT: "acme",
       },
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
@@ -88,7 +88,7 @@ describe("lore releases changelog and cut", () => {
     const fs = alepha.inject(MemoryFileSystemProvider);
     await fs.writeFile(
       "/app/package.json",
-      `${JSON.stringify({ name: "club", version, private: true }, null, 2)}\n`,
+      `${JSON.stringify({ name: "acme", version, private: true }, null, 2)}\n`,
     );
 
     const links = alepha.inject(FakeLinkProvider) as FakeLinkProvider;
@@ -158,7 +158,7 @@ describe("lore releases changelog and cut", () => {
       });
 
       const pkg = JSON.parse(await ctx.fs.readTextFile("/app/package.json"));
-      expect(pkg).toEqual({ name: "club", version: "0.2.0", private: true });
+      expect(pkg).toEqual({ name: "acme", version: "0.2.0", private: true });
 
       const changelog = await ctx.fs.readTextFile("/app/CHANGELOG.md");
       expect(changelog).toMatch(
@@ -215,7 +215,7 @@ describe("lore releases changelog and cut", () => {
 
       await expect(
         ctx.cli.run(ctx.command.cut, { argv: "--bump minor", root: "/app" }),
-      ).rejects.toThrow(/0.1.0 in club was already published/);
+      ).rejects.toThrow(/0.1.0 in acme was already published/);
 
       const pkg = JSON.parse(await ctx.fs.readTextFile("/app/package.json"));
       expect(pkg.version).toBe("0.0.0");

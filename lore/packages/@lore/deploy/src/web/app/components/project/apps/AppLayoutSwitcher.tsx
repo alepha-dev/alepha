@@ -27,8 +27,8 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * that changes nothing.
  *
  * ⚠️ It navigates to the OVERVIEW rather than to the tab that is open. A
- * sibling need not have unlocked the same tabs - `club/production` may hold a
- * sigil where `club/staging` does not - and landing on a tab that does not
+ * sibling need not have unlocked the same tabs - `acme/production` may hold a
+ * sigil where `acme/staging` does not - and landing on a tab that does not
  * exist there would 404 for a reason the reader cannot see. `AppLayout`'s own
  * redirect catches that case too; this avoids provoking it.
  */

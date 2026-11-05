@@ -14,8 +14,7 @@ import { type Folio, folios } from "../entities/folios.ts";
 
 /**
  * The project's first pinned folio, as a note (#Q2658): its summary, or its
- * opening paragraph when it has none, linking to it. Lanthanides pins
- * "Accueil".
+ * opening paragraph when it has none, linking to it.
  */
 export class PinnedFolioMetric implements DashboardMetricResolver {
   protected readonly dashboard = $inject(DashboardMetricRegistry);

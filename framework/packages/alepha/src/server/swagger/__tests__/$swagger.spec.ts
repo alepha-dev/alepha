@@ -113,7 +113,6 @@ class App {
       title: "My API",
       version: "1.0.0",
     },
-    ui: false,
   });
 }
 
@@ -1036,7 +1035,7 @@ describe("disabled", () => {
         schema: { response: z.text() },
         handler: async () => "ok",
       });
-      docs = $swagger({ disabled: true, ui: false });
+      docs = $swagger({ disabled: true });
     }
 
     const app = Alepha.create().with(DisabledApp);

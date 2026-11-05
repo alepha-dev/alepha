@@ -23,8 +23,8 @@ export class DeployDashboard {
   constructor() {
     // The apps slot of the computed board (#Q2652, #Q2657): per-copy
     // health, then open blights, then visitors, each only while an app of
-    // the project has reported in 30 days. Everyday (no sigil) and
-    // Lindocara (silent since Sep 8) get no apps tile (folio #F1364).
+    // the project has reported in 30 days. A project with no sigil and
+    // one whose apps went silent get no apps tile (folio #F1364).
     const heard = (value: { detail: Record<string, unknown> }) =>
       value.detail.heard === true;
     this.slots.register({

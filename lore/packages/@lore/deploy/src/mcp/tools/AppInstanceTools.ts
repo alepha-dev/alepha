@@ -20,7 +20,7 @@ import {
  * MCP tools for app instances — the deployed copies a project tracks.
  *
  * An **instance is `(app, env)`**, both required, both free opaque slugs that
- * nothing parses. `club` in `production` and `club` in `b14-production` are two
+ * nothing parses. `acme` in `production` and `acme` in `east-production` are two
  * instances of one app.
  *
  * ⚠️ **There is no `app_create`, and that absence is the model.** There is no
@@ -46,7 +46,7 @@ export class AppInstanceTools {
   app_instance_list = $tool({
     title: "List app instances",
     description:
-      "Every deployed copy this project tracks, one row per `(app, env)` pair, with what each has unlocked: a `sigil` (the key it reports with) and an `estate` (where it deploys to), each absent when it has none. Also returns `apps`, the distinct app names — offer one of those before inventing a new name, because there is no app entity and `clbu` beside `club` is silently a second app.",
+      "Every deployed copy this project tracks, one row per `(app, env)` pair, with what each has unlocked: a `sigil` (the key it reports with) and an `estate` (where it deploys to), each absent when it has none. Also returns `apps`, the distinct app names — offer one of those before inventing a new name, because there is no app entity and `acem` beside `acme` is silently a second app.",
     annotations: { readOnlyHint: true },
     schema: {
       params: appInstanceListParamsSchema,

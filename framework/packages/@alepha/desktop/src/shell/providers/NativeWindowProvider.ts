@@ -11,7 +11,7 @@ import { WindowProvider } from "./WindowProvider.ts";
  * (a CLI reading the config, a spec) never opens a library: the first
  * {@link open} or {@link alert} does.
  *
- * Measured on webview 0.12 (#Q2234): the binding installs no main menu, so
+ * Measured on webview 0.12: the binding installs no main menu, so
  * without ours WKWebView gets no Cmd+C/V and there is no Cmd+Q; a second
  * `run()` after a terminate returns at once, so errors are shown in an
  * alert, never in the window.

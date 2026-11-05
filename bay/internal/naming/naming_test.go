@@ -12,10 +12,10 @@ func TestInstanceFoldsThePairIntoOneSegment(t *testing.T) {
 	for _, c := range []struct {
 		name, env, want string
 	}{
-		{"club", "production", "club-production"},
-		{"alepha-club", "production", "alepha-club-production"},
+		{"acme", "production", "acme-production"},
+		{"alepha-acme", "production", "alepha-acme-production"},
 		{"lore", "bay", "lore-bay"},
-		{"lindocara-main", "production", "lindocara-main-production"},
+		{"game-main", "production", "game-main-production"},
 	} {
 		if got := Instance(c.name, c.env); got != c.want {
 			t.Errorf("Instance(%q, %q) = %q, want %q", c.name, c.env, got, c.want)

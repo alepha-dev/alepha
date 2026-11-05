@@ -29,7 +29,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  *
  * ## `--desktop`: a native macOS app
  *
- *     alepha compile --desktop --output loom   # dist/<desktop.name>.app
+ *     alepha compile --desktop --output notepad   # dist/<desktop.name>.app
  *
  * Reads the top-level `desktop` config (and nothing else does), resolves
  * `@alepha/desktop` from the app's dependencies, and builds the app in a
@@ -60,7 +60,7 @@ export class CompileCommand {
         .text({
           aliases: ["o"],
           description:
-            "File name of the binary inside dist/ (default: `app`). `--output loom` produces `dist/loom`.",
+            "File name of the binary inside dist/ (default: `app`). `--output notepad` produces `dist/notepad`.",
         })
         .optional(),
       target: z

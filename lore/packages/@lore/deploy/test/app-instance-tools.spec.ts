@@ -94,7 +94,7 @@ describe("Lore MCP — who may manage an app and its sigil", () => {
     });
     const call = (tool: any, params: Record<string, unknown>) =>
       asUser(manager.id, () => tool.execute(params));
-    const copy = { project: project.id, app: "club", env: "staging" };
+    const copy = { project: project.id, app: "acme", env: "staging" };
 
     await call(appTools.app_instance_create, copy);
     await call(appTools.app_instance_update, { ...copy, url: "https://c.dev" });
@@ -140,22 +140,22 @@ describe("Lore MCP — app instances", () => {
 
     const created: any = await call(appTools.app_instance_create, {
       project: project.id,
-      app: "club",
-      env: "b14-production",
+      app: "acme",
+      env: "east-production",
     });
 
-    expect(created.app).toBe("club");
-    expect(created.env).toBe("b14-production");
+    expect(created.app).toBe("acme");
+    expect(created.env).toBe("east-production");
     expect(created.sigil).toBeUndefined();
   });
 
   it("offers the distinct app names beside the rows", async () => {
     // The MCP half of the create dialog's combobox: there is no app entity, so
-    // `clbu` beside `club` is silently a second app and nothing complains.
+    // `acem` beside `acme` is silently a second app and nothing complains.
     const { appTools, project, call } = await setup();
     for (const [app, env] of [
-      ["club", "production"],
-      ["club", "staging"],
+      ["acme", "production"],
+      ["acme", "staging"],
       ["docs", "production"],
     ]) {
       await call(appTools.app_instance_create, {
@@ -170,37 +170,37 @@ describe("Lore MCP — app instances", () => {
     });
 
     expect(listed.instances).toHaveLength(3);
-    expect(listed.apps).toEqual(["club", "docs"]);
+    expect(listed.apps).toEqual(["acme", "docs"]);
   });
 
   it("renames a half without touching the other", async () => {
     const { appTools, project, call } = await setup();
     await call(appTools.app_instance_create, {
       project: project.id,
-      app: "club",
+      app: "acme",
       env: "staging",
-      url: "https://staging.club.example",
+      url: "https://staging.acme.example",
     });
 
     const updated: any = await call(appTools.app_instance_update, {
       project: project.id,
-      app: "club",
+      app: "acme",
       env: "staging",
-      newEnv: "b14-staging",
+      newEnv: "east-staging",
     });
 
-    expect(updated.env).toBe("b14-staging");
-    expect(updated.app).toBe("club");
-    expect(updated.url).toBe("https://staging.club.example");
+    expect(updated.env).toBe("east-staging");
+    expect(updated.app).toBe("acme");
+    expect(updated.url).toBe("https://staging.acme.example");
   });
 
   it("takes the sigil with the instance on delete", async () => {
     const { appTools, sigilTools, project, call } = await setup();
-    await call(sigilTools.sigil_create, { project: project.id, app: "club" });
+    await call(sigilTools.sigil_create, { project: project.id, app: "acme" });
 
     await call(appTools.app_instance_delete, {
       project: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
@@ -223,15 +223,15 @@ describe("Lore MCP — sigils after Apps v3", () => {
 
     const minted: any = await call(sigilTools.sigil_create, {
       project: project.id,
-      app: "club",
+      app: "acme",
       env: "staging",
     });
 
     expect(minted.token).toMatch(/^sg_/);
-    expect(minted.app).toBe("club");
+    expect(minted.app).toBe("acme");
     expect(minted.env).toBe("staging");
     // The name is the derived mirror, written by the server.
-    expect(minted.name).toBe("club/staging");
+    expect(minted.name).toBe("acme/staging");
 
     const listed: any = await call(appTools.app_instance_list, {
       project: project.id,
@@ -243,12 +243,12 @@ describe("Lore MCP — sigils after Apps v3", () => {
     const { appTools, sigilTools, project, call } = await setup();
     await call(appTools.app_instance_create, {
       project: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
-      url: "https://club.example",
+      url: "https://acme.example",
     });
 
-    await call(sigilTools.sigil_create, { project: project.id, app: "club" });
+    await call(sigilTools.sigil_create, { project: project.id, app: "acme" });
 
     const listed: any = await call(appTools.app_instance_list, {
       project: project.id,
@@ -256,7 +256,7 @@ describe("Lore MCP — sigils after Apps v3", () => {
     // One instance, not two: the tool found the existing copy rather than
     // creating a second.
     expect(listed.instances).toHaveLength(1);
-    expect(listed.instances[0].url).toBe("https://club.example");
+    expect(listed.instances[0].url).toBe("https://acme.example");
     expect(listed.instances[0].sigil).toBeTruthy();
   });
 
@@ -268,7 +268,7 @@ describe("Lore MCP — sigils after Apps v3", () => {
 
     const minted: any = await call(sigilTools.sigil_create, {
       project: project.id,
-      app: "club",
+      app: "acme",
     });
 
     expect(minted.env).toBe("production");
@@ -291,10 +291,10 @@ describe("Lore MCP — sigils after Apps v3", () => {
 
   it("refuses to mint a second credential for one copy", async () => {
     const { sigilTools, project, call } = await setup();
-    await call(sigilTools.sigil_create, { project: project.id, app: "club" });
+    await call(sigilTools.sigil_create, { project: project.id, app: "acme" });
 
     await expect(
-      call(sigilTools.sigil_create, { project: project.id, app: "club" }),
+      call(sigilTools.sigil_create, { project: project.id, app: "acme" }),
     ).rejects.toThrow(/already has a sigil/);
   });
 
@@ -304,7 +304,7 @@ describe("Lore MCP — sigils after Apps v3", () => {
     const { appTools, sigilTools, project, call } = await setup();
     const minted: any = await call(sigilTools.sigil_create, {
       project: project.id,
-      app: "club",
+      app: "acme",
     });
 
     await call(sigilTools.sigil_delete, {
@@ -323,8 +323,8 @@ describe("Lore MCP — sigils after Apps v3", () => {
     const { sigilTools, project, call } = await setup();
     const minted: any = await call(sigilTools.sigil_create, {
       project: project.id,
-      app: "club",
-      env: "b14-staging",
+      app: "acme",
+      env: "east-staging",
     });
 
     const rotated: any = await call(sigilTools.sigil_rotate, {
@@ -333,7 +333,7 @@ describe("Lore MCP — sigils after Apps v3", () => {
     });
 
     expect(rotated.token).not.toBe(minted.token);
-    expect(rotated.app).toBe("club");
-    expect(rotated.env).toBe("b14-staging");
+    expect(rotated.app).toBe("acme");
+    expect(rotated.env).toBe("east-staging");
   });
 });

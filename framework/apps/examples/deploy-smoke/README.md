@@ -10,7 +10,7 @@ some later feature.
 ## ⚠️ It has no `alepha.config.ts`, and that is the point
 
 Every other example here declares its environments in a committed file and ships
-with `alepha platform up`. This one declares nothing: the environment is a **row
+with `alepha deploy`. This one declares nothing: the environment is a **row
 in Lore**, the build target is resolved through the estate behind it, and
 `APP_SECRET` and `PUBLIC_URL` are filled in by the deploy.
 

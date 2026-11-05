@@ -7,6 +7,10 @@ import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { FileSearch, Files, KeyRound, UsersIcon } from "lucide-react";
 
+import type { ShowcaseAuditsController } from "@/showcase/admin/ShowcaseAuditsController.ts";
+import type { ShowcaseFilesController } from "@/showcase/admin/ShowcaseFilesController.ts";
+import type { ShowcaseKeysController } from "@/showcase/admin/ShowcaseKeysController.ts";
+import type { ShowcaseUsersController } from "@/showcase/admin/ShowcaseUsersController.ts";
 import { Showcase } from "@/web/components/Showcase.tsx";
 
 /**
@@ -19,17 +23,17 @@ const KNOBS = z.object({
   showGated: z.boolean().default(false).meta({ title: "Ungate the 5th card" }),
 });
 
-interface CountPage {
-  page: { totalElements?: number };
-}
+type CountClient = ShowcaseUsersController &
+  ShowcaseFilesController &
+  ShowcaseKeysController &
+  ShowcaseAuditsController;
+
+type CountAction = "findUsers" | "findFiles" | "findApiKeys" | "findAudits";
 
 const Dashboard = () => {
-  const client = useClient() as unknown as Record<
-    string,
-    (a: { query: Record<string, unknown> }) => Promise<CountPage>
-  >;
+  const client = useClient<CountClient>();
 
-  const count = async (action: string) => {
+  const count = async (action: CountAction) => {
     const page = await client[action]({ query: { page: 0, size: 1 } });
     return page.page.totalElements ?? 0;
   };
@@ -40,7 +44,7 @@ const Dashboard = () => {
     description: string,
     icon: React.ReactNode,
     href: string,
-    action: string,
+    action: CountAction,
     order: number,
   ): AdminDashboardCard => ({
     id,

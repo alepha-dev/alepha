@@ -91,13 +91,13 @@ describe("WorkspaceCompiler", () => {
   };
 
   /**
-   * The options `alepha compile --output loom` resolves to. `builtAt` is pinned
-   * so the embedded map's timestamp is assertable: 2026-01-02T03:04:05Z is
-   * 1767323045000 ms.
+   * The options `alepha compile --output notepad` resolves to. `builtAt` is
+   * pinned so the embedded map's timestamp is assertable: 2026-01-02T03:04:05Z
+   * is 1767323045000 ms.
    */
   const bare: WorkspaceCompileOptions = {
     root: "/project",
-    name: "loom",
+    name: "notepad",
     minify: true,
     builtAt: 1767323045000,
   };
@@ -184,7 +184,7 @@ describe("WorkspaceCompiler", () => {
     const calls = shell.getCallsMatching(/^bun build/);
     expect(calls).toHaveLength(1);
     expect(calls[0].command).toMatch(
-      /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=loom index\.bun\.js$/,
+      /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=notepad index\.bun\.js$/,
     );
     expect(calls[0].command).not.toContain("musl");
     expect(calls[0].options.root).toBe(
@@ -208,7 +208,7 @@ describe("WorkspaceCompiler", () => {
 
     expect(
       shell.wasCalledMatching(
-        /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-(x64|arm64)-musl --minify --outfile=loom index\.bun\.js$/,
+        /^bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-(x64|arm64)-musl --minify --outfile=notepad index\.bun\.js$/,
       ),
     ).toBe(true);
   });
@@ -220,7 +220,7 @@ describe("WorkspaceCompiler", () => {
 
     expect(
       shell.wasCalled(
-        "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-x64 --outfile=loom index.bun.js",
+        "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-x64 --outfile=notepad index.bun.js",
       ),
     ).toBe(true);
   });
@@ -309,7 +309,7 @@ describe("WorkspaceCompiler", () => {
     const before = fs.getFileContent(entry);
     const command = [...shell.calls];
     shell.errors.set(
-      `bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=${task.defaultBunTarget()} --minify --outfile=loom index.bun.js`,
+      `bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=${task.defaultBunTarget()} --minify --outfile=notepad index.bun.js`,
       "bun build failed",
     );
 
@@ -328,7 +328,7 @@ describe("WorkspaceCompiler", () => {
       it.path.endsWith("compile-stage/dist/index.bun.js"),
     );
     expect(staged?.data.match(/^import a0 /gm)).toHaveLength(1);
-    expect(await fs.exists("/project/dist/loom")).toBe(true);
+    expect(await fs.exists("/project/dist/notepad")).toBe(true);
   });
 
   it("refuses dependencies Vite left external", async () => {

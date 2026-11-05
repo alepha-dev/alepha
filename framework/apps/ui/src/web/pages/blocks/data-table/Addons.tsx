@@ -6,16 +6,13 @@ import {
   type DataTableSummaryFetcher,
 } from "@alepha/ui/table";
 import { z } from "alepha";
-import type { Page } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { MailPlus, UserCheck, UserPlus, Users, UsersRound } from "lucide-react";
 import { useCallback } from "react";
 
-import type {
-  ShowcaseMember,
-  ShowcaseMemberStats,
-} from "@/showcase/ShowcaseMembers.ts";
+import type { ShowcaseController } from "@/showcase/ShowcaseController.ts";
+import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
 import { Showcase } from "@/web/components/Showcase.tsx";
 import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
 
@@ -56,15 +53,7 @@ const FILTER_FIELDS = {
 const Addons = () => {
   const { l } = useI18n();
   const toast = useToast();
-  const client = useClient() as unknown as {
-    findShowcaseMembers: (a: {
-      query: Record<string, unknown>;
-    }) => Promise<Page<ShowcaseMember>>;
-    findShowcaseMemberStats: (
-      a: { query: Record<string, unknown> },
-      o: { request: { signal: AbortSignal } },
-    ) => Promise<ShowcaseMemberStats>;
-  };
+  const client = useClient<ShowcaseController>();
 
   const fetcher = useCallback(
     async (params: {

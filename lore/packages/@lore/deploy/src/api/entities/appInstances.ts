@@ -7,7 +7,7 @@ import { sigils } from "./sigils.ts";
 import { stackEnvironments } from "./stackEnvironments.ts";
 
 /**
- * One deployed copy of an app: `club` in `b14-production`, `lore` in
+ * One deployed copy of an app: `acme` in `east-production`, `lore` in
  * `production`.
  *
  * ## ⚠️ There is no `apps` table, deliberately
@@ -16,7 +16,7 @@ import { stackEnvironments } from "./stackEnvironments.ts";
  * for the missing parent. There is none, and adding one is the design this
  * epic spent four rounds removing (folio #1185):
  *
- * - **You cannot create an app on its own.** A `club` row with no instance
+ * - **You cannot create an app on its own.** An `acme` row with no instance
  *   shows nothing and does nothing, and every creation flow drawn for it
  *   secretly created an instance too. That is the signal it was never an
  *   entity.
@@ -33,8 +33,8 @@ import { stackEnvironments } from "./stackEnvironments.ts";
  * table keyed `(projectId, app)` following `areas`, **not** a parent with a
  * foreign key.
  *
- * The one real cost is that a typo silently creates a second app: `club` and
- * `clbu` are two apps and nothing complains. The create dialog offers the
+ * The one real cost is that a typo silently creates a second app: `acme` and
+ * `acem` are two apps and nothing complains. The create dialog offers the
  * existing names as a combobox (#1772), which is the whole mitigation.
  *
  * ## Capabilities are unlocks, not configuration
@@ -82,7 +82,7 @@ export const appInstances = $entity({
       onDelete: "cascade",
     }),
     /**
-     * The app this copy is of, e.g. `club`.
+     * The app this copy is of, e.g. `acme`.
      *
      * Free text within `APP_NAME_PATTERN`, normalised (trim, lowercase) then
      * tested by `AppService`, exactly as `SigilController.claimName` does. It
@@ -95,7 +95,7 @@ export const appInstances = $entity({
      */
     app: z.string().min(1).max(100),
     /**
-     * Which copy, e.g. `production`, `staging`, `b14-production`.
+     * Which copy, e.g. `production`, `staging`, `east-production`.
      *
      * **Free text. Nothing parses it**, and nothing may start: there is no
      * `production` boolean, no `tenant` column and no suffix convention. An
@@ -182,7 +182,7 @@ export const appInstances = $entity({
     resources: z.string().max(4_096).optional(),
     /**
      * The name this copy's resources carry in its estate, e.g.
-     * `club-shop-production`: the Worker, the D1 database, the bucket, the
+     * `acme-shop-production`: the Worker, the D1 database, the bucket, the
      * cache namespace and the queue all share it.
      *
      * ## ⚠️ Decided once, before the first deploy, and never recomputed
@@ -249,7 +249,7 @@ export const appInstances = $entity({
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     /**
      * The stack environment this copy is a member of, when it is one:
-     * `mcs-api/staging` in `mcs/staging`. A copy belongs to at most one, of
+     * `crm-api/staging` in `crm/staging`. A copy belongs to at most one, of
      * its own project and its own env name (`StackService.attachInstance`).
      *
      * A member deploys through its stack: the estate comes from the stack
@@ -266,7 +266,7 @@ export const appInstances = $entity({
     ),
   }),
   indexes: [
-    // The pair IS the row: one `production` copy of `club` per project.
+    // The pair IS the row: one `production` copy of `acme` per project.
     { columns: ["projectId", "app", "env"], unique: true },
     // The list, and the `GROUP BY app` behind the create dialog's combobox.
     { columns: ["projectId"] },

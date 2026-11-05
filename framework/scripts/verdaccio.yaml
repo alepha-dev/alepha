@@ -50,8 +50,8 @@ packages:
     unpublish: $all
     proxy: npmjs
 
-# The `alepha` tarball carries `dist/` + `src/` + `assets/` (swagger-ui among
-# them), which is comfortably past verdaccio's 10mb default.
+# The `alepha` tarball carries `dist/` + `src/` + `assets/`, which can pass
+# verdaccio's 10mb default.
 max_body_size: 200mb
 
 log:

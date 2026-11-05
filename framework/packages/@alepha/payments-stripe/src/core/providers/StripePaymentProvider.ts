@@ -496,7 +496,7 @@ export class StripePaymentProvider implements PaymentProvider {
      * Legal structure of the connected account. Drives which KYC Stripe
      * collects during onboarding. Defaults to `"company"` for backward
      * compatibility, but callers SHOULD pass the owner's real structure —
-     * e.g. a French sports club is often a `non_profit` (association loi
+     * e.g. a small French organisation is often a `non_profit` (association loi
      * 1901) or an `individual` (auto-entrepreneur); forcing `"company"`
      * asks for company-registration documents they don't have and dead-ends
      * onboarding.
@@ -518,7 +518,7 @@ export class StripePaymentProvider implements PaymentProvider {
     /**
      * Your own tags on the account, returned by {@link getConnectAccount}.
      * A platform that receives every connected account's events on one
-     * webhook uses them to route each event to its owner (e.g. which club
+     * webhook uses them to route each event to its owner (e.g. which tenant
      * created the account). Not identity data, so it goes on the create
      * directly, not through the account token.
      */

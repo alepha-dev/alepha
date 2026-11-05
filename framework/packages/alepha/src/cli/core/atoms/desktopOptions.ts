@@ -8,8 +8,8 @@ import { $atom, z } from "alepha";
  * export default defineConfig({
  *   build: { runtime: "bun" },
  *   desktop: {
- *     name: "Loom",
- *     identifier: "dev.alepha.loom",
+ *     name: "Notepad",
+ *     identifier: "dev.alepha.notepad",
  *     icon: "assets/icon.png",
  *     window: { width: 1280, height: 860 },
  *   },

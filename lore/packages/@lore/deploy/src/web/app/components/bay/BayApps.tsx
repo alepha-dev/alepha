@@ -29,7 +29,7 @@ import { useBayInventory } from "./useBayInventory.ts";
  * The states arrive as data (#Q1953). Nothing here re-derives a match.
  *
  * ⚠️ **A near-miss reads as a near-miss.** `app_instances` has no parent table
- * and a typo silently creates a second app, so `club` and `clbu` are two apps
+ * and a typo silently creates a second app, so `acme` and `acem` are two apps
  * and nothing complains. Such a pair shows here as "not in Lore" beside
  * "expected here" - which is exactly the shape of a typo.
  *

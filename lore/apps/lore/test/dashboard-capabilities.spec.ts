@@ -415,14 +415,14 @@ describe("dashboard cards and capabilities", () => {
       const apps = [
         {
           id: "a",
-          name: "club/production",
+          name: "acme/production",
           projectId: 1,
           projectTitle: "One",
           beacon: true,
         },
         {
           id: "b",
-          name: "club/staging",
+          name: "acme/staging",
           projectId: 1,
           projectTitle: "One",
           beacon: false,

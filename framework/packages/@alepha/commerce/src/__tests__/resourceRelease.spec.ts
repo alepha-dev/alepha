@@ -51,12 +51,12 @@ const line = (resourceIds: string[]) => ({
   endsAt: at("19:30"),
 });
 
-const aClub = async (ctx: Ctx) => {
+const aVenue = async (ctx: Ctx) => {
   const courts = [`court-${randomUUID()}`, `court-${randomUUID()}`];
   const product = await ctx.catalog.create({
     kind: "test-court",
-    slug: `padel-${randomUUID()}`,
-    name: "Padel, 90 minutes",
+    slug: `tennis-${randomUUID()}`,
+    name: "Tennis, 90 minutes",
     price: 3000,
     published: true,
     config: { courts },
@@ -69,7 +69,7 @@ const payFor = async (ctx: Ctx, productId: string, court: string) => {
   await ctx.carts.add(cart.id, productId, 1, line([court]));
   const opened = await ctx.checkout.start(cart.id);
   const paid = await ctx.checkout.pay(opened.id, {
-    returnUrl: "https://club.example/merci",
+    returnUrl: "https://shop.example/thanks",
   });
   return { ...paid, orderId: paid.session.orderId!, sessionId: opened.id };
 };
@@ -94,7 +94,7 @@ describe("releasing intervals", () => {
       expect,
     }) => {
       const ctx = await setup(backend);
-      const { product, courts } = await aClub(ctx);
+      const { product, courts } = await aVenue(ctx);
       const { orderId } = await payFor(ctx, product.id, courts[0]);
       expect(await isFree(ctx, courts[0])).toBe(false);
 
@@ -108,7 +108,7 @@ describe("releasing intervals", () => {
       expect,
     }) => {
       const ctx = await setup(backend);
-      const { product, courts } = await aClub(ctx);
+      const { product, courts } = await aVenue(ctx);
       const { handoff, orderId } = await payFor(ctx, product.id, courts[0]);
 
       await ctx.payments.handleWebhookEvent(handoff.intentId, "failed");
@@ -119,7 +119,7 @@ describe("releasing intervals", () => {
 
     it("gives a sold court back on a full refund, once", async ({ expect }) => {
       const ctx = await setup(backend);
-      const { product, courts } = await aClub(ctx);
+      const { product, courts } = await aVenue(ctx);
       const { handoff, orderId } = await payFor(ctx, product.id, courts[0]);
       await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
       expect(await statuses(ctx, orderId)).toEqual(["consumed"]);
@@ -134,7 +134,7 @@ describe("releasing intervals", () => {
 
     it("keeps a court booked through a partial refund", async ({ expect }) => {
       const ctx = await setup(backend);
-      const { product, courts } = await aClub(ctx);
+      const { product, courts } = await aVenue(ctx);
       const { handoff, orderId } = await payFor(ctx, product.id, courts[0]);
       await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
@@ -151,7 +151,7 @@ describe("releasing intervals", () => {
 
   it("leaves alone a hold the sweep already released", async ({ expect }) => {
     const ctx = await setup("sqlite");
-    const { product, courts } = await aClub(ctx);
+    const { product, courts } = await aVenue(ctx);
     // Straight to the order, with no checkout around it: the checkout's own
     // jobs would abandon it during the travel below.
     const { id: orderId } = await ctx.orders.create({
@@ -178,10 +178,10 @@ describe("releasing intervals", () => {
     expect,
   }) => {
     const ctx = await setup("sqlite");
-    const { product, courts } = await aClub(ctx);
+    const { product, courts } = await aVenue(ctx);
     const balls = await ctx.catalog.create({
       slug: `balls-${randomUUID()}`,
-      name: "Balles de padel",
+      name: "Tennis balls",
       price: 900,
       published: true,
       config: { trackStock: true },
@@ -224,7 +224,7 @@ describe("releasing intervals", () => {
     expect,
   }) => {
     const ctx = await setup("d1");
-    const { product, courts } = await aClub(ctx);
+    const { product, courts } = await aVenue(ctx);
     const booking = {
       productId: product.id,
       quantity: 1,

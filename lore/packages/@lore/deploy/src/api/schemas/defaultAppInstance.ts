@@ -17,8 +17,8 @@
  * not reintroduce an argument for it here.
  *
  * ⚠️ **`production` is the first step and must stay one.** A rule that
- * answered "the first env by name" outright would silently move `/apps/club`
- * from `production` to `b14-production`.
+ * answered "the first env by name" outright would silently move `/apps/acme`
+ * from `production` to `east-production`.
  *
  * Takes a whole list rather than a query, so the caller decides how the rows
  * were fetched. `undefined` for an app with no instance at all, which is what

@@ -9,13 +9,13 @@ the same S3 prefix and the same backup keys — one app's uploads interleaved
 with another's, one app's snapshot restoring over the other's.
 
 Folding the pair into a single segment is what makes the caller able to widen
-it. `alepha platform` passes `--name club` and gets `club-production`; Lore
-passes `--name <project>-club` and gets `<project>-club-production`. Bay needs
+it. `alepha platform` passes `--name acme` and gets `acme-production`; Lore
+passes `--name <project>-acme` and gets `<project>-acme-production`. Bay needs
 no project field of its own, and cannot be handed a pair it would have to
 reconcile.
 
 ⚠️ This is the STORAGE identity only. `state.App.Key()` stays `name/env` and is
-what every command, route and log line still speaks — `bay logs club/production`
+what every command, route and log line still speaks: `bay logs acme/production`
 is unchanged. The two are deliberately different: one addresses a directory, the
 other addresses an app in conversation with a person.
 */

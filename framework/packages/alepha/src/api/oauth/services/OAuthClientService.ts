@@ -947,9 +947,9 @@ export class OAuthClientService {
   /**
    * Redirect_uri check. A registered pattern is matched byte-exact unless it
    * contains a single `*`, which matches exactly ONE host label (no dots).
-   * E.g. `https://*.alepha.club/auth/callback` matches
-   * `https://b14.alepha.club/auth/callback` but NOT `https://alepha.club/...`
-   * nor `https://a.b.alepha.club/...`.
+   * E.g. `https://*.example.app/auth/callback` matches
+   * `https://east.example.app/auth/callback` but NOT `https://example.app/...`
+   * nor `https://a.b.example.app/...`.
    */
   public isRedirectUriAllowed(
     client: OAuthClientEntity,
@@ -968,9 +968,9 @@ export class OAuthClientService {
     }
     // Never match the raw strings. `/`, `?`, `#` and `\` all terminate the
     // authority in WHATWG URL parsing, so any character class applied to the
-    // pattern text can be escaped out of the host: `https://evil?.alepha.club/cb`
-    // has host `evil`, yet a dot-free class accepts it. Compare parsed URLs
-    // instead, and let the wildcard stand for one hostname label, nothing else.
+    // pattern text can be escaped out of the host:
+    // `https://evil?.example.app/cb` has host `evil`, yet a dot-free class
+    // accepts it. Compare parsed URLs instead, and let the wildcard stand for one hostname label, nothing else.
     let expected: URL;
     let actual: URL;
     try {

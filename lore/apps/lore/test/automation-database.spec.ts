@@ -68,7 +68,7 @@ describe("Automation database boundaries", () => {
       path,
       JSON.stringify({
         name: "lore-automation-test",
-        compatibility_date: "2026-01-01",
+        compatibility_date: "2026-11-03",
         d1_databases: [
           {
             binding: "DB",

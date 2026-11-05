@@ -328,11 +328,11 @@ describe("DockerImageBuilder", () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
-      await task.run(createCtx(fs, shell, compileOptions, compiled("loom")));
+      await task.run(createCtx(fs, shell, compileOptions, compiled("notepad")));
 
       const dockerfile = readDockerfile(fs);
-      expect(dockerfile).toMatch(/^COPY loom \.$/m);
-      expect(dockerfile).toContain('ENTRYPOINT ["/app/loom"]');
+      expect(dockerfile).toMatch(/^COPY notepad \.$/m);
+      expect(dockerfile).toContain('ENTRYPOINT ["/app/notepad"]');
     });
 
     it("leaves compiling to BuildCompileTask, which runs after compression", async () => {

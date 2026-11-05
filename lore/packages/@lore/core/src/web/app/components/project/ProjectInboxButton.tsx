@@ -10,7 +10,7 @@ import type { I18n } from "../../services/I18n.ts";
  * Lore's half of the bell: the localised labels, the destination, and a
  * router-driven open.
  *
- * ⚠️ **The count behind it is cross-project.** Alepha and Odzala are open in
+ * ⚠️ **The count behind it is cross-project.** Two projects are open in
  * the same session, and a ping in one must not be invisible from the other.
  * That stays true even though the bell renders only inside a project: what
  * the shell decides is where you can see it, not what it counts. The

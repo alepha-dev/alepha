@@ -120,7 +120,7 @@ describe("a deployed copy's environment", () => {
       await alepha.inject(AppController).createApp.fetch(
         {
           params: { projectId: project.id },
-          body: { app: "my-app", env: "b14-preview" },
+          body: { app: "my-app", env: "east-preview" },
         },
         { user },
       )
@@ -697,18 +697,18 @@ describe("a deployed copy's environment", () => {
       await deploy(w);
 
       expect((await opened(w)).APP_NAME).toBe(
-        `${w.project.slug}-my-app-b14-preview`,
+        `${w.project.slug}-my-app-east-preview`,
       );
     });
 
     it("leaves an operator's own value alone", async ({ expect }) => {
       const w = await world();
       await deployable(w);
-      await set(w, "APP_NAME", "CLUB");
+      await set(w, "APP_NAME", "ACME");
 
       await deploy(w);
 
-      expect((await opened(w)).APP_NAME).toBe("CLUB");
+      expect((await opened(w)).APP_NAME).toBe("ACME");
     });
 
     it("is written once, however many first attempts it takes", async ({
@@ -744,7 +744,7 @@ describe("a deployed copy's environment", () => {
       });
       await alepha.inject(TestRows).instances.updateById(w.instance.id, {
         resources: JSON.stringify({
-          worker: `${w.project.slug}-my-app-b14-preview`,
+          worker: `${w.project.slug}-my-app-east-preview`,
         }),
       });
 
@@ -752,7 +752,7 @@ describe("a deployed copy's environment", () => {
 
       const set = await opened(w);
       expect(set.APP_SECRET).toBeDefined();
-      expect(set.APP_NAME).toBe(`${w.project.slug}-my-app-b14-preview`);
+      expect(set.APP_NAME).toBe(`${w.project.slug}-my-app-east-preview`);
     });
   });
 

@@ -237,7 +237,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       !this.provisionedD1Id &&
       !this.provisionedHyperdriveId;
     const needsKV =
-      ctx.resources.hasKV && !this.provisionedKVIds.has(ctx.naming.kv());
+      ctx.resources.hasKV &&
+      !this.provisionedKVIds.has(ctx.naming.kv(ctx.options.jurisdiction));
     if (!needsDatabase && !needsKV) {
       // Nothing to look up, so no credential: `alepha infra build` of an app
       // with no resources stays offline.
@@ -272,7 +273,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     }
 
     if (ctx.resources.hasKV) {
-      const name = ctx.naming.kv();
+      const name = ctx.naming.kv(ctx.options.jurisdiction);
       if (!this.provisionedKVIds.has(name)) {
         const found = (await api.listKV()).find((it) => it.title === name);
         if (!found) {
@@ -353,7 +354,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     }
 
     if (ctx.resources.hasKV) {
-      const kvName = ctx.naming.kv();
+      const kvName = ctx.naming.kv(ctx.options.jurisdiction);
       env.CLOUDFLARE_KV_NAME = kvName;
       const kvId = this.provisionedKVIds.get(kvName);
       if (kvId) {
@@ -362,7 +363,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     }
 
     if (ctx.resources.hasQueue) {
-      env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue();
+      env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue(ctx.options.jurisdiction);
     }
 
     const host = ctx.options.domain;
@@ -810,17 +811,20 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       });
     }
     if (ctx.resources.hasKV) {
-      const kvName = ctx.naming.kv();
+      const kvName = ctx.naming.kv(ctx.options.jurisdiction);
       tasks.push({
         name: `provision kv (${kvName})`,
         handler: async () => {
           this.provisionedKVIds.set(kvName, (await api.ensureKV(kvName)).id);
+          if (ctx.options.jurisdiction) {
+            await this.warnGlobalLeftBehind(api, "kv", ctx.naming.kv());
+          }
         },
       });
     }
 
     if (ctx.resources.hasQueue) {
-      const queueName = ctx.naming.queue();
+      const queueName = ctx.naming.queue(ctx.options.jurisdiction);
       tasks.push({
         name: `provision queue (${queueName})`,
         handler: async () => {
@@ -831,6 +835,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
             api.ensureQueue(queueName),
             api.ensureQueue(this.dlqName(queueName)),
           ]);
+          if (ctx.options.jurisdiction) {
+            await this.warnGlobalLeftBehind(api, "queue", ctx.naming.queue());
+          }
         },
       });
     }
@@ -1177,7 +1184,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       });
     }
     if (ctx.resources.hasKV) {
-      const kvName = ctx.naming.kv();
+      const kvName = ctx.naming.kv(ctx.options.jurisdiction);
       tasks.push({
         name: `inspect kv (${kvName})`,
         handler: async () => {
@@ -1192,7 +1199,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       });
     }
     if (ctx.resources.hasQueue) {
-      const queueName = ctx.naming.queue();
+      const queueName = ctx.naming.queue(ctx.options.jurisdiction);
       const names = [queueName, this.dlqName(queueName)];
       tasks.push({
         name: `inspect queue (${names.join(", ")})`,
@@ -1267,7 +1274,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     const api = await this.provisionerFor(ctx);
     if (ctx.resources.hasQueue) {
       const workerName = ctx.naming.worker();
-      const queueName = ctx.naming.queue();
+      const queueName = ctx.naming.queue(ctx.options.jurisdiction);
       await run({
         name: `unbind queue consumer ${queueName}`,
         handler: async () => {
@@ -1306,8 +1313,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       // The queue, then its dead-letter queue, which `provision` made beside
       // it. `deleteQueue` resolves the name and is quiet when it is gone.
       for (const name of [
-        ctx.naming.queue(),
-        this.dlqName(ctx.naming.queue()),
+        ctx.naming.queue(ctx.options.jurisdiction),
+        this.dlqName(ctx.naming.queue(ctx.options.jurisdiction)),
       ]) {
         await run({
           name: `delete queue ${name}`,
@@ -1324,7 +1331,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       }
     }
     if (ctx.resources.hasKV) {
-      const name = ctx.naming.kv();
+      const name = ctx.naming.kv(ctx.options.jurisdiction);
       await run({
         name: `delete kv ${name}`,
         handler: async () => {

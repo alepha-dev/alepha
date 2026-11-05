@@ -883,9 +883,10 @@ describe("BayAdapter  -  the package manager it shells out to", () => {
     `yarn` was hardcoded in `build` and `pack`.
 
     Deploying an npm workspace therefore failed at the build step with yarn's
-    own error  -  for lindocara, a complaint about a missing lockfile entry,
-    because the project has a `package-lock.json` and no `yarn.lock`. Nothing
-    in the message mentioned Bay, the adapter, or that yarn was an assumption.
+    own error  -  for one downstream app, a complaint about a missing lockfile
+    entry, because the project has a `package-lock.json` and no `yarn.lock`.
+    Nothing in the message mentioned Bay, the adapter, or that yarn was an
+    assumption.
   */
   const withLockfile = async (lockfile: string) => {
     const alepha = Alepha.create()
@@ -1630,7 +1631,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
   const LIST = "ssh -o BatchMode=yes deploy@bay.example.com bay list";
 
   /*
-    What `bay list` answers for `mcs/staging` once its compose file is
+    What `bay list` answers for `crm/staging` once its compose file is
     applied: the app service `api` runs `demo` (its `x-lore.app`), next to a
     Postgres Compose runs. A standalone `demo/staging` is there too, so a
     filter on the app name alone would pick the wrong instance.
@@ -1643,20 +1644,20 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
       release: "r-0",
     },
     {
-      name: "mcs.api",
+      name: "crm.api",
       env: "staging",
-      domains: ["api.mcs-staging.example.com"],
+      domains: ["api.crm-staging.example.com"],
       release: "r-7",
-      stack: "mcs",
+      stack: "crm",
       service: "api",
       serviceKind: "app",
       stackApp: "demo",
     },
     {
-      name: "mcs.db",
+      name: "crm.db",
       env: "staging",
       release: "",
-      stack: "mcs",
+      stack: "crm",
       service: "db",
       serviceKind: "service",
     },
@@ -1665,7 +1666,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
   const inStack = (overrides: Record<string, unknown> = {}) =>
     context({
       env: "staging",
-      options: { host: "deploy@bay.example.com", stack: "mcs", ...overrides },
+      options: { host: "deploy@bay.example.com", stack: "crm", ...overrides },
     });
 
   const withListing = async (body: string) => {
@@ -1681,7 +1682,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
 
     expect(
       shell.wasCalled(
-        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/api -",
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy crm/staging/api -",
       ),
     ).toBe(true);
     expect(shell.getCallsMatching(/bay deploy .*--name/)).toHaveLength(0);
@@ -1700,7 +1701,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
 
     expect(
       shell.wasCalled(
-        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/api - " +
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy crm/staging/api - " +
           `--backup-policy '{"schedule":{"every":"6h"}}'`,
       ),
     ).toBe(true);
@@ -1710,10 +1711,10 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     const { adapter, shell } = await withListing(
       JSON.stringify([
         {
-          name: "mcs.web",
+          name: "crm.web",
           env: "staging",
           release: "",
-          stack: "mcs",
+          stack: "crm",
           service: "web",
           serviceKind: "app",
           stackApp: "demo",
@@ -1725,14 +1726,14 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
 
     expect(
       shell.wasCalled(
-        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/web -",
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy crm/staging/web -",
       ),
     ).toBe(true);
   });
 
   it("takes $BAY_STACK over the config", async () => {
     const { adapter, shell } = await withListing(stackListing);
-    process.env.BAY_STACK = "mcs";
+    process.env.BAY_STACK = "crm";
     try {
       await adapter.deploy(
         context({
@@ -1747,7 +1748,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
 
     expect(
       shell.wasCalled(
-        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/api -",
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy crm/staging/api -",
       ),
     ).toBe(true);
   });
@@ -1764,10 +1765,10 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     const { adapter, shell } = await withListing(
       JSON.stringify([
         {
-          name: "mcs.api",
+          name: "crm.api",
           env: "staging",
           release: "",
-          stack: "mcs",
+          stack: "crm",
           service: "api",
           serviceKind: "app",
           stackApp: "other",
@@ -1776,7 +1777,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     );
 
     await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
-      /No service of stack mcs\/staging .* runs demo; its app services are api \(other\)/,
+      /No service of stack crm\/staging .* runs demo; its app services are api \(other\)/,
     );
     expect(shell.getCallsMatching(/pack/)).toHaveLength(0);
   });
@@ -1785,13 +1786,13 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     const { adapter } = await withListing("[]");
 
     await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
-      /Stack mcs\/staging on deploy@bay\.example\.com has no app service\. Deploy the stack first/,
+      /Stack crm\/staging on deploy@bay\.example\.com has no app service\. Deploy the stack first/,
     );
   });
 
   it("refuses two services running the same app", async () => {
     const twice = JSON.parse(stackListing);
-    twice.push({ ...twice[1], name: "mcs.api2", service: "api2" });
+    twice.push({ ...twice[1], name: "crm.api2", service: "api2" });
     const { adapter } = await withListing(JSON.stringify(twice));
 
     await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
@@ -1803,8 +1804,8 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     const { adapter, shell } = await setup();
 
     await expect(
-      adapter.deploy(inStack({ stack: "mcs.prod" }), run),
-    ).rejects.toThrow(/Refusing to put stack "mcs\.prod"/);
+      adapter.deploy(inStack({ stack: "crm.prod" }), run),
+    ).rejects.toThrow(/Refusing to put stack "crm\.prod"/);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -1812,10 +1813,10 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     const { adapter } = await withListing(
       JSON.stringify([
         {
-          name: "mcs.x",
+          name: "crm.x",
           env: "staging",
           release: "",
-          stack: "mcs",
+          stack: "crm",
           service: "x; rm -rf /",
           serviceKind: "app",
           stackApp: "demo",
@@ -1833,7 +1834,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     shell.configure({
       outputs: {
         [LIST]: stackListing,
-        "ssh -o BatchMode=yes deploy@bay.example.com bay env list mcs.api/staging":
+        "ssh -o BatchMode=yes deploy@bay.example.com bay env list crm.api/staging":
           JSON.stringify({ app: ["STRIPE_KEY"], bayOwned: ["APP_SECRET"] }),
       },
     });
@@ -1842,9 +1843,9 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
 
     expect(state.workers).toEqual([
       {
-        name: "mcs/staging/api",
+        name: "crm/staging/api",
         exists: true,
-        detail: "api.mcs-staging.example.com",
+        detail: "api.crm-staging.example.com",
         version: "r-7",
       },
     ]);
@@ -1855,7 +1856,7 @@ describe("BayAdapter  -  deploying into a stack environment", () => {
     const { adapter, shell } = await setup();
 
     await expect(adapter.teardown(inStack(), run)).rejects.toThrow(
-      /bay stack destroy mcs\/staging/,
+      /bay stack destroy crm\/staging/,
     );
     expect(shell.calls).toHaveLength(0);
   });

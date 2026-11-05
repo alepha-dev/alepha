@@ -9,7 +9,7 @@
   "devDependencies": {
     "ajv": "8.20.0",
     "alepha": "workspace:^",
-    "miniflare": "5.20261001.0-alpha",
+    "miniflare": "5.20261103.0-beta",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }

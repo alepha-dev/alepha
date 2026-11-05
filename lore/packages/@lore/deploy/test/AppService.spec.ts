@@ -113,26 +113,26 @@ describe("AppService — the two names that are the row", () => {
 
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "  Club  ",
-      env: "  B14-Production ",
+      app: "  Acme  ",
+      env: "  East-Production ",
     });
 
-    expect(instance.app).toBe("club");
-    expect(instance.env).toBe("b14-production");
+    expect(instance.app).toBe("acme");
+    expect(instance.env).toBe("east-production");
   });
 
   it("refuses either half outside the URL charset", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
 
     for (const pair of [
-      { app: "club prod", env: "production" },
-      { app: "-club", env: "production" },
-      { app: "club-", env: "production" },
+      { app: "acme prod", env: "production" },
+      { app: "-acme", env: "production" },
+      { app: "acme-", env: "production" },
       // `/` is the segment separator AND the mirror's separator, so it is the
       // one character that must never reach either column.
-      { app: "club/prod", env: "production" },
-      { app: "club", env: "prod uction" },
-      { app: "club", env: "   " },
+      { app: "acme/prod", env: "production" },
+      { app: "acme", env: "prod uction" },
+      { app: "acme", env: "   " },
     ]) {
       await expect(
         ctx.service.create({ projectId: project.id, ...pair }),
@@ -148,7 +148,7 @@ describe("AppService — the two names that are the row", () => {
     await expect(
       ctx.service.create({
         projectId: project.id,
-        app: "club",
+        app: "acme",
         env: "bad env",
       }),
     ).rejects.toThrow(/environment name/);
@@ -184,36 +184,36 @@ describe("AppService — the two names that are the row", () => {
     const project = await createTestProject(ctx.alepha);
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
     await expect(
       ctx.service.create({
         projectId: project.id,
-        app: "club",
+        app: "acme",
         env: "production",
       }),
     ).rejects.toThrow(ConflictError);
   });
 
   it("lets one app hold several environments", async ({ expect }) => {
-    // The whole reason the level exists: `club` in production and `club` in
-    // `b14-production` are two deployed copies, not a duplicate.
+    // The whole reason the level exists: `acme` in production and `acme` in
+    // `east-production` are two deployed copies, not a duplicate.
     const project = await createTestProject(ctx.alepha);
 
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const second = await ctx.service.create({
       projectId: project.id,
-      app: "club",
-      env: "b14-production",
+      app: "acme",
+      env: "east-production",
     });
 
-    expect(second.app).toBe("club");
+    expect(second.app).toBe("acme");
   });
 
   it("lets two projects each hold the same pair", async ({ expect }) => {
@@ -223,12 +223,12 @@ describe("AppService — the two names that are the row", () => {
 
     await ctx.service.create({
       projectId: projectA.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const second = await ctx.service.create({
       projectId: projectB.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
@@ -242,7 +242,7 @@ describe("AppService — the two names that are the row", () => {
 
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
@@ -271,7 +271,7 @@ describe("AppService — renaming either half, and the `sigils.name` mirror", ()
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
@@ -285,13 +285,13 @@ describe("AppService — renaming either half, and the `sigils.name` mirror", ()
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "staging",
     });
 
     const renamed = await ctx.service.rename(instance, { env: "production" });
 
-    expect(renamed.app).toBe("club");
+    expect(renamed.app).toBe("acme");
     expect(renamed.env).toBe("production");
   });
 
@@ -301,33 +301,33 @@ describe("AppService — renaming either half, and the `sigils.name` mirror", ()
     // Two calls would leave a window where the pair is one thing here and
     // another on `sigils`, and nothing would ever repair it.
     const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id, "club/production");
+    const sigil = await createTestSigil(ctx, project.id, "acme/production");
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     await ctx.repos.instances.updateById(instance.id, { sigilId: sigil.id });
 
     await ctx.service.rename(
       { ...instance, sigilId: sigil.id },
-      { env: "b14-production" },
+      { env: "east-production" },
     );
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.name).toBe("club/b14-production");
+    expect(stored.name).toBe("acme/east-production");
   });
 
   it("refuses a pair another instance already holds", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const second = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "staging",
     });
 
@@ -344,16 +344,16 @@ describe("AppService — renaming either half, and the `sigils.name` mirror", ()
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
     const renamed = await ctx.service.rename(instance, {
-      app: "CLUB",
+      app: "ACME",
       env: "PRODUCTION",
     });
 
-    expect(renamed.app).toBe("club");
+    expect(renamed.app).toBe("acme");
     expect(renamed.env).toBe("production");
   });
 
@@ -363,7 +363,7 @@ describe("AppService — renaming either half, and the `sigils.name` mirror", ()
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
@@ -388,7 +388,7 @@ describe("AppService — the address an operator pins", () => {
     const project = await createTestProject(ctx.alepha);
     return ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
   };
@@ -497,7 +497,7 @@ describe("AppService — the estate an instance deploys to", () => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const estate = await anEstate(ctx, project.id, { lend: true });
@@ -516,7 +516,7 @@ describe("AppService — the estate an instance deploys to", () => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const estate = await anEstate(ctx, project.id, { lend: false });
@@ -533,7 +533,7 @@ describe("AppService — the estate an instance deploys to", () => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const estate = await anEstate(ctx, project.id, { lend: true });
@@ -559,7 +559,7 @@ describe("AppService — the estate an instance deploys to", () => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const estate = await anEstate(ctx, project.id, { lend: true });
@@ -567,7 +567,7 @@ describe("AppService — the estate an instance deploys to", () => {
 
     await expect(
       ctx.estateService.assertUnreferenced(estate.id, project.id),
-    ).rejects.toThrow(/club\/production/);
+    ).rejects.toThrow(/acme\/production/);
   });
 
   it("lets another project's detach through", async ({ expect }) => {
@@ -577,7 +577,7 @@ describe("AppService — the estate an instance deploys to", () => {
     const other = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const estate = await anEstate(ctx, project.id, { lend: true });
@@ -603,7 +603,7 @@ describe("AppService — the estate an instance deploys to", () => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     const estate = await anEstate(ctx, project.id, { lend: true });
@@ -647,16 +647,16 @@ describe("AppService — the default instance, and deletion", () => {
     const project = await createTestProject(ctx.alepha);
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "a-staging",
     });
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 
-    const chosen = await ctx.service.defaultInstance(project.id, "club");
+    const chosen = await ctx.service.defaultInstance(project.id, "acme");
 
     expect(chosen?.env).toBe("production");
   });
@@ -665,18 +665,18 @@ describe("AppService — the default instance, and deletion", () => {
     const project = await createTestProject(ctx.alepha);
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "staging",
     });
     await ctx.service.create({
       projectId: project.id,
-      app: "club",
-      env: "b14-production",
+      app: "acme",
+      env: "east-production",
     });
 
-    const chosen = await ctx.service.defaultInstance(project.id, "club");
+    const chosen = await ctx.service.defaultInstance(project.id, "acme");
 
-    expect(chosen?.env).toBe("b14-production");
+    expect(chosen?.env).toBe("east-production");
   });
 
   it("answers undefined for an app with no instance", async ({ expect }) => {
@@ -692,10 +692,10 @@ describe("AppService — the default instance, and deletion", () => {
     // foreign key is `set null` in the other direction, so this cascade cannot
     // be expressed as a constraint.
     const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id, "club/production");
+    const sigil = await createTestSigil(ctx, project.id, "acme/production");
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
     await ctx.repos.instances.updateById(instance.id, { sigilId: sigil.id });
@@ -714,7 +714,7 @@ describe("AppService — the default instance, and deletion", () => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
-      app: "club",
+      app: "acme",
       env: "production",
     });
 

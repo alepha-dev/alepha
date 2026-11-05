@@ -19,7 +19,7 @@ export interface VatBucket {
 /**
  * VAT arithmetic on tax-inclusive amounts.
  *
- * Ported from Club's `caisse`, where French anti-fraud rules forced it into
+ * Ported from a point-of-sale app, where French anti-fraud rules forced it into
  * existence: a receipt must show the tax broken down per rate, and the daily
  * closure must aggregate those breakdowns without drift. The same maths is what
  * a compliant invoice needs, so it lives here rather than staying locked in one
@@ -85,8 +85,8 @@ export class VatCalculator {
    * The rate carrying the largest amount - what a one-line summary shows.
    */
   /**
-   * @public Called by applications, not from this package. `club` alone uses
-   * it in four services to stamp an invoice line's headline rate. It was
+   * @public Called by applications, not from this package. One downstream app
+   * uses it in four services to stamp an invoice line's headline rate. It was
    * reported as unused by the 2026-08-23 audit, which read this repository
    * only - deleting it would have broken a downstream app.
    */
@@ -129,10 +129,10 @@ export class VatCalculator {
    * they are taken and whatever is left over is assigned rather than recomputed,
    * so the legs sum back to the sale exactly, for any split, at any rate.
    *
-   * Ported from Club's caisse together with the rest of this class.
+   * Ported from the point-of-sale app together with the rest of this class.
    */
   /**
-   * @public Application surface, like {@link dominantRateBps}: `club`'s
+   * @public Application surface, like {@link dominantRateBps}: a point-of-sale
    * SaleService splits VAT across payment legs with it in three places.
    */
   public apportion(buckets: VatBucket[], amounts: number[]): VatBucket[][] {
@@ -200,7 +200,7 @@ export class VatCalculator {
    * Merge several ventilations into one. Used to aggregate a period.
    */
   /**
-   * @public Application surface, like {@link dominantRateBps}: `club`'s
+   * @public Application surface, like {@link dominantRateBps}: a point-of-sale
    * FiscalClosureService folds a day's VAT groups back together with it.
    */
   public merge(groups: VatBucket[][]): VatBucket[] {

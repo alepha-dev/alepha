@@ -247,7 +247,7 @@ describe("the activity feed and capabilities", () => {
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
         body: {
-          title: "Everyday",
+          title: "Tasks",
           capabilities: [
             { key: "work", options: { epics: false, releases: false } },
           ],

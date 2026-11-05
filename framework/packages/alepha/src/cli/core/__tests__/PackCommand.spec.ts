@@ -86,10 +86,10 @@ describe("PackCommand", () => {
     // for another.
     const { cli, pack, shell } = await create("app");
 
-    await cli.run(pack.pack, { argv: "--name capacity", root: "/app" });
+    await cli.run(pack.pack, { argv: "--name notepad", root: "/app" });
 
     const commands = shell.calls.map((it) => it.command).join("\n");
-    expect(commands).toContain("capacity-latest.tar.zst");
+    expect(commands).toContain("notepad-latest.tar.zst");
     expect(commands).not.toContain("app-latest.tar.zst");
   });
 

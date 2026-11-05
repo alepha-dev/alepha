@@ -54,9 +54,9 @@ const anInstance = (
     createdAt: "2026-10-15T10:00:00Z",
     updatedAt: "2026-10-15T10:00:00Z",
     projectId: 1,
-    app: "club",
+    app: "acme",
     env: "production",
-    url: "https://club.example.test",
+    url: "https://acme.example.test",
     ephemeral: false,
     ...over,
   }) as AppInstanceResource;
@@ -67,7 +67,7 @@ const aMonitor = (target: string): MonitorListItem =>
     version: 0,
     projectId: 1,
     createdAt: "2026-10-15T10:00:00Z",
-    name: "Club",
+    name: "Acme",
     kind: "http",
     target,
     intervalSecs: 60,
@@ -95,7 +95,7 @@ const boot = async (uptime: boolean) => {
   alepha.store.set(
     currentProjectAtom,
     projectFixture({
-      slug: "club",
+      slug: "acme",
       capabilities: ["apps"],
       options: { apps: { uptime, track: false } },
     }),
@@ -108,7 +108,7 @@ describe("monitors matched to app instances", () => {
     expect,
   }) => {
     const instance = anInstance();
-    const monitor = aMonitor("https://CLUB.example.test/");
+    const monitor = aMonitor("https://ACME.example.test/");
 
     expect(monitorOfInstance(instance, [monitor])).toBe(monitor);
     expect(
@@ -131,11 +131,11 @@ describe("monitors matched to app instances", () => {
     expect(
       unmonitoredInstances(
         [monitored, free, preview, nowhere],
-        [aMonitor("https://club.example.test")],
+        [aMonitor("https://acme.example.test")],
       ),
     ).toEqual([free]);
     expect(monitorPrefill(free)).toEqual({
-      name: "club staging",
+      name: "acme staging",
       target: "https://s.example.test",
     });
     expect(monitorPrefill(nowhere)).toBeUndefined();
@@ -157,14 +157,14 @@ describe("adding a monitor from an app", () => {
         <AlephaContext.Provider value={alepha}>
           <MonitorFormDialog
             projectId={1}
-            prefill={{ name: "club staging", target: "https://s.example.test" }}
+            prefill={{ name: "acme staging", target: "https://s.example.test" }}
             onClose={() => {}}
           />
         </AlephaContext.Provider>,
       );
       expect(
         ((await view.findByLabelText(/^Name/)) as HTMLInputElement).value,
-      ).toBe("club staging");
+      ).toBe("acme staging");
       expect(
         (view.getByLabelText(/^Target/) as HTMLTextAreaElement).value,
       ).toBe("https://s.example.test");
@@ -190,7 +190,7 @@ describe("adding a monitor from an app", () => {
         </AlephaContext.Provider>,
       );
       fireEvent.click(
-        view.getByRole("button", { name: "Add a monitor for club staging" }),
+        view.getByRole("button", { name: "Add a monitor for acme staging" }),
       );
       expect(added).toEqual([instance.id]);
     } finally {
@@ -212,18 +212,18 @@ describe("adding a monitor from an app", () => {
       fireEvent.click(await view.findByRole("button", { name: "Add monitor" }));
       expect(
         ((await view.findByLabelText(/^Target/)) as HTMLTextAreaElement).value,
-      ).toBe("https://club.example.test");
+      ).toBe("https://acme.example.test");
       cleanup();
 
-      links.monitors = [aMonitor("https://club.example.test")];
+      links.monitors = [aMonitor("https://acme.example.test")];
       const monitored = render(
         <AlephaContext.Provider value={alepha}>
           <AppDashboardUptime instance={anInstance()} />
         </AlephaContext.Provider>,
       );
-      const link = await monitored.findByRole("link", { name: "Club" });
+      const link = await monitored.findByRole("link", { name: "Acme" });
       expect(link.getAttribute("href")).toBe(
-        `/club/uptime/${links.monitors[0]!.id}`,
+        `/acme/uptime/${links.monitors[0]!.id}`,
       );
       expect(monitored.getByText("Up")).toBeTruthy();
       expect(

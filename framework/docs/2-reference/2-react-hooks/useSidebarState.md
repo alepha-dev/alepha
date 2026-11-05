@@ -16,8 +16,8 @@ Read and update the sidebar collapsed state. The value is persisted via the
 The server render and the hydration pass both see the default (expanded),
 whatever the visitor's cookie says (see `useUiState`). The shell's markup
 is therefore the same for every visitor, which keeps its pages shareable
-by the page cache (#E78) and keeps prerendered pages free of hydration
-mismatches (#Q2347). The preference arrives on the first commit after
+by the page cache and keeps prerendered pages free of hydration
+mismatches. The preference arrives on the first commit after
 hydration.
 
 Until then, the boot script `UiPersistence` injects has already put
