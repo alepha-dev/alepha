@@ -334,7 +334,7 @@ export class HttpClient {
       pending = entry;
     }
 
-    return this.join(pending, signal);
+    return this.join(key, pending, signal);
   }
 
   /**
@@ -355,9 +355,13 @@ export class HttpClient {
   /**
    * Wait for a shared fetch as one of its callers: settle with it, or reject
    * with `signal`'s reason as soon as that caller's signal aborts. The
-   * shared fetch is aborted when the last caller has gone.
+   * shared fetch is aborted when the last caller has gone, and leaves the
+   * pending map at once: a caller arriving after that (a component that
+   * remounts, as React StrictMode does) starts its own fetch instead of
+   * joining one that only rejects with the previous caller's reason.
    */
   protected join<T>(
+    key: string,
     pending: HttpClientPendingRequest,
     signal: AbortSignal | undefined,
   ): Promise<T> {
@@ -365,6 +369,9 @@ export class HttpClient {
     const leave = (reason?: unknown) => {
       pending.waiters--;
       if (reason !== undefined && pending.waiters === 0) {
+        if (this.pendingRequests[key] === pending) {
+          delete this.pendingRequests[key];
+        }
         pending.controller.abort(reason);
       }
     };
