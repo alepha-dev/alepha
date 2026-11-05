@@ -92,6 +92,17 @@ export const useOptimisticRows = <T>(options: UseOptimisticRowsOptions<T>) => {
     loadedRef.current = loadedRequestId;
   }, [loadedRequestId]);
 
+  // The pending end-of-exit timers. Cleared on unmount: a table that is gone
+  // must not take a state update from a row that was leaving it.
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const timer of pending) clearTimeout(timer);
+      pending.clear();
+    };
+  }, []);
+
   /**
    * Every write starts by dropping the dead entries, so a rollback sees a
    * settled row as gone and puts it back by hand.
@@ -165,7 +176,8 @@ export const useOptimisticRows = <T>(options: UseOptimisticRowsOptions<T>) => {
         for (const key of keys)
           next.set(key, { kind: "remove", leaving: true });
       });
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        timers.current.delete(timer);
         update((next) => {
           for (const key of keys) {
             const entry = next.get(key);
@@ -175,6 +187,7 @@ export const useOptimisticRows = <T>(options: UseOptimisticRowsOptions<T>) => {
           }
         });
       }, LEAVE_MS);
+      timers.current.add(timer);
       return handleFor(keys, originals);
     },
     [update, handleFor, options.rowKey, rowKeys],
