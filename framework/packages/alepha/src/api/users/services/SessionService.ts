@@ -525,6 +525,7 @@ export class SessionService {
     userRealmName?: string,
     clientId?: string,
     scopes?: string[],
+    resource?: string,
   ) {
     this.log.trace("Creating session", { userId: user.id, expiresIn });
 
@@ -548,6 +549,7 @@ export class SessionService {
       refreshToken,
       clientId,
       scopes,
+      resource,
     });
 
     await this.users(userRealmName).updateById(user.id, {
@@ -664,6 +666,8 @@ export class SessionService {
       // The grant's scope ids, resolved to a permission list by the issuer
       // on this very refresh.
       scopes: session.scopes,
+      // The resource the grant is bound to, re-signed into the token's `aud`.
+      resource: session.resource,
     };
   }
 

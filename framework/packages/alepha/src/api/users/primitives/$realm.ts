@@ -222,6 +222,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
           name,
           config.clientId,
           config.scopes,
+          config.resource,
         );
       },
       onRefreshSession: async (refreshToken) => {

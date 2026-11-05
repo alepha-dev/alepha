@@ -232,18 +232,27 @@ export class StreamableHttpMcpTransport {
         // `resource_metadata` URL to discover the authorization server —
         // without it, discovery never starts. The URL MUST be absolute.
         if (this.options.requireAuth && !request.user) {
-          const url = this.requestUrl(request);
-          const resourceMetadataUrl = `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
-          this.log.debug("Rejecting unauthenticated MCP request", {
-            resourceMetadataUrl,
+          this.log.debug("Rejecting unauthenticated MCP request");
+          this.replyUnauthorized(request);
+          return;
+        }
+
+        // RFC 8707 / MCP authorization: a server MUST refuse a token that was
+        // not issued for it. A credential bound to a resource names it; one
+        // bound to none (a first-party login, the CLI, an OAuth session
+        // older than audience binding) passes. Same 401 and challenge as a
+        // missing token, so the client re-authorizes for this resource.
+        const boundTo = this.credentialResource(request.user);
+        if (
+          boundTo !== undefined &&
+          this.normaliseResource(boundTo) !==
+            this.normaliseResource(this.canonicalUrl(request))
+        ) {
+          this.log.info("Rejected an MCP token issued for another resource", {
+            boundTo,
+            expected: this.canonicalUrl(request),
           });
-          request.reply.status = 401;
-          request.reply.headers["www-authenticate"] =
-            `Bearer resource_metadata="${resourceMetadataUrl}"`;
-          request.reply.headers["content-type"] = "application/json";
-          request.reply.body = JSON.stringify({
-            error: "Unauthorized",
-          });
+          this.replyUnauthorized(request);
           return;
         }
 
@@ -440,6 +449,62 @@ export class StreamableHttpMcpTransport {
     request.reply.body = JSON.stringify({
       error: "Method Not Allowed. Use POST for MCP messages.",
     });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Authorization
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * 401 with the RFC 9728 challenge: `resource_metadata` points at the
+   * protected-resource metadata, which is how an MCP client discovers the
+   * authorization server. The URL must be absolute.
+   */
+  protected replyUnauthorized(request: any): void {
+    const url = this.requestUrl(request);
+    const resourceMetadataUrl = `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
+    request.reply.status = 401;
+    request.reply.headers["www-authenticate"] =
+      `Bearer resource_metadata="${resourceMetadataUrl}"`;
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify({
+      error: "Unauthorized",
+    });
+  }
+
+  /**
+   * This endpoint's canonical URL, the RFC 8707 audience a token issued for
+   * it carries: the request's origin and the endpoint path.
+   */
+  protected canonicalUrl(request: { url: string | URL }): string {
+    const url = this.requestUrl(request);
+    return `${url.protocol}//${url.host}${this.options.path}`;
+  }
+
+  /**
+   * The resource a request's credential is bound to, when it is bound to
+   * one. Read structurally (`user.credential.resource`) so the transport
+   * stays OAuth-agnostic: whatever authenticated the request decides it.
+   */
+  protected credentialResource(user: unknown): string | undefined {
+    const resource = (
+      user as { credential?: { resource?: unknown } } | undefined
+    )?.credential?.resource;
+    return typeof resource === "string" && resource ? resource : undefined;
+  }
+
+  /**
+   * A resource URL in canonical form: lowercase scheme and host, default
+   * port dropped, no trailing slash, no fragment. The raw string when it
+   * does not parse, which then matches nothing but itself.
+   */
+  protected normaliseResource(value: string): string {
+    try {
+      const url = new URL(value);
+      return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, "")}${url.search}`;
+    } catch {
+      return value;
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------

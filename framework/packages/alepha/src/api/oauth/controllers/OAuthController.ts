@@ -178,6 +178,71 @@ export class OAuthController {
   }
 
   /**
+   * Send the browser back to the client with `error=invalid_target`
+   * (RFC 8707 §2): the request named a resource this server does not protect.
+   */
+  protected rejectTarget(
+    reply: { redirect: (url: string, status: number) => void },
+    redirectUri: string,
+    state: string | undefined,
+  ): void {
+    const redirect = new URL(redirectUri);
+    redirect.searchParams.set("error", "invalid_target");
+    if (state) redirect.searchParams.set("state", state);
+    reply.redirect(redirect.toString(), 302);
+  }
+
+  /**
+   * The protected resource this server declares, as the canonical absolute
+   * URL a token is bound to: `oauthOptions.resource` resolved against the
+   * request's origin, the same URL the protected-resource metadata publishes.
+   */
+  protected declaredResource(url: URL): string {
+    return (
+      this.normalizeResource(`${this.baseUrl(url)}${this.options.resource}`) ??
+      `${this.baseUrl(url)}${this.options.resource}`
+    );
+  }
+
+  /**
+   * A resource indicator in canonical form: lowercase scheme and host, the
+   * default port dropped (the `URL` parser does both), no trailing slash, no
+   * fragment. `undefined` when it is not an absolute http(s) URL.
+   */
+  protected normalizeResource(value: string): string | undefined {
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        return undefined;
+      }
+      const path = parsed.pathname.replace(/\/+$/, "");
+      return `${parsed.protocol}//${parsed.host}${path}${parsed.search}`;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * The resource a grant is bound to (RFC 8707): the declared one when the
+   * request names none (this server protects a single resource, so a grant
+   * naming nothing is for it anyway), the declared one when the request
+   * names it, and `undefined` for anything else, which the caller answers
+   * with `invalid_target`.
+   */
+  protected resolveResource(
+    requested: string | undefined,
+    url: URL,
+  ): string | undefined {
+    const declared = this.declaredResource(url);
+    if (!requested) {
+      return declared;
+    }
+    return this.normalizeResource(requested) === declared
+      ? declared
+      : undefined;
+  }
+
+  /**
    * Absolute origin of the current request, e.g. https://app.com.
    */
   protected baseUrl(url: URL): string {
@@ -498,6 +563,11 @@ export class OAuthController {
         this.rejectScope(reply, query.redirect_uri, query.state);
         return;
       }
+      const resource = this.resolveResource(query.resource, url);
+      if (!resource) {
+        this.rejectTarget(reply, query.redirect_uri, query.state);
+        return;
+      }
       const silent = query.prompt === "none";
       // Consent is skipped ONLY for trusted first-party clients (the AS's own
       // product — consent is for third-party apps). A non-silent trusted client
@@ -550,7 +620,7 @@ export class OAuthController {
             redirectUri: query.redirect_uri,
             codeChallenge: query.code_challenge,
             scopes: granted,
-            resource: query.resource || undefined,
+            resource,
             nonce: query.nonce,
           },
         );
@@ -579,7 +649,7 @@ export class OAuthController {
           code_challenge_method: query.code_challenge_method,
           scope: query.scope ?? "",
           state: query.state ?? "",
-          resource: query.resource ?? "",
+          resource,
           nonce: query.nonce ?? "",
         },
       });
@@ -635,6 +705,11 @@ export class OAuthController {
         this.rejectScope(reply, body.redirect_uri, body.state);
         return;
       }
+      const resource = this.resolveResource(body.resource, url);
+      if (!resource) {
+        this.rejectTarget(reply, body.redirect_uri, body.state);
+        return;
+      }
       const code = await this.clients.createAuthorizationCode(
         this.options.realm,
         {
@@ -643,7 +718,7 @@ export class OAuthController {
           redirectUri: body.redirect_uri,
           codeChallenge: body.code_challenge,
           scopes: granted,
-          resource: body.resource || undefined,
+          resource,
           nonce: body.nonce,
         },
       );
@@ -707,10 +782,19 @@ export class OAuthController {
         });
         return;
       }
+      const resource = this.resolveResource(body.resource, url);
+      if (!resource) {
+        reply.status = 400;
+        reply.body = JSON.stringify({
+          error: "invalid_target",
+          error_description: `This server protects ${this.declaredResource(url)} only`,
+        });
+        return;
+      }
       const record = await this.deviceCodes.start({
         clientId,
         scopes,
-        resource: body.resource,
+        resource,
       });
       const base = this.baseUrl(url);
       const verificationUri = `${base}${this.options.devicePath ?? "/oauth/device"}`;
@@ -868,6 +952,17 @@ export class OAuthController {
     use: [],
     handler: async ({ body, url, reply }) => {
       reply.headers["content-type"] = "application/json";
+      // RFC 8707 §2: a token request may name the resource too, and naming
+      // one this server does not protect is refused before any grant is
+      // spent.
+      if (body.resource && !this.resolveResource(body.resource, url)) {
+        reply.status = 400;
+        reply.body = JSON.stringify({
+          error: "invalid_target",
+          error_description: `This server protects ${this.declaredResource(url)} only`,
+        });
+        return;
+      }
       try {
         if (body.grant_type === "authorization_code") {
           const client = await this.clients.findByClientId(
@@ -898,9 +993,18 @@ export class OAuthController {
               codeVerifier: body.code_verifier ?? "",
             },
           );
+          // The code carries the resource its authorization was bound to; a
+          // code minted before binding existed carries none and is bound to
+          // the declared resource now.
+          const resource = this.resolveResource(grant.resource, url);
+          if (!resource) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_target" });
+            return;
+          }
           const tokens = await this.clients.issueAccessToken(
             this.options.realm,
-            { ...grant, clientId: body.client_id ?? "" },
+            { ...grant, resource, clientId: body.client_id ?? "" },
           );
           // ⚠️ Here rather than in the service, so the device-code grant
           // below gets it too - and every successful grant, which is what
@@ -983,12 +1087,18 @@ export class OAuthController {
             return;
           }
 
+          const resource = this.resolveResource(result.resource, url);
+          if (!resource) {
+            reply.status = 400;
+            reply.body = JSON.stringify({ error: "invalid_target" });
+            return;
+          }
           const tokens = await this.clients.issueAccessToken(
             this.options.realm,
             {
               userId: result.userId,
               scopes: result.scopes,
-              resource: result.resource,
+              resource,
               clientId: result.clientId,
             },
           );

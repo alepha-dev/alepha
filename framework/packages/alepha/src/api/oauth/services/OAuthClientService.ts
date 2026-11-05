@@ -183,9 +183,12 @@ export class OAuthClientService {
     // later be surfaced as a "connected app" and revoked individually, and
     // with the grant's scopes, which the issuer resolves into what the token
     // may do (and resolves again on every refresh, from the session row).
+    // And with the resource the grant is bound to (RFC 8707), which becomes
+    // the token's audience beside the realm and survives every refresh.
     const tokens = await entry.issuer.createToken(user, undefined, {
       clientId: grant.clientId,
       scopes: grant.scopes,
+      resource: grant.resource,
     });
     return {
       access_token: tokens.access_token,

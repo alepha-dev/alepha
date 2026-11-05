@@ -18,4 +18,9 @@ export const tokenRequestBodySchema = z.object({
    * RFC 8628: presented by a device polling for its grant.
    */
   device_code: z.text({ maxLength: 512 }).optional(),
+  /**
+   * RFC 8707: the protected resource the token is requested for. Must name
+   * the server's declared resource; anything else is `invalid_target`.
+   */
+  resource: z.text({ maxLength: 2048 }).optional(),
 });

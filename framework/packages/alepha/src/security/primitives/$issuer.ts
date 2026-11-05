@@ -128,6 +128,12 @@ export interface IssuerSettings {
        * loses the grant's narrowing.
        */
       scopes?: string[];
+      /**
+       * The protected resource an OAuth grant is bound to (RFC 8707). Store
+       * it beside `clientId` and hand it back from `onRefreshSession`, or a
+       * refreshed token stops being audience-bound.
+       */
+      resource?: string;
     },
   ) => Promise<{
     refreshToken: string;
@@ -165,6 +171,11 @@ export interface IssuerSettings {
      * the refreshed token's permission scope.
      */
     scopes?: string[];
+    /**
+     * The resource the session's OAuth grant is bound to (the `resource`
+     * handed to `onCreateSession`), signed into the refreshed token's `aud`.
+     */
+    resource?: string;
   }>;
 
   onDeleteSession?: (refreshToken: string) => Promise<void>;
@@ -371,6 +382,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
        * `permission_scope` claim.
        */
       scopes?: string[];
+      /**
+       * The protected resource the token is issued for (RFC 8707). Stored on
+       * a freshly created session, and signed as the token's audience beside
+       * the realm: `aud: [realm, resource]`. Every verifier checking for the
+       * realm still passes, and a resource server can check for itself.
+       */
+      resource?: string;
     },
   ): Promise<AccessTokenResponse> {
     let sid: string | undefined = refreshToken?.sid;
@@ -391,6 +409,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
           expiresIn,
           clientId: context?.clientId,
           scopes: context?.scopes,
+          resource: context?.resource,
         });
 
         refresh_token = refreshToken;
@@ -442,6 +461,14 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         ? user.credential.clientId
         : undefined);
 
+    // The resource an OAuth grant is bound to, kept the same way as the
+    // client: from the context, else from a user rebuilt from a bound token.
+    const resource =
+      context?.resource ??
+      (user.credential?.type === "oauth"
+        ? user.credential.resource
+        : undefined);
+
     // What the token may do, when an OAuth grant narrows it. Resolved from the
     // grant's scope ids at every mint; failing that, a user rebuilt from a
     // narrowed token (the token-only refresh) keeps its narrowing, so
@@ -469,7 +496,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         sub: user.id,
         exp,
         iat,
-        aud: this.name,
+        aud: resource ? [this.name, resource] : this.name,
         sid, // session id, if available
         // oidc
         name: composedName,
@@ -517,7 +544,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
 
     if (this.options.settings?.onRefreshSession) {
       // get user and expiration from the session
-      const { user, expiresIn, sessionId, clientId, scopes } =
+      const { user, expiresIn, sessionId, clientId, scopes, resource } =
         await this.options.settings.onRefreshSession(refreshToken);
 
       // then, create a new access token. The client comes back from the
@@ -532,7 +559,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
           refresh_token: refreshToken,
           refresh_token_expires_in: expiresIn,
         },
-        { clientId, scopes },
+        { clientId, scopes, resource },
       );
 
       return { user, tokens, clientId };
