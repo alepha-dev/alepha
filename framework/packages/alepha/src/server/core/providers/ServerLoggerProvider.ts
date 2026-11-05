@@ -37,21 +37,18 @@ export class ServerLoggerProvider {
       }
 
       request.metadata.now = this.dateTime.nowMillis();
+      // Kept for `Request completed`, which logs the same path.
+      request.metadata.loggedPath = this.loggedPath(request.url);
 
-      const data: Record<string, string> = {
+      // At debug: `Request completed` carries everything this line did, so
+      // at info a request was two lines saying the same thing, and the log
+      // write was the largest cost of a hello-world request (one line instead
+      // of two answered 17% more requests a second). A request that never
+      // completes is still visible with `LOG_LEVEL=debug`.
+      this.log.debug("Incoming request", {
         method: request.method,
-        path: this.loggedPath(request.url),
-      };
-
-      if (this.alepha.isProduction()) {
-        data.agent = request.headers["user-agent"];
-        const ip = request.ip;
-        if (ip) {
-          data.ip = ip;
-        }
-      }
-
-      this.log.info("Incoming request", data);
+        path: request.metadata.loggedPath,
+      });
     },
   });
 
@@ -108,13 +105,25 @@ export class ServerLoggerProvider {
         return;
       }
 
-      const ms = this.dateTime.nowMillis() - request.metadata.now;
-      this.log.info("Request completed", {
+      const data: Record<string, string | number> = {
         method: request.method,
-        path: this.loggedPath(request.url),
+        path: request.metadata.loggedPath ?? this.loggedPath(request.url),
         status: response.status,
-        duration: ms,
-      });
+        duration: this.dateTime.nowMillis() - request.metadata.now,
+      };
+
+      if (this.alepha.isProduction()) {
+        const agent = request.headers["user-agent"];
+        if (agent) {
+          data.agent = agent;
+        }
+        const ip = request.ip;
+        if (ip) {
+          data.ip = ip;
+        }
+      }
+
+      this.log.info("Request completed", data);
     },
   });
 }

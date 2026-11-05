@@ -201,6 +201,19 @@ export class Logger implements LoggerInterface {
   }
 
   protected log(level: LogLevel, message: string, data?: unknown): void {
+    const enabled = this.levels[level] <= this.levels[this.level];
+    // A line below the level still feeds the `log:entry` event and the
+    // request's LogBuffer (see below). With neither, nothing reads it, and
+    // building, redacting and timestamping it was a few percent of a request
+    // that logs one suppressed debug line.
+    if (
+      !enabled &&
+      !this.alepha.events.hasListeners("log:entry") &&
+      !this.alepha.context.get<LogBuffer>(LogBuffer.key)
+    ) {
+      return;
+    }
+
     let _message = "";
     if (typeof message === "string") {
       _message = message;
@@ -231,7 +244,7 @@ export class Logger implements LoggerInterface {
     // breadcrumb worth having attached to an error report.
     this.alepha.context.get<LogBuffer>(LogBuffer.key)?.push(logEntry);
 
-    if (this.levels[level] > this.levels[this.level]) {
+    if (!enabled) {
       // Suppressed for the console, but still EMITTED. Review #3 proposed
       // early-returning before building the entry; that would starve the
       // `log:entry` event, which is what feeds the devtools log viewer , a
@@ -271,6 +284,34 @@ export class Logger implements LoggerInterface {
   protected static readonly REDACTED = "[redacted]";
 
   /**
+   * Verdicts of {@link isSecretKey}, by raw key.
+   *
+   * A logger sees the same handful of keys on every line (`method`, `path`,
+   * `status`...), and the check costs a lowercase, a regex replace and one
+   * `includes` per needle each time. Bounded, because a payload keyed by ids
+   * would otherwise grow it forever: past the cap it starts over.
+   */
+  protected readonly secretKeyCache = new Map<string, boolean>();
+
+  protected static readonly SECRET_KEY_CACHE_MAX = 512;
+
+  /**
+   * Whether a payload key names a credential, per {@link redactedKeys}.
+   */
+  protected isSecretKey(key: string): boolean {
+    let secret = this.secretKeyCache.get(key);
+    if (secret === undefined) {
+      const normalized = key.toLowerCase().replace(/[-_]/g, "");
+      secret = this.redactedKeys.some((needle) => normalized.includes(needle));
+      if (this.secretKeyCache.size >= Logger.SECRET_KEY_CACHE_MAX) {
+        this.secretKeyCache.clear();
+      }
+      this.secretKeyCache.set(key, secret);
+    }
+    return secret;
+  }
+
+  /**
    * Mask credential-bearing values anywhere in the log payload.
    *
    * Without this, a single `log.debug("request", { headers })` ships bearer
@@ -288,10 +329,9 @@ export class Logger implements LoggerInterface {
       return data;
     }
 
-    const isSecretKey = (key: string): boolean => {
-      const normalized = key.toLowerCase().replace(/[-_]/g, "");
-      return this.redactedKeys.some((needle) => normalized.includes(needle));
-    };
+    if (this.isFlatAndClean(data)) {
+      return data;
+    }
 
     const seen = new WeakSet<object>();
     const walk = (value: unknown): unknown => {
@@ -312,7 +352,7 @@ export class Logger implements LoggerInterface {
 
       const out: Record<string, unknown> = {};
       for (const [key, item] of Object.entries(value)) {
-        out[key] = isSecretKey(key) ? Logger.REDACTED : walk(item);
+        out[key] = this.isSecretKey(key) ? Logger.REDACTED : walk(item);
       }
       return out;
     };
@@ -325,7 +365,33 @@ export class Logger implements LoggerInterface {
     }
   }
 
+  /**
+   * Whether `data` is a plain object of primitives with no credential key:
+   * the shape of most log lines (every request line is one), which the walk
+   * in {@link redact} would copy key by key to change nothing.
+   */
+  protected isFlatAndClean(data: object): boolean {
+    if (Object.getPrototypeOf(data) !== Object.prototype) {
+      return false;
+    }
+    for (const key in data) {
+      const value = (data as Record<string, unknown>)[key];
+      if (value !== null && typeof value === "object") {
+        return false;
+      }
+      if (this.isSecretKey(key)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   protected emit(entry: LogEntry, message?: string) {
+    // Most processes have no `log:entry` listener (devtools and telemetry add
+    // one): skip the payload and the two promises an emit allocates.
+    if (!this.alepha.events.hasListeners("log:entry")) {
+      return;
+    }
     this.alepha.events
       .emit(
         "log:entry",

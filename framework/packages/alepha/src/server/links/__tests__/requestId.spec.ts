@@ -119,9 +119,6 @@ describe("requestId", () => {
     );
 
     expect(logs).toEqual([
-      `ADM - Incoming request - ${uuid}`,
-      `RPM - Incoming request - ${uuid}`,
-      `PPT - Incoming request - ${uuid}`,
       `PPT - Request completed - ${uuid}`,
       `RPM - Request completed - ${uuid}`,
       `ADM - Request completed - ${uuid}`,

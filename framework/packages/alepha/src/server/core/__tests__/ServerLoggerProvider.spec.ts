@@ -88,15 +88,15 @@ describe("ServerLoggerProvider", () => {
     log.clear();
   });
 
-  it("should log incoming request, custom logs, and request completed for ok response", async ({
+  // `Incoming request` is at debug: at info a request is the one
+  // `Request completed` line, which carries everything the other one did.
+  it("logs custom logs, then request completed, for an ok response", async ({
     expect,
   }) => {
     expect(log.logs.length).toBe(0);
     const response = await app.ping.fetch();
     expect(response.data).toBe("pong");
-    expect(log.logs[0].message).toBe("Incoming request");
-    expect(log.logs[1].message).toBe("!!");
-    expect(log.logs[2].message).toBe("Request completed");
+    expect(log.logs.map((l) => l.message)).toEqual(["!!", "Request completed"]);
   });
 
   // An expected 4xx is the server working correctly — a missing session,
@@ -116,8 +116,7 @@ describe("ServerLoggerProvider", () => {
       message: "Sorry",
       data: { status: 400, requestId: expect.any(String) },
     });
-    expect(log.logs[0].message).toBe("Incoming request");
-    expect(log.logs[1].message).toBe("Request completed");
+    expect(log.logs.map((l) => l.message)).toEqual(["Request completed"]);
     expect(log.logs.some((l) => l.level === "ERROR")).toBe(false);
   });
 
@@ -156,9 +155,8 @@ describe("ServerLoggerProvider", () => {
     expect(log.logs.length).toBe(0);
     await app.boom.fetch().catch(() => undefined);
 
-    expect(log.logs[0].message).toBe("Incoming request");
-    expect(log.logs[1].message).toBe("Request has failed");
-    expect(log.logs[1].level).toBe("ERROR");
+    expect(log.logs[0].message).toBe("Request has failed");
+    expect(log.logs[0].level).toBe("ERROR");
   });
 
   /**
@@ -167,7 +165,7 @@ describe("ServerLoggerProvider", () => {
    * which parameters a request carried is most of what the line is for - and
    * only the value goes.
    */
-  it("redacts credential-bearing query values from both log lines", async ({
+  it("redacts credential-bearing query values from the logged path", async ({
     expect,
   }) => {
     await app.callback.fetch({
@@ -182,7 +180,7 @@ describe("ServerLoggerProvider", () => {
       )
       .map((l) => (l.data as { path: string }).path);
 
-    expect(paths).toHaveLength(2);
+    expect(paths).toHaveLength(1);
     for (const path of paths) {
       expect(path).toContain("code=[redacted]");
       expect(path).toContain("state=[redacted]");

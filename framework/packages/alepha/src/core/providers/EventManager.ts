@@ -102,6 +102,15 @@ export class EventManager {
   }
 
   /**
+   * Whether any hook listens to `event`. Cheap (served from the resolved
+   * cache), for a hot path that would otherwise allocate a payload and a
+   * promise per call to reach nobody, such as `log:entry` on every log line.
+   */
+  public hasListeners(event: keyof Hooks): boolean {
+    return this.resolve(event as string).length > 0;
+  }
+
+  /**
    * The callers of an event's hooks, in the order they run. A caller with
    * several hooks on the event appears once per hook.
    */

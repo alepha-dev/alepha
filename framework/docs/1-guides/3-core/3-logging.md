@@ -175,6 +175,33 @@ process, the way `alepha dev` does, keeps writing to stdout.
 A container that registers commands but is started with nothing to run (a
 server carrying a maintenance command) is not a CLI, and keeps stdout too.
 
+### Batched writes in production
+
+In production on Node and Bun, the stdout lines logged during one turn of the
+event loop are written together, in one write, at the end of that turn. Each
+write is a system call, and a request logs at least one line: writing them one
+by one was the largest single cost of a small request. The lines keep their
+order and their content.
+
+The lines of the current turn are flushed when the app stops, on
+`process.exit()` and after an uncaught exception, so the only line that can be
+lost is one logged in the turn a process is killed with `SIGKILL`.
+
+Every other case writes each line at once: development and tests (a
+`console.log` of your own stays in order with the logger's lines), stderr, and
+serverless runtimes and the browser, where each `console.log` is one log
+record (Cloudflare's observability reads one JSON object per call).
+
+### The request log
+
+A server logs one line per request at `info`, `Request completed`, with the
+method, the path (credential-bearing query values redacted), the status and the
+duration. In production it also carries the client's `agent` and `ip`.
+
+`Incoming request`, written when the request arrives, is at `debug`: at `info`
+the two lines said the same thing twice. Turn it on with
+`LOG_LEVEL=alepha.server:debug,info` to see a request that never completes.
+
 ## Log Entry Structure
 
 Every log call produces a `LogEntry`:

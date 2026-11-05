@@ -15,6 +15,9 @@ export class JsonFormatterProvider extends LogFormatterProvider {
 
     if (entry.data instanceof Error) {
       json.error = this.formatJsonError(entry.data);
+    } else if (this.isFlat(entry.data)) {
+      // Nothing to expand: serialized as it is, without a second copy.
+      json.data = entry.data;
     } else {
       json.data = this.expandErrors(entry.data, new Set());
     }
@@ -28,6 +31,34 @@ export class JsonFormatterProvider extends LogFormatterProvider {
       json.data = "[Unserializable Object]";
       return JSON.stringify(json);
     }
+  }
+
+  /**
+   * Whether `data` is absent, or a plain object whose values are all strings,
+   * numbers, booleans, `null` or `undefined`: the shape of most log lines
+   * (every request line is one), which {@link expandErrors} would copy key by
+   * key to change nothing.
+   */
+  protected isFlat(data: unknown): boolean {
+    if (data == null) {
+      return true;
+    }
+    if (
+      typeof data !== "object" ||
+      Object.getPrototypeOf(data) !== Object.prototype
+    ) {
+      return false;
+    }
+    for (const key in data) {
+      const value = (data as Record<string, unknown>)[key];
+      if (value !== null && typeof value === "object") {
+        return false;
+      }
+      if (typeof value === "bigint") {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
