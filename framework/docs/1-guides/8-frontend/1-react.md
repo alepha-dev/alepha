@@ -382,6 +382,33 @@ queries.get(["folio", id]); // read without subscribing
 queries.clear(); // on logout
 ```
 
+### Optimistic writes with Undo
+
+A write the reader should see land in the frame of their click, with a way back, uses `useUndoable` from `@alepha/ui`. `run()` changes the screen first, raises a toast with an Undo button, then talks to the server:
+
+```tsx
+const undoable = useUndoable();
+
+// In a DataTable row action: `ctx.optimistic` hides or redraws the row
+// at once, and lets go once a reload sent after the write has answered.
+const shelve = (quest: Quest, ctx: RowActionContext<Quest>) =>
+  void undoable.run({
+    message: `${quest.title} shelved`,
+    apply: () => ctx.optimistic.remove(quest),
+    commit: () => questApi.shelve({ params: { id: quest.id } }),
+    undo: () => questApi.unshelve({ params: { id: quest.id } }),
+  });
+```
+
+The presence of `undo` picks the mode:
+
+- **With `undo`**, the write is sent at once and Undo sends the inverse. The server is the truth from the first second.
+- **Without it**, the write is held until the toast closes (or the page is hidden), and Undo simply never sends it. This is the mode for a delete, which has no inverse, and for a write whose inverse loses something.
+
+`run()` never rejects: a refused write is rolled back and reported on `react:action:error`, so the root `ActionErrorToaster` shows it. `Ctrl+Z` / `Cmd+Z` undoes the newest toast outside a text field. Call it from the click itself rather than from inside a `useAction`, which awaits its `react:action:begin` listeners before the handler runs.
+
+In a `DataTable`, row and bulk actions also receive `ctx.reload()`, which fetches the page the reader is on again without the skeleton or the jump to page one that `ctx.refresh()` makes. Rows that leave, arrive, move or change are animated, except on a page, filter or sort change and under `prefers-reduced-motion`.
+
 ### `useQuery` or `$page.loader`?
 
 Both fetch. The dividing line is whether the route can render without the data:

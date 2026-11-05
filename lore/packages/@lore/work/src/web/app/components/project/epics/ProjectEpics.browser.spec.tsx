@@ -46,6 +46,22 @@ const epicOf = (
  * Stands in for the HTTP-backed `useClient()` calls the list makes. Same
  * substitution seam as `ProjectQuestsTable.browser.spec.tsx`.
  */
+/**
+ * The Undo button of the toast saying `text`. Scoped to that toast because
+ * sonner's store is module-level: an earlier test's toast can still be up.
+ */
+const undoIn = async (text: string): Promise<HTMLElement> =>
+  waitFor(() => {
+    const toast = [...document.querySelectorAll("[data-sonner-toast]")].find(
+      (it) => it.textContent?.includes(text),
+    );
+    const button = [...(toast?.querySelectorAll("button") ?? [])].find(
+      (it) => it.textContent === "Undo",
+    );
+    if (!button) throw new Error(`no Undo in a toast saying "${text}"`);
+    return button as HTMLElement;
+  });
+
 class FakeLinkProvider extends LinkProvider {
   epics: EpicResource[] = [
     epicOf(1, "Draft epic", "draft"),
@@ -65,6 +81,13 @@ class FakeLinkProvider extends LinkProvider {
    */
   deleteCalls = 0;
 
+  /**
+   * Every `shelveEpic` / `unshelveEpic` call, by epic id: a held shelve must
+   * not reach the server before its Undo window closes (#Q3118).
+   */
+  shelveCalls: number[] = [];
+  unshelveCalls: number[] = [];
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     const action = <T extends (...args: any[]) => Promise<unknown>>(fn: T) =>
@@ -75,6 +98,14 @@ class FakeLinkProvider extends LinkProvider {
         deleteEpic: action(async () => {
           this.deleteCalls += 1;
           throw new Error("This epic still has a quest in progress (spec)");
+        }),
+        shelveEpic: action(async (request: { params: { id: number } }) => {
+          this.shelveCalls.push(request.params.id);
+          return {};
+        }),
+        unshelveEpic: action(async (request: { params: { id: number } }) => {
+          this.unshelveCalls.push(request.params.id);
+          return {};
         }),
         setEpicStatus: action(
           async (request: {
@@ -416,7 +447,7 @@ describe("ProjectEpics - the status filter", () => {
         expect(markReady()).toBeNull();
       });
 
-      it("marks each epic ready after one confirmation naming how many", async () => {
+      it("marks each epic ready at once, with Undo and no confirmation", async () => {
         const view = await mount([], DRAFTS);
         const fake = alepha!.inject(FakeLinkProvider);
 
@@ -424,29 +455,34 @@ describe("ProjectEpics - the status filter", () => {
         selectRow("#E2 - Second draft");
         fireEvent.click(await waitFor(() => markReady()!));
 
-        const dialog = await screen.findByRole("alertdialog");
-        expect(dialog.textContent).toContain("Mark 2 epics as ready?");
-        expect(dialog.textContent).toContain('"First draft", "Second draft"');
-        expect(fake.statusCalls).toEqual([]);
-
-        fireEvent.click(
-          within(dialog).getByRole("button", { name: "Mark 2 epics as ready" }),
-        );
-
+        // No dialog any more (#Q3118): the change is reversible, so the
+        // toast's Undo is the safety net.
+        expect(screen.queryByRole("alertdialog")).toBeNull();
         await waitFor(() =>
           expect([...fake.statusCalls].sort((a, b) => a.id - b.id)).toEqual([
             { id: 1, status: "ready" },
             { id: 2, status: "ready" },
           ]),
         );
-        // Refreshed and cleared: the rows are ready now, and nothing is
-        // selected for the bar to act on.
+        const undo = await undoIn("2 epic(s) ready");
+        // Cleared: nothing is selected for the bar to act on.
         await waitFor(() => expect(markReady()).toBeNull());
         expect(
           view.container.querySelectorAll(
             'tbody input[type="checkbox"]:checked',
           ),
         ).toHaveLength(0);
+
+        // Undo sends the inverse for every epic that moved.
+        fireEvent.click(undo);
+        await waitFor(() =>
+          expect(
+            fake.statusCalls
+              .filter((call) => call.status === "draft")
+              .map((call) => call.id)
+              .sort((a, b) => a - b),
+          ).toEqual([1, 2]),
+        );
       });
     });
 
@@ -852,9 +888,9 @@ describe("ProjectEpics - the status filter", () => {
     });
   });
   /**
-   * The row Delete is a `useAction` whose handler holds the confirmation
-   * (#E59, #Q2326): a refusal is toasted exactly once, by the root listener,
-   * with the server's message, and the row stays.
+   * The row Delete confirms, then holds the write behind an Undo toast
+   * (#Q3118): a refusal is toasted exactly once, by the root listener, with
+   * the server's message, and the row comes back.
    */
   describe("the row delete", () => {
     it("toasts a refused delete exactly once, and keeps the row", async () => {
@@ -877,6 +913,20 @@ describe("ProjectEpics - the status filter", () => {
       fireEvent.click(remove);
       const confirm = await screen.findByRole("alertdialog");
       fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+      // Held behind its Undo toast (#Q3118): closing the toast by hand is
+      // what sends it.
+      const undoToast = await waitFor(() => {
+        const found = [
+          ...document.querySelectorAll("[data-sonner-toast]"),
+        ].find((toast) => toast.textContent?.includes("#E1 deleted"));
+        if (!found) throw new Error("no undo toast yet");
+        return found as HTMLElement;
+      });
+      expect(fake.deleteCalls).toBe(0);
+      fireEvent.click(
+        within(undoToast).getByRole("button", { name: /close/i }),
+      );
 
       const message = "This epic still has a quest in progress (spec)";
       await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
@@ -977,7 +1027,7 @@ describe("ProjectEpics - the status filter", () => {
       expect(confirm.textContent).not.toContain("#E1 Draft epic");
     });
 
-    it("names the open quests a Shelve sets aside, and the quests an Unshelve brings back", async () => {
+    it("shelves behind a held Undo naming the open quests, and unshelves at once", async () => {
       await mount(
         [],
         [
@@ -998,23 +1048,33 @@ describe("ProjectEpics - the status filter", () => {
         ],
       );
 
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      // No confirm (#Q3118): the toast names what the shelve sets aside, and
+      // the write is held until the toast closes, so Undo sends nothing.
       fireEvent.click(
         (await menuOf("#E1 - Started epic")).find(
           (item) => item.textContent === "Shelve",
         )!,
       );
-      const shelve = await screen.findByRole("alertdialog");
-      expect(shelve.textContent).toContain("sets aside its 3 open quests");
-      fireEvent.click(within(shelve).getByRole("button", { name: "Cancel" }));
-      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      const undo = await undoIn("#E1 shelved");
+      expect(
+        screen.getByText("3 open quest(s) set aside with it."),
+      ).toBeTruthy();
+      fireEvent.click(undo);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(fake.shelveCalls).toEqual([]);
 
+      // Unshelve has an exact inverse, so it is sent at once.
       fireEvent.click(
         (await menuOf("#E2 - Parked epic")).find(
           (item) => item.textContent === "Unshelve",
         )!,
       );
-      const unshelve = await screen.findByRole("alertdialog");
-      expect(unshelve.textContent).toContain("brings back the 3 quests");
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      await undoIn("#E2 unshelved");
+      await waitFor(() => expect(fake.unshelveCalls).toEqual([2]));
     });
 
     it("hides the bulk delete when nothing selected can be deleted", async () => {

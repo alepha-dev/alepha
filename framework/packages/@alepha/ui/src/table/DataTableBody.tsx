@@ -1,6 +1,6 @@
 import { useI18n } from "alepha/react/i18n";
 import { Inbox, SearchX } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 
 import { Checkbox } from "../core/Checkbox.tsx";
 import { TableBody, TableCell, TableRow } from "../core/Table.tsx";
@@ -15,6 +15,7 @@ import type {
   RowActionContext,
   RowActionEntry,
 } from "./dataTableTypes.ts";
+import { useRowMotion } from "./useRowMotion.ts";
 
 export interface DataTableBodyProps<T> {
   /**
@@ -27,6 +28,15 @@ export interface DataTableBodyProps<T> {
    * One key per row of `data`, index for index.
    */
   rowKeys: string[];
+  /**
+   * Rows an optimistic remove is taking off: drawn, inert, playing their
+   * exit.
+   */
+  leaving?: ReadonlySet<string>;
+  /**
+   * Rows an optimistic patch just redrew, flashed once.
+   */
+  flash?: Set<string>;
   loading: boolean;
   /**
    * The visible columns, in the reader's order.
@@ -81,6 +91,14 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
     rowCtx,
   } = props;
   const { tr } = useI18n();
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  const leaving = props.leaving ?? NO_KEYS;
+  useRowMotion({
+    body: bodyRef,
+    rowKeys,
+    leaving,
+    flash: props.flash ?? NO_FLASH,
+  });
 
   // Which empty state applies, resolved here rather than in the JSX because
   // the answer is one boolean and the branch is four values deep.
@@ -117,7 +135,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
         ));
 
   return (
-    <TableBody>
+    <TableBody ref={bodyRef}>
       {loading && data.length === 0 ? (
         <DataTableSkeletonRows
           cellClassName={props.cellClassName}
@@ -171,9 +189,14 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
         data.map((item, rowIndex) => {
           const key = rowKeys[rowIndex];
           const isSelected = selection.has(key);
+          const isLeaving = leaving.has(key);
           return (
             <TableRow
               key={key}
+              data-row-key={key}
+              data-leaving={isLeaving || undefined}
+              aria-hidden={isLeaving || undefined}
+              inert={isLeaving || undefined}
               onClick={() => props.onRowClick?.(item)}
               // Per row, both halves. Moving from one row to the next fires
               // the old row's `mouseleave` BEFORE the new row's `mouseenter`,
@@ -244,3 +267,6 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
     </TableBody>
   );
 };
+
+const NO_KEYS: ReadonlySet<string> = new Set();
+const NO_FLASH = new Set<string>();

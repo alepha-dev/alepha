@@ -101,6 +101,10 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     Record<string, unknown> | undefined
   >(undefined);
   const [loading, setLoading] = useState(false);
+  // The id of the request whose rows are on screen. Optimistic overlays
+  // (`useOptimisticRows`) wait for a request that left after the server
+  // accepted their write before they let go of a row.
+  const [loadedRequestId, setLoadedRequestId] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -156,6 +160,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
       setData(res.content);
       setMeta(res.page);
       setFetchedFilters(sent);
+      setLoadedRequestId(request.id);
     } catch (error) {
       // A superseded request's failure (its own abort included) is nobody's
       // news: a newer one is already answering.
@@ -289,9 +294,17 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     props.onSortChange?.(next);
   };
 
+  /**
+   * The id the newest request carries, or the one the next will exceed.
+   */
+  const lastRequestId = useCallback(() => latestRequest.current?.id ?? 0, []);
+
   return {
     page,
     setPage,
+    loadedRequestId,
+    lastRequestId,
+    isStatic: Boolean(props.data),
     sizeForm,
     sort,
     setSort,

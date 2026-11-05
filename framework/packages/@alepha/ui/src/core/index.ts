@@ -520,4 +520,11 @@ export {
   type ToastOptions,
   useToast,
 } from "./useToast.tsx";
+export {
+  type Undoable,
+  type UndoableApplied,
+  type UndoableOptions,
+  type UndoableResult,
+  useUndoable,
+} from "./useUndoable.tsx";
 export { cn, formatBytes } from "./utils.ts";

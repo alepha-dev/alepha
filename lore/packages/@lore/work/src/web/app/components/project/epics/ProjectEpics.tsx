@@ -1,4 +1,4 @@
-import { TimeAgo, Badge, useDialog, useToast } from "@alepha/ui";
+import { TimeAgo, Badge, useDialog, useUndoable } from "@alepha/ui";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -6,6 +6,7 @@ import {
   type BulkAction,
   type BulkActionContext,
   type BulkMenuAction,
+  type RowActionContext,
 } from "@alepha/ui/table";
 import {
   currentProjectAtom,
@@ -16,7 +17,13 @@ import {
   useAgentPrompt,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
-import { useAction, useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -100,8 +107,9 @@ import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
  */
 const ProjectEpics = () => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const dialog = useDialog();
+  const undoable = useUndoable();
+  const queries = useQueryClient();
   const router = useRouter();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
@@ -149,114 +157,113 @@ const ProjectEpics = () => {
     [epicApi, reportCascade],
   );
 
+  const ref = (epic: EpicResource) => `#E${epic.number}`;
+
   /**
-   * The row menu's one lifecycle write, the same `setEpicStatus` the epic
-   * page's control makes. `refresh` is what repaints the status chip AND
-   * recomputes the sidebar's draft-epic badge, since `fetchEpics` pushes
-   * that count on every fetch.
+   * Prototype: the lifecycle writes below are optimistic. The row changes in
+   * the click's own frame, a toast says so with Undo, and the request
+   * follows. They are plain functions, not `useAction`s, for the frame:
+   * `useAction` awaits its begin listeners before the handler runs.
    *
-   * Marking ready confirms first, with the detail page control's own copy
-   * from the same keys: ready releases the epic's quests into the backlog for
-   * everybody, and the first accept freezes the plan, which is what the
-   * confirmation is for. It is not destructive, so no `destructive: true`.
-   * Back to draft has nothing to confirm.
+   * Only delete keeps a confirm (it takes the epic's quests with it, and is
+   * the one verb with no way back on the server). Ready, draft, shelve and
+   * unshelve trust Undo.
    */
-  const setStatusAction = useAction<
-    [epic: EpicResource, status: "draft" | "ready", refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, epic, status, refresh) => {
-        if (status === "ready") {
-          const ok = await dialog.confirm({
-            title: tr("epic.ready.title"),
-            description: tr("epic.ready.confirm", { args: [epic.title] }),
-            confirmLabel: tr("epic.status.actions.markReady"),
-            cancelLabel: tr("common.cancel"),
-          });
-          if (!ok) return;
-        }
-        await epicApi.setEpicStatus({
+  const setStatus = (
+    epic: EpicResource,
+    status: "draft" | "ready",
+    ctx: RowActionContext<EpicResource>,
+  ) =>
+    void undoable.run({
+      message: tr(status === "ready" ? "epic.undo.ready" : "epic.undo.draft", {
+        args: [ref(epic)],
+      }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ctx.optimistic.patch(epic, { ...epic, status }),
+      commit: () =>
+        epicApi.setEpicStatus({ params: { id: epic.id }, body: { status } }),
+      undo: () =>
+        epicApi.setEpicStatus({
           params: { id: epic.id },
-          body: { status },
-        });
-        refresh();
-      },
-    },
-    [epicApi, dialog, tr],
-  );
+          body: { status: status === "ready" ? "draft" : "ready" },
+        }),
+    });
+
+  // The quests moved too: the quest list, the board and the agent prompt
+  // gate read these keys.
+  const invalidateWork = () => {
+    queries.invalidate(["quests", project?.id]);
+    queries.invalidate(["epics", project?.id]);
+  };
 
   /**
-   * Shelve or Unshelve the whole epic (#E78), the same two writes the epic
-   * page's `EpicShelveControl` makes, with its confirmation copy from the
-   * same keys: Shelve names how many open quests it sets aside.
+   * Shelve is HELD until the toast closes, unlike the quest shelve. Its
+   * inverse is lossy: shelving hands every open quest back to `todo` with no
+   * assignee, and unshelving does not give them back. A held write never
+   * reaches the server when Undo is clicked, so nothing is lost.
    */
-  const shelveAction = useAction<
-    [epic: EpicResource, shelve: boolean, refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, epic, shelve, refresh) => {
-        const ok = shelve
-          ? await dialog.confirm({
-              title: tr("epic.shelve.title"),
-              description: tr("epic.shelve.confirm", {
-                args: [epic.title, String(openQuestsOf(epic))],
-              }),
-              confirmLabel: tr("epic.status.actions.shelve"),
-              cancelLabel: tr("common.cancel"),
-              destructive: true,
-            })
-          : await dialog.confirm({
-              title: tr("epic.unshelve.title"),
-              description: tr("epic.unshelve.confirm", {
-                args: [epic.title, String(epic.progress.shelvedWithEpic ?? 0)],
-              }),
-              confirmLabel: tr("epic.status.actions.unshelve"),
-              cancelLabel: tr("common.cancel"),
-            });
-        if (!ok) return;
-        const params = { params: { id: epic.id } };
-        await (shelve
-          ? epicApi.shelveEpic(params)
-          : epicApi.unshelveEpic(params));
-        refresh();
-      },
-      // The quests moved too: the quest list, the board and the agent
-      // prompt gate read these keys.
-      invalidates: [
-        ["quests", project?.id],
-        ["epics", project?.id],
-      ],
-    },
-    [epicApi, dialog, tr],
-  );
+  const shelve = (epic: EpicResource, ctx: RowActionContext<EpicResource>) => {
+    const open = openQuestsOf(epic);
+    void undoable.run({
+      message: tr("epic.undo.shelved", { args: [ref(epic)] }),
+      description:
+        open > 0
+          ? tr("epic.undo.shelvedQuests", { args: [String(open)] })
+          : undefined,
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
+      commit: () => epicApi.shelveEpic({ params: { id: epic.id } }),
+      onCommitted: invalidateWork,
+    });
+  };
 
-  const deleteAction = useAction<
-    [epic: EpicResource, refresh: () => void],
-    void
-  >(
-    {
-      handler: async (_ctx, epic, refresh) => {
-        // Deleting an epic deletes its quests (#Q2666), so the confirm says
-        // how many, and that the folios stay.
-        const ok = await dialog.confirm({
-          title: tr("epic.delete.title"),
-          description: tr("epic.delete.confirm", {
-            args: [epic.title, String(epic.progress.total)],
-          }),
-          confirmLabel: tr("epic.action.delete"),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!ok) return;
-        await epicApi.deleteEpic({ params: { id: epic.id } });
-        toaster.success(tr("epic.toast.deleted"));
-        refresh();
-      },
-    },
-    [epicApi, dialog, toaster, tr],
-  );
+  /**
+   * Unshelve is sent at once, and Undo shelves again: the quests it brings
+   * back come back unassigned whichever way, so the round trip loses nothing
+   * the shelve had not already.
+   */
+  const unshelve = (epic: EpicResource, ctx: RowActionContext<EpicResource>) =>
+    void undoable.run({
+      message: tr("epic.undo.unshelved", { args: [ref(epic)] }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () =>
+        ctx.optimistic.patch(epic, {
+          ...epic,
+          // The server's own rule: back to in progress if it ever started.
+          status: epic.startedAt ? "in_progress" : "ready",
+        }),
+      commit: () => epicApi.unshelveEpic({ params: { id: epic.id } }),
+      undo: () => epicApi.shelveEpic({ params: { id: epic.id } }),
+      onCommitted: invalidateWork,
+      onUndone: invalidateWork,
+    });
+
+  const remove = async (
+    epic: EpicResource,
+    ctx: RowActionContext<EpicResource>,
+  ) => {
+    // Deleting an epic deletes its quests (#Q2666), so the confirm says how
+    // many, and that the folios stay. Then Undo on top: the delete is held
+    // until the toast closes.
+    const ok = await dialog.confirm({
+      title: tr("epic.delete.title"),
+      description: tr("epic.delete.confirm", {
+        args: [epic.title, String(epic.progress.total)],
+      }),
+      confirmLabel: tr("epic.action.delete"),
+      cancelLabel: tr("common.cancel"),
+      destructive: true,
+    });
+    if (!ok) return;
+    void undoable.run({
+      message: tr("epic.undo.deleted", { args: [ref(epic)] }),
+      undoLabel: tr("board.undo.undo"),
+      intent: "primary",
+      apply: () => ctx.optimistic.remove(epic),
+      commit: () => epicApi.deleteEpic({ params: { id: epic.id } }),
+      onCommitted: invalidateWork,
+    });
+  };
 
   // The three bulk writes never reject: `settleBulk` sorts every refusal into
   // the report `useBulkReport` shows. They are actions for the busy state and
@@ -292,127 +299,97 @@ const ProjectEpics = () => {
     [epicApi, reportBulk, tr],
   );
 
-  const bulkReadyAction = useAction<
-    [selected: EpicResource[], ctx: BulkActionContext],
-    void
-  >(
-    {
-      handler: async (_ctx, selected, ctx) => {
-        const n = String(selected.length);
-        // One epic asks the row menu's own question, word for word. A few
-        // are named, since they fit in a dialog; past that the count is the
-        // honest summary and the selection is on screen behind it.
-        const confirmed = await dialog.confirm(
-          selected.length === 1
-            ? {
-                title: tr("epic.ready.title"),
-                description: tr("epic.ready.confirm", {
-                  args: [selected[0].title],
-                }),
-                confirmLabel: tr("epic.status.actions.markReady"),
-                cancelLabel: tr("common.cancel"),
-              }
-            : {
-                title: tr("epic.bulk.ready.title", { args: [n] }),
-                description:
-                  selected.length <= 3
-                    ? tr("epic.bulk.ready.descriptionNamed", {
-                        args: [
-                          selected.map((epic) => `"${epic.title}"`).join(", "),
-                        ],
-                      })
-                    : tr("epic.bulk.ready.description"),
-                confirmLabel: tr("epic.bulk.ready.confirm", { args: [n] }),
-                cancelLabel: tr("common.cancel"),
-              },
+  const bulkReady = (
+    selected: EpicResource[],
+    ctx: BulkActionContext<EpicResource>,
+  ) => {
+    const ids = selected.map((epic) => epic.id);
+    let done: number[] = [];
+    ctx.clearSelection();
+    // One patch per row: each chip turns in place, rather than the rows
+    // leaving a list that still shows them.
+    const handles = selected.map((epic) =>
+      ctx.optimistic.patch(epic, { ...epic, status: "ready" }),
+    );
+    void undoable.run({
+      message: tr("epic.undo.bulkReady", { args: [String(ids.length)] }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ({
+        rollback: () => handles.forEach((h) => h.rollback()),
+        settle: () => handles.forEach((h) => h.settle()),
+      }),
+      commit: async () => {
+        const outcome = await settleBulk(ids, (id) =>
+          epicApi.setEpicStatus({ params: { id }, body: { status: "ready" } }),
         );
-        if (!confirmed) return;
-        // The row menu's own write, once per epic. A refusal on one row (a
-        // parallel session already started it, say) lands in the report
-        // instead of being swallowed by the others.
-        const outcome = await settleBulk(
-          selected.map((epic) => epic.id),
-          (id) =>
-            epicApi.setEpicStatus({
-              params: { id },
-              body: { status: "ready" },
-            }),
-        );
-        reportBulk(
-          outcome,
-          tr("board.bulk.readied", { args: [String(outcome.done.length)] }),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
+        done = outcome.done;
+        // A refused row comes back on its own with the settle's reload.
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-    },
-    [epicApi, dialog, reportBulk, tr],
-  );
+      undo: () =>
+        settleBulk(done, (id) =>
+          epicApi.setEpicStatus({ params: { id }, body: { status: "draft" } }),
+        ),
+    });
+  };
 
-  const bulkDeleteAction = useAction<
-    [selected: EpicResource[], ctx: BulkActionContext],
-    void
-  >(
-    {
-      handler: async (_ctx, selected, ctx) => {
-        // Only a draft or ready epic is deleted (#Q2666): the rest are left
-        // out of the count and named, rather than sent to be refused one by
-        // one. The plural of the row menu's own warning, and it says the
-        // same true thing: the quests go with the epics, the folios stay.
-        const deletable = selected.filter(isDeletable);
-        const skipped = selected.filter((epic) => !isDeletable(epic));
-        const n = String(deletable.length);
-        const quests = deletable.reduce(
-          (sum, epic) => sum + epic.progress.total,
-          0,
-        );
-        const description = [
-          tr("epic.bulk.delete.description", { args: [String(quests)] }),
-          ...(skipped.length > 0
-            ? [
-                tr("epic.bulk.delete.skipped", {
-                  args: [
-                    skipped
-                      .map((epic) => `#E${epic.number} ${epic.title}`)
-                      .join(", "),
-                  ],
-                }),
-              ]
-            : []),
-        ].join(" ");
-        const confirmed = await dialog.confirm({
-          title: tr("epic.bulk.delete.title", { args: [n] }),
-          description,
-          confirmLabel: tr("epic.bulk.delete.confirm", { args: [n] }),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!confirmed) return;
+  const bulkDelete = async (
+    selected: EpicResource[],
+    ctx: BulkActionContext<EpicResource>,
+  ) => {
+    // Only a draft or ready epic is deleted (#Q2666): the rest are left
+    // out of the count and named, rather than sent to be refused one by
+    // one. The plural of the row menu's own warning, and it says the
+    // same true thing: the quests go with the epics, the folios stay.
+    const deletable = selected.filter(isDeletable);
+    const skipped = selected.filter((epic) => !isDeletable(epic));
+    const n = String(deletable.length);
+    const quests = deletable.reduce(
+      (sum, epic) => sum + epic.progress.total,
+      0,
+    );
+    const description = [
+      tr("epic.bulk.delete.description", { args: [String(quests)] }),
+      ...(skipped.length > 0
+        ? [
+            tr("epic.bulk.delete.skipped", {
+              args: [
+                skipped
+                  .map((epic) => `#E${epic.number} ${epic.title}`)
+                  .join(", "),
+              ],
+            }),
+          ]
+        : []),
+    ].join(" ");
+    const confirmed = await dialog.confirm({
+      title: tr("epic.bulk.delete.title", { args: [n] }),
+      description,
+      confirmLabel: tr("epic.bulk.delete.confirm", { args: [n] }),
+      cancelLabel: tr("common.cancel"),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    ctx.clearSelection();
+    void undoable.run({
+      message: tr("epic.undo.bulkDeleted", { args: [n] }),
+      undoLabel: tr("board.undo.undo"),
+      intent: "primary",
+      apply: () => ctx.optimistic.remove(deletable),
+      commit: async () => {
         const outcome = await settleBulk(
           deletable.map((epic) => epic.id),
           (id) => epicApi.deleteEpic({ params: { id } }),
         );
-        reportBulk(
-          outcome,
-          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
-        );
-        ctx.refresh();
-        ctx.clearSelection();
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
-    },
-    [epicApi, dialog, reportBulk, tr],
-  );
+      onCommitted: invalidateWork,
+    });
+  };
 
   // Page-wide: every row and bulk write waits while any of them runs. The
   // bulk bar has no disabled state, so its buttons are hidden for that time.
-  const busy =
-    setReleaseAction.loading ||
-    setStatusAction.loading ||
-    shelveAction.loading ||
-    deleteAction.loading ||
-    bulkReleaseAction.loading ||
-    bulkReadyAction.loading ||
-    bulkDeleteAction.loading;
+  const busy = setReleaseAction.loading || bulkReleaseAction.loading;
 
   if (!project) {
     return null;
@@ -639,7 +616,7 @@ const ProjectEpics = () => {
         !busy &&
         selected.length > 0 &&
         selected.every((epic) => epic.status === "draft"),
-      onClick: (selected, ctx) => void bulkReadyAction.run(selected, ctx),
+      onClick: (selected, ctx) => bulkReady(selected, ctx),
     });
   }
 
@@ -649,7 +626,7 @@ const ProjectEpics = () => {
       label: tr("board.bulk.delete"),
       destructive: true,
       visible: (selected) => !busy && selected.some(isDeletable),
-      onClick: (selected, ctx) => void bulkDeleteAction.run(selected, ctx),
+      onClick: (selected, ctx) => void bulkDelete(selected, ctx),
     });
   }
 
@@ -947,8 +924,8 @@ const ProjectEpics = () => {
                   disabled: () => busy,
                   onClick: (
                     row: EpicResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void setStatusAction.run(row, "ready", refresh),
+                    ctx: RowActionContext<EpicResource>,
+                  ) => setStatus(row, "ready", ctx),
                 },
               ]
             : []),
@@ -960,8 +937,8 @@ const ProjectEpics = () => {
                   disabled: () => busy,
                   onClick: (
                     row: EpicResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void setStatusAction.run(row, "draft", refresh),
+                    ctx: RowActionContext<EpicResource>,
+                  ) => setStatus(row, "draft", ctx),
                 },
               ]
             : []),
@@ -977,8 +954,8 @@ const ProjectEpics = () => {
                   disabled: () => busy,
                   onClick: (
                     row: EpicResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void shelveAction.run(row, true, refresh),
+                    ctx: RowActionContext<EpicResource>,
+                  ) => shelve(row, ctx),
                 },
               ]
             : []),
@@ -990,8 +967,8 @@ const ProjectEpics = () => {
                   disabled: () => busy,
                   onClick: (
                     row: EpicResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void shelveAction.run(row, false, refresh),
+                    ctx: RowActionContext<EpicResource>,
+                  ) => unshelve(row, ctx),
                 },
               ]
             : []),
@@ -1007,8 +984,8 @@ const ProjectEpics = () => {
                   disabled: () => busy,
                   onClick: (
                     row: EpicResource,
-                    { refresh }: { refresh: () => void },
-                  ) => void deleteAction.run(row, refresh),
+                    ctx: RowActionContext<EpicResource>,
+                  ) => void remove(row, ctx),
                 },
               ]
             : []),

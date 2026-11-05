@@ -78,6 +78,15 @@ export const useDataTableRefresh = <T>(
     setRefreshKey((k) => k + 1);
   }, []);
 
+  /**
+   * Fetch the page again where the reader is: no jump to page one, no
+   * skeleton (the rows stay until the new ones land). What a row action
+   * wants after a write, where `refresh` is what a filter change wants.
+   */
+  const reload = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
   const handleRefreshClick = useCallback(() => {
     setIsRefreshing(true);
     refresh();
@@ -211,5 +220,12 @@ export const useDataTableRefresh = <T>(
     return () => clearInterval(id);
   }, [props.pollMs]);
 
-  return { refresh, handleRefreshClick, resetFilters, canShare, shareFilters };
+  return {
+    refresh,
+    reload,
+    handleRefreshClick,
+    resetFilters,
+    canShare,
+    shareFilters,
+  };
 };
