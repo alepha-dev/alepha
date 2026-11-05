@@ -16,8 +16,10 @@ export {
   McpErrorCodes,
   McpForbiddenError,
   McpHeaderMismatchError,
+  McpInputRequiredSignal,
   McpInvalidParamsError,
   McpMethodNotFoundError,
+  McpMissingRequiredClientCapabilityError,
   McpPromptNotFoundError,
   McpResourceNotFoundError,
   McpToolNotFoundError,
@@ -72,6 +74,12 @@ export type {
   // Context type for auth/headers
   McpContext,
   McpDiscoverResult,
+  McpElicit,
+  McpElicitFormRequest,
+  McpElicitResult,
+  McpElicitUrlRequest,
+  McpInputRequiredResult,
+  McpImplementation,
   McpInitializeParams,
   McpInitializeResult,
   McpJsonSchema,
@@ -177,6 +185,30 @@ declare module "alepha" {
       name: string;
       outcome: "ok" | "refused" | "error";
       context?: McpContext;
+    };
+
+    /**
+     * The Streamable HTTP transport is about to answer with an authorization
+     * challenge, and asks whoever owns authorization what it should say.
+     *
+     * The transport stays OAuth-agnostic: `$realm({ features: { oauth: true
+     * } })` subscribes and fills `challenge`, exactly as it turns
+     * `requireAuth` on.
+     *
+     * - **401** (no credential, or one bound to another resource): `user`
+     *   and `permissions` are absent; set `challenge.scope` to the scopes a
+     *   client should ask for (SEP-835).
+     * - **Step-up**: `user` is the caller and `permissions` what the target
+     *   tool's `$secure` requires. Set `challenge.scope` (every scope the
+     *   client should hold) only when re-authorizing would actually help:
+     *   the transport then answers 403 `insufficient_scope` before routing.
+     *   Left empty, the call proceeds and the tool's own `$secure` refuses
+     *   it as before.
+     */
+    "mcp:auth:challenge:before": {
+      user?: unknown;
+      permissions?: string[];
+      challenge: { scope?: string; description?: string };
     };
   }
 }

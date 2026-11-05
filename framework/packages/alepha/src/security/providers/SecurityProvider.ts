@@ -633,7 +633,7 @@ export class SecurityProvider {
     const lastName =
       typeof payload.family_name === "string" ? payload.family_name : undefined;
     const credential = realmName
-      ? this.getCredentialFromPayload(payload)
+      ? this.getCredentialFromPayload(payload, realmName)
       : undefined;
     const permissionScope = realmName
       ? this.getPermissionScopeFromPayload(payload)
@@ -707,12 +707,34 @@ export class SecurityProvider {
    * Only read from a realm's own tokens: `createUserFromPayload` without a
    * realm maps an external identity provider's profile, whose claims are not
    * ours to interpret.
+   *
+   * The resource the token is bound to (RFC 8707) is the `aud` entry that is
+   * not the realm itself: `$issuer` signs `aud: [realm, resource]` for an
+   * audience-bound grant, and the realm name alone otherwise.
    */
   protected getCredentialFromPayload(
     payload: Record<string, any>,
+    realmName?: string,
   ): UserAccount["credential"] {
     if (typeof payload.client_id === "string" && payload.client_id !== "") {
-      return { type: "oauth", clientId: payload.client_id };
+      const aud = payload.aud;
+      const resource = Array.isArray(aud)
+        ? aud.find(
+            (it): it is string =>
+              typeof it === "string" && it !== "" && it !== realmName,
+          )
+        : undefined;
+      // RFC 9068: the grant's scope ids, space-separated.
+      const scopes =
+        typeof payload.scope === "string"
+          ? payload.scope.split(" ").filter(Boolean)
+          : undefined;
+      return {
+        type: "oauth",
+        clientId: payload.client_id,
+        ...(resource ? { resource } : {}),
+        ...(scopes ? { scopes } : {}),
+      };
     }
     return undefined;
   }

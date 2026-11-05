@@ -5,10 +5,13 @@ import {
   AlephaError,
   SchemaValidationError,
 } from "alepha";
+import { CryptoProvider, SecretProvider } from "alepha/crypto";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import {
   McpError,
+  McpInputRequiredSignal,
   McpInvalidParamsError,
   McpMethodNotFoundError,
   McpPromptNotFoundError,
@@ -25,6 +28,7 @@ import {
   MCP_LEGACY_PROTOCOL_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
+import { McpElicitationSession } from "../helpers/McpElicitationSession.ts";
 import type {
   JsonRpcError,
   JsonRpcRequest,
@@ -42,6 +46,7 @@ import type {
   McpPromptDescriptor,
   McpPromptGetResult,
   McpPromptMessage,
+  McpInputRequiredResult,
   McpRequestMeta,
   McpResourceContent,
   McpResourceDescriptor,
@@ -70,6 +75,9 @@ import type { ToolPrimitive } from "../primitives/$tool.ts";
 export class McpServerProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly secrets = $inject(SecretProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   protected readonly tools = new Map<string, ToolPrimitive<any>>();
   protected readonly resources = new Map<string, ResourcePrimitive>();
@@ -95,6 +103,23 @@ export class McpServerProvider {
     name: "alepha-mcp",
     version: "1.0.0",
   };
+
+  /**
+   * How to use this server, in a few sentences for the agent: where to start,
+   * what the tools are for, what to avoid. Sent as `instructions` on
+   * `server/discover` and on the legacy `initialize`; omitted when empty.
+   *
+   * Set it the same way as {@link serverInfo}, by assignment at configure
+   * time. Keep it short: a client may inject it into every conversation.
+   */
+  public instructions = "";
+
+  /**
+   * How long, in milliseconds, a sealed MRTR `requestState` stays valid: the
+   * time a user has to answer an elicitation before the client's retry is
+   * refused with `-32602`.
+   */
+  public requestStateTtl = 600_000;
 
   /**
    * Maximum number of entries returned by one `tools/list`, `resources/list`,
@@ -397,15 +422,25 @@ export class McpServerProvider {
   }
 
   /**
-   * Why a modern request cannot be served at all, before it is routed: today,
-   * a protocol version outside {@link protocolVersions}. `undefined` when it
-   * can be.
+   * Why a modern request cannot be served at all, before it is routed: a
+   * protocol version outside {@link protocolVersions} (-32022), or a missing
+   * `io.modelcontextprotocol/clientCapabilities` (-32602), which 2026-07-28
+   * makes a required request `_meta` field. `undefined` when it can be.
+   *
+   * The capabilities are read from the raw request rather than from `modern`:
+   * {@link resolveModernRequest} stays a pure reader and defaults them to
+   * `{}`, so only the request can tell "declared nothing" from "said nothing".
+   * A present value that is not an object (an array, a string) is refused the
+   * same way.
    *
    * Public for the same reason as {@link resolveModernRequest}: the HTTP
    * transport answers these with a 400, and has to know before it opens a
    * response stream.
    */
-  public checkModernRequest(modern: McpRequestMeta): McpError | undefined {
+  public checkModernRequest(
+    modern: McpRequestMeta,
+    request: JsonRpcRequest,
+  ): McpError | undefined {
     if (!this.protocolVersions.includes(modern.protocolVersion)) {
       return new McpUnsupportedProtocolVersionError({
         rpcData: {
@@ -414,7 +449,32 @@ export class McpServerProvider {
         },
       });
     }
+    const declared =
+      this.requestMeta(request)?.["io.modelcontextprotocol/clientCapabilities"];
+    if (!this.isPlainObject(declared)) {
+      return new McpInvalidParamsError(
+        declared === undefined
+          ? "Invalid params: missing required _meta field io.modelcontextprotocol/clientCapabilities"
+          : "Invalid params: _meta field io.modelcontextprotocol/clientCapabilities must be an object",
+      );
+    }
     return undefined;
+  }
+
+  /**
+   * The permissions the target of a request declares through `$secure`,
+   * evaluated before dispatch. `tools/call` only: `$resource`, `$resourceTemplate`
+   * and `$prompt` take no middlewares, so they declare none. Empty when
+   * nothing is declared or the target does not exist (routing answers that).
+   */
+  public requiredPermissions(request: JsonRpcRequest): string[] {
+    if (request.method !== "tools/call") {
+      return [];
+    }
+    const name = request.params?.name;
+    return typeof name === "string"
+      ? (this.tools.get(name)?.requiredPermissions ?? [])
+      : [];
   }
 
   /**
@@ -489,7 +549,7 @@ export class McpServerProvider {
     // put in the context: on a legacy request all three stay undefined.
     const modern = this.resolveModernRequest(request, context?.headers);
     if (modern) {
-      const rejection = this.checkModernRequest(modern);
+      const rejection = this.checkModernRequest(modern, request);
       if (rejection) {
         return createErrorResponse(id, this.toJsonRpcError(rejection));
       }
@@ -511,7 +571,9 @@ export class McpServerProvider {
     // so everything the tool calls inherits both (#E85). `McpContext.signal`
     // is that same object.
     let signal = controller.signal;
+    let session: McpElicitationSession | undefined;
     try {
+      session = await this.openElicitation(request, modern, context);
       const result = await this.alepha.context.withSignal(
         controller.signal,
         () => {
@@ -524,6 +586,7 @@ export class McpServerProvider {
             protocolVersion: modern?.protocolVersion,
             clientInfo: modern?.clientInfo,
             clientCapabilities: modern?.clientCapabilities,
+            ...(session ? { elicit: session.elicit as never } : {}),
           });
         },
       );
@@ -541,6 +604,12 @@ export class McpServerProvider {
       if (signal.aborted) {
         this.log.debug("MCP request aborted by client", { id });
         return null;
+      }
+      if (error instanceof McpInputRequiredSignal && session) {
+        return createResponse(
+          id,
+          await this.toInputRequiredResult(request, context, session, error),
+        );
       }
       this.log.error("MCP request failed", error);
       // Preserve error code from McpError instances
@@ -608,6 +677,15 @@ export class McpServerProvider {
    * when its method is not cacheable.
    */
   protected cacheHintsFor(request: JsonRpcRequest): McpCacheHints | undefined {
+    // An MRTR retry's result depends on the answers it carries: never cached.
+    if (
+      request.params?.requestState !== undefined ||
+      request.params?.inputResponses !== undefined
+    ) {
+      return request.method === "resources/read"
+        ? { ttlMs: 0, cacheScope: "private" }
+        : undefined;
+    }
     switch (request.method) {
       case "server/discover":
         return this.normalizeCacheHints(this.discoverCache);
@@ -674,6 +752,200 @@ export class McpServerProvider {
       message: error.message,
       ...(error.data.rpcData !== undefined ? { data: error.data.rpcData } : {}),
     };
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Elicitation (MRTR, spec 2026-07-28)
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The methods whose handler may ask the user something. Never any other:
+   * an `InputRequiredResult` is only valid on these three.
+   */
+  protected readonly elicitingMethods = new Set([
+    "tools/call",
+    "resources/read",
+    "prompts/get",
+  ]);
+
+  /**
+   * The elicitation session of a request, or `undefined` when its method
+   * cannot elicit.
+   *
+   * A modern retry is opened here: its `requestState` must decrypt, be
+   * unexpired, and name this caller, this method and these params, or the
+   * request is `-32602` (never a fresh run, which would silently restart a
+   * dialogue the user was half-way through). Of its `inputResponses`, only
+   * the keys the previous round asked for are read; any other is ignored.
+   */
+  protected async openElicitation(
+    request: JsonRpcRequest,
+    modern: McpRequestMeta | undefined,
+    context: McpContext | undefined,
+  ): Promise<McpElicitationSession | undefined> {
+    if (!this.elicitingMethods.has(request.method)) {
+      return undefined;
+    }
+    const digest = await this.requestDigest(request);
+    const answers: Record<string, unknown> = {};
+    const state = request.params?.requestState;
+    if (modern && state !== undefined) {
+      const opened = await this.openRequestState(state);
+      if (
+        !opened ||
+        opened.exp <= this.dateTime.nowMillis() ||
+        opened.sub !== this.principalOf(context) ||
+        opened.method !== request.method ||
+        opened.digest !== digest
+      ) {
+        throw new McpInvalidParamsError(
+          "Invalid params: requestState is invalid, expired, or belongs to another request",
+        );
+      }
+      Object.assign(answers, opened.answers);
+      const responses = request.params?.inputResponses;
+      if (this.isPlainObject(responses)) {
+        for (const key of opened.asked) {
+          if (key in responses) {
+            answers[key] = responses[key];
+          }
+        }
+      }
+    }
+    return new McpElicitationSession(this.alepha, {
+      modern: !!modern,
+      capabilities: modern?.clientCapabilities,
+      answers,
+      requestDigest: digest,
+    });
+  }
+
+  /**
+   * The `InputRequiredResult` for a handler stopped by an unanswered
+   * `elicit`: the question, and the state sealing every answer given so far.
+   * No cache hints: an MRTR result is never cached.
+   */
+  protected async toInputRequiredResult(
+    request: JsonRpcRequest,
+    context: McpContext | undefined,
+    session: McpElicitationSession,
+    signal: McpInputRequiredSignal,
+  ): Promise<McpInputRequiredResult> {
+    const requestState = await this.sealRequestState({
+      sub: this.principalOf(context),
+      method: request.method,
+      digest: await this.requestDigest(request),
+      exp: this.dateTime.nowMillis() + this.requestStateTtl,
+      asked: [signal.data.key],
+      answers: session.resolved,
+    });
+    return {
+      resultType: "input_required",
+      inputRequests: { [signal.data.key]: signal.data.inputRequest },
+      requestState,
+      _meta: { "io.modelcontextprotocol/serverInfo": this.serverInfo },
+    };
+  }
+
+  /**
+   * Who a request runs as, for binding a `requestState` to its caller: the
+   * authenticated user's id, `null` when anonymous.
+   */
+  protected principalOf(context: McpContext | undefined): string | null {
+    const id = (context?.data as { id?: unknown } | undefined)?.id;
+    return typeof id === "string" && id ? id : null;
+  }
+
+  /**
+   * SHA-256 of the request's params, canonical (sorted keys), without
+   * `_meta`, `inputResponses` and `requestState`: what a retry must repeat
+   * exactly.
+   */
+  protected async requestDigest(request: JsonRpcRequest): Promise<string> {
+    const {
+      _meta: _m,
+      inputResponses: _i,
+      requestState: _s,
+      ...params
+    } = request.params ?? {};
+    return this.crypto.hash(
+      `${request.method}\n${this.canonicalJson(params)}`,
+      "sha256",
+    );
+  }
+
+  protected canonicalJson(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `[${value.map((it) => this.canonicalJson(it)).join(",")}]`;
+    }
+    if (this.isPlainObject(value)) {
+      return `{${Object.keys(value)
+        .sort()
+        .filter((key) => value[key] !== undefined)
+        .map(
+          (key) => `${JSON.stringify(key)}:${this.canonicalJson(value[key])}`,
+        )
+        .join(",")}}`;
+    }
+    return JSON.stringify(value) ?? "null";
+  }
+
+  /**
+   * The key a `requestState` is sealed with: derived from the app secret,
+   * with a purpose label so it never doubles as another feature's key.
+   */
+  protected requestStateKey(): string {
+    return `${this.secrets.secretKey}:alepha.mcp.requestState`;
+  }
+
+  protected async sealRequestState(state: {
+    sub: string | null;
+    method: string;
+    digest: string;
+    exp: number;
+    asked: string[];
+    answers: Record<string, unknown>;
+  }): Promise<string> {
+    return this.crypto.encrypt(
+      JSON.stringify({ v: 1, ...state }),
+      this.requestStateKey(),
+    );
+  }
+
+  /**
+   * A sealed state's payload, or `undefined` when it does not decrypt or is
+   * not one of ours.
+   */
+  protected async openRequestState(state: unknown): Promise<
+    | {
+        sub: string | null;
+        method: string;
+        digest: string;
+        exp: number;
+        asked: string[];
+        answers: Record<string, unknown>;
+      }
+    | undefined
+  > {
+    if (typeof state !== "string" || state.length === 0) {
+      return undefined;
+    }
+    try {
+      const payload = JSON.parse(
+        await this.crypto.decrypt(state, this.requestStateKey()),
+      );
+      if (
+        payload?.v !== 1 ||
+        typeof payload.exp !== "number" ||
+        !Array.isArray(payload.asked) ||
+        !this.isPlainObject(payload.answers)
+      ) {
+        return undefined;
+      }
+      return payload;
+    } catch {
+      return undefined;
+    }
   }
 
   // -----------------------------------------------------------------------------------------------------------------
@@ -820,6 +1092,7 @@ export class McpServerProvider {
       protocolVersion: negotiated,
       capabilities: this.getCapabilities(),
       serverInfo: this.serverInfo,
+      ...(this.instructions ? { instructions: this.instructions } : {}),
     };
   }
 
@@ -837,6 +1110,7 @@ export class McpServerProvider {
     return {
       supportedVersions: this.getSupportedVersions(),
       capabilities: this.getCapabilities(),
+      ...(this.instructions ? { instructions: this.instructions } : {}),
     };
   }
 
@@ -1003,6 +1277,12 @@ export class McpServerProvider {
       await this.announceToolEnd(name, "ok", context);
       return callResult;
     } catch (error) {
+      // An unanswered elicit: the call is not over, so it is not announced
+      // either. The provider answers it with an InputRequiredResult, and the
+      // retry that finally completes is the one counted.
+      if (error instanceof McpInputRequiredSignal) {
+        throw error;
+      }
       // Not everything that escapes a tool is the model's problem. An McpError
       // carries a JSON-RPC code precisely because it is NOT self-correctable:
       // McpToolOutputError (the tool broke its own output contract),

@@ -36,7 +36,7 @@ export const myConnectionSchema = z.object({
    * (`mcp_<hex>`, or whatever Platform seeded), so a `z.uuid()` here would
    * refuse every real value.
    */
-  id: z.text({ maxLength: 64 }),
+  id: z.text({ maxLength: 512 }),
 
   /**
    * The registered OAuth client id. Kept alongside the name because the name

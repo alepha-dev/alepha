@@ -52,6 +52,13 @@ export interface RegisterClientOptions {
   secret?: string;
   source?: "dcr" | "user" | "admin";
   createdByUserId?: string;
+  /**
+   * RFC 7591 / SEP-837 `application_type`. When given, it decides the
+   * redirect URIs accepted: `web` https only, `native` loopback http and
+   * private-use schemes too. Absent, the general rule (https, or http to the
+   * loopback) applies, which is what code-registered clients rely on.
+   */
+  applicationType?: "native" | "web";
 }
 
 /**
@@ -183,9 +190,12 @@ export class OAuthClientService {
     // later be surfaced as a "connected app" and revoked individually, and
     // with the grant's scopes, which the issuer resolves into what the token
     // may do (and resolves again on every refresh, from the session row).
+    // And with the resource the grant is bound to (RFC 8707), which becomes
+    // the token's audience beside the realm and survives every refresh.
     const tokens = await entry.issuer.createToken(user, undefined, {
       clientId: grant.clientId,
       scopes: grant.scopes,
+      resource: grant.resource,
     });
     return {
       access_token: tokens.access_token,
@@ -292,7 +302,7 @@ export class OAuthClientService {
       );
     }
     for (const uri of options.redirectUris) {
-      this.assertValidRedirectUri(uri);
+      this.assertValidRedirectUri(uri, options.applicationType);
     }
 
     const type = options.type ?? "public";
@@ -332,6 +342,7 @@ export class OAuthClientService {
       clientSecretHash,
       source: options.source ?? "dcr",
       createdByUserId: options.createdByUserId,
+      applicationType: options.applicationType,
     });
 
     this.log.info("OAuth client registered", {
@@ -532,12 +543,25 @@ export class OAuthClientService {
    * @throws {OAuthClientMetadataError} `invalid_redirect_uri`, which the DCR
    * route answers with a 400.
    */
-  protected assertValidRedirectUri(uri: string): void {
+  protected assertValidRedirectUri(
+    uri: string,
+    applicationType?: "native" | "web",
+  ): void {
     const refuse = (reason: string) =>
       new OAuthClientMetadataError(
         { reason: "invalid_redirect_uri" },
         { message: `${reason}: ${uri}` },
       );
+
+    // A native app may also come back through a private-use scheme
+    // (RFC 8252 §7.1: a reverse domain name, so it carries a dot), where no
+    // host exists to check and the exact match at authorize is the rule.
+    if (applicationType === "native" && this.isPrivateUseScheme(uri)) {
+      if (uri.includes("*")) {
+        throw refuse("A wildcard is not allowed in a private-use redirect_uri");
+      }
+      return;
+    }
 
     const stars = (uri.match(/\*/g) ?? []).length;
     if (stars > 1) {
@@ -555,6 +579,11 @@ export class OAuthClientService {
     if (!secure && !loopback) {
       throw refuse("Invalid redirect_uri");
     }
+    // A web client is a server somewhere: its redirect is https, never the
+    // loopback of whatever machine the browser runs on.
+    if (applicationType === "web" && !secure) {
+      throw refuse("A web client's redirect_uri must be https");
+    }
     if (stars === 1) {
       const host = uri.slice(uri.indexOf("://") + 3).split("/")[0] ?? "";
       if (
@@ -564,6 +593,311 @@ export class OAuthClientService {
         throw refuse("Wildcard '*' is only allowed in the host");
       }
     }
+  }
+
+  /**
+   * Whether a redirect URI uses a private-use URI scheme (RFC 8252 §7.1):
+   * not http(s), and a scheme with a dot in it, like `com.example.app:/cb`.
+   */
+  protected isPrivateUseScheme(uri: string): boolean {
+    const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(uri)?.[1]?.toLowerCase();
+    return (
+      !!scheme &&
+      scheme !== "http" &&
+      scheme !== "https" &&
+      scheme.includes(".")
+    );
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Client ID Metadata Documents (MCP 2026-07-28)
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Whether a `client_id` names a Client ID Metadata Document: an https URL
+   * with a path.
+   */
+  public isMetadataDocumentClientId(clientId: string): boolean {
+    try {
+      const url = new URL(clientId);
+      return url.protocol === "https:" && url.pathname.length > 1;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * The client a request names, registering it from its Client ID Metadata
+   * Document when its `client_id` is a document URL (MCP 2026-07-28: the
+   * order is pre-registration, then CIMD, then DCR).
+   *
+   * - A row that exists and is not a CIMD row wins: pre-registration first.
+   * - A CIMD row whose document is still fresh (`metadataExpiresAt`) is used
+   *   as is: the row is the cache.
+   * - Otherwise the document is fetched, validated and upserted as a public
+   *   `source: "cimd"` row. A failed refetch falls back to the stored row for
+   *   at most 24 h past its expiry; past that, or with no row, the client is
+   *   unknown (`null`).
+   */
+  public async resolveClient(
+    clientId: string,
+    options: {
+      realm: string;
+      /**
+       * `oauthOptions.clientIdMetadataDocuments`; `false` makes a URL client
+       * id an ordinary lookup.
+       */
+      enabled: boolean;
+      /**
+       * Scopes a document that names none is registered with.
+       */
+      defaultScopes: string[];
+      /**
+       * Narrows the scopes a document asks for to those the application
+       * declares, as registration does for DCR.
+       */
+      acceptScopes?: (scopes: string[]) => string[];
+    },
+  ): Promise<OAuthClientEntity | null> {
+    const row = await this.findByClientId(clientId);
+    if (!options.enabled || !this.isMetadataDocumentClientId(clientId)) {
+      return row;
+    }
+    if (row && row.source !== "cimd") {
+      return row;
+    }
+    const now = this.dateTime.nowMillis();
+    const expiresAt = row?.metadataExpiresAt
+      ? new Date(row.metadataExpiresAt).getTime()
+      : 0;
+    if (row && expiresAt > now) {
+      return row;
+    }
+
+    try {
+      const { document, maxAgeSeconds } =
+        await this.fetchMetadataDocument(clientId);
+      const metadata = this.parseMetadataDocument(clientId, document);
+      const values = {
+        clientName: metadata.clientName,
+        redirectUris: metadata.redirectUris,
+        applicationType: metadata.applicationType,
+        scopes:
+          (metadata.scopes &&
+            (options.acceptScopes?.(metadata.scopes) ?? metadata.scopes)) ||
+          options.defaultScopes,
+        metadataExpiresAt: new Date(now + maxAgeSeconds * 1000).toISOString(),
+      };
+      if (row) {
+        return await this.repo.updateById(row.id, values);
+      }
+      const created = await this.repo.create({
+        clientId,
+        realm: options.realm,
+        type: "public",
+        trusted: false,
+        source: "cimd",
+        ...values,
+      });
+      this.log.info("OAuth client registered from its metadata document", {
+        clientId,
+      });
+      return created;
+    } catch (error) {
+      const graceUntil = expiresAt + 24 * 60 * 60 * 1000;
+      if (row && now < graceUntil) {
+        this.log.warn(
+          "OAuth client metadata document refetch failed; serving the stored copy",
+          { clientId, error },
+        );
+        return row;
+      }
+      this.log.warn("OAuth client metadata document refused", {
+        clientId,
+        error,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Fetch a Client ID Metadata Document, guarded for a server that must
+   * fetch a URL any stranger hands it.
+   *
+   * Portable to workerd, where no DNS resolution is available: https only,
+   * the default port only, and a host that is not an IP literal, `localhost`
+   * or a `.localhost`, `.local` or `.internal` name. No redirect is followed
+   * (`redirect: "manual"`, any 3xx fails), the fetch times out after 5 s,
+   * the body is capped at 5 KiB and must be JSON. Returns the document and
+   * its freshness: the response's `max-age`, clamped to [5 min, 24 h].
+   *
+   * The request itself is {@link requestMetadataDocument}.
+   */
+  protected async fetchMetadataDocument(
+    clientId: string,
+  ): Promise<{ document: unknown; maxAgeSeconds: number }> {
+    const url = new URL(clientId);
+    const host = url.hostname.toLowerCase();
+    if (
+      url.protocol !== "https:" ||
+      url.port !== "" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host.endsWith(".local") ||
+      host.endsWith(".internal") ||
+      host.startsWith("[") ||
+      /^\d+\.\d+\.\d+\.\d+$/.test(host) ||
+      !host.includes(".")
+    ) {
+      throw new AlephaError(`Refusing to fetch client metadata from ${host}`);
+    }
+
+    const response = await this.requestMetadataDocument(url);
+    if (response.status !== 200) {
+      throw new AlephaError(
+        `Client metadata document answered ${response.status}`,
+      );
+    }
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!/^application\/([a-z0-9.+-]+\+)?json\b/i.test(contentType)) {
+      throw new AlephaError("Client metadata document is not JSON");
+    }
+    const text = await this.readCapped(response, 5 * 1024);
+    return {
+      document: JSON.parse(text),
+      maxAgeSeconds: this.metadataMaxAge(response.headers.get("cache-control")),
+    };
+  }
+
+  /**
+   * The network half of {@link fetchMetadataDocument}, after the guard: no
+   * redirect followed, 5 s timeout. A spec substitutes this.
+   */
+  protected requestMetadataDocument(url: URL): Promise<Response> {
+    return fetch(url, {
+      redirect: "manual",
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(5_000),
+    });
+  }
+
+  /**
+   * A response body as text, refused past `limit` bytes without reading
+   * further.
+   */
+  protected async readCapped(
+    response: Response,
+    limit: number,
+  ): Promise<string> {
+    const declared = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > limit) {
+      throw new AlephaError("Client metadata document is too large");
+    }
+    if (!response.body) {
+      return "";
+    }
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel();
+        throw new AlephaError("Client metadata document is too large");
+      }
+      chunks.push(value);
+    }
+    const body = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      body.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(body);
+  }
+
+  /**
+   * Seconds a document stays fresh: `max-age` clamped to [300, 86400], the
+   * floor when the response names none.
+   */
+  protected metadataMaxAge(cacheControl: string | null): number {
+    const match = /(?:^|,)\s*max-age\s*=\s*(\d+)/i.exec(cacheControl ?? "");
+    const value = match ? Number(match[1]) : 0;
+    return Math.min(86_400, Math.max(300, value));
+  }
+
+  /**
+   * Validate a fetched document: `client_id` equal to the URL it came from,
+   * a `client_name`, and `redirect_uris` that pass the same checks a
+   * registration does, under the document's `application_type`. A public
+   * client: a `token_endpoint_auth_method` other than `none` is refused.
+   */
+  protected parseMetadataDocument(
+    clientId: string,
+    document: unknown,
+  ): {
+    clientName: string;
+    redirectUris: string[];
+    applicationType?: "native" | "web";
+    scopes?: string[];
+  } {
+    const refuse = (message: string) =>
+      new OAuthClientMetadataError(
+        { reason: "invalid_client_metadata" },
+        { message },
+      );
+    if (!document || typeof document !== "object" || Array.isArray(document)) {
+      throw refuse("Client metadata document is not an object");
+    }
+    const doc = document as Record<string, unknown>;
+    if (doc.client_id !== clientId) {
+      throw refuse("client_id does not equal the document URL");
+    }
+    if (typeof doc.client_name !== "string" || !doc.client_name.trim()) {
+      throw refuse("client_name is required");
+    }
+    const uris = doc.redirect_uris;
+    if (
+      !Array.isArray(uris) ||
+      uris.length === 0 ||
+      !uris.every((it) => typeof it === "string")
+    ) {
+      throw refuse("redirect_uris is required");
+    }
+    if (
+      doc.token_endpoint_auth_method !== undefined &&
+      doc.token_endpoint_auth_method !== "none"
+    ) {
+      throw refuse("A metadata document client must be public");
+    }
+    // An absent `application_type` keeps the general rule (https, or http to
+    // the loopback), as registration does: Claude Code's own document names
+    // none and lists `http://localhost/callback`, so a `web` default would
+    // refuse the very client the feature exists for.
+    const applicationType =
+      doc.application_type === "native" || doc.application_type === "web"
+        ? doc.application_type
+        : undefined;
+    for (const uri of uris as string[]) {
+      if (uri.includes("*")) {
+        throw refuse("A metadata document may not register a wildcard");
+      }
+      this.assertValidRedirectUri(uri, applicationType);
+    }
+    const scopes =
+      typeof doc.scope === "string"
+        ? doc.scope.split(" ").filter(Boolean)
+        : undefined;
+    return {
+      clientName: doc.client_name.trim().slice(0, 200),
+      redirectUris: uris as string[],
+      applicationType,
+      scopes: scopes && scopes.length > 0 ? scopes : undefined,
+    };
   }
 
   /**

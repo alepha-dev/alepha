@@ -51,20 +51,40 @@ export interface McpCapabilities {
 }
 
 /**
- * Spec 2025-11-25: optional `description` aligns with the MCP registry's
- * `server.json` format and provides human-readable context during init.
+ * The schema's `Implementation`: who a server or a client is.
+ *
+ * `name` is the programmatic identifier, `title` the display label. The
+ * optional `description` (2025-11-25) aligns with the MCP registry's
+ * `server.json`; `icons` and `websiteUrl` are for client UIs.
  */
-export interface McpServerInfo {
+export interface McpImplementation {
   name: string;
   version: string;
+  /**
+   * Human-friendly display label. Distinct from `name`.
+   */
+  title?: string;
   description?: string;
+  /**
+   * Icons a client may show beside the name (SEP-973).
+   */
+  icons?: McpIcon[];
+  /**
+   * The implementation's home page.
+   */
+  websiteUrl?: string;
 }
 
-export interface McpClientInfo {
-  name: string;
-  version: string;
-  description?: string;
-}
+/**
+ * A server's identity, sent on `initialize` and in a modern result's
+ * `io.modelcontextprotocol/serverInfo`.
+ */
+export type McpServerInfo = McpImplementation;
+
+/**
+ * A client's self-reported identity. Unverified.
+ */
+export type McpClientInfo = McpImplementation;
 
 /**
  * Icon descriptor (spec 2025-11-25 / SEP-973). Mirrors web app manifest
@@ -123,6 +143,10 @@ export interface McpInitializeResult {
   protocolVersion: string;
   capabilities: McpCapabilities;
   serverInfo: McpServerInfo;
+  /**
+   * How to use this server, for the agent (see `McpServerProvider.instructions`).
+   */
+  instructions?: string;
 }
 
 /**
@@ -144,8 +168,11 @@ export interface McpRequestMeta {
   clientInfo?: McpClientInfo;
   /**
    * The capabilities the client declares for this request
-   * (`io.modelcontextprotocol/clientCapabilities`). `{}` when absent: the
-   * spec forbids inferring a capability the client did not declare.
+   * (`io.modelcontextprotocol/clientCapabilities`). The field is required on a
+   * modern request, and `McpServerProvider.checkModernRequest` refuses one
+   * without it before routing, so a served request always has the declared
+   * value here. The `{}` default only shows to a caller that reads the
+   * metadata without that check.
    */
   clientCapabilities: Record<string, unknown>;
 }
@@ -178,6 +205,10 @@ export interface McpCacheHints {
 export interface McpDiscoverResult {
   supportedVersions: string[];
   capabilities: McpCapabilities;
+  /**
+   * How to use this server, for the agent (see `McpServerProvider.instructions`).
+   */
+  instructions?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -276,13 +307,10 @@ export type McpContent =
   | (McpContentBase & { type: "image"; data: string; mimeType: string })
   | (McpContentBase & { type: "audio"; data: string; mimeType: string })
   | (McpContentBase & { type: "resource"; resource: McpResourceContent })
-  | (McpContentBase & {
-      type: "resource_link";
-      uri: string;
-      name: string;
-      description?: string;
-      mimeType?: string;
-    });
+  | (McpContentBase &
+      Omit<McpResourceDescriptor, "annotations" | "_meta"> & {
+        type: "resource_link";
+      });
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Resource Types
@@ -297,6 +325,11 @@ export interface McpResourceDescriptor {
   title?: string;
   description?: string;
   mimeType?: string;
+  /**
+   * The raw content's size in bytes, before any encoding, when known. Lets a
+   * client estimate context use before reading.
+   */
+  size?: number;
   /**
    * Optional icons (spec 2025-11-25 / SEP-973).
    */
@@ -325,6 +358,11 @@ export interface McpResourceTemplateDescriptor {
   title?: string;
   description?: string;
   mimeType?: string;
+  /**
+   * The raw content's size in bytes, before any encoding, when known. Lets a
+   * client estimate context use before reading.
+   */
+  size?: number;
   /**
    * Optional icons (spec 2025-11-25 / SEP-973).
    */
@@ -378,6 +416,10 @@ export interface McpPromptDescriptor {
 
 export interface McpPromptArgument {
   name: string;
+  /**
+   * Human-friendly display label. Distinct from `name`.
+   */
+  title?: string;
   description?: string;
   required?: boolean;
 }
@@ -568,6 +610,92 @@ export interface McpContext<T = unknown> {
    * Undefined on a legacy request.
    */
   clientCapabilities?: Record<string, unknown>;
+
+  /**
+   * Ask the user for input (MRTR elicitation). Present on `tools/call`,
+   * `resources/read` and `prompts/get`, on both eras: a client that cannot be
+   * asked resolves `{ action: "unavailable" }`. See {@link McpElicit} for the
+   * replay rule.
+   */
+  elicit?: McpElicit;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Elicitation (MRTR, spec 2026-07-28)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A form question: the client renders `schema` as a form and returns what the
+ * user typed.
+ *
+ * The schema is a flat `z.object` of `z.text()`, `z.number()`, `z.integer()`,
+ * `z.boolean()` and `z.enum()` fields, optional or defaulted at will: that is
+ * all a client is required to render. Anything else is refused with an
+ * `AlephaError` at the first `elicit` that uses it.
+ */
+export interface McpElicitFormRequest<T extends ZObject = ZObject> {
+  message: string;
+  schema: T;
+  /**
+   * Refuse the request instead of resolving `unavailable` when the client
+   * cannot be asked: a modern client that did not declare form elicitation
+   * gets `-32021`, a legacy one a `-31003` refusal naming the capability.
+   */
+  required?: boolean;
+}
+
+/**
+ * A URL question: the client opens `url` for the user (a sign-in, a payment)
+ * and reports whether they went through with it. No content comes back.
+ */
+export interface McpElicitUrlRequest {
+  message: string;
+  url: string;
+  /**
+   * As on {@link McpElicitFormRequest.required}, for URL elicitation.
+   */
+  required?: boolean;
+}
+
+/**
+ * How an `elicit` resolved: the user accepted (with the form's content),
+ * declined, or cancelled; or `unavailable`, when the client cannot be asked
+ * at all (a legacy client, or a modern one that did not declare the mode).
+ */
+export type McpElicitResult<T = Record<string, unknown>> =
+  | { action: "accept"; content: T }
+  | { action: "decline" }
+  | { action: "cancel" }
+  | { action: "unavailable" };
+
+/**
+ * `context.elicit`: ask the user something, from a tool, a resource or a
+ * prompt.
+ *
+ * ⚠️ **The handler is replayed.** The first call that has no answer stops the
+ * handler and answers the request with an `InputRequiredResult`; the client
+ * retries with the answer and the handler runs again from the top, every
+ * `elicit` already answered resolving at once. So **do side effects after
+ * the last `elicit`**: everything before it runs once per round trip.
+ */
+export interface McpElicit {
+  <T extends ZObject>(
+    request: McpElicitFormRequest<T>,
+  ): Promise<McpElicitResult<Infer<T>>>;
+  (request: McpElicitUrlRequest): Promise<McpElicitResult<undefined>>;
+}
+
+/**
+ * The result a modern `tools/call`, `resources/read` or `prompts/get` gets
+ * when its handler needs an answer (SEP-2322): the client asks the user and
+ * retries the same call with `inputResponses` (same keys) and the exact
+ * `requestState`.
+ */
+export interface McpInputRequiredResult {
+  resultType: "input_required";
+  inputRequests?: Record<string, { method: string; params: unknown }>;
+  requestState?: string;
+  _meta?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

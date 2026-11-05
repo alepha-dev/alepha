@@ -60,6 +60,13 @@ export interface ConsentPageOptions {
    */
   redirectHost?: string;
   /**
+   * Host that published the client's metadata document, for a client that
+   * identified itself by a Client ID Metadata Document URL. Like the
+   * redirect host, it is the part of the identity this server can vouch
+   * for: the document was fetched from there.
+   */
+  clientHost?: string;
+  /**
    * Where the user can revoke this later. Rendered only when set, because
    * promising a page that does not exist is worse than saying nothing.
    */
@@ -80,6 +87,10 @@ export const renderConsentPage = (options: ConsentPageOptions): string => {
     ? `<span class="host">${escapeHtml(options.redirectHost)}</span>`
     : "";
 
+  const publisher = options.clientHost
+    ? `<p class="sub">Client published by <span class="host">${escapeHtml(options.clientHost)}</span></p>`
+    : "";
+
   const heading = options.productName
     ? `${escapeHtml(options.clientName)} wants access to your ${escapeHtml(options.productName)} account`
     : `${escapeHtml(options.clientName)} wants to connect`;
@@ -94,6 +105,7 @@ export const renderConsentPage = (options: ConsentPageOptions): string => {
     style: OAUTH_PAGE_STYLE,
     footer,
     body: `<h1>${heading}</h1>
+${publisher}
 <p class="sub">Authorization will be sent to${host ? "" : " the address it registered"}</p>
 ${host}
 <div class="section">

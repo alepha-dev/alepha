@@ -1,4 +1,4 @@
-import { $atom, $inject, $store, z } from "alepha";
+import { $atom, $inject, $store, Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 
@@ -35,14 +35,21 @@ export const mcpStreamableHttpOptions = $atom({
      */
     path: z.text({ default: "/mcp" }),
     /**
-     * Allow-list of `Origin` header values accepted on incoming requests.
-     * Empty array (default) means "allow any". When set, browser-originated
-     * requests with a non-matching `Origin` are rejected with 403 Forbidden,
-     * blocking DNS-rebinding attacks against localhost MCP servers.
+     * Allow-list of `Origin` header values accepted on incoming requests. A
+     * request carrying any other `Origin` is rejected with 403 Forbidden,
+     * which blocks DNS-rebinding attacks (Streamable HTTP: a server MUST
+     * validate `Origin`).
      *
-     * Server-to-server callers (no `Origin` header) are always allowed.
+     * - Empty (the default): same-origin only. An `Origin` equal to the
+     *   request's own origin (scheme, host and port of the request URL) is
+     *   accepted, and so is a loopback `Origin` (`localhost`, `*.localhost`,
+     *   `127.0.0.0/8`, `[::1]`, any port) when the request's own host is
+     *   loopback too.
+     * - A list: exactly those origins, compared after normalisation.
+     * - `["*"]`: any origin, the explicit opt-out.
      *
-     * Spec 2025-11-25, PR #1439.
+     * Server-to-server callers (no `Origin` header) are always allowed. An
+     * opaque `Origin: null` is foreign, never "no Origin".
      */
     allowedOrigins: z.array(z.text()).default([]),
     /**
@@ -66,12 +73,22 @@ export const mcpStreamableHttpOptions = $atom({
     resourceMetadataPath: z.text({
       default: "/.well-known/oauth-protected-resource",
     }),
+    /**
+     * Milliseconds between SSE comment keep-alives (`: keep-alive`) on a
+     * progress stream while the handler runs. A slow tool with sparse
+     * progress would otherwise be cut by a proxy's idle timeout. `0` disables
+     * them.
+     *
+     * @default 15000
+     */
+    keepAliveInterval: z.integer().default(15_000),
   }),
   default: {
     path: "/mcp",
     allowedOrigins: [],
     requireAuth: false,
     resourceMetadataPath: "/.well-known/oauth-protected-resource",
+    keepAliveInterval: 15_000,
   },
   serverOnly: true,
 });
@@ -115,8 +132,8 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  *   which is what a dual-era client falls back to `initialize` on. Every
  *   JSON-RPC error keeps HTTP 200.
  *
- * Also: requests with a non-allow-listed `Origin` header are rejected with 403
- * (spec 2025-11-25, PR #1439). See {@link mcpStreamableHttpOptions.allowedOrigins}.
+ * Also: a request whose `Origin` header is neither its own origin nor
+ * allow-listed is rejected with 403. See {@link mcpStreamableHttpOptions.allowedOrigins}.
  *
  * @example
  * ```ts
@@ -139,8 +156,15 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  */
 export class StreamableHttpMcpTransport {
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly options = $store(mcpStreamableHttpOptions);
   protected readonly mcpServer = $inject(McpServerProvider);
+
+  /**
+   * The keep-alive timers of the streams currently open. Each is removed when
+   * its stream ends, so a non-empty set after every stream closed is a leak.
+   */
+  protected readonly keepAlives = new Set<ReturnType<typeof setInterval>>();
 
   /**
    * GET on the MCP endpoint is not supported in this transport. Returning
@@ -182,13 +206,13 @@ export class StreamableHttpMcpTransport {
     },
     handler: async (request) => {
       try {
-        // Origin allow-list check (spec 2025-11-25 / PR #1439).
+        // Origin check (Streamable HTTP: a server MUST validate Origin).
+        // Decided before the body is parsed, hence the plain JSON 403.
         const originRaw = request.headers.origin;
         const origin = Array.isArray(originRaw) ? originRaw[0] : originRaw;
         if (
-          origin &&
-          this.options.allowedOrigins.length > 0 &&
-          !this.options.allowedOrigins.includes(origin)
+          origin !== undefined &&
+          !this.isOriginAllowed(origin, this.requestUrl(request))
         ) {
           this.log.warn("Rejected MCP request with non-allowed Origin", {
             origin,
@@ -209,21 +233,27 @@ export class StreamableHttpMcpTransport {
         // `resource_metadata` URL to discover the authorization server —
         // without it, discovery never starts. The URL MUST be absolute.
         if (this.options.requireAuth && !request.user) {
-          const url =
-            typeof request.url === "string"
-              ? new URL(request.url)
-              : request.url;
-          const resourceMetadataUrl = `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
-          this.log.debug("Rejecting unauthenticated MCP request", {
-            resourceMetadataUrl,
+          this.log.debug("Rejecting unauthenticated MCP request");
+          await this.replyUnauthorized(request);
+          return;
+        }
+
+        // RFC 8707 / MCP authorization: a server MUST refuse a token that was
+        // not issued for it. A credential bound to a resource names it; one
+        // bound to none (a first-party login, the CLI, an OAuth session
+        // older than audience binding) passes. Same 401 and challenge as a
+        // missing token, so the client re-authorizes for this resource.
+        const boundTo = this.credentialResource(request.user);
+        if (
+          boundTo !== undefined &&
+          this.normaliseResource(boundTo) !==
+            this.normaliseResource(this.canonicalUrl(request))
+        ) {
+          this.log.info("Rejected an MCP token issued for another resource", {
+            boundTo,
+            expected: this.canonicalUrl(request),
           });
-          request.reply.status = 401;
-          request.reply.headers["www-authenticate"] =
-            `Bearer resource_metadata="${resourceMetadataUrl}"`;
-          request.reply.headers["content-type"] = "application/json";
-          request.reply.body = JSON.stringify({
-            error: "Unauthorized",
-          });
+          await this.replyUnauthorized(request);
           return;
         }
 
@@ -238,6 +268,25 @@ export class StreamableHttpMcpTransport {
         });
 
         const rpcRequest = parseMessage(body);
+
+        // Step-up (MCP authorization, 2025-11-25+): a valid token missing a
+        // scope the target needs is answered 403 `insufficient_scope`, so the
+        // client re-authorizes with the union of its scopes. Decided here,
+        // before routing, because on a progress stream the 200 is committed
+        // before the tool's own `$secure` runs.
+        if (request.user && rpcRequest.id !== undefined) {
+          const permissions = this.mcpServer.requiredPermissions(rpcRequest);
+          if (permissions.length > 0) {
+            const challenge = await this.authChallenge(
+              request.user,
+              permissions,
+            );
+            if (challenge.scope) {
+              this.replyInsufficientScope(request, challenge);
+              return;
+            }
+          }
+        }
 
         const headers = { ...request.headers } as Record<
           string,
@@ -301,7 +350,7 @@ export class StreamableHttpMcpTransport {
         if (modern && rpcRequest.id !== undefined) {
           const rejection =
             this.validateModernHeaders(rpcRequest, headers) ??
-            this.mcpServer.checkModernRequest(modern) ??
+            this.mcpServer.checkModernRequest(modern, rpcRequest) ??
             (this.mcpServer.handlesMethod(rpcRequest.method, true)
               ? undefined
               : new McpMethodNotFoundError({ method: rpcRequest.method }));
@@ -311,15 +360,20 @@ export class StreamableHttpMcpTransport {
               message: rejection.message,
               ...this.describeRequestShape(rpcRequest, headers),
             });
-            return this.replyJson(
-              request,
-              createErrorResponse(rpcRequest.id, {
-                code: rejection.data.code,
-                message: rejection.message,
-                data: rejection.data.rpcData,
-              }),
-              true,
-            );
+            const response = createErrorResponse(rpcRequest.id, {
+              code: rejection.data.code,
+              message: rejection.message,
+              data: rejection.data.rpcData,
+            });
+            this.replyJson(request, response, true);
+            // Every rejection decided here is a malformed or unservable
+            // request (HTTP 400), except an unknown method (404): a -32602
+            // for a missing clientCapabilities must not keep the 200 a tool
+            // not found gets, since nothing was routed.
+            if (request.reply.status === 200) {
+              request.reply.status = 400;
+            }
+            return;
           }
         }
 
@@ -392,6 +446,7 @@ export class StreamableHttpMcpTransport {
     }
     switch (response.error.code) {
       case McpProtocolErrorCodes.HEADER_MISMATCH:
+      case McpProtocolErrorCodes.MISSING_REQUIRED_CLIENT_CAPABILITY:
       case McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION:
         return 400;
       case JsonRpcErrorCodes.METHOD_NOT_FOUND:
@@ -414,6 +469,191 @@ export class StreamableHttpMcpTransport {
     request.reply.body = JSON.stringify({
       error: "Method Not Allowed. Use POST for MCP messages.",
     });
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Authorization
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * 401 with the RFC 9728 challenge: `resource_metadata` points at the
+   * protected-resource metadata, which is how an MCP client discovers the
+   * authorization server. The URL must be absolute.
+   */
+  protected async replyUnauthorized(request: any): Promise<void> {
+    const { scope } = await this.authChallenge();
+    request.reply.status = 401;
+    request.reply.headers["www-authenticate"] =
+      `Bearer resource_metadata="${this.resourceMetadataUrl(request)}"` +
+      (scope ? `, scope="${this.quote(scope)}"` : "");
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify({
+      error: "Unauthorized",
+    });
+  }
+
+  /**
+   * 403 `insufficient_scope` with the scopes the client should re-authorize
+   * for: what the authorization side put in the challenge.
+   */
+  protected replyInsufficientScope(
+    request: any,
+    challenge: { scope?: string; description?: string },
+  ): void {
+    const description =
+      challenge.description ?? "The access token lacks a required scope";
+    this.log.info("MCP request needs a wider scope", {
+      scope: challenge.scope,
+    });
+    request.reply.status = 403;
+    request.reply.headers["www-authenticate"] =
+      `Bearer error="insufficient_scope", scope="${this.quote(challenge.scope ?? "")}", resource_metadata="${this.resourceMetadataUrl(request)}", error_description="${this.quote(description)}"`;
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify({
+      error: "insufficient_scope",
+      error_description: description,
+    });
+  }
+
+  /**
+   * What the authorization side wants the challenge to say, through the
+   * `mcp:auth:challenge:before` hook. Empty when nothing subscribes.
+   */
+  protected async authChallenge(
+    user?: unknown,
+    permissions?: string[],
+  ): Promise<{ scope?: string; description?: string }> {
+    const payload = {
+      user,
+      permissions,
+      challenge: {} as { scope?: string; description?: string },
+    };
+    await this.alepha.events.emit("mcp:auth:challenge:before", payload);
+    return payload.challenge;
+  }
+
+  /**
+   * The absolute URL of the protected-resource metadata document.
+   */
+  protected resourceMetadataUrl(request: { url: string | URL }): string {
+    const url = this.requestUrl(request);
+    return `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
+  }
+
+  /**
+   * A value safe inside a quoted `WWW-Authenticate` parameter.
+   */
+  protected quote(value: string): string {
+    return value.replace(/["\\]/g, "\\$&");
+  }
+
+  /**
+   * This endpoint's canonical URL, the RFC 8707 audience a token issued for
+   * it carries: the request's origin and the endpoint path.
+   */
+  protected canonicalUrl(request: { url: string | URL }): string {
+    const url = this.requestUrl(request);
+    return `${url.protocol}//${url.host}${this.options.path}`;
+  }
+
+  /**
+   * The resource a request's credential is bound to, when it is bound to
+   * one. Read structurally (`user.credential.resource`) so the transport
+   * stays OAuth-agnostic: whatever authenticated the request decides it.
+   */
+  protected credentialResource(user: unknown): string | undefined {
+    const resource = (
+      user as { credential?: { resource?: unknown } } | undefined
+    )?.credential?.resource;
+    return typeof resource === "string" && resource ? resource : undefined;
+  }
+
+  /**
+   * A resource URL in canonical form: lowercase scheme and host, default
+   * port dropped, no trailing slash, no fragment. The raw string when it
+   * does not parse, which then matches nothing but itself.
+   */
+  protected normaliseResource(value: string): string {
+    try {
+      const url = new URL(value);
+      return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, "")}${url.search}`;
+    } catch {
+      return value;
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Origin validation
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The request URL as a `URL`, whichever shape the runtime handed over.
+   */
+  protected requestUrl(request: { url: string | URL }): URL {
+    return typeof request.url === "string" ? new URL(request.url) : request.url;
+  }
+
+  /**
+   * Whether a request carrying this `Origin` header may be served.
+   *
+   * With an empty {@link mcpStreamableHttpOptions.allowedOrigins}, only the
+   * request's own origin, or a loopback origin when the request itself
+   * targets a loopback host. The Host header is what DNS rebinding cannot
+   * turn into a loopback name while the browser targets a public one, so it
+   * stands in for the bound address, which workerd does not expose.
+   */
+  protected isOriginAllowed(origin: string, url: URL): boolean {
+    const allowed = this.options.allowedOrigins;
+    if (allowed.includes("*")) {
+      return true;
+    }
+    const normalised = this.normaliseOrigin(origin);
+    if (normalised === undefined) {
+      // `null` (an opaque origin) and anything unparsable: foreign.
+      return false;
+    }
+    if (allowed.length > 0) {
+      return allowed.some((it) => this.normaliseOrigin(it) === normalised);
+    }
+    const own = this.normaliseOrigin(`${url.protocol}//${url.host}`);
+    if (normalised === own) {
+      return true;
+    }
+    return (
+      this.isLoopbackHost(url.hostname) &&
+      this.isLoopbackHost(new URL(normalised).hostname)
+    );
+  }
+
+  /**
+   * An origin as `scheme://host[:port]`, lowercased with the default port
+   * dropped (the `URL` parser does both). `undefined` for `null` or a value
+   * that is not an http(s) origin.
+   */
+  protected normaliseOrigin(origin: string): string | undefined {
+    try {
+      const url = new URL(origin);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return undefined;
+      }
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * `localhost`, `*.localhost`, `127.0.0.0/8` or `[::1]`.
+   */
+  protected isLoopbackHost(hostname: string): boolean {
+    const host = hostname.toLowerCase();
+    return (
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host === "[::1]" ||
+      host === "::1" ||
+      /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
+    );
   }
 
   // -------------------------------------------------------------------------------------------------------------
@@ -651,6 +891,7 @@ export class StreamableHttpMcpTransport {
 
     const encoder = new TextEncoder();
     const context = this.buildContext(request);
+    let stopKeepAlive = (): void => {};
 
     return new ReadableStream({
       start: (controller) => {
@@ -665,6 +906,28 @@ export class StreamableHttpMcpTransport {
             // The stream is already gone; nothing useful left to do.
             open = false;
           }
+        };
+
+        // SSE comments are ignored by every client and keep an idle
+        // connection alive through proxies. Cleared on the final response,
+        // on a handler failure and on client disconnect (cancel, below).
+        const interval = this.options.keepAliveInterval;
+        const keepAlive =
+          interval > 0
+            ? setInterval(() => {
+                if (!open) return;
+                try {
+                  controller.enqueue(encoder.encode(": keep-alive\n\n"));
+                } catch {
+                  open = false;
+                }
+              }, interval)
+            : undefined;
+        if (keepAlive !== undefined) this.keepAlives.add(keepAlive);
+        stopKeepAlive = () => {
+          if (keepAlive === undefined) return;
+          clearInterval(keepAlive);
+          this.keepAlives.delete(keepAlive);
         };
 
         const streamContext: McpContext = {
@@ -700,6 +963,7 @@ export class StreamableHttpMcpTransport {
           })
           .finally(() => {
             open = false;
+            stopKeepAlive();
             try {
               controller.close();
             } catch {
@@ -711,6 +975,7 @@ export class StreamableHttpMcpTransport {
       // 2026-07-28 that IS the cancellation signal, so route it to the same
       // place `notifications/cancelled` goes.
       cancel: () => {
+        stopKeepAlive();
         if (rpcRequest.id !== undefined) {
           this.mcpServer.cancelRequest(rpcRequest.id, context.clientKey);
         }

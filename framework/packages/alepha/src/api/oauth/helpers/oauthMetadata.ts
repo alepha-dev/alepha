@@ -2,7 +2,10 @@
  * RFC 8414 — OAuth 2.0 Authorization Server Metadata.
  * `baseUrl` is the absolute origin of the deployment (e.g. https://app.com).
  */
-export const buildAuthorizationServerMetadata = (baseUrl: string) => ({
+export const buildAuthorizationServerMetadata = (
+  baseUrl: string,
+  options: { clientIdMetadataDocuments?: boolean; scopes?: string[] } = {},
+) => ({
   issuer: baseUrl,
   authorization_endpoint: `${baseUrl}/oauth/authorize`,
   token_endpoint: `${baseUrl}/oauth/token`,
@@ -24,7 +27,19 @@ export const buildAuthorizationServerMetadata = (baseUrl: string) => ({
   // refused, which is the opposite of true, and contradicted this server's
   // own OpenID configuration document, which has always listed both.
   token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
-  scopes_supported: ["mcp"],
+  // The scopes the application declares (`oauthOptions.scopes`), or `mcp`
+  // when it declares none: a challenge naming a scope this document does not
+  // list would contradict it.
+  scopes_supported:
+    options.scopes && options.scopes.length > 0 ? options.scopes : ["mcp"],
+  // RFC 9207: every authorization response carries `iss`, which a
+  // 2026-07-28 client must check against this document's issuer.
+  authorization_response_iss_parameter_supported: true,
+  // MCP 2026-07-28: a client may use an https URL as its client_id, and this
+  // server fetches the document behind it instead of requiring DCR.
+  ...(options.clientIdMetadataDocuments !== false
+    ? { client_id_metadata_document_supported: true }
+    : {}),
 });
 
 /**
@@ -34,9 +49,10 @@ export const buildAuthorizationServerMetadata = (baseUrl: string) => ({
 export const buildProtectedResourceMetadata = (
   baseUrl: string,
   resource: string,
+  scopes?: string[],
 ) => ({
   resource,
   authorization_servers: [baseUrl],
-  scopes_supported: ["mcp"],
+  scopes_supported: scopes && scopes.length > 0 ? scopes : ["mcp"],
   bearer_methods_supported: ["header"],
 });

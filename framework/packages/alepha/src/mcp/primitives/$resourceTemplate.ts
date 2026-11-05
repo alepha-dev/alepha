@@ -107,6 +107,13 @@ export interface ResourceTemplatePrimitiveOptions<T extends ZObject> {
   mimeType?: string;
 
   /**
+   * The raw content's size in bytes, before any encoding, when known.
+   * Advertised on the descriptor so a client can estimate context use before
+   * reading.
+   */
+  size?: number;
+
+  /**
    * Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973).
    */
   icons?: McpIcon[];
@@ -289,6 +296,7 @@ export class ResourceTemplatePrimitive<T extends ZObject> extends Primitive<
       mimeType: this.mimeType,
     };
     if (this.options.title) descriptor.title = this.options.title;
+    if (this.options.size !== undefined) descriptor.size = this.options.size;
     if (this.options.icons && this.options.icons.length > 0) {
       descriptor.icons = this.options.icons;
     }

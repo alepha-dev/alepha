@@ -27,6 +27,17 @@ export const userCredentialSchema = z.union([
       description:
         "The OAuth client the access token was issued to (its `client_id` claim).",
     }),
+    resource: z
+      .text({
+        maxLength: 2048,
+        description:
+          "The protected resource the access token was issued for (RFC 8707), from its `aud` claim. Absent on a token bound to no resource.",
+      })
+      .optional(),
+    scopes: z.array(z.text()).optional().meta({
+      description:
+        "The scope ids of the grant the access token was issued for, from its `scope` claim (RFC 9068).",
+    }),
   }),
 ]);
 

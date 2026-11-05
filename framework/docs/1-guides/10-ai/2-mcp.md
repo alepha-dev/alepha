@@ -193,6 +193,7 @@ class Resources {
 | `uri`         | `string`   | Required. Unique identifier (e.g. `app://projects`, `file:///readme`).                                              |
 | `description` | `string`   | What this resource contains.                                                                                        |
 | `mimeType`    | `string`   | Content type. Defaults to `text/plain`.                                                                             |
+| `size`        | `number`   | Raw content size in bytes, when known, so a client can estimate context use before reading.                         |
 | `handler`     | `function` | Receives `{ context }`. Returns `{ text }` for text content or `{ blob }` (a `Uint8Array`) for binary.              |
 | `name`        | `string`   | Display name. Defaults to the property key.                                                                         |
 | `title`       | `string`   | Human-friendly display name for client pickers.                                                                     |
@@ -288,16 +289,16 @@ class Prompts {
 
 **Options:**
 
-| Option        | Type       | Description                                             |
-| ------------- | ---------- | ------------------------------------------------------- |
-| `description` | `string`   | What this prompt does.                                  |
-| `args`        | `ZObject`  | Zod schema for template arguments.                      |
-| `handler`     | `function` | Returns an array of `{ role, content }` messages.       |
-| `name`        | `string`   | Override the prompt name. Defaults to the property key. |
-| `complete`    | `function` | Suggests values for an argument, see below.             |
-| `title`       | `string`   | Human-friendly display name for client prompt pickers.  |
-| `icons`       | `array`    | Icons shown in client prompt lists.                     |
-| `_meta`       | `object`   | Arbitrary metadata passed through on the descriptor.    |
+| Option        | Type       | Description                                                                                 |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------- |
+| `description` | `string`   | What this prompt does.                                                                      |
+| `args`        | `ZObject`  | Zod schema for template arguments; each field's `description` and `title` reach the client. |
+| `handler`     | `function` | Returns an array of `{ role, content }` messages.                                           |
+| `name`        | `string`   | Override the prompt name. Defaults to the property key.                                     |
+| `complete`    | `function` | Suggests values for an argument, see below.                                                 |
+| `title`       | `string`   | Human-friendly display name for client prompt pickers.                                      |
+| `icons`       | `array`    | Icons shown in client prompt lists.                                                         |
+| `_meta`       | `object`   | Arbitrary metadata passed through on the descriptor.                                        |
 
 A message's `content` is a string (sent as a text block), one MCP content block, or an array of them.
 
@@ -355,6 +356,35 @@ Then register the module alongside your other modules:
 ```typescript
 run(Alepha.create().with(AlephaServer).with(MyAppApi).with(MyAppMcp));
 ```
+
+### Identity and instructions
+
+`McpServerProvider` says who the server is and how an agent should use it. Set both at configure time:
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { McpServerProvider } from "alepha/mcp";
+
+class McpIdentity {
+  protected readonly mcpServer = $inject(McpServerProvider);
+
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      this.mcpServer.serverInfo = {
+        name: "tasks",
+        title: "Tasks",
+        version: "1.4.0",
+        websiteUrl: "https://tasks.example.com",
+      };
+      this.mcpServer.instructions =
+        "Call list_projects first; every other tool takes a project id.";
+    },
+  });
+}
+```
+
+`serverInfo` (the schema's `Implementation`: `name`, `version`, and optionally `title`, `description`, `icons`, `websiteUrl`) is sent on `initialize` and in every modern result's `_meta`. `instructions` is sent on `server/discover` and `initialize`, and omitted when empty. Keep it short: a client may inject it into every conversation. Without either, the server introduces itself as `alepha-mcp` `1.0.0`.
 
 ## Using DI in Tools
 
@@ -495,6 +525,61 @@ request, and the context carries it: `context.protocolVersion`,
 `undefined` on a legacy request, which states them once in `initialize` and is
 not remembered by this stateless server.
 
+## Asking the User: Elicitation
+
+A tool, a resource or a prompt can ask the user something mid-call: confirm a destructive action, pick between options, sign in somewhere. `context.elicit` asks; under MCP 2026-07-28 this is MRTR (multi round-trip requests): the server answers the call with `resultType: "input_required"`, the client asks the user, and retries the same call with the answer.
+
+```typescript
+import { z } from "alepha";
+import { $tool } from "alepha/mcp";
+
+class DeployTools {
+  rollback = $tool({
+    description: "Roll an app back to its previous deploy.",
+    annotations: { destructiveHint: true },
+    schema: {
+      params: z.object({ app: z.text() }),
+      result: z.text(),
+    },
+    handler: async ({ params, context }) => {
+      const answer = await context!.elicit!({
+        message: `Roll ${params.app} back to its previous deploy?`,
+        schema: z.object({
+          confirm: z.boolean({ title: "Roll back" }),
+          reason: z.text({ title: "Why" }).optional(),
+        }),
+      });
+      if (answer.action === "unavailable") {
+        return "This client cannot ask for confirmation; nothing was rolled back.";
+      }
+      if (answer.action !== "accept" || !answer.content.confirm) {
+        return "Kept the current deploy.";
+      }
+      // Side effects only now, after the last elicit.
+      await this.deploys.rollback(params.app, answer.content.reason);
+      return `Rolled ${params.app} back.`;
+    },
+  });
+}
+```
+
+⚠️ **The handler is replayed.** Each round trip runs the handler again from the top: every `elicit` already answered resolves at once, and the first unanswered one asks. A dialogue of several questions is just several `await context.elicit(...)` in a row, and **every side effect belongs after the last `elicit`**, since everything before it runs once per round trip.
+
+`elicit` resolves one of four actions:
+
+| Action        | Meaning                                                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `accept`      | The user answered. `content` is the form's values, validated against the schema (an invalid answer is asked again).               |
+| `decline`     | The user said no.                                                                                                                 |
+| `cancel`      | The user dismissed the question.                                                                                                  |
+| `unavailable` | The client cannot be asked: a legacy (2025-11-25 and earlier) client, or a modern one that did not declare that elicitation mode. |
+
+- **Form mode** takes a `schema`: a flat `z.object` of `z.text()`, `z.number()`, `z.integer()`, `z.boolean()` and `z.enum()` fields, optional or defaulted. That is all a client must render; anything else throws an `AlephaError` at the first `elicit`.
+- **URL mode** takes a `url` instead (`{ message, url }`): the client opens it for the user and reports `accept`, `decline` or `cancel`, with no content.
+- **`required: true`** refuses the call instead of resolving `unavailable`: a modern client gets `-32021` (`MissingRequiredClientCapability`, HTTP 400) with `data.requiredCapabilities`, a legacy one a `-31003` refusal naming the capability.
+
+The answers given so far travel in `requestState`, sealed with AES-GCM under `APP_SECRET`, so the server keeps no state: a state that does not decrypt, has expired (`McpServerProvider.requestStateTtl`, 10 minutes), or names another user, method or params is `-32602`. A retry's result is never cached. A handler that catches every error must rethrow `McpInputRequiredSignal`, or the question is never asked.
+
 ## Error Handling
 
 Throw errors in handlers and they are returned as tool results the AI can read:
@@ -586,18 +671,21 @@ Transports are opt-in: wire the one you need.
 
 The `mcpStreamableHttpOptions` atom configures it:
 
-| Option                 | Default                                   | Description                                                                                                                                                                                  |
-| ---------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`                 | `"/mcp"`                                  | Endpoint path. Keep it outside `/api`, which belongs to the `$action` dispatcher.                                                                                                            |
-| `allowedOrigins`       | `[]` (any)                                | `Origin` values a browser request may carry; any other is a 403 (DNS-rebinding guard). Requests with no `Origin` always pass.                                                                |
-| `requireAuth`          | `false`                                   | Refuse an unauthenticated POST with `401` and an RFC 9728 `WWW-Authenticate` challenge, which MCP clients use to find the OAuth server. `$realm({ features: { oauth: true } })` turns it on. |
-| `resourceMetadataPath` | `"/.well-known/oauth-protected-resource"` | Protected-resource metadata document advertised in that challenge.                                                                                                                           |
+| Option                 | Default                                   | Description                                                                                                                                                                                                                 |
+| ---------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                 | `"/mcp"`                                  | Endpoint path. Keep it outside `/api`, which belongs to the `$action` dispatcher.                                                                                                                                           |
+| `allowedOrigins`       | `[]` (same-origin)                        | `Origin` values a browser request may carry; any other is a 403 (DNS-rebinding guard). Empty means same-origin, plus loopback when the request host is loopback. `["*"]` allows any. Requests with no `Origin` always pass. |
+| `requireAuth`          | `false`                                   | Refuse an unauthenticated POST with `401` and an RFC 9728 `WWW-Authenticate` challenge, which MCP clients use to find the OAuth server. `$realm({ features: { oauth: true } })` turns it on.                                |
+| `resourceMetadataPath` | `"/.well-known/oauth-protected-resource"` | Protected-resource metadata document advertised in that challenge.                                                                                                                                                          |
+| `keepAliveInterval`    | `15000`                                   | Milliseconds between SSE comment keep-alives on a progress stream while a tool runs, so a proxy idle timeout does not cut a slow call. `0` disables them.                                                                   |
 
 ```typescript
 import { mcpStreamableHttpOptions } from "alepha/mcp";
 
 alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
 ```
+
+⚠️ **Origin is validated by default** (since 0.36). An empty `allowedOrigins` used to allow any origin; it now accepts only the request's own origin (scheme, host and port, compared after normalisation), and a loopback origin on any port when the server is reached on a loopback host. `Origin: null` is refused. MCP clients such as claude.ai and Claude Code connect server-to-server and send no `Origin`, so they are unaffected; a browser-hosted inspector pointed at a remote server needs its origin listed, or `["*"]` to opt out.
 
 ⚠️ **Set `path` before wiring the transport.** The transport declares its routes when it is constructed, and `.with(StreamableHttpMcpTransport)` constructs it at once, so a `path` written afterwards is never read. `allowedOrigins`, `requireAuth` and `resourceMetadataPath` are read on every request and can change at any time.
 
@@ -686,6 +774,10 @@ What a modern request gets that a legacy one never does:
   `Mcp-Name` on `tools/call`, `resources/read` and `prompts/get`, must be present
   and must match the body (`Mcp-Name` may be sent as `=?base64?...?=`). A missing
   or disagreeing header is `400` with `-32020`.
+- **A required `io.modelcontextprotocol/clientCapabilities`** in `_meta`. A
+  modern request without it, or with a value that is not an object, is refused
+  before routing with `-32602` (and `400` on HTTP). An empty object is fine: it
+  declares nothing.
 - **HTTP statuses for protocol failures**: an unsupported version is `400` with
   `-32022` listing what is supported, an unknown method (`ping` included, which
   2026-07-28 removed) is `404` with `-32601`. Every other JSON-RPC error, and

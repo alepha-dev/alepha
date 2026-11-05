@@ -102,6 +102,32 @@ describe("alepha/api/users - MyConnectionController", () => {
     expect(connections[0].clientName).toBe("Claude");
   });
 
+  it("should name a metadata-document client with the host it was fetched from", async ({
+    expect,
+  }) => {
+    const clientId = "https://app.example/oauth/client.json";
+    const ctx = await setup();
+    const session = await ctx.addSession(clientId);
+    // Written through the service's own repository: the row a Client ID
+    // Metadata Document resolution produces (`source: "cimd"`).
+    await (
+      ctx.alepha.inject(OAuthClientService) as unknown as {
+        repo: { create: (row: Record<string, unknown>) => Promise<unknown> };
+      }
+    ).repo.create({
+      clientId,
+      clientName: "Example App",
+      redirectUris: ["https://app.example/callback"],
+      realm: "default",
+      source: "cimd",
+    });
+
+    const connections = await list(ctx, session.id);
+
+    expect(connections[0].id).toBe(clientId);
+    expect(connections[0].clientName).toBe("Example App (app.example)");
+  });
+
   it("should fall back to the client id when the registration is gone", async ({
     expect,
   }) => {

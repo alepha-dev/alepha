@@ -3,6 +3,7 @@ import { AlephaCacheDatabase } from "alepha/cache/database";
 
 import { OAuthController } from "./controllers/OAuthController.ts";
 import { DeviceCodeService } from "./services/DeviceCodeService.ts";
+import { OAuthChallengeService } from "./services/OAuthChallengeService.ts";
 import { OAuthClientService } from "./services/OAuthClientService.ts";
 import { OAuthScopeResolver } from "./services/OAuthScopeResolver.ts";
 
@@ -18,6 +19,7 @@ export * from "./helpers/jtiReplayGuard.ts";
 export * from "./services/DeviceCodeService.ts";
 export type { RegisterClientOptions } from "./services/OAuthClientService.ts";
 export { OAuthClientService } from "./services/OAuthClientService.ts";
+export { OAuthChallengeService } from "./services/OAuthChallengeService.ts";
 export { OAuthScopeResolver } from "./services/OAuthScopeResolver.ts";
 export type { OAuthScope } from "./schemas/oauthScopeSchema.ts";
 export { OAuthJobs } from "./jobs/OAuthJobs.ts";
@@ -108,6 +110,7 @@ export const AlephaOAuth = $module({
     OAuthClientService,
     DeviceCodeService,
     OAuthScopeResolver,
+    OAuthChallengeService,
     OAuthController,
   ],
 });

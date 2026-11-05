@@ -8,7 +8,7 @@ import { z } from "alepha";
 export const authorizeDecisionBodySchema = z.object({
   decision: z.text(),
   response_type: z.text(),
-  client_id: z.text(),
+  client_id: z.text({ maxLength: 512 }),
   redirect_uri: z.text({ maxLength: 2048 }),
   code_challenge: z.text(),
   code_challenge_method: z.text(),

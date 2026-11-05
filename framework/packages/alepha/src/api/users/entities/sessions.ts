@@ -19,7 +19,7 @@ export const sessions = $entity({
      * key: `sessions` is a core entity and must not depend on the optional
      * OAuth module's table; the join to `oauth_clients` is done at query time.
      */
-    clientId: z.text({ maxLength: 64 }).optional(),
+    clientId: z.text({ maxLength: 512 }).optional(),
     /**
      * The scope ids an OAuth grant was given, when the session came from one.
      * Null for first-party logins, and for OAuth sessions created before the
@@ -30,6 +30,14 @@ export const sessions = $entity({
      * applies at the next refresh instead of never.
      */
     scopes: z.array(z.text()).optional(),
+    /**
+     * The protected resource (RFC 8707) an OAuth grant is bound to, as the
+     * canonical URL of the MCP endpoint, when the session came from one. Read
+     * back on every refresh, so the refreshed token keeps its audience. Null
+     * for first-party logins and for OAuth sessions created before the column
+     * existed, whose tokens stay unbound until the session ages out.
+     */
+    resource: z.text({ maxLength: 2048 }).optional(),
     expiresAt: z.datetime(),
     /**
      * Last time the session was used to refresh an access token.

@@ -6,6 +6,7 @@ import { McpCallTimings } from "../api/services/McpCallTimings.ts";
 import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
+import { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
 import { AutomationTools } from "./tools/AutomationTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
 
@@ -20,6 +21,9 @@ export const LoreCoreMcp = $module({
   name: "lore.core.mcp",
   services: [
     StreamableHttpMcpTransport,
+    // Sets Lore's serverInfo and instructions (#Q3052). Listed because
+    // nothing injects it: its configure hook only runs if it is constructed.
+    LoreMcpIdentity,
     // Counts every tool call into the `mcp_calls` dataset (#E65). Listed
     // here because nothing injects it: it is a `$hook` subscriber and the
     // event reaches it only if the class was constructed.
@@ -41,6 +45,7 @@ export { ProjectResources } from "./resources/ProjectResources.ts";
 export { AttachmentContentService } from "./services/AttachmentContentService.ts";
 export { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 export { DiagramCheckService } from "./services/DiagramCheckService.ts";
+export { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
 export {
   type ProjectContextInput,
   ProjectContextRegistry,
