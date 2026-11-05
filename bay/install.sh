@@ -25,10 +25,10 @@ set -eu
 
 # Bay is released from the Alepha repository with the framework and Lore, one
 # version and one GitHub release for all three (#Q2776): the release carries
-# `bay-linux-amd64`, `bay-linux-arm64` and `SHA256SUMS`. Releases from before
-# that (0.31.0 and older) live in the archived alepha-dev/bay repository.
+# `bay-linux-amd64`, `bay-linux-arm64` and `SHA256SUMS`. 0.34.0 is the oldest
+# release with a Bay binary; the ones before it came from a repository that no
+# longer exists.
 REPO="alepha-dev/alepha"
-LEGACY_REPO="alepha-dev/bay"
 BAY_VERSION="${BAY_VERSION:-latest}"
 BAY_PREFIX="${BAY_PREFIX:-/opt/bay}"
 BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"
@@ -115,36 +115,20 @@ echo "==> Docker ready (Engine API $DOCKER_API)"
 ASSET="bay-linux-$ARCH"
 
 # "latest" is the newest release that carries a Bay binary: the releases come
-# newest first, and one cut while Bay released on its own has none. The
-# archived repository's latest (0.31.0) is newer than the last shared release
-# before the split (0.30.0), so the two are compared and the higher one wins.
+# newest first, and one cut before Bay joined the shared release has none.
 if [ "$BAY_VERSION" = "latest" ]; then
   fetch "https://api.github.com/repos/$REPO/releases?per_page=100" "$TMP/releases.json" \
     || die "could not list releases: https://github.com/$REPO/releases"
   URL="$(grep -o "\"browser_download_url\": *\"[^\"]*/$ASSET\"" "$TMP/releases.json" | head -1 | sed 's/.*": *"\(.*\)"/\1/')"
-  SHARED="$(printf '%s' "$URL" | sed -n 's#.*/releases/download/\([0-9][0-9.]*\)/.*#\1#p')"
-  LEGACY=""
-  if fetch "https://api.github.com/repos/$LEGACY_REPO/releases/latest" "$TMP/legacy.json"; then
-    LEGACY="$(grep -o '"tag_name": *"[0-9][0-9.]*"' "$TMP/legacy.json" | head -1 | sed 's/.*"\([0-9.]*\)"/\1/')"
-  fi
-  NEWEST="$(printf '%s\n%s\n' "$SHARED" "$LEGACY" | grep . | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
-  [ -n "$NEWEST" ] || die "no Bay release found in $REPO or $LEGACY_REPO"
-  if [ "$NEWEST" = "$SHARED" ]; then
-    BASE="https://github.com/$REPO/releases/download/$SHARED"
-  else
-    BASE="https://github.com/$LEGACY_REPO/releases/download/$LEGACY"
-  fi
-  BAY_VERSION="$NEWEST"
-else
-  BASE="https://github.com/$REPO/releases/download/${BAY_VERSION#v}"
+  BAY_VERSION="$(printf '%s' "$URL" | sed -n 's#.*/releases/download/\([0-9][0-9.]*\)/.*#\1#p')"
+  [ -n "$BAY_VERSION" ] || die "no Bay release found in $REPO"
 fi
+BAY_VERSION="${BAY_VERSION#v}"
+BASE="https://github.com/$REPO/releases/download/$BAY_VERSION"
 
 echo "==> Downloading $ASSET ($BAY_VERSION)"
-# A version from before the shared release lives in the archived repository.
-if ! fetch "$BASE/$ASSET" "$TMP/bay" && ! printf '%s' "$BASE" | grep -q "$LEGACY_REPO"; then
-  BASE="https://github.com/$LEGACY_REPO/releases/download/${BAY_VERSION#v}"
-  fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET"
-fi
+fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET
+Bay binaries ship with 0.34.0 and later: https://github.com/$REPO/releases"
 [ -s "$TMP/bay" ] || die "download failed: $BASE/$ASSET"
 fetch "$BASE/SHA256SUMS" "$TMP/SHA256SUMS" || die "download failed: $BASE/SHA256SUMS"
 

@@ -91,7 +91,11 @@ export class ServerCompressProvider {
 
   public readonly onResponse = $hook({
     on: "server:response:after",
-    handler: async ({ request, response }) => {
+    // Not `async`: most responses leave without compression (too small, no
+    // `accept-encoding`, not a compressible type), and a hook that returns no
+    // promise lets the event finish in the same turn. Only a body actually
+    // compressed returns one.
+    handler: ({ request, response }) => {
       // Read once: each access of a `$store` field is a store lookup.
       const options = this.options;
       if (options.disabled) {
@@ -132,7 +136,7 @@ export class ServerCompressProvider {
 
       const encoding = this.pickEncoding(acceptEncoding);
       if (encoding) {
-        await this.compress(encoding, response);
+        return this.compress(encoding, response);
       }
     },
   });

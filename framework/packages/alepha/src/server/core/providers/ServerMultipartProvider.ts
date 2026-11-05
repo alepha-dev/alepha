@@ -123,7 +123,11 @@ export class ServerMultipartProvider {
 
   public readonly onRequest = $hook({
     on: "server:request:before",
-    handler: async ({ route, request }) => {
+    // Not `async`: every request with a body schema passes through here, and
+    // most of them are not multipart. A hook that returns no promise lets the
+    // event run its next hook in the same turn; an `async` one turned every
+    // JSON POST's `server:request:before` into a promise chain.
+    handler: ({ route, request }) => {
       if (request.body) {
         return;
       }
@@ -193,9 +197,21 @@ export class ServerMultipartProvider {
         return;
       }
 
-      request.body = await this.parseMultipart(route, webRequest, caps);
+      return this.readMultipart(request, route, webRequest, caps);
     },
   });
+
+  /**
+   * The multipart body parsed into `request.body`.
+   */
+  protected async readMultipart(
+    request: ServerRequest,
+    route: ServerRoute,
+    webRequest: Request,
+    caps: Required<MultipartCap>,
+  ): Promise<void> {
+    request.body = await this.parseMultipart(route, webRequest, caps);
+  }
 
   /**
    * Decides this request's size budget, most specific level last.

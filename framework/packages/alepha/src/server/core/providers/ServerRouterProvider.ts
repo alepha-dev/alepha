@@ -244,9 +244,15 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     const payload = { request, route, response: undefined as any };
-    await this.alepha.events.emit("server:response:before", payload, {
-      catch: true,
-    });
+    // `dispatch`, not `emit`: three events per request, and when every hook
+    // is synchronous (the common case) awaiting nothing still cost an async
+    // frame and a microtask each.
+    const sent = this.alepha.events.dispatch(
+      "server:response:before",
+      payload,
+      true,
+    );
+    if (sent) await sent;
 
     const reply = request.reply;
     // Default status: 200 when there is a body, 204 otherwise. `!= null`, not
@@ -264,9 +270,12 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     };
 
     payload.response = response;
-    await this.alepha.events.emit("server:response:after", payload, {
-      catch: true,
-    });
+    const done = this.alepha.events.dispatch(
+      "server:response:after",
+      payload,
+      true,
+    );
+    if (done) await done;
 
     return response;
   }
@@ -280,7 +289,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     responseKind: ResponseKind,
   ) {
     // Built-in hooks: body parsing, security, logging
-    await this.alepha.events.emit("server:request:before", { request, route });
+    const before = this.alepha.events.dispatch("server:request:before", {
+      request,
+      route,
+    });
+    if (before) await before;
 
     // A hook (e.g. CORS preflight) may have already written the response
     const reply = request.reply;
