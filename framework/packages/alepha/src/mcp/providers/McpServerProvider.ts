@@ -462,6 +462,22 @@ export class McpServerProvider {
   }
 
   /**
+   * The permissions the target of a request declares through `$secure`,
+   * evaluated before dispatch. `tools/call` only: `$resource`, `$resourceTemplate`
+   * and `$prompt` take no middlewares, so they declare none. Empty when
+   * nothing is declared or the target does not exist (routing answers that).
+   */
+  public requiredPermissions(request: JsonRpcRequest): string[] {
+    if (request.method !== "tools/call") {
+      return [];
+    }
+    const name = request.params?.name;
+    return typeof name === "string"
+      ? (this.tools.get(name)?.requiredPermissions ?? [])
+      : [];
+  }
+
+  /**
    * Whether this server implements a request method in the given era.
    *
    * 2026-07-28 removed `ping` (and `initialize`, which is legacy by

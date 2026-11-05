@@ -6,6 +6,7 @@ import {
 } from "alepha/api/keys";
 import {
   AlephaOAuth,
+  OAuthChallengeService,
   OAuthClientService,
   OAuthJobs,
   oauthOptions,
@@ -23,6 +24,7 @@ import {
   type IssuerResolver,
   SecurityProvider,
   type SigningConfig,
+  type UserAccount,
 } from "alepha/security";
 import {
   $authApple,
@@ -327,6 +329,25 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     alepha.set(mcpStreamableHttpOptions, {
       ...currentMcpOptions,
       requireAuth: true,
+    });
+
+    // And tell it what its challenges say: the `scope` of a 401, and a
+    // 403 `insufficient_scope` when a wider grant would let the call through.
+    // Through the transport's hook, for the same reason as above.
+    const challenges = alepha.inject(OAuthChallengeService);
+    alepha.events.on("mcp:auth:challenge:before", (payload) => {
+      if (!payload.user || !payload.permissions) {
+        payload.challenge.scope = challenges.unauthorizedScope();
+        return;
+      }
+      const stepUp = challenges.stepUp(
+        payload.user as UserAccount,
+        payload.permissions,
+      );
+      if (stepUp) {
+        payload.challenge.scope = stepUp.scope;
+        payload.challenge.description = stepUp.description;
+      }
     });
   }
 

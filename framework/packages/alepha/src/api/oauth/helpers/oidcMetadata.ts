@@ -19,6 +19,7 @@ export const buildOpenIdConfiguration = (
   code_challenge_methods_supported: ["S256"],
   token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
   scopes_supported: ["openid", "email", "profile"],
+  authorization_response_iss_parameter_supported: true,
   ...(options.clientIdMetadataDocuments !== false
     ? { client_id_metadata_document_supported: true }
     : {}),

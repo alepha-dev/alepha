@@ -724,10 +724,16 @@ export class SecurityProvider {
               typeof it === "string" && it !== "" && it !== realmName,
           )
         : undefined;
+      // RFC 9068: the grant's scope ids, space-separated.
+      const scopes =
+        typeof payload.scope === "string"
+          ? payload.scope.split(" ").filter(Boolean)
+          : undefined;
       return {
         type: "oauth",
         clientId: payload.client_id,
         ...(resource ? { resource } : {}),
+        ...(scopes ? { scopes } : {}),
       };
     }
     return undefined;

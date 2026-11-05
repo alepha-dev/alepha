@@ -177,11 +177,12 @@ export class OAuthController {
     reply: { redirect: (url: string, status: number) => void },
     redirectUri: string,
     state: string | undefined,
+    url: URL,
   ): void {
     const redirect = new URL(redirectUri);
     redirect.searchParams.set("error", "invalid_scope");
     if (state) redirect.searchParams.set("state", state);
-    reply.redirect(redirect.toString(), 302);
+    reply.redirect(this.withIssuer(redirect, url), 302);
   }
 
   /**
@@ -192,11 +193,12 @@ export class OAuthController {
     reply: { redirect: (url: string, status: number) => void },
     redirectUri: string,
     state: string | undefined,
+    url: URL,
   ): void {
     const redirect = new URL(redirectUri);
     redirect.searchParams.set("error", "invalid_target");
     if (state) redirect.searchParams.set("state", state);
-    reply.redirect(redirect.toString(), 302);
+    reply.redirect(this.withIssuer(redirect, url), 302);
   }
 
   /**
@@ -265,6 +267,17 @@ export class OAuthController {
         return scopes.filter((scope) => !undeclared.includes(scope));
       },
     });
+  }
+
+  /**
+   * An authorization response redirect with RFC 9207's `iss`: this server's
+   * issuer, which a client compares with the metadata it discovered, so a
+   * response from one authorization server cannot be replayed as another's.
+   * Every response carries it, success and error alike.
+   */
+  protected withIssuer(redirect: URL, url: URL): string {
+    redirect.searchParams.set("iss", this.baseUrl(url));
+    return redirect.toString();
   }
 
   /**
@@ -357,6 +370,7 @@ export class OAuthController {
       reply.body = JSON.stringify(
         buildAuthorizationServerMetadata(this.baseUrl(url), {
           clientIdMetadataDocuments: this.options.clientIdMetadataDocuments,
+          scopes: Object.keys(this.options.scopes ?? {}),
         }),
       );
     },
@@ -369,7 +383,11 @@ export class OAuthController {
       const base = this.baseUrl(url);
       reply.headers["content-type"] = "application/json";
       reply.body = JSON.stringify(
-        buildProtectedResourceMetadata(base, `${base}${this.options.resource}`),
+        buildProtectedResourceMetadata(
+          base,
+          `${base}${this.options.resource}`,
+          Object.keys(this.options.scopes ?? {}),
+        ),
       );
     },
   });
@@ -599,12 +617,12 @@ export class OAuthController {
       const requested = query.scope?.split(" ").filter(Boolean) ?? [];
       const granted = this.clients.intersectScopes(requested, client.scopes);
       if (requested.length > 0 && granted.length === 0) {
-        this.rejectScope(reply, query.redirect_uri, query.state);
+        this.rejectScope(reply, query.redirect_uri, query.state, url);
         return;
       }
       const resource = this.resolveResource(query.resource, url);
       if (!resource) {
-        this.rejectTarget(reply, query.redirect_uri, query.state);
+        this.rejectTarget(reply, query.redirect_uri, query.state, url);
         return;
       }
       const silent = query.prompt === "none";
@@ -626,7 +644,7 @@ export class OAuthController {
           const redirect = new URL(query.redirect_uri);
           redirect.searchParams.set("error", "login_required");
           if (query.state) redirect.searchParams.set("state", query.state);
-          reply.redirect(redirect.toString(), 302);
+          reply.redirect(this.withIssuer(redirect, url), 302);
           return;
         }
         const returnTo = encodeURIComponent(url.pathname + url.search);
@@ -644,7 +662,7 @@ export class OAuthController {
         const redirect = new URL(query.redirect_uri);
         redirect.searchParams.set("error", "consent_required");
         if (query.state) redirect.searchParams.set("state", query.state);
-        reply.redirect(redirect.toString(), 302);
+        reply.redirect(this.withIssuer(redirect, url), 302);
         return;
       }
 
@@ -666,7 +684,7 @@ export class OAuthController {
         const redirect = new URL(query.redirect_uri);
         redirect.searchParams.set("code", code);
         if (query.state) redirect.searchParams.set("state", query.state);
-        reply.redirect(redirect.toString(), 302);
+        reply.redirect(this.withIssuer(redirect, url), 302);
         return;
       }
 
@@ -739,18 +757,18 @@ export class OAuthController {
       if (body.decision !== "allow") {
         redirect.searchParams.set("error", "access_denied");
         if (body.state) redirect.searchParams.set("state", body.state);
-        reply.redirect(redirect.toString(), 302);
+        reply.redirect(this.withIssuer(redirect, url), 302);
         return;
       }
       const requested = body.scope?.split(" ").filter(Boolean) ?? [];
       const granted = this.clients.intersectScopes(requested, client.scopes);
       if (requested.length > 0 && granted.length === 0) {
-        this.rejectScope(reply, body.redirect_uri, body.state);
+        this.rejectScope(reply, body.redirect_uri, body.state, url);
         return;
       }
       const resource = this.resolveResource(body.resource, url);
       if (!resource) {
-        this.rejectTarget(reply, body.redirect_uri, body.state);
+        this.rejectTarget(reply, body.redirect_uri, body.state, url);
         return;
       }
       const code = await this.clients.createAuthorizationCode(
@@ -767,7 +785,7 @@ export class OAuthController {
       );
       redirect.searchParams.set("code", code);
       if (body.state) redirect.searchParams.set("state", body.state);
-      reply.redirect(redirect.toString(), 302);
+      reply.redirect(this.withIssuer(redirect, url), 302);
     },
   });
 

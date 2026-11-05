@@ -58,3 +58,14 @@ A client id is up to 512 characters, in `oauth_clients.clientId`, `sessions.clie
 | `web`              | https only                                                                                                 |
 | `native`           | https, http to the loopback (any port at authorize), and private-use schemes such as `com.example.app:/cb` |
 | absent             | https, or http to the loopback: the rule from before the field, so older native clients keep registering   |
+
+## Challenges and Step-Up
+
+When the MCP transport refuses a request, its `WWW-Authenticate` challenge tells the client what to do next. The transport stays OAuth-agnostic: it asks through the `mcp:auth:challenge:before` hook, which the realm answers.
+
+- **No token, or one for another resource:** `401` with `Bearer resource_metadata="…", scope="…"`. The `scope` lists every declared scope that is not an identity scope (`permissions: []`), or `mcp` when the application declares none.
+- **A token missing a scope:** `403` with `Bearer error="insufficient_scope", scope="…", resource_metadata="…", error_description="…"`, decided before routing so a progress stream can still answer it. The client re-authorizes with the scopes named, which are the grant's own scopes plus those granting what the tool's `$secure` requires. It is sent only when re-authorizing can help: the token is narrowed by an OAuth grant, the user's roles allow the permission, and a declared scope grants it. Otherwise the call proceeds and the tool's `$secure` refuses it as a tool error, as before.
+
+Access tokens carry the grant's scope ids as the standard `scope` claim (RFC 9068), which is how the challenge knows them without reading the session. Both metadata documents list the declared scopes in `scopes_supported`.
+
+Every authorization response redirect, a code or an error, carries `iss` (RFC 9207), and the metadata advertises `authorization_response_iss_parameter_supported: true`: a 2026-07-28 client checks it against the issuer it discovered.

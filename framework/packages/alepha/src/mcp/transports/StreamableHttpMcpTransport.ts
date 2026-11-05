@@ -1,4 +1,4 @@
-import { $atom, $inject, $store, z } from "alepha";
+import { $atom, $inject, $store, Alepha, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 
@@ -156,6 +156,7 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  */
 export class StreamableHttpMcpTransport {
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly options = $store(mcpStreamableHttpOptions);
   protected readonly mcpServer = $inject(McpServerProvider);
 
@@ -233,7 +234,7 @@ export class StreamableHttpMcpTransport {
         // without it, discovery never starts. The URL MUST be absolute.
         if (this.options.requireAuth && !request.user) {
           this.log.debug("Rejecting unauthenticated MCP request");
-          this.replyUnauthorized(request);
+          await this.replyUnauthorized(request);
           return;
         }
 
@@ -252,7 +253,7 @@ export class StreamableHttpMcpTransport {
             boundTo,
             expected: this.canonicalUrl(request),
           });
-          this.replyUnauthorized(request);
+          await this.replyUnauthorized(request);
           return;
         }
 
@@ -267,6 +268,25 @@ export class StreamableHttpMcpTransport {
         });
 
         const rpcRequest = parseMessage(body);
+
+        // Step-up (MCP authorization, 2025-11-25+): a valid token missing a
+        // scope the target needs is answered 403 `insufficient_scope`, so the
+        // client re-authorizes with the union of its scopes. Decided here,
+        // before routing, because on a progress stream the 200 is committed
+        // before the tool's own `$secure` runs.
+        if (request.user && rpcRequest.id !== undefined) {
+          const permissions = this.mcpServer.requiredPermissions(rpcRequest);
+          if (permissions.length > 0) {
+            const challenge = await this.authChallenge(
+              request.user,
+              permissions,
+            );
+            if (challenge.scope) {
+              this.replyInsufficientScope(request, challenge);
+              return;
+            }
+          }
+        }
 
         const headers = { ...request.headers } as Record<
           string,
@@ -460,16 +480,71 @@ export class StreamableHttpMcpTransport {
    * protected-resource metadata, which is how an MCP client discovers the
    * authorization server. The URL must be absolute.
    */
-  protected replyUnauthorized(request: any): void {
-    const url = this.requestUrl(request);
-    const resourceMetadataUrl = `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
+  protected async replyUnauthorized(request: any): Promise<void> {
+    const { scope } = await this.authChallenge();
     request.reply.status = 401;
     request.reply.headers["www-authenticate"] =
-      `Bearer resource_metadata="${resourceMetadataUrl}"`;
+      `Bearer resource_metadata="${this.resourceMetadataUrl(request)}"` +
+      (scope ? `, scope="${this.quote(scope)}"` : "");
     request.reply.headers["content-type"] = "application/json";
     request.reply.body = JSON.stringify({
       error: "Unauthorized",
     });
+  }
+
+  /**
+   * 403 `insufficient_scope` with the scopes the client should re-authorize
+   * for: what the authorization side put in the challenge.
+   */
+  protected replyInsufficientScope(
+    request: any,
+    challenge: { scope?: string; description?: string },
+  ): void {
+    const description =
+      challenge.description ?? "The access token lacks a required scope";
+    this.log.info("MCP request needs a wider scope", {
+      scope: challenge.scope,
+    });
+    request.reply.status = 403;
+    request.reply.headers["www-authenticate"] =
+      `Bearer error="insufficient_scope", scope="${this.quote(challenge.scope ?? "")}", resource_metadata="${this.resourceMetadataUrl(request)}", error_description="${this.quote(description)}"`;
+    request.reply.headers["content-type"] = "application/json";
+    request.reply.body = JSON.stringify({
+      error: "insufficient_scope",
+      error_description: description,
+    });
+  }
+
+  /**
+   * What the authorization side wants the challenge to say, through the
+   * `mcp:auth:challenge:before` hook. Empty when nothing subscribes.
+   */
+  protected async authChallenge(
+    user?: unknown,
+    permissions?: string[],
+  ): Promise<{ scope?: string; description?: string }> {
+    const payload = {
+      user,
+      permissions,
+      challenge: {} as { scope?: string; description?: string },
+    };
+    await this.alepha.events.emit("mcp:auth:challenge:before", payload);
+    return payload.challenge;
+  }
+
+  /**
+   * The absolute URL of the protected-resource metadata document.
+   */
+  protected resourceMetadataUrl(request: { url: string | URL }): string {
+    const url = this.requestUrl(request);
+    return `${url.protocol}//${url.host}${this.options.resourceMetadataPath}`;
+  }
+
+  /**
+   * A value safe inside a quoted `WWW-Authenticate` parameter.
+   */
+  protected quote(value: string): string {
+    return value.replace(/["\\]/g, "\\$&");
   }
 
   /**

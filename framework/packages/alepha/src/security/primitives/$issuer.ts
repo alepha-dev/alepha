@@ -469,6 +469,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         ? user.credential.resource
         : undefined);
 
+    // The grant's scope ids, signed as the standard `scope` claim (RFC 9068)
+    // so a resource server can name them in a step-up challenge without
+    // reading the session.
+    const grantScopes =
+      context?.scopes ??
+      (user.credential?.type === "oauth" ? user.credential.scopes : undefined);
+
     // What the token may do, when an OAuth grant narrows it. Resolved from the
     // grant's scope ids at every mint; failing that, a user rebuilt from a
     // narrowed token (the token-only refresh) keeps its narrowing, so
@@ -508,6 +515,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // our claims
         roles: user.roles,
         client_id: clientId,
+        scope: clientId && grantScopes ? grantScopes.join(" ") : undefined,
         permission_scope: permissionScope,
       },
       this.name,
