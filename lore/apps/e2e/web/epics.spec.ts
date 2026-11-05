@@ -965,19 +965,30 @@ test.describe("Epics — the lifecycle from the list", () => {
       await row.getByRole("button").last().click();
     };
 
-    await test.step("cancelling leaves the epic a draft", async () => {
-      await openMenu();
-      await page.getByRole("menuitem", { name: "Mark as ready" }).click();
-      await page.getByRole("button", { name: "Cancel" }).click();
-      await expect(row).toContainText("Draft");
+    // No confirm (#Q3118): the chip turns at once, and the toast's Undo
+    // sends it back to draft.
+    const readyToast = page.locator("[data-sonner-toast]", {
+      hasText: "is ready",
     });
 
-    await test.step("confirming marks it ready and the chip repaints", async () => {
+    await test.step("Undo leaves the epic a draft", async () => {
       await openMenu();
       await page.getByRole("menuitem", { name: "Mark as ready" }).click();
-      await page.getByRole("button", { name: "Mark as ready" }).last().click();
+      await expect(page.getByRole("alertdialog")).toHaveCount(0);
+      await expect(row).toContainText("Ready");
+      await readyToast.getByRole("button", { name: "Undo" }).click();
+      await expect(row).toContainText("Draft", { timeout: 15_000 });
+      await page.reload();
+      await expect(row).toContainText("Draft", { timeout: 15_000 });
+    });
 
-      // `refresh()` from the row-action context is what repaints this.
+    await test.step("marking it ready repaints the chip, and holds on reload", async () => {
+      await openMenu();
+      const sent = page.waitForResponse((r) => /setEpicStatus/.test(r.url()));
+      await page.getByRole("menuitem", { name: "Mark as ready" }).click();
+      await expect(row).toContainText("Ready");
+      expect((await sent).ok()).toBe(true);
+      await page.reload();
       await expect(row).toContainText("Ready", { timeout: 15_000 });
     });
 
@@ -991,8 +1002,9 @@ test.describe("Epics — the lifecycle from the list", () => {
 
       // And ready again, for the automatic half below.
       await openMenu();
+      const sent = page.waitForResponse((r) => /setEpicStatus/.test(r.url()));
       await page.getByRole("menuitem", { name: "Mark as ready" }).click();
-      await page.getByRole("button", { name: "Mark as ready" }).last().click();
+      expect((await sent).ok()).toBe(true);
       await expect(row).toContainText("Ready", { timeout: 15_000 });
     });
 
@@ -1123,11 +1135,18 @@ test.describe("Epics — shelving a plan", () => {
       await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(
         0,
       );
+      // No confirm (#Q3118): the toast names what is set aside, and the
+      // shelve is HELD until it closes. Closing it sends it now.
       await page.getByRole("menuitem", { name: "Shelve" }).click();
-      const confirm = page.getByRole("alertdialog");
-      await expect(confirm).toContainText("sets aside its 2 open quests");
-      await confirm.getByRole("button", { name: "Shelve" }).click();
-      await expect(row).toContainText("Shelved", { timeout: 15_000 });
+      await expect(page.getByRole("alertdialog")).toHaveCount(0);
+      await expect(row).toContainText("Shelved");
+      const toast = page.locator("[data-sonner-toast]", {
+        hasText: "shelved",
+      });
+      await expect(toast).toContainText("2 open quest(s) set aside with it.");
+      const sent = page.waitForResponse((r) => /shelveEpic/.test(r.url()));
+      await toast.getByRole("button", { name: /close/i }).click();
+      expect((await sent).ok()).toBe(true);
     });
 
     await test.step("the quests are shelved, and the started one unassigned", async () => {

@@ -41,6 +41,7 @@ import { useDataTableFilterForm } from "./useDataTableFilterForm.ts";
 import { useDataTableFilterVisibility } from "./useDataTableFilterVisibility.ts";
 import { useDataTableRefresh } from "./useDataTableRefresh.ts";
 import { useDataTableSummary } from "./useDataTableSummary.ts";
+import { useOptimisticRows } from "./useOptimisticRows.ts";
 import { useTableSelection } from "./useTableSelection.ts";
 
 export type DataTableProps<
@@ -135,10 +136,13 @@ export const DataTable = <
     sizeForm,
     sort,
     setSort,
-    data,
+    data: serverData,
     meta,
     rowFilters,
     loading,
+    loadedRequestId,
+    lastRequestId,
+    isStatic,
     refreshKey,
     setRefreshKey,
     isRefreshing,
@@ -154,20 +158,26 @@ export const DataTable = <
     alepha,
   });
 
-  const { refresh, handleRefreshClick, resetFilters, canShare, shareFilters } =
-    useDataTableRefresh({
-      props: untyped,
-      form,
-      filterKeys: filterDefinition?.keys ?? [],
-      resetShownFilters: filterVisibility.resetShown,
-      filtersKey,
-      alepha,
-      toast,
-      tr,
-      setPage,
-      setRefreshKey,
-      setIsRefreshing,
-    });
+  const {
+    refresh,
+    reload,
+    handleRefreshClick,
+    resetFilters,
+    canShare,
+    shareFilters,
+  } = useDataTableRefresh({
+    props: untyped,
+    form,
+    filterKeys: filterDefinition?.keys ?? [],
+    resetShownFilters: filterVisibility.resetShown,
+    filtersKey,
+    alepha,
+    toast,
+    tr,
+    setPage,
+    setRefreshKey,
+    setIsRefreshing,
+  });
 
   const summary = useDataTableSummary({
     summary: untyped.summary,
@@ -190,18 +200,51 @@ export const DataTable = <
    * Selection was broken by the same thing - `selection.has(rowKey(item))`
    * compared against a key generated one render earlier, so it never matched.
    */
-  const rowKeys = useMemo(
-    () =>
-      data.map((item, index) => {
-        if (props.rowKey) return props.rowKey(item);
-        const id = (item as { id?: unknown })?.id;
-        // Coercion at a boundary: the value is a form/route/chart primitive
-        // whose declared type is wider than what can reach here.
-        // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
-        return id != null ? String(id) : `page-${page}-row-${index}`;
-      }),
-    [data, page, props.rowKey],
+  /**
+   * A row's key from the row alone, so a row redrawn by an optimistic patch
+   * (a new object) keeps the key of the one it replaces.
+   */
+  const keyOf = useCallback(
+    (item: T, index: number): string => {
+      if (props.rowKey) return props.rowKey(item);
+      const id = (item as { id?: unknown })?.id;
+      // Coercion at a boundary: the value is a form/route/chart primitive
+      // whose declared type is wider than what can reach here.
+      // oxlint-disable-next-line typescript/no-base-to-string -- a coercion at a boundary, see the comment above
+      return id != null ? String(id) : `page-${page}-row-${index}`;
+    },
+    [page, props.rowKey],
   );
+
+  const serverRowKeys = useMemo(
+    () => serverData.map((item, index) => keyOf(item, index)),
+    [serverData, keyOf],
+  );
+
+  // -- Optimistic overlay ----------------------------------------------------
+
+  const serverKeyByItem = useMemo(() => {
+    const map = new Map<T, string>();
+    serverData.forEach((item, index) => map.set(item, serverRowKeys[index]));
+    return map;
+  }, [serverData, serverRowKeys]);
+
+  const overlayKey = useCallback(
+    (item: T) => serverKeyByItem.get(item) ?? keyOf(item, -1),
+    [serverKeyByItem, keyOf],
+  );
+
+  const overlay = useOptimisticRows<T>({
+    data: serverData,
+    rowKeys: serverRowKeys,
+    rowKey: overlayKey,
+    loadedRequestId,
+    lastRequestId,
+    reload,
+    isStatic,
+  });
+  const data = overlay.data;
+  const rowKeys = overlay.rowKeys;
 
   /**
    * Selection asks for a key by item, not by index. Every item it can ask
@@ -321,13 +364,13 @@ export const DataTable = <
   const hasCheckbox = Boolean(props.bulkActions?.length);
   const hasRowActions = Boolean(props.rowActions);
 
-  const rowCtx: RowActionContext = useMemo(
-    () => ({ refresh, clearSelection }),
-    [refresh, clearSelection],
+  const rowCtx: RowActionContext<T> = useMemo(
+    () => ({ refresh, reload, clearSelection, optimistic: overlay.optimistic }),
+    [refresh, reload, clearSelection, overlay.optimistic],
   );
-  const bulkCtx: BulkActionContext = useMemo(
-    () => ({ refresh, clearSelection }),
-    [refresh, clearSelection],
+  const bulkCtx: BulkActionContext<T> = useMemo(
+    () => ({ refresh, reload, clearSelection, optimistic: overlay.optimistic }),
+    [refresh, reload, clearSelection, overlay.optimistic],
   );
 
   /**
@@ -588,6 +631,8 @@ export const DataTable = <
               data={data}
               cellContext={cellContext}
               rowKeys={rowKeys}
+              leaving={overlay.leaving}
+              flash={overlay.flash}
               loading={loading}
               visibleCols={visibleCols}
               hasCheckbox={hasCheckbox}

@@ -189,4 +189,31 @@ describe("HttpClient ambient signal", () => {
 
     await left.promise;
   });
+
+  it("starts a fresh fetch for a caller arriving after the last one left", async ({
+    expect,
+  }) => {
+    // React StrictMode: the first mount's query is aborted by its cleanup,
+    // and the second mount asks for the same GET right away.
+    const { Upstream, hits, release } = upstream();
+    const alepha = Alepha.create().with(Upstream).with(AlephaServer);
+    await alepha.start();
+    const http = alepha.inject(HttpClient);
+    const url = `${alepha.inject(ServerProvider).hostname}/upstream?who=again`;
+
+    const gone = new AbortController();
+    const first = alepha.context.run(() => http.fetch(url), {
+      signal: gone.signal,
+    });
+    gone.abort(new AbortedError("first mount unmounted"));
+    const second = alepha.context.run(() => http.fetch(url), {
+      signal: new AbortController().signal,
+    });
+    await expect(first).rejects.toBe(gone.signal.reason);
+    await new Promise((r) => setTimeout(r, 50));
+    release();
+    const answer = await second;
+    expect(answer.data).toBe("upstream answer");
+    expect(hits.at(-1)).toBe("again");
+  });
 });
