@@ -71,7 +71,7 @@ export default { async fetch(request, env) {
           {
             config: {
               name: "rate-limit-fixture",
-              compatibilityDate: "2026-10-01",
+              compatibilityDate: "2026-11-03",
               compatibilityFlags: ["nodejs_compat"],
               manifest: {
                 mainModule: "worker.js",

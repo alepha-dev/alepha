@@ -179,7 +179,7 @@ export class BuildCloudflareTask extends BuildTask {
       name,
       main: "./main.cloudflare.js",
       compatibility_flags: ["nodejs_compat"],
-      compatibility_date: "2025-11-17",
+      compatibility_date: "2026-11-03",
       no_bundle: true,
       rules: [
         {

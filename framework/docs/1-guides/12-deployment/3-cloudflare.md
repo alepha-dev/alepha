@@ -68,7 +68,7 @@ The build produces:
 - `dist/main.cloudflare.js`: Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
 - `dist/index.workerd.js` and `dist/server/workerd/`: the workerd slice it imports. The upload rules match only these, so a `node` slice in the same `dist/` never reaches the Worker
 
-The `wrangler.jsonc` sets `compatibility_date` `2025-11-17`, the `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
+The `wrangler.jsonc` sets `compatibility_date` `2026-11-03`, the `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
 
 Each binding is written from what the build finds: an environment variable present at build time, or a module the app registers. `alepha deploy` sets the variables from the resources it provisioned; a manual build needs them in its environment or `.env.<mode>`.
 

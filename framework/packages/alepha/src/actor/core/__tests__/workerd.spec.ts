@@ -63,10 +63,10 @@ export default { async fetch(request, env) {
           {
             config: {
               name: "actor-fixture",
-              // The date `alepha build` writes. Under it, DO RPC rewrites a
-              // thrown error's message ("AlephaError: refused"); 2026-10-01
-              // does not, and hid the bug.
-              compatibilityDate: "2025-11-17",
+              // The date `alepha build` writes, always: runtime semantics move
+              // with it. At 2025-11-17 DO RPC rewrote a thrown error's message
+              // ("AlephaError: refused") and a spec on 2026-10-01 hid that.
+              compatibilityDate: "2026-11-03",
               compatibilityFlags: ["nodejs_compat"],
               manifest: {
                 mainModule: "worker.js",

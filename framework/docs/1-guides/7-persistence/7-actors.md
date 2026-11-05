@@ -372,6 +372,27 @@ recovery guarantee. See [stateful rooms](/docs/guides-realtime-rooms).
 describes the underlying storage guarantees. Local workerd recovery evidence does
 not prove live provisioning or production hibernation.
 
+### Deploys: old and new code side by side
+
+Since 2026-10-30 Cloudflare defers a Durable Object's code update: an active
+instance can keep running the previous deploy's code for up to five minutes while
+the new Worker already calls it (hibernated WebSockets survive the switch). Alepha
+keeps Cloudflare's default and adds no option to force an immediate update.
+
+So, across one deploy, the call from a Worker to its actor host and the stored
+snapshot must stay compatible in both directions:
+
+- A new reducer or event must not reach an old host that does not know it. Add the
+  reducer in one deploy and start calling it in the next, or accept a refusal for
+  those few minutes.
+- A schema change to the state must read the previous shape, since an old host may
+  write one after the new code has read it.
+- An `ActorRequest` field the old host ignores is safe; one it requires is not.
+
+Background work an actor starts (a `waitUntil`, a timer, an RPC to another
+object) keeps its instance alive while it is pending, at the compatibility date
+`alepha build` writes, even with no client connected.
+
 ## Build and namespace provisioning
 
 Generic host declarations drive workerd facades, slice wrappers and Worker exports.

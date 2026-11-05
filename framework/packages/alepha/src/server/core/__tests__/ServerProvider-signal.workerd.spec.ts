@@ -100,7 +100,7 @@ export default { async fetch(request) {
             config: {
               name: "request-signal-fixture",
               // The build's own date and flags.
-              compatibilityDate: "2025-11-17",
+              compatibilityDate: "2026-11-03",
               compatibilityFlags: ["nodejs_compat", "enable_request_signal"],
               manifest: {
                 mainModule: "worker.js",
