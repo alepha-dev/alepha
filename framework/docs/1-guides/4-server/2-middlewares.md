@@ -14,6 +14,8 @@ The encoding with the highest `q` wins, and a tie goes to zstd, then br, then gz
 
 A buffered body under 1 KiB is sent as it is: below that size the encoded form saves a few bytes at best, and each compression costs more than the bytes it saves. A stream is always compressed, since its size is not known in advance. Brotli runs at quality 4, the level CDNs use for dynamic content; zlib's default of 11 is meant for assets compressed once at build time, and per response it was the slowest step of the request.
 
+A buffered body up to 64 KiB is compressed synchronously, on the request's own turn: zlib's asynchronous call costs about twice the CPU on a body that small, its thread-pool round trip outweighing the compression. That blocks the event loop for at most about 0.2 ms. A larger body is compressed asynchronously, so a big response never stalls the other requests.
+
 Configure via the `compressOptions` atom:
 
 ```typescript

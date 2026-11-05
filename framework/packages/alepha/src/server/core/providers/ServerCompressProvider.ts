@@ -64,26 +64,42 @@ export class ServerCompressProvider {
     string,
     | {
         compress: (...args: any[]) => Promise<Buffer>;
+        compressSync: (...args: any[]) => Buffer;
         stream: (options?: any) => Transform;
       }
     | undefined
   > = {
     gzip: {
       compress: gzip,
+      compressSync: zlib.gzipSync,
       stream: createGzip,
     },
     br: {
       compress: brotli,
+      compressSync: zlib.brotliCompressSync,
       stream: createBrotliCompress,
     },
     zstd:
-      zstd && createZstdCompress
+      zstd && createZstdCompress && zlib.zstdCompressSync
         ? {
             compress: zstd,
+            compressSync: zlib.zstdCompressSync,
             stream: createZstdCompress,
           }
         : undefined,
   };
+
+  /**
+   * The largest buffered body compressed synchronously, in bytes.
+   *
+   * The asynchronous zlib call costs about twice the CPU of the synchronous
+   * one on a small body (a 7 KiB JSON in brotli 4: 75 to 97 µs against 35 to
+   * 45 µs, Node and Bun alike), the thread-pool round trip and the per-call
+   * stream outweighing the compression itself. The synchronous call blocks
+   * the event loop for as long as it computes, about 30 µs at 7 KiB and 165
+   * µs at 64 KiB, so a larger body keeps the asynchronous path.
+   */
+  protected static readonly SYNC_LIMIT = 64 * 1024;
 
   protected readonly alepha = $inject(Alepha);
   protected readonly options = $store(compressOptions);
@@ -234,10 +250,14 @@ export class ServerCompressProvider {
     );
   }
 
-  protected async compress(
+  /**
+   * Compress the response body in place. Returns a promise only when the
+   * work is asynchronous: a buffered body above {@link SYNC_LIMIT}.
+   */
+  protected compress(
     encoding: keyof typeof ServerCompressProvider.compressors,
     response: ServerResponse,
-  ): Promise<void> {
+  ): void | Promise<void> {
     const body = response.body; // can be string or Buffer or ArrayBuffer or Readable
 
     const compressor = ServerCompressProvider.compressors[encoding];
@@ -252,13 +272,21 @@ export class ServerCompressProvider {
       Buffer.isBuffer(body) ||
       body instanceof ArrayBuffer
     ) {
-      const compressed = await compressor.compress(body, {
-        params,
-      });
-      this.setHeaders(response, encoding);
-      response.headers["content-length"] = compressed.length.toString();
-      response.body = compressed;
-      return;
+      const size =
+        typeof body === "string" ? Buffer.byteLength(body) : body.byteLength;
+      if (size <= ServerCompressProvider.SYNC_LIMIT) {
+        this.setCompressed(
+          response,
+          encoding,
+          compressor.compressSync(body, { params }),
+        );
+        return;
+      }
+      return compressor
+        .compress(body, { params })
+        .then((compressed) =>
+          this.setCompressed(response, encoding, compressed),
+        );
     }
 
     if (typeof body === "object" && body instanceof Readable) {
@@ -287,6 +315,19 @@ export class ServerCompressProvider {
         params,
       );
     }
+  }
+
+  /**
+   * A buffered body replaced by its compressed bytes, with its headers.
+   */
+  protected setCompressed(
+    response: ServerResponse,
+    encoding: string,
+    compressed: Buffer,
+  ): void {
+    this.setHeaders(response, encoding);
+    response.headers["content-length"] = compressed.length.toString();
+    response.body = compressed;
   }
 
   /**

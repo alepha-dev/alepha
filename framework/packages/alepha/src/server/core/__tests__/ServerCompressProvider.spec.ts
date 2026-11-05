@@ -1,3 +1,5 @@
+import { brotliDecompressSync, gunzipSync } from "node:zlib";
+
 import { Alepha } from "alepha";
 import { $action, $route, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
@@ -185,6 +187,67 @@ describe("ServerCompressProvider", () => {
  * RFC 9110 section 12.5.3. It used to take the first of zstd, br, gzip whose
  * name appeared anywhere in the header, weights ignored.
  */
+/**
+ * A buffered body up to `SYNC_LIMIT` is compressed synchronously: the async
+ * zlib call cost about twice the CPU on a small body. Above it the async path
+ * keeps the event loop free. Both must give a body that decompresses to the
+ * original, with its length.
+ */
+describe("ServerCompressProvider sync and async paths", () => {
+  class TestCompressProvider extends ServerCompressProvider {
+    public testCompress = (encoding: string, response: any) =>
+      this.compress(encoding, response);
+    public static readonly testLimit = ServerCompressProvider.SYNC_LIMIT;
+  }
+  const provider = () => Alepha.create().inject(TestCompressProvider);
+  const response = (body: string) => ({
+    status: 200,
+    headers: { "content-type": "application/json" } as Record<string, string>,
+    body: body as any,
+  });
+  const json = (bytes: number) =>
+    JSON.stringify({ pad: "x".repeat(bytes - 10) });
+
+  for (const encoding of ["br", "gzip"]) {
+    it(`compresses a ${encoding} body under the limit synchronously`, ({
+      expect,
+    }) => {
+      const body = json(8 * 1024);
+      const res = response(body);
+
+      const done = provider().testCompress(encoding, res);
+
+      expect(done).toBeUndefined();
+      expect(res.headers["content-encoding"]).toBe(encoding);
+      expect(res.headers["content-length"]).toBe(String(res.body.length));
+      const inflated =
+        encoding === "br"
+          ? brotliDecompressSync(res.body)
+          : gunzipSync(res.body);
+      expect(inflated.toString()).toBe(body);
+    });
+
+    it(`compresses a ${encoding} body over the limit asynchronously`, async ({
+      expect,
+    }) => {
+      const body = json(TestCompressProvider.testLimit + 1024);
+      const res = response(body);
+
+      const done = provider().testCompress(encoding, res);
+
+      expect(done).toBeInstanceOf(Promise);
+      await done;
+      expect(res.headers["content-encoding"]).toBe(encoding);
+      expect(res.headers["content-length"]).toBe(String(res.body.length));
+      const inflated =
+        encoding === "br"
+          ? brotliDecompressSync(res.body)
+          : gunzipSync(res.body);
+      expect(inflated.toString()).toBe(body);
+    });
+  }
+});
+
 describe("ServerCompressProvider Accept-Encoding", () => {
   class TestCompressProvider extends ServerCompressProvider {
     public testPick = (header: string) => this.pickEncoding(header);
