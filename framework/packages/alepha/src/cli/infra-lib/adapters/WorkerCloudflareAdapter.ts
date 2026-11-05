@@ -955,7 +955,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    *
    * `upload_source_maps: false` opts out. Absent, a module whose
    * `sourceMappingURL` points at a file that is not there (a Lore artifact
-   * keeps its maps in a separate archive, #Q1515), whose map does not parse,
+   * keeps its maps in a separate archive), whose map does not parse,
    * or whose map is over Cloudflare's caps is uploaded without its map, named
    * in one log line: never a failed deploy, as wrangler's default is not.
    * `true` is wrangler's strict mode: the same cases refuse the deploy.
