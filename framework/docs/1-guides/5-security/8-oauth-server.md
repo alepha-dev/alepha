@@ -42,7 +42,7 @@ A client may use an https URL as its `client_id`, pointing at a JSON document th
 }
 ```
 
-- **Validated.** `client_id` must equal the URL it was fetched from, `client_name` and `redirect_uris` are required, the redirect URIs follow the `application_type` rules below (no wildcard), and a `token_endpoint_auth_method` other than `none` is refused. At authorize, the redirect must match the document.
+- **Validated.** `client_id` must equal the URL it was fetched from, `client_name` and `redirect_uris` are required, the redirect URIs follow the `application_type` rules below (no wildcard; a document that names no `application_type`, as native CLI clients often publish, takes the general rule, so `http://localhost/callback` is accepted and matches any port at authorize), and a `token_endpoint_auth_method` other than `none` is refused. At authorize, the redirect must match the document.
 - **Fetched carefully.** https only, the default port only, and never a host that is an IP literal, `localhost`, or a `.localhost`, `.local` or `.internal` name (workerd resolves no DNS, so the host name is what is checked). No redirect is followed, the fetch times out after 5 s, and the body must be JSON of at most 5 KiB.
 - **Cached on the row.** The response's `max-age`, clamped to between 5 minutes and 24 hours, decides when the document is fetched again. A refetch that fails falls back to the stored copy for at most 24 hours past its expiry.
 - **On by default.** Dynamic registration is already open to anyone, so accepting a self-hosted document widens no trust. `oauthOptions.clientIdMetadataDocuments: false` turns it off: a URL client id is then an ordinary lookup.

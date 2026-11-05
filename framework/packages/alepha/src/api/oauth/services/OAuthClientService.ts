@@ -842,7 +842,7 @@ export class OAuthClientService {
   ): {
     clientName: string;
     redirectUris: string[];
-    applicationType: "native" | "web";
+    applicationType?: "native" | "web";
     scopes?: string[];
   } {
     const refuse = (message: string) =>
@@ -874,8 +874,14 @@ export class OAuthClientService {
     ) {
       throw refuse("A metadata document client must be public");
     }
+    // An absent `application_type` keeps the general rule (https, or http to
+    // the loopback), as registration does: Claude Code's own document names
+    // none and lists `http://localhost/callback`, so a `web` default would
+    // refuse the very client the feature exists for.
     const applicationType =
-      doc.application_type === "native" ? "native" : "web";
+      doc.application_type === "native" || doc.application_type === "web"
+        ? doc.application_type
+        : undefined;
     for (const uri of uris as string[]) {
       if (uri.includes("*")) {
         throw refuse("A metadata document may not register a wildcard");

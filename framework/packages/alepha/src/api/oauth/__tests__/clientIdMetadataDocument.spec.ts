@@ -212,6 +212,51 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
+  it("accepts a native client's port-less loopback redirects without application_type, on any port", async () => {
+    // The shape Claude Code publishes: no application_type, loopback
+    // redirects without a port, and a random port at authorize (RFC 8252).
+    const { alepha, service, authorize } = await boot();
+    service.responses.set(CLIENT_ID, () =>
+      json(
+        document({
+          client_name: "Claude Code",
+          redirect_uris: [
+            "http://localhost/callback",
+            "http://127.0.0.1/callback",
+          ],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+          token_endpoint_auth_method: "none",
+        }),
+      ),
+    );
+
+    const res = await authorize(CLIENT_ID, "http://localhost:57336/callback");
+
+    expect(res.status).toBe(200);
+    const row = await service.findByClientId(CLIENT_ID);
+    expect(row?.source).toBe("cimd");
+    expect(row?.applicationType).toBeUndefined();
+    await alepha.stop();
+  });
+
+  it("still refuses a loopback redirect when the document says web", async () => {
+    const { alepha, service, authorize } = await boot();
+    service.responses.set(CLIENT_ID, () =>
+      json(
+        document({
+          redirect_uris: ["http://localhost/callback"],
+          application_type: "web",
+        }),
+      ),
+    );
+
+    expect((await authorize(CLIENT_ID, "http://localhost/callback")).status).toBe(
+      400,
+    );
+    await alepha.stop();
+  });
+
   it("refuses a redirect, a non-JSON answer and a body over 5 KiB", async () => {
     const { alepha, service, authorize } = await boot();
 
