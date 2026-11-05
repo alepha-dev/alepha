@@ -17,7 +17,7 @@ export type UndoableApplied =
 export interface UndoableOptions {
   /**
    * The toast's message, in the past tense: the change has happened as far
-   * as the reader can see ("Quest shelved").
+   * as the reader can see ("Task archived").
    */
   message: string;
   description?: string;
@@ -44,8 +44,8 @@ export interface UndoableOptions {
    */
   commit: () => Promise<unknown>;
   /**
-   * The server write that cancels `commit`, when there is one (unshelve for
-   * shelve). Its presence picks the mode:
+   * The server write that cancels `commit`, when there is one (unarchive for
+   * archive). Its presence picks the mode:
    *
    * - **with `undo`**: `commit` is sent now, and Undo sends `undo`. The
    *   server is the truth from the first second, other tabs and agents see

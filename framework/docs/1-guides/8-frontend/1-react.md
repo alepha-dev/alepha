@@ -391,12 +391,12 @@ const undoable = useUndoable();
 
 // In a DataTable row action: `ctx.optimistic` hides or redraws the row
 // at once, and lets go once a reload sent after the write has answered.
-const shelve = (quest: Quest, ctx: RowActionContext<Quest>) =>
+const archive = (task: Task, ctx: RowActionContext<Task>) =>
   void undoable.run({
-    message: `${quest.title} shelved`,
-    apply: () => ctx.optimistic.remove(quest),
-    commit: () => questApi.shelve({ params: { id: quest.id } }),
-    undo: () => questApi.unshelve({ params: { id: quest.id } }),
+    message: `${task.title} archived`,
+    apply: () => ctx.optimistic.remove(task),
+    commit: () => taskApi.archive({ params: { id: task.id } }),
+    undo: () => taskApi.unarchive({ params: { id: task.id } }),
   });
 ```
 
