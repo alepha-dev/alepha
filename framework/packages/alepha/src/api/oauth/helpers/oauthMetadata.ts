@@ -2,7 +2,10 @@
  * RFC 8414 — OAuth 2.0 Authorization Server Metadata.
  * `baseUrl` is the absolute origin of the deployment (e.g. https://app.com).
  */
-export const buildAuthorizationServerMetadata = (baseUrl: string) => ({
+export const buildAuthorizationServerMetadata = (
+  baseUrl: string,
+  options: { clientIdMetadataDocuments?: boolean } = {},
+) => ({
   issuer: baseUrl,
   authorization_endpoint: `${baseUrl}/oauth/authorize`,
   token_endpoint: `${baseUrl}/oauth/token`,
@@ -25,6 +28,11 @@ export const buildAuthorizationServerMetadata = (baseUrl: string) => ({
   // own OpenID configuration document, which has always listed both.
   token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
   scopes_supported: ["mcp"],
+  // MCP 2026-07-28: a client may use an https URL as its client_id, and this
+  // server fetches the document behind it instead of requiring DCR.
+  ...(options.clientIdMetadataDocuments !== false
+    ? { client_id_metadata_document_supported: true }
+    : {}),
 });
 
 /**

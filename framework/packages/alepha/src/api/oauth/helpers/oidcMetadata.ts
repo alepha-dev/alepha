@@ -3,7 +3,10 @@
  * (`/.well-known/openid-configuration`). `baseUrl` is the absolute origin of
  * the OIDC provider (e.g. https://alepha.club).
  */
-export const buildOpenIdConfiguration = (baseUrl: string) => ({
+export const buildOpenIdConfiguration = (
+  baseUrl: string,
+  options: { clientIdMetadataDocuments?: boolean } = {},
+) => ({
   issuer: baseUrl,
   authorization_endpoint: `${baseUrl}/oauth/authorize`,
   token_endpoint: `${baseUrl}/oauth/token`,
@@ -16,4 +19,7 @@ export const buildOpenIdConfiguration = (baseUrl: string) => ({
   code_challenge_methods_supported: ["S256"],
   token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
   scopes_supported: ["openid", "email", "profile"],
+  ...(options.clientIdMetadataDocuments !== false
+    ? { client_id_metadata_document_supported: true }
+    : {}),
 });

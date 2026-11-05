@@ -98,6 +98,13 @@ export const oauthOptions = $atom({
      * them before, and leaves any grant containing it unrestricted.
      */
     scopes: z.record(z.string(), oauthScopeSchema).optional(),
+    /**
+     * Accept Client ID Metadata Documents: a `client_id` that is an https
+     * URL is fetched and its document registers the client, as MCP
+     * 2026-07-28 prefers over dynamic registration. On by default, since
+     * DCR is already open to anyone; `false` turns it off.
+     */
+    clientIdMetadataDocuments: z.boolean().optional(),
   }),
   default: {
     realm: "users",
@@ -243,6 +250,24 @@ export class OAuthController {
   }
 
   /**
+   * The client a request names, read through Client ID Metadata Documents
+   * when its id is a document URL and the feature is on (it is by default).
+   * A document asking for scopes the application never declared keeps only
+   * the declared ones, as a registration would.
+   */
+  protected resolveClient(clientId: string) {
+    return this.clients.resolveClient(clientId, {
+      realm: this.options.realm,
+      enabled: this.options.clientIdMetadataDocuments !== false,
+      defaultScopes: ["mcp"],
+      acceptScopes: (scopes) => {
+        const undeclared = this.undeclaredScopes(scopes);
+        return scopes.filter((scope) => !undeclared.includes(scope));
+      },
+    });
+  }
+
+  /**
    * Absolute origin of the current request, e.g. https://app.com.
    */
   protected baseUrl(url: URL): string {
@@ -330,7 +355,9 @@ export class OAuthController {
     handler: ({ url, reply }) => {
       reply.headers["content-type"] = "application/json";
       reply.body = JSON.stringify(
-        buildAuthorizationServerMetadata(this.baseUrl(url)),
+        buildAuthorizationServerMetadata(this.baseUrl(url), {
+          clientIdMetadataDocuments: this.options.clientIdMetadataDocuments,
+        }),
       );
     },
   });
@@ -352,7 +379,11 @@ export class OAuthController {
     path: "/.well-known/openid-configuration",
     handler: ({ url, reply }) => {
       reply.headers["content-type"] = "application/json";
-      reply.body = JSON.stringify(buildOpenIdConfiguration(this.baseUrl(url)));
+      reply.body = JSON.stringify(
+        buildOpenIdConfiguration(this.baseUrl(url), {
+          clientIdMetadataDocuments: this.options.clientIdMetadataDocuments,
+        }),
+      );
     },
   });
 
@@ -476,6 +507,11 @@ export class OAuthController {
           redirectUris: body.redirect_uris,
           scopes: requestedScopes,
           source: "dcr",
+          // SEP-837. Absent, the general rule (https, or http to the
+          // loopback) still applies rather than RFC 7591's `web` default:
+          // native clients that predate the field register a loopback
+          // redirect without it, and refusing them re-opened Blight #625.
+          applicationType: body.application_type,
         });
       } catch (error) {
         // RFC 7591 §3.2.2: a registration refused for its metadata is the
@@ -509,6 +545,9 @@ export class OAuthController {
         // nobody refreshes is one the idle timeout ends (#Q2413).
         grant_types: ["authorization_code", "refresh_token"],
         token_endpoint_auth_method: "none",
+        ...(client.applicationType
+          ? { application_type: client.applicationType }
+          : {}),
       });
     },
   });
@@ -535,7 +574,7 @@ export class OAuthController {
         reply.body = "code_challenge_method must be S256";
         return;
       }
-      const client = await this.clients.findByClientId(query.client_id);
+      const client = await this.resolveClient(query.client_id);
       if (!client || client.revokedAt) {
         // A page for the human, never a redirect: with no valid client there
         // is no redirect URI to trust (RFC 6749 §4.1.2.1). A bare string
@@ -640,6 +679,10 @@ export class OAuthController {
         scopes: this.describeScopes(granted),
         productName: this.options.productName,
         redirectHost: this.redirectHost(query.redirect_uri),
+        clientHost:
+          client.source === "cimd"
+            ? this.redirectHost(client.clientId)
+            : undefined,
         connectionsUrl: this.options.connectionsPath,
         hidden: {
           response_type: query.response_type,
@@ -682,7 +725,7 @@ export class OAuthController {
         reply.body = "authentication required";
         return;
       }
-      const client = await this.clients.findByClientId(body.client_id);
+      const client = await this.resolveClient(body.client_id);
       if (
         !client ||
         client.revokedAt ||
@@ -965,9 +1008,7 @@ export class OAuthController {
       }
       try {
         if (body.grant_type === "authorization_code") {
-          const client = await this.clients.findByClientId(
-            body.client_id ?? "",
-          );
+          const client = await this.resolveClient(body.client_id ?? "");
           if (!client || client.revokedAt) {
             reply.status = 400;
             reply.body = JSON.stringify({ error: "invalid_client" });

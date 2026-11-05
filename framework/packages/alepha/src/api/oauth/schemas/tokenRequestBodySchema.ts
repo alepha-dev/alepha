@@ -9,7 +9,7 @@ import { z } from "alepha";
 export const tokenRequestBodySchema = z.object({
   grant_type: z.text().optional(),
   code: z.text({ maxLength: 4096 }).optional(),
-  client_id: z.text().optional(),
+  client_id: z.text({ maxLength: 512 }).optional(),
   redirect_uri: z.text({ maxLength: 2048 }).optional(),
   code_verifier: z.text({ maxLength: 256 }).optional(),
   refresh_token: z.text({ maxLength: 4096 }).optional(),

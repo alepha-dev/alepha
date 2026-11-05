@@ -165,7 +165,7 @@ export class MyConnectionController {
         authorized again to come back"; deleting one of its four sessions
         did not do that.
       */
-      params: z.object({ id: z.text({ maxLength: 64 }) }),
+      params: z.object({ id: z.text({ maxLength: 512 }) }),
       response: z.object({ ok: z.boolean(), revoked: z.integer() }),
     },
     handler: async ({ params, user }) => {
@@ -217,6 +217,17 @@ export class MyConnectionController {
    * `alepha.has(...)` is false when OAuth is absent and the map comes back
    * empty — callers already fall back to the raw client id.
    */
+  /**
+   * The host of a URL client id, or the id itself when it does not parse.
+   */
+  protected hostOf(clientId: string): string {
+    try {
+      return new URL(clientId).host;
+    } catch {
+      return clientId;
+    }
+  }
+
   protected async resolveNames(
     clientIds: string[],
   ): Promise<Map<string, string>> {
@@ -227,7 +238,14 @@ export class MyConnectionController {
     const entries = await Promise.all(
       clientIds.map(async (clientId) => {
         const client = await clients.findByClientId(clientId);
-        return [clientId, client?.clientName] as const;
+        // A client registered from a metadata document names itself; the
+        // host it was fetched from is what tells two "Claude" entries apart.
+        return [
+          clientId,
+          client?.source === "cimd" && client.clientName
+            ? `${client.clientName} (${this.hostOf(clientId)})`
+            : client?.clientName,
+        ] as const;
       }),
     );
     return new Map(

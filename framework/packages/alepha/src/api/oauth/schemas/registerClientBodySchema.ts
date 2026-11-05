@@ -11,5 +11,12 @@ export const registerClientBodySchema = z
     scope: z.text({ maxLength: 1024 }).optional(),
     grant_types: z.array(z.text()).optional(),
     token_endpoint_auth_method: z.text().optional(),
+    /**
+     * SEP-837: required of 2026-07-28 clients. `web` may register https
+     * redirects only; `native` may also use loopback http and private-use
+     * schemes. Absent, the general rule applies (https, or http to the
+     * loopback), so clients that predate the field keep registering.
+     */
+    application_type: z.enum(["native", "web"]).optional(),
   })
   .meta({ additionalProperties: true });

@@ -5,9 +5,10 @@ import { $entity, db } from "alepha/orm";
  * A registered OAuth 2.1 client application.
  *
  * Rows are created by Dynamic Client Registration (RFC 7591) when an MCP
- * client (e.g. Claude) first connects. `source` records who created the
- * client; for DCR it is always `"dcr"` and `createdByUserId` is null until
- * a user completes an authorization.
+ * client (e.g. Claude) first connects, or from a Client ID Metadata Document
+ * the first time a client authorizes with a URL as its `client_id`. `source`
+ * records who created the client: `"dcr"`, `"cimd"`, `"user"` or `"admin"`;
+ * `createdByUserId` is null until a user completes an authorization.
  */
 export const oauthClientEntity = $entity({
   name: "oauth_clients",
@@ -15,7 +16,11 @@ export const oauthClientEntity = $entity({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    clientId: z.text({ maxLength: 64 }),
+    /**
+     * The public client id: `mcp_<hex>` for a DCR client, the document URL
+     * itself for a CIMD client (hence 512).
+     */
+    clientId: z.text({ maxLength: 512 }),
     clientName: z.text({ maxLength: 200 }),
     redirectUris: db.default(z.array(z.text({ maxLength: 2048 })), []),
     scopes: db.default(z.array(z.text({ maxLength: 64 })), []),
@@ -38,6 +43,19 @@ export const oauthClientEntity = $entity({
      */
     clientSecretHash: z.text({ maxLength: 256 }).optional(),
     source: db.default(z.text({ maxLength: 16 }), "dcr"),
+    /**
+     * RFC 7591 / SEP-837 `application_type`, which decides the redirect URIs
+     * the client may use: `web` https only, `native` loopback http and
+     * private-use schemes too. Null for clients registered before it existed
+     * and for those registered by code, which keep the general rule.
+     */
+    applicationType: z.enum(["native", "web"]).optional(),
+    /**
+     * When a CIMD client's cached metadata document goes stale (the
+     * response's `max-age`, clamped to [5 min, 24 h]). Null for every other
+     * source.
+     */
+    metadataExpiresAt: z.datetime().optional(),
     createdByUserId: z.uuid().optional(),
     lastUsedAt: z.datetime().optional(),
     revokedAt: z.datetime().optional(),
