@@ -62,10 +62,36 @@ export class ServerBodyParserProvider {
         return;
       }
 
+      // A Web request whose length is declared (Bun, workerd): read it with
+      // the runtime's native `arrayBuffer()`. Reaching for `.body` builds a
+      // ReadableStream and a promise per chunk in JS, which made POST on Bun
+      // cost 60% more CPU than Express. The declared length is bounded by the
+      // limit check below, and the runtime refuses a body longer than it.
+      const webReq = request.raw.web?.req;
+      if (webReq) {
+        const length = request.headers["content-length"];
+        if (length && length !== "0") {
+          return this.readAndParse(
+            () =>
+              webReq.arrayBuffer().then((data) => {
+                if (data.byteLength > this.options.limit) {
+                  throw new HttpError(
+                    { status: 413 },
+                    { message: "Request body size limit exceeded" },
+                  );
+                }
+                return Buffer.from(data);
+              }),
+            request,
+            route,
+          );
+        }
+      }
+
       let stream: ReadableStream | undefined;
 
-      if (request.raw.web?.req.body) {
-        stream = request.raw.web.req.body;
+      if (webReq?.body) {
+        stream = webReq.body;
       } else if (request.raw.node?.req) {
         const nodeReq = request.raw.node.req as Readable & {
           body?: string | Buffer | object;
@@ -102,7 +128,11 @@ export class ServerBodyParserProvider {
           // The plain Node request: read it as a Node stream. Wrapping it in
           // `Readable.toWeb` cost a Web Streams adapter, a promise per chunk
           // and a copy, which made POST the slowest path next to Express.
-          return this.parseNodeRequest(nodeReq as Readable, request, route);
+          return this.readAndParse(
+            () => this.nodeStreamToBuffer(nodeReq as Readable),
+            request,
+            route,
+          );
         }
       }
 
@@ -153,11 +183,12 @@ export class ServerBodyParserProvider {
   });
 
   /**
-   * The body of a plain Node request, read from its own stream, with the
-   * same size limits and the same errors as the Web stream path.
+   * A body read whole by `read` (a plain Node request's own stream, or a Web
+   * request's `arrayBuffer()`), with the same size limits and the same
+   * errors as the Web stream path.
    */
-  protected parseNodeRequest(
-    nodeReq: Readable,
+  protected readAndParse(
+    read: () => Promise<Buffer>,
     request: { headers: Record<string, string>; body: unknown },
     route: { schema?: { body?: ZType } },
   ): Promise<void> | undefined {
@@ -186,7 +217,7 @@ export class ServerBodyParserProvider {
     }
 
     return (
-      this.nodeStreamToBuffer(nodeReq)
+      read()
         .then((buffer) => this.parseBuffer(kind, buffer, request.headers))
         // Assigns onto the request and hands nothing on, like the Web path.
         // oxlint-disable-next-line promise/always-return
