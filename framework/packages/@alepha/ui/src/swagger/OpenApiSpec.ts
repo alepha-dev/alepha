@@ -150,6 +150,32 @@ export class OpenApiSpec {
   }
 
   /**
+   * A copy of a schema with every local `$ref` inlined, down to `maxDepth`
+   * levels; past it a reference becomes `{}`, which is what keeps a recursive
+   * schema finite. For consumers that need the whole tree at once (the form
+   * builder), where the viewer resolves one level at a time.
+   */
+  public dereference(schema: any, maxDepth = 8, depth = 0): any {
+    if (!schema || typeof schema !== "object") {
+      return schema;
+    }
+    if (Array.isArray(schema)) {
+      return schema.map((it) => this.dereference(it, maxDepth, depth));
+    }
+    if (typeof schema.$ref === "string") {
+      if (depth >= maxDepth) {
+        return {};
+      }
+      return this.dereference(this.resolve(schema), maxDepth, depth + 1);
+    }
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(schema)) {
+      out[key] = this.dereference(value, maxDepth, depth);
+    }
+    return out;
+  }
+
+  /**
    * The name a `$ref` points at (`Product` for `#/components/schemas/Product`).
    */
   public refName(schema: any): string | undefined {

@@ -11,6 +11,7 @@ import { Skeleton } from "../core/Skeleton.tsx";
 import { OpenApiSpec } from "./OpenApiSpec.ts";
 import { SwaggerNav } from "./SwaggerNav.tsx";
 import { SwaggerOperationView } from "./SwaggerOperationView.tsx";
+import { SwaggerTryIt } from "./SwaggerTryIt.tsx";
 
 export interface SwaggerExplorerProps {
   /**
@@ -130,7 +131,9 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
           </aside>
           <main className="min-w-0">
             {entry ? (
-              <SwaggerOperationView spec={spec} entry={entry} />
+              <SwaggerOperationView spec={spec} entry={entry}>
+                <SwaggerTryIt key={entry.id} spec={spec} entry={entry} />
+              </SwaggerOperationView>
             ) : (
               <p className="text-muted-foreground text-sm">
                 {tr("swagger.emptyDocument", {

@@ -28,6 +28,21 @@ test.describe("API explorer", () => {
     await expect(page).toHaveURL(/#/);
   });
 
+  test("sends a request from the try-it form and shows the response", async ({
+    page,
+  }) => {
+    await page.goto("/pages/developer/api#findShowcaseMembers");
+
+    const form = page.locator("article form");
+    await form.locator("input[name=size]").fill("2");
+    await form.locator("input[name=search]").fill("ada");
+    await form.locator("button[type=submit]").click();
+
+    const response = page.getByRole("region", { name: "Response" });
+    await expect(response.getByText("200", { exact: true })).toBeVisible();
+    await expect(response).toContainText("Ada Lovelace");
+  });
+
   test("serves the OpenAPI document with Alepha's extensions", async ({
     request,
   }) => {
