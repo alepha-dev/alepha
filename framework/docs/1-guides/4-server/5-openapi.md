@@ -18,7 +18,17 @@ class App {
 }
 ```
 
-This serves the OpenAPI JSON at `/docs/json`. `$swagger` serves no viewer: point any OpenAPI viewer at that route. A viewer built on `@alepha/ui`, aware of the app's session and permissions, is planned as `$uiSwagger` from `@alepha/ui/swagger`.
+This serves the OpenAPI JSON at `/docs/json`. `$swagger` serves no viewer. For one, add `$uiSwagger` from `@alepha/ui/swagger`, an explorer page at `/docs` that knows the app's session and permissions (see the `@alepha/ui` package page), or point any OpenAPI viewer at `/docs/json`:
+
+```typescript
+import { $uiSwagger } from "@alepha/ui/swagger";
+import { $swagger } from "alepha/server/swagger";
+
+class App {
+  openapi = $swagger({ info: { title: "My API", version: "1.0.0" } });
+  docs = $uiSwagger();
+}
+```
 
 ## Configuration
 
@@ -35,7 +45,13 @@ The `$swagger` primitive accepts these options:
 
 Only the first `$swagger` in the app is read. The document is built in memory and served from a route, so it works the same on every runtime, serverless included.
 
-The `ui` option is gone: the Swagger UI that `alepha` used to vendor was removed. Drop `ui` from your `$swagger` call.
+### Moving off `$swagger({ ui })`
+
+The Swagger UI that `alepha` vendored is gone, and with it the `ui` option, its `SwaggerUiOptions` (`root`, `persistAuthorization`, `initOAuth`) and the `alepha.build.assets` step that copied its files into `dist/`. An app that passed `ui` no longer type-checks:
+
+1. Drop `ui` from the `$swagger(...)` call. The document stays at `<prefix>/json`.
+2. For a viewer, add `docs = $uiSwagger()` (with `spec: "<prefix>/json"` when the prefix is not `/docs`). It calls with the signed-in session, so there is no `initOAuth` or persisted token to configure; a token can still be typed in its Credentials panel.
+3. Or keep any OpenAPI viewer of your choice, pointed at the JSON route.
 
 ### Custom Prefix
 
