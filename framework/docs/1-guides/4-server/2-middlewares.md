@@ -12,6 +12,8 @@ Response compression (gzip, brotli, zstd) based on the client's `Accept-Encoding
 
 The encoding with the highest `q` wins, and a tie goes to zstd, then br, then gzip (zstd only on a runtime that has it). A response that already carries `Content-Encoding` is left alone, and nothing is compressed on a serverless runtime, whose edge compresses for you.
 
+A buffered body under 1 KiB is sent as it is: below that size the encoded form saves a few bytes at best, and each compression costs more than the bytes it saves. A stream is always compressed, since its size is not known in advance. Brotli runs at quality 4, the level CDNs use for dynamic content; zlib's default of 11 is meant for assets compressed once at build time, and per response it was the slowest step of the request.
+
 Configure via the `compressOptions` atom:
 
 ```typescript
@@ -23,10 +25,11 @@ alepha.store.mut(compressOptions, (old) => ({
 }));
 ```
 
-| Option                | Default                                                                                 | Description                            |
-| --------------------- | --------------------------------------------------------------------------------------- | -------------------------------------- |
-| `disabled`            | `false`                                                                                 | Disable compression entirely           |
-| `allowedContentTypes` | `["application/json", "text/html", "application/javascript", "text/plain", "text/css"]` | Content types eligible for compression |
+| Option                | Default                                                                                 | Description                                                                    |
+| --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `disabled`            | `false`                                                                                 | Disable compression entirely                                                   |
+| `allowedContentTypes` | `["application/json", "text/html", "application/javascript", "text/plain", "text/css"]` | Content types eligible for compression                                         |
+| `threshold`           | `1024`                                                                                  | Smallest buffered body, in bytes, worth compressing; `0` compresses every body |
 
 ### Security Headers (Helmet)
 

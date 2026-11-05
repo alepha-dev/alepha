@@ -11,6 +11,13 @@ class App {
   hello = $action({
     path: "/hello",
     method: "GET",
+    // Above the default 1 KiB threshold, so it is worth compressing.
+    handler: () => "Hello, world! ".repeat(100),
+  });
+
+  tiny = $action({
+    path: "/tiny",
+    method: "GET",
     handler: () => "Hello, world!",
   });
 }
@@ -91,6 +98,41 @@ describe("ServerCompressProvider", () => {
     });
 
     expect(response.headers.get("content-encoding")).toBeNull();
+
+    await alepha.stop();
+  });
+
+  it("sends a body below the threshold uncompressed", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaServer).with(App);
+    await alepha.start();
+
+    const server = alepha.inject(ServerProvider);
+
+    const response = await fetch(`${server.hostname}/api/tiny`, {
+      headers: { "Accept-Encoding": "gzip, br, zstd" },
+    });
+
+    expect(response.headers.get("content-encoding")).toBeNull();
+    expect(await response.text()).toBe("Hello, world!");
+
+    await alepha.stop();
+  });
+
+  it("compresses a small body when the threshold is lowered", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaServer).with(App);
+    alepha.store.mut(compressOptions, (old) => ({ ...old, threshold: 0 }));
+    await alepha.start();
+
+    const server = alepha.inject(ServerProvider);
+
+    const response = await fetch(`${server.hostname}/api/tiny`, {
+      headers: { "Accept-Encoding": "gzip" },
+    });
+
+    expect(response.headers.get("content-encoding")).toBe("gzip");
+    expect(await response.text()).toBe("Hello, world!");
 
     await alepha.stop();
   });
