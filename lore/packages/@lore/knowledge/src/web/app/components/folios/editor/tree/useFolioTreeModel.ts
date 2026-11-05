@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DirectoryController } from "../../../../../../api/controllers/DirectoryController.ts";
 import type { FolioController } from "../../../../../../api/controllers/FolioController.ts";
 import { folioTreeCollapsedAtom } from "../../../../atoms/folioTreeCollapsedAtom.ts";
+import { folioTreeRefreshingAtom } from "../../../../atoms/folioTreeRefreshingAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import {
@@ -308,20 +309,36 @@ export const useFolioTreeModel = (
     [input.projectId, folioApi, directoryApi],
   );
 
+  // Mirrored into an atom for the context menus' Refresh item, which renders
+  // inside a memoised row and cannot take it as a prop (#Q3120, see
+  // `folioTreeRefreshingAtom`).
+  const [, setRefreshing] = useStore(folioTreeRefreshingAtom);
   const refreshAction = useAction<[], void>(
     {
       handler: async () => {
-        const [folioList, dirList] = await Promise.all([
-          folioApi.tree({ params: { projectId: input.projectId } }),
-          directoryApi.listAllDirectories({
-            params: { projectId: input.projectId },
-          }),
-        ]);
-        setFolios(folioList);
-        setDirectories(dirList);
+        setRefreshing({ refreshing: true });
+        try {
+          const [folioList, dirList] = await Promise.all([
+            folioApi.tree({ params: { projectId: input.projectId } }),
+            directoryApi.listAllDirectories({
+              params: { projectId: input.projectId },
+            }),
+          ]);
+          setFolios(folioList);
+          setDirectories(dirList);
+        } finally {
+          setRefreshing({ refreshing: false });
+        }
       },
     },
-    [input.projectId, folioApi, directoryApi, setFolios, setDirectories],
+    [
+      input.projectId,
+      folioApi,
+      directoryApi,
+      setFolios,
+      setDirectories,
+      setRefreshing,
+    ],
   );
 
   const tree = useMemo(

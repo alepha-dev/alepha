@@ -344,7 +344,7 @@ describe("FolioTree", () => {
       ).toBeUndefined();
     });
 
-    it("holds two items, and none that need a row", async () => {
+    it("holds the header's three verbs, and none that need a row", async () => {
       const view = await mount();
 
       await act(async () => {
@@ -353,6 +353,7 @@ describe("FolioTree", () => {
 
       expect(await screen.findByText("New folio")).toBeTruthy();
       expect(screen.getByText("New directory")).toBeTruthy();
+      expect(screen.getByText("Refresh the tree")).toBeTruthy();
       // Open, rename and delete are all questions about a row, and there is
       // no row here.
       expect(screen.queryByText("Rename")).toBeNull();
@@ -478,6 +479,109 @@ describe("FolioTree", () => {
       );
       // Framework stays open, and the open folio's row stays selected.
       expect(rowFor("Inside A").getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
+  /**
+   * #Q3120: the header's refresh is easy to miss with the pointer on a
+   * directory deep in the list, so both context menus carry it too. The tree
+   * is one request, so the item refreshes the whole tree from either menu.
+   */
+  describe("Refresh in the context menus", () => {
+    const AGENT_FOLIO = "66666666-6666-4666-8666-666666666666";
+
+    const serveAgentFolio = () => {
+      replies.tree = [
+        folioOf("33333333-3333-4333-8333-333333333333", "Inside A", DIR_A),
+        folioOf("44444444-4444-4444-8444-444444444444", "At the root"),
+        folioOf(AGENT_FOLIO, "Filed by an agent"),
+      ];
+      replies.listAllDirectories = [
+        { id: DIR_A, shortId: 1, name: "Framework" },
+        { id: DIR_B, shortId: 2, name: "Lore" },
+      ];
+    };
+
+    it("refetches the tree from a directory's menu", async () => {
+      await mount();
+      serveAgentFolio();
+
+      await act(async () => {
+        fireEvent.contextMenu(rowFor("Framework"));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText("Refresh the tree"));
+      });
+
+      await screen.findByText("Filed by an agent");
+      expect(calls.map((c) => c.name)).toEqual(
+        expect.arrayContaining(["tree", "listAllDirectories"]),
+      );
+    });
+
+    it("refetches the tree from the empty space's menu", async () => {
+      const view = await mount();
+      serveAgentFolio();
+
+      await act(async () => {
+        fireEvent.contextMenu(
+          view.container.querySelector('[data-slot="folio-tree-root-area"]')!,
+        );
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText("Refresh the tree"));
+      });
+
+      await screen.findByText("Filed by an agent");
+    });
+
+    it("is offered on a directory to a reader who may not write", async () => {
+      // A read, like the header's button: it sits above the write line.
+      await mount({}, true);
+
+      await act(async () => {
+        fireEvent.contextMenu(rowFor("Framework"));
+      });
+
+      expect(await screen.findByText("Refresh the tree")).toBeTruthy();
+      expect(screen.queryByText("Rename")).toBeNull();
+    });
+
+    it("is not offered on a folio row", async () => {
+      await mount();
+
+      await act(async () => {
+        fireEvent.contextMenu(rowFor("At the root"));
+      });
+
+      expect(await screen.findByText("Rename")).toBeTruthy();
+      expect(screen.queryByText("Refresh the tree")).toBeNull();
+    });
+
+    it("is disabled while a refresh is in flight", async () => {
+      await mount();
+      // Never settles, so the refresh the header starts stays in flight.
+      replies.tree = new Promise(() => {});
+
+      await click(screen.getByLabelText("Refresh the tree"));
+      // The header's own button says the refresh is in flight.
+      await waitFor(() =>
+        expect(
+          (screen.getByLabelText("Refresh the tree") as HTMLButtonElement)
+            .disabled,
+        ).toBe(true),
+      );
+      await act(async () => {
+        fireEvent.contextMenu(rowFor("Framework"));
+      });
+
+      const item = (await screen.findByText("Refresh the tree")).closest(
+        '[role="menuitem"]',
+      );
+      expect(item).not.toBeNull();
+      // Base UI marks a disabled item with `data-disabled`, which is what
+      // `ContextMenuItem`'s styles key on.
+      expect(item!.hasAttribute("data-disabled")).toBe(true);
     });
   });
 

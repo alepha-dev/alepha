@@ -2,6 +2,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
@@ -9,6 +10,7 @@ import { useI18n } from "alepha/react/i18n";
 import { FilePlus, FolderPlus } from "lucide-react";
 import type { ReactElement } from "react";
 
+import FolioTreeRefreshMenuItem from "./FolioTreeRefreshMenuItem.tsx";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeRootContextMenuProps {
@@ -41,8 +43,9 @@ export interface FolioTreeRootContextMenuProps {
  * reason. Empty space belongs to no directory, and inheriting the last
  * selection would file a folio somewhere the click never named.
  *
- * Two items and no more: Open, rename and delete are all questions about a
- * row, and there is no row here.
+ * Three items and no more: the two creates and Refresh (#Q3120), the header's
+ * three buttons. Open, rename and delete are all questions about a row, and
+ * there is no row here.
  *
  * Mounted only under `canWrite` by the caller, the same permission behind
  * the header buttons and the row menu's own create items. A Viewer gets the
@@ -69,6 +72,8 @@ const FolioTreeRootContextMenu = (
           <FolderPlus className="size-4" />
           {tr("folios.editor.tree.new-directory")}
         </ContextMenuItem>
+        <ContextMenuSeparator />
+        <FolioTreeRefreshMenuItem commands={props.commands} />
       </ContextMenuContent>
     </ContextMenu>
   );

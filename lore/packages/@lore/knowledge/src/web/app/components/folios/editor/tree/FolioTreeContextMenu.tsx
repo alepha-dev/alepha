@@ -24,6 +24,7 @@ import type { ReactElement } from "react";
 
 import type { FolioController } from "../../../../../../api/controllers/FolioController.ts";
 import type { FolioTreeNode } from "./folioTree.ts";
+import FolioTreeRefreshMenuItem from "./FolioTreeRefreshMenuItem.tsx";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 export interface FolioTreeContextMenuProps {
   node: FolioTreeNode;
@@ -143,6 +144,11 @@ const FolioTreeContextMenu = (
         <SquareArrowOutUpRight className="size-4" />
         {tr("folios.editor.tree.open-new-tab")}
       </ContextMenuItem>
+      {/* A read, so above the write line and offered to a Viewer too, like
+          the header's button (#Q3120). The tree is one request, so
+          refreshing a directory IS refreshing the tree: no per-directory
+          fetch exists, nor needs to. */}
+      {isDirectory && <FolioTreeRefreshMenuItem commands={props.commands} />}
       {/* ⚠️ Every item below this line writes. A rank without `folio:write`
           gets the two read items and nothing else - a menu of affordances that
           all fail is worse than a short menu. Off the ACTION, so no permission
