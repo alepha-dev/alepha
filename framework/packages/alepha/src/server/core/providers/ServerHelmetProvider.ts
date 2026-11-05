@@ -127,8 +127,27 @@ export class ServerHelmetProvider {
     };
   }
 
+  /**
+   * The headers last built, and the options object they were built from.
+   *
+   * Every response needs them and they only change with the options, which
+   * the store replaces (never mutates) on an update: comparing identity is
+   * enough to know when to rebuild.
+   */
+  protected cachedHeaders?: {
+    options: HelmetOptions;
+    headers: Record<string, string>;
+  };
+
   protected buildHeaders(): Record<string, string> {
-    return this.buildHeadersFromConfig(this.options);
+    const options = this.options;
+    if (this.cachedHeaders?.options !== options) {
+      this.cachedHeaders = {
+        options,
+        headers: this.buildHeadersFromConfig(options),
+      };
+    }
+    return this.cachedHeaders.headers;
   }
 
   /**
@@ -148,7 +167,8 @@ export class ServerHelmetProvider {
     if (this.options.disabled) {
       return {};
     }
-    return this.buildHeaders();
+    // A copy: the built headers are cached, and a caller may edit its own.
+    return { ...this.buildHeaders() };
   }
 
   protected buildHeadersFromConfig(
@@ -230,7 +250,9 @@ export class ServerHelmetProvider {
     on: "server:response:after",
     priority: "first",
     handler: ({ request, response }) => {
-      if (this.options.disabled) {
+      // Read once: each access of a `$store` field is a store lookup.
+      const options = this.options;
+      if (options.disabled) {
         return;
       }
 
@@ -244,18 +266,18 @@ export class ServerHelmetProvider {
       const isSecure =
         request.headers["x-forwarded-proto"] === "https" ||
         request.protocol === "https" ||
-        this.options.isSecure ||
+        options.isSecure ||
         this.alepha.isProduction();
 
       const headersToSet = this.buildHeaders();
 
-      for (const [key, value] of Object.entries(headersToSet)) {
+      for (const key in headersToSet) {
         if (key === "strict-transport-security" && !isSecure) {
           continue;
         }
         // don't overwrite headers if they are already set
         if (!response.headers[key]) {
-          response.headers[key] = value;
+          response.headers[key] = headersToSet[key];
         }
       }
     },

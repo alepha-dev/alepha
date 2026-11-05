@@ -1,7 +1,7 @@
 import { $env, $inject, Alepha, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 
-import { ServerReply } from "../helpers/ServerReply.ts";
+import { ParsedServerRequest } from "../helpers/ParsedServerRequest.ts";
 import type {
   RequestGeo,
   RequestReferer,
@@ -67,57 +67,11 @@ export class ServerRequestParser {
       params: {},
       ...partialRawRequest,
     } as ServerRequestData;
-    // oxlint-disable-next-line typescript/no-this-alias -- the getters below are object-literal getters, whose `this` is the literal; an arrow cannot express a getter
-    const self = this;
-    let requestId: string | undefined;
-    return {
-      method: rawRequest.method,
-      url: rawRequest.url,
-      raw: rawRequest.raw,
-      signal: rawRequest.signal ?? this.alepha.context.signal,
-      headers: rawRequest.headers,
-      query: rawRequest.query,
-      params: rawRequest.params,
-      // ---------------------------------------------------------------------------------------------------------------
-      // body will be filled by body parser middleware
-      body: null,
-      // ---------------------------------------------------------------------------------------------------------------
-      metadata: {},
-      reply: this.alepha.inject(ServerReply, { lifetime: "transient" }),
-      // ---------------------------------------------------------------------------------------------------------------
-      get requestId() {
-        // Memoised per request: the getter used to mint a fresh randomUUID on
-        // every access, so the id in the log line, the id in the error body
-        // and the ids read by middleware were all different — nothing could
-        // be correlated.
-        requestId ??= self.getRequestId(rawRequest);
-        return requestId;
-      },
-      get ip() {
-        return self.getRequestIp(rawRequest);
-      },
-      get userAgent() {
-        return self.getRequestUserAgent(rawRequest);
-      },
-      get geo() {
-        return self.getRequestGeo(rawRequest);
-      },
-      get isBot() {
-        return self.getIsBot(rawRequest);
-      },
-      get isMobile() {
-        return self.getIsMobile(rawRequest);
-      },
-      get protocol() {
-        return self.getProtocol(rawRequest);
-      },
-      get language() {
-        return self.getLanguage(rawRequest);
-      },
-      get referer() {
-        return self.getReferer(rawRequest);
-      },
-    } as ServerRequest;
+    return new ParsedServerRequest(
+      this,
+      rawRequest,
+      rawRequest.signal ?? this.alepha.context.signal,
+    ) as unknown as ServerRequest;
   }
 
   /**

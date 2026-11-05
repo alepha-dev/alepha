@@ -318,6 +318,25 @@ export class ServerProvider {
 
     // if response.body is string or buffer
     if (typeof response.body === "string" || Buffer.isBuffer(response.body)) {
+      // A buffered body knows its length. Without the header, a `writeHead`
+      // followed by `end(body)` goes out chunked: framing bytes on every
+      // response, and a GET that disagreed with its own HEAD, which does
+      // declare the length. Written into the headers object `writeHead`
+      // takes, which is cheaper than `res.setHeader` (a second validation
+      // pass), except for the frozen shared 500 response.
+      if (!("content-length" in response.headers)) {
+        const length = String(
+          typeof response.body === "string"
+            ? Buffer.byteLength(response.body)
+            : response.body.length,
+        );
+        if (Object.isFrozen(response.headers)) {
+          res.setHeader("content-length", length);
+        } else {
+          (response.headers as Record<string, string>)["content-length"] =
+            length;
+        }
+      }
       res.writeHead(response.status, response.headers);
       res.end(response.body);
       return;

@@ -552,6 +552,17 @@ export class StateManager<State extends object = AlephaState> {
       return store[key];
     }
 
+    // The common read: no scope. One walk of the context layers answers it,
+    // where `exists()`, `has()` and `get()` below walked them three times
+    // (each with its own `getStore()`), and every `$store` getter and
+    // `alepha.env` read inside a request takes this path. Every context
+    // `AlsProvider` creates carries a `context` id, so a layer that holds
+    // the key is always inside an existing context.
+    if (scope === undefined) {
+      const layer = this.als?.getLayer(key as string);
+      return layer ? layer[key as string] : store[key];
+    }
+
     if (!this.als?.exists()) {
       return store[key];
     }
