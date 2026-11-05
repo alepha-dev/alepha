@@ -844,6 +844,11 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       expect(screen.getAllByText(message)).toHaveLength(1);
       expect(links.deletes).toBe(1);
       expect(screen.getByRole("link", { name: /^#Q1 - / })).toBeTruthy();
+
+      // Closing a toast removes it on a 200 ms timer. This is the file's last
+      // test: ended before that timer, the timer fired after jsdom was torn
+      // down and failed the run with "window is not defined".
+      await waitFor(() => expect(undoToast.isConnected).toBe(false));
     });
   });
 });
