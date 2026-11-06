@@ -1,6 +1,7 @@
 import { AutomationSourceRepository } from "@lore/core/api";
 import { projects, type Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $repository, sql } from "alepha/orm";
 
 import { epics, type Epic } from "../entities/epics.ts";
@@ -13,6 +14,7 @@ import { releases, type Release } from "../entities/releases.ts";
  * mention handling and workflow tail after this atomic domain write.
  */
 export class WorkAutomationSources {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly projects = $repository(projects);
   protected readonly feedback = $inject(
     AutomationSourceRepository.of(feedback),
@@ -59,7 +61,7 @@ export class WorkAutomationSources {
       {
         projectId: release.projectId,
         name: "release.published",
-        identity: `release:${release.id}:${crypto.randomUUID()}`,
+        identity: `release:${release.id}:${this.crypto.randomUUID()}`,
         resourceId: release.id,
         fields: {
           project: project.title,

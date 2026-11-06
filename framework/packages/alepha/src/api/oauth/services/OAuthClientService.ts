@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { $inject, Alepha, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -326,7 +326,7 @@ export class OAuthClientService {
     }
 
     const clientId =
-      options.clientId ?? `mcp_${randomUUID().replace(/-/g, "")}`;
+      options.clientId ?? `mcp_${this.crypto.randomUUID().replace(/-/g, "")}`;
     const clientSecretHash = options.secret
       ? await this.crypto.hashPassword(options.secret)
       : undefined;
@@ -1103,7 +1103,7 @@ export class OAuthClientService {
         nonce: grant.nonce,
         iat,
         exp: iat + 60,
-        jti: randomUUID(),
+        jti: this.crypto.randomUUID(),
       },
       realm,
       { header: { typ: "oauth_code" } },

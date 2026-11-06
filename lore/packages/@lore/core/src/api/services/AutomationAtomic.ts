@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { sql, type SQLLike } from "alepha/orm";
 
@@ -10,6 +11,7 @@ import { AutomationDatabase } from "./AutomationDatabase.ts";
  * followed by an unguarded effect. Guard rows are removed in the same batch.
  */
 export class AutomationAtomic {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -18,7 +20,7 @@ export class AutomationAtomic {
     condition: SQLLike,
     statements: SQLLike[],
   ) {
-    const id = crypto.randomUUID();
+    const id = this.crypto.randomUUID();
     const now = this.dateTime.nowISOString();
     const predicate =
       typeof condition === "string" ? sql.raw(condition) : condition.getSQL();

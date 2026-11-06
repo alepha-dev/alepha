@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { sql } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
@@ -19,6 +20,7 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
  * Each action/row gets its own cursor and bounded 100-delivery chunks.
  */
 export class AutomationRoster {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly database = $inject(AutomationDatabase);
@@ -171,7 +173,7 @@ export class AutomationRoster {
             result: {},
           }));
         const now = this.dateTime.nowISOString();
-        const runId = crypto.randomUUID();
+        const runId = this.crypto.randomUUID();
         await this.atomic.guarded(
           occurrence.projectId,
           this.claims.live(occurrence, token),

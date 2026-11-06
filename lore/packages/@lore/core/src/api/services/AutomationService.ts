@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -50,6 +51,7 @@ import { BoundParameters } from "./BoundParameters.ts";
  * Clients supply configuration and a revision, never execution identity.
  */
 export class AutomationService {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly outbox = $inject(AutomationNotificationOutbox);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -83,7 +85,7 @@ export class AutomationService {
       const body = automationWriteBodySchema.parse(input);
       const provenance = await this.access.provenance(user);
       const now = this.time.nowISOString();
-      const id = crypto.randomUUID();
+      const id = this.crypto.randomUUID();
       const candidate = {
         id,
         projectId,

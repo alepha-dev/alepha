@@ -1,4 +1,5 @@
 import { $inject, AlephaError, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { HttpClient, isHttpError } from "alepha/server";
@@ -32,6 +33,7 @@ import { LoreClientService } from "./LoreClientService.ts";
  * documents, one level lower.
  */
 export class ArtifactUploader {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly http = $inject(HttpClient);
   protected readonly client = $inject(LoreClientService);
@@ -148,7 +150,7 @@ export class ArtifactUploader {
     // parts are never scanned for it here - that is the receiver's job - so a
     // collision would corrupt the message silently, which is the one failure
     // mode a boundary has.
-    const boundary = `----alepha-artifact-${crypto.randomUUID()}`;
+    const boundary = `----alepha-artifact-${this.crypto.randomUUID()}`;
     const stream = await this.fs.readFileStream(input.archivePath);
     // Streamed the same way and for the same reason: a maps archive is the
     // larger half of what a build produces, which is why #1515 took it out of

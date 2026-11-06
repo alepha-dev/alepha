@@ -5,6 +5,7 @@ import {
   createPrimitive,
   Primitive,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import {
   DateTimeProvider,
   type Duration,
@@ -214,6 +215,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly jwt = $inject(JwtProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly log = $logger();
 
   public get name(): string {
@@ -422,7 +424,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // The session id travels inside the refresh token: `refresh()` reads
         // it back so the next access token keeps the same `sid` instead of
         // minting a fresh one per refresh.
-        sid = crypto.randomUUID();
+        sid = this.crypto.randomUUID();
         const payload = {
           sub: user.id,
           exp: iat + this.refreshTokenExpiration.asSeconds(),

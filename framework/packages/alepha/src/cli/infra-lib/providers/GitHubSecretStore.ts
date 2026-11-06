@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
-
 import { $inject, AlephaError } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
@@ -19,6 +18,7 @@ export class GitHubSecretStore implements SecretStoreProvider {
   protected readonly log = $logger();
   protected readonly shell = $inject(ShellProvider);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly crypto = $inject(CryptoProvider);
 
   /**
    * Verify that `gh` is installed and authenticated.
@@ -146,7 +146,7 @@ export class GitHubSecretStore implements SecretStoreProvider {
       "node_modules",
       ".alepha",
       "secrets",
-      randomUUID(),
+      this.crypto.randomUUID(),
     );
     await this.fs.mkdir(dir, { recursive: true, mode: 0o700 });
 

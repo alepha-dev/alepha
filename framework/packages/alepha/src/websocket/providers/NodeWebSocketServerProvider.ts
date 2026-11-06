@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 
 import {
@@ -10,6 +9,7 @@ import {
   SchemaValidator,
   type ZodString,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 
@@ -40,6 +40,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly roomManager = $inject(RoomManager);
   protected readonly topicService = $inject(WebSocketTopicService);
   protected readonly schemaValidator = $inject(SchemaValidator);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly log = $logger();
   protected readonly wsOptions = $store(websocketOptions);
 
@@ -56,7 +57,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
    * path already uses randomUUID.
    */
   protected createConnectionId(): string {
-    return `ws-${randomUUID()}`;
+    return `ws-${this.crypto.randomUUID()}`;
   }
 
   /**

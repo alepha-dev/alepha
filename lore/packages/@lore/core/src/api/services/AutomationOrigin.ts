@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
@@ -11,6 +12,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * caller's payload, before its execution row can become dispatchable.
  */
 export class AutomationOrigin {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly database = $inject(AutomationDatabase);
@@ -92,7 +94,7 @@ export class AutomationOrigin {
       for (const value of Array.isArray(data) ? data : [data]) {
         const row = value as Record<string, unknown>;
         const executionId =
-          typeof row.id === "string" ? row.id : crypto.randomUUID();
+          typeof row.id === "string" ? row.id : this.crypto.randomUUID();
         row.id = executionId;
         const now = this.time.nowISOString();
         await this.persistence.receipts.create({

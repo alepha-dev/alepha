@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   DatabaseProvider,
@@ -22,6 +23,7 @@ import type { ProjectMergeRenumber } from "./ProjectMergeService.ts";
  * number of a source item that keeps its own.
  */
 export class ProjectMergeNumbers {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly sequences = $inject(SequenceProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -81,7 +83,7 @@ export class ProjectMergeNumbers {
         ? sql`MAX(alepha_sequences.value, excluded.value)`
         : sql`GREATEST(alepha_sequences.value, excluded.value)`;
     return sql`INSERT INTO alepha_sequences (id, name, scope, value, created_at, updated_at)
-      VALUES (${crypto.randomUUID()}, ${name}, ${scope}, ${value}, ${at}, ${at})
+      VALUES (${this.crypto.randomUUID()}, ${name}, ${scope}, ${value}, ${at}, ${at})
       ON CONFLICT (name, scope) DO UPDATE SET value = ${highest}, updated_at = excluded.updated_at`;
   }
 }

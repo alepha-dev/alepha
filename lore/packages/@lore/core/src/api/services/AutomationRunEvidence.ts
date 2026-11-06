@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   DbCacheProvider,
@@ -33,6 +34,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * separate store and are never removed by the detail retention sweep.
  */
 export class AutomationRunEvidence {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly writes = $inject(AutomationConfigurationWrites);
   protected readonly cache = $inject(DbCacheProvider);
@@ -575,7 +577,7 @@ export class AutomationRunEvidence {
               projectId: rule.projectId,
               automationId: rule.id,
               ruleRevision: patch.revision ?? rule.revision,
-              occurrenceId: `health:${crypto.randomUUID()}`,
+              occurrenceId: `health:${this.crypto.randomUUID()}`,
               triggeredAt: now,
               finishedAt: now,
               status: prepared.status,

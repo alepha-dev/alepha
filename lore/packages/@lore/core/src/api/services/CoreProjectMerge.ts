@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
 
@@ -32,6 +33,7 @@ import {
  *   project, and the target's own is the one the merged project shows.
  */
 export class CoreProjectMerge {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly tables = $inject(ProjectMergeTables);
   protected readonly database = $inject(DatabaseProvider);
@@ -174,7 +176,7 @@ export class CoreProjectMerge {
         to: rank,
       });
       statements.push(
-        sql`INSERT INTO organization_members (id, created_at, updated_at, organization_id, user_id, rank) VALUES (${crypto.randomUUID()}, ${at}, ${at}, ${target}, ${member.userId}, ${rank})`,
+        sql`INSERT INTO organization_members (id, created_at, updated_at, organization_id, user_id, rank) VALUES (${this.crypto.randomUUID()}, ${at}, ${at}, ${target}, ${member.userId}, ${rank})`,
       );
     }
     return { changed, statements };
