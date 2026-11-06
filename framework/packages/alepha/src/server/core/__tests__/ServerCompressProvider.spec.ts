@@ -181,12 +181,72 @@ describe("ServerCompressProvider", () => {
 
     await alepha.stop();
   });
+
+  /**
+   * The chunks of one burst are compressed together, once (one zlib write
+   * per burst, not per chunk), and each burst is flushed: a stream that
+   * waits between parts, as an SSR page waits on a Suspense boundary, still
+   * delivers what it has before the wait.
+   */
+  for (const encoding of ["br", "gzip"]) {
+    it(`sends a ${encoding} stream's first burst before its second is produced`, async ({
+      expect,
+    }) => {
+      let secondProduced = false;
+      class WaitingApp {
+        stream = $route({
+          path: "/waiting",
+          handler: ({ reply }) => {
+            const encoder = new TextEncoder();
+            reply.setHeader("content-type", "text/html");
+            reply.body = new ReadableStream({
+              async start(controller) {
+                controller.enqueue(encoder.encode("<h1>Shell</h1>"));
+                controller.enqueue(encoder.encode("<p>first burst</p>"));
+                await new Promise((resolve) => setTimeout(resolve, 300));
+                secondProduced = true;
+                controller.enqueue(encoder.encode("<p>second burst</p>"));
+                controller.close();
+              },
+            });
+          },
+        });
+      }
+      const alepha = Alepha.create().with(AlephaServer).with(WaitingApp);
+      await alepha.start();
+      const server = alepha.inject(ServerProvider);
+
+      const response = await fetch(`${server.hostname}/waiting`, {
+        headers: { "Accept-Encoding": encoding },
+      });
+      expect(response.headers.get("content-encoding")).toBe(encoding);
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let early = "";
+      while (!early.includes("first burst")) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        early += decoder.decode(value, { stream: true });
+      }
+
+      expect(early).toContain("<h1>Shell</h1><p>first burst</p>");
+      expect(secondProduced).toBe(false);
+
+      let rest = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        rest += decoder.decode(value, { stream: true });
+      }
+      expect(early + rest).toBe(
+        "<h1>Shell</h1><p>first burst</p><p>second burst</p>",
+      );
+
+      await alepha.stop();
+    });
+  }
 });
 
-/**
- * RFC 9110 section 12.5.3. It used to take the first of zstd, br, gzip whose
- * name appeared anywhere in the header, weights ignored.
- */
 /**
  * A buffered body up to `SYNC_LIMIT` is compressed synchronously: the async
  * zlib call cost about twice the CPU on a small body. Above it the async path
@@ -248,6 +308,10 @@ describe("ServerCompressProvider sync and async paths", () => {
   }
 });
 
+/**
+ * RFC 9110 section 12.5.3. It used to take the first of zstd, br, gzip whose
+ * name appeared anywhere in the header, weights ignored.
+ */
 describe("ServerCompressProvider Accept-Encoding", () => {
   class TestCompressProvider extends ServerCompressProvider {
     public testPick = (header: string) => this.pickEncoding(header);
