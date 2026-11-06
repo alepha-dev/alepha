@@ -13,6 +13,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreEstateProvisioner } from "../services/LoreEstateProvisioner.ts";
 import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -20,6 +21,7 @@ import {
   type LoreRefusalContext,
   LoreRefusals,
 } from "../services/LoreRefusals.ts";
+import { EstateProviders } from "../services/providers/EstateProviders.ts";
 
 /**
  * `lore estate`: the machines a project deploys to, from a shell (#Q2699).
@@ -52,6 +54,8 @@ export class EstateCommand {
   protected readonly owned = $inject(LoreEstateResolver);
   protected readonly input = $inject(ConsoleInputProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly providers = $inject(EstateProviders);
+  protected readonly provisioner = $inject(LoreEstateProvisioner);
 
   /**
    * How often `estate wait` reads the estate again. A field so a spec can
@@ -139,6 +143,129 @@ export class EstateCommand {
         );
         print("");
         print(`  ${this.connectorCommand(minted.secret)}`);
+      });
+    },
+  });
+
+  /**
+   * `lore estate provision` (#Q3166, epic E116): buys a server from a
+   * provider through the provider's own CLI, enrols it through cloud-init
+   * with a one-time secret, and waits until it is online. No project is
+   * needed: the estate is the caller's, lent with `--project` (created when
+   * missing) or later with `lore estate lend`.
+   */
+  public readonly provision = $command({
+    name: "provision",
+    description:
+      "Buy a server from a cloud provider, install Bay on it and enrol it as one of your estates; waits until it is online",
+    flags: z.object({
+      provider: z
+        .text({
+          description:
+            "Where to buy the server (scaleway). Omit it to list the providers and what each needs",
+        })
+        .optional(),
+      name: z
+        .text({
+          description:
+            "The estate's slug. Default: three random words, e.g. small-skilled-pie",
+        })
+        .optional(),
+      project: z
+        .text({
+          aliases: ["p"],
+          description:
+            "Lend the estate to this project, created when it does not exist. Default: lent to none",
+        })
+        .optional(),
+      type: z
+        .text({
+          description: "The server type. Default: the provider's (DEV1-S)",
+        })
+        .optional(),
+      zone: z
+        .text({ description: "The zone. Default: the provider's (fr-par-1)" })
+        .optional(),
+      "allow-deploys": z
+        .boolean()
+        .describe(
+          "Accept deploys (on by default: a provisioned server exists to be deployed to); --no-allow-deploys for stats only",
+        )
+        .optional(),
+      timeout: z
+        .integer()
+        .min(1)
+        .describe(
+          "How long to wait for the server to come online, in seconds. Default 300.",
+        )
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const provider = this.providers.pick(flags.provider);
+        const json = flags.output === "json";
+        const done = await this.provisioner.provision(
+          {
+            provider,
+            ...(flags.name ? { name: flags.name } : {}),
+            ...(flags.project ? { project: flags.project } : {}),
+            type: flags.type ?? provider.defaults.type,
+            zone: flags.zone ?? provider.defaults.zone,
+            deployAllowed: flags["allow-deploys"] ?? true,
+            timeoutSeconds: flags.timeout ?? 300,
+          },
+          json ? () => {} : print,
+        );
+        if (json) {
+          this.render.json(print, done);
+        }
+        if (!done.online) {
+          throw new CommandError(
+            { exitCode: LoreRefusals.EXIT_FAILURE },
+            {
+              message: `${done.slug} is not online after ${flags.timeout ?? 300}s. The server ${done.serverId} is kept and still billing. Wait longer with: lore estate wait ${done.slug} --timeout 300. Or remove it: lore estate delete ${done.slug} --yes`,
+            },
+          );
+        }
+        if (json) {
+          return;
+        }
+        print("");
+        print(`${done.slug} is online.`);
+        print(
+          `  server   ${done.serverId} (${done.type}, ${done.zone}, ${done.provider})`,
+        );
+        print(
+          `  address  ${done.publicIp}, apps under https://<app>.${done.baseDomain}`,
+        );
+        if (done.hourlyPrice !== undefined) {
+          print(
+            `  price    about EUR ${done.hourlyPrice.toFixed(4)} an hour, billed until you delete it`,
+          );
+        }
+        print(
+          `  deploys  ${done.deployAllowed ? "allowed" : "off (stats only)"}`,
+        );
+        print("");
+        if (done.project) {
+          print(`Lent to ${done.project}. Next, in an app of that project:`);
+          print(
+            `  alepha init ${done.project} --infra lore   (or an existing app linked to it)`,
+          );
+          print("  alepha deploy");
+        } else {
+          print(
+            "Lent to no project. Lend it to one, then deploy from an app of that project:",
+          );
+          print(`  lore estate lend ${done.slug} --project <project>`);
+          print("  alepha deploy");
+        }
+        print("");
+        print(
+          `When you are done: lore estate delete ${done.slug} --yes (terminates the server, its IP and its disk)`,
+        );
       });
     },
   });
@@ -533,8 +660,9 @@ export class EstateCommand {
   public readonly estate = $command({
     name: "estate",
     description:
-      "The machines this project deploys to: add one, list them, read one, wait for it, read its stats, update, rotate or delete it",
+      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, update, rotate or delete it",
     children: [
+      this.provision,
       this.add,
       this.list,
       this.get,

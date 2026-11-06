@@ -20,6 +20,40 @@ app copy that pointed at one is left with no estate.
 Your estates live on the **Estates** page of your account, under **Lore**
 (`/account/estates`). It lists every estate you own, across every project.
 
+### A server bought for you
+
+`lore estate provision` buys the server too. It drives the provider's own CLI,
+the one you installed and logged in with, so Lore never holds a key to your
+cloud account:
+
+```bash
+brew install scw && scw login       # once
+lore estate provision --provider scaleway --project hello-world
+```
+
+In about three minutes, with no SSH and no page:
+
+1. The server is created (a DEV1-S in fr-par-1 unless `--type` and `--zone`
+   say otherwise) with its own public IP.
+2. On first boot it installs Docker and Bay and enrols with a one-time
+   enrolment secret, which Bay exchanges for the estate's own secret before it
+   connects. The enrolment secret is the only one in the server's user data,
+   and it stops working once the machine has connected.
+3. Its apps are named under `<ip-with-dashes>.sslip.io`, which resolves to it
+   with no DNS to set up, and Bay obtains each certificate on first request.
+4. The command waits until the machine is online (`--timeout`, 300 seconds by
+   default) and prints its address, its price, and what to run next.
+
+The estate is named with three random words unless you pass `--name`. It
+accepts deploys (`--no-allow-deploys` for a stats-only machine). `--project`
+lends it to that project, creating the project when it does not exist; without
+it the estate is lent to none, and you lend it later. Run it without
+`--provider` to list the providers and what each needs.
+
+If anything fails after the server exists, the command terminates it before
+answering; if that fails too, it keeps the estate and prints the command that
+finishes the job, so no server bills where you cannot see it.
+
 ### A Bay estate
 
 Create the estate on the Estates page, from a project's **Settings ▸ Apps ▸

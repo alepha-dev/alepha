@@ -14,6 +14,7 @@ import {
   type EstateInventoryResource,
   estateInventoryResourceSchema,
 } from "../schemas/estateInventoryResourceSchema.ts";
+import { estateProvisionBodySchema } from "../schemas/estateProvisionBodySchema.ts";
 import {
   type EstateResource,
   estateResourceSchema,
@@ -455,6 +456,44 @@ export class EstateController {
         enrolmentExpiresAt: expiresAt,
       });
       return { secret: minted.secret, expiresAt };
+    },
+  });
+
+  /**
+   * Record the server `lore estate provision` bought for a bay estate
+   * (#Q3166): the provider, the server's id, type and zone, and the hourly
+   * price read from the catalogue. Lore holds no provider key, so this is a
+   * record and nothing more: the CLI creates and terminates the server.
+   */
+  recordEstateProvision = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/provision",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      body: estateProvisionBodySchema,
+      response: estateResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (estate.type !== "bay") {
+        throw new BadRequestError(
+          "Only a bay estate runs on a server Lore provisions",
+        );
+      }
+      await this.estates.updateById(estate.id, {
+        provider: body.provider,
+        providerServerId: body.serverId,
+        providerServerType: body.type,
+        providerZone: body.zone,
+        ...(body.hourlyPrice === undefined
+          ? {}
+          : { hourlyPrice: body.hourlyPrice }),
+        provisionedAt: new Date(this.dateTime.nowMillis()).toISOString(),
+      });
+      return this.service.toResource(
+        await this.service.loadOwned(params.estateId, user),
+      );
     },
   });
 

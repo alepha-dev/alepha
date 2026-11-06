@@ -180,6 +180,7 @@ describe("the Lore CLI command surface", () => {
         "capability",
       ],
       estate: [
+        "provision",
         "add",
         "list",
         "get",

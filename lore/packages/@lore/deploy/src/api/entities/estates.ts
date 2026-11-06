@@ -218,6 +218,23 @@ export const estates = $entity({
      */
     enrolmentExpiresAt: z.string().optional(),
     /**
+     * The provider a `lore estate provision` bought the server from
+     * (`scaleway`, #Q3166), absent for a machine enrolled by hand. Lore
+     * holds no key for it: the CLI terminates the server through the
+     * provider's own CLI, so these columns are what it needs to name the
+     * server, and what the estate page shows (#Q3168).
+     */
+    provider: z.string().max(32).optional(),
+    providerServerId: z.string().max(128).optional(),
+    providerServerType: z.string().max(64).optional(),
+    providerZone: z.string().max(64).optional(),
+    /**
+     * The server type's hourly price in euros, read from the provider's
+     * catalogue once at provision and stored, never refetched.
+     */
+    hourlyPrice: z.number().min(0).optional(),
+    provisionedAt: z.string().optional(),
+    /**
      * The live gauge, upserted on every stats push. A point value, never a
      * series: "CPU is 34% right now" is this row, "CPU over 30 days" is
      * `$analytics` (#1627).

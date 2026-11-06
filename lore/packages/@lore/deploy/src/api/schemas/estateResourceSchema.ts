@@ -54,6 +54,13 @@ export const estateResourceSchema = estates.schema
     lastSeenAt: true,
     publicIp: true,
     expiresAt: true,
+    // A server `lore estate provision` bought (#Q3166).
+    provider: true,
+    providerServerId: true,
+    providerServerType: true,
+    providerZone: true,
+    hourlyPrice: true,
+    provisionedAt: true,
     cpuPercent: true,
     memoryPercent: true,
     statsAt: true,
