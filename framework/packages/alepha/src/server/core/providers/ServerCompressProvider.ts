@@ -331,114 +331,113 @@ export class ServerCompressProvider {
   }
 
   /**
-   * Create a compressed stream that flushes after each chunk.
-   * This is essential for streaming SSR - ensures each chunk is sent immediately.
+   * A streamed body compressed as it comes, flushed after each burst so a
+   * streaming SSR page reaches the browser part by part, as rendered.
    */
   protected createFlushingCompressStream(
     input: ReadableStream,
     createCompressor: (options?: any) => Transform,
     encoding: string,
     params: Record<number, any>,
-  ): ReadableStream<Uint8Array> {
-    const compressor = createCompressor({
-      params,
-      flush:
-        encoding === "br"
-          ? zlib.constants.BROTLI_OPERATION_FLUSH
-          : zlib.constants.Z_SYNC_FLUSH,
-    });
+  ): Transform {
+    // No `flush` mode on the compressor itself: that flushes on EVERY write.
+    const compressor = createCompressor({ params });
     const reader = Readable.fromWeb(input);
+    const zlibStream = compressor as any;
 
-    // `settled` gates every controller call: once the consumer has gone away
-    // (cancel) or the stream has ended, touching the controller throws — and
-    // it used to throw from inside a 'data' listener, where nothing could
-    // catch it.
-    let settled = false;
+    // React hands an SSR stream over in many small chunks (21 for a 20 KB
+    // page), and every write to a zlib stream is its own pass through the
+    // thread pool: compression cost four times what it does for the same
+    // page piped from Express, which writes zlib 6 times. The chunks of one
+    // burst are collected and written once, on the next `setImmediate`, then
+    // flushed. React renders everything it can in one turn and then waits
+    // (a Suspense boundary, a slow loader), so each burst still reaches the
+    // browser before the wait: streaming SSR keeps working, in one block per
+    // burst instead of one per chunk.
+    let pending: Uint8Array[] = [];
+    let scheduled = false;
+    // The source ended or failed, or the compressor closed (a client that
+    // left): nothing is written any more.
+    let done = false;
 
-    const teardown = () => {
-      if (settled) {
-        return;
+    const writePending = (): boolean => {
+      if (pending.length === 0) {
+        return true;
       }
-      settled = true;
-      reader.destroy();
-      compressor.destroy();
+      const chunk =
+        pending.length === 1
+          ? Buffer.from(
+              pending[0].buffer,
+              pending[0].byteOffset,
+              pending[0].byteLength,
+            )
+          : Buffer.concat(pending);
+      pending = [];
+      return compressor.write(chunk);
     };
 
-    return new ReadableStream<Uint8Array>({
-      start(controller) {
-        compressor.on("data", (chunk: Buffer) => {
-          if (settled) {
-            return;
-          }
-          try {
-            controller.enqueue(new Uint8Array(chunk));
-          } catch {
-            // Consumer cancelled mid-stream.
-            teardown();
-            return;
-          }
-          // Backpressure: stop pulling from the source while the consumer is
-          // behind. Without this a slow client plus a large SSR stream
-          // buffered without bound. `pull` resumes us.
-          if ((controller.desiredSize ?? 1) <= 0) {
-            reader.pause();
-          }
-        });
+    const burst = () => {
+      scheduled = false;
+      if (done) {
+        return;
+      }
+      const ready = writePending();
+      if (encoding === "gzip") {
+        zlibStream.flush(zlib.constants.Z_SYNC_FLUSH);
+      } else if (encoding === "br") {
+        zlibStream.flush(zlib.constants.BROTLI_OPERATION_FLUSH);
+      } else if (encoding === "zstd") {
+        zlibStream.flush();
+      }
+      // Backpressure: the client is behind, stop pulling the render.
+      if (!ready) {
+        reader.pause();
+      }
+    };
 
-        compressor.on("end", () => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          controller.close();
-        });
-
-        compressor.on("error", (err) => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          controller.error(err);
-        });
-
-        reader.on("data", (chunk: Buffer) => {
-          if (settled) {
-            return;
-          }
-          compressor.write(chunk);
-          // Force flush after each chunk for streaming
-          // Cast to any because flush() exists on zlib streams but not in Transform type
-          const zlibStream = compressor as any;
-          if (encoding === "gzip") {
-            zlibStream.flush(zlib.constants.Z_SYNC_FLUSH);
-          } else if (encoding === "br") {
-            zlibStream.flush(zlib.constants.BROTLI_OPERATION_FLUSH);
-          } else if (encoding === "zstd") {
-            zlibStream.flush();
-          }
-        });
-
-        reader.on("end", () => {
-          if (!settled) {
-            compressor.end();
-          }
-        });
-
-        reader.on("error", (err) => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          controller.error(err);
-        });
-      },
-      pull() {
-        reader.resume();
-      },
-      cancel() {
-        teardown();
-      },
+    reader.on("data", (chunk: Uint8Array) => {
+      if (done) {
+        return;
+      }
+      pending.push(chunk);
+      if (!scheduled) {
+        scheduled = true;
+        setImmediate(burst);
+      }
     });
+    // `end` compresses and flushes what is left; a burst still scheduled
+    // then finds nothing to do.
+    reader.once("end", () => {
+      if (done) {
+        return;
+      }
+      done = true;
+      writePending();
+      compressor.end();
+    });
+    reader.once("error", (error) => {
+      if (done) {
+        return;
+      }
+      done = true;
+      compressor.destroy(error);
+    });
+    compressor.on("drain", () => {
+      reader.resume();
+    });
+    // The server destroys the compressor when the client leaves: stop the
+    // source, which cancels the render.
+    compressor.once("close", () => {
+      done = true;
+      reader.destroy();
+    });
+
+    // The compressor itself is the body: a Node stream every server path
+    // takes (Node pipes it into the socket, a Web server converts it once).
+    // Re-wrapping its output in a Web ReadableStream copied every chunk into
+    // a fresh Uint8Array, and the Node server then read it back one promise
+    // per chunk.
+    return compressor;
   }
 
   protected getParams(

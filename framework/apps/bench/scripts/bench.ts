@@ -18,6 +18,9 @@ import { parseArgs } from "node:util";
  *   yarn bench                                  # every endpoint, 7 pairs
  *   yarn bench --endpoints user,create --pairs 5
  *   yarn bench --runtime bun                    # both servers on Bun
+ *
+ * `--alepha` and `--express` name other server entries, relative to this
+ * workspace: `ssr/` uses them for its page (see ssr/README.md).
  */
 const { values: args } = parseArgs({
   options: {
@@ -26,6 +29,8 @@ const { values: args } = parseArgs({
     concurrency: { type: "string", default: "32" },
     endpoints: { type: "string", default: "ping,hello,user,listbr,create" },
     runtime: { type: "string", default: "node" },
+    alepha: { type: "string", default: "src/main.ts" },
+    express: { type: "string", default: "express/main.js" },
   },
 });
 
@@ -58,6 +63,14 @@ const endpoints: Record<string, (base: string) => string[]> = {
     "-D",
     body,
     `${base}/api/users`,
+  ],
+  // A server-rendered page (ssr/), as a browser asks for it.
+  page: (base) => [
+    "-m",
+    "GET",
+    "-H",
+    "accept-encoding: gzip, deflate, br",
+    `${base}/`,
   ],
 };
 
@@ -137,9 +150,9 @@ const median = (values: number[]) => {
 
 const servers: Server[] = [];
 try {
-  const express = await start("express", join(root, "express/main.js"));
+  const express = await start("express", join(root, args.express));
   servers.push(express);
-  const alepha = await start("alepha", join(root, "src/main.ts"));
+  const alepha = await start("alepha", join(root, args.alepha));
   servers.push(alepha);
 
   console.log(

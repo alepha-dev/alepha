@@ -1,11 +1,15 @@
-// Express 5 doing the same job as bench/hello-api/main.ts:
-// - zod validation of params, query and body, and of the response (as Alepha's codec does)
+// Express 5 doing the same job as src/app.ts:
+// - zod validation of params, query and body, and of the response (Alepha
+//   validates responses outside production; in production it shapes and
+//   type-checks them, without the constraint checks this one still runs)
 // - JSON body parsing
 // - the same four security headers as ServerHelmetProvider (helmet, trimmed to them)
 // - compression: 1 KiB threshold, brotli q4 (the `compression` defaults)
 // - a request id (x-request-id or randomUUID) held in AsyncLocalStorage for the request
 // - an AbortSignal aborted when the client disconnects
-// - two JSON log lines per request, written synchronously to stdout, with key redaction
+// - one JSON log line per request ("Request completed", with agent and ip, as
+//   Alepha writes in production), written synchronously to stdout, with key
+//   redaction
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 
@@ -47,18 +51,6 @@ app.use((req, res, next) => {
   req.abortSignal = controller.signal;
   const start = Date.now();
   als.run({ context }, () => {
-    log.info(
-      {
-        context,
-        data: {
-          method: req.method,
-          path: req.originalUrl,
-          agent: req.headers["user-agent"],
-          ip: req.ip,
-        },
-      },
-      "Incoming request",
-    );
     res.once("finish", () => {
       log.info(
         {
@@ -68,6 +60,8 @@ app.use((req, res, next) => {
             path: req.originalUrl,
             status: res.statusCode,
             duration: Date.now() - start,
+            agent: req.headers["user-agent"],
+            ip: req.ip,
           },
         },
         "Request completed",

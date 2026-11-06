@@ -395,13 +395,12 @@ export class ServerProvider {
       res.once("close", onClientGone);
 
       const reader = response.body.getReader();
+      // Built once: it was a new promise on every chunk.
+      const gone = disconnected.then(() => undefined);
 
       try {
         while (!clientGone) {
-          const next = await Promise.race([
-            reader.read(),
-            disconnected.then(() => undefined),
-          ]);
+          const next = await Promise.race([reader.read(), gone]);
 
           if (!next || next.done) {
             break;
