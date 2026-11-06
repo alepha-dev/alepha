@@ -53,6 +53,50 @@ export class EstateTokenService {
   }
 
   /**
+   * What an enrolment secret starts with (#Q3165): `bay connector set` reads
+   * it to know it must exchange the secret before storing anything.
+   */
+  public static readonly ENROLMENT_PREFIX = "enr_";
+
+  /**
+   * How long an enrolment secret is accepted. Long enough for a server to
+   * boot, install Docker and Bay and enrol (2.5 minutes on the prototype of
+   * #Q3139), short enough that one read from user data a day later is dead.
+   */
+  public static readonly ENROLMENT_TTL_MILLIS = 30 * 60_000;
+
+  /**
+   * Mints an enrolment secret, returning its only cleartext copy.
+   */
+  async mintEnrolment(): Promise<{ secret: string; hash: string }> {
+    const secret = `${EstateTokenService.ENROLMENT_PREFIX}${this.crypto.randomText(32)}`;
+    return { secret, hash: await this.crypto.hash(secret) };
+  }
+
+  /**
+   * Resolves an enrolment secret to its estate while it is still accepted:
+   * the estate has not connected with a long-lived secret since, and the
+   * secret has not expired. `undefined` otherwise, for every case alike.
+   */
+  async verifyEnrolment(
+    secret: string | undefined,
+    nowMillis: number,
+  ): Promise<Estate | undefined> {
+    if (!secret?.startsWith(EstateTokenService.ENROLMENT_PREFIX)) {
+      return undefined;
+    }
+    const estate = await this.estates.findOne({
+      where: { enrolmentHash: { eq: await this.crypto.hash(secret) } },
+    });
+    if (!estate?.enrolmentExpiresAt) {
+      return undefined;
+    }
+    return Date.parse(estate.enrolmentExpiresAt) > nowMillis
+      ? estate
+      : undefined;
+  }
+
+  /**
    * Resolves a secret to the estate it belongs to.
    *
    * `undefined` for a missing secret and an unknown one alike: telling a

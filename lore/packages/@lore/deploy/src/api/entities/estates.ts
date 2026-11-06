@@ -205,6 +205,19 @@ export const estates = $entity({
      */
     notifiedOverdueAt: z.string().optional(),
     /**
+     * The hash of a one-time enrolment secret (`enr_`, #Q3165), the one a
+     * provisioned server's cloud-init carries. User data is readable through
+     * the metadata service, so what sits there must be worthless once used:
+     * `bay connector set` exchanges it for the long-lived secret over
+     * `POST /estates/enrol`, and the first handshake made with that secret
+     * clears this column. Never accepted by the handshake itself.
+     */
+    enrolmentHash: z.string().max(256).optional(),
+    /**
+     * When the enrolment secret stops being accepted, ISO.
+     */
+    enrolmentExpiresAt: z.string().optional(),
+    /**
      * The live gauge, upserted on every stats push. A point value, never a
      * series: "CPU is 34% right now" is this row, "CPU over 30 days" is
      * `$analytics` (#1627).
@@ -217,6 +230,8 @@ export const estates = $entity({
     { columns: ["ownerUserId", "slug"], unique: true },
     // The handshake resolves a secret by its hash and by nothing else.
     { columns: ["secretHash"], unique: true },
+    // The enrolment exchange resolves its secret the same way.
+    { columns: ["enrolmentHash"], unique: true },
   ],
 });
 

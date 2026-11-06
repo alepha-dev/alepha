@@ -585,3 +585,105 @@ describe("EstateSocketController, events", () => {
     ).toBe(false);
   });
 });
+
+/**
+ * The one-time enrolment secret (#Q3165): what a provisioned server's
+ * cloud-init carries, exchanged over HTTP for the long-lived secret, and
+ * dead once the machine has connected with that.
+ */
+describe("EstateEnrolController, the enrolment exchange", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  const exchange = (secret: string) =>
+    fetch(
+      ctx.url
+        .replace("ws://", "http://")
+        .replace(EstateSocketController.PATH, "/estates/enrol"),
+      { method: "POST", headers: { authorization: `Bearer ${secret}` } },
+    );
+
+  it("exchanges the enrolment secret for one the socket accepts, and retires it on that first dial", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "prov-1");
+    const enrolment = await ctx.estateApi.createEstateEnrolment(
+      { params: { estateId: minted.id } },
+      { user: owner },
+    );
+    expect(enrolment.secret).toMatch(/^enr_/);
+
+    // The socket never takes an enrolment secret itself.
+    expect(await refusal(ctx, enrolment.secret)).toBe(401);
+
+    const answer = await exchange(enrolment.secret);
+    expect(answer.status).toBe(200);
+    const body = (await answer.json()) as { secret: string; slug: string };
+    expect(body.slug).toBe("prov-1");
+    expect(body.secret).toMatch(/^est_/);
+    // The secret the estate was created with is gone.
+    expect(await refusal(ctx, minted.secret)).toBe(401);
+
+    const client = await connect(ctx, body.secret);
+    await hello(client);
+    await close(client);
+
+    expect((await rowOf(ctx, minted.id)).enrolmentHash).toBeUndefined();
+    expect((await exchange(enrolment.secret)).status).toBe(401);
+  });
+
+  it("survives a crash before the first dial: a second exchange mints again and retires the first", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "prov-2");
+    const enrolment = await ctx.estateApi.createEstateEnrolment(
+      { params: { estateId: minted.id } },
+      { user: owner },
+    );
+
+    const first = (await (await exchange(enrolment.secret)).json()) as {
+      secret: string;
+    };
+    const second = (await (await exchange(enrolment.secret)).json()) as {
+      secret: string;
+    };
+    expect(second.secret).not.toBe(first.secret);
+    expect(await refusal(ctx, first.secret)).toBe(401);
+
+    const client = await connect(ctx, second.secret);
+    await close(client);
+  });
+
+  it("refuses an expired, unknown or long-lived secret with 401 and hands over nothing", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "prov-3");
+    const enrolment = await ctx.estateApi.createEstateEnrolment(
+      { params: { estateId: minted.id } },
+      { user: owner },
+    );
+    await ctx.repos.estates.updateById(minted.id, {
+      enrolmentExpiresAt: new Date(0).toISOString(),
+    });
+
+    const expired = await exchange(enrolment.secret);
+    expect(expired.status).toBe(401);
+    expect(await expired.text()).not.toContain("est_");
+    expect((await exchange("enr_nope")).status).toBe(401);
+    expect((await exchange(minted.secret)).status).toBe(401);
+
+    // Nothing moved: the secret the estate already had still connects.
+    const client = await connect(ctx, minted.secret);
+    await close(client);
+  });
+});

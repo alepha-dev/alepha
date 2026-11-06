@@ -9,6 +9,7 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 import { estates } from "../entities/estates.ts";
 import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
 import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
+import { estateEnrolmentSchema } from "../schemas/estateEnrolmentSchema.ts";
 import {
   type EstateInventoryResource,
   estateInventoryResourceSchema,
@@ -419,6 +420,41 @@ export class EstateController {
 
       const rotated = await this.service.loadOwned(params.estateId, user);
       return { ...this.service.toResource(rotated), secret: minted.secret };
+    },
+  });
+
+  /**
+   * Mint a one-time enrolment secret for a bay estate (#Q3165), the one
+   * `lore estate provision` puts in a server's cloud-init. Valid
+   * {@link EstateTokenService.ENROLMENT_TTL_MILLIS}, and until the machine
+   * first connects with the long-lived secret it is exchanged for. Minting
+   * another replaces the previous one; the long-lived secret is untouched
+   * until a machine exchanges it.
+   */
+  createEstateEnrolment = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/enrolment",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateEnrolmentSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (estate.type !== "bay") {
+        throw new BadRequestError(
+          "Only a bay estate enrols a machine; a cloudflare estate holds a token instead",
+        );
+      }
+      const minted = await this.tokens.mintEnrolment();
+      const expiresAt = new Date(
+        this.dateTime.nowMillis() + EstateTokenService.ENROLMENT_TTL_MILLIS,
+      ).toISOString();
+      await this.estates.updateById(estate.id, {
+        enrolmentHash: minted.hash,
+        enrolmentExpiresAt: expiresAt,
+      });
+      return { secret: minted.secret, expiresAt };
     },
   });
 

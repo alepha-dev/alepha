@@ -96,6 +96,14 @@ export class EstateSocketController {
       if (publicIp && publicIp !== estate.publicIp) {
         await this.estates.updateById(estate.id, { publicIp });
       }
+      // The first dial with a long-lived secret retires the enrolment secret
+      // it was exchanged for (#Q3165): from here the one in user data is dead.
+      if (estate.enrolmentHash) {
+        await this.estates.updateById(estate.id, {
+          enrolmentHash: null,
+          enrolmentExpiresAt: null,
+        });
+      }
       return { roomId: estate.id };
     },
     onConnect: async ({ connectionId, roomIds }) => {

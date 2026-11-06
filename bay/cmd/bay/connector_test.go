@@ -253,3 +253,66 @@ func TestControlConnectorReportReflectsTheLiveStatus(t *testing.T) {
 		t.Fatalf("the report must read the live status: %+v", report)
 	}
 }
+
+// A one-time enrolment secret (#Q3165) is exchanged before anything is
+// stored: the file holds the long-lived secret Lore answered, and neither is
+// printed.
+func TestConnectorSetExchangesAnEnrolmentSecretBeforeStoring(t *testing.T) {
+	const enrolment = "enr_0123456789abcdef0123456789abcdef"
+	var gotAuth string
+	lore := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != connector.EnrolPath {
+			http.NotFound(w, r)
+			return
+		}
+		gotAuth = r.Header.Get("Authorization")
+		_ = json.NewEncoder(w).Encode(connector.Enrolled{Secret: testSecret, Slug: "small-skilled-pie"})
+	}))
+	defer lore.Close()
+
+	store := connector.NewStore(servedRoot(t))
+	var out bytes.Buffer
+	if err := connectorSetWith(store, []string{lore.URL, enrolment}, &out, lore.Client()); err != nil {
+		t.Fatal(err)
+	}
+	if gotAuth != "Bearer "+enrolment {
+		t.Fatalf("exchange sent %q", gotAuth)
+	}
+	cfg, ok, err := store.Load()
+	if err != nil || !ok || cfg.Secret != testSecret {
+		t.Fatalf("stored %+v ok=%v err=%v, want the exchanged secret", cfg, ok, err)
+	}
+	printed := out.String()
+	if strings.Contains(printed, enrolment) || strings.Contains(printed, testSecret) {
+		t.Fatalf("a secret was printed: %s", printed)
+	}
+	if !strings.Contains(printed, "enrolled as estate small-skilled-pie") {
+		t.Fatalf("missing the estate it joined: %s", printed)
+	}
+}
+
+// A refused enrolment stores nothing and says what to do.
+func TestConnectorSetStoresNothingWhenTheEnrolmentIsRefused(t *testing.T) {
+	lore := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer lore.Close()
+
+	store := connector.NewStore(servedRoot(t))
+	err := connectorSetWith(store, []string{lore.URL, "enr_0123456789abcdef"}, &bytes.Buffer{}, lore.Client())
+	if err == nil || !strings.Contains(err.Error(), "expired") {
+		t.Fatalf("want a refusal naming expiry, got %v", err)
+	}
+	if _, ok, _ := store.Load(); ok {
+		t.Fatal("a refused enrolment stored a connector")
+	}
+}
+
+// The enrolment secret never goes to a cleartext sink off the machine.
+func TestConnectorSetNeverExchangesOverCleartext(t *testing.T) {
+	store := connector.NewStore(servedRoot(t))
+	err := connectorSetWith(store, []string{"http://lore.alepha.dev", "enr_0123456789abcdef"}, &bytes.Buffer{}, nil)
+	if err == nil || !strings.Contains(err.Error(), "cleartext") {
+		t.Fatalf("want the cleartext refusal, got %v", err)
+	}
+}

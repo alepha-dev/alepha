@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
 )
@@ -67,10 +68,33 @@ func positionals(args []string) []string {
 }
 
 func connectorSet(store *connector.Store, args []string, out io.Writer) error {
+	return connectorSetWith(store, args, out, nil)
+}
+
+// connectorSetWith is connectorSet with the HTTP client the enrolment
+// exchange uses, so a spec can point it at a fake Lore.
+func connectorSetWith(store *connector.Store, args []string, out io.Writer, client *http.Client) error {
 	if len(args) != 2 {
 		return errors.New("usage: bay connector set <lore-url> <secret>")
 	}
-	if err := store.Set(connector.Config{Sink: args[0], Secret: args[1]}); err != nil {
+	secret := args[1]
+	if connector.IsEnrolment(secret) {
+		// A one-time enrolment secret (#Q3165): exchanged before anything is
+		// stored, over a sink checked first so it never crosses in clear.
+		sink, err := connector.ValidateSink(args[0])
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		enrolled, err := connector.Exchange(ctx, client, sink, secret)
+		if err != nil {
+			return err
+		}
+		secret = enrolled.Secret
+		fmt.Fprintf(out, "enrolled as estate %s: the one-time enrolment secret was exchanged, and stops working once this machine connects\n", enrolled.Slug)
+	}
+	if err := store.Set(connector.Config{Sink: args[0], Secret: secret}); err != nil {
 		return err
 	}
 	cfg, _, err := store.Load()

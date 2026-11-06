@@ -17,6 +17,10 @@
 #   curl -sSL https://alepha.dev/bay/install.sh \
 #     | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
 #
+# LORE_ESTATE_SECRET may also be a one-time enrolment secret (`enr_...`, what
+# `lore estate provision` puts in cloud-init): `bay connector set` exchanges it
+# for the estate's own secret before storing anything.
+#
 # With both set, after the binary it writes the systemd unit INSTALL.md
 # documents (unless one exists), starts it, waits for `bay serve` to write
 # state.json and open its control socket, and runs `bay connector set`. The

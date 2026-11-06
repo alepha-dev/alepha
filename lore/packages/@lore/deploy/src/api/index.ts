@@ -13,6 +13,7 @@ import { DeliveryReportsController } from "./controllers/DeliveryReportsControll
 import { DeployController } from "./controllers/DeployController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
+import { EstateEnrolController } from "./controllers/EstateEnrolController.ts";
 import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
@@ -257,6 +258,7 @@ export const LoreDeployApi = $module({
     BackupController,
     EstateSocketController,
     EstatePullController,
+    EstateEnrolController,
     AdminEstateController,
     SigilAnalyticsController,
     InsightsController,
@@ -276,6 +278,7 @@ export { BlightController } from "./controllers/BlightController.ts";
 export { DeployController } from "./controllers/DeployController.ts";
 export { EstateCommandController } from "./controllers/EstateCommandController.ts";
 export { EstateController } from "./controllers/EstateController.ts";
+export { EstateEnrolController } from "./controllers/EstateEnrolController.ts";
 export { EstateSocketController } from "./controllers/EstateSocketController.ts";
 export { InsightsController } from "./controllers/InsightsController.ts";
 export { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
