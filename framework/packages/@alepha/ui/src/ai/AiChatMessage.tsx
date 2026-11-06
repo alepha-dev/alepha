@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { Check, X } from "lucide-react";
+import { Ban, Check, X } from "lucide-react";
 
 import { cn } from "../core/utils.ts";
 import {
@@ -26,7 +26,7 @@ export interface AiChatMessageProps {
  */
 export type AiChatToolLabel = (
   name: string,
-  state: "running" | "done" | "failed",
+  state: "running" | "done" | "failed" | "denied",
 ) => string | undefined;
 
 /**
@@ -39,20 +39,25 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
 
   if (item.role === "tool") {
     const name = item.name ?? "";
+    const state = item.denied ? "denied" : item.isError ? "failed" : "done";
     const label =
-      props.toolLabel?.(name, item.isError ? "failed" : "done") ??
-      (item.isError
-        ? tr("ai.chat.toolFailed", { default: "$1 failed", args: [name] })
-        : tr("ai.chat.toolDone", { default: "Ran $1", args: [name] }));
+      props.toolLabel?.(name, state) ??
+      (state === "denied"
+        ? tr("ai.chat.toolDenied", { default: "$1 cancelled", args: [name] })
+        : state === "failed"
+          ? tr("ai.chat.toolFailed", { default: "$1 failed", args: [name] })
+          : tr("ai.chat.toolDone", { default: "Ran $1", args: [name] }));
     return (
       <div
         data-testid="ai-chat-tool"
         className={cn(
           "text-muted-foreground flex items-center gap-1.5 px-0.5 text-xs",
-          item.isError && "text-danger-text",
+          state === "failed" && "text-danger-text",
         )}
       >
-        {item.isError ? (
+        {state === "denied" ? (
+          <Ban className="size-3.5 shrink-0" />
+        ) : state === "failed" ? (
           <X className="size-3.5 shrink-0" />
         ) : (
           <Check className="text-success-text size-3.5 shrink-0" />

@@ -50,6 +50,8 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
   const [error, setError] = useState<string | undefined>();
   // The id the next request uses, ahead of the render that shows it.
   const idRef = useRef<string | undefined>(options.conversationId);
+  // Calls the user denied, so their result reads as cancelled, not failed.
+  const deniedRef = useRef(new Set<string>());
   const counter = useRef(0);
 
   const push = useCallback((item: Omit<AiChatItem, "id">) => {
@@ -135,6 +137,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
               content: "",
               name: event.name,
               isError: event.isError,
+              denied: Boolean(
+                event.callId && deniedRef.current.has(event.callId),
+              ),
             });
           } else if (event.type === "confirm") {
             setPending({
@@ -220,6 +225,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
         }
         setError(undefined);
         const callId = pending.callId;
+        if (decision === "deny") {
+          deniedRef.current.add(callId);
+        }
         setPending(undefined);
         const stream = await api.resume(
           { params: { id: idRef.current }, body: { callId, decision } },
@@ -252,6 +260,10 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
             content: message.content,
             name: message.name,
             isError: message.isError,
+            // `alepha/ai`'s AI_CALL_DENIED: a stored denial keeps this text.
+            denied:
+              message.role === "tool" &&
+              message.content === "Denied by the user.",
           })),
         );
         setPending(detail.conversation.pendingCall);
@@ -328,6 +340,11 @@ export interface AiChatItem {
    */
   name?: string;
   isError?: boolean;
+  /**
+   * A `tool` line the user refused on its confirmation card: an error to the
+   * model, a cancellation to the user.
+   */
+  denied?: boolean;
 }
 
 /**
