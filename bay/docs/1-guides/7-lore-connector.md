@@ -30,6 +30,18 @@ anything on the host.
 
 ## Enrolling
 
+A fresh server installs Bay, starts it under systemd and enrols it in one line,
+when `install.sh` is given the Lore URL and the estate's secret:
+
+```bash
+curl -sSL https://alepha.dev/bay/install.sh \
+  | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+```
+
+The installer writes the unit from the installation guide unless one exists,
+waits for `bay serve`, runs `bay connector set`, and never prints the secret.
+On a host already running Bay:
+
 1. In Lore, create an estate under `/account/estates`. The secret is shown
    **once**.
 2. On the host, as root:

@@ -247,8 +247,22 @@ instant it is queued, and what the machine is running shows on a page. Nothing l
 machine dials OUT, there is no inbound port, and the secret it dials with authenticates the machine
 and grants nothing on this host.
 
-On Lore, create an **estate** under `/account/estates`. The secret is shown once. Then, on the
-host, as root:
+**A fresh server, in one line.** With `LORE_URL` and `LORE_ESTATE_SECRET` set, `install.sh` does
+steps 2 to 4 and this one: it installs the binary, writes the unit of step 3 (unless one exists,
+`--addr :80 --tls --tls-addr :443`, plus `BAY_BASE_DOMAIN` and `BAY_ACME_EMAIL` when set), starts it,
+waits up to 30 s for `state.json` and the control socket, and runs `bay connector set`. It never
+prints the secret. Without systemd it installs the binary and stops with the two commands to run.
+
+```bash
+curl -sSL https://alepha.dev/bay/install.sh \
+  | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+```
+
+`lore estate add <slug> --allow-deploys --output json` prints the secret for a script, and
+`lore estate wait <slug>` blocks until the machine is online. Step 5 is still yours.
+
+By hand, on a host already running Bay: create an **estate** under `/account/estates` on Lore. The
+secret is shown once. Then, on the host, as root:
 
 ```bash
 sudo bay connector set https://lore.example.com est_...
@@ -257,9 +271,9 @@ sudo bay connector show
 
 `set` stores the sink and the secret at mode 0600 beside `state.json` and tells the running
 `bay serve` over the control socket to re-read them, so nothing restarts. Those files are under the
-`0700` data root, so a member of the control group cannot run these commands. Without
-`--control-socket` (or `BAY_SOCKET`) `bay serve` is not told, and a host enrolling for the first
-time dials nothing until its next restart. `show` prints the sink, the estate Lore named and whether
+`0700` data root, so a member of the control group cannot run these commands. Without the socket
+(found at `/run/bay/control.sock` for the unit above) `bay serve` is not told, and a host enrolling
+for the first time dials nothing until its next restart. `show` prints the sink, the estate Lore named and whether
 the connection is up; it never prints the secret. `clear` forgets both and the machine dials nobody
 again. The secret is a command-line argument, so `ps` shows it while `set` runs and the shell
 history keeps it: clear that entry.

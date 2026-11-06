@@ -39,6 +39,22 @@ bay connector set <lore-url> <secret>
 `<lore-url>` is the address of the Lore instance (`https://lore.alepha.dev`,
 or yours when self-hosted), not the machine's.
 
+On a fresh server, Bay's installer does the install, the service and that
+command in one line, given the URL and the secret:
+
+```bash
+curl -sSL https://alepha.dev/bay/install.sh \
+  | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+```
+
+So a throwaway server is enrolled from a shell with no page in the loop:
+
+```bash
+SECRET=$(lore estate add my-vps --allow-deploys --output json | jq -r .secret)
+ssh root@my-vps "curl -sSL https://alepha.dev/bay/install.sh | LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=$SECRET sh"
+lore estate wait my-vps
+```
+
 ⚠️ The secret is shown **once**. Lore keeps only a hash of it, so it cannot
 show it again; if you lose it, rotate the estate to mint a new one
 (`lore estate rotate my-vps`, or the console) and run the command again. The

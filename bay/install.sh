@@ -5,11 +5,22 @@
 #   curl -sSL https://alepha.dev/bay/install.sh | sh
 #
 # Installs Docker when it is missing (Bay runs every app in a container), then
-# the `bay` binary and the directory layout described in INSTALL.md. It
-# deliberately stops there: steps 3 to 5 of that guide
-# (the systemd unit, the base domain, the ACME email, the deploy group) need
-# decisions this script cannot make for you, and a `curl | sh` has no business
-# putting a public reverse proxy on :80 and :443 without being asked.
+# the `bay` binary and the directory layout described in INSTALL.md. By default
+# it stops there: steps 3 to 5 of that guide (the systemd unit, the base
+# domain, the ACME email, the deploy group) need decisions this script cannot
+# make for you, and a `curl | sh` has no business putting a public reverse
+# proxy on :80 and :443 without being asked.
+#
+# Setting LORE_URL and LORE_ESTATE_SECRET is that ask (#Q3135): a machine
+# enrolled with Lore, in one line, for a server bought to be driven from Lore:
+#
+#   curl -sSL https://alepha.dev/bay/install.sh \
+#     | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+#
+# With both set, after the binary it writes the systemd unit INSTALL.md
+# documents (unless one exists), starts it, waits for `bay serve` to write
+# state.json and open its control socket, and runs `bay connector set`. The
+# secret is never printed, and appears in `ps` only during that one call.
 #
 # Re-running it upgrades in place: the binary is replaced atomically and, if a
 # `bay` service is already running, restarted.
@@ -20,6 +31,16 @@
 #   BAY_BIN_LINK  symlink to put on PATH (default /usr/local/bin/bay)
 #   BAY_INSTALL_DOCKER  "no" to refuse installing Docker and stop instead
 #                       (default "yes")
+#   LORE_URL, LORE_ESTATE_SECRET
+#                 both set: also start Bay under systemd and enrol it with
+#                 that Lore estate (the secret `lore estate add` prints)
+#   BAY_BASE_DOMAIN, BAY_ACME_EMAIL
+#                 --base-domain and --acme-email for the unit written when
+#                 enrolling (both optional)
+#   BAY_UNIT      the unit written when enrolling
+#                 (default /etc/systemd/system/bay.service)
+#   BAY_SOCKET    the control socket the unit opens
+#                 (default /run/bay/control.sock)
 #
 set -eu
 
@@ -32,6 +53,10 @@ REPO="alepha-dev/alepha"
 BAY_VERSION="${BAY_VERSION:-latest}"
 BAY_PREFIX="${BAY_PREFIX:-/opt/bay}"
 BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"
+BAY_UNIT="${BAY_UNIT:-/etc/systemd/system/bay.service}"
+BAY_SOCKET="${BAY_SOCKET:-/run/bay/control.sock}"
+LORE_URL="${LORE_URL:-}"
+LORE_ESTATE_SECRET="${LORE_ESTATE_SECRET:-}"
 
 die() {
   echo "bay-install: $*" >&2
@@ -39,6 +64,15 @@ die() {
 }
 
 # --- checks ----------------------------------------------------------------
+
+# Enrolling takes both halves; one alone is a typo, caught before anything is
+# installed. The secret is never echoed, here or below.
+if [ -n "$LORE_URL" ] && [ -z "$LORE_ESTATE_SECRET" ]; then
+  die "LORE_URL is set but LORE_ESTATE_SECRET is not: set both to enrol this machine, or neither."
+fi
+if [ -z "$LORE_URL" ] && [ -n "$LORE_ESTATE_SECRET" ]; then
+  die "LORE_ESTATE_SECRET is set but LORE_URL is not: set both to enrol this machine, or neither."
+fi
 
 [ "$(uname -s)" = "Linux" ] || die "Bay runs on Linux only (this is $(uname -s)).
 Build from source for other systems: https://github.com/$REPO/tree/main/bay"
@@ -170,6 +204,72 @@ if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet bay 2>/de
   RESTARTED="yes"
 fi
 
+# --- enrol -----------------------------------------------------------------
+
+# Only with both LORE_ variables (#Q3135). Service first, then enrol: `bay
+# connector set` refuses until `bay serve` has written state.json, and tells
+# the running serve over the control socket to dial.
+ENROLLED="no"
+if [ -n "$LORE_URL" ]; then
+  DATA="$BAY_PREFIX/data"
+  if ! command -v systemctl >/dev/null 2>&1; then
+    die "this host has no systemd, so the installer cannot start Bay for you.
+Bay is installed. Start it yourself, then enrol it:
+  $BAY_PREFIX/bin/bay serve --root $DATA --control-socket $BAY_SOCKET
+  bay connector set $LORE_URL <the estate secret>"
+  fi
+
+  if [ -e "$BAY_UNIT" ]; then
+    echo "==> Keeping the existing unit $BAY_UNIT"
+  else
+    echo "==> Writing the systemd unit $BAY_UNIT"
+    SERVE_FLAGS="--root $DATA --addr :80 --tls --tls-addr :443"
+    [ -z "${BAY_BASE_DOMAIN:-}" ] || SERVE_FLAGS="$SERVE_FLAGS --base-domain $BAY_BASE_DOMAIN"
+    [ -z "${BAY_ACME_EMAIL:-}" ] || SERVE_FLAGS="$SERVE_FLAGS --acme-email $BAY_ACME_EMAIL"
+    mkdir -p "$(dirname "$BAY_UNIT")"
+    cat >"$BAY_UNIT" <<UNIT
+# Written by install.sh, as INSTALL.md documents it. Edit and
+# \`systemctl daemon-reload\` to change the base domain or the ACME email.
+[Unit]
+Description=Bay, Alepha application server
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=2
+WorkingDirectory=$BAY_PREFIX
+RuntimeDirectory=bay
+RuntimeDirectoryMode=0755
+ExecStart=$BAY_PREFIX/bin/bay serve $SERVE_FLAGS --control-socket $BAY_SOCKET
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    systemctl daemon-reload
+  fi
+
+  echo "==> Starting the bay service"
+  systemctl enable --now bay
+
+  # Bounded: a serve that does not come up in 30 s has said why in its journal.
+  echo "==> Waiting for bay serve"
+  TRIES=0
+  until [ -f "$DATA/state.json" ] && [ -S "$BAY_SOCKET" ]; do
+    TRIES=$((TRIES + 1))
+    [ "$TRIES" -le 30 ] || die "bay serve did not write $DATA/state.json and open $BAY_SOCKET within 30 s.
+See why with:  journalctl -u bay -n 50
+Then enrol by hand:  bay connector set $LORE_URL <the estate secret>"
+    sleep 1
+  done
+
+  echo "==> Enrolling with $LORE_URL"
+  BAY_ROOT="$DATA" BAY_SOCKET="$BAY_SOCKET" "$BAY_PREFIX/bin/bay" connector set "$LORE_URL" "$LORE_ESTATE_SECRET" \
+    || die "bay connector set failed; see its message above."
+  ENROLLED="yes"
+fi
+
 # --- report ----------------------------------------------------------------
 
 echo
@@ -178,7 +278,10 @@ echo "  binary   $BAY_PREFIX/bin/bay  (on PATH as $BAY_BIN_LINK)"
 echo "  data     $BAY_PREFIX/data"
 echo
 
-if [ "$RESTARTED" = "yes" ]; then
+if [ "$ENROLLED" = "yes" ]; then
+  echo "Bay runs under systemd and is enrolled with $LORE_URL."
+  echo "Wait for it from your shell with:  lore estate wait <slug>"
+elif [ "$RESTARTED" = "yes" ]; then
   echo "The bay service was restarted on the new binary. Nothing else to do."
 else
   echo "Check the host with:  bay doctor"
