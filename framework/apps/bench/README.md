@@ -15,6 +15,8 @@ A hello-world Alepha API, the same API written with Express, and two scripts to 
 - a request id held in `AsyncLocalStorage`, and an `AbortSignal` aborted on disconnect
 - one JSON log line per request, written synchronously to stdout
 
+A server-rendered page has its own pair in [`ssr/`](./ssr/README.md).
+
 ## `yarn bench`
 
 Server CPU per request, Alepha against Express. Needs [`oha`](https://github.com/hatoo/oha) on the `PATH`.
