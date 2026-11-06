@@ -27,7 +27,11 @@ An instance's page has one tab per concern:
 | Settings    | The copy's names and public URL, its sigil, and the estate it deploys to.     |
 
 Telemetry needs the **Track apps** option of the Apps capability, in the
-project's settings.
+project's settings, or from a shell (the other options keep their value):
+
+```bash
+lore project capability enable apps --option track
+```
 
 ## How an app reports
 

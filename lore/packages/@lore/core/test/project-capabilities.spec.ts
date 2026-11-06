@@ -9,6 +9,7 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreCoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -324,5 +325,86 @@ describe("Project capabilities", () => {
         { user: stranger },
       ),
     ).rejects.toThrow();
+  });
+
+  describe("listCapabilities (#Q3141)", () => {
+    it("lists every registry capability with its options, on or off", async ({
+      expect,
+    }) => {
+      const user = await createTestUser(ctx);
+      const created = await ctx.projectController.createProject.fetch(
+        { body: { title: "Listed", capabilities: [{ key: "work" }] } },
+        { user },
+      );
+      await ctx.capabilityController.setCapability.fetch(
+        {
+          params: { projectId: created.data.id, key: "apps" },
+          body: { enabled: true, options: { deploy: true } },
+        },
+        { user },
+      );
+
+      const { items } = (
+        await ctx.capabilityController.listCapabilities.fetch(
+          { params: { projectId: created.data.id } },
+          { user },
+        )
+      ).data;
+
+      expect(items.map((it) => it.key)).toEqual(
+        expect.arrayContaining(["work", "knowledge", "apps", "support"]),
+      );
+      const apps = items.find((it) => it.key === "apps")!;
+      expect(apps.enabled).toBe(true);
+      expect(apps.options).toEqual(
+        expect.arrayContaining([
+          { key: "deploy", enabled: true },
+          { key: "track", enabled: false },
+        ]),
+      );
+      expect(items.find((it) => it.key === "support")!.enabled).toBe(false);
+    });
+
+    it("lets a member read the list, and refuses their write naming capability:manage", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const member = await createTestUser(ctx);
+      const created = await ctx.projectController.createProject.fetch(
+        { body: { title: "Member list", capabilities: [{ key: "work" }] } },
+        { user: owner },
+      );
+      await createTestMemberByProjectId(ctx.alepha, created.data.id, member.id);
+
+      const listed = await ctx.capabilityController.listCapabilities.fetch(
+        { params: { projectId: created.data.id } },
+        { user: member },
+      );
+      expect(listed.data.items.length).toBeGreaterThan(0);
+      await expect(
+        ctx.capabilityController.setCapability.fetch(
+          {
+            params: { projectId: created.data.id, key: "support" },
+            body: { enabled: true },
+          },
+          { user: member },
+        ),
+      ).rejects.toThrow(/capability:manage/);
+    });
+
+    it("refuses a stranger the list", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const created = await ctx.projectController.createProject.fetch(
+        { body: { title: "Guarded list", capabilities: [{ key: "work" }] } },
+        { user: owner },
+      );
+      await expect(
+        ctx.capabilityController.listCapabilities.fetch(
+          { params: { projectId: created.data.id } },
+          { user: stranger },
+        ),
+      ).rejects.toThrow();
+    });
   });
 });

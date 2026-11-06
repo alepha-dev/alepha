@@ -1,4 +1,5 @@
 import type {
+  ProjectCapabilityController,
   ProjectController,
   ProjectMergeController,
   ProjectReportController,
@@ -74,6 +75,154 @@ export class ProjectCommand {
     this.client.scope(),
   );
   protected readonly appApi = $client<AppController>(this.client.scope());
+  protected readonly capabilityApi = $client<ProjectCapabilityController>(
+    this.client.scope(),
+  );
+
+  protected readonly capabilityProjectFlag = z
+    .text({
+      aliases: ["p"],
+      description: "The project, by slug or id. Defaults to LORE_PROJECT.",
+    })
+    .optional();
+
+  /**
+   * `lore project capability list | enable | disable` (#Q3141), over the
+   * action the Capabilities settings page uses. Keys and option names come
+   * from the server's registry (`listCapabilities`), never from a list here.
+   */
+  public readonly capabilityList = $command({
+    name: "list",
+    description:
+      "Every capability, whether this project has it on, and its options",
+    flags: z.object({
+      project: this.capabilityProjectFlag,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const { items } = await this.capabilityApi.listCapabilities({
+          params: { projectId },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, items);
+          return;
+        }
+        for (const capability of items) {
+          print(
+            `${capability.enabled ? "[x]" : "[ ]"} ${capability.key.padEnd(10)} ${capability.name}`,
+          );
+          for (const option of capability.options) {
+            print(`      ${option.enabled ? "on " : "off"} ${option.key}`);
+          }
+        }
+      });
+    },
+  });
+
+  public readonly capabilityEnable = $command({
+    name: "enable",
+    description:
+      "Turn a capability on, or change its options; options not named keep their value",
+    args: z.text({ title: "key", description: "The capability, such as apps" }),
+    flags: z.object({
+      project: this.capabilityProjectFlag,
+      option: z
+        .array(z.text())
+        .describe(
+          "An option to set, as name (on) or name=false. Repeat for several.",
+        )
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const { items } = await this.capabilityApi.listCapabilities({
+          params: { projectId },
+        });
+        const capability = items.find((it) => it.key === args);
+        if (!capability) {
+          throw new UsageError(
+            `No capability called ${args}. There are: ${items.map((it) => it.key).join(", ")}.`,
+          );
+        }
+        // `setCapability` takes the options WHOLE: start from what is on now,
+        // or enabling `track` would turn `deploy` off as a side effect.
+        const options: Record<string, boolean> = Object.fromEntries(
+          capability.options.map((option) => [option.key, option.enabled]),
+        );
+        for (const raw of flags.option ?? []) {
+          const [name, value, ...rest] = raw.split("=");
+          if (
+            rest.length > 0 ||
+            (value !== undefined && value !== "true" && value !== "false")
+          ) {
+            throw new UsageError(
+              `--option ${raw}: write name (on) or name=false.`,
+            );
+          }
+          if (!capability.options.some((option) => option.key === name)) {
+            throw new UsageError(
+              `${args} has no option ${name}. Its options: ${capability.options.map((option) => option.key).join(", ") || "none"}.`,
+            );
+          }
+          options[name] = value !== "false";
+        }
+        const updated = await this.capabilityApi.setCapability({
+          params: { projectId, key: capability.key as never },
+          body: { enabled: true, options },
+        });
+        const on = Object.entries(options)
+          .filter(([, enabled]) => enabled)
+          .map(([name]) => name);
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Enabled ${capability.key}${capability.options.length ? `: ${on.join(", ") || "no option on"}` : ""}`,
+        );
+      });
+    },
+  });
+
+  public readonly capabilityDisable = $command({
+    name: "disable",
+    description: "Turn a capability off",
+    args: z.text({ title: "key", description: "The capability, such as apps" }),
+    flags: z.object({
+      project: this.capabilityProjectFlag,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const updated = await this.capabilityApi.setCapability({
+          params: { projectId, key: args as never },
+          body: { enabled: false },
+        });
+        this.render.written(print, flags.output, updated, `Disabled ${args}`);
+      });
+    },
+  });
+
+  public readonly capability = $command({
+    name: "capability",
+    description:
+      "A project's capabilities and their options: list them, enable one, disable one",
+    children: [
+      this.capabilityList,
+      this.capabilityEnable,
+      this.capabilityDisable,
+    ],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
 
   public readonly list = $command({
     name: "list",
@@ -634,6 +783,7 @@ export class ProjectCommand {
       this.linkProject,
       this.merge,
       this.delete,
+      this.capability,
     ],
     handler: async ({ help }) => {
       help();

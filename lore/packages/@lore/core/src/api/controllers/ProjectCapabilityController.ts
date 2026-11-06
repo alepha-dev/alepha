@@ -3,6 +3,7 @@ import { $action } from "alepha/server";
 
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
+import { projectCapabilityStateSchema } from "../schemas/projectCapabilityStateSchema.ts";
 import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
@@ -45,6 +46,45 @@ export class ProjectCapabilityController {
    */
   protected ownsAsOwner = (requires: string | string[]) =>
     $ownsProject({ requires, param: "projectId" });
+
+  /**
+   * Every capability the registry declares, with whether this project has it
+   * on and each option's current value (#Q3141). What `lore project
+   * capability list` prints, and what `enable --option` merges into: the
+   * write takes options whole, so a client must read them first or flip the
+   * ones it did not name. Member-readable, like the project itself.
+   */
+  listCapabilities = $action({
+    use: [$ownsProject({ requires: "project:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/capabilities",
+    description:
+      "Every capability, whether this project has it on, and its options.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ items: z.array(projectCapabilityStateSchema) }),
+    },
+    handler: async ({ params }) => {
+      const rows = await this.security.capabilities.findMany({
+        where: { projectId: { eq: params.projectId } },
+      });
+      return {
+        items: this.registry.all().map((capability) => {
+          const row = rows.find((it) => it.key === capability.key);
+          const options = this.registry.optionsOf(capability.key, row?.options);
+          return {
+            key: capability.key,
+            name: capability.name,
+            enabled: !!row,
+            options: capability.options.map((option) => ({
+              key: option.key,
+              enabled: !!row && options[option.key] === true,
+            })),
+          };
+        }),
+      };
+    },
+  });
 
   /**
    * Turn one capability on or off, and set its options.
