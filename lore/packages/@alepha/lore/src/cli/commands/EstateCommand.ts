@@ -684,27 +684,80 @@ export class EstateCommand {
     },
   });
 
+  /**
+   * `lore estate delete` (#Q3131), which also terminates a provisioned
+   * server with its IP and its disk (#Q3167). Lore holds no provider key, so
+   * the CLI terminates through the provider's own CLI, in an order that
+   * never loses a billing server: Lore is asked first whether it would
+   * accept the delete, then the server is terminated, then the row goes. A
+   * terminate that fails keeps the row and prints the command that finishes.
+   */
   public readonly delete = $command({
     name: "delete",
     description:
-      "Delete one of your estates: Lore forgets the machine and revokes its secret, nothing on the machine stops",
+      "Delete one of your estates: a server provision bought is terminated with its IP and disk; for one added by hand, Lore forgets the machine and nothing on it stops",
     args: z.text({
       title: "estate",
       description: "The estate's slug, among the estates you own",
     }),
     flags: z.object({
       yes: z.boolean().describe("Do not ask for confirmation (CI)").optional(),
+      "keep-server": z
+        .boolean()
+        .describe(
+          "For a provisioned estate: delete it in Lore and leave the server running (and billing)",
+        )
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print, ask }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const estate = await this.owned.owned(args);
+        const server =
+          estate.provider && estate.providerServerId && estate.providerZone
+            ? {
+                provider: estate.provider,
+                id: estate.providerServerId,
+                zone: estate.providerZone,
+              }
+            : undefined;
+        const terminate = server !== undefined && !flags["keep-server"];
+        const provider = terminate
+          ? this.providers.pick(server.provider)
+          : undefined;
+        if (provider) {
+          await provider.check();
+          // Refused here, before the server goes, when Lore would refuse the
+          // delete itself: a copy or a stack still deploying there.
+          await this.estates.checkEstateDeletable({
+            params: { estateId: estate.id },
+          });
+        }
+
         await this.confirm(
           ask,
           flags.yes,
-          `Delete ${estate.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
+          terminate
+            ? `Delete ${estate.slug} and terminate its server ${server.id} on ${server.provider}, with its IP and its disk? This cannot be undone.`
+            : `Delete ${estate.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
         );
+
+        if (provider && server) {
+          try {
+            await provider.terminate(server.id, server.zone);
+          } catch (error) {
+            const reason =
+              error instanceof Error ? error.message : String(error);
+            throw new CommandError(
+              { exitCode: LoreRefusals.EXIT_FAILURE },
+              {
+                message: `Could not terminate ${server.id} (${reason}). ${estate.slug} is kept so the server stays visible. Terminate it with:\n  ${provider.terminateCommand(server.id, server.zone)}\nthen: lore estate delete ${estate.slug} --keep-server --yes`,
+              },
+            );
+          }
+        }
+
         await this.estates.deleteEstate({ params: { estateId: estate.id } });
         if (flags.output === "json") {
           this.render.json(print, {
@@ -712,12 +765,25 @@ export class EstateCommand {
             id: estate.id,
             slug: estate.slug,
             revoked: estate.type === "bay",
+            ...(server ? { server: server.id, terminated: terminate } : {}),
           });
+          return;
+        }
+        if (terminate) {
+          print(
+            `Deleted ${estate.slug} and terminated its server ${server.id}, with its IP and its disk.`,
+          );
           return;
         }
         print(
           `Deleted ${estate.slug}.${estate.type === "bay" ? " Its secret is revoked: the connector holding it is refused on its next dial." : ""}`,
         );
+        if (server) {
+          print(
+            `Its server ${server.id} is still running on ${server.provider}, and billing. Terminate it with: ${this.providers.pick(server.provider).terminateCommand(server.id, server.zone)}`,
+          );
+          return;
+        }
         print(
           "Nothing on the machine was stopped: Lore only lost the connection. Delete the server with its provider when you are done with it.",
         );

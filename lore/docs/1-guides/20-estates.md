@@ -202,15 +202,24 @@ lore estate delete my-vps --yes
 The slug is one of the estates you own: `lore estate delete` never acts on an
 estate someone else lent to the project. Without `--yes` it asks first, and with
 no terminal to ask on it refuses rather than wait. `--output json` prints
-`{ ok, id, slug, revoked }` for a script.
+`{ ok, id, slug, revoked }` for a script, with `server` and `terminated` for a
+provisioned one.
 
 Deleting is refused while an app copy, a stack or a stack environment, in any
 project, still deploys onto the estate; the refusal names each one. Repoint or
 remove them first.
 
-Nothing on the machine stops: Lore forgets the connection, and for a Bay estate
-the secret is revoked, so the connector holding it is refused on its next dial.
-A server bought for a test is deleted with its provider afterwards.
+For an estate you added by hand, nothing on the machine stops: Lore forgets the
+connection, and for a Bay estate the secret is revoked, so the connector holding
+it is refused on its next dial. Delete the server with its provider afterwards.
+
+For an estate `lore estate provision` bought, `lore estate delete` also
+terminates the server with its IP and its disk, through the same provider CLI.
+Lore is asked first whether it would accept the delete, so a refused delete
+destroys nothing; if the terminate fails, the estate is kept and the command
+that finishes is printed. `--keep-server` deletes the estate and leaves the
+server running. Deleting from the page cannot terminate the server, since Lore
+holds no key to your cloud account: the dialog says so and gives the command.
 
 ## The console of a Bay estate
 

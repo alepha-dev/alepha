@@ -2591,6 +2591,8 @@ export default {
   "account.estates.delete.confirmTitle": "Supprimer $1 ?",
   "account.estates.delete.confirmDescription":
     "Rien n'est dédéployé : la machine continue d'exécuter ce qu'elle exécute, et Lore perd seulement la possibilité d'inspecter, redéployer ou revenir en arrière via ce domaine. Un secret bay est révoqué. Un identifiant cloudflare n'est pas révoqué chez Cloudflare ; faites-le là-bas. Chaque projet auquel il est prêté le perd.",
+  "account.estates.delete.confirmProvisioned":
+    "Ce domaine tourne sur le serveur $1, acheté par lore estate provision chez $2. Le supprimer ici ne détruit pas ce serveur : il continue de tourner, et d'être facturé. Pour le détruire avec son IP et son disque, lancez plutôt lore estate delete $3 --yes.",
   "account.estates.delete.confirm": "Supprimer",
   "account.estates.toast.created": "Domaine créé",
   "account.estates.toast.rotated": "Secret changé",

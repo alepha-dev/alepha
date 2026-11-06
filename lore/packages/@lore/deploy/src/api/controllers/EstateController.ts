@@ -570,13 +570,36 @@ export class EstateController {
   });
 
   /**
+   * Whether {@link deleteEstate} would accept, without deleting (#Q3167):
+   * the same `assertUnreferenced` refusal, naming what still deploys there.
+   * `lore estate delete` asks this before it terminates a provisioned
+   * server, so a delete Lore would refuse never destroys the machine first.
+   */
+  checkEstateDeletable = $action({
+    use: [$secure({ permissions: ["estate:delete"] })],
+    method: "GET",
+    path: "/estates/:estateId/deletable",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      await this.service.assertUnreferenced(estate.id);
+      return { ok: true };
+    },
+  });
+
+  /**
    * Remove an estate.
    *
    * Refused while an app instance anywhere points at it
    * (`assertUnreferenced`, #1767). Deleting undeploys nothing: the VPS keeps
    * running and Lore only loses the ability to inspect, redeploy or roll
    * back, which the dialog says because the intuitive reading is the
-   * opposite. For a `bay` estate the row IS the credential, so deleting it
+   * opposite. A provisioned server is terminated by the CLI before it calls
+   * this (#Q3167): Lore holds no provider key, so this row delete alone
+   * leaves that server billing. For a `bay` estate the row IS the credential, so deleting it
    * revokes; the lending join cascades with it.
    */
   deleteEstate = $action({

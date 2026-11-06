@@ -188,7 +188,17 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
           title: tr("account.estates.delete.confirmTitle", {
             args: [estate.slug],
           }),
-          description: tr("account.estates.delete.confirmDescription"),
+          // A provisioned server outlives a delete from the page (#Q3167):
+          // Lore holds no provider key, only the CLI can terminate it.
+          description: estate.providerServerId
+            ? tr("account.estates.delete.confirmProvisioned", {
+                args: [
+                  estate.providerServerId,
+                  estate.provider ?? "",
+                  estate.slug,
+                ],
+              })
+            : tr("account.estates.delete.confirmDescription"),
           confirmLabel: tr("account.estates.delete.confirm"),
           destructive: true,
         });

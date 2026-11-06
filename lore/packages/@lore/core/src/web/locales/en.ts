@@ -2591,6 +2591,8 @@ export default {
   "account.estates.delete.confirmTitle": "Delete $1?",
   "account.estates.delete.confirmDescription":
     "Nothing is undeployed: the machine keeps running whatever it runs, and Lore only loses the ability to inspect, redeploy or roll back through it. A bay secret is revoked. A cloudflare credential is not revoked at Cloudflare; do that there. Every project it is lent to loses it.",
+  "account.estates.delete.confirmProvisioned":
+    "This estate runs on server $1, which lore estate provision bought on $2. Deleting it here does not terminate that server: it keeps running, and billing. To terminate it with its IP and its disk, run lore estate delete $3 --yes instead.",
   "account.estates.delete.confirm": "Delete",
   "account.estates.toast.created": "Estate created",
   "account.estates.toast.rotated": "Secret rotated",
