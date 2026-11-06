@@ -61,6 +61,7 @@ export const uiFr: Record<string, string> = {
   "ai.chat.stop": "Arrêter",
   "ai.chat.thinking": "Réflexion…",
   "ai.chat.title": "Assistant",
+  "ai.chat.toolDenied": "$1 annulé",
   "ai.chat.toolDone": "$1 exécuté",
   "ai.chat.toolFailed": "Échec de $1",
   "ai.chat.untitled": "Conversation sans titre",

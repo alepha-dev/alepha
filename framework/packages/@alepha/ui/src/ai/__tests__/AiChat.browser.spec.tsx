@@ -298,6 +298,12 @@ describe("AiChat", () => {
         { type: "end", reason: "paused" },
       ]);
       l.streams.push([
+        {
+          type: "tool_result",
+          callId: "c2",
+          name: "deleteAll",
+          isError: true,
+        },
         { type: "text", text: "Not done." },
         { type: "end", reason: "stop" },
       ]);
@@ -308,6 +314,10 @@ describe("AiChat", () => {
     expect(links.bodies("resume")).toEqual([
       { callId: "c2", decision: "deny" },
     ]);
+    // A denial reads as cancelled, not as a failure.
+    expect(view.getByTestId("ai-chat-tool").textContent).toBe(
+      "deleteAll cancelled",
+    );
   });
 
   it("fills the offered form without submitting, then resumes with what it filled", async () => {

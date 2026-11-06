@@ -23,6 +23,13 @@ import {
 } from "../services/AiContextBlock.ts";
 import { AiToolSchema } from "../services/AiToolSchema.ts";
 
+/**
+ * What a call the user denied returns to the model, as a tool error. The
+ * chat UI reads it back to tell a denial from a failure in a stored
+ * conversation (`@alepha/ui`'s `useAiChat`), so it stays this exact text.
+ */
+export const AI_CALL_DENIED = "Denied by the user.";
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -495,7 +502,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
       result =
         resume.decision === "approve"
           ? await this.runAction(tool, call, input.user)
-          : this.toolError(call, "Denied by the user.");
+          : this.toolError(call, AI_CALL_DENIED);
     } else {
       if (tool?.kind !== "client") {
         throw new AiConfigError(
