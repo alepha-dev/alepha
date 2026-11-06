@@ -72,6 +72,8 @@ const endpoints: Record<string, (base: string) => string[]> = {
     "accept-encoding: gzip, deflate, br",
     `${base}/`,
   ],
+  // The same page uncompressed, as a proxy that compresses itself asks for it.
+  pageraw: (base) => ["-m", "GET", `${base}/`],
 };
 
 const freePort = () =>
