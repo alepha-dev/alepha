@@ -53,11 +53,11 @@ A client id is up to 512 characters, in `oauth_clients.clientId`, `sessions.clie
 
 `POST /oauth/register` (RFC 7591) accepts `application_type` (SEP-837), stores it and applies its redirect rules:
 
-| `application_type` | Redirect URIs accepted                                                                                     |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `web`              | https only                                                                                                 |
-| `native`           | https, http to the loopback (any port at authorize), and private-use schemes such as `com.example.app:/cb` |
-| absent             | https, or http to the loopback: the rule from before the field, so older native clients keep registering   |
+| `application_type` | Redirect URIs accepted                                                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web`              | https only                                                                                                                                                                      |
+| `native`           | https, http to the loopback (any port at authorize), and private-use schemes such as `com.example.app:/cb` or `myapp://cb` (never `javascript:`, `data:`, `file:` and the like) |
+| absent             | https, or http to the loopback: the rule from before the field, so older native clients keep registering                                                                        |
 
 ## Challenges and Step-Up
 

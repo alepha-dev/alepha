@@ -240,6 +240,62 @@ describe("CIMD: resolving a URL client id", () => {
     await alepha.stop();
   });
 
+  it("accepts a native client's dot-less private-use scheme, as GitHub Copilot publishes", async () => {
+    // GitHub Copilot desktop's document, as served on 2026-11-06: its
+    // `github-app` scheme carries no dot, which RFC 8252 only recommends.
+    const { alepha, service, authorize } = await boot();
+    service.responses.set(CLIENT_ID, () =>
+      json(
+        document({
+          client_name: "GitHub Copilot",
+          client_uri: "https://app.example/app",
+          application_type: "native",
+          grant_types: [
+            "authorization_code",
+            "refresh_token",
+            "urn:ietf:params:oauth:grant-type:device_code",
+          ],
+          response_types: ["code"],
+          token_endpoint_auth_method: "none",
+          redirect_uris: [
+            "github-app://oauth/callback",
+            "http://127.0.0.1/",
+            "http://127.0.0.1/callback",
+          ],
+        }),
+      ),
+    );
+
+    const custom = await authorize(CLIENT_ID, "github-app://oauth/callback");
+    const loopback = await authorize(
+      CLIENT_ID,
+      "http://127.0.0.1:51234/callback",
+    );
+
+    expect(custom.status).toBe(200);
+    expect(loopback.status).toBe(200);
+    const row = await service.findByClientId(CLIENT_ID);
+    expect(row?.applicationType).toBe("native");
+    await alepha.stop();
+  });
+
+  it("refuses a native document naming a script or local scheme", async () => {
+    const { alepha, service, authorize } = await boot();
+    for (const uri of [
+      "javascript:alert(1)",
+      "data:text/html,x",
+      "file:///etc/passwd",
+    ]) {
+      service.responses.set(CLIENT_ID, () =>
+        json(document({ application_type: "native", redirect_uris: [uri] })),
+      );
+      expect((await authorize(CLIENT_ID, uri)).status, uri).toBe(400);
+      expect(await service.findByClientId(CLIENT_ID), uri).toBeNull();
+    }
+    expect(service.requested).toHaveLength(3);
+    await alepha.stop();
+  });
+
   it("still refuses a loopback redirect when the document says web", async () => {
     const { alepha, service, authorize } = await boot();
     service.responses.set(CLIENT_ID, () =>

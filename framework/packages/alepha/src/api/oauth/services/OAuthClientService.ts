@@ -554,8 +554,8 @@ export class OAuthClientService {
       );
 
     // A native app may also come back through a private-use scheme
-    // (RFC 8252 §7.1: a reverse domain name, so it carries a dot), where no
-    // host exists to check and the exact match at authorize is the rule.
+    // (RFC 8252 §7.1), where no host exists to check and the exact match at
+    // authorize is the rule.
     if (applicationType === "native" && this.isPrivateUseScheme(uri)) {
       if (uri.includes("*")) {
         throw refuse("A wildcard is not allowed in a private-use redirect_uri");
@@ -596,8 +596,13 @@ export class OAuthClientService {
   }
 
   /**
-   * Whether a redirect URI uses a private-use URI scheme (RFC 8252 §7.1):
-   * not http(s), and a scheme with a dot in it, like `com.example.app:/cb`.
+   * Whether a redirect URI uses a private-use URI scheme (RFC 8252 §7.1),
+   * like `com.example.app:/cb` or `github-app://oauth/callback`.
+   *
+   * The RFC only RECOMMENDS a reverse domain name: a dot-less scheme is
+   * accepted, since real clients publish one (GitHub Copilot's document
+   * lists `github-app://`). Refused are http(s), which the general rule
+   * covers, and {@link nonPrivateUseSchemes}.
    */
   protected isPrivateUseScheme(uri: string): boolean {
     const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(uri)?.[1]?.toLowerCase();
@@ -605,9 +610,31 @@ export class OAuthClientService {
       !!scheme &&
       scheme !== "http" &&
       scheme !== "https" &&
-      scheme.includes(".")
+      !this.nonPrivateUseSchemes.includes(scheme)
     );
   }
+
+  /**
+   * Schemes a redirect may never use as a private-use scheme: they run
+   * script, read local or browser state, or name a network transport rather
+   * than an app.
+   */
+  protected nonPrivateUseSchemes = [
+    "javascript",
+    "vbscript",
+    "data",
+    "file",
+    "blob",
+    "about",
+    "filesystem",
+    "view-source",
+    "ws",
+    "wss",
+    "ftp",
+    "mailto",
+    "tel",
+    "sms",
+  ];
 
   // -------------------------------------------------------------------------------------------------------------------
   // Client ID Metadata Documents (MCP 2026-07-28)
