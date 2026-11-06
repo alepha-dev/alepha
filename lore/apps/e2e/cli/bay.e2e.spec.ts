@@ -1203,6 +1203,29 @@ describe("Bay connector against a real Lore", () => {
         body: { estateId: null },
       }),
     );
+    // Nor one a stack deploys to (#Q3131): the stack cases above made two.
+    // Each environment is forgotten, then each stack deleted (#Q3136).
+    const { items: stacks } = await ok<{
+      items: Array<{ id: string; environments: Array<{ id: string }> }>;
+    }>(call(lore, owner, "listStacks", { params: { projectId } }));
+    for (const stack of stacks) {
+      for (const environment of stack.environments) {
+        await ok(
+          call(lore, owner, "deleteStackEnvironment", {
+            params: {
+              projectId,
+              stackId: stack.id,
+              environmentId: environment.id,
+            },
+          }),
+        );
+      }
+      await ok(
+        call(lore, owner, "deleteStack", {
+          params: { projectId, stackId: stack.id },
+        }),
+      );
+    }
     const gone = await call(lore, owner, "deleteEstate", {
       params: { estateId: estate.id },
     });
