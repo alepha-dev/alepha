@@ -152,7 +152,10 @@ export const AiChat = (props: AiChatProps) => {
         </div>
         <div
           ref={thread}
-          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+          // `shrink-0` on every line: in a scrolling column a card (overflow
+          // hidden, so no content minimum) would shrink to its border once
+          // the thread outgrows the drawer (#Q3174).
+          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 *:shrink-0"
         >
           {empty ? (
             <AiChatEmpty
