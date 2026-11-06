@@ -110,7 +110,7 @@ export class StackController {
     method: "DELETE",
     path: "/projects/:projectId/stacks/:stackId",
     description:
-      "Delete a stack, its environments, routes and revisions. Member apps stay, as ordinary copies. Nothing on an estate is touched.",
+      "Delete a stack with no environment left, its routes and revisions. Refused (409) while an environment remains, naming them. Nothing on an estate is touched.",
     schema: {
       params: z.object({ projectId: z.integer(), stackId: z.uuid() }),
       response: okSchema,

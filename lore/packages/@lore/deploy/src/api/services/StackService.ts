@@ -143,11 +143,24 @@ export class StackService {
   }
 
   /**
-   * Deletes a stack, its environments, routes and revisions, and the bundle
-   * bytes, which no cascade reaches. Its member apps survive as ordinary
-   * copies: their link is `set null`.
+   * Deletes a stack, its routes and revisions, and the bundle bytes, which no
+   * cascade reaches.
+   *
+   * ⚠️ Refused (409) while any environment remains, naming them (#Q3136,
+   * owner 2026-11-06, folio #F1452): an environment is a running copy on a
+   * machine, and taking it with the stack would leave that machine running
+   * something Lore no longer knows. Each is forgotten first with
+   * `lore stack destroy --env <env>`, which prints the command that removes it
+   * from the machine. The guard is here, not in a client, so the API, MCP and
+   * every client get it. Member apps survive as ordinary copies.
    */
   async delete(stack: Stack): Promise<void> {
+    const remaining = await this.environmentsOf([stack.id]);
+    if (remaining.length > 0) {
+      throw new ConflictError(
+        `Stack ${stack.name} still has ${remaining.length === 1 ? "an environment" : "environments"}: ${remaining.map((env) => env.env).join(", ")}. Forget ${remaining.length === 1 ? "it" : "each"} first with ${remaining.map((env) => `lore stack destroy --name ${stack.name} --env ${env.env}`).join(", then ")}.`,
+      );
+    }
     const revisions = await this.revisions.findMany({
       where: { stackId: { eq: stack.id } },
     });

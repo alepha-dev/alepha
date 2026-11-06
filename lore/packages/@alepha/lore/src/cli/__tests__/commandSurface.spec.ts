@@ -193,6 +193,7 @@ describe("the Lore CLI command surface", () => {
         "deploy",
         "rollback",
         "destroy",
+        "delete",
         "list",
         "get",
         "revisions",

@@ -3747,6 +3747,11 @@ export default {
   "stacks.col.estate": "Estate",
   "stacks.col.revision": "Revision",
   "stacks.col.members": "Apps",
+  "stacks.delete": "Delete stack",
+  "stacks.delete.confirm": "Delete stack $1?",
+  "stacks.delete.description":
+    "Its routes and revisions go with it. Nothing on a machine changes.",
+  "stacks.deleted": "Stack deleted",
   "stacks.environment.add": "Add environment",
   "stacks.environment.added": "Environment added",
   "stacks.environment.empty":

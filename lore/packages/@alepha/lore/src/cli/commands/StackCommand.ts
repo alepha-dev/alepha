@@ -380,6 +380,49 @@ export class StackCommand {
     },
   });
 
+  public readonly delete = $command({
+    name: "delete",
+    description:
+      "Delete a stack with no environment left, its routes and revisions. Nothing on a machine changes",
+    args: z
+      .text({
+        title: "name",
+        description: "The stack's name. Defaults to the project slug.",
+      })
+      .optional(),
+    flags: z.object({
+      project: this.projectFlag,
+      yes: z.boolean().describe("Do not ask for confirmation (CI)").optional(),
+    }),
+    handler: async ({ args, flags, print, ask }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        const stack = await this.stacks.getStack(
+          projectId,
+          await this.stacks.stackName(project, projectId, args),
+        );
+        if (!flags.yes) {
+          const confirmed = await ask.confirm(
+            `Delete stack ${stack.name}, its routes and its revisions? It must have no environment left.`,
+          );
+          if (!confirmed) {
+            throw new AlephaError("Not confirmed; nothing was changed.");
+          }
+        }
+        // The server refuses while an environment remains, naming each and
+        // the `lore stack destroy` that forgets it (#Q3136).
+        await this.stackApi.deleteStack({
+          params: { projectId, stackId: stack.id },
+        });
+        print(`Deleted stack ${stack.name}.`);
+      });
+    },
+  });
+
   public readonly list = $command({
     name: "list",
     description: "The project's stacks and their environments",
@@ -882,6 +925,7 @@ export class StackCommand {
       this.deploy,
       this.rollback,
       this.destroy,
+      this.delete,
       this.list,
       this.get,
       this.revisions,

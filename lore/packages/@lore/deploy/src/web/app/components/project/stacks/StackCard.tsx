@@ -11,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 
 import type { StackResource } from "../../../../../api/schemas/stackResourceSchema.ts";
+import StackDeleteButton from "./StackDeleteButton.tsx";
 import StackEnvironmentAddForm from "./StackEnvironmentAddForm.tsx";
 import StackRevisionUploadForm from "./StackRevisionUploadForm.tsx";
 
@@ -23,8 +24,8 @@ export interface StackCardProps {
 
 /**
  * One stack on the list: its environments (each a link to its page) with the
- * estate and the revision each runs, then the two writes that belong to the
- * stack rather than to one environment.
+ * estate and the revision each runs, then the writes that belong to the
+ * stack rather than to one environment, deleting it once it is empty.
  */
 const StackCard = (props: StackCardProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -115,6 +116,13 @@ const StackCard = (props: StackCardProps) => {
               projectId={props.projectId}
               stackId={props.stack.id}
             />
+            {props.stack.environments.length === 0 ? (
+              <StackDeleteButton
+                projectId={props.projectId}
+                stackId={props.stack.id}
+                stackName={props.stack.name}
+              />
+            ) : null}
           </div>
         ) : null}
       </CardContent>

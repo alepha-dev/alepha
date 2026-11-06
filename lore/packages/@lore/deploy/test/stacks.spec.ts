@@ -337,7 +337,32 @@ describe("stacks", () => {
       );
     });
 
-    it("leaves members as ordinary copies when their stack is deleted", async ({
+    it("refuses to delete a stack while an environment remains, naming it (#Q3136)", async ({
+      expect,
+    }) => {
+      const w = await stackWorld(alepha);
+      const stack = await createStack(alepha, w, { name: "crm" });
+      await createEnvironment(alepha, w, stack.id, { env: "production" });
+      await createEnvironment(alepha, w, stack.id, { env: "staging" });
+
+      await expect(
+        alepha
+          .inject(StackController)
+          .deleteStack.fetch(
+            { params: { projectId: w.project.id, stackId: stack.id } },
+            { user: w.user },
+          ),
+      ).rejects.toThrow(
+        "Stack crm still has environments: production, staging. Forget each first with lore stack destroy --name crm --env production, then lore stack destroy --name crm --env staging.",
+      );
+      expect(
+        await w.rows.environments.findMany({
+          where: { stackId: { eq: stack.id } },
+        }),
+      ).toHaveLength(2);
+    });
+
+    it("leaves members as ordinary copies once their environment is forgotten and the stack deleted", async ({
       expect,
     }) => {
       const w = await stackWorld(alepha);
@@ -357,6 +382,16 @@ describe("stacks", () => {
         },
         { user: w.user },
       );
+      await alepha.inject(StackController).deleteStackEnvironment.fetch(
+        {
+          params: {
+            projectId: w.project.id,
+            stackId: stack.id,
+            environmentId: production.id,
+          },
+        },
+        { user: w.user },
+      );
       await alepha
         .inject(StackController)
         .deleteStack.fetch(
@@ -367,11 +402,6 @@ describe("stacks", () => {
       const survivor = await w.rows.instances.findById(api.id);
       expect(survivor).toBeDefined();
       expect(survivor?.stackEnvironmentId).toBeUndefined();
-      expect(
-        await w.rows.environments.findMany({
-          where: { stackId: { eq: stack.id } },
-        }),
-      ).toEqual([]);
     });
   });
 

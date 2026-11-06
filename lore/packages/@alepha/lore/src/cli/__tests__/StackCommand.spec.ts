@@ -127,6 +127,10 @@ describe("lore stack", () => {
           });
           return {};
         },
+        deleteStack: async (request: unknown) => {
+          calls.push({ name: "deleteStack", request });
+          return { ok: true };
+        },
         deleteStackEnvironment: async (request: unknown) => {
           calls.push({ name: "deleteEnvironment", request });
           return { ok: true };
@@ -260,5 +264,19 @@ describe("lore stack", () => {
     await run("destroy", "--env staging --purge --yes");
     expect(calls.map((c) => c.name)).toEqual(["deleteEnvironment"]);
     expect(printed).toContain("  bay stack destroy hello/staging --purge");
+  });
+
+  it("delete --yes deletes the whole stack by name (#Q3136)", async ({
+    expect,
+  }) => {
+    const { run, calls, printed } = create({ environments: [] });
+    await run("delete", "hello --yes");
+    expect(calls).toEqual([
+      {
+        name: "deleteStack",
+        request: { params: { projectId: 7, stackId: "s1" } },
+      },
+    ]);
+    expect(printed).toContain("Deleted stack hello.");
   });
 });

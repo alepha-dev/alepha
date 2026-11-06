@@ -348,6 +348,7 @@ A stack is a group of apps and services deployed together from one
 | `lore stack deploy`                 | Deploy to an environment (`-e`, default `production`), uploading `--file` as a new revision first. `--app` with `--tag` deploys one member app. |
 | `lore stack rollback`               | Deploy an earlier revision again. Volumes and their data are untouched.                                                                         |
 | `lore stack destroy`                | Forget an environment in Lore, and print the command that removes it from the machine.                                                          |
+| `lore stack delete [name]`          | Delete a stack with no environment left, its routes and revisions; refused while one remains. `--yes`.                                          |
 | `lore stack list`                   | The project's stacks and their environments.                                                                                                    |
 | `lore stack get`                    | One stack: routes, services and newest deploys of each environment. `--env` narrows it. Never a value.                                          |
 | `lore stack revisions`              | A stack's revisions, newest first.                                                                                                              |
