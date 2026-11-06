@@ -331,12 +331,28 @@ export class LoreEstateProvisioner {
     slug: string,
     print: (line?: string) => void,
   ): Promise<{ id: number; slug: string; created: boolean }> {
+    let existing:
+      | Awaited<ReturnType<typeof this.projectApi.getProjectBySlug>>
+      | undefined;
     try {
-      return { id: await this.projects.resolve(slug), slug, created: false };
+      existing = await this.projectApi.getProjectBySlug({ params: { slug } });
     } catch (error) {
       if (!this.isMissing(error)) {
         throw error;
       }
+    }
+    if (existing?.id) {
+      // Said, because an existing project is a different act from a new one
+      // (the walk of #Q3169 lent a server to an old project silently).
+      print(`Lending it to your existing project ${existing.slug ?? slug}.`);
+      const apps = existing.capabilities?.find((row) => row.key === "apps");
+      const options = (apps?.options ?? {}) as Record<string, unknown>;
+      if (!apps || options.deploy !== true) {
+        print(
+          `${existing.slug ?? slug} cannot deploy apps yet: its Apps capability${apps ? "'s deploy option" : ""} is off. Turn it on with: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
+        );
+      }
+      return { id: existing.id, slug: existing.slug ?? slug, created: false };
     }
     const created = await this.projectApi.createProject({
       body: {

@@ -35,9 +35,10 @@ describe("ScalewayProvider", () => {
     };
   };
 
-  const loggedIn = JSON.stringify([
-    { key: "secret_key", value: "c381a8bf-xxxx" },
-  ]);
+  const loggedIn = JSON.stringify({
+    build_info: {},
+    settings: [{ key: "secret_key", value: "c381a8bf-xxxx" }],
+  });
 
   it("refuses with the install command when scw is missing, and with scw login when logged out", async ({
     expect,
@@ -47,7 +48,9 @@ describe("ScalewayProvider", () => {
 
     shell.configure({
       installedCommands: ["scw"],
-      outputs: { "scw info -o json": "[]" },
+      outputs: {
+        "scw info -o json": JSON.stringify({ build_info: {}, settings: [] }),
+      },
     });
     await expect(scaleway.check()).rejects.toThrow("Run: scw login");
 

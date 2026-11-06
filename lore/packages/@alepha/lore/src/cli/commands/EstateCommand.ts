@@ -10,6 +10,7 @@ import {
   UsageError,
 } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
+import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
@@ -741,9 +742,11 @@ export class EstateCommand {
           await provider.check();
           // Refused here, before the server goes, when Lore would refuse the
           // delete itself: a copy or a stack still deploying there.
-          await this.estates.checkEstateDeletable({
-            params: { estateId: estate.id },
-          });
+          await this.referencedHint(() =>
+            this.estates.checkEstateDeletable({
+              params: { estateId: estate.id },
+            }),
+          );
         }
 
         await this.confirm(
@@ -769,7 +772,9 @@ export class EstateCommand {
           }
         }
 
-        await this.estates.deleteEstate({ params: { estateId: estate.id } });
+        await this.referencedHint(() =>
+          this.estates.deleteEstate({ params: { estateId: estate.id } }),
+        );
         if (flags.output === "json") {
           this.render.json(print, {
             ok: true,
@@ -915,6 +920,26 @@ export class EstateCommand {
         3_600_000,
     );
     return `about EUR ${estate.hourlyPrice.toFixed(4)} an hour, about EUR ${(estate.hourlyPrice * hours).toFixed(2)} so far (estimate), until lore estate delete terminates it`;
+  }
+
+  /**
+   * A delete Lore refuses because something still deploys there names the
+   * copies and stacks; this adds the commands that remove them (#Q3169).
+   */
+  protected async referencedHint<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      if (isHttpError(error, 409)) {
+        throw new CommandError(
+          { exitCode: LoreRefusals.EXIT_FAILURE },
+          {
+            message: `${error.message}\nRemove a copy with: lore apps instance delete --app <app> --env <env> --yes (-p <project>); a stack with: lore stack destroy -e <env> --yes, then lore stack delete --yes; or delete the whole project with: lore project delete <project> --confirm <project>`,
+          },
+        );
+      }
+      throw error;
+    }
   }
 
   protected percent(value: number): string {

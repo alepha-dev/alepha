@@ -574,9 +574,13 @@ export class AppsCommand {
       tag,
       flags.sigil,
     );
-    this.log.info(`Deploying ${app}@${tag} to ${app}/${env}`, {
-      deployment: started.id,
-    });
+    // The estate is said on every deploy (#Q3172): it is chosen once, when
+    // the copy is created, and reused silently after.
+    const destination = await this.deployer.destinationOf(projectId, instance);
+    this.log.info(
+      `Deploying ${app}@${tag} to ${app}/${env}${destination ? ` on ${destination}` : ""}`,
+      { deployment: started.id },
+    );
 
     const finished = await this.deployer.follow(projectId, started.id);
     if (finished.status !== "succeeded") {

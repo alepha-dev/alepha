@@ -41,11 +41,13 @@ export class ScalewayProvider extends EstateProvider {
       );
     }
     const info = await this.shell.capture(["scw", "info", "-o", "json"]);
-    const keys = this.parse<Array<{ key?: string; value?: string }>>(
-      info.stdout,
-    );
-    const secret = Array.isArray(keys)
-      ? keys.find((row) => row.key === "secret_key")?.value
+    // `scw info -o json` is `{ build_info, settings: [{ key, value, origin }] }`
+    // (read from scw 2.x on 2026-11-06, the walk of #Q3169).
+    const scwInfo = this.parse<{
+      settings?: Array<{ key?: string; value?: string }>;
+    }>(info.stdout);
+    const secret = Array.isArray(scwInfo?.settings)
+      ? scwInfo.settings.find((row) => row.key === "secret_key")?.value
       : undefined;
     if (info.exitCode !== 0 || !secret || secret === "-") {
       throw this.refusal("scw is installed but not logged in. Run: scw login");

@@ -4,6 +4,7 @@ import {
   ConsoleOutputProvider,
   MemoryOutputProvider,
 } from "alepha/command";
+import { HttpError } from "alepha/server";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -42,9 +43,10 @@ describe("lore estate delete, provisioned", () => {
     shell.configure({
       installedCommands: ["scw"],
       outputs: {
-        "scw info -o json": JSON.stringify([
-          { key: "secret_key", value: "c381a8bf-xxxx" },
-        ]),
+        "scw info -o json": JSON.stringify({
+          build_info: {},
+          settings: [{ key: "secret_key", value: "c381a8bf-xxxx" }],
+        }),
       },
     });
     const calls: string[] = [];
@@ -64,7 +66,13 @@ describe("lore estate delete, provisioned", () => {
       checkEstateDeletable: async () => {
         calls.push("check");
         if (options.referenced) {
-          throw new Error("hello/production still deploys to this estate");
+          throw new HttpError(
+            { status: 409 },
+            {
+              message:
+                "This estate is still the deploy target of hello/production. Repoint or remove it first.",
+            },
+          );
         }
         return { ok: true };
       },
@@ -117,7 +125,7 @@ describe("lore estate delete, provisioned", () => {
   }) => {
     const { run, calls, shell } = create({ referenced: true });
     await expect(run("small-skilled-pie --yes")).rejects.toThrow(
-      "still deploys",
+      "lore apps instance delete --app <app> --env <env> --yes",
     );
     expect(shell.wasCalled(terminateCall)).toBe(false);
     expect(calls).toEqual(["check"]);

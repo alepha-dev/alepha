@@ -401,15 +401,8 @@ export class LoreDeployer {
     });
     const estate = lent?.items?.find(
       (it: { id: string }) => it.id === instance.estateId,
-    ) as
-      | { acceptedRuntimes?: string[]; type?: string; slug?: string }
-      | undefined;
+    ) as { acceptedRuntimes?: string[]; type?: string } | undefined;
     const runtime = estate?.acceptedRuntimes?.[0];
-    if (estate?.slug) {
-      // Said on every `lore deploy` (#Q3172), as `alepha deploy` says it
-      // through `destinationOf`: the estate is chosen once and reused.
-      this.log.info(`Deploying ${app}/${env} to estate '${estate.slug}'`);
-    }
     if (!runtime) {
       throw new AlephaError(
         `Could not tell what ${app}/${env} can run. Its estate is not lent to this project any more, or Lore did not say what it accepts.`,

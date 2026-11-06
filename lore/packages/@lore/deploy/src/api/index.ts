@@ -63,6 +63,7 @@ import { DeployedBuildService } from "./services/DeployedBuildService.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
+import { DeployProjectDeletion } from "./services/DeployProjectDeletion.ts";
 import { DeployProjectMerge } from "./services/DeployProjectMerge.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
@@ -134,6 +135,8 @@ export const LoreDeployApi = $module({
     DeployDashboard,
     // Registers its project merge step (#Q2782); nothing injects it.
     DeployProjectMerge,
+    // Frees the estates a deleted project held (#Q3169); nothing injects it.
+    DeployProjectDeletion,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
     // The apps tiles of #E77 (#Q2657).

@@ -4,6 +4,7 @@ import {
   ConsoleOutputProvider,
   MemoryOutputProvider,
 } from "alepha/command";
+import { HttpError } from "alepha/server";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -54,9 +55,10 @@ describe("lore estate provision", () => {
     shell.configure({
       installedCommands: ["scw"],
       outputs: {
-        "scw info -o json": JSON.stringify([
-          { key: "secret_key", value: "c381a8bf-xxxx" },
-        ]),
+        "scw info -o json": JSON.stringify({
+          build_info: {},
+          settings: [{ key: "secret_key", value: "c381a8bf-xxxx" }],
+        }),
         "scw instance server-type list zone=fr-par-1 -o json": JSON.stringify([
           { name: "DEV1-S", hourly_price: { units: 0, nanos: 8_976_000 } },
         ]),
@@ -84,6 +86,19 @@ describe("lore estate provision", () => {
     let reads = 0;
     Object.assign(provisioner as unknown as Record<string, unknown>, {
       projectApi: {
+        getProjectBySlug: async () => {
+          if (!options.projectExists) {
+            throw new HttpError(
+              { status: 404 },
+              { message: "Project not found" },
+            );
+          }
+          return {
+            id: 7,
+            slug: "hello-world",
+            capabilities: [{ key: "work" }],
+          };
+        },
         createProject: async (request: unknown) => {
           calls.push({ name: "createProject", request });
           return { id: 7, slug: "hello-world" };
@@ -223,5 +238,18 @@ describe("lore estate provision", () => {
       run("--provider scaleway --name tmp-vps --timeout 1"),
     ).rejects.toThrow("srv-1 is kept and still billing");
     expect(calls.map((call) => call.name)).not.toContain("deleteEstate");
+  });
+
+  it("says so when --project names an existing project, and that it cannot deploy without Apps", async ({
+    expect,
+  }) => {
+    const { run, printed, calls } = create({ projectExists: true });
+    await run("--provider scaleway --name tmp-vps --project hello-world");
+    expect(calls.map((call) => call.name)).not.toContain("createProject");
+    const out = printed.join("\n");
+    expect(out).toContain("Lending it to your existing project hello-world.");
+    expect(out).toContain(
+      "lore project capability enable apps --option deploy -p hello-world",
+    );
   });
 });

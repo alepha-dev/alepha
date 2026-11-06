@@ -422,14 +422,21 @@ export class EstateService {
         estateId: { eq: estateId },
         ...(projectId === undefined ? {} : { projectId: { eq: projectId } }),
       },
-      columns: ["app", "env"],
+      columns: ["app", "env", "projectId"],
       orderBy: [
         { column: "app", direction: "asc" },
         { column: "env", direction: "asc" },
       ],
     });
+    // A deleted project deploys nothing (#Q3169): its copies do not hold the
+    // estate, even those left from before its deletion freed them.
+    const live = await this.liveProjects(
+      referencing.map((instance) => instance.projectId),
+    );
     const named = [
-      ...referencing.map((instance) => `${instance.app}/${instance.env}`),
+      ...referencing
+        .filter((instance) => live.has(instance.projectId))
+        .map((instance) => `${instance.app}/${instance.env}`),
       ...(await this.stacksReferencing(estateId, projectId)),
     ];
     if (named.length === 0) {
@@ -444,6 +451,22 @@ export class EstateService {
         rest > 0 ? ` and ${rest} more` : ""
       }. Repoint or remove ${named.length === 1 ? "it" : "them"} first.`,
     );
+  }
+
+  /**
+   * Which of these projects still exist: the repository leaves out a
+   * soft-deleted row, so a project its owner deleted is not among them.
+   */
+  protected async liveProjects(ids: number[]): Promise<Set<number>> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) {
+      return new Set();
+    }
+    const rows = await this.projects.findMany({
+      where: { id: { inArray: unique } },
+      columns: ["id"],
+    });
+    return new Set(rows.map((row) => row.id));
   }
 
   /**
@@ -462,11 +485,17 @@ export class EstateService {
   ): Promise<string[]> {
     const scope =
       projectId === undefined ? {} : { projectId: { eq: projectId } };
-    const defaults = await this.stacks.findMany({
+    const allDefaults = await this.stacks.findMany({
       where: { estateId: { eq: estateId }, ...scope },
-      columns: ["name"],
+      columns: ["name", "projectId"],
       orderBy: [{ column: "name", direction: "asc" }],
     });
+    const liveDefaults = await this.liveProjects(
+      allDefaults.map((stack) => stack.projectId),
+    );
+    const defaults = allDefaults.filter((stack) =>
+      liveDefaults.has(stack.projectId),
+    );
     const overrides = await this.stackEnvironments.findMany({
       where: { estateId: { eq: estateId } },
       columns: ["stackId", "env"],
@@ -478,10 +507,17 @@ export class EstateService {
             id: { inArray: [...new Set(overrides.map((row) => row.stackId))] },
             ...scope,
           },
-          columns: ["id", "name"],
+          columns: ["id", "name", "projectId"],
         })
       : [];
-    const nameOf = new Map(owners.map((stack) => [stack.id, stack.name]));
+    const liveOwners = await this.liveProjects(
+      owners.map((stack) => stack.projectId),
+    );
+    const nameOf = new Map(
+      owners
+        .filter((stack) => liveOwners.has(stack.projectId))
+        .map((stack) => [stack.id, stack.name]),
+    );
     return [
       ...defaults.map((stack) => `${stack.name} (stack)`),
       ...overrides

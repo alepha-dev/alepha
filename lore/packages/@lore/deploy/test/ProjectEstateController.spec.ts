@@ -1,4 +1,5 @@
-import { ProjectSecurityService } from "@lore/core/api";
+import { ProjectDeletionService, ProjectSecurityService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -35,6 +36,7 @@ import {
 class EstateRepositories {
   estates = $repository(estates);
   grants = $repository(estateProjects);
+  projects = $repository(projects);
 }
 
 interface TestContext {
@@ -469,5 +471,106 @@ describe("ProjectEstateController, detaching", () => {
         )
       ).items,
     ).toEqual([]);
+  });
+});
+
+/**
+ * A deleted project lets go of its estates (#Q3169): the owner's project
+ * delete is soft, so nothing cascades, and the walk of epic E116 found an
+ * estate no command could delete any more because a gone project's copy
+ * still pointed at it.
+ */
+describe("a deleted project frees its estates", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("lets the estate be deleted once the project that deployed there is gone", async ({
+    expect,
+  }) => {
+    const ada = await createUser(ctx, "ada");
+    const estate = await mintEstate(ctx, ada, "ovh-1");
+    const project = await createProject(ctx, ada, []);
+    await ctx.controller.attachEstate(
+      { params: { projectId: project.id }, body: { estateId: estate.id } },
+      { user: ada },
+    );
+    const apps = ctx.alepha.inject(AppController);
+    await apps.createApp(
+      {
+        params: { projectId: project.id },
+        body: { app: "acme", env: "production" },
+      },
+      { user: ada },
+    );
+    await apps.updateApp(
+      {
+        params: { projectId: project.id, app: "acme", env: "production" },
+        body: { estateId: estate.id },
+      },
+      { user: ada },
+    );
+    await expect(
+      ctx.estates.deleteEstate(
+        { params: { estateId: estate.id } },
+        { user: ada },
+      ),
+    ).rejects.toThrow(/acme\/production/);
+
+    await ctx.alepha.inject(ProjectDeletionService).deleteProject(project.id);
+
+    expect(
+      await ctx.repos.grants.findMany({
+        where: { projectId: { eq: project.id } },
+      }),
+    ).toEqual([]);
+    await ctx.estates.deleteEstate(
+      { params: { estateId: estate.id } },
+      { user: ada },
+    );
+    expect(
+      await ctx.repos.estates.findOne({ where: { id: { eq: estate.id } } }),
+    ).toBeUndefined();
+  });
+
+  it("does not let a copy left by a project deleted before that step hold the estate", async ({
+    expect,
+  }) => {
+    const ada = await createUser(ctx, "ada");
+    const estate = await mintEstate(ctx, ada, "ovh-2");
+    const project = await createProject(ctx, ada, []);
+    const apps = ctx.alepha.inject(AppController);
+    await apps.createApp(
+      {
+        params: { projectId: project.id },
+        body: { app: "acme", env: "production" },
+      },
+      { user: ada },
+    );
+    await ctx.controller.attachEstate(
+      { params: { projectId: project.id }, body: { estateId: estate.id } },
+      { user: ada },
+    );
+    await apps.updateApp(
+      {
+        params: { projectId: project.id, app: "acme", env: "production" },
+        body: { estateId: estate.id },
+      },
+      { user: ada },
+    );
+    // Soft-deleted the way production's orphans were: the row alone, with
+    // the copy still pointing at the estate.
+    await ctx.repos.projects.deleteById(project.id);
+
+    await ctx.estates.deleteEstate(
+      { params: { estateId: estate.id } },
+      { user: ada },
+    );
   });
 });

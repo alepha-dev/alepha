@@ -10,6 +10,45 @@ It was walked on 2026-11-06 on a Scaleway DEV1-S (about €0.009 an hour, Ubuntu
 It needs the Lore CLI and Bay of the release after 0.35.0, which added the
 commands below.
 
+## The short way: Lore buys the server
+
+With the Lore CLI and Bay of 0.36.0 or later, one command replaces steps 1
+and 2 below, and `lore estate delete` replaces the provider's terminate:
+
+```bash
+brew install scw && scw login
+npm i -g alepha @alepha/lore && lore login
+
+lore estate provision --provider scaleway --project hello-world
+alepha init hello-world --infra lore
+cd hello-world
+alepha deploy
+```
+
+`provision` drives your own `scw`, so Lore holds no key to your cloud account.
+It names the estate with three random words (or `--name`), creates the project
+when it does not exist and lends the estate to it, creates the server with
+cloud-init that installs Bay with a one-time enrolment secret and an sslip.io
+base domain, and returns once the machine is online, about three minutes
+later. `alepha deploy` says which estate it deploys to and ends with the app's
+address. When you are done:
+
+```bash
+lore project delete hello-world --confirm hello-world   # the app and its copies go, and free the estate
+lore estate delete <its-name> --yes                     # terminates the server, its IP and its disk
+```
+
+The project goes first: an estate is refused while a copy still deploys to it,
+and the refusal says how to remove one. If `hello-world` already exists,
+`provision` says so and lends the estate to it, and warns when that project
+cannot deploy apps yet; a scratch project of its own is the safer choice for a
+throwaway server, since deleting it takes everything in it.
+
+The rest of this page is the long way, with the provider's CLI in your own
+hands: what `provision` does for you, one step at a time.
+
+## The long way
+
 You need the [Lore CLI](/lore/docs/guides-cli) signed in (`lore login`), a
 provider CLI (here Scaleway's `scw`, set up with an SSH key), `jq`, and a Lore
 project to work in:
