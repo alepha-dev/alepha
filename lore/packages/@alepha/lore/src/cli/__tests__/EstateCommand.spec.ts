@@ -1,7 +1,9 @@
 import { Alepha } from "alepha";
 import {
   CliProvider,
+  ConsoleInputProvider,
   ConsoleOutputProvider,
+  MemoryInputProvider,
   MemoryOutputProvider,
 } from "alepha/command";
 import {
@@ -13,6 +15,7 @@ import {
 import { describe, it } from "vitest";
 
 import { EstateCommand } from "../commands/EstateCommand.ts";
+import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
@@ -34,7 +37,8 @@ describe("lore estate", () => {
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider });
+      .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider })
+      .with({ provide: ConsoleInputProvider, use: MemoryInputProvider });
     const printed = alepha.inject(MemoryOutputProvider).lines;
     const calls: Array<{ name: string; request: unknown }> = [];
     const command = alepha.inject(EstateCommand);
@@ -43,6 +47,47 @@ describe("lore estate", () => {
       {
         projects: { getProjectBySlug: async () => ({ id: 7 }) },
       },
+    );
+    const estates = {
+      updateEstate: async (request: unknown) => {
+        calls.push({ name: "update", request });
+        return {};
+      },
+      deleteEstate: async (request: unknown) => {
+        calls.push({ name: "delete", request });
+        return { ok: true };
+      },
+      listMyEstates: async () => ({
+        items: [
+          {
+            id: "e1",
+            slug: "vps-ovh",
+            type: "bay",
+            cpuPercent: 34.4,
+            memoryPercent: 61.6,
+            statsAt: "2026-11-02T10:00:00Z",
+          },
+        ],
+      }),
+      getEstateStats: async (request: unknown) => {
+        calls.push({ name: "stats", request });
+        return {
+          collecting: true,
+          estimated: false,
+          points: [
+            {
+              day: "2026-11-01",
+              cpuPercent: 20.2,
+              memoryPercent: 55,
+              samples: 288,
+            },
+          ],
+        };
+      },
+    };
+    Object.assign(
+      alepha.inject(LoreEstateResolver) as unknown as Record<string, unknown>,
+      { estates },
     );
     Object.assign(command as unknown as Record<string, unknown>, {
       lending: {
@@ -65,43 +110,16 @@ describe("lore estate", () => {
           ],
         }),
       },
-      estates: {
-        updateEstate: async (request: unknown) => {
-          calls.push({ name: "update", request });
-          return {};
-        },
-        listMyEstates: async () => ({
-          items: [
-            {
-              id: "e1",
-              slug: "vps-ovh",
-              cpuPercent: 34.4,
-              memoryPercent: 61.6,
-              statsAt: "2026-11-02T10:00:00Z",
-            },
-          ],
-        }),
-        getEstateStats: async (request: unknown) => {
-          calls.push({ name: "stats", request });
-          return {
-            collecting: true,
-            estimated: false,
-            points: [
-              {
-                day: "2026-11-01",
-                cpuPercent: 20.2,
-                memoryPercent: 55,
-                samples: 288,
-              },
-            ],
-          };
-        },
-      },
+      estates,
     });
-    const run = async (sub: "add" | "list" | "stats", argv: string) => {
+    const run = async (
+      sub: "add" | "list" | "stats" | "delete",
+      argv: string,
+    ) => {
       await alepha.inject(CliProvider).run(command[sub] as never, { argv });
     };
-    return { run, printed, calls };
+    const input = alepha.inject(MemoryInputProvider);
+    return { run, printed, calls, input };
   };
 
   it("adds an estate to the project and prints the connector command with its secret, once", async ({
@@ -187,5 +205,47 @@ describe("lore estate", () => {
       "You own no estate named someone-elses",
     );
     expect(calls).toEqual([]);
+  });
+
+  describe("delete (#Q3131)", () => {
+    it("deletes one of the caller's own estates with --yes and says nothing on the machine stopped", async ({
+      expect,
+    }) => {
+      const { run, printed, calls } = create();
+      await run("delete", "vps-ovh --yes");
+      expect(calls).toEqual([
+        { name: "delete", request: { params: { estateId: "e1" } } },
+      ]);
+      const out = printed.join("\n");
+      expect(out).toContain("Deleted vps-ovh. Its secret is revoked");
+      expect(out).toContain("Nothing on the machine was stopped");
+    });
+
+    it("prints JSON for a script", async ({ expect }) => {
+      const { run, printed } = create();
+      await run("delete", "vps-ovh --yes --output json");
+      expect(JSON.parse(printed.join("\n"))).toEqual({
+        ok: true,
+        id: "e1",
+        slug: "vps-ovh",
+        revoked: true,
+      });
+    });
+
+    it("refuses without --yes when there is no terminal to ask on, and deletes nothing", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await expect(run("delete", "vps-ovh")).rejects.toThrow("Pass --yes");
+      expect(calls).toEqual([]);
+    });
+
+    it("refuses an estate the caller does not own", async ({ expect }) => {
+      const { run, calls } = create();
+      await expect(run("delete", "someone-elses --yes")).rejects.toThrow(
+        "You own no estate named someone-elses",
+      );
+      expect(calls).toEqual([]);
+    });
   });
 });

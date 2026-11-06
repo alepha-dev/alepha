@@ -2,7 +2,11 @@ import type { Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { StackController, StackService } from "../src/api/index.ts";
+import {
+  EstateController,
+  StackController,
+  StackService,
+} from "../src/api/index.ts";
 import {
   bootStackSpec,
   createEnvironment,
@@ -135,6 +139,72 @@ describe("stacks", () => {
       await expect(
         createEnvironment(alepha, w, stack.id, { env: "production" }),
       ).rejects.toThrow("already has an environment");
+    });
+  });
+
+  describe("deleting the estate a stack deploys to (#Q3131)", () => {
+    it("is refused while a stack names it as its default, naming the stack", async ({
+      expect,
+    }) => {
+      const w = await stackWorld(alepha);
+      const estate = await lentBayEstate(w);
+      await createStack(alepha, w, { name: "umami", estateId: estate.id });
+
+      await expect(
+        alepha
+          .inject(EstateController)
+          .deleteEstate.fetch(
+            { params: { estateId: estate.id } },
+            { user: w.user },
+          ),
+      ).rejects.toThrow("still the deploy target of umami (stack)");
+    });
+
+    it("is refused while an environment overrides to it, naming stack/env", async ({
+      expect,
+    }) => {
+      const w = await stackWorld(alepha);
+      const main = await lentBayEstate(w);
+      const cheap = await lentBayEstate(w);
+      const stack = await createStack(alepha, w, {
+        name: "umami",
+        estateId: main.id,
+      });
+      await createEnvironment(alepha, w, stack.id, {
+        env: "staging",
+        estateId: cheap.id,
+      });
+
+      await expect(
+        alepha
+          .inject(EstateController)
+          .deleteEstate.fetch(
+            { params: { estateId: cheap.id } },
+            { user: w.user },
+          ),
+      ).rejects.toThrow("still the deploy target of umami/staging (stack)");
+    });
+
+    it("goes through once no stack points at it any more", async ({
+      expect,
+    }) => {
+      const w = await stackWorld(alepha);
+      const estate = await lentBayEstate(w);
+      const stack = await createStack(alepha, w, { estateId: estate.id });
+      await alepha
+        .inject(StackController)
+        .deleteStack.fetch(
+          { params: { projectId: w.project.id, stackId: stack.id } },
+          { user: w.user },
+        );
+
+      const deleted = await alepha
+        .inject(EstateController)
+        .deleteEstate.fetch(
+          { params: { estateId: estate.id } },
+          { user: w.user },
+        );
+      expect(deleted.data).toEqual({ ok: true });
     });
   });
 

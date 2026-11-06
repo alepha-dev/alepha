@@ -14,6 +14,8 @@ import {
 import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
+import { stackEnvironments } from "../entities/stackEnvironments.ts";
+import { stacks } from "../entities/stacks.ts";
 import { EstateCredentialRefused } from "../errors/EstateCredentialRefused.ts";
 import { acceptedRuntimes } from "../schemas/acceptedRuntimes.ts";
 import {
@@ -49,6 +51,8 @@ export class EstateService {
   protected readonly estates = $repository(estates);
   protected readonly instances = $repository(appInstances);
   protected readonly grants = $repository(estateProjects);
+  protected readonly stacks = $repository(stacks);
+  protected readonly stackEnvironments = $repository(stackEnvironments);
   protected readonly projects = $repository(projects);
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly inventories = $inject(EstateInventoryService);
@@ -381,7 +385,7 @@ export class EstateService {
 
   /**
    * Refuses to delete an estate, or detach it from a project, while an app
-   * instance points at it.
+   * instance, a stack or a stack environment points at it.
    *
    * The rule, from folio #1194: never cascade. Cascading silently breaks other
    * people's projects, while refusing forces a visible repoint or removal in
@@ -416,20 +420,67 @@ export class EstateService {
         { column: "env", direction: "asc" },
       ],
     });
-    if (referencing.length === 0) {
+    const named = [
+      ...referencing.map((instance) => `${instance.app}/${instance.env}`),
+      ...(await this.stacksReferencing(estateId, projectId)),
+    ];
+    if (named.length === 0) {
       return;
     }
 
-    const named = referencing
-      .slice(0, this.referenceNameLimit)
-      .map((instance) => `${instance.app}/${instance.env}`)
-      .join(", ");
-    const rest = referencing.length - this.referenceNameLimit;
+    const rest = named.length - this.referenceNameLimit;
     throw new ConflictError(
-      `This estate is still the deploy target of ${named}${
+      `This estate is still the deploy target of ${named
+        .slice(0, this.referenceNameLimit)
+        .join(", ")}${
         rest > 0 ? ` and ${rest} more` : ""
-      }. Repoint or remove ${referencing.length === 1 ? "it" : "them"} first.`,
+      }. Repoint or remove ${named.length === 1 ? "it" : "them"} first.`,
     );
+  }
+
+  /**
+   * The stacks and stack environments that deploy to an estate, named as
+   * `stack (stack)` for a stack's default estate and `stack/env (stack)` for
+   * an environment's own override (#Q3131).
+   *
+   * Both columns are `set null` at the database for the reason
+   * `app_instances.estateId` is: without this, deleting an estate silently
+   * left a stack with nowhere to deploy. With a `projectId`, only that
+   * project's stacks count, as for instances.
+   */
+  protected async stacksReferencing(
+    estateId: string,
+    projectId?: number,
+  ): Promise<string[]> {
+    const scope =
+      projectId === undefined ? {} : { projectId: { eq: projectId } };
+    const defaults = await this.stacks.findMany({
+      where: { estateId: { eq: estateId }, ...scope },
+      columns: ["name"],
+      orderBy: [{ column: "name", direction: "asc" }],
+    });
+    const overrides = await this.stackEnvironments.findMany({
+      where: { estateId: { eq: estateId } },
+      columns: ["stackId", "env"],
+      orderBy: [{ column: "env", direction: "asc" }],
+    });
+    const owners = overrides.length
+      ? await this.stacks.findMany({
+          where: {
+            id: { inArray: [...new Set(overrides.map((row) => row.stackId))] },
+            ...scope,
+          },
+          columns: ["id", "name"],
+        })
+      : [];
+    const nameOf = new Map(owners.map((stack) => [stack.id, stack.name]));
+    return [
+      ...defaults.map((stack) => `${stack.name} (stack)`),
+      ...overrides
+        .filter((row) => nameOf.has(row.stackId))
+        .map((row) => `${nameOf.get(row.stackId)}/${row.env} (stack)`)
+        .sort(),
+    ];
   }
 
   /**

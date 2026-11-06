@@ -99,6 +99,28 @@ stack names its estate itself: `lore stack create --estate` sets its default,
 and `lore stack deploy --estate` overrides that on an environment's first
 deploy.
 
+## Deleting an estate
+
+Delete an estate from its console's **Settings** tab, the Cloudflare drawer, or
+a shell:
+
+```bash
+lore estate delete my-vps --yes
+```
+
+The slug is one of the estates you own: `lore estate delete` never acts on an
+estate someone else lent to the project. Without `--yes` it asks first, and with
+no terminal to ask on it refuses rather than wait. `--output json` prints
+`{ ok, id, slug, revoked }` for a script.
+
+Deleting is refused while an app copy, a stack or a stack environment, in any
+project, still deploys onto the estate; the refusal names each one. Repoint or
+remove them first.
+
+Nothing on the machine stops: Lore forgets the connection, and for a Bay estate
+the secret is revoked, so the connector holding it is refused on its next dial.
+A server bought for a test is deleted with its provider afterwards.
+
 ## The console of a Bay estate
 
 Clicking a Bay estate on the Estates page opens its console, with four tabs:

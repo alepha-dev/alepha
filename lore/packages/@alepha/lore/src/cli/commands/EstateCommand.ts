@@ -2,11 +2,12 @@ import type {
   EstateController,
   ProjectEstateController,
 } from "@lore/deploy/api";
-import { $inject, z } from "alepha";
-import { $command, UsageError } from "alepha/command";
+import { $inject, AlephaError, z } from "alepha";
+import { $command, ConsoleInputProvider, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import {
@@ -25,12 +26,18 @@ import {
  * `stats` reads a machine's CPU and memory over time (#Q3047): the daily
  * means the estate page charts, from the same owner-only action, so it names
  * one of the caller's own estates by slug and no project.
+ *
+ * `delete` (#Q3131) removes one of the caller's own estates, the end of a
+ * throwaway server's life: the server refuses while an app, a stack or a
+ * stack environment still deploys to it, and nothing on the machine stops.
  */
 export class EstateCommand {
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly refusals = $inject(LoreRefusals);
   protected readonly render = $inject(LoreOutput);
+  protected readonly owned = $inject(LoreEstateResolver);
+  protected readonly input = $inject(ConsoleInputProvider);
 
   protected readonly lending = $client<ProjectEstateController>(
     this.client.scope(),
@@ -169,15 +176,9 @@ export class EstateCommand {
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        // The stats action is the owner's alone, and a slug is unique per
-        // owner: the caller's own list is the only place to look it up.
-        const { items } = await this.estates.listMyEstates();
-        const estate = items.find((item) => item.slug === args);
-        if (!estate) {
-          throw new UsageError(
-            `You own no estate named ${args}. lore estate list shows the project's, and only an estate's owner can read its stats.`,
-          );
-        }
+        // The stats action is the owner's alone: the slug resolves among the
+        // caller's own estates.
+        const estate = await this.owned.owned(args);
         const stats = await this.estates.getEstateStats({
           params: { estateId: estate.id },
           query: flags.since ? { since: flags.since } : {},
@@ -234,11 +235,61 @@ export class EstateCommand {
     },
   });
 
+  public readonly delete = $command({
+    name: "delete",
+    description:
+      "Delete one of your estates: Lore forgets the machine and revokes its secret, nothing on the machine stops",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({
+      yes: z.boolean().describe("Do not ask for confirmation (CI)").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, ask }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const estate = await this.owned.owned(args);
+        if (!flags.yes) {
+          // A prompt nobody can answer would hang a script: refuse instead.
+          if (!this.input.isTTY()) {
+            throw new UsageError(
+              `Deleting ${estate.slug} needs a confirmation, and there is no terminal to ask on. Pass --yes.`,
+            );
+          }
+          const confirmed = await ask.confirm(
+            `Delete ${estate.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
+          );
+          if (!confirmed) {
+            throw new AlephaError("Not confirmed; nothing was changed.");
+          }
+        }
+        await this.estates.deleteEstate({ params: { estateId: estate.id } });
+        if (flags.output === "json") {
+          this.render.json(print, {
+            ok: true,
+            id: estate.id,
+            slug: estate.slug,
+            revoked: estate.type === "bay",
+          });
+          return;
+        }
+        print(
+          `Deleted ${estate.slug}.${estate.type === "bay" ? " Its secret is revoked: the connector holding it is refused on its next dial." : ""}`,
+        );
+        print(
+          "Nothing on the machine was stopped: Lore only lost the connection. Delete the server with its provider when you are done with it.",
+        );
+      });
+    },
+  });
+
   public readonly estate = $command({
     name: "estate",
     description:
-      "The machines this project deploys to: add one, list them, read one's stats",
-    children: [this.add, this.list, this.stats],
+      "The machines this project deploys to: add one, list them, read one's stats, delete one",
+    children: [this.add, this.list, this.stats, this.delete],
     handler: async ({ help }) => {
       help();
     },
