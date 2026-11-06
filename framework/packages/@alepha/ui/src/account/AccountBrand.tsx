@@ -38,12 +38,18 @@ export const AccountBrand = (props: AccountBrandProps) => {
   const auth = useAuth();
   const { tr } = useI18n();
   const router = useRouter<any>();
+  // `router.path` throws on a name the application never declared, and an
+  // application without a home page has nowhere for the arrow to go.
+  const homeName = props.homeRouteName ?? "home";
+  const home = router.pages.some((page) => page.name === homeName)
+    ? homeName
+    : undefined;
   const user = auth.user;
   const name = user?.name ?? user?.username ?? user?.email ?? "";
 
   return (
     <SidebarBackHeader
-      href={router.path(props.homeRouteName ?? "home")}
+      href={home ? router.path(home) : undefined}
       label={tr("account.nav.backToSite", { default: "Back to site" })}
     >
       <UserAvatar fileId={user?.picture} className="size-7" alt={name} />
