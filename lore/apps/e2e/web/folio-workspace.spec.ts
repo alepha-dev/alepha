@@ -1178,7 +1178,10 @@ test.describe("Folio workspace", () => {
      * by the browser and is not in the DOM to hover for.
      */
     await expect(
-      page.getByRole("button", { name: /^new folio$/i }).first(),
+      page
+        .getByRole("main")
+        .getByRole("button", { name: /^new folio$/i })
+        .first(),
     ).toHaveAttribute("title", "New folio");
     await expect(
       page.getByRole("button", { name: /^new directory$/i }).first(),
@@ -1234,6 +1237,7 @@ test.describe("Folio workspace", () => {
     await expect(tree).toBeVisible({ timeout: 10_000 });
 
     await page
+      .getByRole("main")
       .getByRole("button", { name: /^new folio$/i })
       .first()
       .click();
@@ -1731,6 +1735,7 @@ test.describe("Folio workspace", () => {
     // other side of the navigation to it, which is what the retired
     // `pendingFolioTreeRenameAtom` used to carry across a remount.
     await page
+      .getByRole("main")
       .getByRole("button", { name: /^new folio$/i })
       .first()
       .click();
@@ -1758,6 +1763,7 @@ test.describe("Folio workspace", () => {
     });
     // The empty state's own button, after the tree header's icon button.
     await page
+      .getByRole("main")
       .getByRole("button", { name: /^new folio$/i })
       .last()
       .click();

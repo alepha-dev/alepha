@@ -182,18 +182,6 @@ const useDraftAutofill = (projectId: string) => {
   return { draft, clear };
 };
 
-/**
- * Whether the page runs inside the sigil's feedback popup, read through
- * `useSyncExternalStore` so the server answers `false` and the browser reads
- * `window.name` at hydration, with no state set from an effect. The name never
- * changes while the page is open, so there is nothing to subscribe to.
- */
-const ProjectFeedbackRequestPopup = {
-  subscribe: () => () => {},
-  client: () => window.name === "lore-feedback",
-  server: () => false,
-};
-
 const ProjectFeedbackRequest = () => {
   const { tr } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
@@ -211,12 +199,13 @@ const ProjectFeedbackRequest = () => {
   // browser's. A way back to the inbox is offered to a member only (the membership list
   // the shell already holds), and never inside the sigil popup, where a
   // client-side navigation would replace the form in a chrome-less window.
-  // `window.name` is read after mount: the page server-renders.
+  // `window.name` is read on the client only: the page server-renders, and
+  // the server snapshot (`false`) is what hydration compares against.
   const [overview] = useStore(userProjectsAtom);
   const memberProject = overview?.projects.find((p) => p.slug === projectSlug);
   const inPopup = useSyncExternalStore(
     ProjectFeedbackRequestPopup.subscribe,
-    ProjectFeedbackRequestPopup.client,
+    ProjectFeedbackRequestPopup.read,
     ProjectFeedbackRequestPopup.server,
   );
   const backLink =
@@ -790,3 +779,14 @@ const ProjectFeedbackRequest = () => {
 };
 
 export default ProjectFeedbackRequest;
+
+/**
+ * `useSyncExternalStore`'s three functions for "was this page opened as the
+ * sigil feedback popup". A window's name never changes under it, so there
+ * is nothing to subscribe to.
+ */
+const ProjectFeedbackRequestPopup = {
+  subscribe: () => () => {},
+  read: () => window.name === "lore-feedback",
+  server: () => false,
+};

@@ -334,7 +334,10 @@ test.describe("Releases", () => {
 
     await page.goto(`/${slug}/releases`);
 
-    const open = page.getByRole("button", { name: "New Release" }).first();
+    const open = page
+      .getByRole("main")
+      .getByRole("button", { name: "New Release" })
+      .first();
     const tagField = page.getByLabel("Tag");
 
     await test.step("creating one puts it in the list", async () => {

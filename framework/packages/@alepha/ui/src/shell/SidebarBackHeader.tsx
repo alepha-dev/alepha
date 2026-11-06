@@ -10,9 +10,10 @@ export interface SidebarBackHeaderProps {
   /**
    * Where the arrow leads: the application's home, out of a root shell such
    * as `/account` or `/admin` that is not drawn inside the application's own
-   * chrome.
+   * chrome. Absent, there is no arrow, for an application with nowhere to
+   * go back to.
    */
-  href: string;
+  href?: string;
   /**
    * Names the arrow for assistive technology, since it shows only an icon.
    */
@@ -40,13 +41,15 @@ export interface SidebarBackHeaderProps {
 export const SidebarBackHeader = (props: SidebarBackHeaderProps) => {
   return (
     <div className="flex min-w-0 items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
-      <Link
-        href={props.href}
-        aria-label={props.label}
-        className="text-muted-foreground hover:bg-hover hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
-      >
-        <ArrowLeft className="size-4 rtl:-scale-x-100" />
-      </Link>
+      {props.href && (
+        <Link
+          href={props.href}
+          aria-label={props.label}
+          className="text-muted-foreground hover:bg-hover hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+        >
+          <ArrowLeft className="size-4 rtl:-scale-x-100" />
+        </Link>
+      )}
       <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
         {props.children}
       </div>

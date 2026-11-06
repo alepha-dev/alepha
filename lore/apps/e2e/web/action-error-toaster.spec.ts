@@ -107,7 +107,11 @@ test.describe("action error toaster", () => {
     const message = "Epic store unavailable (e2e)";
     await failAction(page, "createEpic", 500, message);
 
-    await page.getByRole("button", { name: "New Epic" }).first().click();
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "New Epic" })
+      .first()
+      .click();
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible();
     await modal.getByRole("textbox").first().fill("Never saved");
