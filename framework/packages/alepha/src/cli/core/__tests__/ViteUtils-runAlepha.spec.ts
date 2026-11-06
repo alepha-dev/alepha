@@ -95,3 +95,55 @@ describe("ViteUtils — the server behind runAlepha", () => {
     expect(names).toContain("alepha-client-modules");
   });
 });
+
+describe("ViteUtils: the APP_SECRET placeholder", () => {
+  it("should give the loaded app a placeholder and leave none in process.env", async () => {
+    // #Q3148: the placeholder used to stay in `process.env` for the rest of
+    // the process, and `alepha deploy` runs the build and the secrets step in
+    // one process: `selectSecrets` read it back and pushed it as the app's
+    // production APP_SECRET.
+    const nodeEnv = process.env.NODE_ENV;
+    const before = process.env.APP_SECRET;
+    delete process.env.APP_SECRET;
+    const alepha = Alepha.create().with({
+      provide: ViteUtils,
+      use: FakeViteUtils,
+    });
+    const vite = alepha.inject(FakeViteUtils);
+
+    try {
+      const app = await vite.runAlepha({ entry, mode: "production" });
+
+      expect(app.env.APP_SECRET).toBe(ViteUtils.PLACEHOLDER_APP_SECRET);
+      expect(process.env.APP_SECRET).toBeUndefined();
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+      if (before === undefined) delete process.env.APP_SECRET;
+      else process.env.APP_SECRET = before;
+      delete (globalThis as any).__alepha;
+    }
+  });
+
+  it("should leave an APP_SECRET that was already set untouched", async () => {
+    const nodeEnv = process.env.NODE_ENV;
+    const before = process.env.APP_SECRET;
+    process.env.APP_SECRET = "set-by-the-deployer";
+    const alepha = Alepha.create().with({
+      provide: ViteUtils,
+      use: FakeViteUtils,
+    });
+    const vite = alepha.inject(FakeViteUtils);
+
+    try {
+      const app = await vite.runAlepha({ entry, mode: "production" });
+
+      expect(app.env.APP_SECRET).toBe("set-by-the-deployer");
+      expect(process.env.APP_SECRET).toBe("set-by-the-deployer");
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+      if (before === undefined) delete process.env.APP_SECRET;
+      else process.env.APP_SECRET = before;
+      delete (globalThis as any).__alepha;
+    }
+  });
+});

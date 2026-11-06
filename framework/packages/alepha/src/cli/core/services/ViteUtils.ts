@@ -75,6 +75,13 @@ export interface SsrPreloadContext {
  * When Vite is replaced, only this file needs to change.
  */
 export class ViteUtils {
+  /**
+   * The APP_SECRET an analysed app boots with when none is set, only while
+   * {@link runAlepha} loads it. Never a real secret, and never left in
+   * `process.env` afterwards.
+   */
+  public static readonly PLACEHOLDER_APP_SECRET = "alepha-cli-placeholder";
+
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected viteDevServer?: ViteDevServer;
@@ -623,7 +630,17 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
     process.env.NODE_ENV = opts.mode;
     process.env.ALEPHA_CLI_IMPORT = "true"; // signal Alepha App about CLI import, run(alepha) won't start server
     process.env.LOG_LEVEL ??= "warn"; // reduce log noise
-    process.env.APP_SECRET ??= "123456"; // avoid warning about missing secret, not used in CLI context
+
+    // A placeholder so the analysed app boots without the missing-secret
+    // warning. ⚠️ It must not outlive the load (#Q3148): `Alepha.create()`
+    // copies `process.env` into the container during `ssrLoadModule`, and
+    // everything after it in this process reads `process.env` too. The deploy
+    // pipeline's secrets step does (`selectSecrets`), so a leaked placeholder
+    // was pushed as the app's production APP_SECRET.
+    const placeholderSecret = process.env.APP_SECRET === undefined;
+    if (placeholderSecret) {
+      process.env.APP_SECRET = ViteUtils.PLACEHOLDER_APP_SECRET;
+    }
 
     /**
      * 01/26 Vite 7
@@ -660,9 +677,14 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
       optimizeDeps: { noDiscovery: true, include: [] },
     } satisfies InlineConfig);
 
-    await this.viteDevServer.ssrLoadModule(opts.entry.server);
-
-    delete process.env.ALEPHA_CLI_IMPORT;
+    try {
+      await this.viteDevServer.ssrLoadModule(opts.entry.server);
+    } finally {
+      delete process.env.ALEPHA_CLI_IMPORT;
+      if (placeholderSecret) {
+        delete process.env.APP_SECRET;
+      }
+    }
 
     const alepha: Alepha = (globalThis as any).__alepha;
     if (!alepha) {
