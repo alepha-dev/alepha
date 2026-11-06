@@ -115,7 +115,7 @@ export const AiChat = (props: AiChatProps) => {
         data-testid="ai-chat"
         // From `sm` up the panel floats: a gap from the page's edges, every
         // corner rounded, a shadow, and no bleed strip past its edge.
-        className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-md sm:[--drawer-inset:0.75rem] sm:after:hidden sm:data-[swipe-direction=right]:rounded-2xl sm:data-[swipe-direction=right]:border sm:data-[swipe-direction=right]:shadow-2xl"
+        className="flex h-full w-full flex-col gap-0 p-0 sm:h-[calc(100dvh-1.5rem)] sm:max-w-md sm:[--drawer-inset:0.75rem] sm:after:hidden sm:data-[swipe-direction=right]:rounded-2xl sm:data-[swipe-direction=right]:border sm:data-[swipe-direction=right]:shadow-2xl"
       >
         <div className="border-border flex items-center gap-2 border-b py-2.5 pr-2.5 pl-4">
           <Sparkles className="text-primary size-4 shrink-0" />
