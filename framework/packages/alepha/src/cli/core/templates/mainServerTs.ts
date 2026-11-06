@@ -4,13 +4,23 @@ export interface MainServerTsOptions {
    * which bring their own client runtime.
    */
   react?: boolean;
+  /**
+   * Whether the app reports to Lore (`--infra lore`): `AlephaSigil` from
+   * `@alepha/lore/sigil`, so telemetry is on from the first deploy.
+   */
+  sigil?: boolean;
 }
 
 export const mainServerTs = (options: MainServerTsOptions = {}) => {
-  const { react = false } = options;
+  const { react = false, sigil = false } = options;
 
   const imports = [`import { ApiModule } from "./api/index.ts";`];
   const withs = [`alepha.with(ApiModule);`];
+
+  if (sigil) {
+    imports.unshift(`import { AlephaSigil } from "@alepha/lore/sigil";`);
+    withs.unshift(`alepha.with(AlephaSigil);`);
+  }
 
   if (react) {
     imports.push(`import { WebModule } from "./web/index.ts";`);

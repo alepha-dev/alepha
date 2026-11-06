@@ -154,4 +154,82 @@ describe("init --infra", () => {
       'domain: "app.example.com"',
     );
   });
+
+  describe("--infra lore (#Q3142)", () => {
+    it("writes lore({ project }) from the directory name, @alepha/lore and the sigil", async ({
+      expect,
+    }) => {
+      const { cli, command, fs, shell } = await setup();
+      await cli.run(command.init, { root: "/project", argv: "--infra lore" });
+
+      const config = fs.getFileContent("/project/alepha.config.ts")!;
+      expect(config).toContain('import { lore } from "@alepha/lore/cli";');
+      expect(config).toContain('import { infra } from "alepha/cli/infra";');
+      expect(config).toContain('production: lore({ project: "project" }),');
+      expect(config).not.toMatch(/estate\s*:/);
+      expect(config).not.toContain("url:");
+
+      const pkg = JSON.parse(fs.getFileContent("/project/package.json")!);
+      expect(pkg.dependencies["@alepha/lore"]).toMatch(/^\^/);
+
+      const entry = fs.getFileContent("/project/src/main.server.ts")!;
+      expect(entry).toContain(
+        'import { AlephaSigil } from "@alepha/lore/sigil";',
+      );
+      expect(entry).toContain("alepha.with(AlephaSigil);");
+
+      expect(
+        shell.calls.some((call) =>
+          call.command.endsWith("lore project link project"),
+        ),
+      ).toBe(true);
+    });
+
+    it("takes --lore-project, and --lore-url only for a self-hosted instance, which it does not link", async ({
+      expect,
+    }) => {
+      const { cli, command, fs, shell } = await setup();
+      await cli.run(command.init, {
+        root: "/project",
+        argv: "--infra lore --lore-project acme --lore-url https://lore.example.com",
+      });
+
+      expect(fs.getFileContent("/project/alepha.config.ts")).toContain(
+        'production: lore({ project: "acme", url: "https://lore.example.com" }),',
+      );
+      expect(
+        shell.calls.some((call) => call.command.includes("project link")),
+      ).toBe(false);
+    });
+
+    it("keeps Cloudflare's config, dependencies and entry free of Lore", async ({
+      expect,
+    }) => {
+      const { cli, command, fs } = await setup();
+      await cli.run(command.init, { root: "/project", argv: "--infra cf" });
+
+      expect(fs.getFileContent("/project/alepha.config.ts")).not.toContain(
+        "@alepha/lore",
+      );
+      const pkg = JSON.parse(fs.getFileContent("/project/package.json")!);
+      expect(pkg.dependencies["@alepha/lore"]).toBeUndefined();
+      expect(fs.getFileContent("/project/src/main.server.ts")).not.toContain(
+        "AlephaSigil",
+      );
+    });
+
+    it("explains the Lore case over an existing config, before writing anything", async ({
+      expect,
+    }) => {
+      const { cli, command, fs, shell } = await setup(canonical);
+      const writes = fs.writeFileCalls.length;
+      await expect(
+        cli.run(command.init, { root: "/project", argv: "--infra lore" }),
+      ).rejects.toThrow(
+        /already exists[\s\S]*@alepha\/lore\/cli[\s\S]*lore\(\{ project: "project" \}\)[\s\S]*AlephaSigil[\s\S]*--force/,
+      );
+      expect(fs.writeFileCalls).toHaveLength(writes);
+      expect(shell.calls).toHaveLength(0);
+    });
+  });
 });

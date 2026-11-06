@@ -32,6 +32,18 @@ export class InitCommand {
       .optional(),
     flags: z.object({
       infra: infraProviderSchema.optional(),
+      "lore-project": z
+        .text({
+          description:
+            "With --infra lore: the Lore project slug. Defaults to the app's directory name.",
+        })
+        .optional(),
+      "lore-url": z
+        .text({
+          description:
+            "With --infra lore: a self-hosted Lore instance. Defaults to https://lore.alepha.dev.",
+        })
+        .optional(),
       preset: presetSchema
         .describe(
           "Project shape: 'default' (API + web + Tailwind) or 'saas' (adds @alepha/ui with auth, account and admin)",
@@ -48,7 +60,16 @@ export class InitCommand {
         .optional(),
     }),
     handler: async ({ run, flags, root, args }) => {
-      await this.scaffolder.init({ run, flags, root, args });
+      await this.scaffolder.init({
+        run,
+        flags: {
+          ...flags,
+          loreProject: flags["lore-project"],
+          loreUrl: flags["lore-url"],
+        },
+        root,
+        args,
+      });
     },
   });
 }

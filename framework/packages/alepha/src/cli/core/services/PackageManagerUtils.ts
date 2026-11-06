@@ -610,6 +610,12 @@ export class PackageManagerUtils {
       dependencies["@alepha/ui"] = `^${version}`;
     }
 
+    // Released with `alepha` under the same version (one release for the
+    // framework, Lore and Bay), so the same range.
+    if (modes.lore) {
+      dependencies["@alepha/lore"] = `^${version}`;
+    }
+
     return {
       type: "module",
       dependencies,
@@ -644,4 +650,9 @@ export interface DependencyModes {
    * its auth, account and admin routers.
    */
   ui?: boolean;
+  /**
+   * Whether to depend on `@alepha/lore`. Set by `--infra lore`, whose config
+   * imports its `lore()` adapter and whose entry mounts its sigil.
+   */
+  lore?: boolean;
 }

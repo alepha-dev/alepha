@@ -33,6 +33,12 @@ Lore when the list stops being fixed.
 | **Artifact**     | A build somebody pushed, named by a tag. Immutable, except `latest`.                   |
 | **Deployment**   | One run of "put these bytes on that copy", with its log.                               |
 
+A new app can start on this path: `npm create alepha my-app -- --infra lore`
+(or `alepha init --infra lore`) writes `lore({ project })` into
+`alepha.config.ts`, adds `@alepha/lore`, mounts the sigil, and links the
+directory to the project when you are signed in. After that, enrolling a server
+and `alepha deploy production` is the whole loop.
+
 ## 1. Turn deploys on
 
 Turn on **Deploy and watch apps** in **Settings → General → Capabilities**, then open **Settings → Apps** and turn

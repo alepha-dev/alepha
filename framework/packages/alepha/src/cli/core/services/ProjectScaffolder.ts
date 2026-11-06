@@ -8,7 +8,10 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 import type { InfraProvider } from "../schemas/infraProviderSchema.ts";
 import type { Preset } from "../schemas/presetSchema.ts";
 import { agentMd } from "../templates/agentMd.ts";
-import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
+import {
+  type AlephaConfigLoreOptions,
+  alephaConfigTs,
+} from "../templates/alephaConfigTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
@@ -422,15 +425,34 @@ export class ProjectScaffolder {
    */
   public async ensureAlephaConfig(
     root: string,
-    opts: { force?: boolean; infra?: InfraProvider } = {},
+    opts: {
+      force?: boolean;
+      infra?: InfraProvider;
+      lore?: AlephaConfigLoreOptions;
+    } = {},
   ): Promise<void> {
     await this.refuseInfraOverExistingConfig(root, opts);
     await this.ensureFile(
       root,
       "alepha.config.ts",
-      alephaConfigTs({ infra: opts.infra }),
+      alephaConfigTs({ infra: opts.infra, lore: opts.lore }),
       opts.force,
     );
+  }
+
+  /**
+   * The Lore project a `--infra lore` project deploys to: `--lore-project`,
+   * else the directory name as a slug (`My App` is `my-app`).
+   */
+  public loreProjectSlug(root: string, named?: string): string {
+    if (named?.trim()) {
+      return named.trim();
+    }
+    const slug = basename(root)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return slug || "my-app";
   }
 
   /**
@@ -445,7 +467,11 @@ export class ProjectScaffolder {
    */
   protected async refuseInfraOverExistingConfig(
     root: string,
-    opts: { force?: boolean; infra?: InfraProvider },
+    opts: {
+      force?: boolean;
+      infra?: InfraProvider;
+      lore?: AlephaConfigLoreOptions;
+    },
   ): Promise<void> {
     if (
       !opts.infra ||
@@ -454,17 +480,33 @@ export class ProjectScaffolder {
     ) {
       return;
     }
+    const lore = opts.infra === "lore";
     throw new CommandError(
       [
         "alepha.config.ts already exists, so --infra will not touch it.",
-        "Add Cloudflare yourself, without duplicating an existing infra() registration:",
+        lore
+          ? "Add Lore yourself (add @alepha/lore to package.json), without duplicating an existing infra() registration:"
+          : "Add Cloudflare yourself, without duplicating an existing infra() registration:",
         "",
         'import { defineConfig } from "alepha/cli/config";',
-        'import { cloudflare, infra } from "alepha/cli/infra";',
+        ...(lore
+          ? [
+              'import { lore } from "@alepha/lore/cli";',
+              'import { infra } from "alepha/cli/infra";',
+            ]
+          : ['import { cloudflare, infra } from "alepha/cli/infra";']),
         "",
         "export default defineConfig({",
-        "  plugins: [infra({ environments: { production: cloudflare() } })],",
+        lore
+          ? `  plugins: [infra({ environments: { production: lore({ project: ${JSON.stringify(opts.lore?.project ?? "my-app")} }) } })],`
+          : "  plugins: [infra({ environments: { production: cloudflare() } })],",
         "});",
+        ...(lore
+          ? [
+              "",
+              'For telemetry, mount the sigil in src/main.server.ts: import { AlephaSigil } from "@alepha/lore/sigil"; alepha.with(AlephaSigil);',
+            ]
+          : []),
         "",
         "Or rerun with --force to replace every scaffolded file, alepha.config.ts included.",
       ].join("\n"),
@@ -480,14 +522,14 @@ export class ProjectScaffolder {
    */
   public async ensureMainServerTs(
     root: string,
-    opts: { react?: boolean; force?: boolean } = {},
+    opts: { react?: boolean; force?: boolean; sigil?: boolean } = {},
   ): Promise<void> {
     const srcDir = this.fs.join(root, "src");
     await this.fs.mkdir(srcDir, { recursive: true });
     await this.ensureFile(
       srcDir,
       "main.server.ts",
-      mainServerTs({ react: opts.react }),
+      mainServerTs({ react: opts.react, sigil: opts.sigil }),
       opts.force,
     );
   }
@@ -735,6 +777,12 @@ export class ProjectScaffolder {
     flags: {
       preset?: Preset;
       infra?: InfraProvider;
+      /**
+       * With `infra: "lore"`: the Lore project slug, and a self-hosted
+       * instance's origin.
+       */
+      loreProject?: string;
+      loreUrl?: string;
       pm?: "yarn" | "npm" | "pnpm" | "bun";
       force?: boolean;
     };
@@ -817,7 +865,16 @@ export class ProjectScaffolder {
     }
 
     // Refused before any scaffold file or install, so a refusal changes nothing.
-    await this.refuseInfraOverExistingConfig(root, flags);
+    // `--infra lore` names a project and, for a self-hosted instance, a URL;
+    // never an estate, which is chosen in Lore.
+    const lore =
+      flags.infra === "lore"
+        ? {
+            project: this.loreProjectSlug(root, flags.loreProject),
+            ...(flags.loreUrl ? { url: flags.loreUrl } : {}),
+          }
+        : undefined;
+    await this.refuseInfraOverExistingConfig(root, { ...flags, lore });
 
     // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
     const workspace = await this.pm.getWorkspaceContext(root);
@@ -855,6 +912,7 @@ export class ProjectScaffolder {
             tailwind: web,
             isPackage: workspace.isPackage,
             ui: saas,
+            lore: !!lore,
           },
           tsconfigJson: !workspace.config.tsconfigJson,
           oxc: true,
@@ -872,6 +930,7 @@ export class ProjectScaffolder {
         await this.ensureAlephaConfig(root, {
           force,
           infra: flags.infra,
+          lore,
         });
 
         // Only the saas preset has an identity surface to hand an admin to.
@@ -885,7 +944,11 @@ export class ProjectScaffolder {
 
         // Every project gets the same structure; the preset only decides
         // what is mounted on top of it.
-        await this.ensureMainServerTs(root, { react: web, force });
+        await this.ensureMainServerTs(root, {
+          react: web,
+          force,
+          sigil: !!lore,
+        });
         await this.ensureApiProject(root, { force, saas });
         if (web) {
           await this.ensureWebProject(root, { force, saas });
@@ -924,6 +987,15 @@ export class ProjectScaffolder {
     // `alepha test` works in every project. The dummy spec doubles as a
     // worked example for both humans and AI agents.
     await this.ensureTestDir(root);
+
+    // `--infra lore`: link the directory to its Lore project, as
+    // `lore project link` does, when the project exists and the user is
+    // signed in. Best effort and never blocking: anything else (no session,
+    // no such project, a self-hosted instance this run cannot point the CLI
+    // at) prints the next step instead.
+    if (lore) {
+      await this.linkLoreProject(run, root, pmName, lore);
+    }
 
     // Freeze the schema the preset just mounted.
     //
@@ -1028,6 +1100,45 @@ export class ProjectScaffolder {
   // ===========================================
   // Helpers
   // ===========================================
+
+  /**
+   * Write `.alepha/lore.json` through the project's own `lore` CLI, the one
+   * `@alepha/lore` just installed, so the framework imports nothing of Lore.
+   * A self-hosted instance is not tried: this run cannot hand the CLI its
+   * `LORE_URL`, and linking against the wrong instance would be worse than
+   * not linking.
+   */
+  protected async linkLoreProject(
+    run: RunnerMethod,
+    root: string,
+    pmName: string,
+    lore: AlephaConfigLoreOptions,
+  ): Promise<void> {
+    const exec =
+      pmName === "yarn"
+        ? "yarn lore"
+        : pmName === "pnpm"
+          ? "pnpm exec lore"
+          : pmName === "bun"
+            ? "bunx lore"
+            : "npx lore";
+    const nextStep = () =>
+      this.log.info(
+        `Next, link this directory to Lore: ${lore.url ? `LORE_URL=${lore.url} ` : ""}${exec} login, then ${exec} project link ${lore.project} (create it first with ${exec} project create ${lore.project} if it does not exist).`,
+      );
+    if (lore.url) {
+      nextStep();
+      return;
+    }
+    try {
+      await run(`${exec} project link ${lore.project}`, {
+        alias: `linking to the Lore project ${lore.project}`,
+        root,
+      });
+    } catch {
+      nextStep();
+    }
+  }
 
   /**
    * Write a file, optionally overriding if it exists.

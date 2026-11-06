@@ -62,7 +62,7 @@ project, human or AI, already knows where things live. If you don't need the
 frontend, delete `src/web/`. A [preset](#presets) can add more on top of this
 base, but never moves it around.
 
-`--preset` adds features, and `--infra cf` (also `--infra cloudflare`) adds the Cloudflare production environment. `--pm` (`npm`, `yarn`, `pnpm` or `bun`) selects the package manager, which is otherwise detected from how you ran the command. For example, a Bun project:
+`--preset` adds features, and `--infra cf` (also `--infra cloudflare`) adds the Cloudflare production environment, while `--infra lore` deploys through Lore (see [Deploy through Lore](#deploy-through-lore)). `--pm` (`npm`, `yarn`, `pnpm` or `bun`) selects the package manager, which is otherwise detected from how you ran the command. For example, a Bun project:
 
 ```bash
 bun create alepha my-app
@@ -317,6 +317,34 @@ Operations read `.env.<env>` and its `.local` override, with process variables s
 Plain `alepha build --runtime workerd` creates a Worker artifact without cloud credentials. `alepha infra build` uses the configured adapter and may look up existing bindings. `alepha infra deploy` authenticates and deploys an existing suitable artifact; use `alepha deploy` for the full pipeline.
 
 See the [Infra Plugin](/docs/cli-plugins-infra) guide for full configuration, secrets, monorepo support, and teardown.
+
+### Deploy through Lore
+
+[Lore](/lore/docs/guides-deploying) deploys an app to the machines you lend a project, a Bay server or a Cloudflare account, and collects its telemetry. Scaffold the app for it:
+
+```bash
+npm create alepha my-app -- --infra lore
+```
+
+That writes a `lore()` environment naming the Lore project (`--lore-project`, else the directory name; `--lore-url` for a self-hosted Lore), adds `@alepha/lore` to `package.json`, and mounts its sigil in `src/main.server.ts`, so telemetry is on from the first deploy. When you are signed in and the project exists, it also links the directory (`.alepha/lore.json`); otherwise it prints the `lore project link` command to run.
+
+```typescript filename="alepha.config.ts"
+import { lore } from "@alepha/lore/cli";
+import { defineConfig } from "alepha/cli/config";
+import { infra } from "alepha/cli/infra";
+
+export default defineConfig({
+  plugins: [
+    infra({
+      environments: {
+        production: lore({ project: "my-app" }),
+      },
+    }),
+  ],
+});
+```
+
+The config never names a machine: the estate a copy deploys to is chosen in Lore. Then `npx alepha deploy` builds what that estate runs, pushes it, seals your local secrets into the copy and deploys.
 
 ## Project Structure
 

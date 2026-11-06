@@ -74,6 +74,18 @@ export class CreateAlephaCoreCommands {
       .optional(),
     flags: z.object({
       infra: infraProviderSchema.optional(),
+      "lore-project": z
+        .text({
+          description:
+            "With --infra lore: the Lore project slug. Defaults to the project's name.",
+        })
+        .optional(),
+      "lore-url": z
+        .text({
+          description:
+            "With --infra lore: a self-hosted Lore instance. Defaults to https://lore.alepha.dev.",
+        })
+        .optional(),
       preset: presetSchema
         .describe(
           "Project shape: 'default' (API + web + Tailwind) or 'saas' (adds @alepha/ui with auth, account and admin)",
@@ -172,6 +184,8 @@ export class CreateAlephaCoreCommands {
         flags: {
           pm: flags.pm,
           infra: flags.infra,
+          loreProject: flags["lore-project"],
+          loreUrl: flags["lore-url"],
           preset,
         },
         args: name,
