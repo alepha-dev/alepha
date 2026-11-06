@@ -3,12 +3,13 @@ import type {
   ProjectMergeController,
   ProjectReportController,
 } from "@lore/core/api";
+import type { AppController } from "@lore/deploy/api";
 import type { FolioController } from "@lore/knowledge/api";
 import type { AreaController } from "@lore/work/api";
 import type { EpicController } from "@lore/work/api";
 import type { ReleaseController } from "@lore/work/api";
 import { $inject, z } from "alepha";
-import { $command } from "alepha/command";
+import { $command, UsageError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $client } from "alepha/server/links";
 
@@ -72,6 +73,7 @@ export class ProjectCommand {
   protected readonly reportApi = $client<ProjectReportController>(
     this.client.scope(),
   );
+  protected readonly appApi = $client<AppController>(this.client.scope());
 
   public readonly list = $command({
     name: "list",
@@ -570,10 +572,58 @@ export class ProjectCommand {
     },
   });
 
+  /**
+   * `lore project delete <slug> --confirm <slug>` (#Q3154): a scratch project
+   * goes away from a shell, through the owner's own delete
+   * (`deleteProjectById`, `project:delete`), the one the danger zone calls.
+   *
+   * ⚠️ The one irreversible delete in the CLI, so no `--yes`: the slug is typed
+   * twice, and what goes with it is printed first, as `project merge` shows
+   * its plan, whether the confirmation matches or not.
+   */
+  public readonly delete = $command({
+    name: "delete",
+    description:
+      "Delete a project you own, with everything in it. Prints what goes first; needs --confirm <slug>",
+    args: z.text({ title: "project", description: "The project, by slug" }),
+    flags: z.object({
+      confirm: z
+        .text({
+          description:
+            "The project's slug again. Required: this cannot be undone.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = { project: args };
+      await this.refusals.guard(context, async () => {
+        const projectId = await this.projects.resolve(args);
+        const counts = await this.deletionCounts(projectId);
+
+        if (flags.confirm !== args) {
+          this.printDeletionPlan(print, args, counts);
+          throw new UsageError(
+            flags.confirm === undefined
+              ? `Deleting ${args} cannot be undone. Type its slug again to confirm: lore project delete ${args} --confirm ${args}`
+              : `--confirm ${flags.confirm} does not match ${args}; nothing was deleted.`,
+          );
+        }
+
+        await this.projectApi.deleteProjectById({ params: { id: projectId } });
+        if (flags.output === "json") {
+          this.render.json(print, { ok: true, project: args, ...counts });
+          return;
+        }
+        this.printDeletionPlan(print, args, counts, true);
+      });
+    },
+  });
+
   public readonly project = $command({
     name: "project",
     description:
-      "The projects you belong to: list, look at one, orient yourself, read what moved, read its reports, create one, merge one, or link this directory to one",
+      "The projects you belong to: list, look at one, orient yourself, read what moved, read its reports, create one, merge one, delete one, or link this directory to one",
     children: [
       this.list,
       this.info,
@@ -583,9 +633,69 @@ export class ProjectCommand {
       this.create,
       this.linkProject,
       this.merge,
+      this.delete,
     ],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  /**
+   * What deleting a project takes with it, from the reads a member already
+   * has: quests summed over its areas (every quest has one), folios from the
+   * index (capped at 200, said as `200+`), deployed copies from the Apps
+   * list. A read the project's capabilities refuse counts as unknown, never
+   * as zero.
+   */
+  protected async deletionCounts(projectId: number): Promise<{
+    quests?: number;
+    folios?: number | string;
+    apps?: number;
+  }> {
+    const settle = async <T>(read: () => Promise<T>) => {
+      try {
+        return await read();
+      } catch {
+        return undefined;
+      }
+    };
+    const params = { projectId };
+    const [areas, folios, apps] = await Promise.all([
+      settle(() => this.areaApi.getAreas({ params })),
+      settle(() => this.folioApi.index({ params, query: { limit: 200 } })),
+      settle(() => this.appApi.listApps({ params })),
+    ]);
+    return {
+      quests: areas?.reduce((sum, area) => sum + area.questCount, 0),
+      folios:
+        folios === undefined
+          ? undefined
+          : folios.length >= 200
+            ? "200+"
+            : folios.length,
+      apps: apps?.items.length,
+    };
+  }
+
+  protected printDeletionPlan(
+    print: (line?: string) => void,
+    slug: string,
+    counts: {
+      quests?: number;
+      folios?: number | string;
+      apps?: number;
+    },
+    done = false,
+  ): void {
+    const shown = (value: number | string | undefined) =>
+      value === undefined ? "?" : String(value);
+    print(
+      `${done ? "Deleted" : "Deleting"} ${slug} ${done ? "took" : "takes"} with it: ${shown(counts.quests)} quests, ${shown(counts.folios)} folios, ${shown(counts.apps)} deployed copies (their sigils and telemetry).`,
+    );
+    if (!done) {
+      print(
+        "Nothing on an estate is stopped: a copy keeps running where it was deployed.",
+      );
+    }
+  }
 }

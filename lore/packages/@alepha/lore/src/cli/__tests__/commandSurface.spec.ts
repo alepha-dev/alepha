@@ -176,6 +176,7 @@ describe("the Lore CLI command surface", () => {
         "create",
         "link",
         "merge",
+        "delete",
       ],
       estate: [
         "add",

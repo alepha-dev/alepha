@@ -89,16 +89,17 @@ Every project command looks for the project in this order:
 
 ### Projects
 
-| Command                         | What it does                                                                                                               |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `lore project list`             | The projects you are a member of.                                                                                          |
-| `lore project info`             | One project: its capabilities, areas and more.                                                                             |
-| `lore project context`          | Orient yourself: areas, your quests, open epics, releases, folios and pinned folios.                                       |
-| `lore project activity`         | What moved since `--since <timestamp>`, your own events included.                                                          |
-| `lore project report [section]` | One [Reports](/lore/docs/guides-reports) section as JSON, `summary` by default. `--days N` sets the period, 30 by default. |
-| `lore project create <name>`    | Create a project and link the current directory to it. `--no-link` skips the link.                                         |
-| `lore project link <slug>`      | Link the current directory to an existing project. `--force` replaces another link.                                        |
-| `lore project merge`            | Merge `--source` into `--target`, owners only. A dry run unless `--no-dry-run`: read the plan first.                       |
+| Command                         | What it does                                                                                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lore project list`             | The projects you are a member of.                                                                                                                                                    |
+| `lore project info`             | One project: its capabilities, areas and more.                                                                                                                                       |
+| `lore project context`          | Orient yourself: areas, your quests, open epics, releases, folios and pinned folios.                                                                                                 |
+| `lore project activity`         | What moved since `--since <timestamp>`, your own events included.                                                                                                                    |
+| `lore project report [section]` | One [Reports](/lore/docs/guides-reports) section as JSON, `summary` by default. `--days N` sets the period, 30 by default.                                                           |
+| `lore project create <name>`    | Create a project and link the current directory to it. `--no-link` skips the link.                                                                                                   |
+| `lore project link <slug>`      | Link the current directory to an existing project. `--force` replaces another link.                                                                                                  |
+| `lore project merge`            | Merge `--source` into `--target`, owners only. A dry run unless `--no-dry-run`: read the plan first.                                                                                 |
+| `lore project delete <slug>`    | Delete a project you own, with everything in it. Prints its quests, folios and deployed copies first, and needs `--confirm <slug>`: there is no `--yes`. Nothing on an estate stops. |
 
 `lore project create` makes a project with the **Deploy and watch apps**
 capability only, its **Deploy apps** option on and **Track apps** off. Turn on
