@@ -54,7 +54,9 @@ export const AccountLayout = () => {
         fill
         extraNav={options.extraNav}
         brand={
-          options.brand ?? <AccountBrand homeRouteName={options.homeRouteName} />
+          options.brand ?? (
+            <AccountBrand homeRouteName={options.homeRouteName} />
+          )
         }
         topbarActions={
           <div className="flex items-center gap-1">
