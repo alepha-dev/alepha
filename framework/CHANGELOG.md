@@ -1,3 +1,55 @@
+## [0.36.0] - 2026-11-06
+
+### Breaking Changes
+
+- **mcp**: a modern request without clientCapabilities is refused, and progress streams send keep-alives #E110 #Q3054 (`2560019d`)
+- **mcp**: the Streamable HTTP endpoint validates Origin by default #E110 #Q3051 (`7d8889cd`)
+- **server**: in production, a handler's output that fails only a constraint check (a text over its 255 limit, an email that is not one) is sent instead of answering 500. Types, stripping, defaults and trimming still apply. Set serverResponseOptions.checks to "always" to keep them. (`a2e56157`)
+- **logger**: one request log line, and production stdout written once per turn #Q3121 (`8078b558`)
+
+### Features
+
+- **ui**: AiChat floats from sm up, a gap from the page edges, every corner rounded and a shadow #Q3173 (`e525af91`)
+- **ui**: AiChat redesign, a quiet header with a history menu, starter suggestions, tool steps named by the app, and a composer that sends on Enter and stops a running turn #Q3173 (`c1369687`)
+- **websocket**: a test hostname for a throwaway estate, with no DNS #Q3137 (`e1d5bcfa`)
+- **cli**: a deploy through Lore prints where the app answers #Q3155 (`3bdcfd09`)
+- **cli**: alepha init --infra lore scaffolds a Lore deploy with telemetry on #Q3142 (`1974e073`)
+- **ui/shell**: SidebarBackHeader gives a root shell's sidebar a way back home #Q3160 (`a0aedb93`)
+- **ui/shell**: a sidebar nav item offers a hover "+" action in place of its count #Q3145 (`d6de5cab`)
+- **api/oauth**: MCP auth challenges name their scope, step up on insufficient_scope, and the AS returns iss #E110 #Q3053 (`2f84a577`)
+- **ui**: optimistic rows, Undo toasts and row motion; Lore quests and epics use them #Q3118 (`b66ebaa1`)
+- **api/oauth**: Client ID Metadata Documents, and DCR takes application_type #E110 #Q3050 (`a2776abe`)
+- **ui**: the API explorer calls as the signed-in user and shows what they may call #E113 #Q3113 (`77c8febf`)
+- **api/oauth**: an MCP access token is bound to the resource it was issued for (RFC 8707) #E110 #Q3049 (`a0e424d7`)
+- **ui**: the API explorer sends requests from forms built from the schemas #E113 #Q3112 (`fd64b989`)
+- **ui**: $uiSwagger, an API explorer page in @alepha/ui/swagger #E113 #Q3111 (`f677f819`)
+- **infra**: the API deploy uploads each module's source map, as wrangler does #E111 #Q3061 (`4910c685`)
+- **mcp**: a tool, resource or prompt asks the user with context.elicit, over MRTR #E110 #Q3048 (`992458df`)
+- **mcp**: a modern request without clientCapabilities is refused, and progress streams send keep-alives #E110 #Q3054 [BREAKING] (`2560019d`)
+- **mcp**: server instructions, the full Implementation shape, size on resources and title on prompt arguments #E110 #Q3052 (`f3fe93ab`)
+- **infra**: KV namespaces and queues honour the environment's jurisdiction, and accept us #E111 #Q3060 (`3520213e`)
+- **orm**: D1's 50 MB result cap surfaces as DbResultTooLargeError #E111 #Q3059 (`c9bd54fa`)
+- **mcp**: the Streamable HTTP endpoint validates Origin by default #E110 #Q3051 [BREAKING] (`7d8889cd`)
+- **command**: a numbered choice accepts the entry's value typed out #Q3107 (`d6cb7709`)
+- **payments**: DatabaseMemoryPaymentProvider keeps the mock's sessions, cards, charges and refunds in cache_entries, so a deployed Worker can run a whole paid flow without a PSP; MemoryPaymentProvider now reads and writes its state through async read/write/remove hooks #Q3100 (`c3fe4fe5`)
+- **ui**: DataTable takes pagination={false}, striped and rowActionsDisplay="inline" #Q3096 (`f5727334`)
+
+### Bug Fixes
+
+- **ui**: a confirmation card in a long AiChat thread no longer shrinks to its border #Q3174 (`52a2c7e0`)
+- **ui**: the floating AiChat is the screen's height minus its gaps, so its bottom edge shows #Q3173 (`4c5bac38`)
+- **cli**: what the real-server walk of the disposable-estate scenario found #Q3158 (`873d13cc`)
+- **ui/account**: no back arrow when the application has no home page #Q3160 (`e08f07b9`)
+- **cli**: the build's APP_SECRET placeholder no longer leaks into the deploy's secrets #Q3148 (`d17ba9e9`)
+- **api/oauth**: a native client may redirect to a dot-less private-use scheme #Q3130 (`4c1633f4`)
+- **ui/shell**: PlateTabBar scrolls sideways only, with the whole underline #Q3124 (`c3885ef7`)
+- **api/oauth**: a metadata document without application_type keeps the general redirect rule #E110 #Q3063 #Q3050 (`076265ac`)
+- **server**: a deduplicated GET whose last caller left no longer captures the next caller #Q3119 (`01b2b4bc`)
+- **ui**: the DataTable refresh spinner's timer is cleared on unmount #Q3118 (`f7e71bbf`)
+- **ui**: a removed row's exit timer is cleared when the table unmounts #Q3118 (`2a16c828`)
+- **security**: the browser's user keeps its realm, so $secure({ issuers }) passes a client navigation #Q3105 (`25a00f53`)
+- **server**: a failed batch entry keeps its request id and its name #Q3104 (`6b9819fa`)
+
 ## [0.35.0] - 2026-11-03
 
 ### Breaking Changes
