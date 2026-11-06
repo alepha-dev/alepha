@@ -40,7 +40,7 @@ export class LoreEstateChoice {
   ): LentEstate {
     if (lent.length === 0) {
       throw new AlephaError(
-        `No estate is lent to this project, so ${copy} would have nowhere to deploy. Lend one on the project's Estates page first.`,
+        `No estate is lent to this project, so ${copy} would have nowhere to deploy. Buy a server and lend it here with \`lore estate provision --provider scaleway --project <project>\`, or lend one you own with \`lore estate lend <slug> --project <project>\` (your estates: \`lore estate list\`).`,
       );
     }
 

@@ -248,6 +248,30 @@ export class LoreDeployer {
   }
 
   /**
+   * Where a copy deploys, in words, for the line every deploy prints
+   * (#Q3172): the estate is chosen once, when the copy is created, and
+   * reused silently after, so the deploy says it.
+   */
+  public async destinationOf(
+    projectId: number,
+    instance: LoreInstance,
+  ): Promise<string | undefined> {
+    if (instance.stackEnvironmentId) {
+      return undefined;
+    }
+    if (!instance.estateId) {
+      return undefined;
+    }
+    const lent = await this.estates.listProjectEstates({
+      params: { projectId },
+    });
+    const slug = (lent?.items ?? []).find(
+      (it: { id: string; slug?: string }) => it.id === instance.estateId,
+    )?.slug;
+    return slug ? `estate '${slug}'` : undefined;
+  }
+
+  /**
    * Create the copy, on the estate the shared rule picks.
    *
    * ⚠️ `lore deploy` never calls this: its `--env` is free text, and a typo
@@ -377,8 +401,15 @@ export class LoreDeployer {
     });
     const estate = lent?.items?.find(
       (it: { id: string }) => it.id === instance.estateId,
-    ) as { acceptedRuntimes?: string[]; type?: string } | undefined;
+    ) as
+      | { acceptedRuntimes?: string[]; type?: string; slug?: string }
+      | undefined;
     const runtime = estate?.acceptedRuntimes?.[0];
+    if (estate?.slug) {
+      // Said on every `lore deploy` (#Q3172), as `alepha deploy` says it
+      // through `destinationOf`: the estate is chosen once and reused.
+      this.log.info(`Deploying ${app}/${env} to estate '${estate.slug}'`);
+    }
     if (!runtime) {
       throw new AlephaError(
         `Could not tell what ${app}/${env} can run. Its estate is not lent to this project any more, or Lore did not say what it accepts.`,

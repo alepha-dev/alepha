@@ -270,6 +270,74 @@ export class EstateCommand {
     },
   });
 
+  /**
+   * `lore estate lend` / `unlend` (#Q3172): an estate is its owner's, and a
+   * provisioned one may be lent to no project; these lend it to one later,
+   * or withdraw the loan. Unlending is refused while a copy of the project
+   * still deploys there, and the refusal names the copies.
+   */
+  public readonly lend = $command({
+    name: "lend",
+    description:
+      "Lend one of your estates to a project, so its apps can deploy there",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({ project: this.projectFlag, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const estate = await this.owned.owned(args);
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        const lent = await this.lending.attachEstate({
+          params: { projectId },
+          body: { estateId: estate.id },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, lent);
+          return;
+        }
+        print(`Lent ${estate.slug} to ${project}.`);
+        print(
+          "Its apps deploy there: alepha deploy (in an app linked to the project).",
+        );
+      });
+    },
+  });
+
+  public readonly unlend = $command({
+    name: "unlend",
+    description:
+      "Withdraw one of your estates from a project; refused while a copy there still deploys to it",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({ project: this.projectFlag, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const estate = await this.owned.owned(args);
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        await this.lending.detachEstate({
+          params: { projectId, estateId: estate.id },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, { ok: true, slug: estate.slug, project });
+          return;
+        }
+        print(`${estate.slug} is no longer lent to ${project}.`);
+      });
+    },
+  });
+
   public readonly list = $command({
     name: "list",
     description: "The estates lent to the project, with their connection state",
@@ -660,7 +728,7 @@ export class EstateCommand {
   public readonly estate = $command({
     name: "estate",
     description:
-      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, update, rotate or delete it",
+      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, lend or unlend it, update, rotate or delete it",
     children: [
       this.provision,
       this.add,
@@ -668,6 +736,8 @@ export class EstateCommand {
       this.get,
       this.wait,
       this.stats,
+      this.lend,
+      this.unlend,
       this.update,
       this.rotate,
       this.delete,

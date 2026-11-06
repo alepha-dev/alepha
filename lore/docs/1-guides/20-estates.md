@@ -47,7 +47,8 @@ In about three minutes, with no SSH and no page:
 The estate is named with three random words unless you pass `--name`. It
 accepts deploys (`--no-allow-deploys` for a stats-only machine). `--project`
 lends it to that project, creating the project when it does not exist; without
-it the estate is lent to none, and you lend it later. Run it without
+it the estate is lent to none, and you lend it later with
+`lore estate lend <slug> --project <project>` (`unlend` withdraws it). Run it without
 `--provider` to list the providers and what each needs.
 
 If anything fails after the server exists, the command terminates it before

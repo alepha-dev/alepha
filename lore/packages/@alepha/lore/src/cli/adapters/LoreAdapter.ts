@@ -191,6 +191,10 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
   ): Promise<string | undefined> {
     const { projectId, instance } = await this.target(ctx);
     const label = `${ctx.project}/${ctx.env}`;
+    const destination = await this.deployer.destinationOf(projectId, instance);
+    if (destination) {
+      this.log.info(`Deploying ${label} to ${destination}`);
+    }
 
     await run({
       name: `seal secrets for ${label}`,
