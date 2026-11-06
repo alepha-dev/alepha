@@ -8,8 +8,10 @@
  */
 
 export * from "./AiChat.tsx";
+export * from "./AiChatComposer.tsx";
 export * from "./AiChatConfirmCard.tsx";
 export * from "./AiChatConfirmFields.tsx";
+export * from "./AiChatEmpty.tsx";
 export * from "./AiChatHistory.tsx";
 export * from "./AiChatMessage.tsx";
 export * from "./aiChatMessageFormSchema.ts";

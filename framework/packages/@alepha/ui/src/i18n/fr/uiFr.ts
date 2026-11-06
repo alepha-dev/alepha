@@ -45,18 +45,26 @@
 export const uiFr: Record<string, string> = {
   // The assistant drawer (`@alepha/ui/ai`).
   "ai.chat.approve": "Approuver",
+  "ai.chat.close": "Fermer",
   "ai.chat.confirmTitle": "Exécuter $1 ?",
   "ai.chat.deny": "Refuser",
   "ai.chat.empty": "Posez une question sur cette page.",
+  "ai.chat.emptyTitle": "Que voulez-vous faire ?",
+  "ai.chat.hint": "Entrée pour envoyer, Maj+Entrée pour aller à la ligne",
+  "ai.chat.history": "Historique",
   "ai.chat.message": "Message",
   "ai.chat.new": "Nouvelle conversation",
+  "ai.chat.noHistory": "Aucune conversation pour l'instant",
   "ai.chat.placeholder": "Demandez à l'assistant",
   "ai.chat.running": "Exécution de $1",
   "ai.chat.send": "Envoyer",
+  "ai.chat.stop": "Arrêter",
+  "ai.chat.thinking": "Réflexion…",
   "ai.chat.title": "Assistant",
   "ai.chat.toolDone": "$1 exécuté",
   "ai.chat.toolFailed": "Échec de $1",
   "ai.chat.untitled": "Conversation sans titre",
+  "ai.chat.waiting": "Confirmez ou annulez la carte pour continuer",
 
   // The imperative confirm / alert / prompt.
   "useDialog.cancel": "Annuler",
