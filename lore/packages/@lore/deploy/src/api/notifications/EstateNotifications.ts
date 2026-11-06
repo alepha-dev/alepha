@@ -48,4 +48,65 @@ export class EstateNotifications {
       estatesUrl: z.string(),
     }),
   });
+
+  /**
+   * An estate set with a TTL (`lore estate add --ttl`) is past it (#Q3138).
+   * Sent once per expiry by `EstateExpiryJobs`; extending or clearing the TTL
+   * re-arms it. Lore deletes nothing and stops nothing: the server keeps
+   * billing until its owner deletes it.
+   */
+  public readonly overdue = $notification({
+    category: "estates",
+    description:
+      "Sent once to an estate's owner when a throwaway estate is past the TTL it was given. Nothing is stopped or deleted.",
+    email: {
+      subject: (it) => `${it.estateSlug} is past its expiry`,
+      body: (it) => {
+        const slug = this.html.escape(it.estateSlug);
+        const estatesUrl = encodeURI(it.estatesUrl);
+        return `
+        <h1>${slug} was meant to be gone by now</h1>
+        <p>This estate was given a time to live, and it expired at ${this.html.escape(it.expiresAt)}. Lore stops nothing and deletes nothing: the server is still running, and still billing, until you delete it.</p>
+        <p>Delete it with <code>lore estate delete ${slug}</code>, then delete the server with its provider. Or extend it with <code>lore estate update ${slug} --ttl 2h</code>.</p>
+        <p>
+          <a href="${estatesUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Open my estates
+          </a>
+        </p>
+      `;
+      },
+    },
+    schema: z.object({
+      estateSlug: z.string(),
+      expiresAt: z.string(),
+      estatesUrl: z.string(),
+    }),
+  });
+
+  /**
+   * The same, in the header bell.
+   */
+  public readonly overdueInbox = $notification({
+    name: "lore:estate:overdue",
+    category: "estates",
+    description:
+      "Filed in the owner's header bell when a throwaway estate is past its TTL. Links to the account's estates.",
+    schema: z.object({ estateSlug: z.text(), href: z.text() }),
+    inbox: {
+      title: (it) => `${it.estateSlug} is past its expiry`,
+      body: () =>
+        "The server is still running and billing until you delete it.",
+      href: (it) => it.href,
+    },
+    translations: {
+      fr: {
+        inbox: {
+          title: (it) => `${it.estateSlug} a dépassé son expiration`,
+          body: () =>
+            "Le serveur tourne et reste facturé tant que vous ne le supprimez pas.",
+          href: (it) => it.href,
+        },
+      },
+    },
+  });
 }

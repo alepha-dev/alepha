@@ -193,6 +193,18 @@ export const estates = $entity({
      */
     publicIp: z.string().max(45).optional(),
     /**
+     * When a throwaway estate was meant to be gone (#Q3138), set from a TTL
+     * (`lore estate add --ttl 2h`). Past it the estate reads `overdue` and
+     * its owner is told once; Lore deletes nothing and stops nothing.
+     */
+    expiresAt: z.string().optional(),
+    /**
+     * When the owner was told the estate is overdue: the one notification's
+     * claim, set by the same UPDATE that selects it, cleared when the TTL
+     * moves.
+     */
+    notifiedOverdueAt: z.string().optional(),
+    /**
      * The live gauge, upserted on every stats push. A point value, never a
      * series: "CPU is 34% right now" is this row, "CPU over 30 days" is
      * `$analytics` (#1627).

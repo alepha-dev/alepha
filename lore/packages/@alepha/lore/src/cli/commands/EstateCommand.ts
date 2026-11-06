@@ -91,6 +91,12 @@ export class EstateCommand {
           "Let Lore deploy to it now. Off by default: a new machine reports stats only until its owner says otherwise.",
         )
         .optional(),
+      ttl: z
+        .text({
+          description:
+            "How long the server is meant to live (30m, 2h, 3d): past it the estate shows overdue and you are told once. Lore stops nothing",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -105,12 +111,17 @@ export class EstateCommand {
           body: { slug: args, ...(flags.label ? { label: flags.label } : {}) },
         });
         let deployAllowed = minted.deployAllowed ?? false;
-        if (flags["allow-deploys"]) {
+        const ttlSeconds =
+          flags.ttl === undefined ? undefined : this.ttlSecondsOf(flags.ttl);
+        if (flags["allow-deploys"] || typeof ttlSeconds === "number") {
           const updated = await this.estates.updateEstate({
             params: { estateId: minted.id },
-            body: { deployAllowed: true },
+            body: {
+              ...(flags["allow-deploys"] ? { deployAllowed: true } : {}),
+              ...(typeof ttlSeconds === "number" ? { ttlSeconds } : {}),
+            },
           });
-          deployAllowed = updated.deployAllowed ?? true;
+          deployAllowed = updated.deployAllowed ?? deployAllowed;
         }
         if (flags.output === "json") {
           this.render.json(print, this.minted(minted, deployAllowed));
@@ -165,7 +176,12 @@ export class EstateCommand {
               ]
                 .filter(Boolean)
                 .join(" "),
-              estate.deployAllowed ? "deploys allowed" : "deploys off",
+              [
+                estate.deployAllowed ? "deploys allowed" : "deploys off",
+                estate.overdue ? "OVERDUE" : undefined,
+              ]
+                .filter(Boolean)
+                .join(", "),
               estate.lastSeenAt ? `seen ${estate.lastSeenAt}` : "never seen",
             ],
           })),
@@ -286,6 +302,12 @@ export class EstateCommand {
             ["State", estate.online ? "online" : "offline"],
             ["Last seen", estate.lastSeenAt ?? "never"],
             ["Public IP", estate.publicIp ?? "not known yet"],
+            [
+              "Expires",
+              estate.expiresAt
+                ? `${estate.expiresAt}${estate.overdue ? " (OVERDUE: delete the server, or extend with --ttl)" : ""}`
+                : undefined,
+            ],
             ["Deploys", estate.deployAllowed ? "allowed" : "off"],
             [
               "Lent to",
@@ -385,6 +407,12 @@ export class EstateCommand {
       label: z
         .text({ description: "A label shown beside the slug; empty clears it" })
         .optional(),
+      ttl: z
+        .text({
+          description:
+            "Extend the expiry to this long from now (30m, 2h, 3d), or none to clear it",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -395,10 +423,13 @@ export class EstateCommand {
             ? {}
             : { deployAllowed: flags["allow-deploys"] }),
           ...(flags.label === undefined ? {} : { label: flags.label }),
+          ...(flags.ttl === undefined
+            ? {}
+            : { ttlSeconds: this.ttlSecondsOf(flags.ttl) }),
         };
         if (Object.keys(body).length === 0) {
           throw new UsageError(
-            "Nothing to change: pass --allow-deploys, --no-allow-deploys or --label.",
+            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --label or --ttl.",
           );
         }
         const { id } = await this.owned.owned(args);
@@ -410,7 +441,7 @@ export class EstateCommand {
           print,
           flags.output,
           updated,
-          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}`,
+          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}`,
         );
       });
     },
@@ -517,6 +548,29 @@ export class EstateCommand {
       help();
     },
   });
+
+  /**
+   * A TTL as `lore estate add --ttl` takes it (#Q3138): a number and a unit,
+   * `m`, `h` or `d` (`30m`, `2h`, `3d`), or `none` to clear the expiry.
+   */
+  protected ttlSecondsOf(raw: string): number | null {
+    const value = raw.trim().toLowerCase();
+    if (value === "none") {
+      return null;
+    }
+    const match = /^(\d+)\s*([mhd])$/.exec(value);
+    if (!match) {
+      throw new UsageError(
+        `--ttl ${raw}: write a number and m, h or d (30m, 2h, 3d), or none.`,
+      );
+    }
+    const unit = { m: 60, h: 3_600, d: 86_400 }[match[2] as "m" | "h" | "d"];
+    const seconds = Number(match[1]) * unit;
+    if (seconds < 60 || seconds > 366 * 86_400) {
+      throw new UsageError(`--ttl ${raw}: between 1m and 366d.`);
+    }
+    return seconds;
+  }
 
   /**
    * Ask before an action that cannot be taken back, unless `--yes` was given.

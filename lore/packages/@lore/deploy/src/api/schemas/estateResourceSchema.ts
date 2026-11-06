@@ -53,12 +53,18 @@ export const estateResourceSchema = estates.schema
     connectionId: true,
     lastSeenAt: true,
     publicIp: true,
+    expiresAt: true,
     cpuPercent: true,
     memoryPercent: true,
     statsAt: true,
   })
   .extend({
     online: z.boolean(),
+    /**
+     * Past its `expiresAt` (#Q3138). Derived at read time, like `online`,
+     * never stored.
+     */
+    overdue: z.boolean(),
     acceptedRuntimes: z.array(z.string()),
     /**
      * Whether the credential currently works. Optional and **cloudflare

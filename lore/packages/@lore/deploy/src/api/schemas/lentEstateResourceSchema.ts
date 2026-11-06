@@ -30,6 +30,15 @@ export const lentEstateResourceSchema = z.object({
    */
   credentialStatus: z.enum(["valid", "invalid"]).optional(),
   lastSeenAt: z.string().optional(),
+  /**
+   * A throwaway estate's expiry, and whether it is past it (#Q3138).
+   */
+  expiresAt: z.string().optional(),
+  overdue: z.boolean(),
+  /**
+   * The address its machine connected from (#Q3137).
+   */
+  publicIp: z.string().optional(),
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),
   owner: z.object({ id: z.uuid(), name: z.string() }),

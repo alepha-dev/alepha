@@ -32,6 +32,7 @@ import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
+import { EstateExpiryJobs } from "./jobs/EstateExpiryJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { UptimeJobs } from "./jobs/UptimeJobs.ts";
@@ -152,6 +153,7 @@ export const LoreDeployApi = $module({
     QualityJobs,
     EstateCommandJobs,
     EstateCredentialJobs,
+    EstateExpiryJobs,
     EstateNotifications,
     QualityService,
     ArtifactTarReader,
@@ -287,6 +289,7 @@ export { DeployAnalytics } from "./entities/deployAnalytics.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
+export { EstateExpiryJobs } from "./jobs/EstateExpiryJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";

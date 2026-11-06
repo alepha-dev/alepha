@@ -133,6 +133,23 @@ stack names its estate itself: `lore stack create --estate` sets its default,
 and `lore stack deploy --estate` overrides that on an environment's first
 deploy.
 
+## A throwaway estate
+
+A server bought for a test keeps billing until somebody deletes it. Give its
+estate a time to live and Lore says when it is overdue:
+
+```bash
+lore estate add tmp-vps --allow-deploys --ttl 2h --output json
+lore estate update tmp-vps --ttl 1d    # extend, from now
+lore estate update tmp-vps --ttl none  # keep it
+```
+
+`--ttl` takes a number and `m`, `h` or `d`. Past the expiry the estate shows
+**overdue** on the Estates page and in `lore estate list`, and you are told once,
+in the header bell and by email (category Estates). Extending or clearing the TTL
+re-arms that. Lore stops nothing and deletes nothing: deleting the estate and the
+server stays your call.
+
 ## Deleting an estate
 
 Delete an estate from its console's **Settings** tab, the Cloudflare drawer, or

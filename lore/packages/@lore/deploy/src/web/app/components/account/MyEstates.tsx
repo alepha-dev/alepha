@@ -257,6 +257,13 @@ const MyEstates = () => {
                     ? tr("estates.deploys.allowed")
                     : tr("estates.deploys.statsOnly")}
                 </Badge>
+                {estate.overdue ? (
+                  // Past the TTL it was given (#Q3138): still running, still
+                  // billing, until its owner deletes it.
+                  <Badge variant="destructive" data-testid="my-estate-overdue">
+                    {tr("estates.overdue")}
+                  </Badge>
+                ) : null}
               </span>
             ),
           },

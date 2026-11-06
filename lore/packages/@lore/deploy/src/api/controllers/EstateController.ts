@@ -303,6 +303,17 @@ export class EstateController {
         collectSeries: z.boolean().optional(),
         deployAllowed: z.boolean().optional(),
         statsIntervalSeconds: z.integer().min(60).max(86_400).optional(),
+        /**
+         * How long from now the estate is meant to live, in seconds (#Q3138);
+         * `null` clears the expiry. Either way the overdue notification is
+         * re-armed.
+         */
+        ttlSeconds: z
+          .integer()
+          .min(60)
+          .max(366 * 86_400)
+          .nullable()
+          .optional(),
       }),
       response: estateResourceSchema,
     },
@@ -322,6 +333,17 @@ export class EstateController {
         ...(body.statsIntervalSeconds === undefined
           ? {}
           : { statsIntervalSeconds: body.statsIntervalSeconds }),
+        ...(body.ttlSeconds === undefined
+          ? {}
+          : {
+              expiresAt:
+                body.ttlSeconds === null
+                  ? null
+                  : new Date(
+                      this.dateTime.nowMillis() + body.ttlSeconds * 1000,
+                    ).toISOString(),
+              notifiedOverdueAt: null,
+            }),
       });
 
       await this.audits.estate.logSuccess("update", {

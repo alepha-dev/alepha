@@ -2482,6 +2482,7 @@ export default {
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
   "estates.online": "en ligne",
+  "estates.overdue": "expiré",
   "estates.offline": "hors ligne",
   "estates.deploys.allowed": "déploiements autorisés",
   "estates.deploys.statsOnly": "statistiques seulement",

@@ -92,6 +92,13 @@ export class EstateService {
    * connection stays silent. A machine that stopped pushing is offline
    * whatever the first clause says.
    */
+  /**
+   * Whether a throwaway estate is past the expiry its TTL set (#Q3138).
+   */
+  isOverdue(estate: Estate, now = this.dateTime.nowMillis()): boolean {
+    return !!estate.expiresAt && Date.parse(estate.expiresAt) <= now;
+  }
+
   isOnline(estate: Estate, now = this.dateTime.nowMillis()): boolean {
     if (!estate.connectedAt) {
       return false;
@@ -137,6 +144,7 @@ export class EstateService {
     return estateResourceSchema.parse({
       ...estate,
       online: this.isOnline(estate),
+      overdue: this.isOverdue(estate),
       acceptedRuntimes: this.acceptedRuntimes(estate.type),
       credentialStatus: this.cloudflare.credentialStatus(estate),
     });

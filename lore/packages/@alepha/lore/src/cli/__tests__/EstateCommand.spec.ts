@@ -130,6 +130,7 @@ describe("lore estate", () => {
               type: "bay",
               online: true,
               deployAllowed: false,
+              overdue: true,
               lastSeenAt: "2026-10-25T10:00:00Z",
               cpuPercent: 34.4,
               memoryPercent: 61.6,
@@ -212,7 +213,7 @@ describe("lore estate", () => {
     const { run, printed } = create();
     await run("list", "");
     expect(printed.join("\n")).toMatch(
-      /vps-ovh[\s\S]*online CPU 34% RAM 62%[\s\S]*deploys off/,
+      /vps-ovh[\s\S]*online CPU 34% RAM 62%[\s\S]*deploys off, OVERDUE/,
     );
   });
 
@@ -376,6 +377,36 @@ describe("lore estate", () => {
       const { run, calls } = create();
       await expect(run("rotate", "vps-ovh")).rejects.toThrow("Pass --yes");
       expect(calls).toEqual([]);
+    });
+  });
+
+  describe("--ttl (#Q3138)", () => {
+    it("sends a TTL in seconds with add, in the same update as --allow-deploys", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await run("add", "vps-ovh --allow-deploys --ttl 2h");
+      expect(calls[1]).toEqual({
+        name: "update",
+        request: {
+          params: { estateId: "e1" },
+          body: { deployAllowed: true, ttlSeconds: 7200 },
+        },
+      });
+    });
+
+    it("extends with update, clears with none, and refuses a malformed one", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await run("update", "vps-ovh --ttl 3d");
+      await run("update", "vps-ovh --ttl none");
+      expect(
+        calls.map((call) => (call.request as { body: object }).body),
+      ).toEqual([{ ttlSeconds: 259_200 }, { ttlSeconds: null }]);
+      await expect(run("update", "vps-ovh --ttl 2 hours")).rejects.toThrow(
+        "write a number and m, h or d",
+      );
     });
   });
 });
