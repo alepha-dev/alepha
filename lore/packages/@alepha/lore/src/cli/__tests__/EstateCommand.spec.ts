@@ -25,7 +25,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  * the caller's own estates by slug.
  */
 describe("lore estate", () => {
-  const create = () => {
+  const create = (onlineAfter = 0) => {
     const alepha = Alepha.create({
       env: {
         LOG_LEVEL: "error",
@@ -42,13 +42,30 @@ describe("lore estate", () => {
     const printed = alepha.inject(MemoryOutputProvider).lines;
     const calls: Array<{ name: string; request: unknown }> = [];
     const command = alepha.inject(EstateCommand);
+    Object.assign(command as unknown as Record<string, unknown>, {
+      pollMillis: 50,
+    });
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
       {
         projects: { getProjectBySlug: async () => ({ id: 7 }) },
       },
     );
+    let reads = 0;
     const estates = {
+      getEstate: async () => {
+        reads++;
+        return {
+          id: "e1",
+          slug: "vps-ovh",
+          type: "bay",
+          online: reads > onlineAfter,
+          deployAllowed: true,
+          lastSeenAt: reads > onlineAfter ? "2026-11-06T10:00:00Z" : undefined,
+          projects: [{ id: 7, title: "Hello", slug: "hello", lentAt: "x" }],
+        };
+      },
+      getEstateInventory: async () => ({ inventory: null, expected: [] }),
       updateEstate: async (request: unknown) => {
         calls.push({ name: "update", request });
         return {};
@@ -113,7 +130,7 @@ describe("lore estate", () => {
       estates,
     });
     const run = async (
-      sub: "add" | "list" | "stats" | "delete",
+      sub: "add" | "list" | "get" | "wait" | "stats" | "delete",
       argv: string,
     ) => {
       await alepha.inject(CliProvider).run(command[sub] as never, { argv });
@@ -246,6 +263,40 @@ describe("lore estate", () => {
         "You own no estate named someone-elses",
       );
       expect(calls).toEqual([]);
+    });
+  });
+
+  describe("get and wait (#Q3133)", () => {
+    it("reads one of the caller's estates and says plainly when it never connected", async ({
+      expect,
+    }) => {
+      const { run, printed } = create();
+      await run("get", "vps-ovh");
+      const out = printed.join("\n");
+      expect(out).toMatch(/State:\s+online/);
+      expect(out).toMatch(/Lent to:\s+hello/);
+      expect(out).toContain("Never connected");
+    });
+
+    it("prints the estate and its inventory as JSON", async ({ expect }) => {
+      const { run, printed } = create();
+      await run("get", "vps-ovh --output json");
+      const json = JSON.parse(printed.join("\n"));
+      expect(json.slug).toBe("vps-ovh");
+      expect(json.inventory).toBeNull();
+    });
+
+    it("waits until the estate is online, then exits 0", async ({ expect }) => {
+      const { run, printed } = create(2);
+      await run("wait", "vps-ovh --timeout 5");
+      expect(printed.join("\n")).toContain("vps-ovh is online");
+    });
+
+    it("fails on timeout with the last state seen", async ({ expect }) => {
+      const { run } = create(1_000);
+      await expect(run("wait", "vps-ovh --timeout 1")).rejects.toThrow(
+        "vps-ovh is still offline after 1s (last seen never)",
+      );
     });
   });
 });

@@ -43,7 +43,16 @@ or yours when self-hosted), not the machine's.
 show it again; if you lose it, rotate the estate to mint a new one and run the
 command again.
 
-Once Bay is connected, the estate shows as online. See
+Once Bay is connected, the estate shows as online. A script that enrolls a new
+server blocks on that before its first deploy:
+
+```bash
+lore estate wait my-vps --timeout 120
+```
+
+It exits `0` once the machine is online and `1` on timeout, printing the last
+state it saw. `lore estate get my-vps` reads the same estate once, with what the
+machine reports running; a machine that never connected says so. See
 [The Lore connector](/bay/docs/guides-lore-connector) in the Bay documentation
 for the machine's side.
 

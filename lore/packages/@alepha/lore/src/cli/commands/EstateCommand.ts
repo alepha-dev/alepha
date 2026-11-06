@@ -3,7 +3,13 @@ import type {
   ProjectEstateController,
 } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
-import { $command, ConsoleInputProvider, UsageError } from "alepha/command";
+import {
+  $command,
+  CommandError,
+  ConsoleInputProvider,
+  UsageError,
+} from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
@@ -27,6 +33,10 @@ import {
  * means the estate page charts, from the same owner-only action, so it names
  * one of the caller's own estates by slug and no project.
  *
+ * `get` and `wait` (#Q3133) read one of the caller's own estates, the second
+ * polling until the machine is online, so a script enrolling a new server has
+ * something to block on before its first deploy.
+ *
  * `delete` (#Q3131) removes one of the caller's own estates, the end of a
  * throwaway server's life: the server refuses while an app, a stack or a
  * stack environment still deploys to it, and nothing on the machine stops.
@@ -38,6 +48,13 @@ export class EstateCommand {
   protected readonly render = $inject(LoreOutput);
   protected readonly owned = $inject(LoreEstateResolver);
   protected readonly input = $inject(ConsoleInputProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * How often `estate wait` reads the estate again. A field so a spec can
+   * shorten it; a poll every two seconds for a few minutes is cheap.
+   */
+  protected pollMillis = 2_000;
 
   protected readonly lending = $client<ProjectEstateController>(
     this.client.scope(),
@@ -235,6 +252,117 @@ export class EstateCommand {
     },
   });
 
+  public readonly get = $command({
+    name: "get",
+    description:
+      "One of your estates: whether it is online, when it was last seen, deploys, its loans and what the machine runs",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({ ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { id } = await this.owned.owned(args);
+        const estate = await this.estates.getEstate({
+          params: { estateId: id },
+        });
+        const { inventory } = await this.estates.getEstateInventory({
+          params: { estateId: id },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, { ...estate, inventory });
+          return;
+        }
+        this.render.entity(print, {
+          fields: [
+            ["Estate", estate.slug],
+            ["Label", estate.label ?? undefined],
+            ["Type", estate.type],
+            ["State", estate.online ? "online" : "offline"],
+            ["Last seen", estate.lastSeenAt ?? "never"],
+            ["Deploys", estate.deployAllowed ? "allowed" : "off"],
+            [
+              "Lent to",
+              estate.projects.length
+                ? estate.projects
+                    .map((project) => project.slug ?? project.title)
+                    .join(", ")
+                : "no project",
+            ],
+          ],
+          sections: [
+            {
+              title: "Machine",
+              lines: inventory
+                ? [
+                    `Reported ${inventory.reportedAt}${inventory.bayVersion ? `, Bay ${inventory.bayVersion}` : ""}`,
+                    ...inventory.apps.map(
+                      (app) =>
+                        `${app.app}/${app.env}  ${app.running ? "running" : (app.state ?? "stopped")}${app.domains?.length ? `  ${app.domains.join(" ")}` : ""}`,
+                    ),
+                    ...(inventory.stacks ?? []).map(
+                      (stack) => `${stack.stack}/${stack.env} (stack)`,
+                    ),
+                  ]
+                : [
+                    "Never connected: run the connector command on the machine.",
+                  ],
+            },
+          ],
+        });
+      });
+    },
+  });
+
+  public readonly wait = $command({
+    name: "wait",
+    description:
+      "Block until one of your estates is online: exit 0 then, exit 1 on timeout",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({
+      timeout: z
+        .integer()
+        .min(1)
+        .describe("How long to wait, in seconds. Default 120.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { id, slug } = await this.owned.owned(args);
+        const deadline =
+          this.dateTime.nowMillis() + (flags.timeout ?? 120) * 1000;
+        let estate = await this.estates.getEstate({
+          params: { estateId: id },
+        });
+        while (!estate.online && this.dateTime.nowMillis() < deadline) {
+          await this.dateTime.wait(this.pollMillis);
+          estate = await this.estates.getEstate({ params: { estateId: id } });
+        }
+        if (flags.output === "json") {
+          this.render.json(print, estate);
+        }
+        if (!estate.online) {
+          throw new CommandError(
+            { exitCode: LoreRefusals.EXIT_FAILURE },
+            {
+              message: `${slug} is still offline after ${flags.timeout ?? 120}s (last seen ${estate.lastSeenAt ?? "never"}).`,
+            },
+          );
+        }
+        if (flags.output !== "json") {
+          print(`${slug} is online (last seen ${estate.lastSeenAt ?? "now"}).`);
+        }
+      });
+    },
+  });
+
   public readonly delete = $command({
     name: "delete",
     description:
@@ -288,8 +416,15 @@ export class EstateCommand {
   public readonly estate = $command({
     name: "estate",
     description:
-      "The machines this project deploys to: add one, list them, read one's stats, delete one",
-    children: [this.add, this.list, this.stats, this.delete],
+      "The machines this project deploys to: add one, list them, read one, wait for it, read its stats, delete it",
+    children: [
+      this.add,
+      this.list,
+      this.get,
+      this.wait,
+      this.stats,
+      this.delete,
+    ],
     handler: async ({ help }) => {
       help();
     },
