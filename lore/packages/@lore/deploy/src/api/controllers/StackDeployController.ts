@@ -3,8 +3,10 @@ import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
 import type { StackDeployment } from "../entities/stackDeployments.ts";
+import { estateCommandResourceSchema } from "../schemas/estateCommandResourceSchema.ts";
 import { stackDeploymentResourceSchema } from "../schemas/stackDeploymentResourceSchema.ts";
 import { stackServicesResourceSchema } from "../schemas/stackServicesResourceSchema.ts";
+import { BayRemovalService } from "../services/BayRemovalService.ts";
 import { StackConsoleService } from "../services/StackConsoleService.ts";
 import { StackDeployService } from "../services/StackDeployService.ts";
 import { StackService } from "../services/StackService.ts";
@@ -20,6 +22,7 @@ export class StackDeployController {
   protected readonly stacks = $inject(StackService);
   protected readonly deploys = $inject(StackDeployService);
   protected readonly console = $inject(StackConsoleService);
+  protected readonly removals = $inject(BayRemovalService);
 
   protected writeGate = () =>
     $ownsProject({
@@ -202,6 +205,67 @@ export class StackDeployController {
         requestedBy: user?.id,
       });
       return { command: command.id };
+    },
+  });
+
+  /**
+   * Ask the estate to take a stack environment down and forget it (#Q3153,
+   * folio #F1455): `bay stack destroy` without `--purge`, so its volumes,
+   * variables and registry credentials stay on the machine. Lore's own record
+   * of the environment is untouched: delete it once the removal is done.
+   *
+   * Answers no command for an environment that was never deployed, since
+   * there is nothing on a machine to remove.
+   */
+  removeStackEnvironment = $action({
+    use: [this.writeGate()],
+    method: "POST",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/remove",
+    description:
+      "Queue the removal of a stack environment from its Bay, its volumes kept. Lore's record stays until it is deleted.",
+    schema: {
+      params: this.params,
+      response: z.object({
+        command: estateCommandResourceSchema.optional(),
+        estate: z.string().optional(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const stack = await this.stacks.get(params.projectId, params.stackId);
+      const environment = await this.stacks.getEnvironment(
+        stack,
+        params.environmentId,
+      );
+      const queued = await this.removals.removeStackEnvironment(
+        stack,
+        environment,
+        user?.id,
+      );
+      return queued
+        ? { command: queued.command, estate: queued.estate.slug }
+        : {};
+    },
+  });
+
+  getStackRemoval = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/remove/:commandId",
+    schema: {
+      params: this.params.extend({ commandId: z.uuid() }),
+      response: estateCommandResourceSchema,
+    },
+    handler: async ({ params }) => {
+      const stack = await this.stacks.get(params.projectId, params.stackId);
+      const environment = await this.stacks.getEnvironment(
+        stack,
+        params.environmentId,
+      );
+      return this.removals.readStackRemoval(
+        stack,
+        environment,
+        params.commandId,
+      );
     },
   });
 

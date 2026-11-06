@@ -120,6 +120,10 @@ export class EstateCommandService {
     // Fetches, verifies, takes a pre-restore backup, stops the app, swaps
     // the databases and starts it again.
     restore: 1800,
+    // Stops one instance and unregisters it, as `stop` does plus a write.
+    remove: 120,
+    // `compose down` on every service of the environment.
+    "stack-remove": 600,
   };
 
   protected readonly log = $logger();
@@ -152,7 +156,10 @@ export class EstateCommandService {
       );
     }
     if (
-      (kind === "deploy" || kind === "stack-deploy") &&
+      (kind === "deploy" ||
+        kind === "stack-deploy" ||
+        kind === "remove" ||
+        kind === "stack-remove") &&
       !estate.deployAllowed
     ) {
       throw new ForbiddenError(

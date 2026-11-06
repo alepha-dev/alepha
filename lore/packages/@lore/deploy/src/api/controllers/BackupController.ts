@@ -9,12 +9,8 @@ import { $action, BadRequestError, NotFoundError } from "alepha/server";
 import type { AppInstance } from "../entities/appInstances.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateEvents } from "../entities/estateEvents.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
-import { type Estate, estates } from "../entities/estates.ts";
-import {
-  APP_BACKUP_STATUSES,
-  appBackupViewSchema,
-} from "../schemas/appBackupViewSchema.ts";
+import type { Estate } from "../entities/estates.ts";
+import { appBackupViewSchema } from "../schemas/appBackupViewSchema.ts";
 import {
   BACKUP_KINDS_REFUSED_OFFLINE,
   backupCommandInput,
@@ -23,6 +19,7 @@ import {
 } from "../schemas/estateBackupCommandSchema.ts";
 import { estateCommandResourceSchema } from "../schemas/estateCommandResourceSchema.ts";
 import { AppService } from "../services/AppService.ts";
+import { BayRemovalService } from "../services/BayRemovalService.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateEventService } from "../services/EstateEventService.ts";
 import { EstateInventoryService } from "../services/EstateInventoryService.ts";
@@ -49,9 +46,8 @@ export class BackupController {
   protected readonly commands = $inject(EstateCommandService);
   protected readonly events = $inject(EstateEventService);
   protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly bay = $inject(BayRemovalService);
   protected readonly files = $inject(FileService);
-  protected readonly estates = $repository(estates);
-  protected readonly grants = $repository(estateProjects);
   protected readonly rows = $repository(estateCommands);
 
   protected writeGate = () =>
@@ -295,55 +291,11 @@ export class BackupController {
   }
 
   /**
-   * The Bay instance a copy is, checked the way `DeployGate` checks a deploy:
-   * an estate, still there, still lent, a Bay, and a name the copy was
-   * deployed under ON THAT estate (`resourceEstateId`).
-   *
-   * ⚠️ Reads the STORED name and never `ResourceNameService.resolve`, which
-   * stores one: looking at a tab must not name a copy that never deployed.
+   * The Bay instance a copy is: `BayRemovalService.target`, the one place
+   * that reads a copy's stored machine name.
    */
-  protected async target(instance: AppInstance): Promise<
-    | { status: "ok"; estate: Estate; machineApp: string }
-    | {
-        status: Exclude<
-          (typeof APP_BACKUP_STATUSES)[number],
-          "reported" | "not-reported"
-        >;
-        estate?: Estate;
-      }
-  > {
-    if (!instance.estateId) {
-      return { status: "no-estate" };
-    }
-    const estate = await this.estates.findById(instance.estateId);
-    if (!estate) {
-      return { status: "no-estate" };
-    }
-    const grant = await this.grants.findOne({
-      where: {
-        estateId: { eq: estate.id },
-        projectId: { eq: instance.projectId },
-      },
-    });
-    if (!grant) {
-      return { status: "not-lent" };
-    }
-    if (estate.type !== "bay") {
-      return { status: "not-bay", estate };
-    }
-    const suffix = `-${instance.env}`;
-    const name = instance.resourceName;
-    // ⚠️ The name is only this copy's on the estate it was deployed to under
-    // it. Moved since, the same name on the new estate may be another
-    // project's instance: its backups and restores are not ours to drive.
-    if (
-      instance.resourceEstateId !== estate.id ||
-      !name?.endsWith(suffix) ||
-      name.length <= suffix.length
-    ) {
-      return { status: "not-deployed", estate };
-    }
-    return { status: "ok", estate, machineApp: name.slice(0, -suffix.length) };
+  protected async target(instance: AppInstance) {
+    return this.bay.target(instance);
   }
 
   protected describe(estate: Estate) {

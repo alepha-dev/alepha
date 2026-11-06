@@ -30,7 +30,8 @@ import {
  * subject that already exists: `app_instance_list` is `lore apps instance list`.
  *
  * ⚠️ `delete` undeploys nothing, and takes the copy's sigil and everything it
- * reported with it. So it needs `--yes`, a flag and never a prompt: an agent's
+ * reported with it. Lore refuses it while the copy still holds resources it
+ * created or still runs on its Bay (#Q3153): `lore apps destroy` comes first. So it needs `--yes`, a flag and never a prompt: an agent's
  * shell has nothing to answer with.
  *
  * ⚠️ Never re-exported from `index.ts`: the controller types come from the
@@ -295,7 +296,7 @@ export class AppInstanceCommand {
   public readonly delete = $command({
     name: "delete",
     description:
-      "Forget a deployed copy, its sigil and everything it reported. It undeploys nothing",
+      "Forget a deployed copy, its sigil and everything it reported. It undeploys nothing: run `lore apps destroy` first",
     flags: z.object({
       ...AppInstanceCommand.PROJECT_FLAG,
       ...AppInstanceCommand.PAIR_FLAGS,

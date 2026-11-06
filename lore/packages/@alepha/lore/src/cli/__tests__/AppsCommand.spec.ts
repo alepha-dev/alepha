@@ -726,6 +726,84 @@ describe("lore apps destroy", () => {
     ).rejects.toThrow(/Pass --confirm/);
   });
 
+  describe("a copy on a Bay (#Q3153)", () => {
+    const aBayCopy = (outcome: "done" | "failed" = "done") => {
+      const world = create({
+        production: {
+          id: "inst-1",
+          estateId: "bay-1",
+          estate: { slug: "vps-ovh", type: "bay" },
+          resourceName: "acme-docs-production",
+        } as never,
+      });
+      const asked: string[] = [];
+      const deployer = world.alepha.inject(LoreDeployer) as unknown as {
+        apps: Record<string, unknown>;
+      };
+      Object.assign(deployer.apps, {
+        destroyAppResources: async () => {
+          asked.push("destroy");
+          return {
+            removed: [],
+            kept: ["database", "uploads", ".env"],
+            failed: [],
+            removal: { command: { id: "c1" }, estate: "vps-ovh" },
+          };
+        },
+        getAppRemoval: async () => {
+          asked.push("read");
+          return outcome === "done"
+            ? { status: "done", reason: "removed acme-docs/production" }
+            : { status: "failed", reason: "unknown instance" };
+        },
+      });
+      return { ...world, asked };
+    };
+
+    it("follows the removal and says what was kept", async ({ expect }) => {
+      const { fs, cli, command, printed, asked } = aBayCopy();
+      await aWorkspace(fs);
+
+      await cli.run(command.destroy, {
+        root: "/project",
+        argv: "--env production --confirm docs/production",
+      });
+
+      expect(asked).toEqual(["destroy", "read"]);
+      expect(printed).toContain(
+        "Removed the instance on vps-ovh for docs/production",
+      );
+      expect(printed).toContain("Kept: database, uploads, .env");
+    });
+
+    it("fails when the machine refused the removal", async ({ expect }) => {
+      const { fs, cli, command } = aBayCopy("failed");
+      await aWorkspace(fs);
+
+      await expect(
+        cli.run(command.destroy, {
+          root: "/project",
+          argv: "--env production --confirm docs/production",
+        }),
+      ).rejects.toThrow(/could not be removed/);
+    });
+
+    it("--purge sends nothing and prints the command for the machine", async ({
+      expect,
+    }) => {
+      const { fs, cli, command, asked } = aBayCopy();
+      await aWorkspace(fs);
+
+      await expect(
+        cli.run(command.destroy, {
+          root: "/project",
+          argv: "--env production --confirm docs/production --purge",
+        }),
+      ).rejects.toThrow(/bay remove acme-docs\/production --purge/);
+      expect(asked).toEqual([]);
+    });
+  });
+
   /**
    * ⚠️ `--yes` is gone on purpose. A flag that means "skip the check" IS the
    * accident, because it is the flag people leave in a shell history.
@@ -734,7 +812,7 @@ describe("lore apps destroy", () => {
     const { command } = aCloudflareCopy();
     const flags = Object.keys(command.destroy.flags?.shape ?? {}).sort();
 
-    expect(flags).toEqual(["app", "confirm", "env", "project"]);
+    expect(flags).toEqual(["app", "confirm", "env", "project", "purge"]);
     expect(flags).not.toContain("yes");
     expect(flags).not.toContain("force");
   });

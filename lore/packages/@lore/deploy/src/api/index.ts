@@ -44,6 +44,7 @@ import { AppService } from "./services/AppService.ts";
 import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
+import { BayRemovalService } from "./services/BayRemovalService.ts";
 import { BlightQuestHandBack } from "./services/BlightQuestHandBack.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
@@ -192,6 +193,8 @@ export const LoreDeployApi = $module({
     // Stack deploys over the estate connector (#Q2694).
     StackDeployService,
     StackConsoleService,
+    // Undeploying from a Bay, data kept (#Q3153).
+    BayRemovalService,
     BlightRuleService,
     OpenBlightCounter,
     DailyVisitorsService,
@@ -330,6 +333,7 @@ export { RollbackService } from "./services/RollbackService.ts";
 export { SigilIngestService } from "./services/SigilIngestService.ts";
 export { SigilTokenService } from "./services/SigilTokenService.ts";
 export { TeardownService } from "./services/TeardownService.ts";
+export { BayRemovalService } from "./services/BayRemovalService.ts";
 export { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 export { UptimeHttpProber } from "./services/UptimeHttpProber.ts";

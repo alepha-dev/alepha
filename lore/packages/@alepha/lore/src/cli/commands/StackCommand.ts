@@ -6,6 +6,7 @@ import type {
 } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, CommandError, EnvUtils, UsageError } from "alepha/command";
+import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 
@@ -344,7 +345,7 @@ export class StackCommand {
   public readonly destroy = $command({
     name: "destroy",
     description:
-      "Forget an environment in Lore, and print the command that removes it from the machine",
+      "Remove an environment from its Bay, its volumes kept, then forget it in Lore",
     flags: z.object({
       project: this.projectFlag,
       name: this.nameFlag,
@@ -355,7 +356,7 @@ export class StackCommand {
       purge: z
         .boolean()
         .describe(
-          "Also delete its volumes on the machine (the printed command carries --purge)",
+          "Also delete its volumes. Lore never asks a machine for that: it forgets the environment and prints the `bay stack destroy --purge` command to run on the machine",
         )
         .optional(),
       yes: z.boolean().describe("Do not ask for confirmation (CI)").optional(),
@@ -373,28 +374,79 @@ export class StackCommand {
         );
         const environment = this.stacks.environmentOf(stack, flags.env);
         const where = `${stack.name}/${environment.env}`;
+        const params = {
+          projectId,
+          stackId: stack.id,
+          environmentId: environment.id,
+        };
         if (!flags.yes) {
           const confirmed = await ask.confirm(
-            `Forget ${where} in Lore, its routes and variables included? Nothing on the machine changes until you run the printed command.`,
+            flags.purge
+              ? `Forget ${where} in Lore, its routes and variables included? Its volumes go only when you run the printed command on the machine.`
+              : `Remove ${where} from its machine (volumes kept) and forget it in Lore, its routes and variables included?`,
           );
           if (!confirmed) {
             throw new AlephaError("Not confirmed; nothing was changed.");
           }
         }
-        await this.stackApi.deleteStackEnvironment({
-          params: {
-            projectId,
-            stackId: stack.id,
-            environmentId: environment.id,
-          },
-        });
+
+        // ⚠️ `--purge` asks the machine for nothing (folio #F1455): deleting
+        // volumes is a command run there. It also has to run BEFORE any
+        // removal, since a machine that forgot the environment no longer
+        // knows which volumes were its.
+        let machine: "removed" | "untouched" = "untouched";
+        let refusal: string | undefined;
+        if (!flags.purge) {
+          try {
+            const queued = await this.deployApi.removeStackEnvironment({
+              params,
+            });
+            if (queued.command) {
+              print(`Removing ${where} from ${queued.estate}...`);
+              const outcome = await this.stacks.awaitRemoval(
+                params,
+                queued.command.id,
+              );
+              if (outcome.status === "failed") {
+                throw new CommandError(
+                  `The machine did not remove ${where}: ${outcome.reason ?? "it gave no reason"}. Lore still records it.`,
+                );
+              }
+              if (outcome.status !== "done") {
+                throw new CommandError(
+                  `The removal of ${where} is queued on ${queued.estate} but has not run yet (${outcome.status}); it runs when the machine connects. Lore still records ${where}: run this again once it is done.`,
+                );
+              }
+              if (outcome.reason) {
+                print(`  ${outcome.reason}`);
+              }
+              machine = "removed";
+            }
+          } catch (error) {
+            if (!isHttpError(error)) {
+              throw error;
+            }
+            // Refused before anything was queued: an estate that does not
+            // accept deploys, or one no longer lent. Lore can still forget
+            // the environment, and the machine command is printed below.
+            refusal = error.message;
+          }
+        }
+
+        await this.stackApi.deleteStackEnvironment({ params });
         print(`Forgot ${where} in Lore.`);
-        print("");
-        print(
-          "Removing it from the machine is not something Lore may ask over the connector. On the machine, run:",
-        );
-        print("");
-        print(`  bay stack destroy ${where}${flags.purge ? " --purge" : ""}`);
+        if (machine === "removed") {
+          return;
+        }
+        if (refusal) {
+          print(`Lore could not ask the machine: ${refusal}`);
+        }
+        if (flags.purge || refusal) {
+          print("");
+          print("On the machine, run:");
+          print("");
+          print(`  bay stack destroy ${where}${flags.purge ? " --purge" : ""}`);
+        }
       });
     },
   });

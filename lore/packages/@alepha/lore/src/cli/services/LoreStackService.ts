@@ -131,6 +131,30 @@ export class LoreStackService {
   }
 
   /**
+   * Waits for a queued removal of a stack environment (#Q3153) to be done or
+   * failed, or for the client to give up. Giving up cancels nothing: the
+   * command runs when the machine connects.
+   */
+  public async awaitRemoval(
+    target: { projectId: number; stackId: string; environmentId: string },
+    commandId: string,
+  ): Promise<{ status: string; reason?: string }> {
+    const startedAt = this.dateTime.nowMillis();
+    for (;;) {
+      const row = await this.deploys.getStackRemoval({
+        params: { ...target, commandId },
+      });
+      if (row.status === "done" || row.status === "failed") {
+        return { status: row.status, reason: row.reason };
+      }
+      if (this.dateTime.nowMillis() - startedAt > 180_000) {
+        return { status: row.status, reason: row.reason };
+      }
+      await this.dateTime.wait(LoreStackService.POLL_INTERVAL_MS);
+    }
+  }
+
+  /**
    * Follows one stack deploy to its end, reporting each new step, and answers
    * the final row.
    */

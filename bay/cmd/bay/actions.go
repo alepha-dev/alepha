@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -89,6 +90,21 @@ const (
 	// a pre-restore backup of it. The most destructive verb here: it needs a
 	// reason, and a dry run says what it would replace without touching it.
 	actionRestore actionKind = "restore"
+
+	// actionRemove unregisters one instance and stops serving it, the way
+	// `bay remove` does WITHOUT `--purge`: its database, uploads and `.env`
+	// stay under the Bay root, so a deploy of the same name brings it back.
+	// Refused while deployAllowed is off, like a deploy (folio #F1455 of the
+	// Alepha project).
+	//
+	// ⚠️ There is no purge on the wire, and there must never be one. Deleting
+	// a copy's data is the one thing here no backup can undo, so it stays a
+	// command somebody runs on this host: `bay remove --purge`.
+	actionRemove actionKind = "remove"
+	// actionStackRemove takes a stack environment down and forgets it, the
+	// way `bay stack destroy` does without `--purge`: its volumes, variables
+	// and registry credentials are kept. Same switch, same rule on purge.
+	actionStackRemove actionKind = "stack-remove"
 )
 
 /*
@@ -166,13 +182,15 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 
 	switch actionKind(cmd.Kind) {
 	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
-		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore:
+		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
+		actionRemove, actionStackRemove:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
 			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
-			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore)
+			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
+			actionRemove, actionStackRemove)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -246,6 +264,10 @@ func (a *actions) runExclusive(ctx context.Context, cmd connector.Command, send 
 		return a.start(cmd)
 	case actionStackDeploy:
 		return a.stackDeploy(ctx, cmd, send)
+	case actionRemove:
+		return a.remove(cmd)
+	case actionStackRemove:
+		return a.stackRemove(cmd)
 	}
 	// Unreachable: Command refuses an unknown kind before it ever takes the
 	// lock. Said out loud rather than left as three empty strings, which would
@@ -344,6 +366,63 @@ func (a *actions) start(cmd connector.Command) (status, step, reason string) {
 		return "failed", "", err.Error()
 	}
 	return "done", "", ""
+}
+
+/*
+remove unregisters the instance the command names and stops serving it, with
+its data kept: `bay remove` without `--purge`, through the same function.
+
+Refused, like a deploy, while the estate does not accept deploys: Lore refuses
+at enqueue, and a Lore-side bug must still not let a stats-only machine be
+emptied from a browser.
+
+An instance this Bay does not hold is answered `done`, saying so, for the reason
+`stop` succeeds on a stopped app: the state asked for is reached, and a removal
+Lore redelivers after a lost ack must not report a failure. A member of a stack
+is refused instead: it goes with its stack environment, and removing it alone
+would leave the stack's record naming a service that is gone.
+*/
+func (a *actions) remove(cmd connector.Command) (status, step, reason string) {
+	if !a.latestWelcome().DeployAllowed {
+		return "failed", "", "this estate does not accept deploys, and so no removal either: its owner has not allowed them, and the welcome frame said so"
+	}
+	key := cmd.App + "/" + cmd.Environment
+	if app, ok := a.s.store.Get(key); ok && app.Stack != "" {
+		return "failed", "", key + " is a member of the stack " + app.Stack + "/" + cmd.Environment + "; remove the stack environment instead"
+	}
+	if err := a.s.notRestoring(key); err != nil {
+		return "failed", "", err.Error()
+	}
+	out, err := a.s.removeInstance(key, false)
+	if errors.Is(err, errUnknownApp) {
+		return "done", "", key + " is not on this bay: nothing to remove"
+	}
+	if err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", fmt.Sprintf("removed %s; its data is kept at %s (delete it with `bay remove --purge` before removing, or by hand)", key, out.DataPath)
+}
+
+/*
+stackRemove takes a stack environment down and forgets it, its volumes kept:
+`bay stack destroy` without `--purge`, through the same function. Same switch
+and same idempotence as remove.
+*/
+func (a *actions) stackRemove(cmd connector.Command) (status, step, reason string) {
+	if !a.latestWelcome().DeployAllowed {
+		return "failed", "", "this estate does not accept deploys, and so no removal either: its owner has not allowed them, and the welcome frame said so"
+	}
+	name, env, err := stackKeyOf(cmd.Stack + "/" + cmd.Environment)
+	if err != nil {
+		return "failed", "", err.Error()
+	}
+	if _, ok := a.s.store.StackEnv(name, env); !ok {
+		return "done", "", name + "/" + env + " is not on this bay: nothing to remove"
+	}
+	if _, err := a.s.destroyStack(name, env, false); err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", "removed " + name + "/" + env + "; its volumes, variables and registry credentials are kept (delete the volumes with `bay stack destroy --purge` before removing, or by hand)"
 }
 
 /*

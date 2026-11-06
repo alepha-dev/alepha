@@ -1,0 +1,7 @@
+{
+  "type": "command",
+  "id": "2e6f8a1c-4b3d-4e9a-8c7f-5d1a0b2c3e4f",
+  "kind": "remove",
+  "app": "shop",
+  "environment": "staging"
+}

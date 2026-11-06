@@ -230,8 +230,12 @@ See [The lore CLI](/lore/docs/guides-cli#container-registries).
 **Delete environment**, on its **Settings** tab, forgets an environment in Lore,
 with its routes and variables. Its member apps stay, as ordinary copies, and ⚠️
 **nothing on the estate is touched**: what runs keeps running. `lore stack destroy
---env <env>` forgets an environment too, and prints the command that removes it
-from the machine, which `--purge` extends to its volumes.
+--env <env>` asks the machine to remove the environment first, its volumes,
+variables and registry credentials kept, then forgets it in Lore. It is held to
+the estate's deploy switch; on an estate that does not accept deploys it forgets
+the environment and prints the `bay stack destroy` to run on the machine.
+`--purge` asks the machine for nothing: Lore never deletes data on a machine, so
+it forgets the environment and prints `bay stack destroy --purge`.
 
 A whole stack, with its revisions, is deleted once it has no environment left:
 **Delete stack** on its card on the Stacks page, or `lore stack delete <name>`

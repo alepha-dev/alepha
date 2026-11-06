@@ -17,7 +17,9 @@
  * click in a browser: everything before it either replaced a running app with
  * another running app or asked a question. It is durable on the machine (the
  * intent is persisted and the unit disabled), so the way back is `start` or a
- * deploy, and the UI confirms destructively before sending it.
+ * deploy, and the UI confirms destructively before sending it. `remove`
+ * goes one step further, unregistering the copy, and keeps its data for the
+ * same reason: a deploy brings it back.
  *
  * The machine's own `actionKind` in Bay's `cmd/bay/actions.go` is the other
  * half of this enum, and neither may grow without the other.
@@ -43,6 +45,14 @@ export const ESTATE_COMMAND_KINDS = [
   "target-probe",
   "backup-policy",
   "restore",
+  // Undeploying (#Q3153, folio #F1455): `remove` unregisters one instance
+  // and `stack-remove` takes a stack environment down, both keeping their
+  // data on the machine, both held to the deploy switch. ⚠️ Neither has a
+  // purge, and none may be added: deleting a copy's data is the one thing no
+  // backup undoes, so it stays `bay remove --purge` run on the machine.
+  // Bay's `actionRemove` and `actionStackRemove` are their other half.
+  "remove",
+  "stack-remove",
 ] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];

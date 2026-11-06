@@ -292,6 +292,19 @@ copy destroyed and recreated under the same name **reattaches its own database
 with every row still in it**. Deleting those two is `alepha infra down`,
 which runs on your machine against your own account.
 
+### A copy on a Bay
+
+On a Bay estate the same command asks the machine to remove the copy: Bay stops
+serving it and unregisters it, and **its database, uploads and `.env` stay on
+the machine**, so a deploy of the same copy brings it back. It is held to the
+estate's deploy switch, and the command waits for the machine to say it is done.
+Lore keeps the copy until you forget it with `lore apps instance delete`, which
+it refuses while the machine still runs the copy.
+
+⚠️ **Lore never asks a machine to delete data.** `--purge` sends nothing: it
+prints the `bay remove --purge` command to run on the machine, which removes the
+copy and its data together.
+
 ⚠️ **Lore deletes only what it recorded creating.** The names are derived from
 the project, the app and the environment, so they are reproducible - and your
 estate holds resources Lore never made, one of which could bear the same name.

@@ -1926,27 +1926,67 @@ func (s *server) endWatch(ctx context.Context, key string) {
 // asks for the destructive version, and says what it deleted.
 func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("name") + "/" + r.PathValue("env")
+	out, err := s.removeInstance(key, r.URL.Query().Get("purge") == "yes")
+	if err != nil {
+		code := http.StatusInternalServerError
+		if errors.Is(err, errUnknownApp) {
+			code = http.StatusNotFound
+		}
+		writeError(w, code, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"removed": key,
+		"domain":  out.Domain,
+		"purged":  out.Purged,
+		// Said even when nothing was deleted, so "where did my data go" never
+		// needs asking.
+		"dataKeptAt": map[string]any{"path": out.DataPath, "kept": !out.Purged},
+	})
+}
+
+// errUnknownApp is what removeInstance answers for a key this Bay does not
+// hold, so the control route can say 404 and the connector can say "already
+// gone" without matching on a message.
+var errUnknownApp = errors.New("unknown app")
+
+// removedInstance is what a removal did: the domain it stopped serving, and
+// where the data is (or was).
+type removedInstance struct {
+	Domain   string
+	DataPath string
+	Purged   bool
+}
+
+/*
+removeInstance stops an app and unregisters it, keeping its data unless
+`purge`.
+
+One function behind `bay remove` (the control route) and the connector's
+`remove` verb, so the two cannot come to mean different things by one word.
+The connector never passes `purge`: deleting data is a command run on the
+machine (folio #F1455 of the Alepha project).
+*/
+func (s *server) removeInstance(key string, purge bool) (removedInstance, error) {
 	app, existed, err := s.store.Remove(key)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
+		return removedInstance{}, err
 	}
 	if !existed {
-		writeError(w, http.StatusNotFound, "unknown app "+key)
-		return
+		return removedInstance{}, fmt.Errorf("%w %s", errUnknownApp, key)
 	}
+	s.cancelWatch(key)
 	if err := s.runner.Stop(key, stopGrace); err != nil {
 		s.log.Error("stop failed while removing", "app", key, "err", err)
 	}
 
 	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
-	purged := false
-	if r.URL.Query().Get("purge") == "yes" {
+	out := removedInstance{Domain: app.Domain(), DataPath: instance}
+	if purge {
 		if err := os.RemoveAll(instance); err != nil {
-			writeError(w, http.StatusInternalServerError, "purge: "+err.Error())
-			return
+			return out, fmt.Errorf("purge: %w", err)
 		}
-		purged = true
+		out.Purged = true
 	}
 	// After the data, so the unix user is never deleted while files it owns
 	// are still on disk — the window deleteUser exists to avoid. Logged rather
@@ -1954,18 +1994,11 @@ func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 	// served, so failing the request here would report a removal that did
 	// happen as one that did not, and the operator would retry against an app
 	// that is already gone.
-	if err := s.runner.Remove(key, purged); err != nil {
+	if err := s.runner.Remove(key, out.Purged); err != nil {
 		s.log.Error("uninstall failed while removing", "app", key, "err", err)
 	}
-	s.log.Info("removed app", "app", key, "domain", app.Domain(), "purged", purged)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"removed": key,
-		"domain":  app.Domain(),
-		"purged":  purged,
-		// Said even when nothing was deleted, so "where did my data go" never
-		// needs asking.
-		"dataKeptAt": map[string]any{"path": instance, "kept": !purged},
-	})
+	s.log.Info("removed app", "app", key, "domain", out.Domain, "purged", out.Purged)
+	return out, nil
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {

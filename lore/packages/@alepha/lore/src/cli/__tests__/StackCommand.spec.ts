@@ -28,7 +28,11 @@ import { LoreStackService } from "../services/LoreStackService.ts";
  */
 describe("lore stack", () => {
   const create = (
-    options: { outcome?: "succeeded" | "failed"; environments?: string[] } = {},
+    options: {
+      outcome?: "succeeded" | "failed";
+      environments?: string[];
+      removal?: "none" | "done" | "failed" | "refused";
+    } = {},
   ) => {
     const alepha = Alepha.create({
       env: {
@@ -79,6 +83,15 @@ describe("lore stack", () => {
           }),
         },
         deploys: {
+          getStackRemoval: async (request: unknown) => {
+            calls.push({ name: "readRemoval", request });
+            return options.removal === "failed"
+              ? { status: "failed", reason: "compose down failed" }
+              : {
+                  status: "done",
+                  reason: "removed hello/staging; its volumes are kept",
+                };
+          },
           listStackDeployments: async () => {
             polls += 1;
             const done = polls > 1;
@@ -155,6 +168,20 @@ describe("lore stack", () => {
         rollbackStackEnvironment: async (request: unknown) => {
           calls.push({ name: "rollback", request });
           return { id: "d1", revision: 1 };
+        },
+        removeStackEnvironment: async (request: unknown) => {
+          calls.push({ name: "remove", request });
+          if (options.removal === "refused") {
+            throw Object.assign(
+              new Error(
+                'Estate "vps-ovh" does not accept deploys; its owner has to allow them first',
+              ),
+              { name: "HttpError", status: 403 },
+            );
+          }
+          return options.removal === "none" || options.removal === undefined
+            ? {}
+            : { command: { id: "c1" }, estate: "vps-ovh" };
         },
       },
     });
@@ -289,13 +316,56 @@ describe("lore stack", () => {
     });
   });
 
-  it("destroy --yes forgets the environment and prints the machine's command", async ({
+  it("destroy --purge asks the machine for nothing: it forgets the environment and prints the machine's command", async ({
     expect,
   }) => {
     const { run, calls, printed } = create({ environments: ["staging"] });
     await run("destroy", "--env staging --purge --yes");
     expect(calls.map((c) => c.name)).toEqual(["deleteEnvironment"]);
     expect(printed).toContain("  bay stack destroy hello/staging --purge");
+  });
+
+  describe("destroy over the connector (#Q3153)", () => {
+    it("removes the environment from its Bay, then forgets it in Lore", async ({
+      expect,
+    }) => {
+      const { run, calls, printed } = create({
+        environments: ["staging"],
+        removal: "done",
+      });
+      await run("destroy", "--env staging --yes");
+      expect(calls.map((c) => c.name)).toEqual([
+        "remove",
+        "readRemoval",
+        "deleteEnvironment",
+      ]);
+      expect(printed.join("\n")).toContain("its volumes are kept");
+      expect(printed.join("\n")).not.toContain("bay stack destroy");
+    });
+
+    it("keeps Lore's record when the machine could not remove it", async ({
+      expect,
+    }) => {
+      const { run, calls } = create({
+        environments: ["staging"],
+        removal: "failed",
+      });
+      await expect(run("destroy", "--env staging --yes")).rejects.toThrow(
+        /compose down failed/,
+      );
+      expect(calls.map((c) => c.name)).not.toContain("deleteEnvironment");
+    });
+
+    it("forgets a never-deployed environment with nothing to ask", async ({
+      expect,
+    }) => {
+      const { run, calls } = create({
+        environments: ["staging"],
+        removal: "none",
+      });
+      await run("destroy", "--env staging --yes");
+      expect(calls.map((c) => c.name)).toEqual(["remove", "deleteEnvironment"]);
+    });
   });
 
   it("delete --yes deletes the whole stack by name (#Q3136)", async ({

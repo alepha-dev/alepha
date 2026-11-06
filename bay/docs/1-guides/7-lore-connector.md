@@ -75,9 +75,10 @@ network in clear.
 
 ## What Lore can make the machine do
 
-A **closed vocabulary of twelve verbs**, each naming one app instance or stack
-environment. `deploy` and `stack-deploy` create what they name; the others
-refuse an instance this Bay does not run:
+A **closed vocabulary of fourteen verbs**, each naming one app instance or stack
+environment. `deploy` and `stack-deploy` create what they name, `remove` and
+`stack-remove` answer done for one that is already gone, and the others refuse
+an instance this Bay does not run:
 
 | Verb           | What it does                                                                                     |
 | -------------- | ------------------------------------------------------------------------------------------------ |
@@ -93,6 +94,8 @@ refuse an instance this Bay does not run:
 | `target-probe` | checks the S3 bucket now and reports whether it answers                                          |
 | `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's  |
 | `restore`      | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run |
+| `remove`       | unregisters an app and stops serving it, as `bay remove` without `--purge`: its database, uploads and `.env` stay on the machine. Refused for a stack member, which goes with its stack |
+| `stack-remove` | takes a stack environment down and forgets it, as `bay stack destroy` without `--purge`: its volumes, variables and registry credentials stay |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
 whoever controls Lore, can ask of this machine. No verb takes a path, a shell
@@ -101,6 +104,11 @@ pattern, all bounded and validated; `backup-policy` carries a policy checked
 like `bay backup config`'s, and `restore` a backup key or a time, the instance
 to restore from and a reason. Both are held to the same switch as `deploy`,
 and Lore refuses them while the machine is offline rather than queueing them.
+`remove` and `stack-remove` are held to that switch too, and ⚠️ **neither can
+delete data**: there is no purge on the wire. Deleting a copy's data is
+`bay remove --purge` or `bay stack destroy --purge`, run on the machine, and it
+has to come instead of a removal through Lore, since a machine that has
+forgotten the copy no longer knows where its data is.
 **Exec into a container is not a verb and
 never will be**: it takes SSH.
 

@@ -555,6 +555,12 @@ export class LoreDeployer {
    * Remove the copy's Worker, queue and cache (and, for an ephemeral copy, its
    * database and bucket), confirmed by the copy's own `app/env`.
    *
+   * On a Bay estate Lore queues a `remove` for the machine instead (#Q3153),
+   * and this follows it: `done` is reported as the instance removed, `failed`
+   * as a failed resource, so both callers report a Bay copy the way they
+   * report a Cloudflare one. Its data is always kept: nothing on the wire can
+   * delete it.
+   *
    * ⚠️ Answers Lore's result as it is, `failed` included: whether a failed
    * resource is an error is the caller's to say, and both callers say it is.
    */
@@ -564,10 +570,75 @@ export class LoreDeployer {
     env: string,
     confirm: string,
   ): Promise<LoreDestroyResult> {
-    return (await this.apps.destroyAppResources({
+    const result = (await this.apps.destroyAppResources({
       params: { projectId, app, env },
       body: { confirm },
-    })) as LoreDestroyResult;
+    })) as LoreDestroyResult & {
+      removal?: { command: { id: string }; estate: string };
+    };
+    if (!result.removal) {
+      return result;
+    }
+    const { command, estate } = result.removal;
+    const outcome = await this.followRemoval(projectId, app, env, command.id);
+    if (outcome.reason) {
+      this.log.info(outcome.reason);
+    }
+    return outcome.status === "done"
+      ? {
+          removed: [`the instance on ${estate}`],
+          kept: result.kept,
+          failed: [],
+        }
+      : {
+          removed: [],
+          kept: result.kept,
+          failed: [
+            {
+              resource: `the instance on ${estate}`,
+              message: outcome.reason ?? "the machine refused it",
+            },
+          ],
+        };
+  }
+
+  /**
+   * How long a terminal waits for a Bay to run a removal: the machine's own
+   * budget for it, plus a delivery over a live connection.
+   */
+  protected static readonly REMOVAL_TIMEOUT_MS = 3 * 60 * 1_000;
+
+  /**
+   * Follow one queued removal until the machine says `done` or `failed`.
+   *
+   * ⚠️ Giving up is the CLIENT giving up: the command stays queued and runs
+   * when the machine connects, so the message says so rather than pretending
+   * anything was cancelled.
+   */
+  protected async followRemoval(
+    projectId: number,
+    app: string,
+    env: string,
+    commandId: string,
+  ): Promise<{ status: string; reason?: string }> {
+    const startedAt = this.dateTime.nowMillis();
+    for (;;) {
+      const row = (await this.apps.getAppRemoval({
+        params: { projectId, app, env, commandId },
+      })) as { status?: string; reason?: string };
+      if (row?.status === "done" || row?.status === "failed") {
+        return { status: row.status, reason: row.reason };
+      }
+      if (
+        this.dateTime.nowMillis() - startedAt >
+        LoreDeployer.REMOVAL_TIMEOUT_MS
+      ) {
+        throw new AlephaError(
+          `The removal of ${app}/${env} is queued but its machine has not run it yet (${row?.status ?? "pending"}). It runs when the machine connects; the estate's Commands tab shows it.`,
+        );
+      }
+      await this.dateTime.wait(LoreDeployer.POLL_INTERVAL_MS);
+    }
   }
 
   /**
@@ -617,6 +688,9 @@ export class LoreDeployer {
   ): Promise<string> {
     try {
       const instance = await this.readInstance(projectId, app, env);
+      if (instance.estate?.type === "bay") {
+        return `\n\nOn its Bay this stops serving ${app}/${env} and unregisters it; its database, uploads and .env are kept on the machine. To delete them too, run \`bay remove --purge\` on the machine instead: Lore never asks for that.`;
+      }
       return instance.ephemeral
         ? `\n\n⚠️  ${app}/${env} is EPHEMERAL: this also deletes its database and its bucket, and there is no backup.`
         : `\n\nIts database and bucket are kept; the Worker, queue and cache go.`;

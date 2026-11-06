@@ -18,8 +18,10 @@ import {
   type AppInstanceResource,
   appInstanceResourceSchema,
 } from "../schemas/appInstanceResourceSchema.ts";
+import { estateCommandResourceSchema } from "../schemas/estateCommandResourceSchema.ts";
 import { AppService } from "../services/AppService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
+import { BayRemovalService } from "../services/BayRemovalService.ts";
 import {
   type DeployedBuild,
   DeployedBuildService,
@@ -60,6 +62,7 @@ export class AppController {
   protected builds = $inject(DeployedBuildService);
   protected artifacts = $inject(ArtifactService);
   protected readonly teardown = $inject(TeardownService);
+  protected readonly bay = $inject(BayRemovalService);
   protected readonly log = $logger();
   protected audits = $inject(LoreAudits);
 
@@ -322,9 +325,9 @@ export class AppController {
    * (`blights.sigilId` is `ON DELETE SET NULL`): a triage decision outlives
    * the credential that surfaced it.
    *
-   * ⚠️ **Deleting an instance undeploys nothing.** It removes Lore's record of
-   * a deployed copy, not the copy. Refusing is not this endpoint's job either
-   * - the confirmation dialog is the UI's.
+   * ⚠️ **Deleting an instance undeploys nothing**, and is refused while the
+   * copy still runs on its Bay (#Q3153). It removes Lore's record of
+   * a deployed copy, not the copy.
    */
   /**
    * Give an existing copy a sigil and store its key, idempotently.
@@ -394,6 +397,12 @@ export class AppController {
    * ⚠️ The confirmation is the copy's own `app/env`, typed. A checkbox is a
    * reflex; typing the name is the only confirmation that requires reading
    * which copy is about to lose its database.
+   *
+   * On a **Bay** estate it queues a `remove` for the machine instead (#Q3153,
+   * folio #F1455): the copy stops being served and is unregistered, and its
+   * database, uploads and `.env` stay on the machine. The answer names the
+   * queued command, which `getAppRemoval` follows; `removed` stays empty until
+   * the machine has done it, because nothing has been removed yet.
    */
   destroyAppResources = $action({
     use: [
@@ -406,7 +415,7 @@ export class AppController {
     method: "POST",
     path: "/projects/:projectId/apps/:app/:env/destroy",
     description:
-      "Delete the Worker, queue and cache this copy uses. Its database and bucket are kept.",
+      "Delete the Worker, queue and cache this copy uses (its database and bucket are kept), or, on a Bay, queue the removal of the copy from the machine, its data kept.",
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -429,6 +438,16 @@ export class AppController {
         failed: z.array(
           z.object({ resource: z.string(), message: z.string() }),
         ),
+        /**
+         * On a Bay: the `remove` queued for the machine, and the estate's
+         * slug. Follow it with `getAppRemoval`.
+         */
+        removal: z
+          .object({
+            command: estateCommandResourceSchema,
+            estate: z.string(),
+          })
+          .optional(),
       }),
     },
     handler: async ({ params, body, user }) => {
@@ -437,12 +456,36 @@ export class AppController {
         params.app,
         params.env,
       );
+      const estate = instance.estateId
+        ? await this.estates.findById(instance.estateId)
+        : undefined;
+      const onBay = estate?.type === "bay";
 
       const expected = `${instance.app}/${instance.env}`;
       if (body.confirm.trim() !== expected) {
         throw new BadRequestError(
-          `Type "${expected}" to confirm. This deletes the Worker, the queue and the cache namespace; the database and the bucket are KEPT.`,
+          onBay
+            ? `Type "${expected}" to confirm. This stops serving the copy on its Bay and unregisters it there; its database, uploads and .env are KEPT on the machine.`
+            : `Type "${expected}" to confirm. This deletes the Worker, the queue and the cache namespace; the database and the bucket are KEPT.`,
         );
+      }
+
+      if (onBay) {
+        const queued = await this.bay.removeCopy(instance, user.id);
+        await this.audits.app.logSuccess("destroy", {
+          ...this.audits.actor(user),
+          ...this.audits.scope(params.projectId),
+          severity: "warning",
+          resourceType: "app",
+          resourceId: instance.id,
+          description: `${expected}: removal queued on ${queued.estate.slug}, data kept on the machine`,
+        });
+        return {
+          removed: [],
+          kept: ["database", "uploads", ".env"],
+          failed: [],
+          removal: { command: queued.command, estate: queued.estate.slug },
+        };
       }
 
       const result = await this.teardown.destroy(instance);
@@ -472,6 +515,34 @@ export class AppController {
       }
 
       return result;
+    },
+  });
+
+  /**
+   * One removal `destroyAppResources` queued for a copy on a Bay, so a
+   * terminal can follow it to `done` or `failed`. Scoped on the copy's estate
+   * and machine name, like a backup command.
+   */
+  getAppRemoval = $action({
+    use: [$ownsProject({ param: "projectId", requires: "app:read" })],
+    method: "GET",
+    path: "/projects/:projectId/apps/:app/:env/destroy/:commandId",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        app: appNameSchema,
+        env: appNameSchema,
+        commandId: z.uuid(),
+      }),
+      response: estateCommandResourceSchema,
+    },
+    handler: async ({ params }) => {
+      const instance = await this.service.load(
+        params.projectId,
+        params.app,
+        params.env,
+      );
+      return this.bay.readCopyRemoval(instance, params.commandId);
     },
   });
 
@@ -519,6 +590,14 @@ export class AppController {
       if (!body?.forget && this.teardown.holdsResources(instance)) {
         throw new BadRequestError(
           `${instance.app}/${instance.env} still has a Worker, database or bucket that Lore created. Destroy those first, or pass \`forget\` to delete this copy and leave them - after which nothing will know their names.`,
+        );
+      }
+      // ⚠️ The same refusal for a copy still running on its Bay (#Q3153):
+      // forgotten first, it keeps serving with nothing in Lore that can
+      // remove it. `forget` stays the way out, for a machine that is gone.
+      if (!body?.forget && (await this.bay.stillDeployed(instance))) {
+        throw new BadRequestError(
+          `${instance.app}/${instance.env} still runs on its Bay. Remove it from the machine first (\`lore apps destroy\`), or pass \`forget\` to delete this copy and leave it running.`,
         );
       }
 

@@ -43,6 +43,17 @@ func TestWireStackFrames(t *testing.T) {
 		}
 	})
 
+	t.Run("a stack-remove names a stack environment, and no bundle, revision or purge", func(t *testing.T) {
+		frame, err := decodeFrame(stackFixture(t, "command-stack-remove.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if frame.Kind != "stack-remove" || frame.Stack != "umami" || frame.Environment != "production" ||
+			frame.Artifact != nil || frame.Revision != 0 {
+			t.Fatalf("decoded = %+v", frame)
+		}
+	})
+
 	t.Run("an inventory carries stack environments and member rows, and round-trips", func(t *testing.T) {
 		raw := stackFixture(t, "inventory-stacks.json")
 		var inv Inventory

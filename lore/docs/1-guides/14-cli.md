@@ -270,19 +270,19 @@ the checked-out one. It expects an Alepha project.
 | `lore apps build`      | Build this app for one or more deploy targets.                                                                                                                                                              |
 | `lore deploy`          | Deploy this app onto one of its environments. Without `--tag` it builds, pushes and deploys; with one it deploys that stored build. `--env`, `--app`, `--sigil` / `--no-sigil`. Same as `lore apps deploy`. |
 | `lore apps redeploy`   | Deploy a stored build onto every copy of the app whose environment ends with `--suffix`.                                                                                                                    |
-| `lore apps destroy`    | Take a copy down: `--env` and `--confirm <app>/<env>` are both required.                                                                                                                                    |
+| `lore apps destroy`    | Take a copy down, or remove it from its Bay with its data kept: `--env` and `--confirm <app>/<env>` are both required. `--purge` prints the `bay remove --purge` to run on the machine.                     |
 | `lore deploy status`   | Where a run got to, by `--deployment`, or a copy's newest by `--app` and `--env`.                                                                                                                           |
 | `lore deploy rollback` | Go back to a `--deployment`. Code only: past a migration it needs `--acknowledge-migrations`.                                                                                                               |
 
 The deployed copies themselves, each named by `--app` and `--env`:
 
-| Command                     | What it does                                                                                                   |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `lore apps instance list`   | Every copy this project tracks.                                                                                |
-| `lore apps instance get`    | One copy, with what it has unlocked.                                                                           |
-| `lore apps instance create` | Track a copy. Nothing is minted. `--url`, `--ephemeral`, `--estate <slug>` (one lent to the project).          |
-| `lore apps instance update` | `--new-app`, `--new-env`, `--url`, `--estate <slug>`, or `--estate-id` (`0` clears it); not both estate flags. |
-| `lore apps instance delete` | Forget a copy, its sigil and what it reported. It undeploys nothing. Needs `--yes`.                            |
+| Command                     | What it does                                                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `lore apps instance list`   | Every copy this project tracks.                                                                                               |
+| `lore apps instance get`    | One copy, with what it has unlocked.                                                                                          |
+| `lore apps instance create` | Track a copy. Nothing is minted. `--url`, `--ephemeral`, `--estate <slug>` (one lent to the project).                         |
+| `lore apps instance update` | `--new-app`, `--new-env`, `--url`, `--estate <slug>`, or `--estate-id` (`0` clears it); not both estate flags.                |
+| `lore apps instance delete` | Forget a copy, its sigil and what it reported. It undeploys nothing, and is refused while the copy still runs. Needs `--yes`. |
 
 A sigil is the key one copy reports with:
 
@@ -351,7 +351,7 @@ A stack is a group of apps and services deployed together from one
 | `lore stack create`                 | Create a stack with its default `--estate`, and upload its first revision from `--file`.                                                                                                                                                      |
 | `lore stack deploy`                 | Deploy to an environment (`-e`, default `production`), uploading `--file` as a new revision first. `--app` with `--tag` deploys one member app. `--test-hostname <service>` serves a service on `<env>-<stack>.<ip>.sslip.io`, no DNS needed. |
 | `lore stack rollback`               | Deploy an earlier revision again. Volumes and their data are untouched.                                                                                                                                                                       |
-| `lore stack destroy`                | Forget an environment in Lore, and print the command that removes it from the machine.                                                                                                                                                        |
+| `lore stack destroy`                | Remove an environment from its Bay, its volumes kept, then forget it in Lore. `--purge` sends nothing and prints the `bay stack destroy --purge` to run on the machine.                                                                       |
 | `lore stack delete [name]`          | Delete a stack with no environment left, its routes and revisions; refused while one remains. `--yes`.                                                                                                                                        |
 | `lore stack list`                   | The project's stacks and their environments.                                                                                                                                                                                                  |
 | `lore stack get`                    | One stack: routes, services and newest deploys of each environment. `--env` narrows it. Never a value.                                                                                                                                        |

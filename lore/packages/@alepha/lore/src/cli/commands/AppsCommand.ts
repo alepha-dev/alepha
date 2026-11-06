@@ -205,7 +205,7 @@ export class AppsCommand {
   public readonly destroy = $command({
     name: "destroy",
     description:
-      "Delete the Worker, queue and cache; the database and bucket are kept",
+      "Delete the Worker, queue and cache, or remove a Bay copy from its machine; the data is kept",
     flags: z.object({
       project: z
         .text({
@@ -231,6 +231,12 @@ export class AppsCommand {
           description:
             "The copy's own `app/env`, typed. A wrong --env then fails this check instead of destroying the wrong copy.",
         })
+        .optional(),
+      purge: z
+        .boolean()
+        .describe(
+          "For a copy on a Bay: its data too. Lore never asks a machine to delete data, so this sends nothing and prints the `bay remove --purge` command to run on the machine instead.",
+        )
         .optional(),
     }),
     handler: async ({ flags, root }) => {
@@ -261,6 +267,15 @@ export class AppsCommand {
         );
       }
 
+      if (flags.purge) {
+        // ⚠️ Never over the connector (folio #F1455): deleting a copy's data
+        // is the one thing no backup undoes, so it is a command run on the
+        // machine, by somebody who can reach it. And it has to run INSTEAD of
+        // a removal through Lore: once the machine has forgotten the copy,
+        // `bay remove --purge` no longer knows its name.
+        throw new AlephaError(await this.purgeInstruction(projectId, app, env));
+      }
+
       const result = await this.deployer.destroy(
         projectId,
         app,
@@ -271,8 +286,34 @@ export class AppsCommand {
       // The same report `alepha infra down` prints for a Lore copy:
       // `kept` on every run, and a failed resource exits non-zero.
       this.deployer.report(result, `${app}/${env}`);
+      if (result.removed.some((r) => r.startsWith("the instance on "))) {
+        this.log.info(
+          `Lore still records ${app}/${env}. Forget it with \`lore apps instance delete --app ${app} --env ${env} --yes\`.`,
+        );
+      }
     },
   });
+
+  /**
+   * What to run on the machine to remove a Bay copy AND delete its data, or
+   * why `--purge` means nothing for this copy.
+   */
+  protected async purgeInstruction(
+    projectId: number,
+    app: string,
+    env: string,
+  ): Promise<string> {
+    const instance = await this.deployer.readInstance(projectId, app, env);
+    if (instance.estate?.type !== "bay") {
+      return `--purge is for a copy on a Bay. ${app}/${env} is not on one: an ephemeral Cloudflare copy loses its database and bucket on destroy, any other keeps them.`;
+    }
+    const suffix = `-${env}`;
+    const name = instance.resourceName;
+    if (!name?.endsWith(suffix) || name.length <= suffix.length) {
+      return `${app}/${env} has not been deployed to its Bay, so there is nothing on the machine to purge.`;
+    }
+    return `Lore never asks a machine to delete data. On the machine, run:\n\n  bay remove ${name.slice(0, -suffix.length)}/${env} --purge\n\nthen forget the copy with \`lore apps instance delete --app ${app} --env ${env} --yes\`.`;
+  }
 
   /**
    * The deploy flags, declared once and handed to BOTH primitives below.

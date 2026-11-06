@@ -76,8 +76,9 @@ func TestWireServerFramesDecode(t *testing.T) {
 
 	// The verbs that name one instance and nothing else. They carry the same
 	// shape as a restart and no artifact: nothing here takes a path, a shell
-	// command or an argument list.
-	for _, name := range []string{"command-stop.json", "command-start.json", "command-backup.json"} {
+	// command or an argument list. A `remove` carries no purge either: there
+	// is no field for one (folio #F1455 of the Alepha project).
+	for _, name := range []string{"command-stop.json", "command-start.json", "command-backup.json", "command-remove.json"} {
 		frame, err := decodeFrame(fixture(t, name))
 		if err != nil {
 			t.Fatal(err)

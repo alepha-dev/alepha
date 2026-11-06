@@ -1,0 +1,8 @@
+{
+  "type": "command",
+  "id": "5a7c9e1b-3d2f-4a6b-8e0c-9f1d2b3a4c5e",
+  "kind": "stack-remove",
+  "app": "",
+  "environment": "production",
+  "stack": "umami"
+}

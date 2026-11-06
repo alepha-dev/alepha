@@ -140,18 +140,23 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
 
 ## 7. Take it down
 
-1. **Local:** forget the copy in Lore. This deletes its key and everything it
-   reported, and undeploys nothing:
+1. **Remove the app from the server**, through Lore. Bay stops serving it and
+   forgets it; its data stays on the server:
+
+   ```bash
+   npx lore apps destroy -e production --confirm myapp/production
+   ```
+
+   To delete its data too, run `bay remove <name>/production --purge` on the
+   server **instead**: Lore never asks a machine to delete data.
+   `npx lore apps destroy -e production --confirm myapp/production --purge`
+   prints the exact command.
+
+2. **Forget the copy in Lore.** This deletes its key and everything it reported,
+   and Lore refuses it while the server still runs the copy:
 
    ```bash
    npx lore apps instance delete --app myapp -e production --yes
-   ```
-
-2. **Server:** remove the app from Bay. Its data stays on the server unless you
-   add `--purge`:
-
-   ```bash
-   bay remove myapp/production
    ```
 
 3. In Lore, delete the estate from its page under **Account → Estates**, or
