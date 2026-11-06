@@ -224,6 +224,7 @@ export class WorkShell {
     // 400 - the first thing a reader would try.
     this.shell.registerCreate({
       key: "quest",
+      navRoute: "projectQuests",
       order: 10,
       primary: true,
       labelKey: "project.menu.create-quest",
@@ -236,6 +237,7 @@ export class WorkShell {
     });
     this.shell.registerCreate({
       key: "epic",
+      navRoute: "projectEpics",
       order: 20,
       labelKey: "project.menu.create-epic",
       icon: Layers,
@@ -251,6 +253,7 @@ export class WorkShell {
     // `features.milestones` should always have had.
     this.shell.registerCreate({
       key: "release",
+      navRoute: "projectReleases",
       order: 30,
       labelKey: "project.menu.create-release",
       icon: Flag,
@@ -267,6 +270,7 @@ export class WorkShell {
     // gate, so a rank is not either.
     this.shell.registerCreate({
       key: "feedback",
+      navRoute: "projectFeedback",
       order: 60,
       labelKey: "project.menu.create-feedback",
       icon: MessageSquarePlus,

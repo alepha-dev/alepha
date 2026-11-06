@@ -27,7 +27,7 @@ export {
   type AppShellProps,
   type NavigationProgressOptions,
 } from "./AppShell.tsx";
-export type { NavGroup, NavItem } from "./appShellNav.tsx";
+export type { NavGroup, NavItem, NavItemAction } from "./appShellNav.tsx";
 export { ButtonDark, type ButtonDarkProps } from "./ButtonDark.tsx";
 export { ButtonInbox, type ButtonInboxProps } from "./ButtonInbox.tsx";
 export { ButtonLanguage, type ButtonLanguageProps } from "./ButtonLanguage.tsx";

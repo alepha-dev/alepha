@@ -70,6 +70,7 @@ export class KnowledgeShell {
 
     this.shell.registerCreate({
       key: "folio",
+      navRoute: "projectFolios",
       order: 50,
       labelKey: "project.menu.create-folio",
       icon: BookOpen,

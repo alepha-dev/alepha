@@ -5,6 +5,7 @@ import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { Cog } from "lucide-react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { projectCreateOpenAtom } from "../../atoms/projectCreateOpenAtom.ts";
 import { ProjectShellRegistry } from "../../registries/ProjectShellRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
@@ -99,12 +100,37 @@ const ProjectView = () => {
   // Groups with no items are dropped by the `.filter` below, so a project with
   // every capability off still renders a clean sidebar: Activity, Reports and
   // Settings.
+  // The hover "+" of a sidebar entry: the create item that names its route,
+  // opening exactly what that row of the header's "+" menu opens. The dialog
+  // itself stays mounted once, in `ProjectActionsCreateButton`, which reads
+  // the same atom. `enabled` carries the capability AND the rank, so a reader
+  // who may not create sees the count and no "+".
+  const navAction = (route: string) => {
+    const create = shell
+      .createItems()
+      .find((item) => item.navRoute === route && item.enabled(project));
+    if (!create) return undefined;
+    return {
+      label: tr(create.labelKey),
+      onClick: () => {
+        if (create.dialog) {
+          alepha.store.set(projectCreateOpenAtom, { key: create.key });
+        } else if (create.route) {
+          void router.push(create.route, {
+            params: { projectSlug: project.slug },
+          });
+        }
+      },
+    };
+  };
+
   const toItem = (entry: CapabilityNavEntry): NavGroup["items"][number] => ({
     label: tr(entry.labelKey),
     icon: entry.icon,
     href: router.path(entry.route, { params: { projectSlug } }),
     active: entry.activeOn ? entry.activeOn(name) : name === entry.route,
     badge: entry.badge?.(context),
+    action: navAction(entry.route),
   });
 
   // Core's entries and every module's, narrowed by capability, option,

@@ -153,6 +153,7 @@ export class DeployShell {
     // dialog that can only answer 403.
     this.shell.registerCreate({
       key: "app",
+      navRoute: "projectApps",
       order: 40,
       labelKey: "project.menu.create-app",
       icon: AppWindow,

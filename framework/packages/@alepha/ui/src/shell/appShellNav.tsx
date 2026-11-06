@@ -42,6 +42,14 @@ export interface NavItem {
    */
   badge?: ReactNode;
   /**
+   * A trailing button revealed while the row is hovered or focused, a "+"
+   * by default: the place to create one more of what the entry lists. It
+   * takes the badge's slot while it shows, so a row with a count reads the
+   * count at rest and offers the action under the pointer. Leaf items only,
+   * and hidden when the sidebar is collapsed to icons.
+   */
+  action?: NavItemAction;
+  /**
    * When true the item is rendered muted, navigation is blocked, and the
    * `tooltip` (if any) explains why. Use for paywalled / unavailable entries.
    */
@@ -53,6 +61,29 @@ export interface NavItem {
    * Tooltip on the trigger.
    */
   tooltip?: ReactNode;
+}
+
+/**
+ * The hover action of a {@link NavItem}.
+ */
+export interface NavItemAction {
+  /**
+   * Names the action for assistive technology and in its tooltip, since the
+   * button itself shows only an icon.
+   */
+  label: string;
+  /**
+   * Defaults to a plus.
+   */
+  icon?: IconType | ReactNode;
+  /**
+   * What a click does. Takes precedence over `href`.
+   */
+  onClick?: () => void;
+  /**
+   * Where a click goes, when the action is a page rather than a dialog.
+   */
+  href?: string;
 }
 
 export interface NavGroup {

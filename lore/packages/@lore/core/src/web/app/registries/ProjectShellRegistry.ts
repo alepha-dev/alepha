@@ -276,6 +276,12 @@ export interface ProjectCreateItem {
    * open while its row is the one picked.
    */
   dialog?: ComponentType<ProjectCreateDialogProps>;
+  /**
+   * The sidebar entry this create belongs to, by its route name: that row
+   * shows a "+" on hover, in place of its count, which opens the same
+   * dialog or route as this row of the menu.
+   */
+  navRoute?: string;
 }
 
 export interface ProjectCreateDialogProps {

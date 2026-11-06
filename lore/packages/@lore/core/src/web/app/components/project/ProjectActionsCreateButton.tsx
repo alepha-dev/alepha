@@ -24,6 +24,7 @@ import { Mail, Plus, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { projectCreateOpenAtom } from "../../atoms/projectCreateOpenAtom.ts";
 import {
   type ProjectCreateItem,
   ProjectShellRegistry,
@@ -32,8 +33,11 @@ import type { I18n } from "../../services/I18n.ts";
 import { useRank } from "../shared/useRank.ts";
 
 const ProjectActionsCreateButton = () => {
-  // The registered row whose dialog is open, if any.
-  const [openKey, setOpenKey] = useState<string>();
+  // The registered row whose dialog is open, if any. Shared with the
+  // sidebar's hover "+" (`navRoute`), which opens these same dialogs.
+  const [createOpen, setCreateOpen] = useStore(projectCreateOpenAtom);
+  const openKey = createOpen.key;
+  const setOpenKey = (key: string | undefined) => setCreateOpen({ key });
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const { can } = useRank();

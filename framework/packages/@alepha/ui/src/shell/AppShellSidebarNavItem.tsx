@@ -19,6 +19,7 @@ import {
   HoverCardTrigger,
 } from "../core/HoverCard.tsx";
 import {
+  SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -144,6 +145,10 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
       <SidebarMenuButton
         isActive={item.active}
         tooltip={typeof item.label === "string" ? item.label : undefined}
+        // The action is the button's SIBLING, so the pointer on the "+" has
+        // left the button: lit from the item instead, the row keeps its fill
+        // under the action's own, which composites a step darker on top.
+        className={item.action ? "group-hover/menu-item:bg-hover" : undefined}
         /*
           `aria-current` beside the styling's `data-active`, so a screen
           reader announces the page the reader is on, and a test can find the
@@ -173,11 +178,56 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
       link
     );
 
+    const action = item.action;
+
     return (
       <SidebarMenuItem>
         {row}
         {item.badge != null && item.badge !== false && (
-          <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+          <SidebarMenuBadge
+            className={
+              // The action takes the badge's slot while it shows, so the two
+              // never paint over each other: the count at rest, the "+" under
+              // the pointer. The same breakpoint as `showOnHover`, which keeps
+              // the action always visible below `md`, where there is no hover.
+              action
+                ? "max-md:hidden md:group-hover/menu-item:opacity-0 md:group-has-[:focus-visible]/menu-item:opacity-0"
+                : undefined
+            }
+          >
+            {item.badge}
+          </SidebarMenuBadge>
+        )}
+        {action && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <SidebarMenuAction
+                  showOnHover
+                  aria-label={action.label}
+                  onClick={(event) => {
+                    // A POINTER click lets go of focus before the action
+                    // runs. The action usually opens a dialog, which hands
+                    // focus back to whatever held it on close: the "+", which
+                    // then reads as keyboard focus, stays revealed, hides the count
+                    // and draws a ring while the pointer is elsewhere. A
+                    // keyboard press (`detail` 0) keeps it, so a keyboard
+                    // reader lands back where they were.
+                    if (event.detail > 0) event.currentTarget.blur();
+                    action.onClick?.();
+                  }}
+                  render={
+                    !action.onClick && action.href ? (
+                      <Link href={action.href} />
+                    ) : undefined
+                  }
+                />
+              }
+            >
+              {renderNavIcon(action.icon ?? Plus, "size-4")}
+            </TooltipTrigger>
+            <TooltipContent side="inline-end">{action.label}</TooltipContent>
+          </Tooltip>
         )}
       </SidebarMenuItem>
     );
