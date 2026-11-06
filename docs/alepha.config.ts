@@ -99,11 +99,11 @@ export default defineConfig({
       // receives (`alepha-docs`), and Lore prefixes its own project slug on
       // top, giving `alepha-alepha-docs-production`, a new Worker.
       environments: {
-        production: lore({ project: "alepha", estate: "cf-feunard" }),
+        production: lore({ project: "alepha" }),
         // latest.alepha.dev: the same site from `main`, with no release pin
         // (#Q3028). ⚠️ Lore keeps one `latest` tag per app, so the two copies
         // share it: `docs.yml` never runs their deploys at the same time.
-        latest: lore({ project: "alepha", estate: "cf-feunard" }),
+        latest: lore({ project: "alepha" }),
       },
     }),
   ],

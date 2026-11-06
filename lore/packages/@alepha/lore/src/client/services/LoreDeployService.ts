@@ -116,9 +116,9 @@ export interface LoreDeployInput {
    * Which estate a newly created copy deploys to, **by slug**.
    *
    * Only read when this call creates the copy; an existing one keeps the
-   * estate it already has. Empty or omitted takes the estate this project was
-   * lent FIRST - see {@link LoreDeployService.estateFor} for why the oldest
-   * rather than the newest. A project with none lent is an error.
+   * estate it already has. Empty or omitted takes the one estate lent to this
+   * project, and is refused when several are (#Q3144): naming one here is
+   * choosing it on the Lore side. A project with none lent is an error.
    *
    * ⚠️ A slug, never an id, and resolved against the estates lent to THIS
    * project. An estate is owned by a user and lent out, so a client that could
@@ -409,22 +409,13 @@ export class LoreDeployService {
   /**
    * Which estate a newly created copy points at.
    *
-   * The slug when one is named, and otherwise the estate this project was lent
-   * **first**. A project with none lent is an error rather than a copy with
-   * nowhere to deploy: that copy would be created, would fail its deploy, and
-   * would be left behind for somebody to find.
-   *
-   * ## ⚠️ The OLDEST lending, not `items[0]`
-   *
-   * `listProjectEstates` orders by the lending's `createdAt` **descending**, so
-   * the first row is the most recently lent. Taking it would mean that lending
-   * a second estate silently re-points every new tenant, while the fleet
-   * already running stays where it is - a split nothing on any screen would
-   * explain. The oldest lending is the one an existing fleet is on, and it does
-   * not move when another is added.
-   *
-   * With exactly one estate lent, which is the ordinary case, every reading of
-   * "the first" agrees. The choice only shows up at the moment it would hurt.
+   * The slug when one is named, and otherwise the one estate lent to this
+   * project. Several lent with none named is refused (#Q3144), naming them:
+   * which machine a copy deploys to is decided on the Lore side, and the
+   * oldest-lending default this used to apply was a silent choice of machine.
+   * A project with none lent is an error rather than a copy with nowhere to
+   * deploy: that copy would be created, would fail its deploy, and would be
+   * left behind for somebody to find.
    */
   protected async estateFor(
     projectId: number,
@@ -437,17 +428,10 @@ export class LoreDeployService {
 
     // The rule itself is shared with the CLI's infra adapter, which creates
     // copies too: see `LoreEstateChoice`.
-    const chosen = LoreEstateChoice.pick(
+    return LoreEstateChoice.pick(
       items,
       input.estate,
       `${input.app}/${input.env}`,
-    );
-    if (chosen.defaulted && items.length > 1) {
-      this.log.info(
-        `Creating ${input.app}/${input.env} on '${chosen.slug}', the first estate lent to this project`,
-        { lent: items.map((it) => it.slug) },
-      );
-    }
-    return chosen.id;
+    ).id;
   }
 }

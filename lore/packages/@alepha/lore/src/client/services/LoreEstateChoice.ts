@@ -20,25 +20,24 @@ export interface LentEstate {
  */
 export class LoreEstateChoice {
   /**
-   * The estate a slug names, or the one lent FIRST when none is named.
+   * The estate a slug names, or the only one lent when none is named.
    *
-   * ⚠️ The oldest lending, not the newest. The list is newest first, so this is
-   * the LAST item, never `items[0]`: lending a second estate to a project must
-   * not silently move where its next new copy lands.
+   * ⚠️ Unnamed among several is REFUSED (#Q3144, owner 2026-11-06), naming
+   * them and the way to choose. It used to take the oldest lending, which was
+   * a silent choice of machine: which estate a copy deploys to is decided on
+   * the Lore side (the Apps page, `lore apps instance create --estate`), never
+   * guessed by a deploy.
    *
    * ⚠️ A slug, never an id, and resolved against the estates lent to THIS
    * project. An estate is owned by a user and lent out, so a caller that could
    * name an arbitrary one could point a deploy at somebody else's cloud
    * account.
-   *
-   * `defaulted` says the oldest was taken because nothing was named, so a
-   * caller can say so when there was a choice.
    */
   public static pick(
     lent: LentEstate[],
     named: string | undefined,
     copy: string,
-  ): LentEstate & { defaulted: boolean } {
+  ): LentEstate {
     if (lent.length === 0) {
       throw new AlephaError(
         `No estate is lent to this project, so ${copy} would have nowhere to deploy. Lend one on the project's Estates page first.`,
@@ -47,8 +46,12 @@ export class LoreEstateChoice {
 
     const slug = named?.trim();
     if (!slug) {
-      const oldest = lent[lent.length - 1];
-      return { id: oldest.id, slug: oldest.slug, defaulted: true };
+      if (lent.length > 1) {
+        throw new AlephaError(
+          `Several estates are lent to this project (${lent.map((it) => it.slug).join(", ")}), so ${copy} needs one chosen. Choose it on the Apps page, or create the copy with \`lore apps instance create --app <app> --env <env> --estate <slug>\`.`,
+        );
+      }
+      return { id: lent[0].id, slug: lent[0].slug };
     }
 
     const found = lent.find((it) => it.slug === slug);
@@ -57,6 +60,6 @@ export class LoreEstateChoice {
         `No estate called '${slug}' is lent to this project. Lent here: ${lent.map((it) => it.slug).join(", ")}.`,
       );
     }
-    return { id: found.id, slug: found.slug, defaulted: false };
+    return { id: found.id, slug: found.slug };
   }
 }

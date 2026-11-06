@@ -29,7 +29,7 @@ export default defineConfig({
       // top, giving `alepha-alepha-shop-production`: a new Worker and an empty
       // database.
       environments: {
-        production: lore({ project: "alepha", estate: "cf-feunard" }),
+        production: lore({ project: "alepha" }),
       },
     }),
   ],

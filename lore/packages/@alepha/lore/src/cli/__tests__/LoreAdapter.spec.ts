@@ -462,14 +462,10 @@ describe("LoreAdapter", () => {
   });
 
   describe("a first up", () => {
-    it("creates the missing copy on the estate lent first, then deploys to it", async () => {
+    it("creates the missing copy on the one estate lent, then deploys to it", async () => {
       const { events, printed, up } = await create({
         instance: null,
-        // Newest first, as Lore lists them: the one lent FIRST is the last.
-        lent: [
-          { id: "cf-2", slug: "newer" },
-          { id: "cf-1", slug: "first" },
-        ],
+        lent: [{ id: "cf-1", slug: "first" }],
       });
 
       await up();
@@ -485,19 +481,20 @@ describe("LoreAdapter", () => {
       expect(printed).toContain("Created docs/production on estate 'first'");
     });
 
-    it("creates it on the estate lore() names", async () => {
+    it("refuses when several estates are lent, naming them and how to choose, and creates nothing", async () => {
+      // #Q3144: which machine is decided on the Lore side, never guessed.
       const { events, up } = await create({
         instance: null,
-        descriptor: lore({ project: "alepha", estate: "newer" }),
         lent: [
           { id: "cf-2", slug: "newer" },
           { id: "cf-1", slug: "first" },
         ],
       });
 
-      await up();
-
-      expect(events).toContain("link cf-2");
+      await expect(up()).rejects.toThrow(
+        /Several estates are lent to this project \(newer, first\)[\s\S]*lore apps instance create --app <app> --env <env> --estate <slug>/,
+      );
+      expect(events).toEqual([]);
     });
 
     it("refuses when no estate is lent, and creates nothing", async () => {
@@ -508,13 +505,18 @@ describe("LoreAdapter", () => {
       expect(shell.calls).toEqual([]);
     });
 
-    it("refuses an estate the project was not lent, before creating anything", async () => {
+    it("refuses a config that still names an estate, pointing to Lore", async () => {
       const { events, up } = await create({
         instance: null,
-        descriptor: lore({ project: "alepha", estate: "elsewhere" }),
+        descriptor: lore({
+          project: "alepha",
+          estate: "newer",
+        } as unknown as Parameters<typeof lore>[0]),
       });
 
-      await expect(up()).rejects.toThrow(/No estate called 'elsewhere'/);
+      await expect(up()).rejects.toThrow(
+        /lore\(\) takes no estate: set it in Lore/,
+      );
       expect(events).toEqual([]);
     });
 

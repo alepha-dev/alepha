@@ -70,7 +70,7 @@ export default defineConfig({
       // receives (`alepha-ui`), and Lore prefixes its own project slug on top,
       // giving `alepha-alepha-ui-production`, a new Worker.
       environments: {
-        production: lore({ project: "alepha", estate: "cf-feunard" }),
+        production: lore({ project: "alepha" }),
       },
     }),
   ],

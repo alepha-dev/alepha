@@ -233,21 +233,21 @@ export class LoreDeployer {
    * ephemeral (a copy made this way keeps its data, which `infra down`
    * relies on), and no sigil (the deploy mints one from the manifest). Two
    * calls, because `createApp` takes no estate: pointing the row at one is a
-   * separate, validated act. The estate is chosen, and refused, before the
-   * first call, so a bad `estate` creates nothing.
+   * separate, validated act. The estate is the one lent to the project, and
+   * several lent are refused before the first call (#Q3144), so nothing is
+   * created when Lore has not been told which.
    */
   public async createInstance(
     projectId: number,
     app: string,
     env: string,
-    estate?: string,
   ): Promise<LoreInstance> {
     const lent = await this.estates.listProjectEstates({
       params: { projectId },
     });
     const chosen = LoreEstateChoice.pick(
       (lent?.items ?? []) as LentEstate[],
-      estate,
+      undefined,
       `${app}/${env}`,
     );
 

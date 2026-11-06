@@ -18,16 +18,21 @@ export const loreEnvironmentOptionsSchema = z.object({
    */
   url: z.text().optional(),
   /**
-   * The estate a copy created by the first `up` deploys to, by slug. Only read
-   * when the copy does not exist yet; omitted, it is the estate lent to the
-   * project first. An existing copy keeps the estate it has.
+   * Refused (#Q3144): which machine a copy deploys to is set in Lore, where
+   * the estate is lent, never in `alepha.config.ts`. It was read only when a
+   * first `up` created the copy, so on an existing copy it was dead config
+   * that looked authoritative. Kept in the schema only to say so.
    */
-  estate: z.text().optional(),
+  estate: z
+    .undefined({
+      error:
+        "lore() takes no estate: set it in Lore, on the copy's Settings tab or with `lore apps instance create --estate <slug>`, and remove `estate` from alepha.config.ts.",
+    })
+    .optional(),
   /**
    * Deploy the app into this stack (#Q2703): `lore({ stack: "hello" })` and
    * `alepha deploy staging` put the app into `hello/staging`, redeploying
-   * only its service. The estate is the stack environment's, so `estate` is
-   * ignored with it.
+   * only its service. The estate is the stack environment's.
    */
   stack: z.text().optional(),
 });

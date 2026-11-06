@@ -385,12 +385,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
             ctx.project,
             ctx.env,
           )) ??
-          (await this.deployer.createInstance(
-            projectId,
-            ctx.project,
-            ctx.env,
-            ctx.options.estate,
-          )))
+          (await this.deployer.createInstance(projectId, ctx.project, ctx.env)))
         : await this.deployer.loadInstance(projectId, ctx.project, ctx.env);
     const target = { project, projectId, instance };
     this.targets.set(key, target);

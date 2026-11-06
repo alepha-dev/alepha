@@ -63,8 +63,16 @@ Both halves are free slugs. `production`, `staging`, `east-production`,
 `eu-staging` and `pr-1841` are all legal, so you slice a fleet as finely as you
 want to.
 
-Then open that copy's **Settings** tab and choose the estate it deploys to.
-Doing so is what makes its **Deploy** and **Environment** tabs appear.
+Then open that copy's **Settings** tab and choose the estate it deploys to, or
+name it as you create the copy: `lore apps instance create --app myapp --env
+production --estate my-vps`. Doing so is what makes its **Deploy** and
+**Environment** tabs appear.
+
+The estate is always chosen here, on the Lore side, and never in
+`alepha.config.ts`: `lore()` takes the project (and `url` for a self-hosted
+Lore), and refuses an `estate`. A first `alepha deploy` that creates the copy
+uses the one estate lent to the project, and refuses when several are lent,
+naming them.
 
 ### The name it gets in your estate
 
@@ -312,6 +320,8 @@ the person running the command is often not the person who can fix it.
 | It says                                                      | What to do                                                                                                             |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | `… has no estate`                                            | Choose one on the copy's Settings tab.                                                                                 |
+| `Several estates are lent to this project …`                 | Create the copy with `lore apps instance create --estate <slug>`, or choose its estate on the Apps page, then deploy.  |
+| `lore() takes no estate …`                                   | Remove `estate` from `alepha.config.ts`; the copy's estate is set in Lore.                                             |
 | `… is no longer lent to this project`                        | Ask its owner to lend it again.                                                                                        |
 | `… does not accept deploys`                                  | Its owner turns that on from their Estates page.                                                                       |
 | `… does not have a usable Cloudflare credential`             | Its owner checks the token from their Estates page.                                                                    |

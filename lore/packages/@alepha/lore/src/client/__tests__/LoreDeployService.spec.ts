@@ -129,12 +129,10 @@ describe("deploying from another server", () => {
   });
 
   describe("creating one when it is missing", () => {
-    it("takes the estate this project was lent FIRST", async () => {
-      // ⚠️ `listProjectEstates` is newest-lending-first, so the oldest is
-      // last. Taking `items[0]` would mean lending a second estate silently
-      // re-points every new tenant while the running fleet stays put - a split
-      // nothing on any screen would explain. `newer` is in this list precisely
-      // so the test cannot pass by taking the head.
+    it("refuses to guess among several lent estates, and creates nothing (#Q3144)", async () => {
+      // It used to take the oldest lending: a silent choice of machine. Which
+      // estate a copy deploys to is decided on the Lore side, so an unnamed
+      // estate among several is refused, naming them.
       const { api, service } = setup({
         "GET /api/projects/1/estates": () => ({
           items: [
@@ -142,33 +140,14 @@ describe("deploying from another server", () => {
             { id: "est-old", slug: "the-first-one" },
           ],
         }),
-        "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
-        "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
-        "POST /api/projects/1/apps/inst-1/deployments": () => ({
-          id: "dep-1",
-          status: "queued",
-        }),
-        "GET /api/projects/1/deployments/dep-1": () => ({
-          id: "dep-1",
-          app: "acme",
-          tag: "latest",
-          status: "succeeded",
-          url: "https://riverside.acme.example",
-          log: [],
-        }),
       });
 
-      const result = await service.deploy({ app: "acme", env: "riverside" });
-
-      expect(result.url).toBe("https://riverside.acme.example");
-      const patch = api.calls.find((it) => it.method === "PATCH");
-      expect(patch?.body).toEqual({ estateId: "est-old" });
-      // And the create itself carries no estate: two calls, because
-      // `createApp` takes none.
-      const created = api.calls.find(
-        (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
+      await expect(
+        service.deploy({ app: "acme", env: "riverside" }),
+      ).rejects.toThrow(
+        "Several estates are lent to this project (newer, the-first-one)",
       );
-      expect(created?.body).toEqual({ app: "acme", env: "riverside" });
+      expect(api.calls.some((it) => it.method === "POST")).toBe(false);
     });
 
     it("takes the named estate when one is named", async () => {
@@ -200,9 +179,10 @@ describe("deploying from another server", () => {
       expect(patch?.body).toEqual({ estateId: "est-new" });
     });
 
-    it("reads an empty estate as 'the first one', not as a name", async () => {
+    it("reads an empty estate as unnamed, not as a name", async () => {
       // `estate: ""` is what an unset config value looks like, and it must
-      // mean the default rather than send the client looking for a slug of "".
+      // mean "none named" (the only one lent, here) rather than send the
+      // client looking for a slug of "".
       const { api, service } = setup({
         "GET /api/projects/1/estates": () => ({
           items: [{ id: "est-old", slug: "only" }],
