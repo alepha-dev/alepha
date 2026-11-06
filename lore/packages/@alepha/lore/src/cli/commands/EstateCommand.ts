@@ -64,6 +64,7 @@ export class EstateCommand {
           "Let Lore deploy to it now. Off by default: a new machine reports stats only until its owner says otherwise.",
         )
         .optional(),
+      ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
@@ -76,11 +77,17 @@ export class EstateCommand {
           params: { projectId },
           body: { slug: args, ...(flags.label ? { label: flags.label } : {}) },
         });
+        let deployAllowed = minted.deployAllowed ?? false;
         if (flags["allow-deploys"]) {
-          await this.estates.updateEstate({
+          const updated = await this.estates.updateEstate({
             params: { estateId: minted.id },
             body: { deployAllowed: true },
           });
+          deployAllowed = updated.deployAllowed ?? true;
+        }
+        if (flags.output === "json") {
+          this.render.json(print, this.minted(minted, deployAllowed));
+          return;
         }
         print(`Created estate ${minted.slug} and lent it to ${project}.`);
         print(
@@ -93,9 +100,7 @@ export class EstateCommand {
           "Run this on the machine, once. The secret is shown here and never again:",
         );
         print("");
-        print(
-          `  bay connector set ${this.client.hostname()} ${minted.secret ?? "<secret>"}`,
-        );
+        print(`  ${this.connectorCommand(minted.secret)}`);
       });
     },
   });
@@ -238,6 +243,33 @@ export class EstateCommand {
       help();
     },
   });
+
+  /**
+   * The line a machine runs to enrol, exactly as every command that mints a
+   * secret prints it (`estate add`, `estate rotate`).
+   */
+  protected connectorCommand(secret: string | undefined): string {
+    return `bay connector set ${this.client.hostname()} ${secret ?? "<secret>"}`;
+  }
+
+  /**
+   * The JSON every command that mints a secret prints (#Q3132): the estate's
+   * identity, where it connects, the secret once, and the connector line
+   * verbatim, so a script reads `.secret` or runs `.command` with no scraping.
+   */
+  protected minted(
+    estate: { id: string; slug: string; secret?: string },
+    deployAllowed: boolean,
+  ) {
+    return {
+      id: estate.id,
+      slug: estate.slug,
+      deployAllowed,
+      lore: this.client.hostname(),
+      secret: estate.secret,
+      command: this.connectorCommand(estate.secret),
+    };
+  }
 
   protected percent(value: number): string {
     return `${Math.round(value)}%`;

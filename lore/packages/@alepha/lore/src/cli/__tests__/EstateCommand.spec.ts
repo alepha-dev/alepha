@@ -130,6 +130,29 @@ describe("lore estate", () => {
     });
   });
 
+  it("prints the minted estate as one JSON document for a script, and nothing else", async ({
+    expect,
+  }) => {
+    const { run, printed } = create();
+    await run("add", "vps-ovh --allow-deploys --output json");
+    expect(JSON.parse(printed.join("\n"))).toEqual({
+      id: "e1",
+      slug: "vps-ovh",
+      deployAllowed: true,
+      lore: "https://lore.test",
+      secret: "es_live_secret",
+      command: "bay connector set https://lore.test es_live_secret",
+    });
+  });
+
+  it("reports deploys off in JSON when they were not allowed", async ({
+    expect,
+  }) => {
+    const { run, printed } = create();
+    await run("add", "vps-ovh --output json");
+    expect(JSON.parse(printed.join("\n")).deployAllowed).toBe(false);
+  });
+
   it("lists the project's estates with their connection state", async ({
     expect,
   }) => {
