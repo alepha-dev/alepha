@@ -87,10 +87,14 @@ describe("ServerRouterProvider aborted requests", () => {
     await settled.promise;
     // processRequest finishes after the handler settled: wait for its line
     // rather than a fixed delay, which races a loaded machine.
+    // " 499 (aborted", not "499": the INFO line "Server listening on
+    // http://localhost:<port>/" matches the bare number whenever the random
+    // port holds it, and failed this test in CI once.
+    const isAbortLine = (message: string) => message.includes(" 499 (aborted");
     const deadline = Date.now() + 2000;
     while (
       Date.now() < deadline &&
-      !entries.some((it) => it.message.includes("499"))
+      !entries.some((it) => isAbortLine(it.message))
     ) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
@@ -98,7 +102,7 @@ describe("ServerRouterProvider aborted requests", () => {
     expect(errors).toEqual([]);
     expect(responses).toEqual([]);
     expect(entries.filter((it) => it.level === "ERROR")).toEqual([]);
-    const lines = entries.filter((it) => it.message.includes("499"));
+    const lines = entries.filter((it) => isAbortLine(it.message));
     expect(lines).toHaveLength(1);
     expect(lines[0].level).toBe("DEBUG");
     expect(lines[0].message).toContain("Client disconnected");
