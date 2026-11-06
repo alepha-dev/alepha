@@ -518,7 +518,11 @@ test.describe("Epics — the list", () => {
       // confirms it ("Create Epic"): "New" opens the form, "Create" confirms
       // it, the split the rest of the catalogue uses (#1731).
       const created = `Gamma${t}`;
-      await page.getByRole("button", { name: "New Epic" }).first().click();
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "New Epic" })
+        .first()
+        .click();
 
       const modal = page.getByRole("dialog");
       await expect(modal).toBeVisible();
@@ -1620,12 +1624,12 @@ test.describe("Epics — the lifecycle on the epic page", () => {
 
     await test.step("a ready epic keeps its plan open", async () => {
       await page.goto(`/${slug}/epics/${first.number}?tab=quests`);
-      await expect(page.getByRole("button", { name: "New quest" })).toBeVisible(
-        { timeout: 15_000 },
-      );
+      await expect(
+        page.getByRole("main").getByRole("button", { name: "New quest" }),
+      ).toBeVisible({ timeout: 15_000 });
       await markReady();
       await expect(
-        page.getByRole("button", { name: "New quest" }),
+        page.getByRole("main").getByRole("button", { name: "New quest" }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Attach quest" }),
@@ -1646,9 +1650,9 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       await expect(
         page.getByRole("button", { name: /Mark as ready|Back to draft/ }),
       ).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "New quest" })).toHaveCount(
-        0,
-      );
+      await expect(
+        page.getByRole("main").getByRole("button", { name: "New quest" }),
+      ).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Attach quest" }),
       ).toHaveCount(0);

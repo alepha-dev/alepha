@@ -125,6 +125,7 @@ test.describe("the wiki-link picker", () => {
       await page.waitForLoadState("networkidle");
 
       await page
+        .getByRole("main")
         .getByRole("button", { name: /new quest|create quest/i })
         .first()
         .click();

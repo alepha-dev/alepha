@@ -72,6 +72,7 @@ test.describe("Protected folio", () => {
       // table and its Create dropdown are gone, so a new folio starts from
       // the tree pane's own New folio button.
       await page
+        .getByRole("main")
         .getByRole("button", { name: /^new folio$/i })
         .first()
         .click();
