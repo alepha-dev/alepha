@@ -488,4 +488,77 @@ describe("$ai", () => {
       support.run({ messages: ask("x"), user: member }),
     ).rejects.toThrow(/time/i);
   });
+  it("offers only the tools a turn allows, and never runs another one", async ({
+    expect,
+  }) => {
+    const { support, ai, api } = await setup();
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c1",
+        name: "purge",
+        input: { params: { year: 2025 } },
+      },
+    ]);
+    ai.script([{ type: "text", text: "Not available." }]);
+
+    const result = await support.run({
+      messages: ask("purge 2025"),
+      user: { ...member, roles: ["admin"] },
+      tools: ["list"],
+    });
+
+    // The model saw `list` only.
+    expect(ai.requests[0].tools?.map((t) => t.name)).toEqual(["list"]);
+    // A call outside the list is refused before it runs, even for an admin.
+    const tool = result.messages[1] as any;
+    expect(tool.isError).toBe(true);
+    expect(tool.content).toMatch(/not available/);
+    expect(api.created).toEqual([]);
+  });
+
+  it("takes the allow-list from the allow option, per user, and refuses an unoffered resume", async ({
+    expect,
+  }) => {
+    const { support, ai, api } = await setup({
+      allow: async ({ user }) =>
+        user?.roles?.includes("admin") ? undefined : ["list", "create"],
+    });
+    ai.script([{ type: "text", text: "Hi." }]);
+    await support.run({ messages: ask("hi"), user: member });
+    expect(ai.last!.tools?.map((t) => t.name)).toEqual(["list", "create"]);
+
+    ai.script([{ type: "text", text: "Hi." }]);
+    await support.run({
+      messages: ask("hi"),
+      user: { ...member, roles: ["admin"] },
+    });
+    expect(ai.last!.tools?.map((t) => t.name)).toEqual([
+      "list",
+      "create",
+      "purge",
+      "navigate",
+    ]);
+
+    // A pause stored under a wider list is not run once the list narrows.
+    const stored: AiMessage[] = [
+      ...ask("bill 5"),
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "c9", name: "create", input: { body: { amount: 5 } } },
+        ],
+      },
+    ];
+    ai.script([{ type: "text", text: "Cannot." }]);
+    const resumed = await support.run({
+      messages: stored,
+      user: member,
+      tools: ["list"],
+      resume: { callId: "c9", decision: "approve" },
+    });
+    expect(api.created).toEqual([]);
+    expect((resumed.messages[0] as any).isError).toBe(true);
+  });
 });

@@ -164,6 +164,20 @@ export class AiChatService {
     const assistant = this.assistant(assistantName);
     const history = await this.conversations.history(conversation.id);
     const seq = await this.conversations.nextSeq(conversation.id);
+    if ("decision" in resume) {
+      // Read from the stored messages, not from the claimed row: what is
+      // announced is the call the loop is about to run (or refuse).
+      const pending = assistant.pendingOf(history);
+      await this.alepha.events.emit("ai:call:decided", {
+        userId: user.id,
+        conversationId: conversation.id,
+        assistant: assistant.name,
+        callId: resume.callId,
+        name: pending?.name ?? "",
+        input: pending?.input ?? {},
+        decision: resume.decision,
+      });
+    }
     yield* this.drive(
       conversation,
       seq,

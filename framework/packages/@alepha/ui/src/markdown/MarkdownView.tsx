@@ -3,7 +3,7 @@ import * as React from "react";
 void React;
 
 import "./MarkdownView.css";
-import { lazy, Suspense } from "react";
+import { lazy, type ReactNode, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -46,7 +46,22 @@ export interface MarkdownViewProps {
    * this element rather than being inherited.
    */
   className?: string;
+  /**
+   * Renders every link instead of the default `<a href>`: an app routes an
+   * internal path through its own router link, or leaves a link it does not
+   * trust as plain text (an assistant's reply may carry a path that does not
+   * exist). Return `children` alone to drop the link.
+   */
+  renderLink?: MarkdownLinkRenderer;
 }
+
+/**
+ * See {@link MarkdownViewProps.renderLink}.
+ */
+export type MarkdownLinkRenderer = (link: {
+  href?: string;
+  children: ReactNode;
+}) => ReactNode;
 
 /**
  * Renders markdown as formatted prose.
@@ -154,14 +169,17 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             <ol className="my-3 list-decimal space-y-1 pl-5">{children}</ol>
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              className="text-primary decoration-primary/50 hover:decoration-primary underline underline-offset-4"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) =>
+            props.renderLink ? (
+              props.renderLink({ href, children })
+            ) : (
+              <a
+                href={href}
+                className="text-primary decoration-primary/50 hover:decoration-primary underline underline-offset-4"
+              >
+                {children}
+              </a>
+            ),
           code: ({ children, className }) => {
             const isBlock =
               className?.includes("language-") || className?.includes("hljs");

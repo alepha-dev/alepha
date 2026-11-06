@@ -1,11 +1,18 @@
 import { useI18n } from "alepha/react/i18n";
 
 import { cn } from "../core/utils.ts";
-import { MarkdownView } from "../markdown/MarkdownView.tsx";
+import {
+  type MarkdownLinkRenderer,
+  MarkdownView,
+} from "../markdown/MarkdownView.tsx";
 import type { AiChatItem } from "./useAiChat.ts";
 
 export interface AiChatMessageProps {
   item: AiChatItem;
+  /**
+   * How the assistant's links render. See `MarkdownView`'s `renderLink`.
+   */
+  renderLink?: MarkdownLinkRenderer;
 }
 
 /**
@@ -51,7 +58,7 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
 
   return (
     <div data-testid="ai-chat-assistant" className="mr-8 self-start">
-      <MarkdownView content={item.content} />
+      <MarkdownView content={item.content} renderLink={props.renderLink} />
     </div>
   );
 };

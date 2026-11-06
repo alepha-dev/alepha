@@ -15,6 +15,7 @@ import { describe, it } from "vitest";
 import {
   AiController,
   AiConversationService,
+  type AiEndpoint,
   AiJobs,
   AiSettings,
   AlephaApiAi,
@@ -69,15 +70,20 @@ class Rows {
   messages = $repository(aiMessageEntity);
 }
 
-const boot = async (db: "sqlite" | "postgres" = "sqlite") => {
+const boot = async (
+  db: "sqlite" | "postgres" = "sqlite",
+  extra?: (alepha: Alepha) => void,
+) => {
   const alepha = (
     db === "sqlite"
       ? Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } })
       : Alepha.create().with(AlephaOrmPostgres)
   )
     .with({ provide: SecurityProvider, use: HeaderSecurityProvider })
-    .with(AlephaSecurity)
-    .with(AlephaApiAi);
+    .with(AlephaSecurity);
+  // Substitutions go before the module that registers what they replace.
+  extra?.(alepha);
+  alepha.with(AlephaApiAi);
 
   const api = alepha.inject(InvoiceApi);
   class Assistant {
@@ -371,6 +377,70 @@ describe("alepha/api/ai", () => {
     await jobs.purgeConversations.trigger();
     expect(await rows.conversations.count()).toBe(0);
     expect(await rows.messages.count()).toBe(0);
+  });
+});
+
+describe("alepha/api/ai seams", () => {
+  it("announces every decision with the stored call, before an approved one runs", async ({
+    expect,
+  }) => {
+    const { alepha, chat, resume, read, ai, api } = await boot();
+    const decided: Array<{ decision: string; name: string; ran: number }> = [];
+    alepha.events.on("ai:call:decided", (event) => {
+      decided.push({
+        decision: event.decision,
+        name: event.name,
+        ran: api.created.length,
+      });
+      expect(event.userId).toBe("u1");
+      expect(event.input).toEqual({ body: { amount: 120 } });
+    });
+
+    for (const decision of ["deny", "approve"] as const) {
+      ai.script([
+        {
+          type: "tool_call",
+          id: `c-${decision}`,
+          name: "create",
+          input: { body: { amount: 120 } },
+        },
+      ]);
+      const first = await read(await chat("u1", { message: "bill 120" }));
+      ai.script([{ type: "text", text: "Ok." }]);
+      await read(
+        await resume("u1", first[0].conversationId!, {
+          callId: `c-${decision}`,
+          decision,
+        }),
+      );
+    }
+
+    expect(decided).toEqual([
+      { decision: "deny", name: "create", ran: 0 },
+      { decision: "approve", name: "create", ran: 0 },
+    ]);
+    expect(api.created).toHaveLength(1);
+  });
+
+  it("lets an app narrow who may talk to the assistant through guard()", async ({
+    expect,
+  }) => {
+    const seen: AiEndpoint[] = [];
+    class StaffAiController extends AiController {
+      protected override guard(endpoint: AiEndpoint) {
+        seen.push(endpoint);
+        return $secure({ roles: ["staff"] });
+      }
+    }
+    const { chat, ai } = await boot("sqlite", (alepha) =>
+      alepha.with({ provide: AiController, use: StaffAiController }),
+    );
+    ai.script([{ type: "text", text: "Hi." }]);
+
+    const res = await chat("u1", { message: "hi" });
+    expect(res.status).toBe(403);
+    expect(ai.requests).toHaveLength(0);
+    expect(seen).toEqual(["chat", "resume", "list", "detail"]);
   });
 });
 

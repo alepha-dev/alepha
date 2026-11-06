@@ -33,6 +33,27 @@ export * from "./services/AiSettings.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * The user answered a confirmation: emitted on a resume, before an
+     * approved call runs. What an app audits ("who let the assistant do
+     * what"). `name` and `input` are the call as the server stored it.
+     */
+    "ai:call:decided": {
+      userId: string;
+      conversationId: string;
+      assistant: string;
+      callId: string;
+      name: string;
+      input: Record<string, unknown>;
+      decision: "approve" | "deny";
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * The server side of an in-app assistant: conversations stored per user,
  * chat and resume streams over `$sse`, a per-user token budget and turn

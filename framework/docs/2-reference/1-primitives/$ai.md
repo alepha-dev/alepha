@@ -37,6 +37,7 @@ tool loop that runs them as the signed-in user.
 | `model`     | `string`                                                      | No       | Model id for this assistant                                            |
 | `system`    | `string \| ((ctx: { user?: UserAccountToken }) =&gt; string)` | Yes      | The system prompt, or a function of the user                           |
 | `tools`     | `Array&lt;ActionPrimitive&lt;any&gt; \| AiClientTool&gt;`     | No       | The tools: `$action`s, and client tools from `clientTool`.             |
+| `allow`     | `Object`                                                      | No       | The tools this user is offered on a turn, by name: what the model sees |
 | `confirm`   | `Object`                                                      | No       | Whether a call to this action waits for the user's approval            |
 | `maxSteps`  | `number`                                                      | No       | Model calls per turn before the loop stops with `end: length`.         |
 | `timeout`   | `DurationLike`                                                | No       | Wall-clock bound on one `stream()`, aborting the model call in flight. |

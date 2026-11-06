@@ -1,5 +1,6 @@
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import type { ComponentType } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { Button } from "../core/Button.tsx";
@@ -12,8 +13,14 @@ import {
 } from "../core/Drawer.tsx";
 import { Spinner } from "../core/Spinner.tsx";
 import { Control } from "../form/Control.tsx";
-import { MarkdownView } from "../markdown/MarkdownView.tsx";
-import { AiChatConfirmCard } from "./AiChatConfirmCard.tsx";
+import {
+  type MarkdownLinkRenderer,
+  MarkdownView,
+} from "../markdown/MarkdownView.tsx";
+import {
+  AiChatConfirmCard,
+  type AiChatConfirmCardProps,
+} from "./AiChatConfirmCard.tsx";
 import { AiChatHistory } from "./AiChatHistory.tsx";
 import { AiChatMessage } from "./AiChatMessage.tsx";
 import { aiChatMessageFormSchema } from "./aiChatMessageFormSchema.ts";
@@ -30,6 +37,17 @@ export interface AiChatProps extends UseAiChatOptions {
    * Show the list of past conversations. Default true.
    */
   history?: boolean;
+  /**
+   * A confirmation card per tool name, in place of the generic field list:
+   * an app shows a booking as a booking. It gets the pending call as the
+   * server stored it, and the approve and deny callbacks.
+   */
+  confirmCards?: Record<string, ComponentType<AiChatConfirmCardProps>>;
+  /**
+   * How links in the assistant's replies render (`MarkdownView`'s
+   * `renderLink`): route the paths the app knows, leave the rest as text.
+   */
+  renderLink?: MarkdownLinkRenderer;
 }
 
 /**
@@ -93,11 +111,18 @@ export const AiChat = (props: AiChatProps) => {
           )}
           <div className="flex flex-col gap-2">
             {chat.items.map((item) => (
-              <AiChatMessage key={item.id} item={item} />
+              <AiChatMessage
+                key={item.id}
+                item={item}
+                renderLink={props.renderLink}
+              />
             ))}
             {chat.streaming && (
               <div data-testid="ai-chat-streaming" className="mr-8 self-start">
-                <MarkdownView content={chat.streaming} />
+                <MarkdownView
+                  content={chat.streaming}
+                  renderLink={props.renderLink}
+                />
               </div>
             )}
             {chat.activity && (
@@ -110,14 +135,19 @@ export const AiChat = (props: AiChatProps) => {
               </div>
             )}
           </div>
-          {chat.pending?.kind === "confirm" && (
-            <AiChatConfirmCard
-              pending={chat.pending}
-              loading={chat.loading}
-              onApprove={() => chat.approve()}
-              onDeny={() => chat.deny()}
-            />
-          )}
+          {chat.pending?.kind === "confirm" &&
+            (() => {
+              const Card =
+                props.confirmCards?.[chat.pending.name] ?? AiChatConfirmCard;
+              return (
+                <Card
+                  pending={chat.pending}
+                  loading={chat.loading}
+                  onApprove={() => chat.approve()}
+                  onDeny={() => chat.deny()}
+                />
+              );
+            })()}
           {chat.error && (
             <Alert variant="destructive" data-testid="ai-chat-error">
               <AlertDescription>{chat.error}</AlertDescription>

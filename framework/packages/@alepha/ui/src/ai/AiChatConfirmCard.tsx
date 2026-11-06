@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../core/Card.tsx";
+import { AiChatConfirmFields } from "./AiChatConfirmFields.tsx";
 
 export interface AiChatConfirmCardProps {
   /**
@@ -22,8 +23,11 @@ export interface AiChatConfirmCardProps {
 }
 
 /**
- * Asks the user before the assistant runs a mutation. Approving or denying
- * sends the call id only.
+ * Asks the user before the assistant runs a mutation, its input as a list of
+ * fields. Approving or denying sends the call id only.
+ *
+ * An app replaces it for one tool with `AiChat`'s `confirmCards`, and gets
+ * the same props.
  */
 export const AiChatConfirmCard = (props: AiChatConfirmCardProps) => {
   const { tr } = useI18n();
@@ -39,9 +43,7 @@ export const AiChatConfirmCard = (props: AiChatConfirmCardProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <pre className="bg-muted max-h-48 overflow-auto rounded p-2 text-xs">
-          {JSON.stringify(props.pending.input, null, 2)}
-        </pre>
+        <AiChatConfirmFields input={props.pending.input} />
       </CardContent>
       <CardFooter className="gap-2">
         <Button

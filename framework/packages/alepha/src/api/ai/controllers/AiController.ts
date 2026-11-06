@@ -1,6 +1,10 @@
 import { $inject, createMiddleware, type ProvidingMiddleware, z } from "alepha";
 import { $rateLimit } from "alepha/rate-limit";
-import { $secure, type UserAccountToken } from "alepha/security";
+import {
+  $secure,
+  type SecureMiddleware,
+  type UserAccountToken,
+} from "alepha/security";
 import { $action, $sse } from "alepha/server";
 
 import type { AiConversationEntity } from "../entities/aiConversationEntity.ts";
@@ -18,12 +22,18 @@ import { AiSettings } from "../services/AiSettings.ts";
  * The assistant's HTTP surface: chat and resume as `$sse` streams, the
  * conversation list and detail as `$action`s.
  *
- * Every endpoint is `$secure()` and scoped to the caller: another user's
+ * Every endpoint is behind {@link AiController.guard} (`$secure()` unless
+ * the app narrows it) and scoped to the caller: another user's
  * conversation is a 404, never a 403. On the streams, every refusal happens
  * in a `use` middleware, before the stream opens, so it is the response's
  * status: 401 anonymous, 404 not yours, 409 not waiting on that call, 429
  * over the turn rate or the token budget.
  */
+/**
+ * The endpoint {@link AiController.guard} is building a gate for.
+ */
+export type AiEndpoint = "chat" | "resume" | "list" | "detail";
+
 export class AiController {
   protected readonly url: string = "/ai";
   protected readonly group: string = "ai";
@@ -46,7 +56,12 @@ export class AiController {
     group: this.group,
     description:
       "Send a message to the assistant and stream its turn, in a new conversation or an existing one",
-    use: [$secure(), this.perUser(), this.budget.middleware(), this.chatGate()],
+    use: [
+      this.guard("chat"),
+      this.perUser(),
+      this.budget.middleware(),
+      this.chatGate(),
+    ],
     schema: { body: aiChatBodySchema, data: aiStreamEventSchema },
     handler: async ({ body, user, conversation, emit }) => {
       for await (const event of this.chatService.chat(
@@ -65,7 +80,7 @@ export class AiController {
     description:
       "Answer the call a conversation waits on (approve, deny, or a client tool's result) and stream the rest of the turn",
     use: [
-      $secure(),
+      this.guard("resume"),
       this.perUser(),
       this.budget.middleware(),
       this.resumeGate(),
@@ -91,7 +106,7 @@ export class AiController {
     path: `${this.url}/conversations`,
     group: this.group,
     description: "The caller's assistant conversations, most recent first",
-    use: [$secure()],
+    use: [this.guard("list")],
     schema: { response: z.array(aiConversationResourceSchema) },
     handler: async ({ user }) =>
       (await this.conversations.list(user.id)).map((row) =>
@@ -104,7 +119,7 @@ export class AiController {
     path: `${this.url}/conversations/:id`,
     group: this.group,
     description: "One of the caller's conversations, with its messages",
-    use: [$secure()],
+    use: [this.guard("detail")],
     schema: {
       params: z.object({ id: z.uuid() }),
       response: aiConversationDetailSchema,
@@ -120,7 +135,35 @@ export class AiController {
   });
 
   /**
-   * The turn limiter, keyed on the user `$secure()` resolved.
+   * Who may talk to the assistant: the first middleware of every endpoint
+   * here, and the one that resolves `user`. Any signed-in user by default.
+   *
+   * An app narrows it by substituting a subclass, since the assistant
+   * spends its model budget: a back office lets staff in only, and can fold
+   * in a kill switch or a stricter rate of its own.
+   *
+   * ⚠️ It is called while this class's fields are built, before a
+   * subclass's own fields exist: inject what it needs, do not read fields.
+   *
+   * `endpoint` names the endpoint it guards, so a stricter limit can apply
+   * to turns (`chat`, `resume`) and not to reading the history.
+   *
+   * @example
+   * ```ts
+   * class StaffAiController extends AiController {
+   *   protected override guard(_endpoint: AiEndpoint) {
+   *     return $secure({ roles: ["staff"] });
+   *   }
+   * }
+   * alepha.with({ provide: AiController, use: StaffAiController });
+   * ```
+   */
+  protected guard(_endpoint: AiEndpoint): SecureMiddleware {
+    return $secure();
+  }
+
+  /**
+   * The turn limiter, keyed on the user the guard resolved.
    */
   protected perUser() {
     return this.turns.middleware({

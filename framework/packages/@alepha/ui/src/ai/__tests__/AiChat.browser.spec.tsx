@@ -9,7 +9,8 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { AiChat } from "../AiChat.tsx";
+import { AiChat, type AiChatProps } from "../AiChat.tsx";
+import type { AiChatConfirmCardProps } from "../AiChatConfirmCard.tsx";
 import { useAiContext } from "../useAiContext.ts";
 
 const conversationId = "00000000-0000-4000-8000-000000000041";
@@ -90,7 +91,10 @@ describe("AiChat", () => {
     alepha = undefined;
   });
 
-  const mount = async (setup: (links: Links) => void = () => {}) => {
+  const mount = async (
+    setup: (links: Links) => void = () => {},
+    chatProps: Partial<AiChatProps> = {},
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with({ provide: LinkProvider, use: Links })
@@ -113,7 +117,7 @@ describe("AiChat", () => {
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <InvoicePage onForm={(f) => (form = f)} />
-        <AiChat open onOpenChange={() => {}} />
+        <AiChat open onOpenChange={() => {}} {...chatProps} />
       </AlephaContext.Provider>,
     );
     const say = async (text: string) => {
@@ -265,7 +269,11 @@ describe("AiChat", () => {
     await say("bill 120");
     const card = await view.findByTestId("ai-chat-confirm");
     expect(card.textContent).toContain("Run createInvoice?");
-    expect(card.textContent).toContain('"amount": 120');
+    // The generic card lists the fields, the input parts flattened away.
+    const fields = view.getByTestId("ai-chat-confirm-fields");
+    expect(fields.textContent).toContain("amount");
+    expect(fields.textContent).toContain("120");
+    expect(fields.textContent).not.toContain("body");
 
     fireEvent.click(view.getByRole("button", { name: "Approve" }));
     await view.findByText("Created.");
@@ -387,5 +395,72 @@ describe("AiChat", () => {
     expect((await view.findByTestId("ai-chat-error")).textContent).toContain(
       "AI budget reached",
     );
+  });
+  it("renders an app's own confirmation card for a tool, with the same callbacks", async () => {
+    const BookingCard = (props: AiChatConfirmCardProps) => (
+      <div data-testid="booking-card">
+        Court {String((props.pending.input.body as any)?.court)}
+        <button type="button" onClick={() => props.onApprove()}>
+          Book it
+        </button>
+      </div>
+    );
+    const { links, view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "confirm",
+            callId: "c3",
+            name: "createBooking",
+            input: { body: { court: 4 } },
+          },
+          { type: "end", reason: "paused" },
+        ]);
+        l.streams.push([
+          { type: "text", text: "Booked." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      { confirmCards: { createBooking: BookingCard } },
+    );
+    await say("book court 4");
+    const card = await view.findByTestId("booking-card");
+    expect(card.textContent).toContain("Court 4");
+    expect(view.queryByTestId("ai-chat-confirm")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Book it" }));
+    await view.findByText("Booked.");
+    expect(links.bodies("resume")).toEqual([
+      { callId: "c3", decision: "approve" },
+    ]);
+  });
+
+  it("renders the reply's links through renderLink", async () => {
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "text",
+            text: "See [the planning](/admin/planning) or [nowhere](/admin/nope).",
+          },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {
+        renderLink: ({ href, children }) =>
+          href === "/admin/planning" ? (
+            <a data-testid="known-link" href={href}>
+              {children}
+            </a>
+          ) : (
+            children
+          ),
+      },
+    );
+    await say("where?");
+    const link = await view.findByTestId("known-link");
+    expect(link.textContent).toBe("the planning");
+    expect(view.getByText(/nowhere/).closest("a")).toBeNull();
   });
 });

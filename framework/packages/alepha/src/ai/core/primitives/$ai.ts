@@ -105,6 +105,24 @@ export interface AiPrimitiveOptions {
   tools?: Array<ActionPrimitive<any> | AiClientTool>;
 
   /**
+   * The tools this user is offered on a turn, by name: what the model sees.
+   * A name outside the list is neither sent to the vendor nor run if the
+   * model calls it anyway (it gets a tool error). Return `undefined` to offer
+   * every tool. A turn's own `tools` wins over this.
+   *
+   * It narrows what the model is shown, it is not the security boundary:
+   * every action still runs its own `use: [$secure(...)]`.
+   *
+   * @example
+   * ```ts
+   * allow: ({ user }) => user?.roles?.includes("admin") ? undefined : ["list"],
+   * ```
+   */
+  allow?: (ctx: {
+    user?: UserAccountToken;
+  }) => string[] | undefined | Promise<string[] | undefined>;
+
+  /**
    * Whether a call to this action waits for the user's approval. Default:
    * every action whose method is not GET.
    */
@@ -164,6 +182,13 @@ export interface AiTurnInput {
    * client tool's result.
    */
   resume?: AiResume;
+
+  /**
+   * The tools offered on this turn, by name; the rest are neither sent to
+   * the model nor run. Wins over the `allow` option. Omitted: `allow`
+   * decides, and without it every tool is offered.
+   */
+  tools?: string[];
 
   /**
    * Cancels the turn. Combined with the ambient signal and `timeout`.
@@ -285,13 +310,14 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   public async *stream(input: AiTurnInput): AsyncIterable<AiTurnEvent> {
     const signal = this.signalOf(input);
     const messages = [...input.messages];
+    const offered = await this.offeredTo(input);
     const system =
       typeof this.options.system === "function"
         ? this.options.system({ user: input.user })
         : this.options.system;
 
     if (input.resume) {
-      const outcome = yield* this.resumeCalls(messages, input);
+      const outcome = yield* this.resumeCalls(messages, input, offered);
       if (outcome === "paused") {
         yield { type: "end", reason: "paused" };
         return;
@@ -323,7 +349,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         // A copy: the loop appends to its own list, and a provider (or a
         // spec recording requests) must see the conversation as it was sent.
         messages: [...messages],
-        tools: this.tools.size ? this.definitions : undefined,
+        tools: offered.length ? offered : undefined,
         maxTokens: this.options.maxTokens,
         signal,
       })) {
@@ -363,7 +389,12 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         return;
       }
 
-      const outcome = yield* this.runCalls(messages, calls, input.user);
+      const outcome = yield* this.runCalls(
+        messages,
+        calls,
+        input.user,
+        offered,
+      );
       if (outcome === "paused") {
         yield { type: "end", reason: "paused" };
         return;
@@ -433,6 +464,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   protected async *resumeCalls(
     messages: AiMessage[],
     input: AiTurnInput,
+    offered: AiToolDefinition[],
   ): AsyncGenerator<AiTurnEvent, "paused" | "done"> {
     const resume = input.resume!;
     const open = this.unanswered(messages);
@@ -446,9 +478,12 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
       );
     }
     const tool = this.tools.get(call.name);
+    const available = this.isOffered(call.name, offered);
 
     let result: AiToolMessage;
-    if ("decision" in resume) {
+    if (!available) {
+      result = this.unavailable(call);
+    } else if ("decision" in resume) {
       if (tool?.kind !== "action") {
         throw new AiConfigError(
           {},
@@ -480,7 +515,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
 
     messages.push(result);
     yield { type: "message", message: result };
-    return yield* this.runCalls(messages, open.slice(1), input.user);
+    return yield* this.runCalls(messages, open.slice(1), input.user, offered);
   }
 
   /**
@@ -490,8 +525,15 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     messages: AiMessage[],
     calls: AiToolCall[],
     user: UserAccountToken | undefined,
+    offered: AiToolDefinition[] = this.definitions,
   ): AsyncGenerator<AiTurnEvent, "paused" | "done"> {
     for (const call of calls) {
+      if (this.tools.has(call.name) && !this.isOffered(call.name, offered)) {
+        const refused = this.unavailable(call);
+        messages.push(refused);
+        yield { type: "message", message: refused };
+        continue;
+      }
       const tool = this.tools.get(call.name);
       if (tool?.kind === "client") {
         yield {
@@ -563,6 +605,38 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
       const name = error instanceof Error ? error.name : "Error";
       return this.toolError(call, `${name}: ${message}`);
     }
+  }
+
+  /**
+   * The definitions offered on a turn: every tool, narrowed by the turn's
+   * `tools` or else by the `allow` option. Declaration order is kept, so the
+   * vendor still caches a stable list.
+   */
+  protected async offeredTo(input: AiTurnInput): Promise<AiToolDefinition[]> {
+    const names =
+      input.tools ??
+      (this.options.allow
+        ? await this.options.allow({ user: input.user })
+        : undefined);
+    if (!names) {
+      return this.definitions;
+    }
+    const allowed = new Set(names);
+    return this.definitions.filter((tool) => allowed.has(tool.name));
+  }
+
+  protected isOffered(name: string, offered: AiToolDefinition[]): boolean {
+    return offered.some((tool) => tool.name === name);
+  }
+
+  /**
+   * The answer to a call of a tool this turn did not offer: it is never run.
+   */
+  protected unavailable(call: AiToolCall): AiToolMessage {
+    return this.toolError(
+      call,
+      `Tool '${call.name}' is not available to this user.`,
+    );
   }
 
   protected toolError(call: AiToolCall, message: string): AiToolMessage {
