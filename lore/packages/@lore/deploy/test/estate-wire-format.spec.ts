@@ -38,6 +38,7 @@ const CLIENT_FRAMES = [
   "hello.json",
   "ack-running.json",
   "ack-done.json",
+  "ack-deploy-done.json",
   "ack-failed.json",
   "stats.json",
   "inventory.json",

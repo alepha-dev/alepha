@@ -21,11 +21,14 @@ const outcomesCap = 200
 
 // Outcome is what became of one command id.
 type Outcome struct {
-	ID     string    `json:"id"`
-	Status string    `json:"status"`
-	Step   string    `json:"step,omitempty"`
-	Reason string    `json:"reason,omitempty"`
-	At     time.Time `json:"at"`
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	Step   string `json:"step,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	// URL is a deploy's address, kept so a re-ack after a lost one says it
+	// again (#Q3155).
+	URL string    `json:"url,omitempty"`
+	At  time.Time `json:"at"`
 }
 
 /*
@@ -104,11 +107,11 @@ func (o *Outcomes) Begin(id string) bool {
 }
 
 // Finish records the terminal outcome of an id and persists it.
-func (o *Outcomes) Finish(id, status, step, reason string, at time.Time) (Outcome, error) {
+func (o *Outcomes) Finish(id, status, step, reason, url string, at time.Time) (Outcome, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	delete(o.running, id)
-	out := Outcome{ID: id, Status: status, Step: step, Reason: reason, At: at.UTC()}
+	out := Outcome{ID: id, Status: status, Step: step, Reason: reason, URL: url, At: at.UTC()}
 	if _, known := o.done[id]; !known {
 		o.order = append(o.order, id)
 	}

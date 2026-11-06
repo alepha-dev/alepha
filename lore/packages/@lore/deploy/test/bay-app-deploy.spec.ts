@@ -163,6 +163,52 @@ describe("an app deploy to a Bay estate", () => {
     expect(after.error).toBeUndefined();
   });
 
+  it("records where the machine says the copy answers, on the row and on an address-less copy (#Q3155)", async ({
+    expect,
+  }) => {
+    const a = await arrange();
+    const row = await deploy(a);
+    await alepha.inject(DeployService).run(row);
+    await alepha.inject(EstateCommandService).ack(a.estateId, {
+      type: "ack",
+      id: row.commandId,
+      status: "done",
+      url: "https://minpricing-production.bay.example.com/",
+    } as never);
+
+    const [after] = await alepha
+      .inject(DeployService)
+      .list(a.w.project.id, a.instance.id);
+    expect(after.url).toBe("https://minpricing-production.bay.example.com");
+    const copy = await a.w.rows.instances.findById(a.instance.id);
+    expect(copy?.url).toBe("https://minpricing-production.bay.example.com");
+  });
+
+  it("keeps a copy's own address, and drops an address that is not http(s)", async ({
+    expect,
+  }) => {
+    const a = await arrange();
+    await a.w.rows.instances.updateById(a.instance.id, {
+      url: "https://minpricing.example.com",
+    });
+    const row = await deploy(a);
+    await alepha.inject(DeployService).run(row);
+    await alepha.inject(EstateCommandService).ack(a.estateId, {
+      type: "ack",
+      id: row.commandId,
+      status: "done",
+      url: "javascript:alert(1)",
+    } as never);
+
+    const [after] = await alepha
+      .inject(DeployService)
+      .list(a.w.project.id, a.instance.id);
+    expect(after.status).toBe("succeeded");
+    expect(after.url).toBeUndefined();
+    const copy = await a.w.rows.instances.findById(a.instance.id);
+    expect(copy?.url).toBe("https://minpricing.example.com");
+  });
+
   it("hands the machine that copy's own variables", async ({ expect }) => {
     const a = await arrange();
     const row = await deploy(a);

@@ -140,6 +140,11 @@ func TestWireClientFramesEncode(t *testing.T) {
 		{"hello.json", map[string]string{"type": "hello"}},
 		{"ack-running.json", NewAck("3e9a1c7b-5d2f-4b8a-9c6e-7f1d2a3b4c5d", "running", "downloading", "")},
 		{"ack-done.json", NewAck("0b6d3f2e-7a41-4d9c-b2e5-1c8f9a7d6e54", "done", "", "")},
+		{"ack-deploy-done.json", func() Ack {
+			ack := NewAck("0b6d3f2e-7a41-4d9c-b2e5-1c8f9a7d6e54", "done", "", "")
+			ack.URL = "https://demo-production.bay.example.com/"
+			return ack
+		}()},
 		{"ack-failed.json", NewAck("3e9a1c7b-5d2f-4b8a-9c6e-7f1d2a3b4c5d", "failed", "verifying",
 			"artifact digest mismatch: got 0123456789ab…, expected 9f86d081884c…")},
 		{"stats.json", Stats{Type: "stats", CPUPercent: 34.5, MemoryPercent: 61, At: "2026-09-05T12:00:00Z"}},

@@ -130,6 +130,10 @@ type Ack struct {
 	Status string `json:"status"`
 	Step   string `json:"step,omitempty"`
 	Reason string `json:"reason,omitempty"`
+	// URL is where a deploy answers, on its terminal `done` ack only
+	// (#Q3155): `https://<the instance's canonical domain>/`, what `bay deploy`
+	// prints. Optional on the wire, so a Lore that predates it ignores it.
+	URL string `json:"url,omitempty"`
 }
 
 // MaxAckStep and MaxAckReason are what Lore's ack schema accepts. An ack over

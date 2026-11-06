@@ -14,6 +14,7 @@ import {
 } from "../../infra-lib/adapters/InfraAdapter.ts";
 import { infraOptions } from "../../infra-lib/atoms/infraOptions.ts";
 import type { ResolvedInfraConfig } from "../../infra-lib/services/InfraInspector.ts";
+import { InfraOrchestrator } from "../../infra-lib/services/InfraOrchestrator.ts";
 import { InfraCommand } from "../commands/infra.ts";
 import { infra } from "../index.ts";
 
@@ -255,9 +256,15 @@ describe("Infra and Deploy lifecycle", () => {
   it("keeps granular deploy at authentication and deployment only", async ({
     expect,
   }) => {
-    const { cli, command, adapter } = await setup();
+    const { alepha, cli, command, adapter } = await setup();
+    // The address the adapter returns is printed, not dropped (#Q3155).
+    const summaries: Array<{ urls: string[] }> = [];
+    Object.assign(alepha.inject(InfraOrchestrator), {
+      printUpSummary: (result: { urls: string[] }) => summaries.push(result),
+    });
     await cli.run(command.granularDeploy, { root: "/project" });
     expect(adapter.calls).toEqual(["authenticate", "deploy"]);
+    expect(summaries).toEqual([{ urls: ["https://deployed.example"] }]);
     expect(command.boots).toEqual([{ prebuilt: false }]);
     await expect(
       cli.run(command.granularDeploy, { root: "/project", argv: "--prebuilt" }),

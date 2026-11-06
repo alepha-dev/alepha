@@ -115,6 +115,11 @@ type actions struct {
 	// connectorLoop to the client that owns the socket, and nil everywhere
 	// else - a CLI path with no connection has nothing to tell.
 	kick func()
+
+	// urls holds a finished deploy's address by command id, from the deploy
+	// to its terminal ack (#Q3155). A map rather than a fourth return value
+	// on every action, since only a deploy has one.
+	urls sync.Map
 }
 
 func newActions(s *server) *actions {
@@ -153,7 +158,9 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	if prior, ok := a.outcomes.Get(cmd.ID); ok {
 		// Redelivered after a lost ack: say again what happened, run nothing.
 		log.Info("lore command redelivered, re-acking the stored outcome", "status", prior.Status)
-		_ = send(connector.NewAck(cmd.ID, prior.Status, prior.Step, prior.Reason))
+		ack := connector.NewAck(cmd.ID, prior.Status, prior.Step, prior.Reason)
+		ack.URL = prior.URL
+		_ = send(ack)
 		return
 	}
 
@@ -258,11 +265,17 @@ moves the release, a backup moves lastBackupAt - and the alternative is a page
 that shows the old state for up to half an hour after the click that changed it.
 */
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
-	out, err := a.outcomes.Finish(id, status, step, reason, time.Now())
+	url := ""
+	if held, ok := a.urls.LoadAndDelete(id); ok && status == "done" {
+		url = held.(string)
+	}
+	out, err := a.outcomes.Finish(id, status, step, reason, url, time.Now())
 	if err != nil {
 		a.s.log.Warn("could not persist a command outcome", "command", id, "err", err)
 	}
-	if err := send(connector.NewAck(id, out.Status, out.Step, out.Reason)); err != nil {
+	ack := connector.NewAck(id, out.Status, out.Step, out.Reason)
+	ack.URL = out.URL
+	if err := send(ack); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)
 	}
@@ -464,6 +477,10 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 		return "failed", "deploying", derr.Error()
 	}
 	a.s.log.Info("lore deploy served", "command", cmd.ID, "release", out.Result.Release)
+	if domain := out.Result.App.Domain(); domain != "" {
+		// The address `bay deploy` prints, for the terminal ack (#Q3155).
+		a.urls.Store(cmd.ID, "https://"+domain+"/")
+	}
 	a.pruneArtifacts(dir, keepArtifacts)
 	return "done", "", ""
 }

@@ -447,7 +447,9 @@ export class AppsCommand {
           const started = await this.deployer.start(projectId, copy.id, tag);
           const finished = await this.deployer.follow(projectId, started.id);
           if (finished.status === "succeeded") {
-            this.log.info(`Deployed ${app}@${tag} to ${app}/${copy.env}`);
+            this.log.info(
+              `Deployed ${app}@${tag} to ${app}/${copy.env}${finished.url ? ` - ${finished.url}` : ""}`,
+            );
           } else {
             failed.push(
               `${copy.env}: ${finished.error || `ended ${finished.status}`}`,

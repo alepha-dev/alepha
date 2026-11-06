@@ -298,6 +298,37 @@ func TestDeployPullsVerifiesAndDeploys(t *testing.T) {
 	}
 }
 
+// The terminal ack of a deploy says where the app answers, as `bay deploy`
+// prints it, and a re-ack after a lost one says it again (#Q3155).
+func TestDeployAcksTheAddressItServes(t *testing.T) {
+	sink := newDeploySink(t, deployableArtifact(t))
+	f, acts := deployReady(t, sink, true)
+	rec := &ackRecorder{}
+
+	acts.Command(context.Background(), deployCommand("d-url", sink), rec.send)
+
+	app, ok := f.server.store.Get("demo/production")
+	if !ok || app.Domain() == "" {
+		t.Fatalf("the deploy must have registered a domain, got %+v", app)
+	}
+	want := "https://" + app.Domain() + "/"
+	last := rec.acks[len(rec.acks)-1]
+	if last.Status != "done" || last.URL != want {
+		t.Fatalf("terminal ack = %+v, want done with url %q", last, want)
+	}
+	for _, ack := range rec.acks[:len(rec.acks)-1] {
+		if ack.URL != "" {
+			t.Fatalf("only the terminal ack carries the url, got %+v", ack)
+		}
+	}
+
+	again := &ackRecorder{}
+	acts.Command(context.Background(), deployCommand("d-url", sink), again.send)
+	if len(again.acks) != 1 || again.acks[0].URL != want {
+		t.Fatalf("re-ack = %+v, want the stored url %q", again.acks, want)
+	}
+}
+
 func TestDeployIsRefusedBeforeAnyFetchWhenTheWelcomeSaidNo(t *testing.T) {
 	sink := newDeploySink(t, deployableArtifact(t))
 	f, acts := deployReady(t, sink, false)

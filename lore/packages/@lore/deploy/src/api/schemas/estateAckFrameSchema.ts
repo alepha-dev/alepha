@@ -12,6 +12,11 @@ export const estateAckFrameSchema = z.object({
   status: z.enum(["running", "done", "failed"]),
   step: z.string().max(32).optional(),
   reason: z.string().max(2000).optional(),
+  /**
+   * Where a deploy answers, on its terminal `done` ack only (#Q3155): the
+   * `https://<domain>/` `bay deploy` prints. Bounded like `deployments.url`.
+   */
+  url: z.string().max(500).optional(),
 });
 
 export type EstateAckFrame = Infer<typeof estateAckFrameSchema>;

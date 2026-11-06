@@ -6,7 +6,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import type { AppInstance } from "../entities/appInstances.ts";
+import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
 import type { EstateCommand } from "../entities/estateCommands.ts";
@@ -23,6 +23,7 @@ import { estateCommandResultSchema } from "../schemas/estateCommandResultSchema.
 import type { StackDeployOutcome } from "../schemas/stackDeployOutcomeSchema.ts";
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import { AppSecretService } from "./AppSecretService.ts";
+import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { EstateCommandService } from "./EstateCommandService.ts";
 import type { RegistryCredential } from "./ImageRegistryClient.ts";
@@ -54,6 +55,7 @@ import { StackVariableService } from "./StackVariableService.ts";
 export class StackDeployService {
   protected readonly rows = $repository(stackDeployments);
   protected readonly appDeployments = $repository(deployments);
+  protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
   protected readonly commands = $repository(estateCommands);
   protected readonly environments = $repository(stackEnvironments);
@@ -64,6 +66,7 @@ export class StackDeployService {
   protected readonly stacks = $inject(StackService);
   protected readonly variables = $inject(StackVariableService);
   protected readonly appSecrets = $inject(AppSecretService);
+  protected readonly apps = $inject(AppService);
   protected readonly registries = $inject(RegistryCredentialService);
   protected readonly targets = $inject(StackTargets);
   protected readonly queue = $inject(EstateCommandService);
@@ -379,7 +382,7 @@ export class StackDeployService {
    */
   protected readonly onCommandProgressed = $hook({
     on: "estate:command:progressed",
-    handler: async ({ command }) => {
+    handler: async ({ command, url }) => {
       const stackRow = await this.rows.findOne({
         where: { commandId: { eq: command.id } },
       });
@@ -397,6 +400,7 @@ export class StackDeployService {
         const status = this.statusOf(command);
         const now = new Date(this.dateTime.nowMillis()).toISOString();
         const terminal = status === "succeeded" || status === "failed";
+        const address = this.addressOf(url);
         await this.appDeployments.updateById(appRow.id, {
           status,
           ...(status !== "queued" && !appRow.startedAt
@@ -406,6 +410,10 @@ export class StackDeployService {
           ...(status === "failed"
             ? { error: command.reason ?? "The machine reported a failure" }
             : {}),
+          // Where the copy answers, as the machine reports it (#Q3155), so
+          // `alepha deploy` and `lore deploy` can print it. Read through the
+          // copy's own URL rule: it becomes an href.
+          ...(status === "succeeded" && address ? { url: address } : {}),
           log: [
             ...appRow.log,
             {
@@ -417,9 +425,33 @@ export class StackDeployService {
             },
           ].slice(-200),
         });
+        // A copy with no address of its own takes the machine's, so its
+        // page links somewhere; one that has an address keeps it.
+        if (status === "succeeded" && address) {
+          const instance = await this.instances.findById(appRow.instanceId);
+          if (instance && !instance.url) {
+            await this.apps.setUrl(instance, address);
+          }
+        }
       }
     },
   });
+
+  /**
+   * The address a `done` ack carries, kept only when it is an http(s) URL
+   * (#Q3155): `AppService.readUrl`'s rule, swallowed rather than thrown,
+   * since a bad address must not fail a deploy that succeeded.
+   */
+  protected addressOf(url: string | undefined): string | undefined {
+    if (!url) {
+      return undefined;
+    }
+    try {
+      return this.apps.readUrl(url) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
 
   /**
    * An environment's deploys, newest first, each with its status brought up

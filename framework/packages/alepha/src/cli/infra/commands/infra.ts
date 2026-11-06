@@ -615,7 +615,11 @@ export class InfraCommand {
       const ctx = this.orchestrator.createContext(target, { root, ...app });
 
       await adapter.authenticate(ctx, run);
-      await adapter.deploy(ctx, run);
+      // The address the adapter reports (#Q3155): printed as `alepha deploy`
+      // prints it, rather than dropped.
+      const url = await adapter.deploy(ctx, run);
+      run.end();
+      this.orchestrator.printUpSummary({ urls: url ? [url] : [] });
     },
   });
 

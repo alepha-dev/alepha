@@ -26,7 +26,7 @@ func TestOutcomesClaimOnceAndReackFromStore(t *testing.T) {
 	}
 
 	at := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
-	out, err := o.Finish("c1", "failed", "start", "would not boot", at)
+	out, err := o.Finish("c1", "failed", "start", "would not boot", "", at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestOutcomesSurviveARestartOfServe(t *testing.T) {
 	root := t.TempDir()
 	first, _ := OpenOutcomes(root)
 	first.Begin("c1")
-	if _, err := first.Finish("c1", "done", "", "", time.Now()); err != nil {
+	if _, err := first.Finish("c1", "done", "", "", "", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -78,7 +78,7 @@ func TestOutcomesAreCappedOldestFirst(t *testing.T) {
 	for i := 0; i < outcomesCap+5; i++ {
 		id := fmt.Sprintf("c%03d", i)
 		o.Begin(id)
-		if _, err := o.Finish(id, "done", "", "", time.Now()); err != nil {
+		if _, err := o.Finish(id, "done", "", "", "", time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}

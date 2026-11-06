@@ -21,7 +21,15 @@ declare module "alepha" {
      * it. What a deploy row riding on that command listens to, so its status
      * follows the machine without anybody reading the page.
      */
-    "estate:command:progressed": { command: EstateCommand };
+    "estate:command:progressed": {
+      command: EstateCommand;
+      /**
+       * What the machine says the result answers at, from a `done` ack
+       * (#Q3155). Not stored on the command: the deploy row it rides on is
+       * where an address belongs.
+       */
+      url?: string;
+    };
   }
 }
 
@@ -33,6 +41,10 @@ export interface EstateCommandAck {
   status: "running" | "done" | "failed";
   step?: string;
   reason?: string;
+  /**
+   * Where a deploy answers, on a `done` ack (#Q3155).
+   */
+  url?: string;
 }
 
 /**
@@ -294,6 +306,7 @@ export class EstateCommandService {
     });
     await this.alepha.events.emit("estate:command:progressed", {
       command: updated,
+      ...(ack.status === "done" && ack.url ? { url: ack.url } : {}),
     });
     return updated;
   }
