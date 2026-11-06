@@ -5,6 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
+import { EstateCost } from "../../../../api/schemas/EstateCost.ts";
 import BayStacks from "./BayStacks.tsx";
 import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
@@ -39,6 +40,7 @@ const BayOverview = () => {
   }
   const inventory = data?.inventory ?? undefined;
   const host = inventory?.host;
+  const spent = EstateCost.soFar(estate, dt.nowMillis());
 
   return (
     <AccountPage variant="form" className="max-w-5xl gap-4">
@@ -116,6 +118,64 @@ const BayOverview = () => {
 
       {inventory?.stacks?.length ? (
         <BayStacks stacks={inventory.stacks} />
+      ) : null}
+
+      {estate.providerServerId ? (
+        // A server lore estate provision bought (#Q3168): what it is and
+        // what it has cost, so a forgotten one is visible.
+        <Card data-testid="bay-overview-server">
+          <CardContent className="flex flex-col gap-3">
+            <h3 className="text-sm font-semibold">
+              {tr("bay.overview.server")}
+            </h3>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+              <Fact
+                label={tr("bay.overview.provider")}
+                value={estate.provider}
+                empty=""
+              />
+              <Fact
+                label={tr("bay.overview.serverId")}
+                value={estate.providerServerId}
+                empty=""
+              />
+              <Fact
+                label={tr("bay.overview.serverType")}
+                value={[estate.providerServerType, estate.providerZone]
+                  .filter(Boolean)
+                  .join(", ")}
+                empty=""
+              />
+              <Fact
+                label={tr("bay.overview.hourlyPrice")}
+                value={
+                  estate.hourlyPrice === undefined
+                    ? undefined
+                    : tr("bay.overview.hourlyPriceValue", {
+                        args: [estate.hourlyPrice.toFixed(4)],
+                      })
+                }
+                empty={tr("bay.overview.notReported")}
+              />
+              <Fact
+                label={tr("bay.overview.costSoFar")}
+                value={
+                  spent === undefined
+                    ? undefined
+                    : tr("bay.overview.costSoFarValue", {
+                        args: [spent.toFixed(2)],
+                      })
+                }
+                empty={tr("bay.overview.notReported")}
+              />
+            </dl>
+            <p className="text-muted-foreground text-xs">
+              {tr("bay.overview.serverNote", {
+                args: [estate.provider ?? "", estate.slug],
+              })}
+            </p>
+          </CardContent>
+        </Card>
       ) : null}
 
       <Card>

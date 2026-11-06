@@ -39,6 +39,12 @@ export const lentEstateResourceSchema = z.object({
    * The address its machine connected from (#Q3137).
    */
   publicIp: z.string().optional(),
+  /**
+   * Who sold the server, when lore estate provision bought it, and its type
+   * (#Q3168). The price and the server id stay on the owner's view.
+   */
+  provider: z.string().optional(),
+  providerServerType: z.string().optional(),
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),
   owner: z.object({ id: z.uuid(), name: z.string() }),

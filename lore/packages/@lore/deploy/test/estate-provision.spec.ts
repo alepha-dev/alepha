@@ -8,6 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { EstateController, LoreDeployApi } from "../src/api/index.ts";
+import { EstateCost } from "../src/api/schemas/EstateCost.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
@@ -107,5 +108,23 @@ describe("estate provision record", () => {
         { user: stranger },
       ),
     ).rejects.toThrow();
+  });
+});
+
+describe("EstateCost (#Q3168)", () => {
+  it("is the stored hourly price times the hours since provision, and nothing without both", ({
+    expect,
+  }) => {
+    const start = Date.parse("2026-11-06T10:00:00Z");
+    expect(
+      EstateCost.soFar(
+        { hourlyPrice: 0.01, provisionedAt: "2026-11-06T10:00:00Z" },
+        start + 3 * 3_600_000,
+      ),
+    ).toBeCloseTo(0.03);
+    expect(EstateCost.soFar({ hourlyPrice: 0.01 }, start)).toBeUndefined();
+    expect(
+      EstateCost.soFar({ provisionedAt: "2026-11-06T10:00:00Z" }, start),
+    ).toBeUndefined();
   });
 });

@@ -72,6 +72,21 @@ describe("lore estate delete, provisioned", () => {
         calls.push("delete");
         return { ok: true };
       },
+      getEstate: async () => ({
+        id: "e1",
+        slug: "small-skilled-pie",
+        type: "bay",
+        online: true,
+        deployAllowed: true,
+        projects: [],
+        provider: "scaleway",
+        providerServerId: "srv-1",
+        providerServerType: "DEV1-S",
+        providerZone: "fr-par-1",
+        hourlyPrice: 0.009,
+        provisionedAt: "2026-11-06T10:00:00Z",
+      }),
+      getEstateInventory: async () => ({ inventory: null, expected: [] }),
     };
     const command = alepha.inject(EstateCommand);
     Object.assign(
@@ -79,8 +94,8 @@ describe("lore estate delete, provisioned", () => {
       { estates },
     );
     Object.assign(command as unknown as Record<string, unknown>, { estates });
-    const run = async (argv: string) => {
-      await alepha.inject(CliProvider).run(command.delete as never, { argv });
+    const run = async (argv: string, sub: "delete" | "get" = "delete") => {
+      await alepha.inject(CliProvider).run(command[sub] as never, { argv });
     };
     return { run, printed, calls, shell };
   };
@@ -129,5 +144,16 @@ describe("lore estate delete, provisioned", () => {
     expect(printed.join("\n")).toContain(
       "still running on scaleway, and billing",
     );
+  });
+
+  it("estate get shows the server and an estimate of what it has cost (#Q3168)", async ({
+    expect,
+  }) => {
+    const { run, printed } = create();
+    await run("small-skilled-pie", "get");
+    const out = printed.join("\n");
+    expect(out).toContain("srv-1 (DEV1-S, fr-par-1, scaleway)");
+    expect(out).toContain("about EUR 0.0090 an hour");
+    expect(out).toContain("so far (estimate)");
   });
 });

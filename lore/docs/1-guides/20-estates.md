@@ -55,6 +55,10 @@ If anything fails after the server exists, the command terminates it before
 answering; if that fails too, it keeps the estate and prints the command that
 finishes the job, so no server bills where you cannot see it.
 
+A provisioned estate carries its server: the Estates page marks it with its
+provider and type, and its console and `lore estate get` show the server, its
+zone, its hourly price and an estimate of what it has cost so far.
+
 ### A Bay estate
 
 Create the estate on the Estates page, from a project's **Settings ▸ Apps ▸

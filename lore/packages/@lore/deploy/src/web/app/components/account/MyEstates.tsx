@@ -257,6 +257,18 @@ const MyEstates = () => {
                     ? tr("estates.deploys.allowed")
                     : tr("estates.deploys.statsOnly")}
                 </Badge>
+                {estate.providerServerId ? (
+                  // Bought by lore estate provision (#Q3168): the console
+                  // shows its price and what it has cost.
+                  <Badge variant="outline" data-testid="my-estate-provisioned">
+                    {tr("estates.provisioned", {
+                      args: [
+                        estate.provider ?? "",
+                        estate.providerServerType ?? "",
+                      ],
+                    })}
+                  </Badge>
+                ) : null}
                 {estate.overdue ? (
                   // Past the TTL it was given (#Q3138): still running, still
                   // billing, until its owner deletes it.

@@ -300,6 +300,8 @@ export class ProjectEstateController {
       expiresAt: estate.expiresAt ?? undefined,
       overdue: this.service.isOverdue(estate),
       publicIp: estate.publicIp ?? undefined,
+      provider: estate.provider ?? undefined,
+      providerServerType: estate.providerServerType ?? undefined,
       cpuPercent: estate.cpuPercent ?? undefined,
       memoryPercent: estate.memoryPercent ?? undefined,
       owner: { id: estate.ownerUserId, name: displayName(owner, "Unknown") },

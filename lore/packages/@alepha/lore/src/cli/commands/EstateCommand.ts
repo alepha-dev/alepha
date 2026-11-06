@@ -373,6 +373,9 @@ export class EstateCommand {
                 .join(" "),
               [
                 estate.deployAllowed ? "deploys allowed" : "deploys off",
+                estate.provider
+                  ? `${estate.provider} ${estate.providerServerType ?? ""}`.trim()
+                  : undefined,
                 estate.overdue ? "OVERDUE" : undefined,
               ]
                 .filter(Boolean)
@@ -497,6 +500,14 @@ export class EstateCommand {
             ["State", estate.online ? "online" : "offline"],
             ["Last seen", estate.lastSeenAt ?? "never"],
             ["Public IP", estate.publicIp ?? "not known yet"],
+            [
+              // A server lore estate provision bought (#Q3168).
+              "Server",
+              estate.providerServerId
+                ? `${estate.providerServerId} (${[estate.providerServerType, estate.providerZone, estate.provider].filter(Boolean).join(", ")})`
+                : undefined,
+            ],
+            ["Cost", this.costLine(estate)],
             [
               "Expires",
               estate.expiresAt
@@ -884,6 +895,26 @@ export class EstateCommand {
       secret: estate.secret,
       command: this.connectorCommand(estate.secret),
     };
+  }
+
+  /**
+   * A provisioned server's price and what it has cost so far (#Q3168): the
+   * stored hourly price times the hours since it was provisioned, said as an
+   * estimate since the provider bills by its own rules.
+   */
+  protected costLine(estate: {
+    hourlyPrice?: number;
+    provisionedAt?: string;
+  }): string | undefined {
+    if (estate.hourlyPrice === undefined || !estate.provisionedAt) {
+      return undefined;
+    }
+    const hours = Math.max(
+      0,
+      (this.dateTime.nowMillis() - Date.parse(estate.provisionedAt)) /
+        3_600_000,
+    );
+    return `about EUR ${estate.hourlyPrice.toFixed(4)} an hour, about EUR ${(estate.hourlyPrice * hours).toFixed(2)} so far (estimate), until lore estate delete terminates it`;
   }
 
   protected percent(value: number): string {
