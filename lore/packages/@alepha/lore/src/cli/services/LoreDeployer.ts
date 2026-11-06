@@ -223,6 +223,31 @@ export class LoreDeployer {
   }
 
   /**
+   * Whether a copy deploys to a Bay machine: a stack member always does (a
+   * stack runs on Bay alone), anything else when its estate is a `bay`.
+   * Read from the estates lent to the project, the list the build step reads
+   * the runtime from.
+   */
+  public async deploysToBay(
+    projectId: number,
+    instance: LoreInstance,
+  ): Promise<boolean> {
+    if (instance.stackEnvironmentId) {
+      return true;
+    }
+    if (!instance.estateId) {
+      return false;
+    }
+    const lent = await this.estates.listProjectEstates({
+      params: { projectId },
+    });
+    return (lent?.items ?? []).some(
+      (it: { id: string; type?: string }) =>
+        it.id === instance.estateId && it.type === "bay",
+    );
+  }
+
+  /**
    * Create the copy, on the estate the shared rule picks.
    *
    * ⚠️ `lore deploy` never calls this: its `--env` is free text, and a typo

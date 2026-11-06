@@ -35,9 +35,10 @@ Lore when the list stops being fixed.
 
 A new app can start on this path: `npm create alepha my-app -- --infra lore`
 (or `alepha init --infra lore`) writes `lore({ project })` into
-`alepha.config.ts`, adds `@alepha/lore`, mounts the sigil, and links the
-directory to the project when you are signed in. After that, enrolling a server
-and `alepha deploy production` is the whole loop.
+`alepha.config.ts`, adds `@alepha/lore`, mounts the sigil in both entries, and
+links the directory to the project when you are signed in. After that, enrolling
+a server and `alepha deploy` (production by default, `-e` for another) is the
+whole loop.
 
 ## 1. Turn deploys on
 

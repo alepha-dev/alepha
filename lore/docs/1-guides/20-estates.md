@@ -51,9 +51,14 @@ So a throwaway server is enrolled from a shell with no page in the loop:
 
 ```bash
 SECRET=$(lore estate add my-vps --allow-deploys --output json | jq -r .secret)
-ssh root@my-vps "curl -sSL https://alepha.dev/bay/install.sh | LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=$SECRET sh"
+ssh root@203.0.113.10 "curl -sSL https://alepha.dev/bay/install.sh | LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=$SECRET BAY_BASE_DOMAIN=203-0-113-10.sslip.io sh"
 lore estate wait my-vps
 ```
+
+`BAY_BASE_DOMAIN` is what an app deployed there is named under
+(`<app>.<base>`); without one, Bay refuses an app deploy. A server with no
+domain of its own can use its IP through sslip.io, as above: the name resolves
+to the IP and Bay gets a real certificate for it.
 
 ⚠️ The secret is shown **once**. Lore keeps only a hash of it, so it cannot
 show it again; if you lose it, rotate the estate to mint a new one

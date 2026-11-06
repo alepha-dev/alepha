@@ -326,7 +326,7 @@ See the [Infra Plugin](/docs/cli-plugins-infra) guide for full configuration, se
 npm create alepha my-app -- --infra lore
 ```
 
-That writes a `lore()` environment naming the Lore project (`--lore-project`, else the directory name; `--lore-url` for a self-hosted Lore), adds `@alepha/lore` to `package.json`, and mounts its sigil in `src/main.server.ts`, so telemetry is on from the first deploy. When you are signed in and the project exists, it also links the directory (`.alepha/lore.json`); otherwise it prints the `lore project link` command to run.
+That writes a `lore()` environment naming the Lore project (`--lore-project`, else the directory name; `--lore-url` for a self-hosted Lore), adds `@alepha/lore` to `package.json`, and mounts its sigil in `src/main.server.ts` and `src/main.browser.ts`, so telemetry is on from the first deploy. When you are signed in and the project exists, it also links the directory (`.alepha/lore.json`); otherwise it prints the `lore project link` command to run.
 
 ```typescript filename="alepha.config.ts"
 import { lore } from "@alepha/lore/cli";

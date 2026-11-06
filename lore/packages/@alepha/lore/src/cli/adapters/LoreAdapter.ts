@@ -1,5 +1,6 @@
 import { $inject, $store, AlephaError } from "alepha";
 import {
+  BAY_OWNED_SECRET_KEYS,
   EXCLUDED_SECRET_KEYS,
   InfraAdapter,
   type InfraContext,
@@ -194,7 +195,12 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
     await run({
       name: `seal secrets for ${label}`,
       handler: async () => {
-        await this.pushSecrets(ctx, projectId, instance.id);
+        await this.pushSecrets(
+          ctx,
+          projectId,
+          instance.id,
+          await this.deployer.deploysToBay(projectId, instance),
+        );
       },
     });
 
@@ -410,7 +416,15 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
     ctx: InfraContext<LoreEnvironmentOptions>,
     projectId: number,
     instanceId: string,
+    onBay = false,
   ): Promise<void> {
+    // On a Bay estate the machine writes these into every instance itself,
+    // and Lore refuses a stored copy of one, which failed the whole deploy of
+    // a freshly scaffolded app over its APP_SECRET (#Q3158's walk). Dropped
+    // here, as `BayAdapter` drops them, and named so nobody wonders why.
+    const excluded: ReadonlySet<string> = onBay
+      ? new Set([...EXCLUDED_SECRET_KEYS, ...BAY_OWNED_SECRET_KEYS])
+      : EXCLUDED_SECRET_KEYS;
     const { keys, envVars } = await resolveSecretKeySet({
       fs: this.fs,
       envUtils: this.envUtils,
@@ -421,10 +435,22 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
     const { secrets } = selectSecrets({
       keys,
       envVars,
-      excluded: EXCLUDED_SECRET_KEYS,
+      excluded,
     });
+    if (onBay) {
+      const owned = keys.filter(
+        (key) =>
+          BAY_OWNED_SECRET_KEYS.has(key.toUpperCase()) &&
+          !EXCLUDED_SECRET_KEYS.has(key.toUpperCase()),
+      );
+      if (owned.length > 0) {
+        this.log.info(
+          `Not sealing ${owned.join(", ")} for ${ctx.project}/${ctx.env}: the Bay estate writes ${owned.length === 1 ? "it" : "them"} itself.`,
+        );
+      }
+    }
     const pairs = this.sealed.importable(secrets, `.env.${ctx.env}`, {
-      reserved: EXCLUDED_SECRET_KEYS,
+      reserved: excluded,
     });
     if (pairs.length === 0) {
       this.log.info(

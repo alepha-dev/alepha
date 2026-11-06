@@ -611,6 +611,7 @@ export class ProjectScaffolder {
     opts: {
       force?: boolean;
       saas?: boolean;
+      sigil?: boolean;
     } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
@@ -657,7 +658,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/main.browser.ts",
-      mainBrowserTs(),
+      mainBrowserTs({ sigil: opts.sigil }),
       opts.force,
     );
   }
@@ -951,7 +952,7 @@ export class ProjectScaffolder {
         });
         await this.ensureApiProject(root, { force, saas });
         if (web) {
-          await this.ensureWebProject(root, { force, saas });
+          await this.ensureWebProject(root, { force, saas, sigil: !!lore });
         }
       },
     });

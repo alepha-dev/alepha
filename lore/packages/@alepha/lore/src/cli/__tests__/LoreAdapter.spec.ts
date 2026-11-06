@@ -299,6 +299,25 @@ describe("LoreAdapter", () => {
     expect(command).not.toContain("npx");
   });
 
+  it("does not seal the names a Bay estate writes itself, and says so (#Q3158)", async () => {
+    // A freshly scaffolded app declares APP_SECRET; Lore refuses a stored
+    // copy of a Bay-owned name, which failed the whole deploy.
+    const { events, printed, up } = await create({
+      instance: { id: "inst-1", estateId: "bay-1" },
+      lent: [
+        { id: "bay-1", slug: "vps", type: "bay", acceptedRuntimes: ["node"] },
+      ] as never,
+    });
+
+    await up();
+
+    expect(events).not.toContain("secret APP_SECRET on inst-1");
+    expect(printed.join("\n")).toContain(
+      "Not sealing APP_SECRET for docs/production: the Bay estate writes it itself.",
+    );
+    expect(events.at(-1)).toBe("start latest");
+  });
+
   it("refuses an environment that names no project, in config or LORE_PROJECT", async () => {
     const { up } = await create({ descriptor: lore() });
 

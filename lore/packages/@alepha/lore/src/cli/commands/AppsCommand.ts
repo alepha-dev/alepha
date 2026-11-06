@@ -1,10 +1,15 @@
 import { $inject, AlephaError, z } from "alepha";
-import { $command, type CommandHandlerArgs } from "alepha/command";
+import {
+  $command,
+  CommandError,
+  type CommandHandlerArgs,
+} from "alepha/command";
 import { $logger } from "alepha/logger";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreDeployer } from "../services/LoreDeployer.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
+import { LoreRefusals } from "../services/LoreRefusals.ts";
 import { AppInstanceCommand } from "./AppInstanceCommand.ts";
 import { DeployCommand } from "./DeployCommand.ts";
 
@@ -465,8 +470,11 @@ export class AppsCommand {
       if (failed.length > 0) {
         // ⚠️ Thrown, not logged: this runs in CI, and a partial redeploy must
         // not read as a green step.
-        throw new AlephaError(
-          `${failed.length} of ${copies.length} ${noun} did not take ${app}@${tag}. ${failed.join("; ")}`,
+        throw new CommandError(
+          { exitCode: LoreRefusals.EXIT_FAILURE },
+          {
+            message: `${failed.length} of ${copies.length} ${noun} did not take ${app}@${tag}. ${failed.join("; ")}`,
+          },
         );
       }
     },
@@ -534,9 +542,15 @@ export class AppsCommand {
       // ⚠️ Non-zero, because this runs in CI. Throwing is what sets
       // `process.exitCode`; returning here would report a failed deploy as a
       // successful pipeline step.
-      throw new AlephaError(
-        finished.error ||
-          `The deploy of ${app}@${tag} to ${app}/${env} ended ${finished.status}.`,
+      // A sentence and exit 1, never a stack trace: the machine's reason is
+      // the whole message (#Q3158's walk printed this one with a trace).
+      throw new CommandError(
+        { exitCode: LoreRefusals.EXIT_FAILURE },
+        {
+          message:
+            finished.error ||
+            `The deploy of ${app}@${tag} to ${app}/${env} ended ${finished.status}.`,
+        },
       );
     }
 

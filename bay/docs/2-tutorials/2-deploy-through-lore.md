@@ -154,7 +154,8 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
    bay remove myapp/production
    ```
 
-3. In Lore, delete the estate from its page under **Account → Estates**.
+3. In Lore, delete the estate from its page under **Account → Estates**, or
+   with `npx lore estate delete <slug> --yes`.
 4. Delete the server with your provider, which is what stops the bill.
 
 ## Next
@@ -162,3 +163,5 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
 - [Stacks](/bay/docs/guides-stacks): a database or a queue deployed beside the
   app, from Lore.
 - [Estates](/lore/docs/guides-estates): lending one machine to several projects.
+- [A throwaway server, from a shell](/bay/docs/tutorials-a-throwaway-server): the
+  same loop with no web page, for a server bought for an hour.

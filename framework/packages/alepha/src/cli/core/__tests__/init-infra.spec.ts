@@ -177,6 +177,12 @@ describe("init --infra", () => {
         'import { AlephaSigil } from "@alepha/lore/sigil";',
       );
       expect(entry).toContain("alepha.with(AlephaSigil);");
+      // The browser half sends the page views (#Q3158's walk).
+      const browser = fs.getFileContent("/project/src/main.browser.ts")!;
+      expect(browser).toContain(
+        'import { AlephaSigil } from "@alepha/lore/sigil";',
+      );
+      expect(browser).toContain("alepha.with(AlephaSigil);");
 
       expect(
         shell.calls.some((call) =>
@@ -214,6 +220,9 @@ describe("init --infra", () => {
       const pkg = JSON.parse(fs.getFileContent("/project/package.json")!);
       expect(pkg.dependencies["@alepha/lore"]).toBeUndefined();
       expect(fs.getFileContent("/project/src/main.server.ts")).not.toContain(
+        "AlephaSigil",
+      );
+      expect(fs.getFileContent("/project/src/main.browser.ts")).not.toContain(
         "AlephaSigil",
       );
     });
