@@ -31,7 +31,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
 import { ArrowLeft, Loader2, Paperclip, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "../../../../../api/schemas/feedbackSourceSchema.ts";
@@ -182,6 +182,18 @@ const useDraftAutofill = (projectId: string) => {
   return { draft, clear };
 };
 
+/**
+ * Whether the page runs inside the sigil's feedback popup, read through
+ * `useSyncExternalStore` so the server answers `false` and the browser reads
+ * `window.name` at hydration, with no state set from an effect. The name never
+ * changes while the page is open, so there is nothing to subscribe to.
+ */
+const ProjectFeedbackRequestPopup = {
+  subscribe: () => () => {},
+  client: () => window.name === "lore-feedback",
+  server: () => false,
+};
+
 const ProjectFeedbackRequest = () => {
   const { tr } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
@@ -202,10 +214,11 @@ const ProjectFeedbackRequest = () => {
   // `window.name` is read after mount: the page server-renders.
   const [overview] = useStore(userProjectsAtom);
   const memberProject = overview?.projects.find((p) => p.slug === projectSlug);
-  const [inPopup, setInPopup] = useState(false);
-  useEffect(() => {
-    setInPopup(window.name === "lore-feedback");
-  }, []);
+  const inPopup = useSyncExternalStore(
+    ProjectFeedbackRequestPopup.subscribe,
+    ProjectFeedbackRequestPopup.client,
+    ProjectFeedbackRequestPopup.server,
+  );
   const backLink =
     memberProject && !inPopup ? (
       <Link
