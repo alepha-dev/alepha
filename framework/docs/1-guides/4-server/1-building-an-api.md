@@ -143,6 +143,14 @@ All fields use Zod schemas via the `z` helper from `alepha`. The handler receive
 
 The `response` schema works the other way. What the handler returns is encoded through it, so a property the schema does not declare is stripped rather than leaked. That holds for an object, record or array schema: a text, number or boolean `response` is not validated, and the value goes out as a string. Without a `response`, the handler's type allows a string, a `Buffer`, a stream or nothing, but not an object: add a schema to return JSON. An object that gets past the type still goes out through `JSON.stringify`, with nothing stripped.
 
+In production, a JSON response is shaped and type-checked by its schema, but its constraint checks do not run. Undeclared properties are still stripped, defaults filled, text trimmed, and a value of the wrong type (a string where the schema says integer) still fails with a 500. What is skipped is every rule beyond the type: lengths, ranges, patterns, formats such as `z.email()`, refinements. A handler's own output is not untrusted input, and those checks were most of the cost of encoding a response. Outside production they all run, so a handler that breaks one fails in development and in tests. To run them in production too:
+
+```ts
+import { serverResponseOptions } from "alepha/server";
+
+alepha.store.set(serverResponseOptions, { checks: "always" });
+```
+
 ## The Request
 
 Besides the validated `params`, `query`, `body` and `headers`, the handler's argument carries what the server knows about the call:

@@ -1,3 +1,4 @@
+import { ZodJsonSerializer } from "../helpers/ZodJsonSerializer.ts";
 import { $inject } from "../primitives/$inject.ts";
 import { Json } from "./Json.ts";
 import { SchemaCodec } from "./SchemaCodec.ts";
@@ -10,6 +11,25 @@ export class JsonSchemaCodec extends SchemaCodec {
 
   public encodeToString<T extends ZType>(schema: T, value: Infer<T>): string {
     return this.json.stringify(value);
+  }
+
+  protected readonly serializer = new ZodJsonSerializer();
+
+  /**
+   * The JSON text of an unvalidated `value` under `schema`, without the
+   * schema's constraint checks (see `EncodeOptions.checks`), or `undefined`
+   * when the caller must validate and encode as usual: the schema or the
+   * value is one the fast writer does not take, or {@link Json} was
+   * substituted, since the writer produces what `JSON.stringify` would.
+   */
+  public encodeToStringUnchecked(
+    schema: ZType,
+    value: unknown,
+  ): string | undefined {
+    if (this.json.stringify !== JSON.stringify) {
+      return undefined;
+    }
+    return this.serializer.serialize(schema, value);
   }
 
   public encodeToBinary<T extends ZType>(

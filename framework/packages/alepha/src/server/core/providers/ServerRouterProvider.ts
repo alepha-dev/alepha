@@ -2,10 +2,13 @@ import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 
 import {
+  $atom,
   $hook,
   $inject,
+  $store,
   Alepha,
   coerceScalar,
+  type Infer,
   isFileLike,
   isTypeFile,
   type Middleware,
@@ -44,6 +47,32 @@ import { ServerTimingProvider } from "./ServerTimingProvider.ts";
 const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
 
 /**
+ * How a JSON response is checked against its schema.
+ */
+export const serverResponseOptions = $atom({
+  name: "alepha.server.response.options",
+  schema: z.object({
+    checks: z
+      .enum(["always", "development"])
+      .describe(
+        "When a JSON response runs its schema's constraint checks (lengths, ranges, patterns, formats). `development`: outside production only; in production the response is still shaped by its schema and type-checked. `always`: in production too.",
+      ),
+  }),
+  default: {
+    checks: "development",
+  },
+  serverOnly: true,
+});
+
+export type ServerResponseOptions = Infer<typeof serverResponseOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [serverResponseOptions.key]: ServerResponseOptions;
+  }
+}
+
+/**
  * Main router for all routes server side.
  *
  * Reminder:
@@ -66,6 +95,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     },
   });
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly responseOptions = $store(serverResponseOptions);
   protected readonly routes: ServerRoute[] = [];
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
@@ -347,8 +377,15 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (responseKind === "json" && route.schema?.response) {
       headers["content-type"] = "application/json";
+      // In production the schema shapes and type-checks the response but
+      // skips its constraint checks, unless `serverResponseOptions` says
+      // `always`: a handler's own output is not untrusted input, and the
+      // checks were most of the cost of encoding it.
+      const checks =
+        this.responseOptions.checks === "always" || !this.alepha.isProduction();
       reply.body = this.alepha.codec.encode(route.schema.response, reply.body, {
         as: "string" as const,
+        ...(checks ? {} : { checks: false as const }),
       });
       return;
     }

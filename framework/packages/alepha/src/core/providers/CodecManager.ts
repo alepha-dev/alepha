@@ -29,6 +29,19 @@ export interface EncodeOptions<T extends Encoding = Encoding> {
    * Set to `false` to skip schema validation before encoding.
    */
   validation?: false;
+
+  /**
+   * Set to `false` to skip the schema's constraint checks (lengths, ranges,
+   * patterns, formats, refinements) while keeping what shapes the output:
+   * undeclared keys stripped, defaults filled, strings trimmed and
+   * lowercased, and every value's type checked.
+   *
+   * JSON strings only (`as: "string"` with the JSON codec). A schema or a
+   * value the fast writer cannot take is validated and encoded as usual, so
+   * the result is the same text either way for any value that passes the
+   * checks. The server uses it for responses in production.
+   */
+  checks?: false;
 }
 
 export type EncodeResult<
@@ -107,6 +120,18 @@ export class CodecManager {
   ): EncodeResult<T, E> {
     const codec = this.getCodec(options?.encoder ?? this.default);
     const as = options?.as ?? "object";
+
+    if (
+      options?.checks === false &&
+      as === "string" &&
+      options.validation !== false &&
+      codec instanceof JsonSchemaCodec
+    ) {
+      const text = codec.encodeToStringUnchecked(schema, value);
+      if (text !== undefined) {
+        return text as EncodeResult<T, E>;
+      }
+    }
 
     if (options?.validation !== false) {
       value = this.schemaValidator.validate(schema, value);
