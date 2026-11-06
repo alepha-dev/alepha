@@ -37,6 +37,9 @@ import {
  * polling until the machine is online, so a script enrolling a new server has
  * something to block on before its first deploy.
  *
+ * `update` and `rotate` (#Q3134) change the deploy switch and the label, and
+ * mint a new secret, printed once in the shape `add` prints it.
+ *
  * `delete` (#Q3131) removes one of the caller's own estates, the end of a
  * throwaway server's life: the server refuses while an app, a stack or a
  * stack environment still deploys to it, and nothing on the machine stops.
@@ -363,6 +366,97 @@ export class EstateCommand {
     },
   });
 
+  public readonly update = $command({
+    name: "update",
+    description:
+      "Change one of your estates: whether it accepts deploys, and its label",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({
+      "allow-deploys": z
+        .boolean()
+        .describe(
+          "Let Lore deploy to it; --no-allow-deploys turns deploys off again",
+        )
+        .optional(),
+      label: z
+        .text({ description: "A label shown beside the slug; empty clears it" })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const body = {
+          ...(flags["allow-deploys"] === undefined
+            ? {}
+            : { deployAllowed: flags["allow-deploys"] }),
+          ...(flags.label === undefined ? {} : { label: flags.label }),
+        };
+        if (Object.keys(body).length === 0) {
+          throw new UsageError(
+            "Nothing to change: pass --allow-deploys, --no-allow-deploys or --label.",
+          );
+        }
+        const { id } = await this.owned.owned(args);
+        const updated = await this.estates.updateEstate({
+          params: { estateId: id },
+          body,
+        });
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}`,
+        );
+      });
+    },
+  });
+
+  public readonly rotate = $command({
+    name: "rotate",
+    description:
+      "Mint a new secret for one of your Bay estates and print the connector command once; the old secret stops working at once",
+    args: z.text({
+      title: "estate",
+      description: "The estate's slug, among the estates you own",
+    }),
+    flags: z.object({
+      yes: z.boolean().describe("Do not ask for confirmation (CI)").optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, ask }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const estate = await this.owned.owned(args);
+        await this.confirm(
+          ask,
+          flags.yes,
+          `Rotate the secret of ${estate.slug}? The machine's current secret stops working at once, until you run the new connector command on it.`,
+        );
+        const rotated = await this.estates.rotateEstate({
+          params: { estateId: estate.id },
+        });
+        if (flags.output === "json") {
+          this.render.json(
+            print,
+            this.minted(rotated, rotated.deployAllowed ?? false),
+          );
+          return;
+        }
+        print(`Rotated the secret of ${rotated.slug}.`);
+        print("");
+        print(
+          "Run this on the machine, once. The secret is shown here and never again:",
+        );
+        print("");
+        print(`  ${this.connectorCommand(rotated.secret)}`);
+      });
+    },
+  });
+
   public readonly delete = $command({
     name: "delete",
     description:
@@ -379,20 +473,11 @@ export class EstateCommand {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const estate = await this.owned.owned(args);
-        if (!flags.yes) {
-          // A prompt nobody can answer would hang a script: refuse instead.
-          if (!this.input.isTTY()) {
-            throw new UsageError(
-              `Deleting ${estate.slug} needs a confirmation, and there is no terminal to ask on. Pass --yes.`,
-            );
-          }
-          const confirmed = await ask.confirm(
-            `Delete ${estate.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
-          );
-          if (!confirmed) {
-            throw new AlephaError("Not confirmed; nothing was changed.");
-          }
-        }
+        await this.confirm(
+          ask,
+          flags.yes,
+          `Delete ${estate.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
+        );
         await this.estates.deleteEstate({ params: { estateId: estate.id } });
         if (flags.output === "json") {
           this.render.json(print, {
@@ -416,19 +501,44 @@ export class EstateCommand {
   public readonly estate = $command({
     name: "estate",
     description:
-      "The machines this project deploys to: add one, list them, read one, wait for it, read its stats, delete it",
+      "The machines this project deploys to: add one, list them, read one, wait for it, read its stats, update, rotate or delete it",
     children: [
       this.add,
       this.list,
       this.get,
       this.wait,
       this.stats,
+      this.update,
+      this.rotate,
       this.delete,
     ],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  /**
+   * Ask before an action that cannot be taken back, unless `--yes` was given.
+   * A prompt nobody can answer would hang a script, so with no terminal the
+   * command refuses instead.
+   */
+  protected async confirm(
+    ask: { confirm: (question: string) => Promise<boolean> },
+    yes: boolean | undefined,
+    question: string,
+  ): Promise<void> {
+    if (yes) {
+      return;
+    }
+    if (!this.input.isTTY()) {
+      throw new UsageError(
+        "This needs a confirmation, and there is no terminal to ask on. Pass --yes.",
+      );
+    }
+    if (!(await ask.confirm(question))) {
+      throw new AlephaError("Not confirmed; nothing was changed.");
+    }
+  }
 
   /**
    * The line a machine runs to enrol, exactly as every command that mints a

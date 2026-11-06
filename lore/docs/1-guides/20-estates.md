@@ -40,8 +40,15 @@ bay connector set <lore-url> <secret>
 or yours when self-hosted), not the machine's.
 
 ⚠️ The secret is shown **once**. Lore keeps only a hash of it, so it cannot
-show it again; if you lose it, rotate the estate to mint a new one and run the
-command again.
+show it again; if you lose it, rotate the estate to mint a new one
+(`lore estate rotate my-vps`, or the console) and run the command again. The
+old secret stops working the moment you rotate.
+
+A script reads the secret as JSON instead of from the sentence:
+
+```bash
+lore estate add my-vps --allow-deploys --output json | jq -r .command
+```
 
 Once Bay is connected, the estate shows as online. A script that enrolls a new
 server blocks on that before its first deploy:
@@ -69,7 +76,9 @@ A new Bay estate does **not** accept deploys. Turn **Allow deploys** on when you
 are ready, on the **Settings** tab of its
 [console](#the-console-of-a-bay-estate), or pass `--allow-deploys` to
 `lore estate add`. A Cloudflare estate accepts deploys from creation, and the
-same switch turns them off.
+same switch turns them off. From a shell, `lore estate update my-vps
+--allow-deploys` (or `--no-allow-deploys`) does the same, and `--label` renames
+it.
 
 The console's **Settings** tab also has:
 

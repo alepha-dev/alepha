@@ -323,6 +323,8 @@ See [Artifacts](/lore/docs/guides-artifacts).
 | `lore estate get <slug>`    | One of your estates: online or not, last seen, deploys, the projects it is lent to, and what the machine runs. `--output json`.                                                                                                    |
 | `lore estate wait <slug>`   | Block until one of your estates is online, polling every 2 s; exit 1 on timeout with the last state seen. `--timeout` (seconds, default 120), `--output json`.                                                                     |
 | `lore estate stats <slug>`  | One of your estates' CPU and memory: the current reading, then one mean per day. `--since`, `--output json`.                                                                                                                       |
+| `lore estate update <slug>` | Turn deploys on (`--allow-deploys`) or off (`--no-allow-deploys`), or set the `--label`, of one of your estates. `--output json`.                                                                                                  |
+| `lore estate rotate <slug>` | Mint a new secret for one of your Bay estates and print the connector command once; the old secret stops working at once. `--yes`, `--output json` (the shape `estate add` prints).                                                |
 | `lore estate delete <slug>` | Delete one of your estates; refused while an app, a stack or a stack environment deploys to it. `--yes`, `--output json`.                                                                                                          |
 
 See [Estates](/lore/docs/guides-estates).

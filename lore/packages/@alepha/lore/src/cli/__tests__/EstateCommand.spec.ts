@@ -68,7 +68,17 @@ describe("lore estate", () => {
       getEstateInventory: async () => ({ inventory: null, expected: [] }),
       updateEstate: async (request: unknown) => {
         calls.push({ name: "update", request });
-        return {};
+        const body = (request as { body: Record<string, unknown> }).body;
+        return { slug: "vps-ovh", ...body };
+      },
+      rotateEstate: async (request: unknown) => {
+        calls.push({ name: "rotate", request });
+        return {
+          id: "e1",
+          slug: "vps-ovh",
+          deployAllowed: true,
+          secret: "es_live_rotated",
+        };
       },
       deleteEstate: async (request: unknown) => {
         calls.push({ name: "delete", request });
@@ -130,7 +140,15 @@ describe("lore estate", () => {
       estates,
     });
     const run = async (
-      sub: "add" | "list" | "get" | "wait" | "stats" | "delete",
+      sub:
+        | "add"
+        | "list"
+        | "get"
+        | "wait"
+        | "stats"
+        | "update"
+        | "rotate"
+        | "delete",
       argv: string,
     ) => {
       await alepha.inject(CliProvider).run(command[sub] as never, { argv });
@@ -297,6 +315,67 @@ describe("lore estate", () => {
       await expect(run("wait", "vps-ovh --timeout 1")).rejects.toThrow(
         "vps-ovh is still offline after 1s (last seen never)",
       );
+    });
+  });
+
+  describe("update and rotate (#Q3134)", () => {
+    it("turns deploys on, off again, and sets the label", async ({
+      expect,
+    }) => {
+      const { run, printed, calls } = create();
+      await run("update", "vps-ovh --allow-deploys --label ovh");
+      await run("update", "vps-ovh --no-allow-deploys");
+      expect(calls).toEqual([
+        {
+          name: "update",
+          request: {
+            params: { estateId: "e1" },
+            body: { deployAllowed: true, label: "ovh" },
+          },
+        },
+        {
+          name: "update",
+          request: {
+            params: { estateId: "e1" },
+            body: { deployAllowed: false },
+          },
+        },
+      ]);
+      expect(printed.join("\n")).toContain("Updated vps-ovh: deploys off");
+    });
+
+    it("refuses an update with nothing to change", async ({ expect }) => {
+      const { run, calls } = create();
+      await expect(run("update", "vps-ovh")).rejects.toThrow(
+        "Nothing to change",
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it("rotates with --yes and prints the new connector command once, as JSON in add's shape", async ({
+      expect,
+    }) => {
+      const { run, printed, calls } = create();
+      await run("rotate", "vps-ovh --yes --output json");
+      expect(calls).toEqual([
+        { name: "rotate", request: { params: { estateId: "e1" } } },
+      ]);
+      expect(JSON.parse(printed.join("\n"))).toEqual({
+        id: "e1",
+        slug: "vps-ovh",
+        deployAllowed: true,
+        lore: "https://lore.test",
+        secret: "es_live_rotated",
+        command: "bay connector set https://lore.test es_live_rotated",
+      });
+    });
+
+    it("refuses to rotate without --yes when there is no terminal", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await expect(run("rotate", "vps-ovh")).rejects.toThrow("Pass --yes");
+      expect(calls).toEqual([]);
     });
   });
 });
