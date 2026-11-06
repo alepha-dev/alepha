@@ -177,7 +177,16 @@ describe("the Lore CLI command surface", () => {
         "link",
         "merge",
       ],
-      estate: ["add", "list", "stats"],
+      estate: [
+        "add",
+        "list",
+        "get",
+        "wait",
+        "stats",
+        "update",
+        "rotate",
+        "delete",
+      ],
       registry: ["add", "list", "remove"],
       stack: [
         "create",
