@@ -272,13 +272,13 @@ the checked-out one. It expects an Alepha project.
 
 The deployed copies themselves, each named by `--app` and `--env`:
 
-| Command                     | What it does                                                                        |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| `lore apps instance list`   | Every copy this project tracks.                                                     |
-| `lore apps instance get`    | One copy, with what it has unlocked.                                                |
-| `lore apps instance create` | Track a copy. Nothing is minted. `--url`, `--ephemeral`.                            |
-| `lore apps instance update` | `--new-app`, `--new-env`, `--url`, or `--estate-id` (`0` clears it).                |
-| `lore apps instance delete` | Forget a copy, its sigil and what it reported. It undeploys nothing. Needs `--yes`. |
+| Command                     | What it does                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `lore apps instance list`   | Every copy this project tracks.                                                                                |
+| `lore apps instance get`    | One copy, with what it has unlocked.                                                                           |
+| `lore apps instance create` | Track a copy. Nothing is minted. `--url`, `--ephemeral`, `--estate <slug>` (one lent to the project).          |
+| `lore apps instance update` | `--new-app`, `--new-env`, `--url`, `--estate <slug>`, or `--estate-id` (`0` clears it); not both estate flags. |
+| `lore apps instance delete` | Forget a copy, its sigil and what it reported. It undeploys nothing. Needs `--yes`.                            |
 
 A sigil is the key one copy reports with:
 
