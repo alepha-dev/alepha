@@ -964,6 +964,7 @@ const pageEdgeFresh = async (cache, key, at) => {
               authorization: request.headers.get("authorization") || undefined,
               cookie: request.headers.get("cookie") || undefined,
             },
+            ip: request.headers.get("cf-connecting-ip") || undefined,
             signal: request.signal,
           });
         } catch (err) {

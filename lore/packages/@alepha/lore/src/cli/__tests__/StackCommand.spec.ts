@@ -127,6 +127,17 @@ describe("lore stack", () => {
           });
           return {};
         },
+        addStackTestRoute: async (request: { body: { service: string } }) => {
+          calls.push({ name: "testRoute", request: request.body });
+          return {
+            routes: [
+              {
+                service: request.body.service,
+                domain: "staging-hello.203-0-113-10.sslip.io",
+              },
+            ],
+          };
+        },
         deleteStack: async (request: unknown) => {
           calls.push({ name: "deleteStack", request });
           return { ok: true };
@@ -226,6 +237,27 @@ describe("lore stack", () => {
     expect(printed.join("\n")).toContain("created: db");
     expect(printed.join("\n")).toContain(
       "Deployed revision 2 to hello/staging.",
+    );
+  });
+
+  it("--test-hostname routes the sslip.io name before the deploy, and prints it (#Q3137)", async ({
+    expect,
+  }) => {
+    const { fs, run, calls, printed } = create();
+    await fs.writeFile(
+      `${process.cwd()}/compose.yml`,
+      "services:\n  web:\n    image: nginx\n",
+    );
+    await run("deploy", "--env staging --test-hostname web");
+    expect(calls.map((c) => c.name)).toEqual([
+      "upload",
+      "createEnvironment",
+      "testRoute",
+      "deploy",
+    ]);
+    expect(calls[2].request).toEqual({ service: "web" });
+    expect(printed.join("\n")).toContain(
+      "Routing https://staging-hello.203-0-113-10.sslip.io/ to web.",
     );
   });
 

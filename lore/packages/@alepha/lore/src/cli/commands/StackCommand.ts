@@ -175,6 +175,12 @@ export class StackCommand {
           description: "With --app: the build's tag. Defaults to latest",
         })
         .optional(),
+      "test-hostname": z
+        .text({
+          description:
+            "Also serve this service on <env>-<stack>.<ip>.sslip.io, from the estate's public IP: HTTPS with no DNS to set up",
+        })
+        .optional(),
       "dry-run": z
         .boolean()
         .describe("Say what would happen, and change nothing")
@@ -262,6 +268,19 @@ export class StackCommand {
           stackId: stack.id,
           environmentId: environment.id,
         };
+        if (flags["test-hostname"]) {
+          // Before the deploy: the routes travel in its frame (#Q3137).
+          const routed = await this.stackApi.addStackTestRoute({
+            params: target,
+            body: { service: flags["test-hostname"] },
+          });
+          const test = routed.routes.find((route) =>
+            route.domain.endsWith(".sslip.io"),
+          );
+          if (test) {
+            print(`Routing https://${test.domain}/ to ${test.service}.`);
+          }
+        }
         const queued = await this.deployApi.deployStackEnvironment({
           params: target,
           body: flags.revision ? { revision: flags.revision } : {},

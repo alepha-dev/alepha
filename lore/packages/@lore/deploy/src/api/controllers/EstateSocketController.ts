@@ -83,11 +83,20 @@ export class EstateSocketController {
 
   socket = $websocket({
     channel: this.channel,
-    authorize: async ({ headers }) => {
+    authorize: async ({ headers, ip }) => {
       const estate = await this.tokens.verify(
         this.tokens.bearer(headers.authorization),
       );
-      return estate ? { roomId: estate.id } : undefined;
+      if (!estate) {
+        return undefined;
+      }
+      // The handshake is the one place the connecting address is readable
+      // (#Q3137); `onConnect` gets no headers. Written only when it moved.
+      const publicIp = this.publicIpOf(ip);
+      if (publicIp && publicIp !== estate.publicIp) {
+        await this.estates.updateById(estate.id, { publicIp });
+      }
+      return { roomId: estate.id };
     },
     onConnect: async ({ connectionId, roomIds }) => {
       const estate = await this.estateOf(roomIds[0]);
@@ -156,5 +165,18 @@ export class EstateSocketController {
 
   protected now(): string {
     return new Date(this.dateTime.nowMillis()).toISOString();
+  }
+
+  /**
+   * The address a machine connects from, as the engine reports it (the
+   * socket's on Node, `cf-connecting-ip` on Cloudflare), kept only when it
+   * reads as an IP.
+   */
+  protected publicIpOf(raw: string | undefined): string | undefined {
+    const ip = raw?.trim();
+    if (!ip || ip.length > 45) {
+      return undefined;
+    }
+    return /^[0-9.]+$|^[0-9a-f:]+$/i.test(ip) ? ip : undefined;
   }
 }

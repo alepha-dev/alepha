@@ -63,6 +63,13 @@ export interface WebSocketHandshake {
   url: string;
   headers: Record<string, string | undefined>;
   /**
+   * The address the client connects from, when the engine knows it: the
+   * socket's remote address on Node, `cf-connecting-ip` (which Cloudflare
+   * overwrites rather than appends) on Cloudflare. Behind another proxy on
+   * Node it is that proxy's address. Informational: never a credential.
+   */
+  ip?: string;
+  /**
    * Aborted when the socket closes while it is being admitted. The admission
    * middlewares run under it, so what they call stops with it (#E85).
    */

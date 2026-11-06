@@ -196,6 +196,24 @@ tab adds a full domain on top, served by one service:
 lore stack route add web --domain app.example.com -e production
 ```
 
+### A test hostname, with no DNS
+
+A server bought for an hour has an IP and no domain. `--test-hostname <service>`
+on `lore stack deploy` serves that service on a name derived from the estate's
+public IP, before the deploy runs:
+
+```bash
+lore stack deploy -e staging --test-hostname web
+# Routing https://staging-umami.203-0-113-10.sslip.io/ to web.
+```
+
+The name is `<env>-<stack>.<ip-with-dashes>.sslip.io`. sslip.io answers any such
+name with the IP it contains, so it points at the machine at once, and Bay gets
+a real certificate for it as for any route. Nothing is created in anyone's DNS,
+so nothing needs cleaning: the route goes with the environment. The IP is the
+one Lore saw when the machine connected, so the estate must have connected once
+(`lore estate wait`); `lore estate get` shows it.
+
 ## Private registries
 
 An image from a private registry needs a credential, stored per project and

@@ -1,0 +1,1 @@
+ALTER TABLE `estates` ADD `public_ip` text;

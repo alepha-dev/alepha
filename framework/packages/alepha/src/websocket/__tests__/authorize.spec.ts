@@ -256,4 +256,37 @@ describe("$room authorize", () => {
 
     await alepha.stop();
   });
+
+  it("hands authorize the address the client connects from", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaWebSocket);
+    const seen: Array<string | undefined> = [];
+
+    class Controller {
+      ch = $channel({
+        path: "/ws/authorize-ip",
+        schema: { in: serverMessage, out: clientMessage },
+      });
+
+      ws = $websocket({
+        channel: this.ch,
+        handler: async () => {},
+        authorize: async ({ ip }) => {
+          seen.push(ip);
+          return { roomId: "estate-1" };
+        },
+      });
+    }
+
+    alepha.inject(Controller);
+    await alepha.start();
+    const ws = new WebSocket(wsUrl(alepha, "/ws/authorize-ip"));
+    await waitForOpen(ws);
+    ws.close();
+    await alepha.stop();
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatch(/^(127\.0\.0\.1|::1)$/);
+  });
 });

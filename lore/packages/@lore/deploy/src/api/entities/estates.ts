@@ -183,6 +183,16 @@ export const estates = $entity({
      */
     lastSeenAt: z.string().optional(),
     /**
+     * The address the machine connected FROM, as Lore saw it at the
+     * handshake (`cf-connecting-ip` on Cloudflare, else the first
+     * `x-forwarded-for` hop) (#Q3137). What a test hostname derives from, so
+     * a server bought for an hour can serve HTTPS with no DNS to set up. Seen
+     * by Lore rather than reported by the machine, which behind a 1:1 NAT
+     * knows only its private address. Absent for a machine that never
+     * connected, or behind nothing Lore can read.
+     */
+    publicIp: z.string().max(45).optional(),
+    /**
      * The live gauge, upserted on every stats push. A point value, never a
      * series: "CPU is 34% right now" is this row, "CPU over 30 days" is
      * `$analytics` (#1627).

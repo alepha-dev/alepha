@@ -158,10 +158,14 @@ const mint = async (
 const rowOf = (ctx: TestContext, id: string) =>
   ctx.repos.estates.getOne({ where: { id: { eq: id } } });
 
-const connect = (ctx: TestContext, secret: string): Promise<Client> =>
+const connect = (
+  ctx: TestContext,
+  secret: string,
+  extra: Record<string, string> = {},
+): Promise<Client> =>
   new Promise((resolve, reject) => {
     const ws = new WebSocket(ctx.url, {
-      headers: { authorization: `Bearer ${secret}` },
+      headers: { authorization: `Bearer ${secret}`, ...extra },
     });
     const client: Client = { ws, frames: [] };
     ws.on("message", (data: Buffer) => {
@@ -237,6 +241,21 @@ describe("EstateSocketController, the handshake", () => {
     expect(row.connectionId).toBeDefined();
     expect(ctx.service.isOnline(row)).toBe(true);
 
+    await close(client);
+  });
+
+  it("records the address the machine connects from (#Q3137)", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-ip");
+
+    const client = await connect(ctx, minted.secret);
+    await hello(client);
+    // On Node the engine reports the socket's own address: loopback here.
+    expect((await rowOf(ctx, minted.id)).publicIp).toMatch(
+      /^(127\.0\.0\.1|::1)$/,
+    );
     await close(client);
   });
 

@@ -1,13 +1,21 @@
 import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
-import { $action, NotFoundError, okSchema } from "alepha/server";
+import { $repository } from "alepha/orm";
+import {
+  $action,
+  BadRequestError,
+  NotFoundError,
+  okSchema,
+} from "alepha/server";
 
+import { estates } from "../entities/estates.ts";
 import type { Stack } from "../entities/stacks.ts";
 import { stackEnvironmentResourceSchema } from "../schemas/stackEnvironmentResourceSchema.ts";
 import { stackResourceSchema } from "../schemas/stackResourceSchema.ts";
 import { stackRevisionResourceSchema } from "../schemas/stackRevisionResourceSchema.ts";
 import { StackBundleReader } from "../services/StackBundleReader.ts";
 import { StackService } from "../services/StackService.ts";
+import { TestHostnameResolver } from "../services/TestHostnameResolver.ts";
 
 /**
  * Stacks: apps and services deployed together from one `compose.yml`.
@@ -19,6 +27,8 @@ import { StackService } from "../services/StackService.ts";
  */
 export class StackController {
   protected readonly stacks = $inject(StackService);
+  protected readonly testHostnames = $inject(TestHostnameResolver);
+  protected readonly estateRows = $repository(estates);
 
   protected writeGate = () =>
     $ownsProject({
@@ -221,6 +231,59 @@ export class StackController {
         params.environmentId,
       );
       await this.stacks.addRoute(environment, body);
+      return await this.environmentResource(stack, environment.id);
+    },
+  });
+
+  /**
+   * Route a test hostname to one service (#Q3137): `<env>-<stack>.<ip>.sslip.io`,
+   * derived from the address the environment's estate connected from, by
+   * {@link TestHostnameResolver}. Idempotent: a hostname already routed here
+   * answers the environment as it is. Refused while the estate's address is
+   * unknown (it never connected) or is not IPv4.
+   */
+  addStackTestRoute = $action({
+    use: [this.writeGate()],
+    method: "PUT",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/routes/test",
+    description:
+      "Serve one service of a stack environment on a test hostname derived from its estate's public IP, with no DNS to set up.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        stackId: z.uuid(),
+        environmentId: z.uuid(),
+      }),
+      body: z.object({ service: z.string().min(1).max(100) }),
+      response: stackEnvironmentResourceSchema,
+    },
+    handler: async ({ params, body }) => {
+      const stack = await this.stacks.get(params.projectId, params.stackId);
+      const environment = await this.stacks.getEnvironment(
+        stack,
+        params.environmentId,
+      );
+      const estateId = this.stacks.estateOf(stack, environment);
+      const estate = estateId
+        ? await this.estateRows.findById(estateId)
+        : undefined;
+      const domain = estate
+        ? this.testHostnames.hostnameFor(estate, stack.name, environment.env)
+        : undefined;
+      if (!domain) {
+        throw new BadRequestError(
+          estate
+            ? `Estate '${estate.slug}' has no known IPv4 address yet: it is learned when the machine connects. Run lore estate wait ${estate.slug}, then try again.`
+            : `${stack.name}/${environment.env} has no estate to derive a test hostname from.`,
+        );
+      }
+      const routed = await this.stacks.routesOf([environment.id]);
+      if (!routed.some((route) => route.domain === domain)) {
+        await this.stacks.addRoute(environment, {
+          service: body.service,
+          domain,
+        });
+      }
       return await this.environmentResource(stack, environment.id);
     },
   });

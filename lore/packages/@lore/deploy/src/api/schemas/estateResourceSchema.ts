@@ -52,6 +52,7 @@ export const estateResourceSchema = estates.schema
     disconnectedAt: true,
     connectionId: true,
     lastSeenAt: true,
+    publicIp: true,
     cpuPercent: true,
     memoryPercent: true,
     statsAt: true,

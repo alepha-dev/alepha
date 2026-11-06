@@ -346,21 +346,21 @@ See [Estates](/lore/docs/guides-estates).
 A stack is a group of apps and services deployed together from one
 `compose.yml` onto a Bay estate.
 
-| Command                             | What it does                                                                                                                                    |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lore stack create`                 | Create a stack with its default `--estate`, and upload its first revision from `--file`.                                                        |
-| `lore stack deploy`                 | Deploy to an environment (`-e`, default `production`), uploading `--file` as a new revision first. `--app` with `--tag` deploys one member app. |
-| `lore stack rollback`               | Deploy an earlier revision again. Volumes and their data are untouched.                                                                         |
-| `lore stack destroy`                | Forget an environment in Lore, and print the command that removes it from the machine.                                                          |
-| `lore stack delete [name]`          | Delete a stack with no environment left, its routes and revisions; refused while one remains. `--yes`.                                          |
-| `lore stack list`                   | The project's stacks and their environments.                                                                                                    |
-| `lore stack get`                    | One stack: routes, services and newest deploys of each environment. `--env` narrows it. Never a value.                                          |
-| `lore stack revisions`              | A stack's revisions, newest first.                                                                                                              |
-| `lore stack secrets set/list/unset` | A stack environment's variables. `set` takes `KEY=VALUE`, `KEY` (read from `$KEY`), `--file`, or `--generate` for random values.                |
-| `lore stack route add/list/remove`  | Serve a full domain from one service.                                                                                                           |
-| `lore stack ps`                     | The services: state, memory, restarts and image digest.                                                                                         |
-| `lore stack logs <service>`         | The tail of one service's logs.                                                                                                                 |
-| `lore stack restart <service>`      | Restart one service.                                                                                                                            |
+| Command                             | What it does                                                                                                                                                                                                                                  |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore stack create`                 | Create a stack with its default `--estate`, and upload its first revision from `--file`.                                                                                                                                                      |
+| `lore stack deploy`                 | Deploy to an environment (`-e`, default `production`), uploading `--file` as a new revision first. `--app` with `--tag` deploys one member app. `--test-hostname <service>` serves a service on `<env>-<stack>.<ip>.sslip.io`, no DNS needed. |
+| `lore stack rollback`               | Deploy an earlier revision again. Volumes and their data are untouched.                                                                                                                                                                       |
+| `lore stack destroy`                | Forget an environment in Lore, and print the command that removes it from the machine.                                                                                                                                                        |
+| `lore stack delete [name]`          | Delete a stack with no environment left, its routes and revisions; refused while one remains. `--yes`.                                                                                                                                        |
+| `lore stack list`                   | The project's stacks and their environments.                                                                                                                                                                                                  |
+| `lore stack get`                    | One stack: routes, services and newest deploys of each environment. `--env` narrows it. Never a value.                                                                                                                                        |
+| `lore stack revisions`              | A stack's revisions, newest first.                                                                                                                                                                                                            |
+| `lore stack secrets set/list/unset` | A stack environment's variables. `set` takes `KEY=VALUE`, `KEY` (read from `$KEY`), `--file`, or `--generate` for random values.                                                                                                              |
+| `lore stack route add/list/remove`  | Serve a full domain from one service.                                                                                                                                                                                                         |
+| `lore stack ps`                     | The services: state, memory, restarts and image digest.                                                                                                                                                                                       |
+| `lore stack logs <service>`         | The tail of one service's logs.                                                                                                                                                                                                               |
+| `lore stack restart <service>`      | Restart one service.                                                                                                                                                                                                                          |
 
 `--name` picks the stack and defaults to the project slug. See
 [Stacks](/lore/docs/guides-stacks) for Lore's side, and

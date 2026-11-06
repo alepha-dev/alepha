@@ -285,6 +285,7 @@ export class EstateCommand {
             ["Type", estate.type],
             ["State", estate.online ? "online" : "offline"],
             ["Last seen", estate.lastSeenAt ?? "never"],
+            ["Public IP", estate.publicIp ?? "not known yet"],
             ["Deploys", estate.deployAllowed ? "allowed" : "off"],
             [
               "Lent to",

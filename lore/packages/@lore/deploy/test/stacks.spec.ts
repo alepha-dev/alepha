@@ -208,6 +208,64 @@ describe("stacks", () => {
     });
   });
 
+  describe("a test hostname (#Q3137)", () => {
+    const route = (
+      w: Awaited<ReturnType<typeof stackWorld>>,
+      ids: {
+        stackId: string;
+        environmentId: string;
+      },
+    ) =>
+      alepha.inject(StackController).addStackTestRoute.fetch(
+        {
+          params: { projectId: w.project.id, ...ids },
+          body: { service: "web" },
+        },
+        { user: w.user },
+      );
+
+    it("routes <env>-<stack>.<ip>.sslip.io to the service, once", async ({
+      expect,
+    }) => {
+      const w = await stackWorld(alepha);
+      const estate = await lentBayEstate(w);
+      await w.rows.estates.updateById(estate.id, { publicIp: "203.0.113.10" });
+      const stack = await createStack(alepha, w, {
+        name: "umami",
+        estateId: estate.id,
+      });
+      const env = await createEnvironment(alepha, w, stack.id, {
+        env: "production",
+      });
+      const ids = { stackId: stack.id, environmentId: env.id };
+
+      const first = (await route(w, ids)).data;
+      const again = (await route(w, ids)).data;
+
+      expect(first.routes).toEqual([
+        expect.objectContaining({
+          service: "web",
+          domain: "production-umami.203-0-113-10.sslip.io",
+        }),
+      ]);
+      expect(again.routes).toHaveLength(1);
+    });
+
+    it("refuses while the estate's address is unknown, naming lore estate wait", async ({
+      expect,
+    }) => {
+      const w = await stackWorld(alepha);
+      const estate = await lentBayEstate(w);
+      const stack = await createStack(alepha, w, { estateId: estate.id });
+      const env = await createEnvironment(alepha, w, stack.id, {
+        env: "production",
+      });
+      await expect(
+        route(w, { stackId: stack.id, environmentId: env.id }),
+      ).rejects.toThrow(`lore estate wait ${estate.slug}`);
+    });
+  });
+
   describe("environment routes", () => {
     it("adds and removes full-domain routes, normalised and unique per environment", async ({
       expect,

@@ -665,12 +665,15 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
    * absolute URL and the two headers a credential can arrive in.
    */
   protected handshakeOf(request: IncomingMessage) {
+    // `::ffff:203.0.113.10` is an IPv4 client on a dual-stack socket.
+    const ip = request.socket?.remoteAddress?.replace(/^::ffff:/, "");
     return {
       url: `http://${request.headers.host ?? "localhost"}${request.url ?? "/"}`,
       headers: {
         authorization: request.headers.authorization,
         cookie: request.headers.cookie,
       },
+      ...(ip ? { ip } : {}),
     };
   }
 
