@@ -1,4 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
+import { Check, X } from "lucide-react";
 
 import { cn } from "../core/utils.ts";
 import {
@@ -13,7 +14,20 @@ export interface AiChatMessageProps {
    * How the assistant's links render. See `MarkdownView`'s `renderLink`.
    */
   renderLink?: MarkdownLinkRenderer;
+  /**
+   * The words a tool step shows: `AiChat`'s `toolLabel`.
+   */
+  toolLabel?: AiChatToolLabel;
 }
+
+/**
+ * Names a tool step in the user's words ("Searched clients") instead of the
+ * tool's own name. Return undefined to keep the default line.
+ */
+export type AiChatToolLabel = (
+  name: string,
+  state: "running" | "done" | "failed",
+) => string | undefined;
 
 /**
  * One line of the conversation: the user's message as typed, the
@@ -24,23 +38,26 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
   const item = props.item;
 
   if (item.role === "tool") {
+    const name = item.name ?? "";
+    const label =
+      props.toolLabel?.(name, item.isError ? "failed" : "done") ??
+      (item.isError
+        ? tr("ai.chat.toolFailed", { default: "$1 failed", args: [name] })
+        : tr("ai.chat.toolDone", { default: "Ran $1", args: [name] }));
     return (
       <div
         data-testid="ai-chat-tool"
         className={cn(
-          "text-muted-foreground px-1 text-xs",
+          "text-muted-foreground flex items-center gap-1.5 px-0.5 text-xs",
           item.isError && "text-danger-text",
         )}
       >
-        {item.isError
-          ? tr("ai.chat.toolFailed", {
-              default: "$1 failed",
-              args: [item.name ?? ""],
-            })
-          : tr("ai.chat.toolDone", {
-              default: "Ran $1",
-              args: [item.name ?? ""],
-            })}
+        {item.isError ? (
+          <X className="size-3.5 shrink-0" />
+        ) : (
+          <Check className="text-success-text size-3.5 shrink-0" />
+        )}
+        <span>{label}</span>
       </div>
     );
   }
@@ -49,7 +66,7 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
     return (
       <div
         data-testid="ai-chat-user"
-        className="bg-primary text-primary-foreground ml-8 self-end rounded-lg px-3 py-2 text-sm whitespace-pre-wrap"
+        className="bg-muted ml-10 self-end rounded-2xl rounded-br-md px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap"
       >
         {item.content}
       </div>
@@ -57,7 +74,10 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
   }
 
   return (
-    <div data-testid="ai-chat-assistant" className="mr-8 self-start">
+    <div
+      data-testid="ai-chat-assistant"
+      className="mr-4 self-start text-sm leading-relaxed"
+    >
       <MarkdownView content={item.content} renderLink={props.renderLink} />
     </div>
   );

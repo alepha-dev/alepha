@@ -228,8 +228,9 @@ describe("AiChat", () => {
       ]);
     });
 
+    fireEvent.click(view.getByRole("button", { name: "History" }));
     fireEvent.click(
-      await view.findByRole("button", { name: "Earlier question" }),
+      await view.findByRole("button", { name: /Earlier question/ }),
     );
     await view.findByText("Earlier answer");
 
@@ -462,5 +463,70 @@ describe("AiChat", () => {
     const link = await view.findByTestId("known-link");
     expect(link.textContent).toBe("the planning");
     expect(view.getByText(/nowhere/).closest("a")).toBeNull();
+  });
+
+  it("starts from a suggestion, names tool steps through toolLabel, and sends on Enter", async () => {
+    const { links, view } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          { type: "tool_call", callId: "t1", name: "findNotes", input: {} },
+          { type: "tool_result", callId: "t1", name: "findNotes" },
+          { type: "text", text: "Two notes." },
+          { type: "end", reason: "stop" },
+        ]);
+        l.streams.push([
+          { type: "text", text: "Done." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {
+        suggestions: [{ label: "My notes", prompt: "list my notes" }],
+        toolLabel: (name, state) =>
+          name === "findNotes" && state === "done"
+            ? "Searched notes"
+            : undefined,
+      },
+    );
+
+    fireEvent.click(await view.findByRole("button", { name: "My notes" }));
+    await view.findByText("Two notes.");
+    expect(links.bodies("chat")[0].message).toBe("list my notes");
+    expect(view.getByTestId("ai-chat-tool").textContent).toBe("Searched notes");
+    expect(view.queryByTestId("ai-chat-empty")).toBeNull();
+
+    const box = document.querySelector(
+      "[data-testid='ai-chat'] textarea",
+    ) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "thanks" } });
+    // Shift+Enter is a new line, not a send.
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    expect(links.bodies("chat")).toHaveLength(1);
+    fireEvent.keyDown(box, { key: "Enter" });
+    await view.findByText("Done.");
+    expect(links.bodies("chat")[1].message).toBe("thanks");
+    expect(box.value).toBe("");
+  });
+
+  it("locks the composer while a confirmation waits", async () => {
+    const { view, say } = await mount((l) => {
+      l.streams.push([
+        { type: "conversation", conversationId },
+        {
+          type: "confirm",
+          callId: "c1",
+          name: "createNote",
+          input: { body: { title: "x" } },
+        },
+        { type: "end", reason: "paused" },
+      ]);
+    });
+    await say("add a note");
+    await view.findByTestId("ai-chat-confirm");
+    const box = document.querySelector(
+      "[data-testid='ai-chat'] textarea",
+    ) as HTMLTextAreaElement;
+    expect(box.disabled).toBe(true);
+    expect(box.placeholder).toBe("Confirm or cancel the card to go on");
   });
 });

@@ -261,6 +261,19 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
     [api],
   );
 
+  /**
+   * End the running turn: abort the request, keep what already streamed.
+   */
+  const stop = () => {
+    send.cancel();
+    answer.cancel();
+    setActivity(undefined);
+    if (streaming) {
+      push({ role: "assistant", content: streaming });
+    }
+    setStreaming("");
+  };
+
   return {
     conversationId,
     items,
@@ -273,6 +286,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
     approve: () => answer.run("approve"),
     deny: () => answer.run("deny"),
     open: (id) => open.run(id),
+    stop,
   };
 };
 
@@ -340,4 +354,8 @@ export interface UseAiChat {
   approve: () => Promise<RunResult<void>>;
   deny: () => Promise<RunResult<void>>;
   open: (id?: string) => Promise<RunResult<void>>;
+  /**
+   * End the running turn and keep what already streamed.
+   */
+  stop: () => void;
 }
