@@ -31,7 +31,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
 import { ArrowLeft, Loader2, Paperclip, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "../../../../../api/schemas/feedbackSourceSchema.ts";
@@ -199,13 +199,15 @@ const ProjectFeedbackRequest = () => {
   // browser's. A way back to the inbox is offered to a member only (the membership list
   // the shell already holds), and never inside the sigil popup, where a
   // client-side navigation would replace the form in a chrome-less window.
-  // `window.name` is read after mount: the page server-renders.
+  // `window.name` is read on the client only: the page server-renders, and
+  // the server snapshot (`false`) is what hydration compares against.
   const [overview] = useStore(userProjectsAtom);
   const memberProject = overview?.projects.find((p) => p.slug === projectSlug);
-  const [inPopup, setInPopup] = useState(false);
-  useEffect(() => {
-    setInPopup(window.name === "lore-feedback");
-  }, []);
+  const inPopup = useSyncExternalStore(
+    ProjectFeedbackRequestPopup.subscribe,
+    ProjectFeedbackRequestPopup.read,
+    ProjectFeedbackRequestPopup.server,
+  );
   const backLink =
     memberProject && !inPopup ? (
       <Link
@@ -777,3 +779,14 @@ const ProjectFeedbackRequest = () => {
 };
 
 export default ProjectFeedbackRequest;
+
+/**
+ * `useSyncExternalStore`'s three functions for "was this page opened as the
+ * sigil feedback popup". A window's name never changes under it, so there
+ * is nothing to subscribe to.
+ */
+const ProjectFeedbackRequestPopup = {
+  subscribe: () => () => {},
+  read: () => window.name === "lore-feedback",
+  server: () => false,
+};

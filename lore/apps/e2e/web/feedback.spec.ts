@@ -100,9 +100,16 @@ test.describe("Feedback", () => {
 
       await page.getByRole("button", { name: /^submit feedback$/i }).click();
 
-      // Successful submit redirects to the reporter's own feedback list.
-      await page.waitForURL(/\/account\/feedback/, { timeout: 15_000 });
-      await expect(page.getByText(feedbackTitle, { exact: true })).toBeVisible({
+      // The reporter here is the project's owner, a member, so a successful
+      // submit lands back in the project, on the inbox the report joined. An
+      // outside reporter lands on their own list at `/account/feedback`.
+      await page.waitForURL(new RegExp(`/${projectSlug}/feedback$`), {
+        timeout: 15_000,
+      });
+      // Twice on the page: its row in the list, and the opened detail.
+      await expect(
+        page.getByText(feedbackTitle, { exact: true }).first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
     });
@@ -135,6 +142,8 @@ test.describe("Feedback", () => {
     });
 
     await test.step("feedback shows as pending in the list", async () => {
+      // The reporter's own list: the submit landed on the project's inbox.
+      await page.goto("/account/feedback");
       const row = page.getByRole("row").filter({ hasText: feedbackTitle });
       await expect(row).toContainText(/pending/i);
     });
