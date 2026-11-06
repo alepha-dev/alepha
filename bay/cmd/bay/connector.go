@@ -181,16 +181,9 @@ agreed with the mistake instead of catching it.
 same question the server asks is what keeps the two from drifting apart.
 */
 func connectorRoot(args []string) (string, error) {
-	root := defaultRoot
-	source := "the default root"
-	if env := os.Getenv("BAY_ROOT"); env != "" {
-		root, source = env, "$BAY_ROOT"
-	}
-	for i, arg := range args {
-		if arg == "--root" && i < len(args)-1 {
-			root, source = args[i+1], "--root"
-		}
-	}
+	// Flag, env, ./bay-data, then the installer's /opt/bay/data (#Q3156),
+	// so the command Lore prints works as printed on an installed host.
+	root, source := resolveRoot(args, defaultRoot)
 	// Reported as an absolute path: "./bay-data" tells an operator nothing about
 	// which directory it landed in, and the whole failure was about being
 	// somewhere unexpected.

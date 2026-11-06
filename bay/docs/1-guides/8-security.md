@@ -130,4 +130,4 @@ owner allows them. Exec is never a verb. See
 - `--tls` on, and Cloudflare (if any) in Full (strict) mode.
 - Two S3 credentials, the backup one scoped to the backups bucket.
 - `bay status` without a `⚠`, and
-  `sudo bay doctor --control-socket /run/bay/control.sock` passing.
+  `sudo bay doctor` passing.

@@ -2522,8 +2522,8 @@ func dropControlFlag(args []string) []string {
 // controlSocketPath returns the socket to prefer, if one is reachable.
 //
 // On the host itself the socket is both the simpler path and the safer one:
-// no secret has to be fetched, exported, or left in a shell history. `--control-socket` and $BAY_SOCKET override; otherwise the
-// default sits next to the state file.
+// no secret has to be fetched, exported, or left in a shell history. `--control-socket` and $BAY_SOCKET override; otherwise
+// ./bay-data/control.sock, then the installer's /run/bay/control.sock (paths.go).
 func controlSocketPath() string {
 	if p := socketFlag; p != "" {
 		return p
@@ -2531,11 +2531,15 @@ func controlSocketPath() string {
 	if p := os.Getenv("BAY_SOCKET"); p != "" {
 		return p
 	}
-	// Only worth guessing when the default root is in play; a custom --root moves
-	// it, and silently probing the wrong path would be worse than not probing.
-	candidate := filepath.Join(defaultRoot, "control.sock")
-	if info, err := os.Lstat(candidate); err == nil && info.Mode()&os.ModeSocket != 0 {
+	// Only the two layouts Bay itself sets up are guessed (#Q3156): a checkout's
+	// ./bay-data first, then the installer's unit. A custom --root moves the
+	// socket, and silently probing the wrong path would be worse than not
+	// probing. Each must be a socket, never just a file.
+	if candidate := filepath.Join(defaultRoot, "control.sock"); isSocket(candidate) {
 		return candidate
+	}
+	if isSocket(installerSocket) {
+		return installerSocket
 	}
 	return ""
 }

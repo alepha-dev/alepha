@@ -48,8 +48,8 @@ It prints the command to run on the machine, with a secret shown **once**.
 the first tutorial:
 
 ```bash
-bay connector set https://lore.alepha.dev est_... --root /opt/bay/data --control-socket /run/bay/control.sock
-bay connector show --root /opt/bay/data --control-socket /run/bay/control.sock
+bay connector set https://lore.alepha.dev est_...
+bay connector show
 ```
 
 Clear that line from the shell history: it carries the secret. Back **local**,
@@ -151,7 +151,7 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
    add `--purge`:
 
    ```bash
-   bay remove myapp/production --control-socket /run/bay/control.sock
+   bay remove myapp/production
    ```
 
 3. In Lore, delete the estate from its page under **Account → Estates**.

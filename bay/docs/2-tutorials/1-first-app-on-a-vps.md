@@ -84,7 +84,7 @@ WantedBy=multi-user.target
 
 ```bash
 systemctl daemon-reload && systemctl enable --now bay
-bay status --control-socket /run/bay/control.sock
+bay status
 ```
 
 A fresh Bay hosts no app yet (`no apps deployed`). Certificates come from Let's
@@ -112,7 +112,7 @@ your own key if root accepts others.
 **Local:**
 
 ```bash
-ssh deploy@203.0.113.10 'groups; bay status --control-socket /run/bay/control.sock'
+ssh deploy@203.0.113.10 'groups; bay status'
 ```
 
 You want `bay-control` among the groups and no permission error.
@@ -165,7 +165,7 @@ keys the app declares; migrations run when the app starts. Both are covered in
 
 ```bash
 npx alepha infra status --env production
-ssh deploy@203.0.113.10 'bay logs myapp/production -n 200 --control-socket /run/bay/control.sock'
+ssh deploy@203.0.113.10 'bay logs myapp/production -n 200'
 ```
 
 To go back to an earlier release, deploy it again: Bay rolls back by itself only

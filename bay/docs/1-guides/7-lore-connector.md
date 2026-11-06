@@ -35,17 +35,19 @@ anything on the host.
 2. On the host, as root:
 
 ```bash
-sudo bay connector set https://lore.example.com est_... --root /opt/bay/data --control-socket /run/bay/control.sock
-sudo bay connector show --root /opt/bay/data --control-socket /run/bay/control.sock
+sudo bay connector set https://lore.example.com est_...
+sudo bay connector show
 ```
 
 `set` stores the Lore URL and the secret at mode `0600` beside Bay's
 `state.json`, then tells the running `bay serve` over the control socket to
 re-read them: nothing restarts. The connector commands edit that file directly
-and the data root is `0700`, so they need root and `--root` (or `BAY_ROOT`); a
-member of `bay-control` cannot run them. They need `--control-socket` (or
-`BAY_SOCKET`) too: without it `bay serve` is not told, and a host enrolling for
-the first time dials nothing until its next restart.
+and the data root is `0700`, so they need root; a member of `bay-control`
+cannot run them. On a host installed with `install.sh` and its unit they find
+`/opt/bay/data` and `/run/bay/control.sock` on their own; elsewhere pass
+`--root` (or `BAY_ROOT`) and `--control-socket` (or `BAY_SOCKET`). Without the
+socket `bay serve` is not told, and a host enrolling for the first time dials
+nothing until its next restart.
 
 The secret is a command-line argument, so `ps` shows it while `set` runs and the
 shell history keeps it: clear that entry.

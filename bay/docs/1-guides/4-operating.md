@@ -148,7 +148,7 @@ root filesystem, and `--relax` refuses it.
 ## Checking the host
 
 ```bash
-sudo bay doctor --control-socket /run/bay/control.sock
+sudo bay doctor
 ```
 
 One line per check: Docker reachable and at least 25 (API 1.44), cgroup v2, the
@@ -170,7 +170,7 @@ warns.
 
 | Symptom                                                        | Cause and fix                                                                                         |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `no control socket found`                                      | the socket is not at `./bay-data/control.sock`: `export BAY_SOCKET=/run/bay/control.sock`             |
+| `no control socket found`                                      | the socket is neither at `./bay-data/control.sock` nor at `/run/bay/control.sock`: export `BAY_SOCKET`            |
 | `connect: permission denied` on the socket                    | the user is not in `bay-control`, or the SSH session predates it: reconnect (`ssh -O exit HOST`)      |
 | `control api unreachable` as root                              | `bay serve` is not running: `systemctl status bay`, `journalctl -u bay`                               |
 | `bay: command not found` over SSH, fine interactively          | `bay` is not on the non-interactive PATH: `ln -s /opt/bay/bin/bay /usr/local/bin/bay`                 |

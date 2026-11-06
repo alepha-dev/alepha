@@ -45,16 +45,14 @@ run BEFORE the first `bay serve`, and again when a deploy fails for a reason
 the deploy itself cannot name.
 */
 func cmdDoctor(args []string) error {
-	root := "/opt/bay/data"
 	if err := checkFlags(args, map[string]bool{"--probe-keys": true},
 		map[string]bool{"--root": true, "--control-socket": true}); err != nil {
 		return err
 	}
-	for i := 0; i < len(args)-1; i++ {
-		if args[i] == "--root" {
-			root = args[i+1]
-		}
-	}
+	// The same resolver as every client command (#Q3156), falling back on the
+	// installer's root: doctor runs before the first `bay serve`, when no
+	// state.json exists anywhere yet.
+	root, _ := resolveRoot(args, installerRoot)
 	checks := runDoctor(root, hasFlag(args, "--probe-keys"))
 	failed := printChecks(os.Stdout, checks)
 	if failed > 0 {

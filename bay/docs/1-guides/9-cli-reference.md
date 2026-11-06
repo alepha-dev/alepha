@@ -6,10 +6,10 @@ the final word for the version you run.
 
 Every command below is a thin client of the control API, except `serve`,
 `doctor`, `version`, `connector` and `stack exec`. A client runs on the host, as
-root or a member of `bay-control`, and finds the socket from `BAY_SOCKET`, else
-at `./bay-data/control.sock`. On a host installed with the guide's unit, run
-`export BAY_SOCKET=/run/bay/control.sock`. `--control-socket PATH` overrides it
-for one command.
+root or a member of `bay-control`, and finds the socket from `--control-socket
+PATH`, else `BAY_SOCKET`, else at `./bay-data/control.sock`, else at the
+installer's `/run/bay/control.sock`. Each default counts only when it is a
+socket, so a host installed with the guide's unit needs no flag.
 
 An app instance is written `name/env`, a stack environment `stack/env`. A
 stack's service is the instance `stack.service/env`, as in
@@ -26,7 +26,7 @@ stack's service is the instance `stack.service/env`, as in
 |             | `--acme-http-port N`, `--acme-tls-port N` challenge ports, default 80 and 443                               |
 |             | `--control-socket PATH`, `--control-group bay-control`                                                      |
 |             | `--backup-interval 24h` (`0` disables), `--keep-releases 2` (minimum 2; per app, and stack revisions too)   |
-| `bay doctor [--root /opt/bay/data] [--control-socket PATH] [--probe-keys]` | can this host run Bay; exits 1 on a failed check, not on a `WARN`. On a live host pass the socket, or ports 80 and 443 fail. Read-only on S3 unless `--probe-keys`, which writes probe objects to re-prove each app key |
+| `bay doctor [--root /opt/bay/data] [--control-socket PATH] [--probe-keys]` | can this host run Bay; exits 1 on a failed check, not on a `WARN`. On a live host it needs the socket (found as above), or ports 80 and 443 fail. Read-only on S3 unless `--probe-keys`, which writes probe objects to re-prove each app key |
 | `bay version`              | the binary's version (`dev` for a local build)                                               |
 
 ## Apps
@@ -104,10 +104,11 @@ See [Stacks](/bay/docs/guides-stacks).
 
 ## Lore connector
 
-These edit a file beside `state.json` directly, so they run as root with
-`--root DIR` (or `BAY_ROOT`). They take `--control-socket PATH` (or `BAY_SOCKET`)
-too: `set` and `clear` tell the running `bay serve` to re-read the file through
-it, and `show` asks it for the connection state.
+These edit a file beside `state.json` directly, so they run as root. The root
+is `--root DIR`, else `BAY_ROOT`, else `./bay-data` when it holds a
+`state.json`, else the installer's `/opt/bay/data` when it does; the socket is
+found as above. `set` and `clear` tell the running `bay serve` to re-read the
+file through the socket, and `show` asks it for the connection state.
 
 | Command                              | Does                                                |
 | ------------------------------------ | --------------------------------------------------- |

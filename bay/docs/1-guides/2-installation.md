@@ -59,11 +59,11 @@ sudo bay doctor
 It prints one line per check (Docker reachable and recent, cgroup v2, compose,
 ports 80 and 443, free disk under `--root`, `/opt/bay/data` by default) and
 exits with status 1 when one fails. Once Bay runs it holds ports 80 and 443,
-and the doctor accepts that only when a Bay answers on the socket it is given,
-so on a live host:
+and the doctor accepts that only when a Bay answers on the socket it finds
+(`/run/bay/control.sock` for this unit), so on a live host:
 
 ```bash
-sudo bay doctor --control-socket /run/bay/control.sock
+sudo bay doctor
 ```
 
 ### Building it yourself
@@ -132,21 +132,19 @@ browser reports "too many redirects" with nothing in Bay's logs to say why.
 ## 3. Check it came up
 
 ```bash
-sudo bay status --control-socket /run/bay/control.sock
+sudo bay status
 ```
 
 As root, it prints the hosted apps: none yet on a fresh install.
 
-`bay` looks for the socket at `./bay-data/control.sock`, which is not where this
-unit puts it, so every client command has to be told. In a shell on the host,
-one line does it for the session, and the guides that follow assume it:
+`bay` looks for the socket at `./bay-data/control.sock`, then at
+`/run/bay/control.sock`, where this unit puts it, so a client command on this
+host needs no flag. The guides that follow still show the export, which a unit
+with other paths needs and this one does no harm with:
 
 ```bash
 export BAY_SOCKET=/run/bay/control.sock
 ```
-
-Use the flag under `sudo`, which resets the environment. Otherwise prefer
-`BAY_SOCKET`, which saves repeating it.
 
 ## 4. Grant a user the right to deploy
 
@@ -188,7 +186,7 @@ sudo ln -s /opt/bay/bin/bay /usr/local/bin/bay
 ### Verify both at once
 
 ```bash
-ssh deploy@HOST 'groups; command -v bay; bay status --control-socket /run/bay/control.sock'
+ssh deploy@HOST 'groups; command -v bay; bay status'
 ```
 
 You want `bay-control` among the groups, a path for `bay`, and app output rather

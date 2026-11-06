@@ -22,7 +22,7 @@ sudo bay doctor
 
 One line per check (Docker reachable and recent, cgroup v2, compose, ports 80 and 443, free disk),
 exit status 1 when any fails. Once Bay runs it holds ports 80 and 443, and the doctor accepts that
-only when it is given the socket: add `--control-socket /run/bay/control.sock` on a live host.
+when it finds the socket, which it does at `/run/bay/control.sock` on a host set up this way.
 
 ⚠️ **The Docker socket is root-equivalent**, like Bay's own control socket: whoever can talk to it
 can start a privileged container and own the host. Bay reaches it as root and never exposes it;
@@ -114,14 +114,14 @@ systemctl daemon-reload && systemctl enable --now bay
 ## 4. Check it came up
 
 ```bash
-bay status --control-socket /run/bay/control.sock
+bay status
 ```
 
 As root that should print the hosted apps (none yet, on a fresh install).
 
-`bay` looks for the socket at `./bay-data/control.sock`, so every client command on this host has to
-be told. `export BAY_SOCKET=/run/bay/control.sock` does it for a session, and the samples further
-down assume it; `--control-socket` does it for one command.
+`bay` looks for the socket at `./bay-data/control.sock`, then at `/run/bay/control.sock`, the unit
+above, so a client command on this host needs no flag. A unit with other paths is told with
+`export BAY_SOCKET=...` for a session or `--control-socket` for one command.
 
 ## 5. Grant a user the right to deploy — the step that bites
 
@@ -172,7 +172,7 @@ Signed in to HOST, but `bay` is not on that user's PATH.
 ### 5c. Verify both at once
 
 ```bash
-ssh HOST 'groups; command -v bay; bay status --control-socket /run/bay/control.sock'
+ssh HOST 'groups; command -v bay; bay status'
 ```
 
 You want `bay-control` in the groups, a path for `bay`, and real app output — not a permission error.
@@ -251,8 +251,8 @@ On Lore, create an **estate** under `/account/estates`. The secret is shown once
 host, as root:
 
 ```bash
-sudo bay connector set https://lore.example.com est_... --root /opt/bay/data --control-socket /run/bay/control.sock
-sudo bay connector show --root /opt/bay/data --control-socket /run/bay/control.sock
+sudo bay connector set https://lore.example.com est_...
+sudo bay connector show
 ```
 
 `set` stores the sink and the secret at mode 0600 beside `state.json` and tells the running
