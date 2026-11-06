@@ -398,22 +398,50 @@ export class ServerProvider {
       // Built once: it was a new promise on every chunk.
       const gone = disconnected.then(() => undefined);
 
+      // The chunks of one burst go out in one write. A server-rendered page
+      // arrives as about twenty small chunks, all within one macrotask, and
+      // each `res.write` cost a socket write and a chunked-encoding frame of
+      // its own. A burst ends when a read is still pending at the next
+      // `setImmediate`: what came so far is written then, so a stream that
+      // waits (a Suspense boundary, an SSE event) still delivers it at once.
+      let pending: Uint8Array[] = [];
+      let tick: Promise<"tick"> | undefined;
+      const writePending = async () => {
+        tick = undefined;
+        const chunk =
+          pending.length === 1 ? pending[0] : Buffer.concat(pending);
+        pending = [];
+        // If the internal buffer is full, wait for it to drain
+        if (!res.write(chunk)) {
+          await Promise.race([
+            new Promise<void>((resolve) => res.once("drain", resolve)),
+            disconnected,
+          ]);
+        }
+      };
+
       try {
+        let read = reader.read();
         while (!clientGone) {
-          const next = await Promise.race([reader.read(), gone]);
+          const next = await Promise.race(
+            tick ? [read, gone, tick] : [read, gone],
+          );
+
+          if (next === "tick") {
+            await writePending();
+            continue;
+          }
 
           if (!next || next.done) {
+            if (pending.length > 0 && !clientGone) await writePending();
             break;
           }
 
-          const canContinue = res.write(next.value);
-          // If the internal buffer is full, wait for it to drain
-          if (!canContinue) {
-            await Promise.race([
-              new Promise<void>((resolve) => res.once("drain", resolve)),
-              disconnected,
-            ]);
-          }
+          pending.push(next.value);
+          tick ??= new Promise((resolve) =>
+            setImmediate(() => resolve("tick")),
+          );
+          read = reader.read();
         }
       } catch (error) {
         this.log.error("Error piping response stream", error);
