@@ -1,6 +1,6 @@
 {
   "name": "@alepha/capacitor",
-  "version": "0.36.0",
+  "version": "0.36.1",
   "description": "Native iOS and Android apps for Alepha: a Capacitor shell, native capabilities behind DI providers, and the alepha capacitor commands.",
   "keywords": [
     "alepha",
@@ -116,7 +116,7 @@
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
-    "alepha": "0.36.0",
+    "alepha": "0.36.1",
     "lucide-react": "^1.66.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -127,7 +127,7 @@
     "vitest": "^5.0.5"
   },
   "peerDependencies": {
-    "@alepha/ui": "^0.36.0",
+    "@alepha/ui": "^0.36.1",
     "@aparajita/capacitor-secure-storage": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.4.0",
@@ -135,7 +135,7 @@
     "@capacitor/haptics": "^8.0.0",
     "@capacitor/splash-screen": "^8.0.0",
     "@capgo/capacitor-updater": "8.54.0",
-    "alepha": "^0.36.0",
+    "alepha": "^0.36.1",
     "lucide-react": "^1.52.0"
   },
   "peerDependenciesMeta": {

@@ -1,3 +1,9 @@
+## [0.36.1] - 2026-11-06
+
+### Features
+
+- **ui**: a call the user denied reads as cancelled in AiChat, not as failed; AI_CALL_DENIED names the text a stored denial keeps #Q3175 (`95fa3770`)
+
 ## [0.36.0] - 2026-11-06
 
 ### Breaking Changes
