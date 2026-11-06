@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -35,6 +36,7 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
  * must approve a changed version before it can redirect their stored program.
  */
 export class AutomationVariables {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly writes = $inject(AutomationConfigurationWrites);
   protected readonly approvals = $inject(AutomationApprovalFence);
@@ -88,7 +90,7 @@ export class AutomationVariables {
         throw new ConflictError("Variable no longer exists");
       const candidate = {
         ...current,
-        id: current?.id ?? crypto.randomUUID(),
+        id: current?.id ?? this.crypto.randomUUID(),
         projectId,
         key,
         value: parsed.data,

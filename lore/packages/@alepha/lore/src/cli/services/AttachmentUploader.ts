@@ -2,6 +2,7 @@ import type { FolioAttachmentController } from "@lore/knowledge/api";
 import type { FolioController } from "@lore/knowledge/api";
 import type { QuestController } from "@lore/work/api";
 import { $inject, AlephaError, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { BadRequestError, HttpClient } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { FileDetector, FileSystemProvider } from "alepha/system";
@@ -36,6 +37,7 @@ import { LoreClientService } from "./LoreClientService.ts";
  * orphan blob, which is what the caller's own error path is for.
  */
 export class AttachmentUploader {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly detector = $inject(FileDetector);
   protected readonly http = $inject(HttpClient);
@@ -200,7 +202,7 @@ export class AttachmentUploader {
     // are never scanned for it here - that is the receiver's job - so a
     // collision would corrupt the message silently, which is the one failure
     // mode a boundary has.
-    const boundary = `----alepha-attachment-${crypto.randomUUID()}`;
+    const boundary = `----alepha-attachment-${this.crypto.randomUUID()}`;
     const stream = await this.fs.readFileStream(filePath);
 
     const res = await this.http.fetch(`${this.client.hostname()}${path}`, {

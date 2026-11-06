@@ -1,4 +1,5 @@
 import { $inject, AlephaError } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   DbCacheProvider,
@@ -27,6 +28,7 @@ import {
  * unique index grants one live occurrence per rule across all isolates.
  */
 export class AutomationClaims {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly approvals = $inject(AutomationApprovalFence);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -170,7 +172,7 @@ export class AutomationClaims {
           : occurredAt > now
             ? "Occurrence is not due"
             : undefined);
-      const runId = crypto.randomUUID();
+      const runId = this.crypto.randomUUID();
       const guard = sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${input.revision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND (activated_at IS NULL OR activated_at <= ${this.database.timestamp(occurredAt)})) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`;
       try {
         await this.atomic.guarded(rule.projectId, guard, [
@@ -264,7 +266,7 @@ export class AutomationClaims {
           : "Current author authority is unavailable";
     }
     const now = this.dateTime.nowISOString();
-    const token = crypto.randomUUID();
+    const token = this.crypto.randomUUID();
     let rows: Array<Record<string, unknown>[]>;
     try {
       rows = await this.database.batch([
@@ -390,8 +392,8 @@ export class AutomationClaims {
             ? error.message.slice(0, 1024)
             : "Current author authority is unavailable";
       }
-      const leaseToken = crypto.randomUUID();
-      const runId = crypto.randomUUID();
+      const leaseToken = this.crypto.randomUUID();
+      const runId = this.crypto.randomUUID();
       const leaseUntil = this.dateTime.now().add(2, "minutes").toISOString();
       const active = status === "claimed";
       const inserted = await this.database.batch([
@@ -444,7 +446,7 @@ export class AutomationClaims {
         or: [{ leaseUntil: { isNull: true } }, { leaseUntil: { lte: now } }],
       },
       {
-        leaseToken: crypto.randomUUID(),
+        leaseToken: this.crypto.randomUUID(),
         leaseUntil: this.dateTime.now().add(2, "minutes").toISOString(),
       },
     );
@@ -918,7 +920,7 @@ export class AutomationClaims {
       id,
       occurrence.snapshot.selectionNext,
     ]);
-    const runId = crypto.randomUUID();
+    const runId = this.crypto.randomUUID();
     const now = this.dateTime.nowISOString();
     try {
       await this.atomic.guarded(
@@ -962,7 +964,7 @@ export class AutomationClaims {
         snapshot.counts.executed = 0;
         snapshot.counts.deliveries = 0;
         const now = this.dateTime.nowISOString();
-        const runId = crypto.randomUUID();
+        const runId = this.crypto.randomUUID();
         await this.atomic.guarded(
           occurrence.projectId,
           sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor = ${occurrence.cursor})`,

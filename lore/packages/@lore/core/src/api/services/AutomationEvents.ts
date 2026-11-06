@@ -1,4 +1,5 @@
 import { $inject, AlephaError } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import { ConflictError } from "alepha/server";
@@ -22,6 +23,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * the same native batch. Dispatch is recoverable from the table after a crash.
  */
 export class AutomationEvents {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly eventRows = $inject(
     AutomationBatchRepository.of(automationEvents),
   );
@@ -67,7 +69,7 @@ export class AutomationEvents {
     return this.database.primary(async () => {
       const now = this.dateTime.nowISOString();
       const replayUntil = this.dateTime.now().add(90, "days").toISOString();
-      const id = crypto.randomUUID();
+      const id = this.crypto.randomUUID();
       const payload = this.payload(input.name, {
         ...input.fields,
         ...Object.fromEntries(
@@ -185,7 +187,7 @@ export class AutomationEvents {
       let claimed = 0;
       for (const event of events) {
         if (claimed >= limit) break;
-        const leaseToken = crypto.randomUUID();
+        const leaseToken = this.crypto.randomUUID();
         const acquired = await this.persistence.events.updateMany(
           {
             id: event.id,

@@ -6,6 +6,7 @@ import {
   NotificationJobs,
   NotificationSenderService,
 } from "alepha/api/notifications";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
@@ -20,6 +21,7 @@ import { AutomationNotificationSender } from "./AutomationNotificationSender.ts"
  * suppressions, receipts and transports remain responsible for delivery.
  */
 export class AutomationNotificationOutbox {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly jobs = $inject(JobProvider);
   protected readonly notificationJobs = $inject(NotificationJobs);
@@ -60,7 +62,7 @@ export class AutomationNotificationOutbox {
       registration.options.schema,
       input.payload,
     );
-    const id = crypto.randomUUID();
+    const id = this.crypto.randomUUID();
     const now = this.time.nowISOString();
     const marker = `job-origin:${id}`;
     return {

@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, DbCacheProvider, DbError, sql } from "alepha/orm";
@@ -34,6 +35,7 @@ import { AutomationService } from "./AutomationService.ts";
  * A named caller consents. Disabled preparation is resumable; enable and cutover share one native batch.
  */
 export class AutomationAdoptionService {
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly log = $logger();
   protected readonly audit = $inject(AutomationMutationAudit);
   protected readonly users = $repository(users);
@@ -221,7 +223,7 @@ export class AutomationAdoptionService {
               "Replacement revision changed; preview again",
             );
           const now = this.time.nowISOString();
-          const id = crypto.randomUUID();
+          const id = this.crypto.randomUUID();
           await this.atomic.guarded(
             projectId,
             sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${projectId} AND policy = ${policy}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${rule.revision} AND author_user_id = ${user.id} AND deleted_at IS NULL)`,
@@ -255,7 +257,7 @@ export class AutomationAdoptionService {
               condition: sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${projectId} AND policy = ${policy})`,
               statements: [
                 this.rows.insertStatement({
-                  id: crypto.randomUUID(),
+                  id: this.crypto.randomUUID(),
                   projectId,
                   policy,
                   automationId: rule.id,

@@ -4,6 +4,7 @@ import {
   createMiddleware,
   type Middleware,
 } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
@@ -29,6 +30,7 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
   const { alepha } = $context();
   const lockProvider = alepha.inject(LockProvider);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
+  const crypto = alepha.inject(CryptoProvider);
 
   return createMiddleware({
     name: "$lock",
