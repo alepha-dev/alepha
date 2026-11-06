@@ -1805,6 +1805,7 @@ export default {
   "quest-log.expand-all": "Tout déplier",
   "quest-log.collapse-panel": "Masquer le journal",
   "quest-log.expand-panel": "Afficher le journal",
+  "account.brand.back": "Retour à l'accueil",
   "account.brand.subtitle": "Compte",
   "account.projects.create": "Nouveau projet",
   "account.projects.col.project": "Projet",

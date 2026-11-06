@@ -52,11 +52,11 @@ test.describe("Account area", () => {
       ).toBeVisible();
     }
 
-    // Lore's brand leads the sidebar and is the way home.
-    await expect(page.getByTestId("lore-account-brand")).toHaveAttribute(
-      "href",
-      "/",
-    );
+    // The sidebar's header reads "Account" behind a back arrow, the way home.
+    await expect(page.getByTestId("lore-account-brand")).toHaveText("Account");
+    await expect(
+      page.getByRole("link", { name: "Back to home", exact: true }),
+    ).toHaveAttribute("href", "/");
   });
 
   test("highlights exactly one sidebar entry per page", async ({ page }) => {

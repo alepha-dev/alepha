@@ -53,7 +53,9 @@ export const AccountLayout = () => {
         variant="floating"
         fill
         extraNav={options.extraNav}
-        brand={options.brand ?? <AccountBrand />}
+        brand={
+          options.brand ?? <AccountBrand homeRouteName={options.homeRouteName} />
+        }
         topbarActions={
           <div className="flex items-center gap-1">
             <button

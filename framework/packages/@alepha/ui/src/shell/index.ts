@@ -60,6 +60,10 @@ export {
 export { NavShell, type NavShellProps } from "./NavShell.tsx";
 export { PlateLayout, type PlateLayoutProps } from "./PlateLayout.tsx";
 export type { PlateTab } from "./PlateTabBar.tsx";
+export {
+  SidebarBackHeader,
+  type SidebarBackHeaderProps,
+} from "./SidebarBackHeader.tsx";
 export { SidebarNavAutoClose } from "./SidebarNavAutoClose.tsx";
 export { Spotlight, type SpotlightProps } from "./Spotlight.tsx";
 export { useDetailTab } from "./useDetailTab.tsx";

@@ -1,18 +1,18 @@
+import { SidebarBackHeader } from "@alepha/ui/shell";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
+import { UserRound } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
-import LoreLogo from "../shared/LoreLogo.tsx";
 
 /**
- * Lore's account sidebar brand: the Lore mark and name, linking home, with
- * "Account" under it.
+ * Lore's account sidebar header: a back arrow home, then "Account", the
+ * same shape as the Admin Panel's header.
  *
- * `/account` is a root shell like `/admin`, so this is where Lore's own
- * identity lives on those pages. A real `<Link>` rather than a button, so
- * the way home can be opened in a new tab. The words hide when the sidebar
- * folds to its icon rail, and the mark stays, for the reason
- * `AdminRouterOptions.brand` gives.
+ * `/account` is a root shell like `/admin`: the project sidebar and its
+ * links are gone while it is open, so the arrow is the way back. It is
+ * `@alepha/ui`'s `SidebarBackHeader`, which keeps the arrow and drops the
+ * words when the sidebar folds to its icon rail.
  *
  * Mounted through a lazy import in `index.ts`, so the account chrome is not
  * part of the eager bundle every Lore page loads.
@@ -22,19 +22,18 @@ const LoreAccountBrand = () => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <Link
+    <SidebarBackHeader
       href={router.path("home")}
-      className="hover:bg-hover flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0"
-      data-testid="lore-account-brand"
+      label={tr("account.brand.back")}
     >
-      <LoreLogo size={22} className="size-[22px] shrink-0" />
-      <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-        <span className="text-sm font-semibold tracking-tight">Lore</span>
-        <span className="text-muted-foreground text-xs">
-          {tr("account.brand.subtitle")}
-        </span>
-      </div>
-    </Link>
+      <UserRound className="size-4 shrink-0" />
+      <span
+        className="truncate text-sm font-semibold tracking-tight"
+        data-testid="lore-account-brand"
+      >
+        {tr("account.brand.subtitle")}
+      </span>
+    </SidebarBackHeader>
   );
 };
 

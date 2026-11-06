@@ -1816,6 +1816,7 @@ export default {
   "quest-log.expand-all": "Expand all",
   "quest-log.collapse-panel": "Hide quest log",
   "quest-log.expand-panel": "Show quest log",
+  "account.brand.back": "Back to home",
   "account.brand.subtitle": "Account",
   "account.projects.create": "New project",
   "account.projects.col.project": "Project",
