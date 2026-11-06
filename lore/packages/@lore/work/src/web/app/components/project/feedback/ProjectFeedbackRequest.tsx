@@ -14,16 +14,23 @@ import {
   type LoreAccountRouter,
   PageHeader,
   ProjectIcon,
+  userProjectsAtom,
 } from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAction, useClient, useInject, useQuery } from "alepha/react";
+import {
+  useAction,
+  useClient,
+  useInject,
+  useQuery,
+  useStore,
+} from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter, useRouterState } from "alepha/react/router";
+import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
-import { Loader2, Paperclip, X } from "lucide-react";
+import { ArrowLeft, Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
@@ -187,6 +194,31 @@ const ProjectFeedbackRequest = () => {
   const routerState = useRouterState();
   const projectSlug = String(routerState.params.projectSlug ?? "");
 
+  // This page sits outside the project layout, so it has no sidebar: a
+  // member who came from the project's own "+" had no way back but the
+  // browser's. A way back to the inbox is offered to a member only (the membership list
+  // the shell already holds), and never inside the sigil popup, where a
+  // client-side navigation would replace the form in a chrome-less window.
+  // `window.name` is read after mount: the page server-renders.
+  const [overview] = useStore(userProjectsAtom);
+  const memberProject = overview?.projects.find((p) => p.slug === projectSlug);
+  const [inPopup, setInPopup] = useState(false);
+  useEffect(() => {
+    setInPopup(window.name === "lore-feedback");
+  }, []);
+  const backLink =
+    memberProject && !inPopup ? (
+      <Link
+        href={router.path("projectFeedback", { params: { projectSlug } })}
+        className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1.5 text-sm"
+      >
+        <ArrowLeft className="size-4 rtl:-scale-x-100" />
+        {tr("feedback.request.backToProject", {
+          args: [memberProject.title],
+        })}
+      </Link>
+    ) : null;
+
   // Keyed on the slug rather than the integer id: the id is not known until
   // `feedbackContext` answers, and a draft is transient `sessionStorage` for
   // one tab. Nothing survives from the old `/p/:id/request` URLs anyway — they
@@ -347,8 +379,13 @@ const ProjectFeedbackRequest = () => {
 
       toaster.show(tr("feedback.request.success"), "success");
 
-      // Land the reporter on their cross-project feedback list (the
+      // A member lands back in the project, on the inbox the report just
+      // joined; an outside reporter on their cross-project feedback list (the
       // dedicated status page was retired in favour of /me/feedback).
+      if (memberProject && !inPopup) {
+        await router.push("projectFeedback", { params: { projectSlug } });
+        return;
+      }
       await meRouter.push(meRouter.path("myFeedback") as `/${string}`);
     },
   });
@@ -509,6 +546,7 @@ const ProjectFeedbackRequest = () => {
         <PageHeader />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
+            {backLink}
             {contextState === "loading" ? (
               <div className="flex justify-center py-16">
                 <Loader2 className="text-muted-foreground size-6 animate-spin" />
@@ -547,6 +585,7 @@ const ProjectFeedbackRequest = () => {
       <PageHeader />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
+          {backLink}
           <div className="flex flex-col gap-1">
             <h1 className="text-xl font-bold">
               {tr("feedback.request.title")}

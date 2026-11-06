@@ -2727,6 +2727,7 @@ export default {
   "feedback.request.success": "Retour envoyé",
   "feedback.request.error": "Échec de l'envoi du retour",
   "feedback.request.submit": "Envoyer le retour",
+  "feedback.request.backToProject": "Retour à $1",
   "feedback.request.myFeedbackLink": "Voir mes retours précédents",
   "feedback.request.submittingAs": "En tant que",
   "feedback.request.forProject": "pour le projet",
