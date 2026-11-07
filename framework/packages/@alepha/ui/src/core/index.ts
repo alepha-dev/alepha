@@ -385,6 +385,13 @@ export {
   type ProgressValueProps,
 } from "./Progress.tsx";
 export {
+  Stepper,
+  type StepperProps,
+  type StepperStep,
+  type StepperStepState,
+  stepperStepState,
+} from "./Stepper.tsx";
+export {
   Segmented,
   type SegmentedOption,
   type SegmentedProps,

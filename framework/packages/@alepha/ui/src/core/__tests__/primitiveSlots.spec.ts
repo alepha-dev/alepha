@@ -279,6 +279,7 @@ describe("primitive data-slots", () => {
       "slider-track",
     ],
     "core/Spinner.tsx": ["spinner"],
+    "core/Stepper.tsx": ["stepper"],
     "core/Switch.tsx": ["switch", "switch-thumb"],
     "core/Table.tsx": [
       "table",
