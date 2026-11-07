@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -41,6 +42,43 @@ class RecordingStatsService extends EstateStatsService {
   }
 }
 
+/**
+ * The controller with a gate on its estate read: `holdNext()` parks the next
+ * read until `release()`, so a spec can land another socket's write inside
+ * the window a read-then-write would leave open. The fixed controller does
+ * no such read on connect or close, so a gate that is never hit is the
+ * point, not a failure.
+ */
+class GatedEstateSocketController extends EstateSocketController {
+  public hit = false;
+  protected held?: Promise<void>;
+  protected open?: () => void;
+
+  public holdNext(): void {
+    this.hit = false;
+    this.held = new Promise<void>((resolve) => {
+      this.open = resolve;
+    });
+  }
+
+  public release(): void {
+    this.held = undefined;
+    this.open?.();
+    this.open = undefined;
+  }
+
+  protected override async estateOf(id: string | undefined) {
+    const estate = await super.estateOf(id);
+    const held = this.held;
+    if (held) {
+      this.held = undefined;
+      this.hit = true;
+      await held;
+    }
+    return estate;
+  }
+}
+
 class EstateRepositories {
   estates = $repository(estates);
   commands = $repository(estateCommands);
@@ -53,6 +91,7 @@ interface TestContext {
   service: EstateService;
   stats: RecordingStatsService;
   repos: EstateRepositories;
+  gate: GatedEstateSocketController;
   entities: DeployTestEntities;
   url: string;
 }
@@ -76,6 +115,10 @@ const setup = async (): Promise<TestContext> => {
     use: WebSocketEstateCommandTransport,
   });
   alepha.with({ provide: EstateStatsService, use: RecordingStatsService });
+  alepha.with({
+    provide: EstateSocketController,
+    use: GatedEstateSocketController,
+  });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -95,6 +138,7 @@ const setup = async (): Promise<TestContext> => {
     service: alepha.inject(EstateService),
     stats: alepha.inject(RecordingStatsService),
     repos,
+    gate: alepha.inject(GatedEstateSocketController),
     entities,
     url:
       alepha
@@ -684,6 +728,178 @@ describe("EstateEnrolController, the enrolment exchange", () => {
 
     // Nothing moved: the secret the estate already had still connects.
     const client = await connect(ctx, minted.secret);
+    await close(client);
+  });
+});
+
+/**
+ * Estate `ovh`, 2026-11-07: the connection dropped, Bay redialled and said
+ * hello, and Lore listed the estate offline until `bay` was restarted 40
+ * minutes later, with a deploy queued the whole time. The old socket's
+ * close was a read then a write, and the reconnect landed between them.
+ */
+describe("EstateSocketController, a reconnect racing the old socket's close", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    ctx.gate.release();
+    await ctx.alepha.stop();
+  });
+
+  const restart = {
+    kind: "restart" as const,
+    payload: { app: "lore", environment: "production" },
+  };
+
+  it("stays online after a drop without a close frame and a redial", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-1");
+    const first = await connect(ctx, minted.secret);
+    await hello(first);
+
+    first.ws.terminate();
+    const second = await connect(ctx, minted.secret);
+    await hello(second);
+    await delay(100);
+
+    expect(ctx.service.isOnline(await rowOf(ctx, minted.id))).toBe(true);
+    await close(second);
+  });
+
+  it("stays online when the old close reads before the reconnect and writes after it", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-1");
+    const first = await connect(ctx, minted.secret);
+    await hello(first);
+
+    ctx.gate.holdNext();
+    first.ws.close();
+    // Either the close parked on its read (a read-then-write), or it has
+    // already written its one conditional update.
+    const deadline = Date.now() + 2_000;
+    while (!ctx.gate.hit && !(await rowOf(ctx, minted.id)).disconnectedAt) {
+      if (Date.now() > deadline) throw new Error("the close never landed");
+      await delay(10);
+    }
+    // An unhit gate must not park the reconnect's own reads.
+    if (!ctx.gate.hit) ctx.gate.release();
+
+    const second = await connect(ctx, minted.secret);
+    await hello(second);
+    ctx.gate.release();
+    await delay(100);
+
+    const row = await rowOf(ctx, minted.id);
+    expect(ctx.service.isOnline(row)).toBe(true);
+    await close(second);
+    expect(ctx.service.isOnline(await rowOf(ctx, minted.id))).toBe(false);
+  });
+
+  it("stays online when the old close lands inside the connect, at the same instant", async ({
+    expect,
+  }) => {
+    // A Worker's clock does not move during I/O: both stamps are equal.
+    ctx.alepha.inject(DateTimeProvider).pause();
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-1");
+    const first = await connect(ctx, minted.secret);
+    await hello(first);
+    const firstId = (await rowOf(ctx, minted.id)).connectionId;
+
+    ctx.gate.holdNext();
+    const second = await connect(ctx, minted.secret);
+    const deadline = Date.now() + 2_000;
+    while (
+      !ctx.gate.hit &&
+      (await rowOf(ctx, minted.id)).connectionId === firstId
+    ) {
+      if (Date.now() > deadline) throw new Error("the connect never landed");
+      await delay(10);
+    }
+    await close(first);
+    ctx.gate.release();
+    await delay(100);
+
+    expect(ctx.service.isOnline(await rowOf(ctx, minted.id))).toBe(true);
+    await close(second);
+  });
+
+  it("heals on hello a row a lost race left naming another socket", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-1");
+    const client = await connect(ctx, minted.secret);
+    await hello(client);
+    const live = (await rowOf(ctx, minted.id)).connectionId;
+    const later = new Date(Date.now() + 60_000).toISOString();
+    await ctx.repos.estates.updateById(minted.id, {
+      connectionId: "ws-gone",
+      disconnectedAt: later,
+    });
+    expect(ctx.service.isOnline(await rowOf(ctx, minted.id))).toBe(false);
+
+    client.frames.length = 0;
+    await hello(client);
+
+    const row = await rowOf(ctx, minted.id);
+    expect(row.connectionId).toBe(live);
+    expect(row.disconnectedAt ?? null).toBeNull();
+    expect(ctx.service.isOnline(row)).toBe(true);
+    await close(client);
+  });
+
+  it("delivers on the next stats frame a command queued while the row read offline", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const minted = await mint(ctx, owner, "ovh-1");
+    const client = await connect(ctx, minted.secret);
+    await hello(client);
+    await ctx.repos.estates.updateById(minted.id, {
+      disconnectedAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+
+    const queued = await ctx.commands.enqueue(
+      await rowOf(ctx, minted.id),
+      restart,
+      owner.id,
+    );
+    expect(queued.status).toBe("pending");
+
+    send(client, {
+      type: "stats",
+      cpuPercent: 10,
+      memoryPercent: 20,
+      at: new Date().toISOString(),
+    });
+    await waitFor(
+      () => client.frames.some((frame) => frame.id === queued.id),
+      "the command, on the stats frame",
+    );
+    const row = await waitForStatus(ctx, queued.id, "sent");
+    expect(row.status).toBe("sent");
+
+    // A second heartbeat does not send it again: only `pending` goes out.
+    send(client, {
+      type: "stats",
+      cpuPercent: 10,
+      memoryPercent: 20,
+      at: new Date().toISOString(),
+    });
+    await waitFor(() => ctx.stats.frames.length === 2, "the second stats");
+    await delay(50);
+    expect(
+      client.frames.filter((frame) => frame.id === queued.id),
+    ).toHaveLength(1);
     await close(client);
   });
 });

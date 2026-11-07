@@ -45,7 +45,10 @@ import { EstateTokenService } from "../services/EstateTokenService.ts";
  * live in a Durable Object. So the connection stamps `connectedAt`,
  * `disconnectedAt` and `lastSeenAt`, and `EstateService.isOnline` derives
  * the answer. `connectionId` is kept so a stale close of an OLDER socket,
- * arriving after a reconnect, does not mark the new connection offline.
+ * arriving after a reconnect, does not mark the new connection offline: the
+ * close is one write conditioned on it, connect and hello each `claim` the
+ * row, and every stats frame pushes what is still `pending`, so a command
+ * queued while the row read offline waits one heartbeat, not a restart.
  *
  * ## Keepalive costs nothing
  *
@@ -107,29 +110,32 @@ export class EstateSocketController {
       return { roomId: estate.id };
     },
     onConnect: async ({ connectionId, roomIds }) => {
-      const estate = await this.estateOf(roomIds[0]);
-      if (!estate) return;
-      const now = this.now();
-      await this.estates.updateById(estate.id, {
-        connectedAt: now,
-        lastSeenAt: now,
-        connectionId,
-      });
+      const estateId = roomIds[0];
+      if (!estateId) return;
+      await this.claim(estateId, connectionId);
     },
     onDisconnect: async ({ connectionId, roomIds }) => {
-      const estate = await this.estateOf(roomIds[0]);
-      if (!estate) return;
-      // A close for an older socket, arriving after a reconnect, says nothing
-      // about the connection that replaced it.
-      if (estate.connectionId && estate.connectionId !== connectionId) return;
-      await this.estates.updateById(estate.id, { disconnectedAt: this.now() });
+      const estateId = roomIds[0];
+      if (!estateId) return;
+      // ONE conditional write, never a read then a write: a close of an
+      // older socket, delivered late, used to read the row before the
+      // reconnect stamped it and write after, so the row read offline while
+      // the new socket was live (estate `ovh`, 2026-11-07). Matching on the
+      // connection id in the write itself means a close can only ever mark
+      // the socket it belongs to.
+      await this.estates.updateMany(
+        { id: { eq: estateId }, connectionId: { eq: connectionId } },
+        { disconnectedAt: this.now() },
+      );
     },
-    handler: async ({ roomId, message, reply }) => {
+    handler: async ({ connectionId, roomId, message, reply }) => {
       const estate = await this.estateOf(roomId);
       if (!estate) return;
-      await this.estates.updateById(estate.id, { lastSeenAt: this.now() });
 
       if (message.type === "hello") {
+        // A hello proves this socket is the live one: a row a lost race left
+        // naming another socket, or stamped offline, heals here at once.
+        await this.claim(estate.id, connectionId);
         await reply({ message: this.service.welcomeFrame(estate, "welcome") });
         // The reconciliation: everything unacknowledged goes out again under
         // the same ids. This is what caps a lost-in-transit command at
@@ -140,6 +146,7 @@ export class EstateSocketController {
         }
         return;
       }
+      await this.estates.updateById(estate.id, { lastSeenAt: this.now() });
       if (message.type === "ack") {
         await this.commands.ack(estate.id, message);
         return;
@@ -153,8 +160,37 @@ export class EstateSocketController {
         return;
       }
       await this.stats.record(estate, message);
+      // The heartbeat is also the redelivery: a command queued while the row
+      // read offline was left `pending` by the transport, and would otherwise
+      // wait for the next hello, which is the machine's next restart. Only
+      // `pending` ones: a `sent` command may be running, and the hello is
+      // what re-sends those.
+      for (const command of await this.commands.pendingFor(estate.id)) {
+        if (command.status !== "pending") continue;
+        await this.commands.markSent(command);
+        await reply({ message: this.commands.frameOf(command) });
+      }
     },
   });
+
+  /**
+   * Stamps the row as held by this socket, in one write: the connection id,
+   * the connect and last-seen stamps, and `disconnectedAt` cleared, so no
+   * earlier close can outrank it on equal timestamps (a Worker's clock is
+   * frozen during I/O). Used on connect and again on the machine's hello.
+   */
+  protected async claim(estateId: string, connectionId: string): Promise<void> {
+    const now = this.now();
+    await this.estates.updateMany(
+      { id: { eq: estateId } },
+      {
+        connectedAt: now,
+        lastSeenAt: now,
+        connectionId,
+        disconnectedAt: null,
+      },
+    );
+  }
 
   protected async estateOf(
     id: string | undefined,
