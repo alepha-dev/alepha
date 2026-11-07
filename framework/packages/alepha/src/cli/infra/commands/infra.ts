@@ -454,7 +454,10 @@ export class InfraCommand {
       const hasDB = state.databases.length > 0;
       const hasBuckets = state.buckets.length > 0;
 
-      process.stdout.write(`   ${c.set("GREY_LIGHT", "Workers:")}\n`);
+      // A Bay app is a process on a server, not a Worker (#Q3152): the
+      // label says Workers only where the app runs serverless.
+      const workersLabel = adapter.serverless ? "Workers:" : "Apps:";
+      process.stdout.write(`   ${c.set("GREY_LIGHT", workersLabel)}\n`);
       for (const [i, w] of state.workers.entries()) {
         const isLast = i === state.workers.length - 1;
         const branch = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";

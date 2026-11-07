@@ -50,6 +50,12 @@ func (p *Proxy) DrainLastSeen() map[string]time.Time {
 	return p.seen.drain()
 }
 
+// PeekLastSeen returns the traffic recorded since the last drain without
+// clearing it, so a listing can show requests the store has not caught up with.
+func (p *Proxy) PeekLastSeen() map[string]time.Time {
+	return p.seen.peek()
+}
+
 func New(root string, store *state.Store, log *slog.Logger) *Proxy {
 	return &Proxy{root: root, store: store, log: log}
 }

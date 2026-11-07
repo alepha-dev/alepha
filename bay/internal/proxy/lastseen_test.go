@@ -146,3 +146,18 @@ func TestCountsAsTraffic(t *testing.T) {
 		})
 	}
 }
+
+func TestLastSeenPeekLeavesTheBatchForTheFlush(t *testing.T) {
+	// A listing peeks between flushes (#Q3152). It must not clear the batch,
+	// or the stamp it showed would never reach state.json.
+	var seen lastSeen
+	at := time.Unix(1700000000, 0)
+	seen.touch("demo/production", at)
+
+	if got := seen.peek(); !got["demo/production"].Equal(at) {
+		t.Fatalf("peek must report the unflushed stamp, got %v", got)
+	}
+	if got := seen.drain(); !got["demo/production"].Equal(at) {
+		t.Fatalf("the drain after a peek must still carry the stamp, got %v", got)
+	}
+}

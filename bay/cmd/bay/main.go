@@ -1214,8 +1214,17 @@ type listedApp struct {
 
 func (s *server) listApps() []listedApp {
 	apps := s.store.Apps()
+	// The store holds traffic as of the last flush, up to lastSeenFlushInterval
+	// ago. The proxy's unflushed stamps are newer, and without them an app
+	// that answered a request seconds after its deploy read "never answered a
+	// request" in `bay status` (#Q3152).
+	var unflushed map[string]time.Time
+	if s.router != nil {
+		unflushed = s.router.PeekLastSeen()
+	}
 	out := make([]listedApp, 0, len(apps))
 	for _, app := range apps {
+		app.LastRequestAt = newerRequestStamp(app.LastRequestAt, unflushed[app.Key()])
 		entry := listedApp{
 			App:         app,
 			Running:     s.runner.Running(app.Key()),
@@ -1231,6 +1240,19 @@ func (s *server) listApps() []listedApp {
 		out = append(out, entry)
 	}
 	return out
+}
+
+// newerRequestStamp returns the later of the stored stamp and an unflushed
+// one, in the store's format (RFC3339, UTC, seconds). An unparseable stored
+// stamp is kept unless there is an unflushed one to replace it.
+func newerRequestStamp(stored string, unflushed time.Time) string {
+	if unflushed.IsZero() {
+		return stored
+	}
+	if prev, err := time.Parse(time.RFC3339, stored); err == nil && !unflushed.After(prev) {
+		return stored
+	}
+	return unflushed.UTC().Format(time.RFC3339)
 }
 
 func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {

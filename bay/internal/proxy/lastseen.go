@@ -54,6 +54,21 @@ func (l *lastSeen) drain() map[string]time.Time {
 	return out
 }
 
+// peek returns a copy of what has accumulated, leaving it in place.
+//
+// For readers that answer "when did this app last serve?" between two flushes:
+// the store lags the proxy by up to a flush interval, and an app that answered
+// a minute ago must not read as one that never did (#Q3152).
+func (l *lastSeen) peek() map[string]time.Time {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := make(map[string]time.Time, len(l.at))
+	for key, at := range l.at {
+		out[key] = at
+	}
+	return out
+}
+
 /*
 countsAsTraffic reports whether a response means somebody is using the app.
 
