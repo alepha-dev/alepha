@@ -16,6 +16,7 @@ import { JobService } from "./services/JobService.ts";
 // -----------------------------------------------------------------------------------------------------------------
 
 export * from "./controllers/AdminJobController.ts";
+export * from "./entities/jobCronClaimEntity.ts";
 export * from "./entities/jobExecutionEntity.ts";
 export * from "./primitives/$job.ts";
 export * from "./providers/DirectJobDispatcher.ts";
@@ -53,9 +54,9 @@ declare module "alepha" {
  *
  * **Three runtime modes:**
  *
- * - **cron**: fires on a schedule. Cron-mode jobs are protected by a
- *   distributed lock by default (`lock: true`), so multi-replica Docker
- *   deployments only run the handler once per tick. Override with
+ * - **cron**: fires on a schedule. Each tick is claimed in the database by
+ *   default (`lock: true`), so multi-replica Docker deployments only run the
+ *   handler once per tick, with no Redis. Override with
  *   `lock: false` if you genuinely want every replica to fire.
  * - **queue**: push-driven, dispatched through the queue infrastructure
  *   (`AlephaQueue`, e.g. Cloudflare Queues, Redis). Real-time delivery,
@@ -123,8 +124,8 @@ declare module "alepha" {
  * **Runtime support for cron triggers**
  *
  * - **Long-running Node / Docker**: `CronProvider` runs an in-process
- *   timer loop. Multi-replica deployments serialize ticks via the cron
- *   lock (see `$job.lock`).
+ *   timer loop. Multi-replica deployments run each tick once through its
+ *   database claim (see `$job.lock`).
  * - **Cloudflare Workers**: the build emits cron expressions into
  *   `wrangler.jsonc`; Cloudflare invokes the worker on schedule and the
  *   `cloudflare:scheduled` hook routes the event to the matching jobs.

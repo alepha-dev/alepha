@@ -23,6 +23,7 @@ import {
 } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 
+import { jobCronClaimEntity } from "../entities/jobCronClaimEntity.ts";
 import {
   type JobExecutionEntity,
   type JobStatus,
@@ -221,6 +222,7 @@ export class JobProvider {
   }
   protected readonly log = $logger();
   protected readonly executions = $repository(jobExecutionEntity);
+  protected readonly cronClaims = $repository(jobCronClaimEntity);
 
   protected readonly jobs = new Map<string, JobRuntimeRegistration>();
   protected readonly inFlight = new Set<Promise<void>>();
@@ -264,6 +266,11 @@ export class JobProvider {
           await this.trimRingBuffers();
         } catch (e) {
           this.log.error("Trim failed", { error: e });
+        }
+        try {
+          await this.trimCronClaims();
+        } catch (e) {
+          this.log.warn("Cron claim trim failed", { error: e });
         }
       },
       true,
@@ -667,34 +674,39 @@ export class JobProvider {
    * after that finds the lock free and enqueues the same tick again, so "one
    * run per schedule" only ever held for the inline path.
    *
-   * This lease is keyed by the instant itself and is deliberately **never
-   * released**: it expires on its own, and until it does, any later tick for
-   * the SAME instant stands down. The next instant has a different key, so
-   * nothing is blocked by leaving it behind.
+   * **The claim is a database row** (`job_cron_claims`), keyed by the job's
+   * name and the instant: every replica inserts the same primary key, the
+   * first insert wins, and the others hit a conflict and stand down. `$job`
+   * already requires the database, so replicas agree with no Redis (#Q3185):
+   * the `LockProvider` is per process without `REDIS_URL`, and a claim made
+   * through it let every replica run every tick.
    *
-   * Unlike the run lock, a same-process double tick cannot slip through
-   * either: the stored value is unique per attempt, not per process, so only
-   * the caller that actually created the key sees its own token back.
+   * The row is never deleted by the tick: any later tick for the SAME
+   * instant stands down. The next instant has a different key, so nothing is
+   * blocked by leaving it behind, and the hourly trim deletes old claims.
+   * A same-process double tick cannot slip through either: the second insert
+   * conflicts like any other.
    *
    * Not fenced on `attempt`/`startedAt` like the queue path (`fenceWhere`):
-   * the instant row is keyed on a unique value, so a claim already names
+   * the claim row is keyed on a unique value, so a claim already names
    * exactly one run.
    */
   protected async claimCronInstant(
     registration: JobRuntimeRegistration,
     instant: DateTime,
   ): Promise<boolean> {
-    const key = `${this.cronLockKey(registration.name)}:${instant.toISOString()}`;
-    const token = `${this.lockHolderId},${this.crypto.randomUUID()}`;
+    const iso = instant.toISOString();
     try {
-      const stored = await this.lockProvider.set(
-        key,
-        token,
-        true,
-        this.cronLockTtlMs(registration),
-      );
-      return stored === token;
+      await this.cronClaims.create({
+        id: `${registration.name}@${iso}`,
+        jobName: registration.name,
+        instant: iso,
+      });
+      return true;
     } catch (e) {
+      if (e instanceof DbConflictError) {
+        return false;
+      }
       this.log.warn(
         `Cron instant claim failed for '${registration.name}'`,
         e as Error,
@@ -702,6 +714,15 @@ export class JobProvider {
       // Fail-open, like the run lock: a duplicate run beats a missed tick.
       return true;
     }
+  }
+
+  /**
+   * Delete the cron claims of instants more than a day old. No replica can
+   * still be racing for a tick that old, so its row protects nothing.
+   */
+  protected async trimCronClaims(): Promise<void> {
+    const cutoff = this.dt.now().subtract(1, "day").toISOString();
+    await this.cronClaims.deleteMany({ instant: { lt: cutoff } });
   }
 
   /**

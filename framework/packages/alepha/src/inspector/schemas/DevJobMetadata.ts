@@ -22,7 +22,7 @@ export const devJobMetadataSchema = z.object({
   timeout: z.text().optional(),
   retries: z.integer().optional(),
   /**
-   * Cron-mode only: whether the tick takes a distributed lock so a single
+   * Cron-mode only: whether the tick is claimed in the database so a single
    * replica runs it.
    */
   lock: z.boolean().optional(),

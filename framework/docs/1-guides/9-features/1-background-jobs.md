@@ -615,19 +615,25 @@ Cron Trigger.
 
 ## Multi-replica deployments
 
-Cron-mode jobs take a distributed lock per tick (`lock: true` by default), so a
-fleet of replicas fires the handler once, not once per replica. This needs a
-real `LockProvider`: set `REDIS_URL` and the lock becomes cross-instance
-(`RedisLockProvider`); without it the default `MemoryLockProvider` is
-per-process and every replica runs the tick. See
-[Bare metal deployment](/docs/guides-deployment-bare) for the setup.
+Cron-mode jobs claim each tick (`lock: true` by default), so a fleet of
+replicas fires the handler once, not once per replica. The claim is a row in
+the database `$job` already uses (`job_cron_claims`), so replicas sharing that
+database agree with nothing else: no Redis is needed. On Cloudflare a Cron
+Trigger fires once per schedule, so there is nothing to deduplicate.
 
 The unit that is claimed is the **schedule instant**, not the job. Every replica
-derives the same instant from the same cron expression, so the first one there
-claims it and the others stand down - including a replica whose clock lags by a
-few milliseconds and arrives after the handler has already finished. That claim
-is what makes "once per tick" hold for a job with `retry`, where the tick only
-writes an outbox row and is over in a millisecond.
+derives the same instant from the same cron expression and inserts the same
+key, the first insert wins and the others stand down - including a replica whose
+clock lags by a few milliseconds and arrives after the handler has already
+finished. That claim is what makes "once per tick" hold for a job with `retry`,
+where the tick only writes an outbox row and is over in a millisecond. The
+hourly trim deletes claims more than a day old.
+
+A run also holds a per-job lock through the `LockProvider`, which keeps a
+manual `trigger()` from overlapping a run in progress. That lock is
+cross-instance once `REDIS_URL` is set (`RedisLockProvider`); without it, it is
+per process, so a trigger on one replica can overlap a tick on another. See
+[Bare metal deployment](/docs/guides-deployment-bare) for the setup.
 
 A manual `trigger()` is not a scheduled instant, so it is never suppressed by
 one. It still never overlaps a run of the same job already in progress, whether

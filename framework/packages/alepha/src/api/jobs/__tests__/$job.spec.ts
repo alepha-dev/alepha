@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
@@ -5,7 +9,7 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { CronProvider } from "alepha/scheduler";
-import { describe, it } from "vitest";
+import { describe, it, onTestFinished } from "vitest";
 
 import {
   $job,
@@ -984,10 +988,14 @@ describe("$job — cron lock (multi-instance)", () => {
     }
   });
 
-  it("two replicas ticking the same instant enqueue one execution, even with retry", async ({
+  it("two replicas on one database, no Redis, ticking the same instant enqueue one execution, even with retry", async ({
     expect,
   }) => {
-    for (const k of Object.keys(sharedLockStore)) delete sharedLockStore[k];
+    // One SQLite file, two containers, and each container's own per-process
+    // MemoryLockProvider: the self-hosted shape with no REDIS_URL. Only the
+    // database is shared, so only the database can make them agree (#Q3185).
+    const dir = mkdtempSync(join(tmpdir(), "alepha-cron-claim-"));
+    const url = `sqlite://${join(dir, "app.db")}`;
 
     class CronLeaseApp {
       executions = $repository(jobExecutionEntity);
@@ -1005,18 +1013,24 @@ describe("$job — cron lock (multi-instance)", () => {
       });
     }
 
-    const make = () =>
-      Alepha.create()
-        .with({ provide: LockProvider, use: SharedMemoryLockProvider })
-        .with(AlephaOrmPostgres)
-        .with(AlephaApiJobs);
+    // The second replica finds the schema the first one pushed, as a second
+    // instance finds the one its deploy migrated.
+    const make = (sync: boolean) =>
+      Alepha.create({
+        env: { DATABASE_URL: url, DATABASE_SYNC: sync },
+      }).with(AlephaApiJobs);
 
-    const a = make();
-    const b = make();
+    const a = make(true);
+    const b = make(false);
     a.inject(CronLeaseApp);
     b.inject(CronLeaseApp);
     await a.start();
     await b.start();
+    onTestFinished(async () => {
+      await b.stop();
+      await a.stop();
+      rmSync(dir, { recursive: true, force: true });
+    });
 
     // The scheduled instant both replicas derive for the same tick. Every
     // replica parses the same cron expression, so this value is shared even
@@ -1034,19 +1048,16 @@ describe("$job — cron lock (multi-instance)", () => {
     await tickOf(a).handler({ now: instant });
     await tickOf(b).handler({ now: instant });
 
-    // Each test container owns a private postgres schema, so count both and
-    // add them up: the claim is one execution across the cluster, not one
-    // per database.
+    // One database, so one count: the claim is one execution per tick.
     const where = { jobName: { eq: "cron-lease-app.instant-tick" } };
-    const rowsA = await a.inject(CronLeaseApp).executions.findMany({ where });
-    const rowsB = await b.inject(CronLeaseApp).executions.findMany({ where });
-    expect(rowsA.length + rowsB.length).toBe(1);
+    const rows = await a.inject(CronLeaseApp).executions.findMany({ where });
+    expect(rows.length).toBe(1);
 
-    // ...and the NEXT instant is not blocked by the lease left behind.
+    // ...and the NEXT instant is not blocked by the claim left behind.
     const next = a.inject(DateTimeProvider).of("2026-01-02T00:00:00.000Z");
-    await tickOf(a).handler({ now: next });
+    await tickOf(b).handler({ now: next });
     const after = await a.inject(CronLeaseApp).executions.findMany({ where });
-    expect(after.length).toBe(rowsA.length + 1);
+    expect(after.length).toBe(2);
   });
 });
 

@@ -206,17 +206,18 @@ export interface JobPrimitiveOptions<
   retry?: JobRetryOptions;
 
   /**
-   * **Cron-mode only.** Whether to acquire a distributed lock around the
-   * cron tick so that only one instance of a multi-replica deployment runs
-   * the handler per tick.
+   * **Cron-mode only.** Whether to claim each cron tick so that only one
+   * instance of a multi-replica deployment runs the handler per tick.
    *
    * Has **no effect** on queue-mode and direct-mode jobs — those rely on
    * the outbox `claim()` UPDATE-guard to serialize work instead, which is
    * always on.
    *
-   * The lock is cross-instance once `REDIS_URL` is set (`RedisLockProvider`).
-   * Without it the default `MemoryLockProvider` is per-process only, and
-   * every replica runs the tick.
+   * The tick is claimed in the database (`job_cron_claims`), so replicas
+   * sharing it agree without Redis. The run also holds a per-job lock that
+   * keeps a manual `trigger()` from overlapping a run; that lock is
+   * cross-instance once `REDIS_URL` is set (`RedisLockProvider`), and per
+   * process without it.
    *
    * @default true
    */

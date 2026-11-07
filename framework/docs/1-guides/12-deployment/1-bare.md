@@ -179,7 +179,7 @@ REDIS_URL=redis://:password@redis.internal:6379 node dist/index.node.js
 | `alepha/cache` | `MemoryCacheProvider` | `RedisCacheProvider`: one cache for every instance                 |
 | `alepha/queue` | `MemoryQueueProvider` | `RedisQueueProvider`: a job pushed by one instance runs on any     |
 | `alepha/topic` | `MemoryTopicProvider` | `RedisTopicProvider`: WebSocket broadcasts reach every instance    |
-| `alepha/lock`  | `MemoryLockProvider`  | `RedisLockProvider`: each `$job` cron tick runs on one instance    |
+| `alepha/lock`  | `MemoryLockProvider`  | `RedisLockProvider`: one `$lock` holder across every instance      |
 | `alepha/actor` | `MemoryActorProvider` | `RedisActorProvider`: one count for every `$rateLimit` and lockout |
 
 The choice is made once, when each module registers, from the environment at boot (`process.env`, a `.env` file, or `Alepha.create({ env })`). Every key lives under `<APP_NAME>:<module>:`, so two apps, or two environments of one app, can share a Redis as long as their `APP_NAME`s differ.
@@ -201,7 +201,7 @@ const app = Alepha.create().with({
 
 ### Multi-replica `$job` cron jobs
 
-When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` acquires a per-job lock by default so the handler runs **once per tick across the fleet**, not once per replica. That lock is fleet-wide once `REDIS_URL` is set; without it each replica holds its own lock and every replica runs the tick.
+When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` claims each tick in the database by default, so the handler runs **once per tick across the fleet**, not once per replica. The replicas only need to share the database: no Redis. A manual `trigger()` that lands on a run in progress is kept from overlapping it by a per-job lock, which is fleet-wide once `REDIS_URL` is set and per replica without it.
 
 Set `lock: false` on a `$job` if you genuinely want every replica to fire the handler.
 
