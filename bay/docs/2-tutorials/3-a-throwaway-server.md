@@ -12,7 +12,7 @@ commands below.
 
 ## The short way: Lore buys the server
 
-With the Lore CLI and Bay of 0.36.0 or later, one command replaces steps 1
+With the Lore CLI of 0.36.1 or later, one command replaces steps 1
 and 2 below, and `lore estate delete` replaces the provider's terminate:
 
 ```bash
