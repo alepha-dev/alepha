@@ -49,14 +49,17 @@ const helpSlide: GettingStartedSlide = {
   ],
 };
 
-const formatServerTime = (isoString: string): string => {
+/**
+ * The server's clock as `HH:MM:SS UTC`, the same string wherever it runs.
+ *
+ * This is rendered on the server and again in the browser to hydrate, so it
+ * must not depend on either one's time zone or locale: `toLocaleTimeString`
+ * printed the server's zone (UTC on a VPS) and then the visitor's, and every
+ * first visit of a new app failed hydration with React error #418.
+ */
+export const formatServerTime = (isoString: string): string => {
   try {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    return `${new Date(isoString).toISOString().slice(11, 19)} UTC`;
   } catch {
     return isoString;
   }
