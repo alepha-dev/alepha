@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
@@ -157,7 +159,7 @@ func connectorShow(store *connector.Store, out io.Writer) error {
 
 	raw, err := call(http.MethodGet, controlHost+"/connector", nil)
 	if err != nil {
-		fmt.Fprintln(out, "connection:  bay serve is not running")
+		fmt.Fprintln(out, "connection:  "+connectionUnknown(err))
 		return nil
 	}
 	var report connectorReport
@@ -182,7 +184,7 @@ func connectorShow(store *connector.Store, out io.Writer) error {
 // than a restart, and restarting the proxy restarts every hosted app.
 func pokeConnectorReload(out io.Writer) {
 	if _, err := call(http.MethodPost, controlHost+"/connector/reload", nil); err != nil {
-		fmt.Fprintln(out, "bay serve is not running here; it reads the connector when it starts")
+		fmt.Fprintln(out, "bay serve was not told ("+connectionUnknown(err)+"); it reads the connector when it starts")
 		return
 	}
 	fmt.Fprintln(out, "bay serve has been told; it takes effect without a restart")
@@ -298,5 +300,35 @@ func (s *server) pokeConnectorReload() {
 	select {
 	case s.connectorReload <- struct{}{}:
 	default:
+	}
+}
+
+/*
+connectionUnknown says why the control API could not answer, from the error
+call returned. It claims "not running" only when the error shows it: a socket
+that refuses the connection, or names nothing. A permission error, a missing
+socket at the guessed paths (the server may serve another --root) and an
+error answer from a running server each read as what they are, with the
+socket path that was tried, so an operator is never sent to restart a server
+that is up (estate `ovh`, 2026-11-07).
+*/
+func connectionUnknown(err error) string {
+	sock := controlSocketPath()
+	switch {
+	case errors.Is(err, os.ErrPermission):
+		where := sock
+		if where == "" {
+			where = installerSocket
+		}
+		return fmt.Sprintf("unknown, permission denied on %s: run as root or as a member of the control group (%v)", where, err)
+	case errors.Is(err, errNoControlSocket):
+		return fmt.Sprintf("unknown, no control socket at %s or %s: bay serve is not running here, or serves another --root (pass --control-socket or set BAY_SOCKET)",
+			filepath.Join(defaultRoot, "control.sock"), installerSocket)
+	case errors.Is(err, syscall.ECONNREFUSED), errors.Is(err, syscall.ENOENT):
+		return fmt.Sprintf("bay serve is not running (%s: %v)", sock, err)
+	case strings.HasPrefix(err.Error(), "control api unreachable"):
+		return fmt.Sprintf("unknown, could not reach the control API on %s: %v", sock, err)
+	default:
+		return fmt.Sprintf("unknown, the control API on %s answered an error: %v", sock, err)
 	}
 }

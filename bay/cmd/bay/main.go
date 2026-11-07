@@ -2599,6 +2599,22 @@ func controlSocketPath() string {
 	return ""
 }
 
+// errNoControlSocket is what call answers when no control socket was found to
+// dial, so a caller can tell "nothing to ask" from "asked and refused".
+var errNoControlSocket = errors.New("no control socket found")
+
+// controlSocketProbeError returns the first error other than "does not exist"
+// met while looking at the two guessed socket paths: a permission error there
+// means the socket may well exist, and the server be running, out of sight.
+func controlSocketProbeError() error {
+	for _, candidate := range []string{filepath.Join(defaultRoot, "control.sock"), installerSocket} {
+		if _, err := os.Lstat(candidate); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
 // socketFlag holds --control-socket for client commands.
 var socketFlag string
 
@@ -2618,11 +2634,16 @@ func call(method, url string, body io.Reader) (string, error) {
 
 	sock := controlSocketPath()
 	if sock == "" {
-		return "", errors.New(
-			"no control socket found — these commands run on the Bay host, " +
-				"as root or as a member of the control group " +
-				"(see --control-socket / $BAY_SOCKET). " +
-				"For remote deploys, ssh into the Bay host and run bay there.")
+		hint := fmt.Errorf("%w: these commands run on the Bay host, "+
+			"as root or as a member of the control group "+
+			"(see --control-socket / $BAY_SOCKET). "+
+			"For remote deploys, ssh into the Bay host and run bay there", errNoControlSocket)
+		// A socket we may not even look at reads as absent to isSocket: say
+		// so, since "not found" sends the reader looking for a stopped server.
+		if probe := controlSocketProbeError(); probe != nil {
+			return "", fmt.Errorf("%w (%w)", hint, probe)
+		}
+		return "", hint
 	}
 	client.Transport = controlTransport(sock)
 

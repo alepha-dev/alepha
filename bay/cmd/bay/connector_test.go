@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -112,11 +114,12 @@ func TestConnectorSetWantsExactlyTwoArguments(t *testing.T) {
 
 func TestConnectorShowNeverPrintsTheSecret(t *testing.T) {
 	/*
-		No `bay serve` answers in a test, so the connection line reads "not
-		running", which is the honest answer and the branch this pins: the
-		other lines come from the file and the cached welcome, and none of
-		them may carry the secret, in whole or in part.
+		No `bay serve` answers in a test, so the connection line says no
+		control socket was found, which is the honest answer: the other lines
+		come from the file and the cached welcome, and none of them may carry
+		the secret, in whole or in part.
 	*/
+	installerLayout(t)
 	root := servedRoot(t)
 	store := connector.NewStore(root)
 	if err := store.Set(connector.Config{Sink: "https://lore.alepha.dev", Secret: testSecret}); err != nil {
@@ -130,7 +133,7 @@ func TestConnectorShowNeverPrintsTheSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := out.String()
-	for _, want := range []string{"https://lore.alepha.dev", "ovh-1", "deploys allowed", "300s", "not running"} {
+	for _, want := range []string{"https://lore.alepha.dev", "ovh-1", "deploys allowed", "300s", "no control socket"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("show is missing %q:\n%s", want, text)
 		}
@@ -315,4 +318,114 @@ func TestConnectorSetNeverExchangesOverCleartext(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "cleartext") {
 		t.Fatalf("want the cleartext refusal, got %v", err)
 	}
+}
+
+func TestConnectorShowSaysWhyTheServerCouldNotBeAsked(t *testing.T) {
+	/*
+		Estate `ovh`, 2026-11-07: `bay connector show` said "bay serve is not
+		running" on a host where it was running. The line now names the
+		socket it tried and the error, and says "not running" only when the
+		error shows that.
+	*/
+	configured := func(t *testing.T) *connector.Store {
+		t.Helper()
+		store := connector.NewStore(servedRoot(t))
+		if err := store.Set(connector.Config{Sink: "https://lore.alepha.dev", Secret: testSecret}); err != nil {
+			t.Fatal(err)
+		}
+		return store
+	}
+	show := func(t *testing.T, sock string) string {
+		t.Helper()
+		prev := socketFlag
+		socketFlag = sock
+		t.Cleanup(func() { socketFlag = prev })
+		var out bytes.Buffer
+		if err := connectorShow(configured(t), &out); err != nil {
+			t.Fatal(err)
+		}
+		return out.String()
+	}
+	shortDir := func(t *testing.T) string {
+		t.Helper()
+		// A unix socket path is capped near 104 bytes: t.TempDir() is too long on macOS.
+		dir, err := os.MkdirTemp("", "bay")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Chmod(dir, 0o700); os.RemoveAll(dir) })
+		return dir
+	}
+
+	t.Run("a socket that names nothing is not running, with the path", func(t *testing.T) {
+		sock := filepath.Join(shortDir(t), "control.sock")
+		text := show(t, sock)
+		if !strings.Contains(text, "bay serve is not running") || !strings.Contains(text, sock) {
+			t.Fatalf("a missing socket must say not running and name it:\n%s", text)
+		}
+	})
+
+	t.Run("a running server's error answer is not 'not running'", func(t *testing.T) {
+		sock := filepath.Join(shortDir(t), "control.sock")
+		ln, err := net.Listen("unix", sock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"message":"the connector is wedged"}`)
+		})}
+		go srv.Serve(ln)
+		t.Cleanup(func() { srv.Close() })
+
+		text := show(t, sock)
+		if strings.Contains(text, "not running") {
+			t.Fatalf("a server that answered is running:\n%s", text)
+		}
+		if !strings.Contains(text, "the connector is wedged") || !strings.Contains(text, sock) {
+			t.Fatalf("the API's own error and the socket must be shown:\n%s", text)
+		}
+	})
+
+	t.Run("a socket out of reach is a permission problem, not a stopped server", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root reads through any mode")
+		}
+		dir := shortDir(t)
+		sock := filepath.Join(dir, "control.sock")
+		listenSocket(t, sock)
+		if err := os.Chmod(dir, 0); err != nil {
+			t.Fatal(err)
+		}
+		text := show(t, sock)
+		if strings.Contains(text, "not running") || !strings.Contains(text, "permission denied") || !strings.Contains(text, sock) {
+			t.Fatalf("an unreachable socket must say permission denied and name it:\n%s", text)
+		}
+	})
+
+	t.Run("no socket at the guessed paths names them and the way out", func(t *testing.T) {
+		_, sock := installerLayout(t)
+		text := show(t, "")
+		if !strings.Contains(text, "no control socket") || !strings.Contains(text, sock) || !strings.Contains(text, "--control-socket") {
+			t.Fatalf("a missing socket must name the paths tried and the flag:\n%s", text)
+		}
+	})
+
+	t.Run("a guessed socket hidden by permissions says so", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root reads through any mode")
+		}
+		_, sock := installerLayout(t)
+		listenSocket(t, sock)
+		dir := filepath.Dir(sock)
+		if err := os.Chmod(dir, 0); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Chmod(dir, 0o700) })
+		text := show(t, "")
+		if strings.Contains(text, "not running") || !strings.Contains(text, "permission denied") {
+			t.Fatalf("a socket hidden by permissions must say so:\n%s", text)
+		}
+	})
 }
