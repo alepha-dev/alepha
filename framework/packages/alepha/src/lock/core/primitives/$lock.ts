@@ -6,9 +6,11 @@ import {
 } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
+import { MemoryLockProvider } from "../providers/MemoryLockProvider.ts";
 
 /**
  * Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
@@ -31,6 +33,11 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
   const lockProvider = alepha.inject(LockProvider);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const crypto = alepha.inject(CryptoProvider);
+  const log = $logger();
+  // On Cloudflare Workers no Redis client runs, so the lock is the memory
+  // one and holds only inside one isolate. Said once per `$lock`, on its
+  // first call, rather than at boot: a lock that never runs costs nothing.
+  let warnedPerIsolate = false;
 
   return createMiddleware({
     name: "$lock",
@@ -56,6 +63,17 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
         if (!name) {
           throw new AlephaError(
             "$lock middleware requires a name option (no class context available)",
+          );
+        }
+
+        if (
+          !warnedPerIsolate &&
+          lockProvider instanceof MemoryLockProvider &&
+          alepha.isServerless()
+        ) {
+          warnedPerIsolate = true;
+          log.warn(
+            `$lock '${name}' is in memory on a serverless runtime, so it excludes only callers in this isolate. For mutual exclusion across isolates use an $actor (it runs in a Durable Object, one call at a time), or a conditional write the database refuses twice.`,
           );
         }
 

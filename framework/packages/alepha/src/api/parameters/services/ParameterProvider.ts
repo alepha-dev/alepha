@@ -13,8 +13,8 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
-import { $repository, RepositoryProvider } from "alepha/orm";
-import { $topic } from "alepha/topic";
+import { $repository, DbConflictError, RepositoryProvider } from "alepha/orm";
+import { $topic, MemoryTopicProvider } from "alepha/topic";
 
 import { type Parameter, parameters } from "../entities/parameters.ts";
 import type { ParameterPrimitive } from "../primitives/$parameter.ts";
@@ -106,9 +106,10 @@ export class ParameterProvider {
    *
    * The in-memory caches are PER ISOLATE. On serverless runtimes
    * (Cloudflare Workers) many isolates serve the same app and the
-   * cross-instance `syncTopic` rides the queue provider — in-memory by
-   * default, so a `set()` handled by one isolate never reaches the others:
-   * without a TTL they serve the stale value until they are recycled.
+   * cross-instance `syncTopic` is in memory, so a `set()` handled by one
+   * isolate never reaches the others (and is not published there at all):
+   * this TTL is what spreads it. Without one they would serve the stale
+   * value until they are recycled.
    *
    * Defaults: 30 s on serverless, 0 (= never revalidate, the historical
    * behaviour) elsewhere. Override with the `PARAMETERS_CACHE_TTL_MS` env.
@@ -914,14 +915,26 @@ export class ParameterProvider {
           name,
           description: migration.description,
         });
-        await this.save(
-          name,
-          migration.value as Record<string, unknown>,
-          schemaHash,
-          {
-            changeDescription: migration.description,
-          },
-        );
+        // The unique (name, version) index is the claim: two instances that
+        // migrate at once both compute the same next version, the first
+        // insert wins, and the other gets a conflict. That holds where the
+        // migration lock cannot, on workerd, whose lock is per isolate and
+        // which never takes it (#Q3184). The loser reads the winner's row.
+        let migratedHere = true;
+        try {
+          await this.save(
+            name,
+            migration.value as Record<string, unknown>,
+            schemaHash,
+            {
+              changeDescription: migration.description,
+            },
+          );
+        } catch (e) {
+          if (!(e instanceof DbConflictError)) throw e;
+          migratedHere = false;
+          this.log.debug("Parameter migrated by another instance", { name });
+        }
         // Reload after migration to get the new current
         const updated = await this.loadCurrentAndNext(name);
         if (updated.current) {
@@ -940,7 +953,9 @@ export class ParameterProvider {
         this.loaded.add(ck);
         this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
         this.loadPromises.delete(ck);
-        // save() already notified subscribers of the migrated value.
+        // save() already notified subscribers of the migrated value; when the
+        // other instance's save won, this one has to.
+        if (!migratedHere) this.notifySubscribers(name);
         return;
       }
     }
@@ -1191,6 +1206,15 @@ export class ParameterProvider {
    * Publish change notification to other instances.
    */
   protected async publishChange(name: string): Promise<void> {
+    // On Workers the topic is in memory, so it reaches no other isolate:
+    // there the revalidation TTL (`revalidateAfterMs`) is what spreads a
+    // change, and publishing would only pretend to (#Q3184).
+    if (
+      this.alepha.isServerless() &&
+      this.syncTopic.provider instanceof MemoryTopicProvider
+    ) {
+      return;
+    }
     await this.syncTopic.publish({
       name,
       instanceId: this.instanceId,

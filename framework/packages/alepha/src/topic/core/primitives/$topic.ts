@@ -8,6 +8,7 @@ import {
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
+import { $logger } from "alepha/logger";
 
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {
@@ -263,18 +264,50 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
   TopicPrimitiveOptions<T>
 > {
   public readonly provider = this.$provider();
+  protected readonly log = $logger();
+
+  /**
+   * Whether this topic already said it is per isolate (see `publish`).
+   */
+  protected warnedPerIsolate = false;
 
   public get name(): string {
     return this.options.name || this.config.propertyKey;
   }
 
   public async publish(message: TopicPublishMessage<T>): Promise<void> {
+    this.warnIfPerIsolate();
     const { payload, options } = this.split(message);
     await this.provider.publishMessage<T>(
       this.name,
       this.options.schema.payload,
       payload,
       { ...options, retain: this.options.retain },
+    );
+  }
+
+  /**
+   * Say once that a memory topic on a serverless runtime reaches only this
+   * isolate.
+   *
+   * On Cloudflare Workers no Redis client runs, so every topic is the memory
+   * one, and an isolate's publish never reaches the others. That is fine for
+   * a topic meant to stay in process; a topic meant to reach every visitor
+   * is a `$room` (it runs in a Durable Object), and work that must reach
+   * another isolate is a queue. Off serverless a memory topic is one process,
+   * which is what a single instance is, so nothing is said there.
+   */
+  protected warnIfPerIsolate(): void {
+    if (
+      this.warnedPerIsolate ||
+      !(this.provider instanceof MemoryTopicProvider) ||
+      !this.alepha.isServerless()
+    ) {
+      return;
+    }
+    this.warnedPerIsolate = true;
+    this.log.warn(
+      `$topic '${this.name}' is in memory on a serverless runtime, so a publish reaches only this isolate. To reach every connected client use a $room; to hand work to another isolate use a queue.`,
     );
   }
 

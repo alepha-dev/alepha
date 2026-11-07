@@ -389,7 +389,20 @@ Two ways out, depending on what you need:
 
 ## Limitations
 
-- **Redis** does not run in a Worker: `$cache`, queues and actors use the Cloudflare providers. `$lock` and `$topic` are memory only, per isolate, so a lock excludes callers in its own isolate alone and a message reaches subscribers in its own isolate alone. `REDIS_URL` set on a Worker selects nothing and logs one warning per isolate.
+- **Redis** does not run in a Worker: `$cache`, queues and actors use the Cloudflare providers. `REDIS_URL` set on a Worker selects nothing and logs one warning per isolate.
+
+### What each primitive does on Workers
+
+A Worker runs as many isolates, each with its own memory. Most primitives have a Cloudflare provider; two stay in memory on purpose, because the job they do across instances is already done by something Workers has natively. Each of those two logs one warning on first use.
+
+| Primitive         | On Workers                                                    | Use instead, across isolates                                                  |
+| ----------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `$transactional`  | refused: D1 has no interactive transactions                   | a WHERE precondition, `db.version()`, a safe write order                      |
+| `$job({ cron })`  | a Cron Trigger, which fires once per schedule                 | nothing to add                                                                |
+| `$room`, `$actor` | Durable Objects                                               | nothing to add                                                                |
+| `$lock`           | memory, per isolate: excludes callers in its own isolate only | an `$actor` (one call at a time), or a write the database refuses twice       |
+| `$topic`          | memory, per isolate: a publish reaches its own isolate only   | a `$room` to reach connected clients, a queue to hand work to another isolate |
+| `$parameter`      | read from D1, each isolate revalidating after 30 seconds      | nothing to add                                                                |
 
 ## Configuration
 
