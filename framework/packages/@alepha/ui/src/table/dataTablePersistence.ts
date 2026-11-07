@@ -138,13 +138,19 @@ export const persistedColumns = <T>(
   key: string | undefined,
   columns: Record<string, ColumnDef<T>>,
 ): Set<string> => {
-  const stored = key ? readPersisted<string[]>(key, "columns") : undefined;
-  if (stored) {
-    return new Set(stored.filter((k) => k in columns));
-  }
-  return new Set(
+  const declared = new Set(
     Object.keys(columns).filter((k) => !columns[k]!.defaultHidden),
   );
+  const stored = key ? readPersisted<string[]>(key, "columns") : undefined;
+  if (!Array.isArray(stored)) return declared;
+  const kept = new Set(stored.filter((k) => k in columns));
+  // A stored set that names none of today's columns is a snapshot of an
+  // older layout, not a reader's choice: a table showing zero columns is not
+  // something anyone picks (the picker keeps the last one). It
+  // used to win anyway, so a table whose columns were all renamed opened as
+  // rows of empty cells, headers included, for everyone who had once toggled
+  // a column. The declaration wins instead.
+  return kept.size > 0 ? kept : declared;
 };
 
 /**

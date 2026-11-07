@@ -114,6 +114,9 @@ export const DataTableColumnPicker = <T,>(
               />
               <DropdownMenuCheckboxItem
                 checked={props.visible.has(key)}
+                // The last visible column stays: a table of zero columns is
+                // rows of empty cells, never what the reader meant.
+                disabled={props.visible.has(key) && props.visible.size === 1}
                 closeOnClick={false}
                 onCheckedChange={() => props.onToggle(key)}
                 className="flex-1"

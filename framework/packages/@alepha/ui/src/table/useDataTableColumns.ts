@@ -135,6 +135,7 @@ export const useDataTableColumns = <T>(
    */
   const toggleColumn = (id: string) => {
     const next = new Set(visibleColumns);
+    if (next.has(id) && next.size === 1) return;
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setVisibleColumns(next);
