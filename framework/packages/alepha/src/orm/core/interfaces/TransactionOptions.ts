@@ -15,4 +15,12 @@ export interface TransactionOptions {
    * Whether the transaction may write.
    */
   access?: "read write" | "read only";
+
+  /**
+   * Run a `$transactional()` block on a driver that refuses one (Cloudflare
+   * D1), in place and without atomicity: a throw rolls nothing back. Without
+   * it the block throws `DbTransactionUnsupportedError` there. Ignored on a
+   * driver with transactions, and by direct `transactional()` calls.
+   */
+  allowNonAtomic?: boolean;
 }

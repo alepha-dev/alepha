@@ -721,7 +721,8 @@ if (projectAtomViolations.length > 0) {
  * ## Why a mechanical rule rather than a comment
  *
  * Lore runs on Cloudflare D1, which has no transactions: `$transactional()`
- * runs its handler in place there, and a throw rolls nothing back. Twenty-nine
+ * ran its handler in place there, and a throw rolled nothing back (since
+ * #Q3183 the framework refuses the block on D1 instead). Twenty-nine
  * actions carried one anyway, each promising an atomicity production never
  * had, and the specs could not tell, because the SQLite driver they ran on
  * does roll back (#F1348). Every one was replaced by a pattern that holds on

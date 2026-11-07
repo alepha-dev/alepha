@@ -289,6 +289,15 @@ export class CloudflareD1Provider extends DatabaseProvider {
     return false;
   }
 
+  /**
+   * A `$transactional()` block is refused on D1 unless it declares
+   * `allowNonAtomic`: running it in place would look like a guarantee and
+   * roll nothing back.
+   */
+  protected override get refusesNonAtomic(): boolean {
+    return true;
+  }
+
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {

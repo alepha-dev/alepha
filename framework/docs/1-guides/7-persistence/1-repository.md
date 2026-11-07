@@ -674,7 +674,7 @@ All repository methods accept `{ tx }` in their options parameter to participate
 
 `transaction()` and `$transactional()` take the transaction's options: `{ isolation: "serializable" }` (or `"read committed"`, `"repeatable read"`) and `{ access: "read only" }`. Left unset, both are the database's own defaults; SQLite ignores them.
 
-On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws and tells you to use `$transactional()` instead.
+On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws: see [No transactions on D1](#no-transactions-on-d1).
 
 To wrap a whole handler in a transaction without drilling `{ tx }` through every call, use the `$transactional` middleware:
 
@@ -702,7 +702,11 @@ A query given both `for` (a row lock) and `cache` throws: a cached result takes 
 
 ### No transactions on D1
 
-**Cloudflare D1 (and PGlite) has no transactions, and `$transactional()` is a no-op there.** The handler runs in place, a throw rolls back nothing, and two requests interleave freely. Each `$transactional()` primitive logs one warning the first time it runs on such a driver. Code that must be correct on D1 does not rely on a rollback:
+**Cloudflare D1 has no interactive transactions, so `$transactional()` refuses to run there.** The block throws `DbTransactionUnsupportedError` on its first call, before its body runs, rather than pretending to protect something: a block that ran in place would roll nothing back, and two requests would interleave freely. D1's `batch()` is atomic, but it cannot read inside itself, so it cannot stand in for a transaction.
+
+To run a block on D1 anyway, without atomicity, declare it: `$transactional({ allowNonAtomic: true })`. It then runs in place and logs one warning. PGlite has no transactions either; there, as a development driver, the block runs in place with that warning.
+
+Code that must be correct on D1 does not rely on a rollback:
 
 - **Lost updates:** `db.version()` with `save()`, which answers 409 when the row changed underneath.
 - **Check-then-act:** put the precondition in the write's WHERE (`updateOne({ id, status: "ready" }, …)`), and treat a miss as "someone else won".

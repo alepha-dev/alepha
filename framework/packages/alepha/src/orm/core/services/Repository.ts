@@ -542,7 +542,7 @@ export abstract class Repository<T extends ZObject> {
   ): Promise<T> {
     if (!this.provider.supportsTransactions) {
       throw new AlephaError(
-        `Transactions are not supported with ${this.provider.driver} driver. Use $transactional() middleware instead, which gracefully degrades on unsupported drivers.`,
+        `Transactions are not supported with ${this.provider.driver} driver. Guard the writes instead: a WHERE precondition, db.version(), or a write order in which a failure leaves harmless state.`,
       );
     }
 

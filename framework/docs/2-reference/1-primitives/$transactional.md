@@ -19,11 +19,15 @@ outer transaction cannot honour throw instead of being ignored: a different
 `isolation`, or `access: "read write"` inside a `read only` transaction.
 Set them on the outermost block.
 
-⚠️ **A no-op on a driver without transactions** (Cloudflare D1, PGlite):
-the handler runs in place, and a throw rolls nothing back. Each primitive
-logs one warning the first time it runs there. Code that must be correct on
-D1 guards its writes instead: preconditions in the WHERE, `db.version()`,
-or an order in which a failure leaves harmless state.
+⚠️ **Refused on Cloudflare D1**, which has no interactive transactions:
+the block throws `DbTransactionUnsupportedError` instead of running as a
+silent no-op. Code that must be correct on D1 guards its writes instead:
+preconditions in the WHERE, `db.version()`, or an order in which a failure
+leaves harmless state. `allowNonAtomic: true` runs the block there anyway,
+in place, and a throw rolls nothing back.
+
+On PGlite, and in a spec run with `DATABASE_TRANSACTIONS=false`, the block
+runs in place and each primitive logs one warning the first time.
 
 ```typescript
 class OrderService {
@@ -42,7 +46,8 @@ class OrderService {
 
 ## Options
 
-| Option      | Type                              | Required | Description                                                    |
-| ----------- | --------------------------------- | -------- | -------------------------------------------------------------- |
-| `isolation` | `TransactionOptions["isolation"]` | No       | The SQL isolation level of the transaction                     |
-| `access`    | `TransactionOptions["access"]`    | No       | Whether the transaction may write (`read write` when omitted). |
+| Option           | Type                              | Required | Description                                                                                                                  |
+| ---------------- | --------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `isolation`      | `TransactionOptions["isolation"]` | No       | The SQL isolation level of the transaction                                                                                   |
+| `access`         | `TransactionOptions["access"]`    | No       | Whether the transaction may write (`read write` when omitted).                                                               |
+| `allowNonAtomic` | `boolean`                         | No       | Run the block on Cloudflare D1 anyway, in place and without atomicity: a throw rolls nothing back, and one warning is logged |

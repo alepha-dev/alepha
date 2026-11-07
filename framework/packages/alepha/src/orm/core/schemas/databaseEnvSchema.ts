@@ -29,7 +29,8 @@ export const databaseEnvSchema = z.object({
    * Test-only: `false` runs the database without transactions, the way
    * Cloudflare D1 does.
    *
-   * `$transactional()` then runs its body in place, `afterCommit` callbacks
+   * `$transactional()` then runs its body in place (D1 itself refuses the
+   * block unless it declares `allowNonAtomic`), `afterCommit` callbacks
    * run at once and `Repository.transaction()` throws. A spec that sets it
    * sees D1's interleaving and its partial writes, which the SQLite drivers
    * otherwise hide by serializing every transaction.

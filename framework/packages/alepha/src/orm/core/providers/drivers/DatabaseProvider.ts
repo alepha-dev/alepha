@@ -21,6 +21,7 @@ import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
 import { DbError } from "../../errors/DbError.ts";
 import { DbTimeoutError } from "../../errors/DbTimeoutError.ts";
+import { DbTransactionUnsupportedError } from "../../errors/DbTransactionUnsupportedError.ts";
 import { assertAttrsReachable } from "../../helpers/pgAttr.ts";
 import type { DbTransaction } from "../../interfaces/DbTransaction.ts";
 import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
@@ -587,6 +588,9 @@ export abstract class DatabaseProvider {
     this.unitSignal()?.throwIfAborted();
 
     if (!this.supportsTransactions) {
+      if (owner && this.refusesNonAtomic && !options?.allowNonAtomic) {
+        throw new DbTransactionUnsupportedError({ driver: this.driver });
+      }
       this.warnWithoutTransactions(owner);
       return fn();
     }
@@ -659,6 +663,18 @@ export abstract class DatabaseProvider {
       isolationLevel: options.isolation,
       accessMode: options.access,
     };
+  }
+
+  /**
+   * Whether a `$transactional()` block is refused here rather than run bare.
+   *
+   * `true` on a production driver with no transactions (Cloudflare D1), where
+   * a block that silently protects nothing would be a lie. `false` everywhere
+   * else, PGlite and the test switch included: those run bare with a warning.
+   * A block declared `allowNonAtomic` always runs.
+   */
+  protected get refusesNonAtomic(): boolean {
+    return false;
   }
 
   /**

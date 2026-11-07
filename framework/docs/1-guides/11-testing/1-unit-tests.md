@@ -298,7 +298,7 @@ env: {
 
 Cloudflare D1 has no transactions: `$transactional()` runs its body in place there, and a failure halfway keeps every write made before it. The SQLite drivers used by specs do roll back, and they run transactions one at a time, so a spec on them cannot see a race or a partial write that D1 would produce.
 
-`DATABASE_TRANSACTIONS: false` switches transactions off for one container. `$transactional()` then runs its body in place, `afterCommit` callbacks run at once and `Repository.transaction()` throws, exactly as on D1. The switch is read only when `NODE_ENV` is `test`, so it can never reach production.
+`DATABASE_TRANSACTIONS: false` switches transactions off for one container. `$transactional()` then runs its body in place (as D1 does with `allowNonAtomic: true`; without it, D1 refuses the block), `afterCommit` callbacks run at once and `Repository.transaction()` throws, as on D1. The switch is read only when `NODE_ENV` is `test`, so it can never reach production.
 
 To reproduce a failure halfway, substitute the collaborator that fails rather than mocking it:
 

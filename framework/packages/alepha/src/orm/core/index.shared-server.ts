@@ -3,6 +3,7 @@ export * from "./entities/alephaSequences.ts";
 export * from "./errors/DbConflictError.ts";
 export * from "./errors/DbError.ts";
 export * from "./errors/DbMigrationError.ts";
+export * from "./errors/DbTransactionUnsupportedError.ts";
 export * from "./errors/DbVersionMismatchError.ts";
 export * from "./index.shared.ts";
 export * from "./interfaces/D1Database.ts";
