@@ -7,7 +7,8 @@
  * (`DataTableFilterFields`) that it draws on its own filter bar. Above that
  * bar it can hold a collapsible summary (`DataTableSummary`): stat cards
  * (`DataTableStatCard`) given or fetched with the table's filters, and any
- * node beside them. A `help` node sits behind a `?` at the end of the
+ * node beside them, and above everything a band of `tabs` (`DataTableTab`),
+ * views of the same page with their counts. A `help` node sits behind a `?` at the end of the
  * toolbar's icons.
  * `DataTableFilterMenu`, `DataTableFilterDialog` and `DataTableBulkMenu`
  * are its parts, and `useTableSelection` its selection state. `PermissionMatrix` is the grid of
@@ -19,6 +20,11 @@
 export { PAGE_SIZES } from "./DataTableFooter.tsx";
 export { DataTable, type DataTableProps } from "./DataTable.tsx";
 export type { DataTableBaseProps } from "./dataTableBaseProps.ts";
+export {
+  DataTableTabs,
+  type DataTableTab,
+  type DataTableTabsProps,
+} from "./DataTableTabs.tsx";
 export type {
   DataTableEmptyState,
   DataTableFilterField,

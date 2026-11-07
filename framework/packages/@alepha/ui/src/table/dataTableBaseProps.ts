@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { DataTableCellPadding } from "./dataTableCellPadding.ts";
 import type { DataTableSquareRight } from "./dataTableSquareRight.ts";
+import type { DataTableTab } from "./DataTableTabs.tsx";
 import type {
   DataTableEmptyState,
   DataTableFilterFields,
@@ -404,6 +405,17 @@ export interface DataTableBaseProps<
    * is stated here rather than made uncompilable.
    */
   empty?: ReactNode;
+  /**
+   * Tabs that open the table's frame, above the summary and the toolbar:
+   * views of the same page, such as a team's users and its profiles, each
+   * with an optional count. Part of the table's chrome, so they read as the
+   * card's own header rather than a strip floating above it.
+   *
+   * A tab with `href` is a link (each tab its own route), one with
+   * `onSelect` a button; `active` marks the tab on screen. An empty list
+   * draws no band.
+   */
+  tabs?: DataTableTab[];
   /**
    * Free-form content rendered above the toolbar (e.g. a page title).
    *
