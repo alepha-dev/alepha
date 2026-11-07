@@ -110,7 +110,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col">
       {questChronoEnabled && (
         <QuestViewTimer quest={quest} onUpdate={props.onUpdate} />
       )}

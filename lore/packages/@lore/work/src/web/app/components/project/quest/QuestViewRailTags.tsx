@@ -38,9 +38,9 @@ const QuestViewRailTags = (props: QuestViewRailTagsProps) => {
     // the call site because this returns `null` when the quest has no tags,
     // and a wrapper would leave the separator behind with nothing under it.
     //
-    // `pt-2.5`, not the `pt-4` of the blocks below: the row brings its own
-    // `py-1.5`, and the two add up to the same gap under the rule.
-    <div className="border-t pt-2.5">
+    // No top padding: the row brings its own `py-1.5`, so the tags sit
+    // under the rule like any other rail row.
+    <div className="border-t">
       {/* A rail row like the ones above, label left and chips right (#Q2424).
           It was a label over a line of chips, the one block in the rail laid
           out differently. */}
