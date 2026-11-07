@@ -1,6 +1,6 @@
 {
   "name": "@alepha/desktop",
-  "version": "0.36.0",
+  "version": "0.36.1",
   "description": "Native macOS window for a compiled Alepha app: a webview shell, a supervised server Worker on loopback, and alepha compile --desktop.",
   "keywords": [
     "alepha",
@@ -88,7 +88,7 @@
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
-    "alepha": "0.36.0",
+    "alepha": "0.36.1",
     "rolldown": "~1.2.16",
     "tsdown": "^0.23.4",
     "typescript": "^7.0.2",
@@ -96,7 +96,7 @@
     "vitest": "^5.0.5"
   },
   "peerDependencies": {
-    "alepha": "^0.36.0"
+    "alepha": "^0.36.1"
   },
   "engines": {
     "node": ">=24.0.0"

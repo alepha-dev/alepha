@@ -31,7 +31,7 @@ __metadata:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     lucide-react: "npm:^1.66.0"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
@@ -42,7 +42,7 @@ __metadata:
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
   peerDependencies:
-    "@alepha/ui": ^0.36.0
+    "@alepha/ui": ^0.36.1
     "@aparajita/capacitor-secure-storage": ^8.0.0
     "@capacitor/app": ^8.0.0
     "@capacitor/core": ^8.4.0
@@ -50,7 +50,7 @@ __metadata:
     "@capacitor/haptics": ^8.0.0
     "@capacitor/splash-screen": ^8.0.0
     "@capgo/capacitor-updater": 8.54.0
-    alepha: ^0.36.0
+    alepha: ^0.36.1
     lucide-react: ^1.52.0
   peerDependenciesMeta:
     "@alepha/ui":
@@ -82,7 +82,7 @@ __metadata:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     lucide-react: "npm:^1.66.0"
     react: "npm:^19.3.1"
     tsdown: "npm:^0.23.4"
@@ -90,7 +90,7 @@ __metadata:
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
     react: "*"
   languageName: unknown
   linkType: soft
@@ -101,7 +101,7 @@ __metadata:
   dependencies:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     rolldown: "npm:~1.2.16"
     tsdown: "npm:^0.23.4"
     typescript: "npm:^7.0.2"
@@ -109,7 +109,7 @@ __metadata:
     vitest: "npm:^5.0.5"
     webview-bun: "npm:2.4.0"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
   languageName: unknown
   linkType: soft
 
@@ -124,7 +124,7 @@ __metadata:
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
     "@xyflow/react": "npm:^12.12.0"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     lucide-react: "npm:^1.66.0"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
@@ -144,12 +144,12 @@ __metadata:
   dependencies:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
   languageName: unknown
   linkType: soft
 
@@ -163,7 +163,7 @@ __metadata:
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     js-yaml: "npm:5.5.0"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
@@ -176,7 +176,7 @@ __metadata:
     "@lore/deploy": "*"
     "@lore/knowledge": "*"
     "@lore/work": "*"
-    alepha: ">=0.36.0"
+    alepha: ">=0.36.1"
     react: "*"
     react-dom: "*"
   peerDependenciesMeta:
@@ -205,14 +205,14 @@ __metadata:
   dependencies:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     mqtt: "npm:^5.16.1"
     mqtt-packet: "npm:^9.0.2"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
   languageName: unknown
   linkType: soft
 
@@ -222,13 +222,13 @@ __metadata:
   dependencies:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     stripe: "npm:^23.1.0"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
   languageName: unknown
   linkType: soft
 
@@ -238,14 +238,14 @@ __metadata:
   dependencies:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     protobufjs: "npm:^8.8.1"
     tsdown: "npm:^0.23.4"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
   dependenciesMeta:
     protobufjs:
       built: true
@@ -265,7 +265,7 @@ __metadata:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     class-variance-authority: "npm:^0.7.1"
     cn: "npm:^0.5.1"
     date-fns: "npm:^4.4.0"
@@ -289,7 +289,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     unist-util-visit: "npm:^5.2.0"
   peerDependencies:
-    alepha: ^0.36.0
+    alepha: ^0.36.1
     react: ^19.3.0
     react-dom: ^19.3.0
     recharts: ^3
@@ -3968,7 +3968,7 @@ __metadata:
     "@types/node": "npm:^26.6.6"
     "@types/react": "npm:^19.3.0"
     "@vitest/coverage-v8": "npm:^5.0.5"
-    alepha: "npm:^0.36.0"
+    alepha: "npm:^0.36.1"
     depcheck: "npm:^1.4.7"
     oxfmt: "npm:^0.75.0"
     oxlint: "npm:^1.90.0"
@@ -3991,7 +3991,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"alepha@npm:0.36.0, alepha@npm:^0.36.0, alepha@workspace:*, alepha@workspace:^, alepha@workspace:framework/packages/alepha":
+"alepha@npm:0.36.1, alepha@npm:^0.36.1, alepha@workspace:*, alepha@workspace:^, alepha@workspace:framework/packages/alepha":
   version: 0.0.0-use.local
   resolution: "alepha@workspace:framework/packages/alepha"
   dependencies:
@@ -4851,7 +4851,7 @@ __metadata:
   dependencies:
     "@types/bun": "npm:^1.4.4"
     "@types/node": "npm:^26.6.6"
-    alepha: "npm:0.36.0"
+    alepha: "npm:0.36.1"
     tsdown: "npm:^0.23.4"
     vite: "npm:^8.3.5"
     vitest: "npm:^5.0.5"
@@ -5255,7 +5255,7 @@ __metadata:
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
     "@xmldom/xmldom": "npm:^0.9.12"
-    alepha: "npm:^0.36.0"
+    alepha: "npm:^0.36.1"
     fuse.js: "npm:^7.5.0"
     graphre: "npm:^0.1.3"
     highlight.js: "npm:^11.12.0"
@@ -9204,7 +9204,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "relations@workspace:framework/apps/examples/relations"
   dependencies:
-    alepha: "npm:^0.36.0"
+    alepha: "npm:^0.36.1"
     drizzle-orm: "npm:1.0.0-rc.5"
     miniflare: "npm:5.20261103.0-beta"
   languageName: unknown
@@ -9933,7 +9933,7 @@ __metadata:
   resolution: "ssr@workspace:framework/apps/examples/ssr"
   dependencies:
     "@playwright/test": "npm:^1.64.1"
-    alepha: "npm:^0.36.0"
+    alepha: "npm:^0.36.1"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
     vite: "npm:^8.3.5"
@@ -11219,7 +11219,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ws@workspace:framework/apps/examples/ws"
   dependencies:
-    alepha: "npm:^0.36.0"
+    alepha: "npm:^0.36.1"
     react: "npm:^19.3.1"
   languageName: unknown
   linkType: soft
