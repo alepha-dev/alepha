@@ -104,7 +104,11 @@ export class OpenAiCompatibleAiProvider extends AiProvider {
       throw await this.errors.fromResponse(this.name, response);
     }
 
-    yield* this.readStream(response.body, signal);
+    yield* this.readStream(
+      response.body,
+      signal,
+      request.tools?.map((tool) => tool.name),
+    );
   }
 
   /**
@@ -116,12 +120,14 @@ export class OpenAiCompatibleAiProvider extends AiProvider {
   }
 
   /**
-   * Map the chunk stream to `AiEvent`s.
+   * Map the chunk stream to `AiEvent`s. `tools` names the tools the request
+   * offered, so a call written as text is read as one.
    */
   public readStream(
     stream: ReadableStream<Uint8Array>,
     signal?: AbortSignal,
+    tools?: readonly string[],
   ): AsyncIterable<AiEvent> {
-    return this.format.read(this.name, stream, signal);
+    return this.format.read(this.name, stream, signal, tools);
   }
 }

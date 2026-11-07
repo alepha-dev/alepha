@@ -224,6 +224,71 @@ describe("WorkersAiProvider", () => {
     expect(binding.searches).toEqual([SCOUT]);
   });
 
+  it("reads a tool call the model wrote as text as a call, and leaves ordinary replies alone", async ({
+    expect,
+  }) => {
+    const { ai, binding } = await setup();
+    binding.catalog[SCOUT] = true;
+    const tools = [
+      {
+        name: "aiCreateClient",
+        description: "Create a client",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ];
+    const content = (...parts: string[]) =>
+      sse(
+        ...parts.map((part) => ({
+          choices: [{ delta: { content: part }, index: 0 }],
+        })),
+        { choices: [{ delta: {}, finish_reason: "stop", index: 0 }] },
+      );
+    // Seen from Mistral Small 3.1 on Workers AI: the call as content text,
+    // in tokens, sometimes after the `[TOOL_CALLS]` marker.
+    binding.streams.push(
+      content(
+        '[{"name": "aiCreateClient", ',
+        '"arguments": {"body": {"firstName": "Nicolas", "email": "n@example.app"}}}]',
+      ),
+      content(
+        "[TOOL_CALLS]",
+        '[{"name": "aiCreateClient", "parameters": "{}"}]',
+      ),
+      content("[Identité](/admin/identity) ", "has the hours."),
+      content('[{"name": "dropTables", "arguments": {}}]'),
+      content("{ not json"),
+    );
+    const ask = () =>
+      ai.complete({ messages: [{ role: "user", content: "x" }], tools });
+
+    const written = await ask();
+    expect(written.text).toBe("");
+    expect(written.reason).toBe("tool");
+    expect(written.toolCalls).toEqual([
+      {
+        id: "call_0",
+        name: "aiCreateClient",
+        input: { body: { firstName: "Nicolas", email: "n@example.app" } },
+      },
+    ]);
+
+    const marked = await ask();
+    expect(marked.toolCalls).toEqual([
+      { id: "call_0", name: "aiCreateClient", input: {} },
+    ]);
+
+    // A reply opening on a markdown link streams as text.
+    const link = await ask();
+    expect(link.text).toBe("[Identité](/admin/identity) has the hours.");
+    expect(link.toolCalls).toEqual([]);
+
+    // A name the request did not offer, or text that is not JSON, stays text.
+    expect((await ask()).text).toBe(
+      '[{"name": "dropTables", "arguments": {}}]',
+    );
+    expect((await ask()).text).toBe("{ not json");
+  });
+
   it("reads the older { response, tool_calls } stream", async ({ expect }) => {
     const { ai, binding } = await setup();
     binding.streams.push(

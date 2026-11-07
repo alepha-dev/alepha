@@ -106,7 +106,12 @@ export class WorkersAiProvider extends AiProvider {
       throw this.toError(error);
     }
 
-    yield* this.format.read(this.name, stream, signal);
+    yield* this.format.read(
+      this.name,
+      stream,
+      signal,
+      request.tools?.map((tool) => tool.name),
+    );
   }
 
   /**

@@ -27,8 +27,18 @@ import { SseReader } from "./SseReader.ts";
  * - usage comes on the last chunk (`stream_options.include_usage`), or on
  *   every chunk with the totals last (Workers AI): the last one wins;
  * - Workers AI's older models stream `{ response, tool_calls }` instead of
- *   `choices`, which is read too.
+ *   `choices`, which is read too;
+ * - a model may write its tool call as content text instead
+ *   (`[{"name": "...", "arguments": {...}}]`, optionally after
+ *   `[TOOL_CALLS]`), when the server's tool parser misses its output
+ *   (Mistral on Workers AI): with the offered tool names, such a reply is
+ *   held back and read as calls.
  */
+/**
+ * The marker Mistral-family models put before the calls they write.
+ */
+const TOOL_CALLS_MARKER = "[TOOL_CALLS]";
+
 export class ChatCompletionFormat {
   protected readonly sse = $inject(SseReader);
   protected readonly errors = $inject(AiHttpErrors);
@@ -89,16 +99,37 @@ export class ChatCompletionFormat {
 
   /**
    * Map a streamed response to `AiEvent`s. `provider` names the vendor in
-   * the errors an in-stream failure raises.
+   * the errors an in-stream failure raises. `tools` names the tools the
+   * request offered: with them, a call the model wrote as text is read as a
+   * call (see the class notes). Reply text that cannot be one streams as it
+   * comes; text that could be is held until the end of the response.
    */
   public async *read(
     provider: string,
     stream: ReadableStream<Uint8Array>,
     signal?: AbortSignal,
+    tools?: readonly string[],
   ): AsyncIterable<AiEvent> {
     const calls = new Map<number, { id: string; name: string; args: string }>();
     let finish: string | undefined;
     let usage: { inputTokens: number; outputTokens: number } | undefined;
+    // The reply so far, while it may still be a call written as text.
+    let held = "";
+    let holding = Boolean(tools?.length);
+
+    const text = (part: unknown): AiEvent | undefined => {
+      if (!holding) {
+        return { type: "text", text: String(part) };
+      }
+      held += String(part);
+      if (this.mayBeTextualCall(held)) {
+        return undefined;
+      }
+      holding = false;
+      const out = held;
+      held = "";
+      return { type: "text", text: out };
+    };
 
     const addCall = (
       index: number,
@@ -144,7 +175,10 @@ export class ChatCompletionFormat {
         for (const choice of chunk.choices) {
           const delta = choice.delta ?? {};
           if (this.hasText(delta.content)) {
-            yield { type: "text", text: String(delta.content) };
+            const event = text(delta.content);
+            if (event) {
+              yield event;
+            }
           }
           for (const part of delta.tool_calls ?? []) {
             addCall(part.index ?? calls.size, {
@@ -160,11 +194,29 @@ export class ChatCompletionFormat {
       } else {
         // Workers AI's older output: `response` text and whole tool calls.
         if (this.hasText(chunk.response)) {
-          yield { type: "text", text: String(chunk.response) };
+          const event = text(chunk.response);
+          if (event) {
+            yield event;
+          }
         }
         for (const part of chunk.tool_calls ?? []) {
           addCall(calls.size, part);
         }
+      }
+    }
+
+    if (held) {
+      const written = this.parseTextualCalls(held, tools ?? []);
+      if (written) {
+        for (const call of written) {
+          calls.set(calls.size, {
+            id: "",
+            name: call.name,
+            args: JSON.stringify(call.input),
+          });
+        }
+      } else {
+        yield { type: "text", text: held };
       }
     }
 
@@ -182,6 +234,81 @@ export class ChatCompletionFormat {
       yield { type: "usage", ...usage };
     }
     yield { type: "end", reason: this.toEndReason(finish, calls.size > 0) };
+  }
+
+  /**
+   * Whether a reply that starts with `text` may still turn out to be a tool
+   * call written as text: `{`, `[{` or `[TOOL_CALLS]`, whitespace aside, or
+   * a beginning of one of them. A markdown link (`[x](...)`) is not.
+   */
+  public mayBeTextualCall(text: string): boolean {
+    let rest = text.trimStart();
+    if (TOOL_CALLS_MARKER.startsWith(rest)) {
+      return true;
+    }
+    if (rest.startsWith(TOOL_CALLS_MARKER)) {
+      rest = rest.slice(TOOL_CALLS_MARKER.length).trimStart();
+    }
+    if (rest === "" || rest.startsWith("{")) {
+      return true;
+    }
+    if (rest.startsWith("[")) {
+      const next = rest.slice(1).trimStart();
+      return next === "" || next.startsWith("{");
+    }
+    return false;
+  }
+
+  /**
+   * The calls a whole reply wrote as text, or `undefined` when it is not
+   * exactly that: one call or an array of calls, each
+   * `{ name, arguments | parameters }` with `name` among `tools` and an
+   * object (or a JSON string of one) as its input.
+   */
+  public parseTextualCalls(
+    text: string,
+    tools: readonly string[],
+  ): Array<{ name: string; input: Record<string, unknown> }> | undefined {
+    let body = text.trim();
+    if (body.startsWith(TOOL_CALLS_MARKER)) {
+      body = body.slice(TOOL_CALLS_MARKER.length).trim();
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return undefined;
+    }
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    if (items.length === 0) {
+      return undefined;
+    }
+    const out: Array<{ name: string; input: Record<string, unknown> }> = [];
+    for (const item of items) {
+      if (!item || typeof item !== "object") {
+        return undefined;
+      }
+      const { name } = item as { name?: unknown };
+      if (typeof name !== "string" || !tools.includes(name)) {
+        return undefined;
+      }
+      let input =
+        (item as { arguments?: unknown; parameters?: unknown }).arguments ??
+        (item as { parameters?: unknown }).parameters ??
+        {};
+      if (typeof input === "string") {
+        try {
+          input = JSON.parse(input);
+        } catch {
+          return undefined;
+        }
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        return undefined;
+      }
+      out.push({ name, input: input as Record<string, unknown> });
+    }
+    return out;
   }
 
   protected hasText(content: unknown): boolean {
