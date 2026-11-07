@@ -51,13 +51,21 @@ there is no cross-origin request to allow.
 
 ### Wiring an Alepha app
 
-Install `@alepha/lore` and add the sigil module to the app:
+Install `@alepha/lore` and add the sigil module to **both** entries of the
+app, `src/main.server.ts` and `src/main.browser.ts`:
 
 ```ts
 import { AlephaSigil } from "@alepha/lore/sigil";
 
 alepha.with(AlephaSigil);
 ```
+
+The two halves are different modules behind one import: `@alepha/lore/sigil`
+resolves to its browser half in the browser build. The server half forwards
+batches to Lore; the browser half collects page views, Web Vitals and browser
+errors. With the module in `main.server.ts` alone, the browser sends nothing
+and only server errors arrive. An app with a single entry for both builds adds
+it once.
 
 Then give the server its key, minted in the instance's **Settings** tab:
 

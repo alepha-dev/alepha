@@ -107,7 +107,9 @@ back.
 
 ### Telemetry wires itself
 
-If your app bundles the reporting module, you do not have to do anything: the
+If your app bundles the reporting module (`AlephaSigil`, in both
+`src/main.server.ts` and `src/main.browser.ts`, see
+[Telemetry](/lore/docs/guides-telemetry)), you do not have to do anything: the
 build says so in its manifest, and a deploy mints the copy's sigil and writes
 `SIGIL_KEY` straight into that copy's environment. The token is never in your
 terminal and never in a response.

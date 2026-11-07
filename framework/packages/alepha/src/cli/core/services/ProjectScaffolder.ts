@@ -504,7 +504,7 @@ export class ProjectScaffolder {
         ...(lore
           ? [
               "",
-              'For telemetry, mount the sigil in src/main.server.ts: import { AlephaSigil } from "@alepha/lore/sigil"; alepha.with(AlephaSigil);',
+              'For telemetry, mount the sigil in src/main.server.ts and src/main.browser.ts: import { AlephaSigil } from "@alepha/lore/sigil"; alepha.with(AlephaSigil);',
             ]
           : []),
         "",
