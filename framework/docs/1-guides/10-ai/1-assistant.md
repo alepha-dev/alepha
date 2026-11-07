@@ -236,15 +236,28 @@ const InvoicePage = (props: InvoicePageProps) => {
   return (
     <>
       <Button onClick={() => setOpen(true)}>Ask</Button>
-      <AiChat open={open} onOpenChange={setOpen} invalidates={[["invoices"]]} />
+      <AiChat
+        mode="auto"
+        open={open}
+        onOpenChange={setOpen}
+        invalidates={[["invoices"]]}
+      />
     </>
   );
 };
 ```
 
-- `<AiChat />` is a drawer: streamed markdown replies, the conversation history, and a
+- `<AiChat />` holds the conversation: streamed markdown replies, the conversation history, and a
   confirmation card for every mutation, which shows the input the server stored and answers with
   the call id only.
+- `mode` says where it sits. `drawer` (the default) is a modal drawer over a dimmed page. `dock`
+  is a panel beside the page, with no backdrop: the page stays readable and usable, and a link in a
+  reply changes the page next to the conversation. Its edge drags to resize, and it minimizes into
+  a pill that still shows an action waiting for approval. `auto` docks from 1024px up and uses the
+  drawer below. A dock renders into an `<AiChatDockSlot />` placed in your layout, which narrows
+  the page to make room (`AppShell` takes one as `aside={<AiChatDockSlot />}`); without a slot it
+  floats over the page's right edge.
+- `<AiChatPanel />` is the conversation without a container, for a layout that holds it itself.
 - `useAiChat()` is the same state and actions without the UI: `items`, `streaming`, `pending`,
   `send`, `approve`, `deny`, `open`, each resolving a `RunResult`. `invalidates` lists the query
   keys to refresh after a turn ran a tool, so the page shows what the assistant changed.

@@ -43,8 +43,9 @@
  * the components already default to English.
  */
 export const uiFr: Record<string, string> = {
-  // The assistant drawer (`@alepha/ui/ai`).
+  // The assistant (`@alepha/ui/ai`), in a drawer or a dock.
   "ai.chat.approve": "Approuver",
+  "ai.chat.awaiting": "Action à valider",
   "ai.chat.close": "Fermer",
   "ai.chat.confirmTitle": "Exécuter $1 ?",
   "ai.chat.deny": "Refuser",
@@ -53,9 +54,12 @@ export const uiFr: Record<string, string> = {
   "ai.chat.hint": "Entrée pour envoyer, Maj+Entrée pour aller à la ligne",
   "ai.chat.history": "Historique",
   "ai.chat.message": "Message",
+  "ai.chat.minimize": "Réduire",
   "ai.chat.new": "Nouvelle conversation",
   "ai.chat.noHistory": "Aucune conversation pour l'instant",
   "ai.chat.placeholder": "Demandez à l'assistant",
+  "ai.chat.resize": "Redimensionner l'assistant",
+  "ai.chat.restore": "Ouvrir $1",
   "ai.chat.running": "Exécution de $1",
   "ai.chat.send": "Envoyer",
   "ai.chat.stop": "Arrêter",

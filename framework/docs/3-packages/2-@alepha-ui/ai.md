@@ -8,10 +8,10 @@ npm install @alepha/ui
 
 ## Overview
 
-The in-app assistant on the client: a chat drawer with streamed replies,
-history and a confirmation card per mutation, the headless `useAiChat`,
-and `useAiContext` for a page to declare what it shows. Talks to
-`alepha/api/ai`.
+The in-app assistant on the client: a chat in a drawer or docked beside
+the page, with streamed replies, history and a confirmation card per
+mutation, the headless `useAiChat`, and `useAiContext` for a page to
+declare what it shows. Talks to `alepha/api/ai`.
 
 ## API Reference
 

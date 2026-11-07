@@ -7,10 +7,12 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
+import { type ComponentType, useState } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AiChat, type AiChatProps } from "../AiChat.tsx";
 import type { AiChatConfirmCardProps } from "../AiChatConfirmCard.tsx";
+import { AiChatDockSlot } from "../AiChatDockSlot.tsx";
 import { useAiContext } from "../useAiContext.ts";
 
 const conversationId = "00000000-0000-4000-8000-000000000041";
@@ -79,6 +81,26 @@ const InvoicePage = (props: InvoicePageProps) => {
   return null;
 };
 
+/**
+ * A layout with a dock column and the app's own open button, the state
+ * `AiChat` reports its minimize through.
+ */
+const DockLayout = (props: Partial<AiChatProps>) => {
+  const [open, setOpen] = useState(true);
+  return (
+    <div data-testid="layout" style={{ display: "flex" }}>
+      <main>
+        <button type="button" onClick={() => setOpen(true)}>
+          Ask
+        </button>
+        <span data-testid="open-state">{String(open)}</span>
+      </main>
+      <AiChatDockSlot />
+      <AiChat {...props} mode="dock" open={open} onOpenChange={setOpen} />
+    </div>
+  );
+};
+
 describe("AiChat", () => {
   let alepha: Alepha | undefined;
 
@@ -94,6 +116,7 @@ describe("AiChat", () => {
   const mount = async (
     setup: (links: Links) => void = () => {},
     chatProps: Partial<AiChatProps> = {},
+    Layout?: ComponentType<Partial<AiChatProps>>,
   ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -117,7 +140,11 @@ describe("AiChat", () => {
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <InvoicePage onForm={(f) => (form = f)} />
-        <AiChat open onOpenChange={() => {}} {...chatProps} />
+        {Layout ? (
+          <Layout {...chatProps} />
+        ) : (
+          <AiChat open onOpenChange={() => {}} {...chatProps} />
+        )}
       </AlephaContext.Provider>,
     );
     const say = async (text: string) => {
@@ -538,5 +565,53 @@ describe("AiChat", () => {
     ) as HTMLTextAreaElement;
     expect(box.disabled).toBe(true);
     expect(box.placeholder).toBe("Confirm or cancel the card to go on");
+  });
+
+  it("docks beside the page without a backdrop, minimizes into a pill that shows a waiting action, and restores", async () => {
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "confirm",
+            callId: "c1",
+            name: "createNote",
+            input: { body: { title: "x" } },
+          },
+          { type: "end", reason: "paused" },
+        ]);
+      },
+      {},
+      DockLayout,
+    );
+
+    // In the layout's slot, a sibling of the page, and not a dialog.
+    const dock = await view.findByTestId("ai-chat-dock");
+    expect(dock.parentElement?.getAttribute("data-slot")).toBe("ai-chat-dock");
+    expect(view.queryByRole("dialog")).toBeNull();
+    expect(document.querySelector("[data-slot='drawer-overlay']")).toBeNull();
+
+    await say("add a note");
+    await view.findByTestId("ai-chat-confirm");
+
+    fireEvent.click(view.getByRole("button", { name: "Minimize" }));
+    expect(view.queryByTestId("ai-chat-dock")).toBeNull();
+    expect(view.getByTestId("open-state").textContent).toBe("false");
+    const pill = view.getByTestId("ai-chat-launcher");
+    expect(pill.textContent).toContain("Action to approve");
+
+    // The app's own button brings it back, conversation and card included.
+    fireEvent.click(view.getByRole("button", { name: "Ask" }));
+    await view.findByTestId("ai-chat-dock");
+    expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
+    expect(view.getByTestId("ai-chat-confirm")).toBeTruthy();
+
+    // Closing ends with no pill left behind; the pill restores too.
+    fireEvent.click(view.getByRole("button", { name: "Minimize" }));
+    fireEvent.click(view.getByTestId("ai-chat-launcher"));
+    await view.findByTestId("ai-chat-dock");
+    fireEvent.click(view.getByRole("button", { name: "Close" }));
+    expect(view.queryByTestId("ai-chat-dock")).toBeNull();
+    expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
   });
 });

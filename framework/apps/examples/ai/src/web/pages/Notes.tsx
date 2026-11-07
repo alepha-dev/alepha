@@ -75,6 +75,7 @@ const Notes = () => {
       </ul>
 
       <AiChat
+        mode="auto"
         open={chatOpen}
         onOpenChange={setChatOpen}
         invalidates={[["notes"]]}

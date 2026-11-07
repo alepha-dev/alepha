@@ -120,6 +120,12 @@ export interface AppShellProps {
    */
   topbarActions?: ReactNode;
   /**
+   * A column on the right of the page, beside it rather than over it: the
+   * page narrows to make room. Where an app docks a panel that works with
+   * the page, such as `AiChatDockSlot` for the assistant.
+   */
+  aside?: ReactNode;
+  /**
    * Layout variant.
    * - `sidebar` (default): sidebar and page sit flush side-by-side.
    * - `inset`: sidebar uses the global background; the page is a rounded card with margin.
@@ -377,6 +383,7 @@ export const AppShell = (props: AppShellProps) => {
             {mainNode}
           </SidebarInset>
         )}
+        {props.aside}
       </SidebarProvider>
     </>
   );
