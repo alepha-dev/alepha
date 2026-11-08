@@ -1,12 +1,12 @@
 import { Button, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import type { I18n } from "@lore/core/web";
-import { z } from "alepha";
 import { useClient, useQueryClient } from "alepha/react";
-import { useForm, useFormState } from "alepha/react/form";
+import { useActionForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
 import type { StackController } from "../../../../../api/controllers/StackController.ts";
+import { uploadStackRevisionBodySchema } from "../../../../../api/schemas/uploadStackRevisionBodySchema.ts";
 
 export interface StackRevisionUploadFormProps {
   projectId: number;
@@ -24,14 +24,11 @@ const StackRevisionUploadForm = (props: StackRevisionUploadFormProps) => {
   const stackApi = useClient<StackController>();
   const queries = useQueryClient();
 
-  const form = useForm({
+  const form = useActionForm(stackApi.uploadStackRevision, {
     id: `stack-revision-upload-${props.stackId}`,
-    schema: z.object({ file: z.file() }),
-    handler: async (input) => {
-      const revision = await stackApi.uploadStackRevision({
-        params: { projectId: props.projectId, stackId: props.stackId },
-        body: { file: input.file },
-      });
+    schema: uploadStackRevisionBodySchema,
+    params: { projectId: props.projectId, stackId: props.stackId },
+    onSuccess: (revision) => {
       queries.invalidate(["stacks", props.projectId]);
       queries.invalidate(["stack-revisions", props.projectId, props.stackId]);
       form.reset();

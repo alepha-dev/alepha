@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { describe, test } from "vitest";
 
+import { SchemaValidationError } from "../errors/SchemaValidationError.ts";
 import { SchemaValidator } from "../providers/SchemaValidator.ts";
 
 describe("SchemaValidator", () => {
@@ -267,6 +268,48 @@ describe("SchemaValidator", () => {
 
       expect(result.name).toBe("Alice");
       expect(result.bio).toBeUndefined();
+    });
+  });
+  describe("issues", () => {
+    const failure = (schema: any, value: unknown) => {
+      const validator = Alepha.create().inject(SchemaValidator);
+      try {
+        validator.validate(schema, value);
+      } catch (error) {
+        if (error instanceof SchemaValidationError) return error;
+        throw error;
+      }
+      throw new Error("expected a SchemaValidationError");
+    };
+
+    test("keeps every issue, with path and message the first one", ({
+      expect,
+    }) => {
+      const error = failure(
+        z.object({
+          title: z.text(),
+          email: z.email(),
+          items: z.array(z.object({ name: z.text() })),
+        }),
+        { email: "nope", items: [{ name: "a" }, {}] },
+      );
+
+      expect(error.data.path).toBe("/title");
+      expect(error.data.message).toBe("'title' is required");
+      expect(error.data.issues?.map((issue) => issue.path)).toEqual([
+        "/title",
+        "/email",
+        "/items/1/name",
+      ]);
+      expect(error.data.issues?.[2].message).toBe("'items/1/name' is required");
+    });
+
+    test("caps the issues at MAX_ISSUES", ({ expect }) => {
+      const error = failure(
+        z.array(z.integer()),
+        Array.from({ length: 80 }, () => "x"),
+      );
+      expect(error.data.issues).toHaveLength(SchemaValidator.MAX_ISSUES);
     });
   });
 });

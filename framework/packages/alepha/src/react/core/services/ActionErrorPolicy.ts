@@ -11,15 +11,36 @@
  * - **The error is shown in place**: a `FormValidationError` (name
  *   `FORM_VALIDATION`) whose `data.path` names a field, which the form
  *   renders under that field. Read by name, since this module cannot import
- *   the form's.
+ *   the form's. Or an error `markShownInPlace` was given: `useActionForm`
+ *   marks a server `ValidationError` whose every issue landed on a field.
  *
  * Static rather than a service: hooks call it during a render, on a container
  * that may already be started, where injecting a service it never registered
  * would throw.
  */
 export class ActionErrorPolicy {
+  /**
+   * Errors their emitter already shows where they belong.
+   */
+  protected static readonly shownInPlace = new WeakSet<object>();
+
+  /**
+   * Say that `error` is shown in place (under the fields it names), so no
+   * emitter reports it as unhandled. Called before the error is rethrown.
+   */
+  public static markShownInPlace(error: object): void {
+    ActionErrorPolicy.shownInPlace.add(error);
+  }
+
   public static isHandled(error: unknown, onError?: unknown): boolean {
     if (onError !== undefined) {
+      return true;
+    }
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      ActionErrorPolicy.shownInPlace.has(error)
+    ) {
       return true;
     }
     const candidate = error as {

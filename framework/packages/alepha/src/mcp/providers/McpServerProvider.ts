@@ -11,7 +11,12 @@ import {
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $action, type ActionPrimitive, HttpError } from "alepha/server";
+import {
+  $action,
+  type ActionPrimitive,
+  HttpError,
+  ValidationError,
+} from "alepha/server";
 
 import {
   McpError,
@@ -1486,9 +1491,29 @@ export class McpServerProvider {
         ],
       };
     } catch (error) {
-      // `run()` encodes the arguments before its router validates them, so
-      // a malformed argument can surface as a raw schema failure: the
-      // caller's, answered as a `$tool`'s is, with the path to correct.
+      // A malformed argument is the caller's to correct, answered as a
+      // `$tool`'s is, with every path. `run()` refuses it as a 400
+      // `ValidationError` naming its fields (#Q3201); a raw schema failure is
+      // kept for anything that still surfaces one.
+      if (error instanceof ValidationError && error.data.issues?.length) {
+        const errors = error.data.issues.map((issue) => ({
+          path: issue.path || "/",
+          message: issue.message,
+        }));
+        await this.announceToolEnd(tool.name, "refused", context);
+        return {
+          content: [
+            {
+              type: "text",
+              text: errors
+                .map((it) => `Validation error at ${it.path}: ${it.message}`)
+                .join("\n"),
+            },
+          ],
+          structuredContent: { errors },
+          isError: true,
+        };
+      }
       if (error instanceof SchemaValidationError) {
         const path = error.data.path || "/";
         const message = error.data.message || error.message;

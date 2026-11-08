@@ -234,6 +234,38 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
     typeof autoSave === "object" ? (autoSave?.delay ?? 600) : 600;
   const autoSaveEnabled = !!autoSave;
   const alepha = useAlepha();
+
+  // ── First field error into view ───────────────────────────────────
+  // After a refused submit, the person has to find what was refused: the
+  // first invalid control, in page order, is scrolled to and focused. Its
+  // `ControlObject` opens itself when the error is inside, so the control may
+  // mount a frame later: a few short retries cover that.
+  const formId = props.form.id;
+  useEffect(() => {
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+    const off = alepha.events.on("form:submit:error", (event) => {
+      if (event.id !== formId) return;
+      if (Object.keys(props.form.errors).length === 0) return;
+      const reveal = (attempt: number) => {
+        const target = document
+          .getElementById(formId)
+          ?.querySelector<HTMLElement>('[aria-invalid="true"]');
+        if (!target) {
+          if (attempt < 5)
+            timers.push(setTimeout(() => reveal(attempt + 1), 16));
+          return;
+        }
+        target.scrollIntoView?.({ block: "center", behavior: "smooth" });
+        target.focus({ preventScroll: true });
+      };
+      timers.push(setTimeout(() => reveal(0), 0));
+    });
+    return () => {
+      off();
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [alepha, formId, props.form]);
+
   useEffect(() => {
     if (!autoSaveEnabled) return;
     let handle: ReturnType<typeof setTimeout> | undefined;

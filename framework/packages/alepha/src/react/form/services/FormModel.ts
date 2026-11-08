@@ -11,7 +11,7 @@ import {
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { ActionErrorPolicy } from "alepha/react";
-import type { ChangeEvent, InputHTMLAttributes } from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes } from "react";
 
 import { FormValidationError } from "../errors/FormValidationError.ts";
 
@@ -42,6 +42,19 @@ export class FormModel<T extends ZObject> {
    */
   protected readonly touched = new Set<string>();
   protected submitInProgress = false;
+  /**
+   * The error shown under each field, by JSON pointer (`/address/city`,
+   * `/items/0/name`). Read it through `errors`; `useFormState({ form, path })`
+   * does, so every `Control` shows its own.
+   */
+  protected readonly fieldErrors: Record<string, string> = {};
+  /**
+   * The last submit was refused field by field (by the schema, or by the
+   * server through `setErrors`). From then on a field with an error
+   * revalidates on change whatever `validate` says, so the error leaves as
+   * soon as it is fixed. Cleared by a successful submit and a reset.
+   */
+  protected submitRefused = false;
 
   public input: SchemaToInput<T>;
 
@@ -196,6 +209,231 @@ export class FormModel<T extends ZObject> {
     }
 
     return defaults;
+  }
+
+  /**
+   * The error shown under each field, by JSON pointer: `{ "/email": "Email
+   * already in use" }`. Set when a submit fails with a `SchemaValidationError`
+   * (every issue whose path names a field of the schema), or by `setErrors`.
+   * A field's entry clears when that field changes; all of them clear on
+   * reset and when a new submit begins. `form:errors:changed` fires on every
+   * change.
+   *
+   * An issue for the root path, or for a path naming no field, is not here:
+   * it stays the form-level `error` of `useFormState(form)`.
+   */
+  public get errors(): Readonly<Record<string, string>> {
+    return this.fieldErrors;
+  }
+
+  /**
+   * Replace every field error with `issues`. Each issue whose path names a
+   * field of the schema lands on it (the first one per field wins); the
+   * others are left out.
+   *
+   * Returns `true` when every issue landed on a field, which is what tells a
+   * caller the failure is fully shown in place.
+   *
+   * ```ts
+   * form.setErrors([{ path: "/email", message: "Email already in use" }]);
+   * ```
+   */
+  public readonly setErrors = (
+    issues: ReadonlyArray<{ path: string; message: string }>,
+  ): boolean => {
+    const next: Record<string, string> = {};
+    let landed = true;
+    for (const issue of issues) {
+      if (!this.hasField(issue.path)) {
+        landed = false;
+        continue;
+      }
+      next[issue.path] ??= issue.message;
+    }
+    this.replaceErrors(next);
+    if (Object.keys(next).length > 0) {
+      this.submitRefused = true;
+    }
+    return landed && issues.length > 0;
+  };
+
+  /**
+   * Remove the error of `path` and of every field under it (`/address`
+   * clears `/address/city` too), or every error when no path is given.
+   */
+  public readonly clearErrors = (path?: string) => {
+    const next: Record<string, string> = {};
+    if (path) {
+      for (const [key, message] of Object.entries(this.fieldErrors)) {
+        if (key !== path && !key.startsWith(`${path}/`)) {
+          next[key] = message;
+        }
+      }
+    }
+    this.replaceErrors(next);
+  };
+
+  /**
+   * Whether a JSON pointer names a field of the form's schema: an object
+   * key, or an array index followed by the element's own path. `""` (the
+   * whole form) names no field.
+   */
+  public hasField(path: string): boolean {
+    const segments = path.split("/").slice(1);
+    if (!path.startsWith("/") || segments.length === 0) {
+      return false;
+    }
+    let schema: ZType | undefined = this.options.schema;
+    for (const segment of segments) {
+      const inner = z.schema.unwrap(schema);
+      if (z.schema.isObject(inner)) {
+        schema = z.schema.shape(inner)[segment];
+      } else if (z.schema.isArray(inner) && /^\d+$/.test(segment)) {
+        schema = z.schema.element(inner);
+      } else {
+        return false;
+      }
+      if (!schema) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Clear, or recheck, the errors of what actually changed between `before`
+   * and `after` at `path`. An array is written whole (`ControlArray` sets
+   * every row at once), so editing row 0 must not touch the error still
+   * standing on row 2: containers are compared key by key, and only a
+   * changed leaf (with everything under it) is cleared or rechecked. A
+   * changed container loses or rechecks its own error only (`/items` "at
+   * least one item").
+   *
+   * Rechecked rather than cleared with `validate: "change"`, or once a submit
+   * was refused and that path shows an error.
+   */
+  protected recheckChanged(path: string, before: unknown, after: unknown) {
+    if (this.sameValue(before, after)) {
+      return;
+    }
+    const isContainer = (value: unknown): value is Record<string, unknown> =>
+      value != null && typeof value === "object" && !(value instanceof File);
+    const leaf = !isContainer(before) || !isContainer(after);
+    const hasError = Object.keys(this.fieldErrors).some((key) =>
+      leaf ? key === path || key.startsWith(`${path}/`) : key === path,
+    );
+    const recheck =
+      this.options.validate === "change" || (this.submitRefused && hasError);
+    if (recheck) {
+      this.validateField(path, { exact: !leaf });
+    } else if (hasError) {
+      if (leaf) {
+        this.clearErrors(path);
+      } else {
+        const next = { ...this.fieldErrors };
+        delete next[path];
+        this.replaceErrors(next);
+      }
+    }
+    if (leaf) {
+      return;
+    }
+    for (const key of new Set([
+      ...Object.keys(before),
+      ...Object.keys(after),
+    ])) {
+      this.recheckChanged(`${path}/${key}`, before[key], after[key]);
+    }
+  }
+
+  /**
+   * The field at `path` was left. With `validate: "blur"` (or `"change"`),
+   * its value is checked now; otherwise nothing happens until submit.
+   *
+   * Every `Control` calls it when focus leaves the field, and the generated
+   * `props.onBlur` does for a hand-written `<input {...props} />`.
+   */
+  public readonly blur = (path: string) => {
+    const mode = this.options.validate ?? "submit";
+    if (mode === "blur" || mode === "change") {
+      this.validateField(path);
+    }
+  };
+
+  /**
+   * Check the whole form against its schema, and show or clear the errors of
+   * `path` and of the fields under it only. Every other field keeps what it
+   * shows.
+   *
+   * The whole object is decoded, not the field's own sub-schema: an
+   * object-level `.refine` (a "confirm password" match) only runs on the
+   * object, and its issue names the field it is about.
+   */
+  public readonly validateField = (
+    path: string,
+    options: {
+      /**
+       * Only `path` itself, not the fields under it.
+       */
+      exact?: boolean;
+    } = {},
+  ) => {
+    const under = (key: string) =>
+      key === path || (!options.exact && key.startsWith(`${path}/`));
+    const next: Record<string, string> = {};
+    for (const [key, message] of Object.entries(this.fieldErrors)) {
+      if (!under(key)) {
+        next[key] = message;
+      }
+    }
+    for (const issue of this.currentIssues()) {
+      if (under(issue.path) && this.hasField(issue.path)) {
+        next[issue.path] ??= issue.message;
+      }
+    }
+    this.replaceErrors(next);
+  };
+
+  /**
+   * What the schema says about the current values: every issue, or none
+   * when they decode. The same coercion and decode a submit runs.
+   */
+  protected currentIssues(): Array<{ path: string; message: string }> {
+    const schema = this.options.schema;
+    if (!z.schema.isSchema(schema)) {
+      return [];
+    }
+    try {
+      this.alepha.codec.decode(
+        schema,
+        coerceObject(schema, this.restructureValues(this.values)),
+      );
+      return [];
+    } catch (error) {
+      if (error instanceof SchemaValidationError) {
+        return (
+          error.data.issues ?? [
+            { path: error.data.path, message: error.data.message },
+          ]
+        );
+      }
+      return [];
+    }
+  }
+
+  protected replaceErrors(next: Record<string, string>) {
+    if (this.sameValue(next, this.fieldErrors)) {
+      return;
+    }
+    for (const key of Object.keys(this.fieldErrors)) {
+      delete this.fieldErrors[key];
+    }
+    Object.assign(this.fieldErrors, next);
+    void this.alepha.events.emit(
+      "form:errors:changed",
+      { id: this.id, errors: { ...this.fieldErrors } },
+      { catch: true },
+    );
   }
 
   public get currentValues(): Record<string, any> {
@@ -354,6 +592,8 @@ export class FormModel<T extends ZObject> {
     Object.assign(this.values, { ...this.initialValues });
     // Back to the baseline, so nothing is outstanding.
     this.touched.clear();
+    this.submitRefused = false;
+    this.clearErrors();
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
@@ -383,6 +623,9 @@ export class FormModel<T extends ZObject> {
     // during them sailed past the guard and ran the handler twice — a
     // double-clicked button charging a card twice.
     this.submitInProgress = true;
+    // A new attempt starts clean: the errors of the last one describe values
+    // that may have changed since.
+    this.clearErrors();
 
     // Lifecycle events are best-effort NOTIFICATIONS (loading spinners, toasts,
     // analytics). A misbehaving listener must never break form state or reject
@@ -411,6 +654,7 @@ export class FormModel<T extends ZObject> {
       }
 
       await options.handler(values as any);
+      this.submitRefused = false;
 
       await this.alepha.events.emit(
         "react:action:success",
@@ -424,6 +668,14 @@ export class FormModel<T extends ZObject> {
       );
     } catch (error) {
       this.log.error("Form submission error:", error);
+
+      if (error instanceof SchemaValidationError) {
+        this.setErrors(
+          error.data.issues ?? [
+            { path: error.data.path, message: error.data.message },
+          ],
+        );
+      }
 
       // A throwing onError callback must not abort the lifecycle either.
       try {
@@ -507,6 +759,7 @@ export class FormModel<T extends ZObject> {
         throw new FormValidationError({
           message: error.data.message,
           path: error.data.path,
+          issues: error.data.issues,
         });
       }
       throw error;
@@ -630,6 +883,7 @@ export class FormModel<T extends ZObject> {
         props: {} as InputHTMLAttributes<unknown>,
         schema: schema,
         set: () => {},
+        blur: () => {},
         form: this,
       };
     }
@@ -656,6 +910,7 @@ export class FormModel<T extends ZObject> {
 
     const set = (value: any) => {
       const typedValue = this.getValueFromInput(value, field);
+      const previous = context.store[key];
       context.store[key] = typedValue;
       this.touched.add(key);
       const objectField = z.schema.unwrap(field);
@@ -686,6 +941,12 @@ export class FormModel<T extends ZObject> {
           ),
         );
       }
+      // The value the error was about is gone. With `validate: "change"`,
+      // or once a submit was refused and the changed field shows an error,
+      // the new value is checked at once instead, so a fixed field clears
+      // and a still-wrong one keeps saying why. After the object handling
+      // above, so the check sees the flattened children.
+      this.recheckChanged(path, previous, typedValue);
       if (options.onChange) {
         options.onChange(key, typedValue, context.store);
       }
@@ -773,6 +1034,8 @@ export class FormModel<T extends ZObject> {
         attr.defaultValue = initialValue;
       }
 
+      attr.onBlur = () => this.blur(path);
+
       attr.onChange = (event: ChangeEvent<HTMLInputElement>) => {
         const target = event.target;
         if (target.type === "checkbox") {
@@ -797,6 +1060,7 @@ export class FormModel<T extends ZObject> {
         props: attr,
         schema: field,
         set,
+        blur: () => this.blur(path),
         form: this,
         required,
         initialValue: context.store[key],
@@ -814,6 +1078,7 @@ export class FormModel<T extends ZObject> {
         props: attr,
         schema: field,
         set,
+        blur: () => this.blur(path),
         form: this,
         required,
         initialValue: context.store[key],
@@ -826,6 +1091,7 @@ export class FormModel<T extends ZObject> {
       props: attr,
       schema: field,
       set,
+      blur: () => this.blur(path),
       form: this,
       required,
       initialValue: context.store[key],
@@ -916,6 +1182,12 @@ export interface BaseInputField {
   props: InputHTMLAttributesLike;
   schema: ZType;
   set: (value: any) => void;
+  /**
+   * Tell the form focus left this field: with `validate: "blur"` it is
+   * checked now. Optional, since a field built by hand (an array row) may
+   * not carry one; `form.blur(path)` is the same call.
+   */
+  blur?: () => void;
   form: FormModel<any>;
   items?: any;
 }
@@ -959,6 +1231,11 @@ export type InputHTMLAttributesLike = Pick<
    * onto an `<input>` is enough to make it a working, uncontrolled field.
    */
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+
+  /**
+   * Tells the form focus left the field, for `validate: "blur"`.
+   */
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 };
 
 export type FormCtrlOptions<T extends ZObject> = {
@@ -993,6 +1270,20 @@ export type FormCtrlOptions<T extends ZObject> = {
    * answer than re-seeding one.
    */
   keepDirty?: boolean;
+
+  /**
+   * When a field's value is checked against the schema.
+   *
+   * - `"submit"` (the default): on submit only.
+   * - `"blur"`: also when focus leaves the field.
+   * - `"change"`: also on every change.
+   *
+   * Either way the whole object is decoded and only the field in question
+   * shows or loses its error, so object-level refinements keep working.
+   * Once a submit was refused, a field showing an error is rechecked on
+   * every change whatever the mode, so the error leaves once it is fixed.
+   */
+  validate?: "submit" | "blur" | "change";
 
   /**
    * Optional function to create custom field attributes.

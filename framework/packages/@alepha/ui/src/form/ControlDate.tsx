@@ -114,6 +114,7 @@ export const ControlDate = (props: ControlDateProps) => {
   if (isTime) {
     return (
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={meta.label}
         description={meta.description}
@@ -140,6 +141,7 @@ export const ControlDate = (props: ControlDateProps) => {
   if (props.month) {
     return (
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={meta.label}
         description={meta.description}
@@ -162,6 +164,7 @@ export const ControlDate = (props: ControlDateProps) => {
 
   return (
     <FormField
+      onBlur={() => props.input.form?.blur(props.input.path)}
       id={meta.id}
       label={meta.label}
       description={meta.description}

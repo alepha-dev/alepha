@@ -1,7 +1,8 @@
-import { SchemaValidationError, type ZObject } from "alepha";
+import type { ZObject } from "alepha";
 import { useAlepha } from "alepha/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 
+import { FormValidationError } from "../errors/FormValidationError.ts";
 import type { FormModel } from "../services/FormModel.ts";
 
 export interface UseFormStateReturn {
@@ -25,6 +26,15 @@ export interface UseFormStateReturn {
  * effect), so no frame paints the previous form's `dirty`/`loading`/
  * `error`/`values` under the new form's identity before the effect below
  * has a chance to re-subscribe.
+ *
+ * ## `error`
+ *
+ * - With `{ form, path }`, it is that field's entry in `form.errors`, as a
+ *   `FormValidationError` carrying the path and message. It is read from the
+ *   model, so a field mounted after the failure (a tab, a collapsed object,
+ *   an array row) shows it too.
+ * - With the form alone, it is the last submit's error, whatever it was,
+ *   until the next change.
  */
 export const useFormState = <
   T extends ZObject,
@@ -48,6 +58,10 @@ export const useFormState = <
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
+  // The field's error is read from the model on every render, so it can
+  // never disagree with it; the event only asks for that render.
+  const [, refresh] = useReducer((n: number) => n + 1, 0);
+  const fieldMessage = path && hasErrors ? form.errors[path] : undefined;
   const [values, setValues] = useState<Record<string, any> | undefined>(() =>
     hasValues ? form.currentValues : undefined,
   );
@@ -78,7 +92,7 @@ export const useFormState = <
                   setDirty(true);
                 }
               }
-              if (hasErrors) {
+              if (hasErrors && !path) {
                 setError(undefined);
               }
             }
@@ -130,17 +144,21 @@ export const useFormState = <
       );
     }
 
-    if (hasErrors) {
+    if (hasErrors && path) {
+      listeners.push(
+        alepha.events.on("form:errors:changed", (event) => {
+          if (event.id === form.id) {
+            refresh();
+          }
+        }),
+      );
+    }
+
+    if (hasErrors && !path) {
       listeners.push(
         alepha.events.on("form:submit:error", (event) => {
           if (event.id === form.id) {
-            if (
-              !path ||
-              (event.error instanceof SchemaValidationError &&
-                event.error.data.path === path)
-            ) {
-              setError(event.error);
-            }
+            setError(event.error);
           }
         }),
       );
@@ -153,10 +171,18 @@ export const useFormState = <
     };
   }, [alepha, form, path, hasErrors, hasValues, hasDirty, hasLoading]);
 
+  const fieldError = useMemo(
+    () =>
+      path && fieldMessage !== undefined
+        ? new FormValidationError({ message: fieldMessage, path })
+        : undefined,
+    [path, fieldMessage],
+  );
+
   return {
     dirty,
     loading,
-    error,
+    error: path ? fieldError : error,
     values,
   } as Pick<UseFormStateReturn, Keys>;
 };

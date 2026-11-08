@@ -659,18 +659,58 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   }
 
   /**
-   * A `ValidationError` naming what failed: the schema's message and path
-   * when the cause is a schema failure (the path also goes to `details`).
+   * A `ValidationError` naming what failed: the refused `part`, and when the
+   * cause is a schema failure its message and first path (also in
+   * `details`) and every failing field in `issues`, as `{ path, message }`
+   * only: the schema library's raw issue stays on the server.
    */
-  protected validationError(message: string, cause?: unknown): ValidationError {
+  protected validationError(
+    part: "params" | "query" | "headers" | "body",
+    message: string,
+    cause?: unknown,
+  ): ValidationError {
     if (cause instanceof SchemaValidationError) {
       const path = cause.data.path;
-      return new ValidationError(path ? { details: path } : {}, {
-        message: `${message}: ${cause.data.message}${path ? ` (${path})` : ""}`,
-        cause,
-      });
+      const issues = (
+        cause.data.issues ?? [{ path, message: cause.data.message }]
+      ).map((issue) => ({ path: issue.path, message: issue.message }));
+      return new ValidationError(
+        path ? { part, issues, details: path } : { part, issues },
+        {
+          message: `${message}: ${cause.data.message}${path ? ` (${path})` : ""}`,
+          cause,
+        },
+      );
     }
-    return new ValidationError(message, { cause });
+    return new ValidationError({ part }, { message, cause });
+  }
+
+  /**
+   * Run a per-key decode, and give its failure the key's path: a query or
+   * header value is decoded against its own schema, whose paths start at the
+   * value, so `?limit=many` failed at `""` instead of `/limit`.
+   */
+  protected underKey<T>(key: string, decode: () => T): T {
+    try {
+      return decode();
+    } catch (error) {
+      if (!(error instanceof SchemaValidationError)) {
+        throw error;
+      }
+      const prefix = (path: string) => `/${key}${path}`;
+      throw new SchemaValidationError(
+        {
+          message: error.data.message,
+          path: prefix(error.data.path),
+          issues: error.data.issues?.map((issue) => ({
+            path: prefix(issue.path),
+            message: issue.message,
+          })),
+          params: error.data.params,
+        },
+        { cause: error },
+      );
+    }
   }
 
   /**
@@ -702,7 +742,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           coerced,
         ) as any;
       } catch (error) {
-        throw this.validationError("Invalid request params", error);
+        throw this.validationError("params", "Invalid request params", error);
       }
     }
 
@@ -715,9 +755,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         for (const key of keys) {
           if (request.query[key] != null) {
             const propSchema = z.schema.shape(schemaQuery)[key];
-            query[key] = this.alepha.codec.decode(
-              propSchema,
-              this.coerceParam(propSchema, request.query[key]),
+            query[key] = this.underKey(key, () =>
+              this.alepha.codec.decode(
+                propSchema,
+                this.coerceParam(propSchema, request.query[key]),
+              ),
             );
           }
         }
@@ -726,7 +768,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         // present keys would silently accept a missing required parameter.
         request.query = this.alepha.codec.validate(schemaQuery, query) as any;
       } catch (error) {
-        throw this.validationError("Invalid request query", error);
+        throw this.validationError("query", "Invalid request query", error);
       }
     }
 
@@ -746,9 +788,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           const lcKey = key.toLowerCase();
           const value = request.headers[lcKey];
           if (value == null) continue;
-          decoded[key] = this.alepha.codec.decode(
-            z.schema.shape(schemaHeaders)[key],
-            this.coerceParam(z.schema.shape(schemaHeaders)[key], value),
+          decoded[key] = this.underKey(key, () =>
+            this.alepha.codec.decode(
+              z.schema.shape(schemaHeaders)[key],
+              this.coerceParam(z.schema.shape(schemaHeaders)[key], value),
+            ),
           );
         }
 
@@ -765,14 +809,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             value;
         }
       } catch (error) {
-        throw this.validationError("Invalid request header", error);
+        throw this.validationError("headers", "Invalid request header", error);
       }
     }
 
     if (route.schema?.body) {
       if (z.schema.isString(route.schema.body)) {
         if (typeof request.body !== "string") {
-          throw this.validationError("Request body is not a string");
+          throw this.validationError("body", "Request body is not a string");
         }
       } else {
         try {
@@ -781,7 +825,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             request.body,
           );
         } catch (error) {
-          throw this.validationError("Invalid request body", error);
+          throw this.validationError("body", "Invalid request body", error);
         }
       }
     }

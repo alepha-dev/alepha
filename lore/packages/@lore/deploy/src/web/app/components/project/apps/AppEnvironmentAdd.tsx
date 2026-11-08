@@ -10,13 +10,13 @@ import {
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import type { I18n } from "@lore/core/web";
-import { z } from "alepha";
 import { useClient, useQueryClient } from "alepha/react";
-import { useForm, useFormState } from "alepha/react/form";
+import { useActionForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AppSecretController } from "../../../../../api/controllers/AppSecretController.ts";
 import type { DeclaredEnvKey } from "../../../../../api/schemas/declaredEnvKeySchema.ts";
+import { setAppSecretBodySchema } from "../../../../../api/schemas/setAppSecretBodySchema.ts";
 
 export interface AppEnvironmentAddProps {
   open: boolean;
@@ -73,18 +73,15 @@ const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
       ),
     }));
 
-  const form = useForm({
+  // Built from the action: a name the server refuses (reserved, not a
+  // variable name) is shown under the name field, not toasted. The server
+  // trims and upper-cases the name itself.
+  const form = useActionForm(secretApi.setAppSecret, {
     id: "app-environment-add",
-    schema: z.object({
-      key: z.string().min(1).max(100),
-      value: z.string().min(1).max(5_000),
-    }),
+    schema: setAppSecretBodySchema,
+    params: { projectId: props.projectId, instanceId: props.instanceId },
     initialValues: { key: "", value: "" },
-    handler: async (input) => {
-      await secretApi.setAppSecret({
-        params: { projectId: props.projectId, instanceId: props.instanceId },
-        body: { key: input.key.trim(), value: input.value },
-      });
+    onSuccess: () => {
       queries.invalidate(["app-secrets", props.projectId, props.instanceId]);
       // Cleared on success, and only on success: a refused name is one the
       // operator wants to correct rather than retype.

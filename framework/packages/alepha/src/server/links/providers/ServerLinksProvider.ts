@@ -231,6 +231,12 @@ export class ServerLinksProvider {
           name: z.text().optional(),
           /** The batch request's id, the one its logs and reports carry. */
           requestId: z.text().optional(),
+          /**
+           * A failed entry's error data beyond its status (a 400's `part`
+           * and `issues`), as the single-request path sends it. Never sent
+           * for a 5xx in production.
+           */
+          errorData: z.record(z.text(), z.any()).optional(),
         }),
       ),
     },
@@ -261,6 +267,7 @@ export class ServerLinksProvider {
         error?: string;
         name?: string;
         requestId?: string;
+        errorData?: Record<string, any>;
       }> = [];
 
       for (const [i, result] of results.entries()) {
@@ -303,6 +310,10 @@ export class ServerLinksProvider {
           // (#Q3104). It used to arrive as a bare status and message.
           name: this.errorName(reason, status),
           requestId: request.requestId,
+          errorData:
+            status >= 500 && this.alepha.isProduction()
+              ? undefined
+              : this.errorData(reason),
         });
       }
 
@@ -323,6 +334,22 @@ export class ServerLinksProvider {
         : name;
     }
     return errorNameByStatus[status];
+  }
+
+  /**
+   * A declared HTTP error's data minus what the entry already carries
+   * (`status`, `requestId`), so a batched 400 keeps its `part` and `issues`.
+   */
+  protected errorData(error: unknown): Record<string, any> | undefined {
+    if (!(error instanceof HttpError)) {
+      return undefined;
+    }
+    const {
+      status: _status,
+      requestId: _requestId,
+      ...rest
+    } = HttpError.toJSON(error).data ?? {};
+    return Object.keys(rest).length ? rest : undefined;
   }
 
   /**

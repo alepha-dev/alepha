@@ -2,7 +2,13 @@ import * as React from "react";
 
 void React;
 
-import { createContext, type ReactNode, useContext, useMemo } from "react";
+import {
+  createContext,
+  type FocusEvent,
+  type ReactNode,
+  useContext,
+  useMemo,
+} from "react";
 
 import { Label } from "../core/Label.tsx";
 import { cn } from "../core/utils.ts";
@@ -47,6 +53,11 @@ export interface FormFieldProps {
    */
   layout?: FormFieldLayout;
   /**
+   * Called when focus leaves the field: the control and anything inside it
+   * (a picker's trigger and its inline parts). `validate: "blur"` hangs on it.
+   */
+  onBlur?: () => void;
+  /**
    * The control to wrap.
    */
   children: ReactNode;
@@ -70,6 +81,15 @@ export const FormField = (props: FormFieldProps) => {
     ? "[&_input]:border-danger [&_input]:focus-visible:ring-danger/30 [&_textarea]:border-danger [&_textarea]:focus-visible:ring-danger/30 [&_[role=combobox]]:border-danger"
     : "";
   const dataInvalid = props.error ? true : undefined;
+  // `focusout` bubbles, so one listener on the wrapper hears every input of
+  // the control; moving focus between two of its own parts is not leaving.
+  const onBlur = props.onBlur
+    ? (event: FocusEvent<HTMLDivElement>) => {
+        const next = event.relatedTarget as Node | null;
+        if (next && event.currentTarget.contains(next)) return;
+        props.onBlur?.();
+      }
+    : undefined;
 
   const errorId = formFieldErrorId(props.id, props.error);
   const descriptionId = formFieldDescriptionId(
@@ -99,6 +119,7 @@ export const FormField = (props: FormFieldProps) => {
           props.className,
         )}
         data-invalid={dataInvalid}
+        onBlur={onBlur}
       >
         <div className="flex flex-col gap-0.5">
           {props.label && (
@@ -138,6 +159,7 @@ export const FormField = (props: FormFieldProps) => {
     <div
       className={cn("flex flex-col gap-1.5", invalidClasses, props.className)}
       data-invalid={dataInvalid}
+      onBlur={onBlur}
     >
       {props.label && (
         <Label htmlFor={props.id}>

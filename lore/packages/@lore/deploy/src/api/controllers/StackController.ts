@@ -13,7 +13,7 @@ import type { Stack } from "../entities/stacks.ts";
 import { stackEnvironmentResourceSchema } from "../schemas/stackEnvironmentResourceSchema.ts";
 import { stackResourceSchema } from "../schemas/stackResourceSchema.ts";
 import { stackRevisionResourceSchema } from "../schemas/stackRevisionResourceSchema.ts";
-import { StackBundleReader } from "../services/StackBundleReader.ts";
+import { uploadStackRevisionBodySchema } from "../schemas/uploadStackRevisionBodySchema.ts";
 import { StackService } from "../services/StackService.ts";
 import { TestHostnameResolver } from "../services/TestHostnameResolver.ts";
 
@@ -372,9 +372,7 @@ export class StackController {
       "Upload a revision: a compose file, or a gzip or zstd tar bundle holding one and the files it references. Parsed and checked against every target the stack deploys to before it is stored.",
     schema: {
       params: z.object({ projectId: z.integer(), stackId: z.uuid() }),
-      body: z.object({
-        file: z.file({ maxBytes: StackBundleReader.MAX_BYTES }),
-      }),
+      body: uploadStackRevisionBodySchema,
       response: stackRevisionResourceSchema,
     },
     handler: async ({ params, body, user }) => {

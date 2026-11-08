@@ -17,6 +17,7 @@ export * from "./interfaces/ServerRequest.ts";
 export * from "./schemas/errorSchema.ts";
 export * from "./schemas/healthSchema.ts";
 export * from "./schemas/httpErrorDataSchema.ts";
+export * from "./schemas/validationErrorDataSchema.ts";
 export * from "./schemas/versionSchema.ts";
 export * from "./schemas/okSchema.ts";
 export * from "./services/HttpClient.ts";

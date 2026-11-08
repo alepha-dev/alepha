@@ -21,3 +21,12 @@ The re-seed on a form swap happens during render (not inside the
 effect), so no frame paints the previous form's `dirty`/`loading`/
 `error`/`values` under the new form's identity before the effect below
 has a chance to re-subscribe.
+
+## `error`
+
+- With `{ form, path }`, it is that field's entry in `form.errors`, as a
+  `FormValidationError` carrying the path and message. It is read from the
+  model, so a field mounted after the failure (a tab, a collapsed object,
+  an array row) shows it too.
+- With the form alone, it is the last submit's error, whatever it was,
+  until the next change.

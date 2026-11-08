@@ -166,6 +166,7 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
 
   return (
     <FormField
+      onBlur={() => props.input.form?.blur(props.input.path)}
       id={meta.id}
       label={meta.label}
       description={meta.description}
