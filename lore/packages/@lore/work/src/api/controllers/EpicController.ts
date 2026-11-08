@@ -38,6 +38,7 @@ import {
   type EpicProgress,
   EpicProgressService,
 } from "../services/EpicProgressService.ts";
+import { EpicReviewService } from "../services/EpicReviewService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
@@ -97,6 +98,7 @@ export class EpicController {
   owned = $inject(OwnedResourceProvider);
   questDeletion = $inject(QuestDeletionService);
   shelving = $inject(QuestShelvingService);
+  reviews = $inject(EpicReviewService);
   protected readonly ranks = $inject(RankService);
 
   /**
@@ -734,6 +736,10 @@ export class EpicController {
       // row from the epic goes: its mentions, and the `filed` rows that held
       // its folios.
       await this.linkService.deleteLinksFrom({ kind: "epic", id: params.id });
+      // Its reviews go explicitly (#E121), never by the cascade on
+      // `epic_reviews.epicId`, which stays as the project deletion's
+      // backstop.
+      await this.reviews.deleteOf(epic.id);
       await this.epics.deleteById(params.id, { force: true });
       await this.logEpic("delete", epic, user, {
         deletedQuests: doomed.length,

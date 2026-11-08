@@ -34,6 +34,7 @@ import { DueSoonMetric } from "./services/DueSoonMetric.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicProgressMetric } from "./services/EpicProgressMetric.ts";
 import { EpicProgressService } from "./services/EpicProgressService.ts";
+import { EpicReviewService } from "./services/EpicReviewService.ts";
 import { EpicsInFlightMetric } from "./services/EpicsInFlightMetric.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
@@ -130,6 +131,7 @@ export const LoreWorkApi = $module({
     // which quest action is allowed in which epic phase, and the words a
     // refusal carries. Injected by the quest and epic controllers.
     EpicWorkflowService,
+    EpicReviewService,
     // The resource kinds each module registers on the core
     // `ResourceRegistry` (#E75, #Q2610), and Deploy's subscription to a
     // quest's deletion. Listed, because nothing injects them: a kind exists
@@ -257,6 +259,7 @@ export { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 export { ReleaseContentService } from "./services/ReleaseContentService.ts";
 
 export { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
+export { EpicReviewService } from "./services/EpicReviewService.ts";
 export { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
 export {
   type QuestFlowPoint,

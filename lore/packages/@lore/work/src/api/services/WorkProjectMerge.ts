@@ -42,7 +42,14 @@ export class WorkProjectMerge {
     this.merge.registerStep({
       order: 10,
       name: "work",
-      tables: ["quests", "epics", "feedback", "releases", "areas"],
+      tables: [
+        "quests",
+        "epics",
+        "epic_reviews",
+        "feedback",
+        "releases",
+        "areas",
+      ],
       plan: (context) => this.plan(context),
       rewrite: (context, rewriter) => this.rewrite(context, rewriter),
     });
@@ -74,6 +81,18 @@ export class WorkProjectMerge {
         table: "epics",
         columns: ["description"],
         where: sql`project_id = ${source}`,
+      },
+      {
+        table: "epic_reviews",
+        columns: ["summary"],
+        where: sql`project_id = ${source}`,
+      },
+      {
+        // A change item's `target` is a JSON number and is not rewritten: a
+        // renumbered quest leaves it naming the old number, as a record.
+        table: "epic_review_items",
+        columns: ["title", "context", "answer"],
+        where: sql`epic_id IN (SELECT id FROM epics WHERE project_id = ${source})`,
       },
       {
         table: "feedback",
@@ -115,6 +134,17 @@ export class WorkProjectMerge {
       statements.push(...result.statements);
       moved[kind.table] = result.moved;
     }
+
+    // An epic's reviews carry its project too (#E121), and move with it.
+    // Their items name the epic alone, and the epic keeps its id.
+    statements.push(this.move("epic_reviews", context));
+    moved.epic_reviews = Number(
+      (
+        await this.database.execute(
+          sql`SELECT COUNT(*) AS n FROM epic_reviews WHERE project_id = ${context.sourceProjectId}`,
+        )
+      )[0]?.n ?? 0,
+    );
 
     const releases = await this.planReleases(context);
     renumbered.push(...releases.renumbered);

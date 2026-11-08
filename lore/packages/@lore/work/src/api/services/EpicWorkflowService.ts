@@ -320,6 +320,33 @@ export class EpicWorkflowService {
   }
 
   /**
+   * A review is filed, answered, waived or overturned only while the epic is
+   * `draft` or `ready` (#E121, owner's call of 2026-11-08).
+   *
+   * The review set locks with the quest set: once work starts, the plan the
+   * reviews argued about is the plan being worked, and a question still open
+   * at that point stays open in the record, read-only. `subject` is the verb
+   * phrase the refusal opens with ("file a review", "answer item 3").
+   */
+  assertReviewWritable(
+    epic: Pick<Epic, "number" | "status">,
+    subject: string,
+  ): void {
+    if (epic.status === "draft" || epic.status === "ready") return;
+
+    const reference = formatReference("epic", epic.number);
+    const why =
+      epic.status === "in_progress"
+        ? "is in progress, and its reviews are locked with its plan"
+        : epic.status === "shelved"
+          ? "is shelved, and its reviews are locked with its plan"
+          : "is completed, and its reviews are the record";
+    throw new BadRequestError(
+      `Cannot ${subject}: Epic ${reference} ${why}. Reviews are written only while an epic is draft or ready.`,
+    );
+  }
+
+  /**
    * The only status moves a person makes: `draft` to `ready` and back.
    *
    * `ready` to `draft` stays open because nothing has started: the epic
