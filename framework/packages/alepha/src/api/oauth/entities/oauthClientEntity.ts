@@ -41,7 +41,7 @@ export const oauthClientEntity = $entity({
      * Scrypt hash of the client secret (confidential clients only). Null for
      * public clients. Verified via `OAuthClientService.verifySecret`.
      */
-    clientSecretHash: z.text({ maxLength: 256 }).optional(),
+    clientSecretHash: z.text({ maxLength: 256, secret: true }).optional(),
     source: db.default(z.text({ maxLength: 16 }), "dcr"),
     /**
      * RFC 7591 / SEP-837 `application_type`, which decides the redirect URIs

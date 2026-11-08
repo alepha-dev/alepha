@@ -370,6 +370,8 @@ export class DevToolsMetadataProvider {
         const jsonProperties: Record<string, any> =
           this.toJsonSchema(entity.schema)?.properties ?? {};
 
+        const secret = new Set(entity.secretColumns);
+
         // Extract columns from schema
         const columns: DevEntityColumn[] = Object.entries(
           z.schema.shape(schema),
@@ -393,6 +395,7 @@ export class DevToolsMetadataProvider {
             deletedAt: PG_DELETED_AT in fieldSchema,
             version: PG_VERSION in fieldSchema,
             hasDefault: PG_DEFAULT in fieldSchema,
+            ...(secret.has(name) ? { secret: true } : {}),
             ref: refData
               ? {
                   entity: refData.ref?.()?.entity?.name ?? "unknown",

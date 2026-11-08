@@ -10,7 +10,7 @@ export const sessions = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    refreshToken: z.uuid(),
+    refreshToken: z.uuid().meta({ secret: true }),
     userId: db.ref(z.uuid(), () => users.cols.id),
     /**
      * OAuth client this session was minted for, when it was created via the

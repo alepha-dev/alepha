@@ -11,7 +11,7 @@ export const identities = $entity({
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     userId: db.ref(z.uuid(), () => users.cols.id),
-    password: z.text().optional(),
+    password: z.text().meta({ secret: true }).optional(),
     provider: z.text(),
     providerUserId: z.text().optional(),
     providerData: z.json().optional(),

@@ -11,6 +11,13 @@ export const devEntityColumnSchema = z.object({
   deletedAt: z.boolean(),
   version: z.boolean(),
   hasDefault: z.boolean(),
+  /**
+   * Present, and `true`, on a column the entity marks secret (a credential,
+   * a hash, a bearer token: `EntityPrimitive.secretColumns`). The rows the
+   * inspector serves keep their values; a tool handing them to a model
+   * redacts these columns.
+   */
+  secret: z.boolean().optional(),
   ref: z
     .object({
       entity: z.text(),
