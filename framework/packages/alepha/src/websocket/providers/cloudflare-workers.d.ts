@@ -4,8 +4,8 @@
  * This module only exists inside a Cloudflare Workers isolate — there is no
  * published npm package with its types that we depend on here, and adding one
  * would pull a runtime dependency into `alepha` just to satisfy `tsc`. This
- * declares just enough of the surface `AlephaWebSocketDurableObject.ts` needs
- * so typecheck passes; it is never imported by test code (`cloudflare:workers`
+ * declares just enough of the surface `AlephaWebSocketDurableObject.ts` and
+ * the tracing module's workerd barrel need so typecheck passes; it is never imported by test code (`cloudflare:workers`
  * does not exist under Vitest) — only reached via the generated workerd entry
  * point.
  */
@@ -15,4 +15,9 @@ declare module "cloudflare:workers" {
     env: Env;
     constructor(ctx: any, env: Env);
   }
+  /**
+   * Custom spans (`tracing.startActiveSpan`, `getActiveSpan`), typed where
+   * they are used: `alepha/tracing`'s `WorkerdTracer`.
+   */
+  export const tracing: unknown;
 }

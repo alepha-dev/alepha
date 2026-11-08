@@ -14,6 +14,7 @@ export * from "./providers/OtlpTraceExporter.ts";
 export * from "./services/Span.ts";
 export * from "./services/TraceparentCodec.ts";
 export * from "./services/Tracer.ts";
+export * from "./services/WorkerdTracer.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

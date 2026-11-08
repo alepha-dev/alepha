@@ -517,6 +517,7 @@
     },
     "./tracing": {
       "types": "./src/tracing/index.ts",
+      "workerd": "./src/tracing/index.workerd.ts",
       "import": "./src/tracing/index.ts",
       "default": "./src/tracing/index.ts"
     },
@@ -1019,6 +1020,7 @@
       },
       "./tracing": {
         "types": "./dist/tracing/index.d.ts",
+        "workerd": "./dist/tracing/index.workerd.js",
         "import": "./dist/tracing/index.js",
         "default": "./dist/tracing/index.js"
       },

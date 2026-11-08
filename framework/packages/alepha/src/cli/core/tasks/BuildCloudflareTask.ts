@@ -216,10 +216,7 @@ export class BuildCloudflareTask extends BuildTask {
       };
     }
 
-    wrangler.observability ??= {
-      enabled: true,
-      head_sampling_rate: 1,
-    };
+    this.enhanceObservability(ctx, wrangler);
 
     // Manifest/prebuilt mode: ctx.alepha is a null cast (see BuildCommand),
     // so read the resource flag captured at artifact-build time instead of
@@ -344,6 +341,37 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.compatibility_flags = [
       ...new Set([...flags, "enable_request_signal"]),
     ];
+  }
+
+  /**
+   * Workers Observability: logs always, traces only when the app sets
+   * `TRACING_SAMPLE_RATIO` at build time (#E86). Traces are billed as
+   * ingestion, so no app starts paying for them without a line of its own;
+   * without them `alepha/tracing` records nothing on a Worker.
+   *
+   * An app that declares `observability` itself keeps exactly its block.
+   */
+  protected enhanceObservability(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    if (wrangler.observability !== undefined) {
+      return;
+    }
+    const raw = this.envOf(ctx, "TRACING_SAMPLE_RATIO");
+    const ratio = raw === undefined || raw === "" ? undefined : Number(raw);
+    if (ratio !== undefined && !(ratio >= 0 && ratio <= 1)) {
+      throw new AlephaError(
+        `TRACING_SAMPLE_RATIO must be a number from 0 to 1, got '${raw}'.`,
+      );
+    }
+    wrangler.observability = {
+      enabled: true,
+      head_sampling_rate: 1,
+      ...(ratio !== undefined
+        ? { traces: { enabled: true, head_sampling_rate: ratio } }
+        : {}),
+    };
   }
 
   protected enhanceDomain(

@@ -22,6 +22,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
   public testEnhanceCron = this.enhanceCron.bind(this);
   public testEnhanceDomain = this.enhanceDomain.bind(this);
+  public testEnhanceObservability = this.enhanceObservability.bind(this);
   public testEnhanceRequestSignal = this.enhanceRequestSignal.bind(this);
   public testEnhanceEmail = this.enhanceEmail.bind(this);
   public testEnhanceAi = this.enhanceAi.bind(this);
@@ -109,6 +110,7 @@ describe("BuildCloudflareTask", () => {
     "CLOUDFLARE_EMAIL_EVENTS_QUEUE",
     "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME",
     "CLOUDFLARE_DOMAIN",
+    "TRACING_SAMPLE_RATIO",
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
@@ -1749,6 +1751,53 @@ describe("BuildCloudflareTask", () => {
       createTask().testEnhanceR2(ambient(), wrangler);
 
       expect(wrangler.r2_buckets?.[0]?.bucket_name).toBe("laptop-bucket");
+    });
+  });
+
+  /**
+   * Traces are opt in (#E86): billed as ingestion, they are written only when
+   * the app sets `TRACING_SAMPLE_RATIO` at build time.
+   */
+  describe("observability", () => {
+    it("writes logs only, and no traces, by default", ({ expect }) => {
+      delete process.env.TRACING_SAMPLE_RATIO;
+      const task = createTask();
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceObservability(ambient(), wrangler);
+      expect(wrangler.observability).toEqual({
+        enabled: true,
+        head_sampling_rate: 1,
+      });
+    });
+
+    it("adds traces at the build-time TRACING_SAMPLE_RATIO", ({ expect }) => {
+      process.env.TRACING_SAMPLE_RATIO = "0.25";
+      const task = createTask();
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceObservability(ambient(), wrangler);
+      expect(wrangler.observability).toEqual({
+        enabled: true,
+        head_sampling_rate: 1,
+        traces: { enabled: true, head_sampling_rate: 0.25 },
+      });
+    });
+
+    it("leaves an app's own observability block untouched", ({ expect }) => {
+      process.env.TRACING_SAMPLE_RATIO = "1";
+      const task = createTask();
+      const own = { enabled: false };
+      const wrangler: Record<string, any> = { observability: own };
+      task.testEnhanceObservability(ambient(), wrangler);
+      expect(wrangler.observability).toBe(own);
+      expect(wrangler.observability).toEqual({ enabled: false });
+    });
+
+    it("refuses a ratio outside 0 to 1", ({ expect }) => {
+      process.env.TRACING_SAMPLE_RATIO = "2";
+      const task = createTask();
+      expect(() => task.testEnhanceObservability(ambient(), {})).toThrow(
+        AlephaError,
+      );
     });
   });
 });

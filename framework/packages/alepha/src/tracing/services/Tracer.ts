@@ -159,7 +159,7 @@ export class Tracer {
     fn: (span: Span) => R,
     attributes?: SpanAttributes,
   ): R {
-    if (this.sinks.length === 0) {
+    if (!this.recording) {
       return fn(Span.noop);
     }
     return this.startSpan(name, attributes ? { attributes } : {}, fn);
@@ -174,7 +174,7 @@ export class Tracer {
     options: SpanOptions,
     fn: (span: Span) => R,
   ): R {
-    if (this.sinks.length === 0) {
+    if (!this.recording) {
       return fn(Span.noop);
     }
     const parent = this.current();
@@ -209,7 +209,7 @@ export class Tracer {
     fn: (span: Span) => R,
   ): R {
     const incoming = this.codec.parse(options.traceparent);
-    const recording = this.sinks.length > 0;
+    const recording = this.recording;
 
     if (!recording && !incoming) {
       return fn(Span.noop);
@@ -273,7 +273,7 @@ export class Tracer {
     options: SpanOptions,
     context: Omit<TraceContext, "spanId"> & { parentSpanId?: string },
   ): Span {
-    const recording = context.sampled && this.sinks.length > 0;
+    const recording = context.sampled && this.recording;
     return new Span({
       traceId: context.traceId,
       spanId: this.codec.newSpanId(),
