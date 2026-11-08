@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { type ZObject, z } from "alepha";
+import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
   type ObjectInputField,
@@ -12,7 +13,7 @@ import {
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "../core/Button.tsx";
 import { Control, type ControlProps } from "./Control.tsx";
@@ -78,6 +79,24 @@ export const ControlObject = (props: ControlObjectProps) => {
   const [value, setValue] = useFieldValue(props.input);
   const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
   const { tr } = useI18n();
+  const alepha = useAlepha();
+
+  // An error under a collapsed object must be reachable: open it the moment
+  // one lands on a field inside, so the field mounts and shows it (and
+  // `AutoForm` can bring it into view).
+  const formId = props.input?.form?.id;
+  const path = props.input?.path;
+  useEffect(() => {
+    if (!formId || !path) return;
+    return alepha.events.on("form:errors:changed", (event) => {
+      if (
+        event.id === formId &&
+        Object.keys(event.errors).some((key) => key.startsWith(`${path}/`))
+      ) {
+        setExpanded(true);
+      }
+    });
+  }, [alepha, formId, path]);
 
   if (!props.input?.props) return null;
 

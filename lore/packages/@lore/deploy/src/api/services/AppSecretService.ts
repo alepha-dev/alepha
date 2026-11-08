@@ -6,7 +6,7 @@ import {
 } from "alepha/cli/infra-lib";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
-import { BadRequestError } from "alepha/server";
+import { BadRequestError, ValidationError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { type AppSecret, appSecrets } from "../entities/appSecrets.ts";
@@ -215,8 +215,14 @@ export class AppSecretService {
      * import reads the manifest once rather than once per key.
      */
     variables?: ReadonlySet<string>;
+    /**
+     * Where `key` sits in the caller's request body (`"/key"`). Given, a
+     * refused name is a `ValidationError` naming that field, which a form
+     * built from the action shows under it; without it, a `BadRequestError`.
+     */
+    keyPath?: string;
   }): Promise<AppSecret> {
-    const key = this.assertKey(input.key);
+    const key = this.assertKey(input.key, input.keyPath);
     await this.assertDeliverable(input.instanceId, key);
     this.assertValue(key, input.value);
 
@@ -477,19 +483,26 @@ export class AppSecretService {
   /**
    * The name, normalised, or a refusal saying why not.
    */
-  protected assertKey(raw: string): string {
+  protected assertKey(raw: string, path?: string): string {
     const key = raw.trim().toUpperCase();
+    const refuse = (message: string) =>
+      path
+        ? new ValidationError(
+            { part: "body", issues: [{ path, message }] },
+            { message },
+          )
+        : new BadRequestError(message);
 
     if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-      throw new BadRequestError(
+      throw refuse(
         `"${raw}" is not an environment variable name. Use letters, digits and underscores, starting with a letter.`,
       );
     }
     if (key.length > 100) {
-      throw new BadRequestError(`"${raw}" is longer than 100 characters.`);
+      throw refuse(`"${raw}" is longer than 100 characters.`);
     }
     if (AppSecretService.reserved(key)) {
-      throw new BadRequestError(
+      throw refuse(
         `${key} is set by the deploy, not here. Lore provisions this copy's resources and derives DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names from the ids it gets back, so a value stored under one of them would be overwritten - or would win, and point a fresh deploy at somebody else's database.`,
       );
     }

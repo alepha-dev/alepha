@@ -76,13 +76,34 @@ interface ErrorItem {
   message: string;
 }
 
+/**
+ * Every issue the error carries: a schema refusal's or a server
+ * `ValidationError`'s `data.issues`, else its one path and message. It read
+ * `error.value` before, a shape no error has had since errors became
+ * declared, so the list always showed the whole message under "Form".
+ */
 const collectErrors = (error: Error): ErrorItem[] => {
-  const anyErr = error as Error & {
-    value?: { message?: string; path?: string };
-  };
-  const path = anyErr.value?.path ?? "";
-  const message = anyErr.value?.message ?? error.message ?? "Invalid";
-  return [{ path, message }];
+  const data = (
+    error as Error & {
+      data?: {
+        message?: string;
+        path?: string;
+        issues?: Array<{ path: string; message: string }>;
+      };
+    }
+  ).data;
+  if (data?.issues?.length) {
+    return data.issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message,
+    }));
+  }
+  return [
+    {
+      path: data?.path ?? "",
+      message: data?.message ?? error.message ?? "Invalid",
+    },
+  ];
 };
 
 const focusError = (path: string, formId: string) => {

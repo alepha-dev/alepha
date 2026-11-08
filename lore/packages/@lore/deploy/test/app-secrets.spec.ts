@@ -4,7 +4,7 @@ import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServer } from "alepha/server";
+import { AlephaServer, ValidationError } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -17,6 +17,7 @@ import {
   DeployService,
 } from "../src/api/index.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
+import { setAppSecretBodySchema } from "../src/api/schemas/setAppSecretBodySchema.ts";
 import {
   appInstances,
   appSecrets,
@@ -414,6 +415,36 @@ describe("a deployed copy's environment", () => {
         );
       },
     );
+
+    it("answers the refusal as a 400 on the body's key, for the form that shows it there", async ({
+      expect,
+    }) => {
+      const w = await world();
+
+      const error = await set(w, "DATABASE_URL", "anything").catch(
+        (reason: unknown) => reason,
+      );
+
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).status).toBe(400);
+      expect((error as ValidationError).data.part).toBe("body");
+      expect((error as ValidationError).data.issues).toEqual([
+        { path: "/key", message: expect.stringMatching(/set by the deploy/) },
+      ]);
+    });
+
+    it("keeps the shared body schema's value limit the service's", () => {
+      const max = AppSecretService.MAX_VALUE_LENGTH;
+      const body = (length: number) => ({
+        key: "A",
+        value: "x".repeat(length),
+      });
+
+      expect(setAppSecretBodySchema.safeParse(body(max)).success).toBe(true);
+      expect(setAppSecretBodySchema.safeParse(body(max + 1)).success).toBe(
+        false,
+      );
+    });
 
     it("refuses a name that is not an environment variable at all", async ({
       expect,

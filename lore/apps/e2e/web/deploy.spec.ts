@@ -230,6 +230,41 @@ test.describe("deploying through Lore", () => {
       await expect(table.getByText(/starts with sk_l/i)).toBeVisible();
     });
 
+    await test.step("a name the server refuses shows under the name, not in a toast", async () => {
+      // #Q3204: the dialog is built from `setAppSecret` (`useActionForm`), and
+      // the server answers a reserved name with a 400 naming `/key`, which
+      // lands on that field. The dialog stays open, so the name can be fixed.
+      await page.getByTestId("app-environment-add").click();
+      await page
+        .getByTestId("app-environment-key")
+        .getByRole("combobox")
+        .click();
+      const search = page.locator('input[role="combobox"]');
+      await expect(search).toBeVisible({ timeout: 15_000 });
+      await search.fill("DATABASE_URL");
+      await page
+        .getByRole("option")
+        .filter({ hasText: "DATABASE_URL" })
+        .first()
+        .click();
+      await page.locator("#app-environment-add-value").fill("postgres://nope");
+      await page.getByTestId("app-environment-save").click();
+
+      const key = page.getByTestId("app-environment-key");
+      await expect(key.getByText(/set by the deploy, not here/)).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(key.locator("[data-invalid]").first()).toBeVisible();
+      await expect(page.getByTestId("app-environment-save")).toBeVisible();
+      // Shown in place, so not toasted on top.
+      await expect(page.getByText(/set by the deploy, not here/)).toHaveCount(
+        1,
+      );
+
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("app-environment-save")).toHaveCount(0);
+    });
+
     await test.step("a .env import previews, then sets every line at once", async () => {
       // #Q2468: the preview marks each key before anything is sent, and the
       // import applies the sendable ones in one request.

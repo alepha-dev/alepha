@@ -7,6 +7,7 @@ import { appInstances } from "../entities/appInstances.ts";
 import type { AppSecret } from "../entities/appSecrets.ts";
 import { appSecretResourceSchema } from "../schemas/appSecretResourceSchema.ts";
 import { declaredEnvKeySchema } from "../schemas/declaredEnvKeySchema.ts";
+import { setAppSecretBodySchema } from "../schemas/setAppSecretBodySchema.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 
 /**
@@ -102,14 +103,7 @@ export class AppSecretController {
     description: "Set one variable, replacing whatever was there.",
     schema: {
       params: z.object({ projectId: z.integer(), instanceId: z.uuid() }),
-      body: z.object({
-        key: z.string().min(1).max(100),
-        /**
-         * ⚠️ The one place a plaintext appears on the wire, and it goes one
-         * way. Nothing reads it back.
-         */
-        value: z.string().min(1).max(AppSecretService.MAX_VALUE_LENGTH),
-      }),
+      body: setAppSecretBodySchema,
       response: appSecretResourceSchema,
     },
     handler: async ({ params, body, user }) => {
@@ -119,6 +113,9 @@ export class AppSecretController {
         key: body.key,
         value: body.value,
         updatedBy: user?.id,
+        // A refused name answers as a field refusal, so the dialog shows it
+        // under the name rather than in a toast.
+        keyPath: "/key",
       });
       return this.resource(row);
     },
