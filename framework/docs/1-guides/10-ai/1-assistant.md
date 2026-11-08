@@ -124,7 +124,7 @@ class Support {
 }
 ```
 
-- **A tool is an action.** Its name is the action's name (letters, digits, `_` and `-`, at
+- **A tool is an action** (or a `$tool`, see below). Its name is the action's name (letters, digits, `_` and `-`, at
   most 64), its description the action's `description` (required: it is how the model knows
   when to call it), and its input an object with `params`, `query` and `body` for the parts
   the action declares. A bad name or a missing description fails at start.
@@ -136,10 +136,63 @@ class Support {
 - **Bounds.** `maxSteps` (10 model calls by default) ends the turn with `end: length`;
   `timeout` and the ambient abort signal cancel the call in flight.
 
+### One definition for the assistant and for outside agents
+
+The same `$action` can serve the assistant and outside agents at once: add `mcp: true` and,
+when `alepha/mcp` is registered, it is also an MCP tool with the same `{ params, query, body }`
+input (see [MCP Server](/docs/guides-ai-mcp)):
+
+```typescript check
+import { $inject, z } from "alepha";
+import { $ai } from "alepha/ai";
+import { $tool } from "alepha/mcp";
+import { $secure } from "alepha/security";
+import { $action } from "alepha/server";
+
+class InvoiceApi {
+  list = $action({
+    method: "GET",
+    path: "/invoices",
+    description: "List the invoices of the signed-in user",
+    mcp: true,
+    use: [$secure()],
+    schema: { response: z.array(z.object({ id: z.integer() })) },
+    handler: () => [],
+  });
+}
+
+class InvoiceTools {
+  invoice_search = $tool({
+    description: "Search invoices by customer name",
+    annotations: { readOnlyHint: true },
+    use: [$secure()],
+    schema: { params: z.object({ customer: z.text() }) },
+    handler: async () => [],
+  });
+}
+
+class Support {
+  invoices = $inject(InvoiceApi);
+  tools = $inject(InvoiceTools);
+
+  assistant = $ai({
+    system: "You help with invoices.",
+    tools: [this.invoices.list, this.tools.invoice_search],
+  });
+}
+```
+
+A `$tool` (`alepha/mcp`) is offered as it is, with no wrapper action. The model sees its
+`description` and its `schema.params`; a call runs the tool as the turn's user, so its own
+`use: [$secure(...)]` decides, with the turn's abort signal as `context.signal`. Every failure,
+a refusal or invalid arguments included, goes back to the model as a tool error. A call from
+the assistant is not an MCP call: `mcp:tool:call:end` does not fire for it.
+
 ## Confirmation and resume
 
-A call to an action whose method is not `GET` (or whatever `confirm` says) does not run on its
-own. The turn pauses: `stream()` emits a `confirm` event with the call id and its input, then
+A call to an action whose method is not `GET`, or to a `$tool` that does not declare
+`annotations: { readOnlyHint: true }` (or whatever `confirm` says), does not run on its own.
+`confirm` receives `{ name, method }`, where `method` is `"TOOL"` for a `$tool`. The turn pauses: `stream()` emits a `confirm` event with the call id and its input, then
 `end: paused`. A client tool, declared with `clientTool(name, { description, schema })`, pauses
 the same way with a `client_tool` event, because the browser runs it (`navigate`, `fillForm`).
 

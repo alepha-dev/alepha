@@ -4,6 +4,71 @@ The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) lets AI assi
 
 Alepha ships with first-class MCP support. You define tools, resources, and prompts with the same primitive pattern you already use for routes and actions. The framework handles protocol negotiation, schema validation, and transport. To call a model from your own app instead, see [AI assistant](/docs/guides-ai-assistant).
 
+## One definition: `$action({ mcp: true })`
+
+A feature your app already exposes as an `$action` becomes an MCP tool with one option. The same action stays an HTTP endpoint, and can be offered to the in-app assistant too (see [AI assistant](/docs/guides-ai-assistant)):
+
+```typescript check
+import { $inject, Alepha, run, z } from "alepha";
+import { $ai } from "alepha/ai";
+import { AlephaMcp, StreamableHttpMcpTransport } from "alepha/mcp";
+import { $secure } from "alepha/security";
+import { $action, AlephaServer } from "alepha/server";
+
+class InvoiceApi {
+  get = $action({
+    method: "GET",
+    path: "/invoices/:id",
+    description: "Read one invoice of the signed-in user",
+    mcp: true,
+    use: [$secure()],
+    schema: {
+      params: z.object({ id: z.text() }),
+      response: z.object({ id: z.text(), amount: z.number() }),
+    },
+    handler: ({ params }) => ({ id: params.id, amount: 120 }),
+  });
+}
+
+class Support {
+  invoices = $inject(InvoiceApi);
+
+  // The same action, offered to the in-app assistant.
+  assistant = $ai({
+    system: "You help with invoices.",
+    tools: [this.invoices.get],
+  });
+}
+
+run(
+  Alepha.create()
+    .with(AlephaServer)
+    .with(AlephaMcp)
+    .with(StreamableHttpMcpTransport)
+    .with(Support),
+);
+```
+
+`tools/list` now lists `get` beside any `$tool`, and `tools/call` runs it:
+
+- **The input is `{ params, query, body }`**, one key per part the action declares, `query` optional and nothing else accepted. It is the input `$ai` gives the model for the same action, built by the same converter. The tool's description is the action's `description`, which is required.
+- **The action decides.** A call goes through the action itself: its `use` middlewares (`$secure` sees the MCP caller, from the request's bearer, as it does for a `$tool`), its typed errors and its own timeout. Over stdio there is no request, so the action runs anonymous and a secured one refuses.
+- **One deadline: the action's.** The action's `timeout` (or the `serverApiOptions` default) applies; the `mcpToolOptions` timeout is for `$tool`s only. The MCP request's cancellation aborts the action's ambient signal.
+- **Hints come from the method.** `GET` is `readOnlyHint: true`, `DELETE` is `destructiveHint: true`.
+- **Errors.** An `HttpError` (a declared `$error`, a `$secure` refusal, a `NotFoundError`) or a timeout is a tool execution error the model reads, `<error name>: <message>`, and a malformed argument names its path. Anything else is a JSON-RPC internal error whose message is not sent. `mcp:tool:call:end` fires as for a `$tool`.
+
+`mcp` also takes options: `mcp: { name, title, annotations, icons }`. The name defaults to the action's; `annotations` override the hints the method implies.
+
+### When to keep a `$tool`
+
+`$tool` stays the right primitive when the tool is not an HTTP endpoint, or when its input is not `{ params, query, body }`:
+
+- the tool takes a flat object an agent writes naturally (`{ project, shortId }`), or resolves names to ids before calling an action;
+- it returns raw MCP content (an image block) or declares a `schema.result` for `structuredContent`;
+- it reads `context` (elicitation, progress) or has no action behind it at all.
+
+A `$tool` can be offered to the in-app assistant as it is, with no wrapper action: `$ai({ tools: [this.tools.task_list] })`.
+
 ## Quick Start
 
 ```typescript check
