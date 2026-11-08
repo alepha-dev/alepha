@@ -123,6 +123,14 @@ export {
 } from "./Card.tsx";
 export { Checkbox, type CheckboxProps } from "./Checkbox.tsx";
 export {
+  Collapsible,
+  type CollapsibleProps,
+  CollapsiblePanel,
+  type CollapsiblePanelProps,
+  CollapsibleTrigger,
+  type CollapsibleTriggerProps,
+} from "./Collapsible.tsx";
+export {
   Combobox,
   ComboboxChip,
   type ComboboxChipProps,

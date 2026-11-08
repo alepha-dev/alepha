@@ -1482,6 +1482,7 @@ const UI_COMPOUND_FILES = new Set([
   "core/Breadcrumb.tsx",
   "core/ButtonGroup.tsx",
   "core/Card.tsx",
+  "core/Collapsible.tsx",
   "core/Combobox.tsx",
   "core/ContextMenu.tsx",
   "core/Dialog.tsx",

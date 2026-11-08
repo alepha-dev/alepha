@@ -693,7 +693,7 @@ test.describe("blocks", () => {
 
 /**
  * The primitives' layout and timing, on the Primitives specimen page. jsdom
- * lays nothing out and opens no popup (#F1208), so these two are pinned here
+ * lays nothing out and opens no popup (#F1208), so these are pinned here
  * and nowhere else (#Q2184).
  */
 test.describe("primitives", () => {
@@ -750,6 +750,33 @@ test.describe("primitives", () => {
     expect(l.height).toBeLessThanOrEqual(s.height + 1);
     expect(m.x).toBeGreaterThanOrEqual(0);
     expect(m.x + m.width).toBeLessThanOrEqual(viewport.width);
+  });
+
+  /**
+   * The panel's height comes from `--collapsible-panel-height`, which Base UI
+   * measures in the browser: jsdom measures nothing, so a panel stuck at 0 or
+   * clipped short would pass every jsdom spec.
+   */
+  test("the collapsible opens to its content's height and leaves once closed", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/primitives");
+    const trigger = page.getByTestId("primitives-collapsible");
+    const panel = page.getByTestId("primitives-collapsible-panel");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(panel).toHaveCount(0);
+
+    await trigger.click();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    await expect(panel.getByRole("button", { name: "Admin" })).toBeVisible();
+    await expect
+      .poll(() => panel.evaluate((el) => el.scrollHeight - el.clientHeight))
+      .toBe(0);
+    expect((await panel.boundingBox())!.height).toBeGreaterThan(20);
+
+    await trigger.click();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(panel).toHaveCount(0);
   });
 });
 

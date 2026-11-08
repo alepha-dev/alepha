@@ -80,6 +80,12 @@ describe("primitive data-slots", () => {
       "card-title",
     ],
     "core/Checkbox.tsx": ["checkbox", "checkbox-indicator"],
+    "core/Collapsible.tsx": [
+      "collapsible",
+      "collapsible-chevron",
+      "collapsible-panel",
+      "collapsible-trigger",
+    ],
     "core/Combobox.tsx": [
       "combobox-chip",
       "combobox-chip-input",

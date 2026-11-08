@@ -1,5 +1,8 @@
 import {
   Button,
+  Collapsible,
+  CollapsiblePanel,
+  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -27,12 +30,14 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * - The dropdown menu is `w-auto max-w-(--available-width)`, not as wide as
  *   its trigger: a menu is not a select, and a 32px icon trigger used to wrap
  *   every label.
+ * - The collapsible panel animates its height to its content's, measured by
+ *   Base UI, and leaves the DOM once closed.
  */
 const Primitives = () => (
   <Showcase
     id="blocks/Primitives"
     title="Primitives"
-    description="A tooltip and a dropdown menu, as the kit lays them out."
+    description="A tooltip, a dropdown menu and a collapsible, as the kit lays them out."
     center
   >
     {() => (
@@ -82,6 +87,27 @@ const Primitives = () => (
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </Group>
+
+        <Group title="Collapsible">
+          <Collapsible className="w-80">
+            <CollapsibleTrigger chevron data-testid="primitives-collapsible">
+              Try the demo
+            </CollapsibleTrigger>
+            <CollapsiblePanel data-testid="primitives-collapsible-panel">
+              <div className="text-muted-foreground grid gap-2 pt-3 text-sm">
+                <p>Sign in as one of the demo accounts, no password needed.</p>
+                <div className="flex gap-2">
+                  <Button variant="outlined" size="sm">
+                    Viewer
+                  </Button>
+                  <Button variant="outlined" size="sm">
+                    Admin
+                  </Button>
+                </div>
+              </div>
+            </CollapsiblePanel>
+          </Collapsible>
         </Group>
       </div>
     )}
