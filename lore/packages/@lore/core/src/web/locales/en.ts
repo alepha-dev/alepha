@@ -3378,6 +3378,11 @@ export default {
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",
   "activity.capability.disabled": "turned off $1",
+  "activity.review.filed":
+    "filed a review: $1 questions, $2 decisions, $3 changes",
+  "activity.review.answered": "answered item $1",
+  "activity.review.waived": "waived item $1",
+  "activity.review.overturned": "overturned item $1, replaced by item $2",
 
   // The rank matrix's column labels, one per `$permission` declared in
   // `LorePermissions`, plus a heading per group. Rendered dynamically from the

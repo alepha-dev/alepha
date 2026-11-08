@@ -12,6 +12,7 @@ import {
 import { type EpicReview, epicReviews } from "../entities/epicReviews.ts";
 import type { Epic } from "../entities/epics.ts";
 import type { EpicReviewItemKind } from "../schemas/epicReviewItemKindSchema.ts";
+import type { EpicReviewsResult } from "../schemas/epicReviewsResultSchema.ts";
 import type { EpicReviewSuggestion } from "../schemas/epicReviewSuggestionSchema.ts";
 import type { EpicReviewTarget } from "../schemas/epicReviewTargetSchema.ts";
 import { EpicWorkflowService } from "./EpicWorkflowService.ts";
@@ -212,6 +213,31 @@ export class EpicReviewService {
       replacedBy: replacementNumber,
     });
     return { item: updated, replacement, outcome: "overturned" };
+  }
+
+  /**
+   * Every review of an epic, newest first, each with its items by number,
+   * and the open-question count: what `getEpicReviews` and `epic_get`
+   * answer. Two reads, side by side.
+   */
+  async resultOf(epicId: number): Promise<EpicReviewsResult> {
+    const [reviews, items] = await Promise.all([
+      this.reviewsOf(epicId),
+      this.itemsOf(epicId),
+    ]);
+    const byReview = new Map<number, EpicReviewItem[]>();
+    for (const item of items) {
+      const list = byReview.get(item.reviewId) ?? [];
+      list.push(item);
+      byReview.set(item.reviewId, list);
+    }
+    return {
+      reviews: reviews.map((review) => ({
+        ...review,
+        items: byReview.get(review.id) ?? [],
+      })),
+      openQuestions: items.filter((item) => item.state === "open").length,
+    };
   }
 
   /**

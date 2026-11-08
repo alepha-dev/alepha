@@ -318,13 +318,14 @@ export class EpicController {
         },
       });
 
-      const [resource, folios] = await Promise.all([
+      const [resource, folios, reviews] = await Promise.all([
         this.buildEpicResource(epic),
         this.linkService
           .filedChildren({ kind: "epic", id: epic.id }, "folio")
           .then((filed) =>
             this.resources.describe("folio", params.projectId, filed),
           ),
+        this.reviews.resultOf(epic.id),
       ]);
 
       return {
@@ -343,6 +344,7 @@ export class EpicController {
             updatedAt: folio.updatedAt,
             pinned: folio.pinned,
           })),
+        reviews,
       };
     },
   });

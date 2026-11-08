@@ -3,6 +3,7 @@ import { $module } from "alepha";
 
 import { AreaController } from "./controllers/AreaController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
+import { EpicReviewController } from "./controllers/EpicReviewController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
@@ -209,6 +210,7 @@ export const LoreWorkApi = $module({
     ReleaseController,
     RoadmapController,
     EpicController,
+    EpicReviewController,
     AreaController,
     ProjectReportsController,
     ProjectReportsService,
@@ -236,6 +238,7 @@ export const LoreWorkApi = $module({
 export { feedbackOptionsAtom } from "./atoms/feedbackOptionsAtom.ts";
 export { AreaController } from "./controllers/AreaController.ts";
 export { EpicController } from "./controllers/EpicController.ts";
+export { EpicReviewController } from "./controllers/EpicReviewController.ts";
 export { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 export { FeedbackController } from "./controllers/FeedbackController.ts";
 export { KanbanController } from "./controllers/KanbanController.ts";

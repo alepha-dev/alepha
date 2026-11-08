@@ -174,7 +174,18 @@ export class LoreAudits {
   readonly epic = $audit({
     type: "epic",
     description: "Epic lifecycle",
-    actions: ["create", "update", "delete", "status", "attach", "detach"],
+    // `review` and `answer` are epic reviews (#E121): one row per filed
+    // review and one per answer, waive or overturn. Neither coalesces.
+    actions: [
+      "create",
+      "update",
+      "delete",
+      "status",
+      "attach",
+      "detach",
+      "review",
+      "answer",
+    ],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
     // into one row with a count. Five minutes, measured from the row's
