@@ -4,13 +4,14 @@ import { useEffect } from "react";
 import { uiThemeListAtom } from "../atoms/uiThemeListAtom.ts";
 import { useColorMode } from "../hooks/useColorMode.ts";
 import { useTheme } from "../hooks/useTheme.ts";
+import { useVisionMode } from "../hooks/useVisionMode.ts";
 
 const FONT_LINK_ID = "alepha-theme-fonts";
 
 /**
- * Applies `class="dark"` and an optional theme palette class
- * (`theme-<name>`) to the document root, syncing whenever the underlying
- * atom mutates. Also injects the active theme's `fontHref` stylesheet as a
+ * Applies `class="dark"`, an optional theme palette class (`theme-<name>`)
+ * and the vision mode (the class `cvd` and `data-vision`) to the document
+ * root, syncing whenever the underlying atom mutates. Also injects the active theme's `fontHref` stylesheet as a
  * single `<link id="alepha-theme-fonts">` in `<head>`, swapping it when the
  * theme changes and removing it when the theme declares no font.
  *
@@ -28,6 +29,7 @@ const FONT_LINK_ID = "alepha-theme-fonts";
 export const ColorScheme = () => {
   const { mode, resolved } = useColorMode();
   const { theme } = useTheme();
+  const { vision } = useVisionMode();
   const [list] = useStore(uiThemeListAtom);
 
   // Resolved to a plain string so the effect below depends on the value, not
@@ -55,6 +57,13 @@ export const ColorScheme = () => {
     if (typeof document === "undefined") return;
     document.documentElement.setAttribute("data-color-mode", mode);
   }, [mode]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.toggle("cvd", vision === "cvd");
+    root.setAttribute("data-vision", vision);
+  }, [vision]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

@@ -8,9 +8,10 @@
  * `AppShell` is the sidebar-and-header frame of an application and `NavShell`
  * the page-tree variant with its `Spotlight` search. `PlateLayout` and
  * `DetailLayout` frame a page, `AppActions` a toolbar. `ButtonDark`,
- * `ButtonTheme`, `ButtonLanguage`, `ButtonInbox` and `ButtonUser` are the
- * header buttons, and `ButtonSettings` is the account button with language,
- * theme and display mode folded into its menu once signed in.
+ * `ButtonVision`, `ButtonTheme`, `ButtonLanguage`, `ButtonInbox` and
+ * `ButtonUser` are the header buttons, and `ButtonSettings` is the account
+ * button with language, theme, display mode and colour-blind mode folded
+ * into its menu once signed in.
  * `ActionErrorToaster` turns a failed action into a toast.
  *
  * @module alepha.ui.shell
@@ -35,8 +36,10 @@ export { ButtonSettings, type ButtonSettingsProps } from "./ButtonSettings.tsx";
 export type { ButtonSettingsColorModeMenuProps } from "./ButtonSettingsColorModeMenu.tsx";
 export type { ButtonSettingsLanguageMenuProps } from "./ButtonSettingsLanguageMenu.tsx";
 export type { ButtonSettingsThemeMenuProps } from "./ButtonSettingsThemeMenu.tsx";
+export type { ButtonSettingsVisionMenuItemProps } from "./ButtonSettingsVisionMenuItem.tsx";
 export { ButtonTheme, type ButtonThemeProps } from "./ButtonTheme.tsx";
 export { ButtonUser, type ButtonUserProps } from "./ButtonUser.tsx";
+export { ButtonVision, type ButtonVisionProps } from "./ButtonVision.tsx";
 export type { ButtonUserAccountMenuItemProps } from "./ButtonUserAccountMenuItem.tsx";
 export type { ButtonUserAdminMenuItemProps } from "./ButtonUserAdminMenuItem.tsx";
 export type { ButtonUserEmailProps } from "./ButtonUserEmail.tsx";

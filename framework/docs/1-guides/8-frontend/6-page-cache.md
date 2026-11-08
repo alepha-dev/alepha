@@ -113,7 +113,7 @@ import { Personal } from "alepha/react";
 
 In a render that may be shared, `<Personal>` renders its `fallback`, and its children do not run, so what they read does not count. In the browser the hydration pass renders what the server rendered, then the children take over on the next commit, from the visitor's state already in the private script: no request, no hydration mismatch. On a page that is personal anyway, the server renders the children directly.
 
-Keep the fallback the size of the real thing, so the swap moves nothing. `@alepha/ui`'s `ButtonUser` uses an empty slot the size of the icon button. The UI preference hooks (`useColorMode`, `useTheme`, `useSidebarState`) need no wrapper: they never read the preferences on the server, and the boot script paints them on `<html>` before the first frame.
+Keep the fallback the size of the real thing, so the swap moves nothing. `@alepha/ui`'s `ButtonUser` uses an empty slot the size of the icon button. The UI preference hooks (`useColorMode`, `useTheme`, `useVisionMode`, `useSidebarState`) need no wrapper: they never read the preferences on the server, and the boot script paints them on `<html>` before the first frame.
 
 ## Invalidation
 

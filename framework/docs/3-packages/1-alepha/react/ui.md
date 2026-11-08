@@ -10,7 +10,8 @@ npm install alepha
 
 ## Overview
 
-Persisted UI state: color mode, theme palette, sidebar collapsed state.
+Persisted UI state: color mode, theme palette, vision mode (colour-blind
+palette), sidebar collapsed state.
 
 Backed by an `alepha-ui` cookie so preferences survive reloads and are
 available during SSR (no flash of wrong theme).
@@ -23,3 +24,4 @@ available during SSR (no flash of wrong theme).
 - [`useSidebarState`](/docs/reference-react-hooks-usesidebarstate) - Read and update the sidebar collapsed state. The value is persisted via the
 - [`useTheme`](/docs/reference-react-hooks-usetheme) - Read and update the active theme palette name. UI consumers typically map
 - [`useUiState`](/docs/reference-react-hooks-useuistate) - The visitor's UI preferences, read so that no server render ever depends
+- [`useVisionMode`](/docs/reference-react-hooks-usevisionmode) - Read and update the vision mode: `"cvd"` (colour vision deficiency) turns

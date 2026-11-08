@@ -434,6 +434,63 @@
 }
 
 /*
+ * Colour-blind mode (colour vision deficiency): the `cvd` class on `<html>`,
+ * set by `alepha/react/ui` (`useVisionMode`, `ButtonVision`) and painted
+ * before first paint by its boot script. Independent of `.dark` and of the
+ * theme palette, so it combines with both.
+ *
+ * It swaps only the tokens that CARRY MEANING (success, warning, danger and
+ * the chart palette) for Okabe and Ito's colour-blind-safe palette, as Wong
+ * popularised it: blue #0072b2, vermillion #d55e00, bluish green #009e73,
+ * reddish purple #cc79a7, orange #e69f00, with lighter variants in dark. The
+ * red/green pair, the one most deficiencies merge, becomes vermillion/blue.
+ * `--primary` and the neutrals are brand and surface, not signal, and stay.
+ *
+ * Contrast holds AA (4.5:1) on every foreground: a fill's `-foreground`
+ * against the fill, a `-text` against the page. Vermillion and orange are
+ * too light for white text, so their fills take the dark foreground the
+ * warning already used, and their `-text` is a darker step of the same hue.
+ *
+ * `:root.cvd` rather than `.cvd`: (0,2,0) beats a bare `.theme-*` and
+ * `:root.cvd.dark` (0,3,0) beats `.theme-*.dark`, so the palette wins over a
+ * theme loaded after this file, whichever it is. An app remaps its own
+ * signal tokens the same way, in a `.cvd` and a `.cvd.dark` block.
+ */
+:root.cvd {
+  --success: #0072b2;
+  --success-foreground: #ffffff;
+  --success-text: #0072b2;
+  --warning: #e69f00;
+  --warning-foreground: #111418;
+  --warning-text: #8f6200;
+  --danger: #d55e00;
+  --danger-foreground: #111418;
+  --danger-text: #b34f00;
+  --chart-1: #0072b2;
+  --chart-2: #e69f00;
+  --chart-3: #009e73;
+  --chart-4: #cc79a7;
+  --chart-5: #d55e00;
+}
+
+:root.cvd.dark {
+  --success: #0072b2;
+  --success-foreground: #ffffff;
+  --success-text: #4ea8e0;
+  --warning: #e69f00;
+  --warning-foreground: #111418;
+  --warning-text: #ffba33;
+  --danger: #d55e00;
+  --danger-foreground: #111418;
+  --danger-text: #ff8a3d;
+  --chart-1: #4ea8e0;
+  --chart-2: #ffba33;
+  --chart-3: #2bc999;
+  --chart-4: #e3a8c5;
+  --chart-5: #ff8a3d;
+}
+
+/*
  * `--surface` follows the surface utilities rather than being set by hand
  * in each component: a hand-written `bg-card` panel is as much a surface as
  * `Card`, and a per-component declaration missed it (the clear button's
