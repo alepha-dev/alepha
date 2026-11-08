@@ -5,6 +5,7 @@ import { $logger, JsonFormatterProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
 import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider } from "alepha/system";
+import { MemoryTraceProvider, type Span } from "alepha/tracing";
 
 import { INSPECTOR_ENDPOINTS } from "../constants/INSPECTOR_ENDPOINTS.ts";
 import type {
@@ -44,6 +45,17 @@ export class InspectorRoutes {
   protected readonly json = $inject(JsonFormatterProvider);
   protected readonly emailOptions = $store(localEmailOptions);
   protected readonly smsOptions = $store(localSmsOptions);
+  /**
+   * The recent traces devtools draws (#E86). Injecting it is what turns
+   * tracing on, whenever the inspector itself is on.
+   */
+  protected readonly traceStore = $inject(MemoryTraceProvider);
+
+  /**
+   * Siblings sharing a name, under one parent, from which the parent is
+   * flagged as an N+1: `select users` five times is one query per row.
+   */
+  public nPlusOneThreshold = 5;
 
   public readonly routes = {
     metadata: this.route({
@@ -158,6 +170,29 @@ export class InspectorRoutes {
         }),
       },
       handler: ({ query }) => this.readLogs(query),
+    }),
+
+    traces: this.route({
+      ...INSPECTOR_ENDPOINTS.traces,
+      schema: {
+        response: z.object({
+          traces: z.array(z.record(z.text(), z.any())),
+        }),
+      },
+      handler: () => ({ traces: this.traceStore.traces() as any[] }),
+    }),
+
+    trace: this.route({
+      ...INSPECTOR_ENDPOINTS.trace,
+      schema: {
+        params: z.object({ id: z.text() }),
+        response: z.object({
+          traceId: z.text(),
+          spans: z.array(z.record(z.text(), z.any())),
+          logs: z.array(z.any()),
+        }),
+      },
+      handler: ({ params }) => this.readTrace(params.id),
     }),
 
     emails: this.route({
@@ -610,6 +645,65 @@ export class InspectorRoutes {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * One trace: every span, the log lines logged inside it (matched to a span
+   * by `spanId`), and on a parent the N+1 flag: {@link nPlusOneThreshold}
+   * or more children of the same name.
+   */
+  protected readTrace(traceId: string) {
+    const spans = this.traceStore.trace(traceId);
+    const children = new Map<string, Map<string, number>>();
+    for (const span of spans) {
+      if (!span.parentSpanId) continue;
+      const names = children.get(span.parentSpanId) ?? new Map();
+      names.set(span.name, (names.get(span.name) ?? 0) + 1);
+      children.set(span.parentSpanId, names);
+    }
+    const logs = this.logStore
+      .entries()
+      .filter((entry) => entry.traceId === traceId)
+      .map((entry) => this.serializeEntry(entry));
+    return {
+      traceId,
+      spans: spans.map((span) => ({
+        ...this.serializeSpan(span),
+        nPlusOne: this.nPlusOneOf(children.get(span.spanId)),
+      })),
+      logs,
+    };
+  }
+
+  protected nPlusOneOf(
+    names: Map<string, number> | undefined,
+  ): { name: string; count: number } | undefined {
+    if (!names) return undefined;
+    let worst: { name: string; count: number } | undefined;
+    for (const [name, count] of names) {
+      if (count >= this.nPlusOneThreshold && count > (worst?.count ?? 0)) {
+        worst = { name, count };
+      }
+    }
+    return worst;
+  }
+
+  protected serializeSpan(span: Span) {
+    return {
+      traceId: span.traceId,
+      spanId: span.spanId,
+      parentSpanId: span.parentSpanId,
+      name: span.name,
+      kind: span.kind,
+      startTime: span.startTime,
+      endTime: span.endTime,
+      duration: span.duration,
+      status: span.status,
+      statusMessage: span.statusMessage,
+      exception: span.exception,
+      attributes: span.attributes,
+      links: span.links,
+    };
   }
 
   /**

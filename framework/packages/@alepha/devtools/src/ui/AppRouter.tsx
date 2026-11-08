@@ -166,6 +166,13 @@ export class AppRouter {
     lazy: () => import("./components/outbox/DevOutbox.tsx"),
   });
 
+  traces = $page({
+    path: "/traces",
+    label: "Traces",
+    parent: this.layout,
+    lazy: () => import("./components/traces/DevTraces.tsx"),
+  });
+
   logs = $page({
     path: "/logs",
     label: "Logs",

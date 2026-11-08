@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Table2,
   Variable,
+  Waypoints,
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -29,6 +30,7 @@ import { useMetadata } from "../hooks/useMetadata.ts";
 import { useRunHref } from "../hooks/useRunHref.ts";
 import { useRunId } from "../hooks/useRunId.ts";
 import { useRuns } from "../hooks/useRuns.ts";
+import { useTraces } from "../hooks/useTraces.ts";
 import { RunSwitcher } from "./runs/RunSwitcher.tsx";
 import { CommandPalette } from "./shared/CommandPalette.tsx";
 import { DevNavItem } from "./shared/DevNavItem.tsx";
@@ -57,6 +59,9 @@ const DevLayout = () => {
   const href = useRunHref();
   const { runs, loaded } = useRuns();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Asked once, not polled: a run that answers 404 on `/traces` predates
+  // tracing, and its nav hides the panel rather than showing it empty.
+  const { available: tracesAvailable } = useTraces(0);
 
   const current = runs.find((run) => run.runId === runId);
   const lastSeen = useRef<InspectorRun | undefined>(undefined);
@@ -227,11 +232,14 @@ const DevLayout = () => {
         items: [
           { href: "/graph", label: "Graph", icon: Network },
           { href: "/outbox", label: "Outbox", icon: Inbox },
+          ...(tracesAvailable === false
+            ? []
+            : [{ href: "/traces", label: "Traces", icon: Waypoints }]),
           { href: "/logs", label: "Logs", icon: List, live: true },
         ],
       },
     ],
-    [d, envCount],
+    [d, envCount, tracesAvailable],
   );
 
   /**

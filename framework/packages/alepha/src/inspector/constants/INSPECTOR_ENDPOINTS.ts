@@ -11,6 +11,8 @@ export const INSPECTOR_ENDPOINTS = {
   updateAtom: { method: "POST", path: "/atoms" },
   atomLog: { method: "GET", path: "/atoms/log" },
   logs: { method: "GET", path: "/logs" },
+  traces: { method: "GET", path: "/traces" },
+  trace: { method: "GET", path: "/traces/:id" },
   emails: { method: "GET", path: "/emails" },
   sms: { method: "GET", path: "/sms" },
   jobs: { method: "GET", path: "/jobs" },
