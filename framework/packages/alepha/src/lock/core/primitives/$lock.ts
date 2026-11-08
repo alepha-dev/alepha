@@ -7,6 +7,7 @@ import {
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
@@ -33,6 +34,7 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
   const lockProvider = alepha.inject(LockProvider);
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const crypto = alepha.inject(CryptoProvider);
+  const tracer = alepha.inject(Tracer);
   const log = $logger();
   // On Cloudflare Workers no Redis client runs, so the lock is the memory
   // one and holds only inside one isolate. Said once per `$lock`, on its
@@ -77,48 +79,80 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
           );
         }
 
-        const value = await lockProvider.set(
-          name,
-          `${id},${dateTimeProvider.nowISOString()}`,
-          true,
-          maxDurationMs,
-        );
+        // The acquire, as one span (#E86): `lock acquire`, ended once the
+        // lock is held or `LockAcquireError` is thrown. The held section
+        // belongs to the handler's own span. `lock.name` only when the name
+        // is static: a computed one can hold an id.
+        let contended = false;
+        const acquire = async () => {
+          const value = await lockProvider.set(
+            name,
+            `${id},${dateTimeProvider.nowISOString()}`,
+            true,
+            maxDurationMs,
+          );
 
-        const [lockId] = value.split(",");
+          const [lockId] = value.split(",");
 
-        // Lock held by someone else
-        if (lockId !== id) {
-          await alepha.events.emit("lock:contended", { name, id });
-          if (options.wait) {
-            // Poll until lock is released
-            const start = dateTimeProvider.nowMillis();
-            while (dateTimeProvider.nowMillis() - start < maxDurationMs) {
-              await dateTimeProvider.wait(500);
-              const current = await lockProvider.set(
+          // Lock held by someone else
+          if (lockId !== id) {
+            contended = true;
+            await alepha.events.emit("lock:contended", { name, id });
+            if (options.wait) {
+              // Poll until lock is released
+              const start = dateTimeProvider.nowMillis();
+              while (dateTimeProvider.nowMillis() - start < maxDurationMs) {
+                await dateTimeProvider.wait(500);
+                const current = await lockProvider.set(
+                  name,
+                  `${id},${dateTimeProvider.nowISOString()}`,
+                  true,
+                  maxDurationMs,
+                );
+                const [currentId] = current.split(",");
+                if (currentId === id) {
+                  break;
+                }
+              }
+              // Check if we got the lock
+              const final = await lockProvider.set(
                 name,
                 `${id},${dateTimeProvider.nowISOString()}`,
                 true,
                 maxDurationMs,
               );
-              const [currentId] = current.split(",");
-              if (currentId === id) {
-                break;
+              const [finalId] = final.split(",");
+              if (finalId !== id) {
+                throw new LockAcquireError({ lock: name });
               }
-            }
-            // Check if we got the lock
-            const final = await lockProvider.set(
-              name,
-              `${id},${dateTimeProvider.nowISOString()}`,
-              true,
-              maxDurationMs,
-            );
-            const [finalId] = final.split(",");
-            if (finalId !== id) {
+            } else {
               throw new LockAcquireError({ lock: name });
             }
-          } else {
-            throw new LockAcquireError({ lock: name });
           }
+        };
+
+        if (tracer.recording) {
+          const waitStart = dateTimeProvider.nowMillis();
+          await tracer.startSpan(
+            "lock acquire",
+            { requireParent: true },
+            async (span) => {
+              if (typeof options.name === "string") {
+                span.setAttribute("lock.name", options.name);
+              }
+              try {
+                await acquire();
+              } finally {
+                span.setAttribute("lock.contended", contended);
+                span.setAttribute(
+                  "lock.wait_ms",
+                  dateTimeProvider.nowMillis() - waitStart,
+                );
+              }
+            },
+          );
+        } else {
+          await acquire();
         }
 
         // We hold the lock — execute handler

@@ -13,6 +13,7 @@ import {
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND, OPTIONS } from "alepha/internal";
 import { $logger } from "alepha/logger";
+import { type Span, Tracer } from "alepha/tracing";
 
 import { CacheProvider } from "../providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
@@ -293,6 +294,7 @@ export class CachePrimitive<
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
   protected readonly settings = $store(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
+  protected readonly tracer = $inject(Tracer);
   protected readonly log = $logger();
   public readonly provider = this.$provider();
 
@@ -458,6 +460,34 @@ export class CachePrimitive<
   }
 
   public async invalidate(...keys: string[]): Promise<void> {
+    if (!this.tracer.recording) {
+      return this.invalidateEntries(keys);
+    }
+    return this.traced("invalidate", () => this.invalidateEntries(keys));
+  }
+
+  /**
+   * The span of a cache operation (#E86): `cache <op> <name>`, inside a
+   * trace only. The cache's name, never its key: a key can hold a user id.
+   */
+  protected traced<R>(
+    operation: "get" | "set" | "invalidate",
+    fn: (span: Span) => Promise<R>,
+  ): Promise<R> {
+    return this.tracer.startSpan(
+      `cache ${operation} ${this.container}`,
+      {
+        requireParent: true,
+        attributes: {
+          "alepha.cache.name": this.container,
+          "alepha.cache.operation": operation,
+        },
+      },
+      fn,
+    );
+  }
+
+  protected async invalidateEntries(keys: string[]): Promise<void> {
     if (this.memoryStore) {
       if (keys.length === 0) {
         this.memoryStore.clear();
@@ -478,6 +508,17 @@ export class CachePrimitive<
   }
 
   public async set(
+    key: string,
+    value: TReturn,
+    ttl?: DurationLike,
+  ): Promise<void> {
+    if (!this.tracer.recording) {
+      return this.writeEntry(key, value, ttl);
+    }
+    return this.traced("set", () => this.writeEntry(key, value, ttl));
+  }
+
+  protected async writeEntry(
     key: string,
     value: TReturn,
     ttl?: DurationLike,
@@ -553,6 +594,17 @@ export class CachePrimitive<
    * schedule a background refresh.
    */
   public async read(key: string): Promise<ReadResult<TReturn>> {
+    if (!this.tracer.recording) {
+      return this.readEntry(key);
+    }
+    return this.traced("get", async (span) => {
+      const result = await this.readEntry(key);
+      span.setAttribute("cache.hit", result.value !== undefined);
+      return result;
+    });
+  }
+
+  protected async readEntry(key: string): Promise<ReadResult<TReturn>> {
     if (!this.enabled) {
       return { value: undefined, stale: false };
     }

@@ -16,6 +16,7 @@ import {
   type DurationLike,
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 import {
   asc,
   avg,
@@ -110,6 +111,7 @@ export abstract class Repository<T extends ZObject> {
   protected readonly dbCache = $inject(DbCacheProvider);
   protected readonly errorParser = $inject(DbErrorParser);
   protected readonly alepha = $inject(Alepha);
+  protected readonly tracer = $inject(Tracer);
 
   static of<T extends ZObject>(
     entity: EntityPrimitive<T>,
@@ -669,7 +671,7 @@ export abstract class Repository<T extends ZObject> {
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
-    return this.guard("read", opts, async () => {
+    return this.guard("read", "select", opts, async () => {
       // Check cache. Never inside a transaction: a read there can see rows the
       // transaction wrote and may still roll back, and a hit would hide them.
       if (opts.for && opts.cache) {
@@ -977,7 +979,7 @@ export abstract class Repository<T extends ZObject> {
     withRelations: PgRelationMap<T> | undefined,
     opts: StatementOptions = {},
   ): Promise<number> {
-    return this.guard("read", opts, async () => {
+    return this.guard("read", "select", opts, async () => {
       // Same db resolution as `count()`: `this.db` ignored an explicit
       // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
       // OUTSIDE the transaction — reading rows the transaction had not
@@ -1097,7 +1099,7 @@ export abstract class Repository<T extends ZObject> {
     data: Infer<TObjectInsert<T>>,
     opts: StatementOptions = {},
   ): Promise<Infer<T>> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "insert", opts, async () => {
       await this.alepha.events.emit("repository:create:before", {
         tableName: this.tableName,
         data,
@@ -1151,7 +1153,7 @@ export abstract class Repository<T extends ZObject> {
     values: Array<Infer<TObjectInsert<T>>>,
     opts: StatementOptions & { batchSize?: number } = {},
   ): Promise<Infer<T>[]> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "insert", opts, async () => {
       if (values.length === 0) {
         return [];
       }
@@ -1318,7 +1320,7 @@ export abstract class Repository<T extends ZObject> {
       set?: WithSQL<Infer<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Infer<T>> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "insert", opts, async () => {
       await this.alepha.events.emit("repository:create:before", {
         tableName: this.tableName,
         data,
@@ -1480,7 +1482,7 @@ export abstract class Repository<T extends ZObject> {
       set?: WithSQL<Infer<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Infer<T>[]> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "insert", opts, async () => {
       if (values.length === 0) {
         return [];
       }
@@ -1610,7 +1612,7 @@ export abstract class Repository<T extends ZObject> {
     data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: UpdateOptions = {},
   ): Promise<Infer<T>> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "update", opts, async () => {
       await this.alepha.events.emit("repository:update:before", {
         tableName: this.tableName,
         where,
@@ -1795,7 +1797,7 @@ export abstract class Repository<T extends ZObject> {
     data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: UpdateOptions = {},
   ): Promise<Array<number | string>> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "update", opts, async () => {
       await this.alepha.events.emit("repository:update:before", {
         tableName: this.tableName,
         where,
@@ -1850,7 +1852,7 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
-    return this.guard("write", opts, async () => {
+    return this.guard("write", "delete", opts, async () => {
       const deletedAt = this.deletedAt();
       if (deletedAt && !opts.force) {
         return await this.updateMany(
@@ -1974,7 +1976,7 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<number> {
-    return this.guard("read", opts, async () => {
+    return this.guard("read", "select", opts, async () => {
       // Announced like `findMany`, and for the reason that matters to a
       // listener: a count is a full round trip to the database. A counter
       // wired to this event was blind to every `count()` in the app, so the
@@ -2076,7 +2078,7 @@ export abstract class Repository<T extends ZObject> {
     query: AggregateQuery<T, S>,
     opts: StatementOptions = {},
   ): Promise<AggregateResult<T, S>[]> {
-    return this.guard("read", opts, async () => {
+    return this.guard("read", "select", opts, async () => {
       const AGG_SEPARATOR = "___";
 
       // Same reasoning as `count()`: one aggregate is one round trip, and a
@@ -2841,17 +2843,38 @@ export abstract class Repository<T extends ZObject> {
    */
   protected guard<R>(
     kind: "read" | "write",
+    operation: "select" | "insert" | "update" | "delete",
     opts: StatementOptions,
     fn: () => Promise<R>,
   ): Promise<R> {
-    return this.provider.statement(
-      kind,
+    const run = () =>
+      this.provider.statement(
+        kind,
+        {
+          signal: opts.signal,
+          inTransaction: this.inTransaction(opts),
+          timeout: opts.timeout,
+        },
+        fn,
+      );
+    if (!this.tracer.recording) {
+      return run();
+    }
+    // One span per statement (#E86): the methods that guard are the ones
+    // that run one, so `getById` (findById, findOne, findMany) is one span,
+    // not four. Named `<verb> <table>`, with OpenTelemetry's `db.*`
+    // attributes; never a bound value, never the where object.
+    return this.tracer.startSpan(
+      `${operation} ${this.tableName}`,
       {
-        signal: opts.signal,
-        inTransaction: this.inTransaction(opts),
-        timeout: opts.timeout,
+        requireParent: true,
+        attributes: {
+          "db.system.name": this.provider.systemName,
+          "db.collection.name": this.tableName,
+          "db.operation.name": operation,
+        },
       },
-      fn,
+      run,
     );
   }
 

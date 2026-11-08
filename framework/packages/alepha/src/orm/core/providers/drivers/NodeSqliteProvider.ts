@@ -228,7 +228,7 @@ export class NodeSqliteProvider extends DatabaseProvider {
     );
   }
 
-  public override async execute(
+  protected override async executeStatement(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     return this.drizzleDb.all(query);

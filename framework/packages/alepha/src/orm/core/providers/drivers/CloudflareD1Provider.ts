@@ -249,7 +249,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
     return this.drizzleFactory;
   }
 
-  public override async execute(
+  protected override async executeStatement(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     // Use `.all()` — it returns the row array directly, exactly like

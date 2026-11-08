@@ -10,6 +10,7 @@ import {
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 import { type SQL, sql } from "drizzle-orm";
 import {
   alias,
@@ -40,6 +41,7 @@ export abstract class DatabaseProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
+  protected readonly tracer = $inject(Tracer);
   /**
    * @internal Driver plumbing, outside semver.
    */
@@ -101,6 +103,14 @@ export abstract class DatabaseProvider {
 
   public get driver(): string {
     return this.dialect;
+  }
+
+  /**
+   * The database system, as OpenTelemetry's `db.system.name` attribute names
+   * it on a statement span: `postgresql`, `sqlite`, or `d1` on Cloudflare D1.
+   */
+  public get systemName(): string {
+    return this.driver === "d1" ? "d1" : this.dialect;
   }
 
   /**
@@ -917,7 +927,26 @@ export abstract class DatabaseProvider {
    * driver: on SQLite the connection is shared anyway, and on Postgres the
    * statement goes to the transaction's connection, not the pool.
    */
-  public abstract execute(
+  public execute(statement: SQLLike): Promise<Record<string, unknown>[]> {
+    if (!this.tracer.recording) {
+      return this.executeStatement(statement);
+    }
+    // One `query` span per raw statement (#E86), inside a trace only. The
+    // SQL text and its bound values are never recorded.
+    return this.tracer.startSpan(
+      "query",
+      {
+        requireParent: true,
+        attributes: { "db.system.name": this.systemName },
+      },
+      () => this.executeStatement(statement),
+    );
+  }
+
+  /**
+   * The driver half of {@link execute}: run the statement, return its rows.
+   */
+  protected abstract executeStatement(
     statement: SQLLike,
   ): Promise<Record<string, unknown>[]>;
 

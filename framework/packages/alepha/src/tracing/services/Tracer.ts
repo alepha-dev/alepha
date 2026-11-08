@@ -179,7 +179,9 @@ export class Tracer {
     }
     const parent = this.current();
     if (!parent) {
-      return this.startRoot(name, options, fn);
+      return options.requireParent
+        ? fn(Span.noop)
+        : this.startRoot(name, options, fn);
     }
     if (!parent.sampled) {
       return fn(Span.noop);

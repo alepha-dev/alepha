@@ -34,7 +34,7 @@ class FakeDatabaseProvider extends DatabaseProvider {
     return this.migrationsFolderPath;
   }
 
-  public async execute(): Promise<Record<string, unknown>[]> {
+  protected async executeStatement(): Promise<Record<string, unknown>[]> {
     return [];
   }
 

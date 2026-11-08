@@ -1,4 +1,5 @@
 import { $inject, Alepha, z } from "alepha";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { CronProvider } from "alepha/scheduler";
 import {
@@ -17,7 +18,12 @@ import {
 import { MemoryTraceProvider } from "alepha/tracing";
 import { describe, it } from "vitest";
 
-import { $job, AlephaApiJobs, AlephaApiJobsQueue } from "../index.ts";
+import {
+  $job,
+  AlephaApiJobs,
+  AlephaApiJobsQueue,
+  jobExecutionEntity,
+} from "../index.ts";
 
 /**
  * Root spans for background work (#E86): a job run, a queue message, a cron
@@ -46,6 +52,7 @@ describe("background tracing", () => {
     class App {
       http = $inject(HttpClient);
       server = $inject(ServerProvider);
+      executions = $repository(jobExecutionEntity);
       upstream = $route({
         method: "GET",
         path: "/upstream",
@@ -56,6 +63,7 @@ describe("background tracing", () => {
         description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         handler: async () => {
+          await this.executions.count();
           await this.http.fetch(`${this.server.hostname}/upstream`);
           done = true;
         },
@@ -104,7 +112,10 @@ describe("background tracing", () => {
       ),
     ).toBe(true);
 
-    // ... and that holds its outbound call and the callee's root.
+    // ... and that holds its query, its outbound call and the callee's root.
+    expect(traces.children(job).map((s) => s.name)).toEqual(
+      expect.arrayContaining(["select job_executions"]),
+    );
     const client = tree.find((s) => s.kind === "client")!;
     expect(client.parentSpanId).toBe(job.spanId);
     const callee = traces.find("GET /upstream")!;
@@ -136,9 +147,10 @@ describe("background tracing", () => {
     const root = traces.find("cron tracing.tick")!;
     expect(root).toBeDefined();
     expect(root.parentSpanId).toBeUndefined();
-    expect(traces.children(root).map((s) => s.name)).toEqual([
-      "job tracing.tick",
-    ]);
+    // The job run, beside the cron claim's own statements.
+    const children = traces.children(root).map((s) => s.name);
+    expect(children).toContain("job tracing.tick");
+    expect(children).toContain("insert job_cron_claims");
     await alepha.stop();
   });
 

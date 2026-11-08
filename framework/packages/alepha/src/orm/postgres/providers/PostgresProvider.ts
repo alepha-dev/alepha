@@ -61,7 +61,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
   /**
    * Execute a SQL statement.
    */
-  public override async execute(
+  protected override async executeStatement(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     // On the open transaction's handle when there is one, like every

@@ -1,5 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 import { defineRelations } from "drizzle-orm";
 
 import type { DbTransaction } from "../interfaces/DbTransaction.ts";
@@ -51,6 +52,7 @@ export class RqbExecutor {
   protected readonly alepha = $inject(Alepha);
   protected readonly repositories = $inject(RepositoryProvider);
   protected readonly queryManager = $inject(QueryManager);
+  protected readonly tracer = $inject(Tracer);
 
   /**
    * One relational database per declaration *per session* — the session
@@ -109,7 +111,22 @@ export class RqbExecutor {
 
     let rows: Array<Record<string, any>>;
     try {
-      rows = await builder.findMany(translated);
+      // One statement for the whole tree: one span, named like a select on
+      // the root table (#E86).
+      rows = this.tracer.recording
+        ? await this.tracer.startSpan(
+            `select ${repository.tableName}`,
+            {
+              requireParent: true,
+              attributes: {
+                "db.system.name": provider.systemName,
+                "db.collection.name": repository.tableName,
+                "db.operation.name": "select",
+              },
+            },
+            () => builder.findMany(translated),
+          )
+        : await builder.findMany(translated);
     } catch (error) {
       // Classified by the repository, so an `include` does not change which
       // error a caller has to catch.

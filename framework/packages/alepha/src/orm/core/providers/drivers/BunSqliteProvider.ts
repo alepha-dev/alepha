@@ -168,7 +168,7 @@ export class BunSqliteProvider extends DatabaseProvider {
     );
   }
 
-  public override async execute(
+  protected override async executeStatement(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     return (this.bunDb as SQLiteBunDatabase).all(query);

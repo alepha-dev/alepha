@@ -139,7 +139,7 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
     return db;
   }
 
-  public override async execute(
+  protected override async executeStatement(
     query: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     // On the open transaction's handle when there is one, like every

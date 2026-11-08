@@ -55,6 +55,14 @@ export interface SpanOptions {
   attributes?: SpanAttributes;
   links?: SpanLink[];
   /**
+   * Record the span only inside a trace: outside any, `fn` runs untraced
+   * instead of starting a new trace. For instrumentation that is a detail of
+   * a larger unit of work (a query, a cache read, a lock): a statement run at
+   * boot, by a poll loop or a sweep is not worth a trace of its own, and
+   * would push real ones out of the memory ring.
+   */
+  requireParent?: boolean;
+  /**
    * The callback's return does not end the span: the caller ends it with
    * `span.end()`. For a request root, which ends when the response body has
    * been sent, after the handler returned.

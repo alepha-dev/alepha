@@ -87,7 +87,7 @@ export class PglitePostgresProvider extends DatabaseProvider {
     return this.pglite;
   }
 
-  public override async execute(
+  protected override async executeStatement(
     statement: SQLLike,
   ): Promise<Array<Record<string, unknown>>> {
     const { rows } = await this.db.execute(statement);
