@@ -267,6 +267,8 @@ export class CapabilityRegistry {
         "epic_create",
         "epic_update",
         "epic_set_status",
+        "epic_review_create",
+        "epic_review_answer",
         "epic_shelve",
         "epic_unshelve",
         "epic_delete",
