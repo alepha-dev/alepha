@@ -75,6 +75,7 @@ export class HookNamePolicy {
     "sent",
     "paid",
     "reset",
+    "caught",
   ]);
 
   public static assertCurrent(name: string): void {

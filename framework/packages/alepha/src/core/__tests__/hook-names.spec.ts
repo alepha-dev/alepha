@@ -40,6 +40,7 @@ describe("hook name migration", () => {
       "job:cancel",
       "form:reset",
       "cache:hit",
+      "react:render:caught",
       "payments:captured",
       "capacitor:auth:signedOut",
       "react:server:render:begin",
