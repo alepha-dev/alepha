@@ -338,11 +338,14 @@ export class EpicCommand {
           body: { status: flags.status },
         });
 
+        const open = updated.openQuestions ?? 0;
         this.render.written(
           print,
           flags.output,
           updated,
-          `E${number} is now ${updated.status}`,
+          open > 0
+            ? `E${number} is now ${updated.status}, with ${open} review questions still open`
+            : `E${number} is now ${updated.status}`,
         );
       });
     },

@@ -731,6 +731,17 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(filed).toContain(`Filed a review of E${epic.number}, 3 items`);
     expect(filed).toContain("Which table?");
 
+    // The open questions never block the move; the line names them.
+    expect(
+      await lore.run("epic set status", [
+        `E${epic.number}`,
+        "--status",
+        "ready",
+      ]),
+    ).toContain(
+      `E${epic.number} is now ready, with 2 review questions still open`,
+    );
+
     const before = await lore.run("epic get", [`E${epic.number}`]);
     expect(before).toContain("Open review questions");
     expect(before).toContain("1. Which table?");

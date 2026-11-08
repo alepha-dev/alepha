@@ -2914,6 +2914,12 @@ export default {
   "epic.ready.title": "Mark this epic as ready?",
   "epic.ready.confirm":
     "Marking $1 as ready puts its quests in the backlog, where the rest of the project can pick them up. The first one accepted starts the epic and freezes its list of quests.",
+  "epic.ready.openQuestions.title": "$1 review questions are still open",
+  "epic.ready.openQuestions.title.one": "1 review question is still open",
+  "epic.ready.openQuestions.confirm":
+    "Marking $1 as ready puts its quests in the backlog with its review still unanswered. The answers are on the Review tab; you can also mark it ready now and leave them open.",
+  "epic.ready.openQuestions.anyway": "Mark as ready anyway",
+  "epic.ready.openQuestions.review": "Open the Review tab",
   "epic.start.blocked": "Blocked by Epic $1",
   "epic.status.actions.markReady": "Mark as ready",
   "epic.status.actions.backToDraft": "Back to draft",

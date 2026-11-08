@@ -221,6 +221,11 @@ export const epicSetStatusResultSchema = z.object({
   number: z.integer(),
   title: z.string(),
   status: epicStatusSchema,
+  openQuestions: z
+    .integer()
+    .describe(
+      "Review questions still open on the epic. Never a refusal: report them to the owner, whose call it is whether the spec is done.",
+    ),
 });
 
 // -----------------------------------------------------------------------------

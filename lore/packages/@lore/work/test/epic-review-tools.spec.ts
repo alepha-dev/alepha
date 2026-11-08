@@ -200,6 +200,34 @@ describe("epic review tools", () => {
     });
   });
 
+  it("marks an epic ready with questions open, and reports the count", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.call(ctx.tools.epic_review_create, {
+      project: ctx.project.id,
+      number: ctx.epic.number,
+      items,
+    });
+
+    const ready = await ctx.call(ctx.tools.epic_set_status, {
+      project: ctx.project.id,
+      number: ctx.epic.number,
+      status: "ready",
+    });
+
+    expect(ready.status).toBe("ready");
+    expect(ready.openQuestions).toBe(2);
+
+    const back = await ctx.call(ctx.tools.epic_set_status, {
+      project: ctx.project.id,
+      number: ctx.epic.number,
+      status: "draft",
+    });
+    expect(back.status).toBe("draft");
+    expect(back.openQuestions).toBe(2);
+  });
+
   it("refuses both tools once the epic is in progress", async ({ expect }) => {
     const ctx = await setup();
     await ctx.call(ctx.tools.epic_review_create, {

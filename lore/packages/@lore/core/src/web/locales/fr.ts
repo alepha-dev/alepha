@@ -2912,6 +2912,14 @@ export default {
   "epic.ready.title": "Marquer cette épopée comme prête ?",
   "epic.ready.confirm":
     "Marquer $1 comme prête place ses quêtes dans le backlog, où le reste du projet peut les prendre. La première quête acceptée démarre l'épopée et fige sa liste de quêtes.",
+  "epic.ready.openQuestions.title":
+    "$1 questions de revue sont encore ouvertes",
+  "epic.ready.openQuestions.title.one":
+    "1 question de revue est encore ouverte",
+  "epic.ready.openQuestions.confirm":
+    "Marquer $1 comme prête place ses quêtes dans le backlog alors que sa revue reste sans réponse. Les réponses se donnent dans l’onglet Revue ; vous pouvez aussi la marquer prête maintenant et les laisser ouvertes.",
+  "epic.ready.openQuestions.anyway": "Marquer comme prête quand même",
+  "epic.ready.openQuestions.review": "Ouvrir l’onglet Revue",
   "epic.start.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
   "epic.status.actions.backToDraft": "Repasser en brouillon",

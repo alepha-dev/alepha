@@ -387,7 +387,7 @@ export class EpicTools {
    */
   epic_set_status = $tool({
     description:
-      "Mark an epic 'ready' (its spec is done) or move it back to 'draft' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'draft' takes them out again. Neither changes anything about the quests themselves. Two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'draft'. The fifth, 'shelved', is set with epic_shelve and undone with epic_unshelve. Asking for the status the epic already has is a no-op. " +
+      "Mark an epic 'ready' (its spec is done) or move it back to 'draft' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'draft' takes them out again. Neither changes anything about the quests themselves. Two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'draft'. The fifth, 'shelved', is set with epic_shelve and undone with epic_unshelve. Asking for the status the epic already has is a no-op. The result carries `openQuestions`, the epic's review questions still open: they never block the move, and are the owner's to weigh. " +
       "Deciding that a spec is done is the owner's call. Do not mark an epic ready just to be allowed to work on it: if a quest refuses because its epic is a draft, say so and stop.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
@@ -414,6 +414,7 @@ export class EpicTools {
         number: epic.number,
         title: epic.title,
         status: epic.status,
+        openQuestions: epic.openQuestions ?? 0,
       };
     },
   });

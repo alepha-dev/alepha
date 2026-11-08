@@ -422,7 +422,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                 {tr("epic.edit")}
               </Button>
             )}
-          <EpicStatusControl epic={epic} onChange={applyStatusChange} />
+          <EpicStatusControl
+            epic={epic}
+            onChange={applyStatusChange}
+            onReview={() => setTab("review")}
+          />
           <EpicShelveControl
             epic={epic}
             onChange={applyStatusChange}
