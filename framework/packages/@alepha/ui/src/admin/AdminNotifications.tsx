@@ -56,7 +56,7 @@ export const AdminNotifications = () => {
   const client = useClient<AdminNotificationController>();
   const userClient = useClient<AdminUserController>();
   const toast = useToast();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
   const statusLabels = useNotificationStatusLabels();
   const [selected, setSelected] = useState<{ id: string; tab: string } | null>(

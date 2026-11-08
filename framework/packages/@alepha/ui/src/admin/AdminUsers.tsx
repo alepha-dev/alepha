@@ -74,7 +74,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
   const client = useClient<AdminUserController>();
   const toast = useToast();
   const { user: currentUser } = useAuth();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { l, tr } = useI18n();
   const dialog = useDialog();
 

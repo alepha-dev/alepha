@@ -21,7 +21,7 @@ export const OtaSettingsTab = (props: OtaSettingsTabProps) => {
   const client = useClient<OtaAdminController>();
   const queries = useQueryClient();
   const dialog = useDialog();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
   const channels = useQuery(
     {

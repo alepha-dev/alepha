@@ -56,7 +56,7 @@ const Row = (props: {
  */
 export const SchemaDetail = (props: SchemaDetailProps) => {
   const entity = props.entity;
-  const router = useRouter();
+  const router = useRouter<any>();
   const href = useRunHref();
 
   return (

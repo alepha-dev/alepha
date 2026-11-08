@@ -94,7 +94,7 @@ export const resolveUserDetailId = (params: {
  * one; they render what they are given and hold no fetching of their own.
  */
 export const AdminUserDetail = (props: AdminUserDetailProps) => {
-  const router = useRouter();
+  const router = useRouter<any>();
   const routerState = useRouterState();
   const userId = resolveUserDetailId(routerState.params);
   const userClient = useClient<AdminUserController>();

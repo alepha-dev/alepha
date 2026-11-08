@@ -860,6 +860,62 @@ if (aliasViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * No bare `useRouter()` in a package (#Q3187).
+ *
+ * `useRouter()` is typed against the routers the app that compiles it
+ * registered (`Routers` in `alepha/react/router`). A package's source is
+ * compiled by every app that imports it, Lore included, so a bare call there
+ * would be checked against that app's page names: a library navigating by a
+ * dynamic name stops compiling the day an app registers. Library code opts out
+ * with `useRouter<any>()`, or names its own router class. Apps are free to
+ * rely on their registration; specs construct their own routers.
+ */
+const BARE_USE_ROUTER = /\buseRouter\(\)/;
+
+const packageSources = execFileSync(
+  "git",
+  [
+    "ls-files",
+    "-c",
+    "-o",
+    "--exclude-standard",
+    "packages/*.ts",
+    "packages/*.tsx",
+  ],
+  { encoding: "utf8" },
+)
+  .split("\n")
+  .filter(
+    (file) =>
+      file && !/__tests__|\.spec\.|fixtures/.test(file) && existsSync(file),
+  );
+
+const bareRouterViolations: string[] = [];
+
+for (const file of packageSources) {
+  const lines = readFileSync(file, "utf8").split("\n");
+  for (const [index, line] of lines.entries()) {
+    if (/^\s*(\*|\/\/)/.test(line)) continue;
+    if (BARE_USE_ROUTER.test(line)) {
+      bareRouterViolations.push(
+        `  ${file}:${index + 1}\n    → useRouter<any>()`,
+      );
+    }
+  }
+}
+
+if (bareRouterViolations.length > 0) {
+  console.error(
+    `\n${bareRouterViolations.length} bare useRouter() call(s) in a package:\n\n` +
+      `${bareRouterViolations.join("\n")}\n\n` +
+      "A bare useRouter() is typed against the router of whichever app compiles\n" +
+      "this package. Write useRouter<any>() in code meant for any app, or name\n" +
+      "the package's own router class.\n",
+  );
+  process.exit(1);
+}
+
 /*
  * 6. A workspace holding spec files owns a Vitest config, and the root config
  *    knows about it.

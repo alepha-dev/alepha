@@ -10,7 +10,7 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
  */
 export const useAdminSlide = (): GettingStartedSlide | undefined => {
   const { user, has } = useAuth();
-  const router = useRouter();
+  const router = useRouter<any>();
 
   // Check if admin routes exist
   const hasAdmin = router.pages.find((it) => it.name === "admin");

@@ -30,7 +30,7 @@ export const useQueryParams = <T extends ZObject>(
   options: UseQueryParamsHookOptions = {},
 ): [Partial<Infer<T>>, (data: Infer<T>) => void] => {
   const alepha = useAlepha();
-  const router = useRouter();
+  const router = useRouter<any>();
   // Subscribe to router-state changes: navigations this component did not
   // initiate (back/forward, another component's push) must re-render it so
   // the sync effect below can observe the new URL.

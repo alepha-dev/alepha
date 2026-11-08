@@ -81,6 +81,70 @@ export type RouterPageArgs<T, K extends RouterPageName<T>> =
     : [options: RouterPageOptions<T, K>];
 
 /**
+ * The app's routers, registered once so `useRouter()` and `<Link>` are typed
+ * without a type argument at every call site.
+ *
+ * Each entry is one router class, under a key of your choice. An app split
+ * into packages registers one per package, and the page names `useRouter()`
+ * accepts are those of every entry together.
+ *
+ * Nothing registered keeps today's behaviour: `useRouter()` is untyped and
+ * takes any page name.
+ *
+ * @example
+ * ```ts
+ * class AppRouter {
+ *   home = $page({ path: "/", lazy: () => import("./Home.tsx") });
+ *   user = $page({ path: "/users/:id", schema: { params: z.object({ id: z.text() }) } });
+ * }
+ *
+ * declare module "alepha/react/router" {
+ *   interface Routers {
+ *     app: AppRouter;
+ *   }
+ * }
+ *
+ * const router = useRouter();
+ * router.push("user", { params: { id: "42" } }); // typed
+ * ```
+ *
+ * ⚠️ Code meant to run in any app (a library, a shared component) writes
+ * `useRouter<any>()`: a bare `useRouter()` there is typed against whatever
+ * router the app that compiles it registered.
+ */
+export interface Routers {}
+
+/**
+ * The router a registry describes: every entry's pages together, or `any`
+ * when the registry is empty. {@link RegisteredRouter} applies it to
+ * {@link Routers}.
+ */
+export type RouterOf<TRegistry> = keyof TRegistry extends never
+  ? any
+  : RouterIntersection<
+      { [K in keyof TRegistry]: VirtualRouter<TRegistry[K]> }[keyof TRegistry]
+    >;
+
+/**
+ * A union of page maps as one map holding every page.
+ *
+ * ⚠️ It intersects each router's {@link VirtualRouter}, never the classes
+ * themselves: two classes that each declare a `protected` member of the same
+ * name (`alepha`, nearly always) intersect to `never`.
+ */
+export type RouterIntersection<U> = (
+  U extends any ? (arg: U) => void : never
+) extends (arg: infer I) => void
+  ? I & object
+  : never;
+
+/**
+ * The registered router, `any` when the app registered none. What
+ * `useRouter()` and `<Link>` are typed against by default.
+ */
+export type RegisteredRouter = RouterOf<Routers>;
+
+/**
  * Friendly browser router API.
  *
  * Can be safely used server-side, but most methods will be no-op.

@@ -202,6 +202,7 @@ Not obvious from the code, so read them before writing any.
 ### Router and i18n
 
 - **`router.push("pageName", { params })` or `router.push("/a/path", { query })`** on `useRouter<T>()`, nothing else: a relative path, a bare `?query` or an `https://` URL is refused, and an unknown name throws. Type a dynamic path `` `/${string}` `` (`RouterPath`) where it is produced. There is no `router.navigate()`.
+- **A package writes `useRouter<any>()`, never a bare `useRouter()`** (`check:conventions`, #Q3187). An app registers its routers in `Routers` (`declare module "alepha/react/router"`), and a bare `useRouter()` is typed against them, so in a package, whose source every importing app compiles, it would be typed against whichever app compiles it. Apps and specs may rely on the registration.
 - **`tr()` and `l()` both return `string`: never wrap either in `String()`.** A helper taking `tr` types it `(key: …) => string` or `I18nProvider<any, any>["tr"]`.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`**: for date+time pass a dayjs format such as `"lll"` to `date`.
 - **`$route` never lives under `/api`**: the `$action` dispatcher shadows `/api/*` (404s). Root paths only.

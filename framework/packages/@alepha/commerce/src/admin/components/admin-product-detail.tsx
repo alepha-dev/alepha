@@ -81,7 +81,7 @@ type TabKey =
  * Reset discard an upload that already happened.
  */
 export const AdminProductDetail = (props: AdminProductDetailProps) => {
-  const router = useRouter();
+  const router = useRouter<any>();
   const routerState = useRouterState();
   const productId = String(
     (routerState.params as { productId?: string; id?: string }).productId ??

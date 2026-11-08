@@ -16,7 +16,7 @@ export interface UseActiveOptions {
 export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
   useRouterState();
 
-  const router = useRouter();
+  const router = useRouter<any>();
   const [isPending, setPending] = useState(false);
 
   const options: UseActiveOptions =

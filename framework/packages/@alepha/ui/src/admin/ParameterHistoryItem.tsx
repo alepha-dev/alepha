@@ -51,7 +51,7 @@ export interface ParameterHistoryItemProps {
  */
 export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
   const { l, tr } = useI18n();
-  const router = useRouter();
+  const router = useRouter<any>();
   const v = props.version;
   const [open, setOpen] = useState(false);
   const [jsonOpen, setJsonOpen] = useState(false);

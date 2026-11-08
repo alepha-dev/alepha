@@ -13,7 +13,7 @@ import { DashboardSystemStrip } from "./DashboardSystemStrip.tsx";
 
 export const DevDashboard = () => {
   const meta = useMetadata();
-  const router = useRouter();
+  const router = useRouter<any>();
   const href = useRunHref();
   const tail = useLogTail({
     level: "DEBUG",

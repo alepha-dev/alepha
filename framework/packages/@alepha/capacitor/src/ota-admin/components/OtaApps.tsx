@@ -16,7 +16,7 @@ import { OtaAppCreateDialog } from "./OtaAppCreateDialog.tsx";
  */
 export const OtaApps = () => {
   const client = useClient<OtaAdminController>();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
   const [creating, setCreating] = useState(false);
   const apps = useQuery(

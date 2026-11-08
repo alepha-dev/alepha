@@ -740,7 +740,7 @@ Views commit in a React transition, after `react:transition:end`. Code that need
 
 ### useRouter
 
-Access the router for navigation. Accepts a type parameter for type-safe page name references.
+Access the router for navigation. Typed against your registered routers (see below), or a type parameter for type-safe page name references.
 
 ```typescript
 import { useRouter } from "alepha/react/router";
@@ -787,6 +787,24 @@ const Nav = () => {
 Nothing else is router navigation. A relative path, a bare `?query` and an absolute `https://` URL are refused: changing only the query is `setQueryParams`, and leaving the app is an `<a href>` or `window.location.assign`. A dynamic path is typed `` `/${string}` `` where it is produced (the router exports it as `RouterPath`), not cast at the call.
 
 A name no page has throws an `AlephaError` naming the closest ones, typed router or not. It used to navigate to the relative URL instead.
+
+#### Registering your routers
+
+Register the app's routers once and `useRouter()` and `<Link>` are typed with no type argument:
+
+```typescript
+import type { AppRouter } from "./AppRouter.ts";
+
+declare module "alepha/react/router" {
+  interface Routers {
+    app: AppRouter;
+  }
+}
+```
+
+Each entry is one router class, under a key of your choice. An app split into packages registers one per package (`core: CoreRouter`, `work: WorkRouter`), and the names `useRouter()` accepts are those of every entry together. A type argument still overrides the registration. With nothing registered, `useRouter()` stays untyped and takes any name.
+
+⚠️ Code meant to run in any app, a shared package or a component library, writes `useRouter<any>()`: a bare `useRouter()` is typed against whichever app compiles it, so a library navigating by a dynamic name would stop compiling the day that app registers.
 
 `useRouter()` does not re-render on navigation by itself. A component that renders from the current location reads it with `useRouterState()`, which subscribes to the router state and returns the `ReactRouterState`.
 
@@ -910,7 +928,7 @@ import { Link } from "alepha/react/router";
 </>;
 ```
 
-`href` is a path or a page name, with `params` for a page name and `query` for either, as `router.anchor` takes them.
+`href` is a path or a page name, with `params` for a page name and `query` for either, as `router.anchor` takes them. Once your routers are registered, a name no page has is a compile error, and `params` is typed from the page's `schema.params`, required when it has a required key.
 
 With the global interceptor enabled, `<Link>` is mostly a stylistic
 preference. Reach for it when you want explicit per-link control or

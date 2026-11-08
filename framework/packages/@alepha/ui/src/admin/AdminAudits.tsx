@@ -37,7 +37,7 @@ import { useConfirmedAction } from "./useConfirmedAction.tsx";
 export const AdminAudits = () => {
   const client = useClient<AdminAuditController>();
   const toast = useToast();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
 
   const [actions, setActions] = useState<AuditActionPair[]>([]);

@@ -47,7 +47,7 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
   options: UseFormQuerySyncOptions<TKey>,
 ): void => {
   const alepha = useAlepha();
-  const router = useRouter();
+  const router = useRouter<any>();
   const state = useRouterState();
   const keys = options.keys;
 

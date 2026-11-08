@@ -50,7 +50,7 @@ interface NavEntry {
 
 const DevLayout = () => {
   const state = useRouterState();
-  const router = useRouter();
+  const router = useRouter<any>();
   const alepha = useAlepha();
   const meta = useMetadata();
   const runId = useRunId();

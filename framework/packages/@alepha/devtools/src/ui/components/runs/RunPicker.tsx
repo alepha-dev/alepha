@@ -15,7 +15,7 @@ import { DevError } from "../shared/DevError.tsx";
  * straight away.
  */
 const RunPicker = () => {
-  const router = useRouter();
+  const router = useRouter<any>();
   const { runs, worktrees, loaded, error } = useRuns();
   const ago = useRelativeTime({ fallback: "unknown" });
 

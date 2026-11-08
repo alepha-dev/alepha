@@ -60,7 +60,7 @@ export interface AdminProductsProps {
  */
 export const AdminProducts = (props: AdminProductsProps) => {
   const client = useClient<AdminProductController>();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { l, tr } = useI18n();
   const toast = useToast();
 

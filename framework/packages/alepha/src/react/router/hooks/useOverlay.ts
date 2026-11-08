@@ -16,7 +16,7 @@ import { useRouterState } from "./useRouterState.ts";
  */
 export const useOverlay = (): UseOverlayReturn => {
   const state = useRouterState();
-  const router = useRouter();
+  const router = useRouter<any>();
 
   return {
     overlay: state.overlay,

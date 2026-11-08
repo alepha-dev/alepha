@@ -42,7 +42,7 @@ const executionQuerySchema = z.object({
  * fetched for an empty name.
  */
 export const AdminJobDetail = (props: AdminJobDetailProps) => {
-  const router = useRouter();
+  const router = useRouter<any>();
   const routerState = useRouterState();
   const jobName = String(
     (routerState.params as { jobName?: string }).jobName ?? "",

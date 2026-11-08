@@ -10,7 +10,7 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
  */
 export const useAuthSlide = (): GettingStartedSlide | undefined => {
   const { user, logout } = useAuth();
-  const router = useRouter();
+  const router = useRouter<any>();
 
   // Gate on the very page this slide links to below. It used to be
   // `authLayout`, the parent page the old `--saas` scaffold generated into the

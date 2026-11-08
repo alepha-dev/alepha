@@ -1,21 +1,31 @@
 import { useInject } from "alepha/react";
 
-import { ReactRouter } from "../services/ReactRouter.ts";
+import { type RegisteredRouter, ReactRouter } from "../services/ReactRouter.ts";
 
 /**
  * Use this hook to access the React Router instance.
  *
- * You can add a type parameter to specify the type of your application.
- * This will allow you to use the router in a typesafe way.
+ * It is typed against the app's registered routers (see `Routers`), so page
+ * names and their params are checked with no type argument. A type argument
+ * still overrides it, and `useRouter<any>()` opts out, which is what code
+ * meant to run in any app writes.
  *
  * @example
  * class App {
  *   home = $page();
  * }
  *
- * const router = useRouter<App>();
+ * declare module "alepha/react/router" {
+ *   interface Routers {
+ *     app: App;
+ *   }
+ * }
+ *
+ * const router = useRouter();
  * router.push("home"); // typesafe
  */
-export const useRouter = <T extends object = any>(): ReactRouter<T> => {
+export const useRouter = <
+  T extends object = RegisteredRouter,
+>(): ReactRouter<T> => {
   return useInject(ReactRouter<T>);
 };

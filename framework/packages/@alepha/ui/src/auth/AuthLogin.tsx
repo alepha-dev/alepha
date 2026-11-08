@@ -63,7 +63,7 @@ export interface AuthLoginProps {
 
 export const AuthLogin = (props: AuthLoginProps) => {
   const auth = useAuth();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
   const redirect = safeRedirect(router.query.redirect);
   const error = router.query.error;

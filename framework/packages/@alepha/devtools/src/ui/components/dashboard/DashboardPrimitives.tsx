@@ -41,7 +41,7 @@ interface PrimitiveTile {
  * with noise.
  */
 export const DashboardPrimitives = (props: DashboardPrimitivesProps) => {
-  const router = useRouter();
+  const router = useRouter<any>();
   const href = useRunHref();
   const d = props.metadata;
 

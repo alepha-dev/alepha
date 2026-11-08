@@ -56,7 +56,7 @@ interface State {
 }
 
 export const AuthResetPassword = (props: AuthResetPasswordProps) => {
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
   const userCtrl = useClient<UserController>();
   const [state, setState] = useState<State>({ step: "email" });

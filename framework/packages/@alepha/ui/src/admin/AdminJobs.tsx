@@ -40,7 +40,7 @@ export const AdminJobs = () => {
   const { l, tr } = useI18n();
   const toast = useToast();
   const retention = useJobRetentionLabels();
-  const router = useRouter();
+  const router = useRouter<any>();
   const [jobs, setJobs] = useState<JobRegistration[]>([]);
 
   const load = useAction(

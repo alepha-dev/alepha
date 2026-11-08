@@ -108,7 +108,7 @@ export interface AuthRegisterProps {
 export const AuthRegister = (props: AuthRegisterProps) => {
   const auth = useAuth();
   const userCtrl = useClient<UserController>();
-  const router = useRouter();
+  const router = useRouter<any>();
   const { tr } = useI18n();
   const redirect = safeRedirect(props.redirect ?? router.query.redirect);
   // Surface upstream auth errors (e.g. failed OAuth callback redirects with
