@@ -3416,7 +3416,7 @@ export default {
   "activity.capability.enabled": "a activé $1",
   "activity.capability.disabled": "a désactivé $1",
   "activity.review.filed":
-    "a déposé une revue : $1 questions, $2 décisions, $3 changements",
+    "a déposé une revue (questions : $1, décisions : $2, changements : $3)",
   "activity.review.answered": "a répondu à l’élément $1",
   "activity.review.waived": "a écarté l’élément $1",
   "activity.review.overturned":
