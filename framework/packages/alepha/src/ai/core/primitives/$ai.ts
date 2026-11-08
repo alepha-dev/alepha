@@ -1,6 +1,14 @@
-import { $inject, createPrimitive, Primitive, type ZType } from "alepha";
+import {
+  $inject,
+  ActionToolSchema,
+  AlephaError,
+  createPrimitive,
+  Primitive,
+  type ZType,
+} from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
+import type { McpContext, ToolPrimitive } from "alepha/mcp";
 import type { UserAccountToken } from "alepha/security";
 import type { ActionPrimitive } from "alepha/server";
 
@@ -42,9 +50,16 @@ export const AI_CALL_DENIED = "Denied by the user.";
  *   so the action's own `use: [$secure(...)]` decides, and the assistant can
  *   never do more than the user could. A refusal, a validation error or a
  *   thrown error goes back to the model as a tool error.
- * - **Mutations wait for the user.** A call to a non-GET action (or whatever
- *   `confirm` says) pauses the turn with a `confirm` event; a client tool
- *   (see {@link clientTool}) pauses with a `client_tool` event.
+ * - **A `$tool` is a tool too** (`alepha/mcp`), so a tool written for outside
+ *   agents is offered to the assistant without a wrapper action. The model
+ *   sees its `description` and `schema.params`; the call runs
+ *   `tool.execute()` as the turn's user (its `use: [$secure(...)]` decides)
+ *   with the turn's signal as `context.signal`. It is not an MCP call:
+ *   `mcp:tool:call:end` does not fire.
+ * - **Mutations wait for the user.** A call to a non-GET action, or to a
+ *   `$tool` that is not `annotations.readOnlyHint` (or whatever `confirm`
+ *   says), pauses the turn with a `confirm` event; a client tool (see
+ *   {@link clientTool}) pauses with a `client_tool` event.
  * - **Re-entrant.** The loop's whole state is the message list. A pause ends
  *   the stream; resuming is a new `stream()` with the stored messages and
  *   `resume: { callId, decision }` or `{ callId, result }`. An approved call
@@ -107,9 +122,13 @@ export interface AiPrimitiveOptions {
   system: string | ((ctx: { user?: UserAccountToken }) => string);
 
   /**
-   * The tools: `$action`s, and client tools from {@link clientTool}.
+   * The tools: `$action`s, `$tool`s (`alepha/mcp`), and client tools from
+   * {@link clientTool}.
+   *
+   * An action takes `{ params, query, body }` for the parts it declares; a
+   * `$tool` takes its own `schema.params`. Both run as the turn's user.
    */
-  tools?: Array<ActionPrimitive<any> | AiClientTool>;
+  tools?: Array<ActionPrimitive<any> | ToolPrimitive<any> | AiClientTool>;
 
   /**
    * The tools this user is offered on a turn, by name: what the model sees.
@@ -130,8 +149,10 @@ export interface AiPrimitiveOptions {
   }) => string[] | undefined | Promise<string[] | undefined>;
 
   /**
-   * Whether a call to this action waits for the user's approval. Default:
-   * every action whose method is not GET.
+   * Whether a call to this tool waits for the user's approval. `method` is
+   * the action's HTTP method, or `"TOOL"` for a `$tool`. Default: every
+   * action whose method is not GET, and every `$tool` that is not
+   * `annotations.readOnlyHint: true`.
    */
   confirm?: (tool: { name: string; method: string }) => boolean;
 
@@ -274,6 +295,7 @@ export interface AiTurnResult {
 export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   protected readonly provider = $inject(AiProvider);
   protected readonly toolSchema = $inject(AiToolSchema);
+  protected readonly actionToolSchema = $inject(ActionToolSchema);
   protected readonly contextBlock = $inject(AiContextBlock);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -401,6 +423,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         calls,
         input.user,
         offered,
+        signal,
       );
       if (outcome === "paused") {
         yield { type: "end", reason: "paused" };
@@ -474,6 +497,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     offered: AiToolDefinition[],
   ): AsyncGenerator<AiTurnEvent, "paused" | "done"> {
     const resume = input.resume!;
+    const signal = this.signalOf(input);
     const open = this.unanswered(messages);
     const call = open[0];
     if (!call || call.id !== resume.callId) {
@@ -491,7 +515,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     if (!available) {
       result = this.unavailable(call);
     } else if ("decision" in resume) {
-      if (tool?.kind !== "action") {
+      if (tool?.kind !== "action" && tool?.kind !== "tool") {
         throw new AiConfigError(
           {},
           {
@@ -501,7 +525,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
       }
       result =
         resume.decision === "approve"
-          ? await this.runAction(tool, call, input.user)
+          ? await this.runAction(tool, call, input.user, signal)
           : this.toolError(call, AI_CALL_DENIED);
     } else {
       if (tool?.kind !== "client") {
@@ -522,7 +546,13 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
 
     messages.push(result);
     yield { type: "message", message: result };
-    return yield* this.runCalls(messages, open.slice(1), input.user, offered);
+    return yield* this.runCalls(
+      messages,
+      open.slice(1),
+      input.user,
+      offered,
+      signal,
+    );
   }
 
   /**
@@ -533,6 +563,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     calls: AiToolCall[],
     user: UserAccountToken | undefined,
     offered: AiToolDefinition[] = this.definitions,
+    signal: AbortSignal = this.alepha.context.signal,
   ): AsyncGenerator<AiTurnEvent, "paused" | "done"> {
     for (const call of calls) {
       if (this.tools.has(call.name) && !this.isOffered(call.name, offered)) {
@@ -568,7 +599,7 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         input: call.input,
       };
       const result = tool
-        ? await this.runAction(tool, call, user)
+        ? await this.runAction(tool, call, user, signal)
         : this.toolError(call, `Unknown tool '${call.name}'.`);
       messages.push(result);
       yield { type: "message", message: result };
@@ -577,14 +608,18 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   }
 
   /**
-   * Run an action as `user`, its own middlewares deciding. Every failure
-   * becomes a tool error the model reads.
+   * Run an action or a `$tool` as `user`, its own middlewares deciding. Every
+   * failure becomes a tool error the model reads.
    */
   protected async runAction(
     tool: AiTool,
     call: AiToolCall,
     user: UserAccountToken | undefined,
+    signal: AbortSignal = this.alepha.context.signal,
   ): Promise<AiToolMessage> {
+    if (tool.kind === "tool") {
+      return this.runMcpTool(tool, call, user, signal);
+    }
     if (tool.kind !== "action") {
       return this.toolError(call, `Tool '${call.name}' is not an action.`);
     }
@@ -600,6 +635,42 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         // `user` is how `run()` carries an identity (`alepha/security`);
         // without it the action runs anonymous, never as "system".
         { user },
+      );
+      return {
+        role: "tool",
+        callId: call.id,
+        name: call.name,
+        content: this.serializeResult(result),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const name = error instanceof Error ? error.name : "Error";
+      return this.toolError(call, `${name}: ${message}`);
+    }
+  }
+
+  /**
+   * Run a `$tool` as `user`: in a fork setting the current user, the same
+   * thing `run({ user })` does for an action, so its `$secure` and
+   * `ToolPrimitive.currentUser()` see that user. Without one the fork sets
+   * nothing and a `$secure` tool refuses. The turn's signal is the tool's
+   * `context.signal` and its ambient signal.
+   */
+  protected async runMcpTool(
+    tool: Extract<AiTool, { kind: "tool" }>,
+    call: AiToolCall,
+    user: UserAccountToken | undefined,
+    signal: AbortSignal,
+  ): Promise<AiToolMessage> {
+    try {
+      const context: McpContext = { signal };
+      const result = await this.alepha.context.withSignal(signal, () =>
+        this.alepha.fork(
+          () => tool.tool.execute(call.input, context),
+          // `currentUserAtom.key` (`alepha/security`), spelled out: alepha/ai
+          // imports that module as types only.
+          user ? { "alepha.security.user": user } : {},
+        ),
       );
       return {
         role: "tool",
@@ -668,8 +739,14 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   }
 
   protected needsConfirmation(tool: AiTool): boolean {
-    if (tool.kind !== "action") {
+    if (tool.kind === "client") {
       return false;
+    }
+    if (tool.kind === "tool") {
+      const info = { name: tool.definition.name, method: "TOOL" };
+      return this.options.confirm
+        ? this.options.confirm(info)
+        : tool.tool.options.annotations?.readOnlyHint !== true;
     }
     const info = { name: tool.definition.name, method: tool.action.method };
     return this.options.confirm
@@ -717,7 +794,38 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     }
   }
 
-  protected toTool(tool: ActionPrimitive<any> | AiClientTool): AiTool {
+  /**
+   * Whether `tool` is a `$tool`, told apart by shape: alepha/ai imports
+   * alepha/mcp as types only, so an app with `$ai` and no MCP never loads
+   * `McpServerProvider`.
+   */
+  protected isMcpTool(tool: unknown): tool is ToolPrimitive<any> {
+    const it = tool as Partial<ToolPrimitive<any>> | undefined;
+    return (
+      typeof it?.execute === "function" &&
+      typeof it?.toDescriptor === "function"
+    );
+  }
+
+  protected toTool(
+    tool: ActionPrimitive<any> | ToolPrimitive<any> | AiClientTool,
+  ): AiTool {
+    if (this.isMcpTool(tool)) {
+      this.toolSchema.assertName(tool.name);
+      const params = tool.options.schema?.params;
+      return {
+        kind: "tool",
+        tool,
+        definition: {
+          name: tool.name,
+          description: tool.description,
+          inputSchema: params
+            ? this.actionToolSchema.toJsonSchema(params)
+            : { type: "object", properties: {} },
+        },
+      };
+    }
+
     if ((tool as AiClientTool).kind === "client") {
       const client = tool as AiClientTool;
       this.toolSchema.assertName(client.name);
@@ -726,42 +834,33 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         definition: {
           name: client.name,
           description: client.description,
-          inputSchema: this.toolSchema.toJsonSchema(client.schema),
+          inputSchema: this.actionToolSchema.toJsonSchema(client.schema),
         },
       };
     }
 
     const action = tool as ActionPrimitive<any>;
     this.toolSchema.assertName(action.name);
-    const description = action.options.description;
-    if (!description) {
-      throw new AiConfigError(
-        {},
-        {
-          message: `$ai '${this.name}': action '${action.name}' has no description, and a tool needs one: it is how the model knows when to call it.`,
-        },
-      );
-    }
-    const parts = (["params", "query", "body"] as const).filter(
-      (part) => action.schema?.[part],
-    );
-    const properties: Record<string, unknown> = {};
-    for (const part of parts) {
-      properties[part] = this.toolSchema.toJsonSchema(action.schema![part]);
+    let built: ReturnType<ActionToolSchema["fromAction"]>;
+    try {
+      built = this.actionToolSchema.fromAction(action);
+    } catch (error) {
+      if (error instanceof AlephaError) {
+        throw new AiConfigError(
+          {},
+          { message: `$ai '${this.name}': ${error.message}`, cause: error },
+        );
+      }
+      throw error;
     }
     return {
       kind: "action",
       action,
-      parts,
+      parts: built.parts,
       definition: {
-        name: action.name,
-        description,
-        inputSchema: {
-          type: "object",
-          properties,
-          required: parts.filter((part) => part !== "query"),
-          additionalProperties: false,
-        },
+        name: built.name,
+        description: built.description,
+        inputSchema: built.inputSchema,
       },
     };
   }
@@ -778,4 +877,5 @@ type AiTool =
       parts: Array<"params" | "query" | "body">;
       definition: AiToolDefinition;
     }
+  | { kind: "tool"; tool: ToolPrimitive<any>; definition: AiToolDefinition }
   | { kind: "client"; definition: AiToolDefinition };
