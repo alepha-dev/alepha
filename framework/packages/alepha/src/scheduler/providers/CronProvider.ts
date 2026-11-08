@@ -1,6 +1,7 @@
 import { $hook, $inject, AbortedError, Alepha, AlephaError } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 import { parseCronExpression } from "cron-schedule";
 
 /**
@@ -16,6 +17,7 @@ export class CronProvider {
   public static readonly id: string = "alepha.scheduler.CronProvider";
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
+  protected readonly tracer = $inject(Tracer);
   protected readonly log = $logger();
   protected readonly cronJobs: Array<CronJob> = [];
 
@@ -202,7 +204,7 @@ export class CronProvider {
         const tick = new AbortController();
         task.tick = tick;
         this.alepha.context
-          .run(() => task.handler({ now: this.dt.of(nextRun) }), {
+          .run(() => this.tick(task, this.dt.of(nextRun)), {
             signal: tick.signal,
           })
           .catch((err) => {
@@ -226,6 +228,20 @@ export class CronProvider {
       .catch((err) => {
         this.log.warn("Issue during cron waiting timer", err as Error);
       });
+  }
+
+  /**
+   * Run one tick of `task` under its root span (#E86), `cron <name>`.
+   */
+  protected tick(task: CronJob, now: DateTime): Promise<void> {
+    if (!this.tracer.recording) {
+      return task.handler({ now });
+    }
+    return this.tracer.startRoot(
+      `cron ${task.name}`,
+      { attributes: { "alepha.cron.name": task.name } },
+      () => task.handler({ now }),
+    );
   }
 
   /**
@@ -268,7 +284,7 @@ export class CronProvider {
         job.executing = true;
         this.log.debug(`Running cron job '${job.name}'`);
         try {
-          await job.handler({ now });
+          await this.tick(job, now);
           this.log.debug(`Cron job '${job.name}' completed`);
         } catch (error) {
           this.log.error(`Cron job '${job.name}' failed`, error);

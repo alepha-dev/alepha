@@ -22,6 +22,7 @@ import {
   DbEntityNotFoundError,
 } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
+import { type Span, Tracer } from "alepha/tracing";
 
 import { jobCronClaimEntity } from "../entities/jobCronClaimEntity.ts";
 import {
@@ -199,6 +200,7 @@ export class JobProvider {
   public static readonly id: string = "alepha.jobs.JobProvider";
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly tracer = $inject(Tracer);
   protected readonly cronProvider = $inject(CronProvider);
   protected readonly lockProvider = $inject(LockProvider);
   protected readonly crypto = $inject(CryptoProvider);
@@ -754,6 +756,32 @@ export class JobProvider {
   }
 
   /**
+   * Run a job handler under its span (#E86): `job <name>`, with the job
+   * name, execution id and attempt. A child of the span already active (the
+   * cron tick, the queue message, the request of an inline push), or the
+   * root of a new trace when there is none.
+   */
+  protected traceRun<R>(
+    name: string,
+    executionId: string,
+    attempt: number,
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    if (!this.tracer.recording) {
+      return fn();
+    }
+    const run = (span: Span) => {
+      span.setAttribute("alepha.job.name", name);
+      span.setAttribute("alepha.job.execution_id", executionId);
+      span.setAttribute("alepha.job.attempt", attempt);
+      return fn();
+    };
+    return this.tracer.current()
+      ? this.tracer.startSpan(`job ${name}`, {}, run)
+      : this.tracer.startRoot(`job ${name}`, {}, run);
+  }
+
+  /**
    * Execute a cron handler inline. Nothing is written while it runs; at the
    * end, one terminal row for the outcome, when the job's retention records
    * that status.
@@ -786,20 +814,22 @@ export class JobProvider {
         });
 
         try {
-          await this.underRunSignal(abortController.signal, () =>
-            this.withTimeout(opts.timeout, (signal) =>
-              opts.handler({
-                payload: ctx.payload,
-                attempt: ctx.attempt,
-                now: startedAt,
-                signal,
-                executionId,
-                reschedule: () => {
-                  throw new AlephaError(
-                    `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
-                  );
-                },
-              }),
+          await this.traceRun(name, executionId, ctx.attempt, () =>
+            this.underRunSignal(abortController.signal, () =>
+              this.withTimeout(opts.timeout, (signal) =>
+                opts.handler({
+                  payload: ctx.payload,
+                  attempt: ctx.attempt,
+                  now: startedAt,
+                  signal,
+                  executionId,
+                  reschedule: () => {
+                    throw new AlephaError(
+                      `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
+                    );
+                  },
+                }),
+              ),
             ),
           );
 
@@ -1655,27 +1685,29 @@ export class JobProvider {
           // throw discards it, which is what makes "throw wins" true.
           let parkAgain: RescheduleIntent | undefined;
           try {
-            await this.underRunSignal(abortController.signal, () =>
-              this.withTimeout(opts.timeout, (signal) =>
-                opts.handler({
-                  payload: execution.payload,
-                  attempt: execution.attempt,
-                  now,
-                  signal,
-                  executionId,
-                  reschedule: (options) => {
-                    if (inline) {
-                      throw new AlephaError(
-                        `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+            await this.traceRun(jobName, executionId, execution.attempt, () =>
+              this.underRunSignal(abortController.signal, () =>
+                this.withTimeout(opts.timeout, (signal) =>
+                  opts.handler({
+                    payload: execution.payload,
+                    attempt: execution.attempt,
+                    now,
+                    signal,
+                    executionId,
+                    reschedule: (options) => {
+                      if (inline) {
+                        throw new AlephaError(
+                          `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                        );
+                      }
+                      parkAgain = this.rescheduleIntent(
+                        registration,
+                        execution.payload,
+                        options,
                       );
-                    }
-                    parkAgain = this.rescheduleIntent(
-                      registration,
-                      execution.payload,
-                      options,
-                    );
-                  },
-                }),
+                    },
+                  }),
+                ),
               ),
             );
 

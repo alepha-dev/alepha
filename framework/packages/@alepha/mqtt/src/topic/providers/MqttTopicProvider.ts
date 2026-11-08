@@ -208,6 +208,14 @@ export class MqttTopicProvider extends TopicProvider {
   }
 
   /**
+   * Nothing to read: the message is the payload alone, and a `traceparent`
+   * key in it would be the device's data, not a trace.
+   */
+  protected override decodeTraceparent(): string | undefined {
+    return undefined;
+  }
+
+  /**
    * Nothing to read in the payload: the reply address travels as MQTT 5
    * properties, handed to the subscribe callback.
    */

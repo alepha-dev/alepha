@@ -7,6 +7,7 @@ import {
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { TemplatedPathParser } from "alepha/router";
+import { Tracer } from "alepha/tracing";
 
 import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
 import { $subscriber } from "../primitives/$subscriber.ts";
@@ -26,6 +27,7 @@ export abstract class TopicProvider {
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly tracer = $inject(Tracer);
 
   /**
    * Requests waiting for their reply, by correlation id.
@@ -124,13 +126,31 @@ export abstract class TopicProvider {
     payload: TopicMessage<T>["payload"],
     reply?: TopicMessageMeta,
   ): string {
+    const traceparent = this.tracer.traceparent();
     return JSON.stringify({
       payload: this.alepha.codec.encode(schema, payload),
       ...(reply?.replyTo !== undefined ? { replyTo: reply.replyTo } : {}),
       ...(reply?.correlationData !== undefined
         ? { correlationId: this.correlationKey(reply.correlationData) }
         : {}),
+      ...(traceparent ? { traceparent } : {}),
     });
+  }
+
+  /**
+   * The producer's `traceparent` the envelope carries, if any (#E86). A
+   * provider whose wire format is the payload alone (MQTT) carries none and
+   * returns undefined.
+   */
+  protected decodeTraceparent(raw: string): string | undefined {
+    try {
+      const envelope = JSON.parse(raw);
+      return typeof envelope?.traceparent === "string"
+        ? envelope.traceparent
+        : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -200,13 +220,34 @@ export abstract class TopicProvider {
         try {
           const parsed = this.parseMessage<T>(schema, message);
           const meta = transportMeta ?? this.decodeMeta(message);
+          const call = () => {
+            if (parser.hasParams && receivedTopic) {
+              const params = parser.extract(receivedTopic) ?? {};
+              return handler({ ...parsed, params } as TopicMessage<T>, meta);
+            }
+            return handler(parsed, meta);
+          };
 
-          if (parser.hasParams && receivedTopic) {
-            const params = parser.extract(receivedTopic) ?? {};
-            await handler({ ...parsed, params } as TopicMessage<T>, meta);
-          } else {
-            await handler(parsed, meta);
-          }
+          // Each message is a unit of work of its own, like a queue message
+          // (#E86): its own correlation id and scoped registry, and a root
+          // span linked to the producer's. `run` keeps the parent readable,
+          // so nothing a handler read before disappears.
+          await this.alepha.context.run(() =>
+            this.tracer.recording
+              ? this.tracer.startRoot(
+                  `topic ${name}`,
+                  {
+                    kind: "consumer",
+                    linkTo: [this.decodeTraceparent(message)],
+                    attributes: {
+                      "messaging.operation.type": "process",
+                      "messaging.destination.name": name,
+                    },
+                  },
+                  call,
+                )
+              : call(),
+          );
         } catch (error) {
           this.log.error("Message processing has failed", error);
         }

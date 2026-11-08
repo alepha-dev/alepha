@@ -11,6 +11,7 @@ import {
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 
 import { QueueCodec } from "./QueueCodec.ts";
 import { QueueProvider } from "./QueueProvider.ts";
@@ -74,6 +75,7 @@ export class WorkerProvider {
   protected readonly queueProvider = $inject(QueueProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly codec = $inject(QueueCodec);
+  protected readonly tracer = $inject(Tracer);
 
   protected workerPromises: Array<Promise<void>> = [];
   protected workersRunning = 0;
@@ -267,13 +269,33 @@ export class WorkerProvider {
   }) {
     const { message, consumer } = response;
 
-    const payload = this.codec.decode(consumer.schema, message);
+    const { headers, payload } = this.codec.decodeEnvelope(
+      consumer.schema,
+      message,
+    );
     const controller = new AbortController();
     this.messageControllers.add(controller);
     try {
-      await this.alepha.context.run(() => consumer.handler({ payload }), {
-        signal: controller.signal,
-      });
+      await this.alepha.context.run(
+        () =>
+          // The consumer's root (#E86): a new trace, linked to the producer's
+          // span rather than its child.
+          this.tracer.recording
+            ? this.tracer.startRoot(
+                `queue ${consumer.name}`,
+                {
+                  kind: "consumer",
+                  linkTo: [headers.traceparent],
+                  attributes: {
+                    "messaging.operation.type": "process",
+                    "messaging.destination.name": consumer.name,
+                  },
+                },
+                () => consumer.handler({ payload }),
+              )
+            : consumer.handler({ payload }),
+        { signal: controller.signal },
+      );
     } finally {
       this.messageControllers.delete(controller);
     }
