@@ -1,5 +1,10 @@
 import { TooltipProvider, DialogProvider } from "@alepha/ui";
-import { AppShell, ButtonDark, ButtonTheme } from "@alepha/ui/shell";
+import {
+  AppShell,
+  ButtonDark,
+  ButtonTheme,
+  ButtonVision,
+} from "@alepha/ui/shell";
 import { useAlepha } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
@@ -55,6 +60,7 @@ export const Layout = () => {
                 <NavPaletteButton />
                 <ButtonTheme />
                 <ButtonDark />
+                <ButtonVision />
               </>
             }
             brand={

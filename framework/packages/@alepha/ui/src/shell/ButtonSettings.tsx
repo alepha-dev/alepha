@@ -14,8 +14,10 @@ import { ButtonLanguage } from "./ButtonLanguage.tsx";
 import { ButtonSettingsColorModeMenu } from "./ButtonSettingsColorModeMenu.tsx";
 import { ButtonSettingsLanguageMenu } from "./ButtonSettingsLanguageMenu.tsx";
 import { ButtonSettingsThemeMenu } from "./ButtonSettingsThemeMenu.tsx";
+import { ButtonSettingsVisionMenuItem } from "./ButtonSettingsVisionMenuItem.tsx";
 import { ButtonTheme } from "./ButtonTheme.tsx";
 import { ButtonUser } from "./ButtonUser.tsx";
+import { ButtonVision } from "./ButtonVision.tsx";
 
 export interface ButtonSettingsProps {
   /**
@@ -64,9 +66,10 @@ export interface ButtonSettingsProps {
    * Labels, for an application that names its chrome itself. An omitted
    * entry is read from the catalogue under `shell.settings.*`, English by
    * default and French through `uiFr`, so the admin console and the account
-   * area are localised without passing any. `language`, `theme` and
-   * `colorMode` name the control in both placements: the submenu in the
-   * menu, the tooltip and `aria-label` as a button.
+   * area are localised without passing any. `language`, `theme`,
+   * `colorMode` and `vision` name the control in both placements: the
+   * submenu (or, for `vision`, the checkbox item) in the menu, the tooltip
+   * and `aria-label` as a button.
    */
   labels?: {
     signIn?: string;
@@ -80,6 +83,7 @@ export interface ButtonSettingsProps {
     colorModeSystem?: string;
     colorModeDark?: string;
     colorModeLight?: string;
+    vision?: string;
   };
 
   /**
@@ -92,7 +96,7 @@ export interface ButtonSettingsProps {
   /**
    * Below `sm`, drop the settings BUTTONS and keep only the account button.
    * It never touches the menu, so a signed-in viewer on a phone still reaches
-   * all three there under the default `placement`.
+   * all of them there under the default `placement`.
    */
   compact?: boolean;
 
@@ -105,11 +109,11 @@ export interface ButtonSettingsProps {
 }
 
 /**
- * The account button with the viewer's settings attached: language, theme
- * and display mode, wrapped around {@link ButtonUser}.
+ * The account button with the viewer's settings attached: language, theme,
+ * display mode and colour-blind mode, wrapped around {@link ButtonUser}.
  *
- * Signed out, it draws the four icon buttons `AppActions` draws: language,
- * theme, dark mode, sign in. Signed in, it draws ONE button, the avatar, and
+ * Signed out, it draws icon buttons: language, theme, dark mode,
+ * colour-blind mode (`ButtonVision`), sign in. Signed in, it draws ONE button, the avatar, and
  * the settings move into its menu:
  *
  * ```
@@ -120,6 +124,7 @@ export interface ButtonSettingsProps {
  * Language      ›
  * Theme         ›
  * Display Mode  ›
+ * Colour-blind mode  ✓
  * ───────────
  * Logout
  * ```
@@ -162,6 +167,9 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
     colorModeLight:
       given.colorModeLight ??
       tr("shell.settings.colorModeLight", { default: "Light" }),
+    vision:
+      given.vision ??
+      tr("shell.settings.vision", { default: "Colour-blind mode" }),
   };
   const variant = props.variant ?? "minimal";
   const inMenu = !!auth.user && (props.placement ?? "menu") === "menu";
@@ -170,12 +178,13 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
     <div className={cn("flex items-center gap-1", props.className)}>
       {props.before}
       {!inMenu && (
-        // `contents` keeps the three direct children of the flex row and its
+        // `contents` keeps the four direct children of the flex row and its
         // `gap-1`; `hidden` wins over it below the breakpoint.
         <div className={cn(props.compact ? "hidden sm:contents" : "contents")}>
           <ButtonLanguage variant={variant} label={labels.language} />
           <ButtonTheme variant={variant} label={labels.theme} />
           <ButtonDark variant={variant} label={labels.colorMode} />
+          <ButtonVision variant={variant} label={labels.vision} />
         </div>
       )}
       <ButtonUser
@@ -206,6 +215,7 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
                 light: labels.colorModeLight,
               }}
             />
+            <ButtonSettingsVisionMenuItem label={labels.vision} />
           </>
         )}
         <DropdownMenuSeparator />
@@ -218,3 +228,4 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
 ButtonSettings.LanguageMenu = ButtonSettingsLanguageMenu;
 ButtonSettings.ThemeMenu = ButtonSettingsThemeMenu;
 ButtonSettings.ColorModeMenu = ButtonSettingsColorModeMenu;
+ButtonSettings.VisionMenuItem = ButtonSettingsVisionMenuItem;

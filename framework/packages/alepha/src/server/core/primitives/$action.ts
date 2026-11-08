@@ -26,6 +26,7 @@ import type { HttpError, HttpErrorClass } from "../errors/HttpError.ts";
 import { InternalServerError } from "../errors/InternalServerError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
+import type { ActionMcpOptions } from "../interfaces/ActionMcpOptions.ts";
 import type {
   RequestConfigSchema,
   ServerRequest,
@@ -300,6 +301,40 @@ export interface ActionPrimitiveOptions<
    * ```
    */
   timeout?: DurationLike | false;
+
+  /**
+   * Also serve this action as an MCP tool, when `alepha/mcp` is registered:
+   * `tools/list` lists it beside the `$tool`s, and `tools/call` runs it.
+   *
+   * - **One definition.** The tool is built from the action: its name, its
+   *   `description` (required), and an input of `{ params, query, body }`
+   *   for the parts it declares, `query` optional. It is the same input
+   *   `$ai` gives the model for this action.
+   * - **The action decides.** A call goes through `run()`: its `use`
+   *   middlewares (`$secure` sees the MCP caller), its own `timeout` (not
+   *   the `mcpToolOptions` one) and its typed errors. Over stdio there is no
+   *   request, and the action runs anonymous.
+   * - **Errors.** An `HttpError` (a declared `$error`, a refusal, a 400) is a
+   *   tool error, `<name>: <message>`, the model can act on; anything else is
+   *   an internal error whose message is not sent.
+   * - **Hints.** `GET` is `readOnlyHint: true` and `DELETE`
+   *   `destructiveHint: true` unless `annotations` says otherwise.
+   *
+   * Keep a `$tool` for a tool that is not an HTTP endpoint, or whose input
+   * is a flat object rather than `{ params, query, body }`.
+   *
+   * ```ts
+   * getInvoice = $action({
+   *   method: "GET",
+   *   path: "/invoices/:id",
+   *   description: "Read one invoice",
+   *   mcp: true,
+   *   schema: { params: z.object({ id: z.text() }) },
+   *   handler: ({ params }) => this.invoices.get(params.id),
+   * });
+   * ```
+   */
+  mcp?: boolean | ActionMcpOptions;
 
   /**
    * Main route handler. This is where the route logic is implemented.

@@ -45,6 +45,18 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  * - JSON Schema generation for MCP protocol
  * - Integration with MCP server provider
  *
+ * **`$tool` or `$action({ mcp: true })`?** A feature that already is an
+ * `$action` becomes an MCP tool with its `mcp` option, its input then being
+ * `{ params, query, body }`. Keep a `$tool` for a tool with no HTTP surface,
+ * a flat input an agent writes naturally, raw MCP content, or a handler that
+ * reads `context` (elicitation, progress).
+ *
+ * A `$tool` can also be offered to the in-app assistant as it is:
+ * `$ai({ tools: [this.tools.add] })` (`alepha/ai`). The model sees its
+ * description and `schema.params`, the call runs as the turn's user, and it
+ * waits for the user's confirmation unless `annotations.readOnlyHint` is
+ * true.
+ *
  * @example
  * ```ts
  * class CalculatorTools {

@@ -17,9 +17,16 @@ tool loop that runs them as the signed-in user.
   so the action's own `use: [$secure(...)]` decides, and the assistant can
   never do more than the user could. A refusal, a validation error or a
   thrown error goes back to the model as a tool error.
-- **Mutations wait for the user.** A call to a non-GET action (or whatever
-  `confirm` says) pauses the turn with a `confirm` event; a client tool
-  (see `clientTool`) pauses with a `client_tool` event.
+- **A `$tool` is a tool too** (`alepha/mcp`), so a tool written for outside
+  agents is offered to the assistant without a wrapper action. The model
+  sees its `description` and `schema.params`; the call runs
+  `tool.execute()` as the turn's user (its `use: [$secure(...)]` decides)
+  with the turn's signal as `context.signal`. It is not an MCP call:
+  `mcp:tool:call:end` does not fire.
+- **Mutations wait for the user.** A call to a non-GET action, or to a
+  `$tool` that is not `annotations.readOnlyHint` (or whatever `confirm`
+  says), pauses the turn with a `confirm` event; a client tool (see
+  `clientTool`) pauses with a `client_tool` event.
 - **Re-entrant.** The loop's whole state is the message list. A pause ends
   the stream; resuming is a new `stream()` with the stored messages and
   `resume: { callId, decision }` or `{ callId, result }`. An approved call
@@ -31,17 +38,17 @@ tool loop that runs them as the signed-in user.
 
 ## Options
 
-| Option      | Type                                                          | Required | Description                                                            |
-| ----------- | ------------------------------------------------------------- | -------- | ---------------------------------------------------------------------- |
-| `name`      | `string`                                                      | No       | Name of the assistant, in logs                                         |
-| `model`     | `string`                                                      | No       | Model id for this assistant                                            |
-| `system`    | `string \| ((ctx: { user?: UserAccountToken }) =&gt; string)` | Yes      | The system prompt, or a function of the user                           |
-| `tools`     | `Array&lt;ActionPrimitive&lt;any&gt; \| AiClientTool&gt;`     | No       | The tools: `$action`s, and client tools from `clientTool`.             |
-| `allow`     | `Object`                                                      | No       | The tools this user is offered on a turn, by name: what the model sees |
-| `confirm`   | `Object`                                                      | No       | Whether a call to this action waits for the user's approval            |
-| `maxSteps`  | `number`                                                      | No       | Model calls per turn before the loop stops with `end: length`.         |
-| `timeout`   | `DurationLike`                                                | No       | Wall-clock bound on one `stream()`, aborting the model call in flight. |
-| `maxTokens` | `number`                                                      | No       | Upper bound on the tokens of each model response.                      |
+| Option      | Type                                                                            | Required | Description                                                                        |
+| ----------- | ------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------- |
+| `name`      | `string`                                                                        | No       | Name of the assistant, in logs                                                     |
+| `model`     | `string`                                                                        | No       | Model id for this assistant                                                        |
+| `system`    | `string \| ((ctx: { user?: UserAccountToken }) =&gt; string)`                   | Yes      | The system prompt, or a function of the user                                       |
+| `tools`     | `Array&lt;ActionPrimitive&lt;any&gt; \| ToolPrimitive&lt;any&gt; \| AiClien...` | No       | The tools: `$action`s, `$tool`s (`alepha/mcp`), and client tools from `clientTool` |
+| `allow`     | `Object`                                                                        | No       | The tools this user is offered on a turn, by name: what the model sees             |
+| `confirm`   | `Object`                                                                        | No       | Whether a call to this tool waits for the user's approval                          |
+| `maxSteps`  | `number`                                                                        | No       | Model calls per turn before the loop stops with `end: length`.                     |
+| `timeout`   | `DurationLike`                                                                  | No       | Wall-clock bound on one `stream()`, aborting the model call in flight.             |
+| `maxTokens` | `number`                                                                        | No       | Upper bound on the tokens of each model response.                                  |
 
 ## Examples
 

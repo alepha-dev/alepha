@@ -59,6 +59,15 @@ export interface AuthLoginProps {
    * component (e.g. with light/dark variants or an animation).
    */
   logo?: ReactNode;
+  /**
+   * Where the "Cancel" link under the form leads. Defaults to "/".
+   *
+   * Pass `false` to hide the link, for an application where every page
+   * needs an account: there "/" only leads back to this page. It is
+   * intentionally decoupled from the post-auth `?redirect=` target, which is
+   * a protected destination the visitor has not reached yet.
+   */
+  cancelPath?: string | false;
 }
 
 export const AuthLogin = (props: AuthLoginProps) => {
@@ -348,9 +357,15 @@ export const AuthLogin = (props: AuthLoginProps) => {
           )}
         </CardContent>
       </Card>
-      <Button variant="minimal" nativeButton={false} render={<a href="/" />}>
-        {tr("auth.login.cancel", { default: "Cancel" })}
-      </Button>
+      {props.cancelPath !== false && (
+        <Button
+          variant="minimal"
+          nativeButton={false}
+          render={<a href={props.cancelPath ?? "/"} />}
+        >
+          {tr("auth.login.cancel", { default: "Cancel" })}
+        </Button>
+      )}
     </div>
   );
 

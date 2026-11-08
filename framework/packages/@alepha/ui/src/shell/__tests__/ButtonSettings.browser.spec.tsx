@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { AlephaReactUi } from "alepha/react/ui";
+import { AlephaReactUi, uiAtom } from "alepha/react/ui";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -117,5 +117,39 @@ describe("ButtonSettings", () => {
     ).toBeTruthy();
     expect(screen.getByRole("menuitemradio", { name: "Sombre" })).toBeTruthy();
     expect(screen.getByRole("menuitemradio", { name: "Clair" })).toBeTruthy();
+  });
+
+  it("draws the colour-blind toggle beside display mode when signed out", async () => {
+    await mount({ signedIn: false });
+
+    expect(screen.getByLabelText("Colour-blind mode")).toBeTruthy();
+  });
+
+  it("offers colour-blind mode as a checkbox item of the menu when signed in", async () => {
+    await mount({ signedIn: true });
+    expect(screen.queryByLabelText("Colour-blind mode")).toBeNull();
+
+    openMenu();
+    const item = await screen.findByRole("menuitemcheckbox", {
+      name: "Colour-blind mode",
+    });
+    expect(item.getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => fireEvent.click(item));
+
+    expect(alepha!.store.get(uiAtom).vision).toBe("cvd");
+  });
+
+  it("names the colour-blind item from labels", async () => {
+    await mount({
+      signedIn: true,
+      props: { labels: { vision: "Mode daltonien" } },
+    });
+
+    openMenu();
+
+    expect(
+      await screen.findByRole("menuitemcheckbox", { name: "Mode daltonien" }),
+    ).toBeTruthy();
   });
 });

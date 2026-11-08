@@ -17,9 +17,10 @@ that hangs its pages off its OWN layout rather than the admin shell's
 `AppShell` is the sidebar-and-header frame of an application and `NavShell`
 the page-tree variant with its `Spotlight` search. `PlateLayout` and
 `DetailLayout` frame a page, `AppActions` a toolbar. `ButtonDark`,
-`ButtonTheme`, `ButtonLanguage`, `ButtonInbox` and `ButtonUser` are the
-header buttons, and `ButtonSettings` is the account button with language,
-theme and display mode folded into its menu once signed in.
+`ButtonVision`, `ButtonTheme`, `ButtonLanguage`, `ButtonInbox` and
+`ButtonUser` are the header buttons, and `ButtonSettings` is the account
+button with language, theme, display mode and colour-blind mode folded
+into its menu once signed in.
 `ActionErrorToaster` turns a failed action into a toast.
 
 ## API Reference

@@ -1,13 +1,17 @@
 import {
+  $hook,
   $inject,
   AbortedError,
+  ActionToolSchema,
   Alepha,
   AlephaError,
   SchemaValidationError,
+  TimeoutError,
 } from "alepha";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $action, type ActionPrimitive, HttpError } from "alepha/server";
 
 import {
   McpError,
@@ -28,6 +32,7 @@ import {
   MCP_LEGACY_PROTOCOL_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
+import { McpActionTool } from "../helpers/McpActionTool.ts";
 import { McpElicitationSession } from "../helpers/McpElicitationSession.ts";
 import type {
   JsonRpcError,
@@ -79,7 +84,15 @@ export class McpServerProvider {
   protected readonly secrets = $inject(SecretProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
+  protected readonly actionToolSchema = $inject(ActionToolSchema);
+
   protected readonly tools = new Map<string, ToolPrimitive<any>>();
+
+  /**
+   * The `$action({ mcp })`s served as tools, found at configure. Kept apart
+   * from {@link tools}: `getTools()` and `getTool()` keep returning `$tool`s.
+   */
+  protected readonly actionTools = new Map<string, McpActionTool>();
   protected readonly resources = new Map<string, ResourcePrimitive>();
   protected readonly resourceTemplates = new Map<
     string,
@@ -199,7 +212,46 @@ export class McpServerProvider {
   public registerTool(tool: ToolPrimitive<any>): void {
     this.log.trace(`Registering MCP tool: ${tool.name}`);
     this.assertUnregistered(this.tools, tool.name, "tool");
+    this.assertUnregistered(this.actionTools, tool.name, "tool");
     this.tools.set(tool.name, tool);
+  }
+
+  /**
+   * Serve every `$action` declaring `mcp` as a tool, at configure: after
+   * every class is wired, so a name clash with a `$tool` fails at start.
+   */
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      for (const action of this.alepha.primitives($action)) {
+        if (!action.options.mcp || action.options.disabled) {
+          continue;
+        }
+        this.registerAction(action);
+      }
+    },
+  });
+
+  /**
+   * Serve one action as a tool, its descriptor built by `ActionToolSchema`,
+   * the converter `$ai` uses too.
+   */
+  public registerAction(action: ActionPrimitive<any>): void {
+    const tool = new McpActionTool(
+      action,
+      this.actionToolSchema.fromAction(action),
+    );
+    this.log.trace(`Registering MCP tool from action: ${tool.name}`);
+    this.assertUnregistered(this.tools, tool.name, "tool");
+    this.assertUnregistered(this.actionTools, tool.name, "tool");
+    this.actionTools.set(tool.name, tool);
+  }
+
+  /**
+   * The actions served as tools.
+   */
+  public getActionTools(): McpActionTool[] {
+    return Array.from(this.actionTools.values());
   }
 
   /**
@@ -262,7 +314,7 @@ export class McpServerProvider {
    */
   public getCapabilities(): McpCapabilities {
     return {
-      tools: this.tools.size > 0 ? {} : undefined,
+      tools: this.tools.size > 0 || this.actionTools.size > 0 ? {} : undefined,
       // Templates live under the same capability as concrete resources —
       // `resources/templates/list` is part of the resources surface, so a
       // server offering only templates still declares `resources`.
@@ -472,9 +524,14 @@ export class McpServerProvider {
       return [];
     }
     const name = request.params?.name;
-    return typeof name === "string"
-      ? (this.tools.get(name)?.requiredPermissions ?? [])
-      : [];
+    if (typeof name !== "string") {
+      return [];
+    }
+    return (
+      this.tools.get(name)?.requiredPermissions ??
+      this.actionTools.get(name)?.requiredPermissions ??
+      []
+    );
   }
 
   /**
@@ -1204,10 +1261,13 @@ export class McpServerProvider {
   } {
     const { page, nextCursor } = this.paginateList(
       "tools",
-      Array.from(this.tools.values()),
+      [
+        ...Array.from(this.tools.values(), (t) => t.toDescriptor()),
+        ...Array.from(this.actionTools.values(), (t) => t.descriptor),
+      ],
       params,
     );
-    return { tools: page.map((t) => t.toDescriptor()), nextCursor };
+    return { tools: page, nextCursor };
   }
 
   protected async handleToolsCall(
@@ -1218,6 +1278,10 @@ export class McpServerProvider {
     const args = (params.arguments ?? {}) as Record<string, unknown>;
 
     const tool = this.tools.get(name);
+    const action = tool ? undefined : this.actionTools.get(name);
+    if (action) {
+      return this.handleActionCall(action, args, context);
+    }
     if (!tool) {
       // McpToolNotFoundError is intentionally a JSON-RPC protocol error,
       // not a tool execution error — see SEP-1303 (only validation/runtime
@@ -1384,6 +1448,81 @@ export class McpServerProvider {
             text: `Error: ${(error as Error).message}`,
           },
         ],
+        isError: true,
+      };
+    }
+  }
+
+  /**
+   * A `tools/call` of an `$action({ mcp })`: it runs `action.run()`, under the
+   * action's own middlewares, timeout and typed errors, and the ambient
+   * signal `handleMessage` set, which the MCP request's cancellation aborts.
+   *
+   * - A malformed argument is a tool error naming its path, as for a `$tool`.
+   * - An `HttpError` (a declared `$error`, a `$secure` refusal, a 400) or a
+   *   `TimeoutError` is a tool error, `<name>: <message>`, as
+   *   `$ai` reports it to the model. Below 500 it is a refusal, logged at
+   *   warn like a `$tool`'s.
+   * - Anything else is a fault: logged with its chain, answered as a JSON-RPC
+   *   internal error whose message says nothing of it.
+   */
+  protected async handleActionCall(
+    tool: McpActionTool,
+    args: Record<string, unknown>,
+    context?: McpContext,
+  ): Promise<McpToolCallResult> {
+    try {
+      const result = await tool.call(args);
+      await this.announceToolEnd(tool.name, "ok", context);
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              typeof result === "string"
+                ? result
+                : JSON.stringify(result ?? null),
+          },
+        ],
+      };
+    } catch (error) {
+      // `run()` encodes the arguments before its router validates them, so
+      // a malformed argument can surface as a raw schema failure: the
+      // caller's, answered as a `$tool`'s is, with the path to correct.
+      if (error instanceof SchemaValidationError) {
+        const path = error.data.path || "/";
+        const message = error.data.message || error.message;
+        await this.announceToolEnd(tool.name, "refused", context);
+        return {
+          content: [
+            { type: "text", text: `Validation error at ${path}: ${message}` },
+          ],
+          structuredContent: { errors: [{ path, message }] },
+          isError: true,
+        };
+      }
+      if (!(error instanceof HttpError || error instanceof TimeoutError)) {
+        this.log.error(`MCP tool "${tool.name}" failed`, error as Error);
+        await this.announceToolEnd(tool.name, "error", context);
+        throw new McpError("Internal error", { cause: error });
+      }
+      const status = error.status;
+      if (status < 500) {
+        this.log.warn(`MCP tool "${tool.name}" refused the call`, {
+          status,
+          error: error.name,
+          message: error.message,
+        });
+      } else {
+        this.log.error(`MCP tool "${tool.name}" failed`, error);
+      }
+      await this.announceToolEnd(
+        tool.name,
+        status < 500 ? "refused" : "error",
+        context,
+      );
+      return {
+        content: [{ type: "text", text: `${error.name}: ${error.message}` }],
         isError: true,
       };
     }

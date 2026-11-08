@@ -1,5 +1,5 @@
 import { Button } from "@alepha/ui";
-import { ButtonDark } from "@alepha/ui/shell";
+import { ButtonDark, ButtonVision } from "@alepha/ui/shell";
 import { z } from "alepha";
 import { Download, Plus, Trash2 } from "lucide-react";
 
@@ -238,6 +238,8 @@ const Buttons = () => (
             <ButtonDark />
             <ButtonDark withSystem />
             <ButtonDark variant="outlined" />
+            <ButtonVision />
+            <ButtonVision variant="outlined" />
           </div>
         </section>
       </div>

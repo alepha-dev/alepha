@@ -631,6 +631,7 @@ export const uiFr: Record<string, string> = {
   "shell.settings.menu": "Menu du compte",
   "shell.settings.signIn": "Se connecter",
   "shell.settings.theme": "Thème",
+  "shell.settings.vision": "Mode daltonien",
   // The shell's own chrome: sidebar entries, section headings and breadcrumbs.
   // `nav.*Key` on `AdminRouter` names these; the English `label` beside the key
   // is the default an application without this catalogue keeps seeing.

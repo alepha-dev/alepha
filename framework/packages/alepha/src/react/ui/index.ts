@@ -14,6 +14,7 @@ export * from "./hooks/useColorMode.ts";
 export * from "./hooks/useSidebarState.ts";
 export * from "./hooks/useTheme.ts";
 export * from "./hooks/useUiState.ts";
+export * from "./hooks/useVisionMode.ts";
 export * from "./services/SchemaControl.ts";
 export * from "./services/UiPersistence.ts";
 
@@ -29,7 +30,8 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Persisted UI state: color mode, theme palette, sidebar collapsed state.
+ * Persisted UI state: color mode, theme palette, vision mode (colour-blind
+ * palette), sidebar collapsed state.
  *
  * Backed by an `alepha-ui` cookie so preferences survive reloads and are
  * available during SSR (no flash of wrong theme).

@@ -233,6 +233,49 @@ test.describe("Showcase", () => {
     expect(visible).toBe(1);
   });
 
+  test("the colour-blind mode repaints the signal colours, before paint on the next load", async ({
+    page,
+  }) => {
+    // The token values come from the kit's stylesheet under `:root.cvd`: jsdom
+    // applies no stylesheet, so the swap itself is only visible here.
+    const errors: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const token = (name: string) =>
+      page.evaluate(
+        (n) =>
+          getComputedStyle(document.documentElement).getPropertyValue(n).trim(),
+        name,
+      );
+
+    await page.goto("/blocks/buttons");
+    const toggle = page
+      .getByRole("button", { name: "Colour-blind mode" })
+      .first();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    const before = await token("--danger");
+
+    await toggle.click();
+
+    await expect(page.locator("html")).toHaveClass(/(^|\s)cvd(\s|$)/);
+    await expect(page.locator("html")).toHaveAttribute("data-vision", "cvd");
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(await token("--danger")).not.toBe(before);
+    expect((await token("--success")).toLowerCase()).toBe("#0072b2");
+
+    errors.length = 0;
+    // Cold, prerendered, with the preference stored: the boot script paints
+    // it, and the CSS-revealed icon keeps hydration clean.
+    await page.goto("/blocks/data-table/basic");
+    await expect(page.locator("html")).toHaveAttribute("data-vision", "cvd");
+    await expect(
+      page.getByRole("button", { name: "Colour-blind mode" }).first(),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(errors.filter((e) => /#418|#423|[Hh]ydrat/.test(e))).toEqual([]);
+  });
+
   test("a props row keeps its label off its input", async ({ page }) => {
     // `Control` in row layout gives a text input a flat 256px, and this panel's
     // rows are 293px: the label column collapsed to 9px and its text rendered
