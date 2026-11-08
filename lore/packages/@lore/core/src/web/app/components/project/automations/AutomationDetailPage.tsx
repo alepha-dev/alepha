@@ -15,7 +15,6 @@ import type { AutomationController } from "../../../../../api/controllers/Automa
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
 import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationTemplateTokens.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRuleEditor from "./AutomationRuleEditor.tsx";

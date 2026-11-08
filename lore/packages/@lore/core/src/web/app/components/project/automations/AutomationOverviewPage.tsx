@@ -26,8 +26,6 @@ import { useState } from "react";
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
-import type { CoreRouter } from "../../../CoreRouter.ts";
 import { loreDocsUrl } from "../../../services/docsUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";

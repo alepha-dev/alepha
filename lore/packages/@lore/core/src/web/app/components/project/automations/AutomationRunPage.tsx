@@ -6,7 +6,6 @@ import { RefreshCw } from "lucide-react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunEvidence from "./AutomationRunEvidence.tsx";

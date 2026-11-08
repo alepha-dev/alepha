@@ -10,7 +10,6 @@ import type { AutomationController } from "../../../../../api/controllers/Automa
 import { automationAdoptionFormSchema } from "../../../../../api/schemas/automationAdoptionFormSchema.ts";
 import type { AutomationAdoptionPolicy } from "../../../../../api/schemas/automationAdoptionPolicySchema.ts";
 import type { ProjectResource } from "../../../../../api/schemas/projectResourceSchema.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 export interface AutomationAdoptionCardProps {

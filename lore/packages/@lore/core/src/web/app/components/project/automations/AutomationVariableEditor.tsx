@@ -17,7 +17,6 @@ import { automationVariableEditorSchema } from "../../../../../api/schemas/autom
 import type { AutomationVariableResource } from "../../../../../api/schemas/automationVariableResourceSchema.ts";
 import { automationVariableValueSchema } from "../../../../../api/schemas/automationVariableValueSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AutomationValueControl from "./AutomationValueControl.tsx";
 

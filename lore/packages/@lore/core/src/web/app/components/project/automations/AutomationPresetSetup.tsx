@@ -6,7 +6,6 @@ import { useRouter } from "alepha/react/router";
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import type { AutomationPresetDescriptor } from "../../../../../api/schemas/automationPresetDescriptorSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
 import AutomationPresetForm from "./AutomationPresetForm.tsx";
