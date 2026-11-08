@@ -6,10 +6,18 @@ import {
   type DataTableSummaryFetcher,
 } from "@alepha/ui/table";
 import { z } from "alepha";
+import type { Page } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { MailPlus, UserCheck, UserPlus, Users, UsersRound } from "lucide-react";
-import { useCallback } from "react";
+import {
+  Archive,
+  MailPlus,
+  UserCheck,
+  UserPlus,
+  Users,
+  UsersRound,
+} from "lucide-react";
+import { useCallback, useState } from "react";
 
 import type { ShowcaseController } from "@/showcase/ShowcaseController.ts";
 import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
@@ -37,6 +45,10 @@ import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
  * Above the filter bar, the summary panel: four figures fetched with the same
  * filter, so picking "Invited" recounts every invited member rather than the
  * page on screen. And behind the `?` at the end of the icons, the page's help.
+ *
+ * On top of it all, the tab band: two views of the same page, the members and
+ * the archived ones. The archive is empty, which is the point of having it:
+ * switching to it shows the empty state under the same frame.
  */
 const FILTER_FIELDS = {
   search: { preset: "search" },
@@ -50,8 +62,28 @@ const FILTER_FIELDS = {
   },
 } satisfies DataTableFilterFields;
 
+/**
+ * The archive tab's rows: the fixture archives nobody, so this answers with an
+ * empty page instead of asking the server.
+ */
+const fetchArchived = async (): Promise<Page<ShowcaseMember>> => ({
+  content: [],
+  page: {
+    number: 0,
+    size: 20,
+    offset: 0,
+    numberOfElements: 0,
+    totalElements: 0,
+    totalPages: 1,
+    isEmpty: true,
+    isFirst: true,
+    isLast: true,
+  },
+});
+
 const Addons = () => {
   const { l } = useI18n();
+  const [view, setView] = useState<"members" | "archived">("members");
   const toast = useToast();
   const client = useClient<ShowcaseController>();
 
@@ -115,19 +147,39 @@ const Addons = () => {
     <Showcase
       id="blocks/data-table/Addons"
       title="DataTable: addons"
-      description="The same members, with the table's add-ons: a section title before the search, a locked filter, a summary counted over the filtered set, and a help card."
+      description="The same members, with the table's add-ons: a band of tabs, a section title before the search, a locked filter, a summary counted over the filtered set, and a help card."
       fill
     >
       {() => (
         <DataTable<ShowcaseMember, typeof FILTER_FIELDS>
+          // Remounted per view, so the archive starts from its own first page.
+          key={view}
           className="min-h-0 flex-1"
           persistenceKey="ui.members.addons"
-          fetch={fetcher}
+          tabs={[
+            {
+              key: "members",
+              label: "Members",
+              icon: Users,
+              active: view === "members",
+              onSelect: () => setView("members"),
+            },
+            {
+              key: "archived",
+              label: "Archived",
+              icon: Archive,
+              count: 0,
+              active: view === "archived",
+              onSelect: () => setView("archived"),
+            },
+          ]}
+          fetch={view === "archived" ? fetchArchived : fetcher}
           filters={{
             fields: FILTER_FIELDS,
             initialValues: { status: "all" },
           }}
-          summary={{ fetch: fetchSummary }}
+          // The figures count members; the archive has none to count.
+          summary={view === "members" ? { fetch: fetchSummary } : undefined}
           leading={
             <>
               <Users className="text-muted-foreground size-4" />

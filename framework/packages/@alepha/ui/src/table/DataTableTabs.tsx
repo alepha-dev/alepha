@@ -31,20 +31,27 @@ export interface DataTableTabsProps {
  * The band of tabs that opens a table's frame. Its bottom border is the line
  * between it and the band below, which joins under it like the rows join the
  * toolbar.
+ *
+ * The band scrolls sideways when its tabs outrun it, and never vertically:
+ * `overflow-x-auto` alone computes `overflow-y` as `auto` too, so anything a
+ * tab pushed past the band's bottom edge (a negative margin overlapping the
+ * border, say) drew a vertical scrollbar wherever scrollbars are always
+ * shown. The tabs therefore sit inside the band, the active underline resting
+ * on its bottom border rather than over it.
  */
 export const DataTableTabs = (props: DataTableTabsProps) => (
   <div
     role="tablist"
     data-slot="data-table-tabs"
     className={cn(
-      "bg-background flex items-end gap-1 overflow-x-auto rounded-md rounded-b-none border px-2 pt-1",
+      "bg-background flex items-end gap-1 overflow-x-auto overflow-y-hidden rounded-md rounded-b-none border px-2 pt-1",
       props.className,
     )}
   >
     {props.tabs.map((tab) => {
       const Icon = tab.icon;
       const className = cn(
-        "-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+        "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
         tab.active
           ? "border-primary text-primary"
           : "text-muted-foreground hover:text-foreground border-transparent",
