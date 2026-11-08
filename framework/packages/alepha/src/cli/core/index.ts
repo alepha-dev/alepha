@@ -1,6 +1,6 @@
 /**
  * The Alepha CLI core: `init`, `dev`, `build`, `verify`, `db`, `test`,
- * `lint`, `typecheck`, `gen`, `pack`, `docs` and `mcp`. Loaded automatically when the
+ * `lint`, `typecheck`, `gen`, `pack` and `docs`. Loaded automatically when the
  * `alepha` binary runs; each command is documented in the CLI section of the
  * docs site.
  *
@@ -29,7 +29,6 @@ import {
 import { ImageCommand } from "./commands/image.ts";
 import { InitCommand } from "./commands/init.ts";
 import { LintCommand } from "./commands/lint.ts";
-import { McpCommand } from "./commands/mcp.ts";
 import { PackCommand } from "./commands/pack.ts";
 import { RootCommand } from "./commands/root.ts";
 import { TestCommand } from "./commands/test.ts";
@@ -83,7 +82,6 @@ export * from "./commands/gen/changelog.ts";
 export * from "./commands/gen/openapi.ts";
 export * from "./commands/init.ts";
 export * from "./commands/lint.ts";
-export * from "./commands/mcp.ts";
 export * from "./commands/pack.ts";
 export * from "./commands/root.ts";
 export * from "./commands/test.ts";
@@ -211,7 +209,6 @@ export const AlephaCli = $module({
     DocsCommand,
     InitCommand,
     LintCommand,
-    McpCommand,
     CompileCommand,
     ImageCommand,
     PackCommand,

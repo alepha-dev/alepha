@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { StdioMcpTransport } from "alepha/mcp";
 
-import { DevMcpServer } from "../mcp/DevMcpServer.ts";
+import { DevMcpServer } from "../services/DevMcpServer.ts";
 
 export class McpCommand {
   protected readonly server = $inject(DevMcpServer);

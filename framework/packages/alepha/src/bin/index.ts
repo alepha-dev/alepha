@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Alepha, run } from "alepha";
 import { AlephaCli, version } from "alepha/cli";
+import { AlephaCliMcp } from "alepha/cli/mcp";
 
 const alepha = Alepha.create({
   env: {
@@ -13,5 +14,6 @@ const alepha = Alepha.create({
 });
 
 alepha.with(AlephaCli);
+alepha.with(AlephaCliMcp);
 
 run(alepha);

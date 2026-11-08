@@ -2,7 +2,7 @@ import { McpServerProvider } from "alepha/mcp";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
-import { DevMcpServer } from "../mcp/DevMcpServer.ts";
+import { DevMcpServer } from "../services/DevMcpServer.ts";
 
 const page = (slug: string, title: string, body: string) =>
   [

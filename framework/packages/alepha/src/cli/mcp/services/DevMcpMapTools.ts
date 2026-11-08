@@ -1,12 +1,12 @@
 import { $inject, z } from "alepha";
-import type { DevMetadata } from "alepha/inspector";
-import { $tool } from "alepha/mcp";
-
 import {
   type AppMapInput,
   type AppMapOrigin,
   AppMapRenderer,
-} from "../services/AppMapRenderer.ts";
+} from "alepha/cli";
+import type { DevMetadata } from "alepha/inspector";
+import { $tool } from "alepha/mcp";
+
 import { DevMcpSession } from "./DevMcpSession.ts";
 
 /**

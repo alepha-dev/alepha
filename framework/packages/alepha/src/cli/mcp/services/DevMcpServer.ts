@@ -1,7 +1,7 @@
 import { Alepha, type ServiceEntry } from "alepha";
+import { version } from "alepha/cli";
 import { AlephaMcp, McpServerProvider } from "alepha/mcp";
 
-import { version } from "../alephaPackageJson.ts";
 import { DevMcpActionTools } from "./DevMcpActionTools.ts";
 import { DevMcpAppTools } from "./DevMcpAppTools.ts";
 import { DevMcpDataTools } from "./DevMcpDataTools.ts";

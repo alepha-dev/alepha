@@ -1,7 +1,7 @@
 import { $inject, z } from "alepha";
+import { DocsLibrary } from "alepha/cli";
 import { $tool } from "alepha/mcp";
 
-import { DocsLibrary } from "../services/DocsLibrary.ts";
 import { DevMcpSession } from "./DevMcpSession.ts";
 
 /**

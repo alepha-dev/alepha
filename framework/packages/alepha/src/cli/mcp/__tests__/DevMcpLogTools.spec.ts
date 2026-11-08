@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { InspectorRegistry, InspectorRunProvider } from "alepha/inspector";
 import { afterEach, describe, it } from "vitest";
 
-import { DevMcpSession } from "../mcp/DevMcpSession.ts";
+import { DevMcpSession } from "../services/DevMcpSession.ts";
 import { NotesApp, startFixture } from "./fixtures/mcpFixtureApp.ts";
 
 describe("alepha mcp: logs, emails and SMS", () => {

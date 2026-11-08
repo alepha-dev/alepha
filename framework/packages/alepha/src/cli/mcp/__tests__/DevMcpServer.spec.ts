@@ -13,8 +13,8 @@ import { McpServerProvider } from "alepha/mcp";
 import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
 import { afterEach, describe, it } from "vitest";
 
-import { DevMcpServer } from "../mcp/DevMcpServer.ts";
-import { DevMcpSession } from "../mcp/DevMcpSession.ts";
+import { DevMcpServer } from "../services/DevMcpServer.ts";
+import { DevMcpSession } from "../services/DevMcpSession.ts";
 
 /**
  * A registry that lists what the spec says, for the selection rule. The

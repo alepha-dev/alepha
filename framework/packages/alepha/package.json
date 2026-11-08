@@ -209,6 +209,11 @@
       "import": "./src/cli/infra-lib/index.ts",
       "default": "./src/cli/infra-lib/index.ts"
     },
+    "./cli/mcp": {
+      "types": "./src/cli/mcp/index.ts",
+      "import": "./src/cli/mcp/index.ts",
+      "default": "./src/cli/mcp/index.ts"
+    },
     "./cli/vendor": {
       "types": "./src/cli/vendor/index.ts",
       "import": "./src/cli/vendor/index.ts",
@@ -705,6 +710,11 @@
         "workerd": "./dist/cli/infra-lib/index.workerd.js",
         "import": "./dist/cli/infra-lib/index.js",
         "default": "./dist/cli/infra-lib/index.js"
+      },
+      "./cli/mcp": {
+        "types": "./dist/cli/mcp/index.d.ts",
+        "import": "./dist/cli/mcp/index.js",
+        "default": "./dist/cli/mcp/index.js"
       },
       "./cli/vendor": {
         "types": "./dist/cli/vendor/index.d.ts",

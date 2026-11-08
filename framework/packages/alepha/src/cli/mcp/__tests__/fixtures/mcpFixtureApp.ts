@@ -19,7 +19,7 @@ import { $action, HttpError } from "alepha/server";
 import { LocalSmsProvider, localSmsOptions, SmsProvider } from "alepha/sms";
 import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
 
-import { DevMcpServer } from "../../mcp/DevMcpServer.ts";
+import { DevMcpServer } from "../../services/DevMcpServer.ts";
 
 /**
  * The value of the fixture's secret env variable: no tool output may hold it.
