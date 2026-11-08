@@ -12,7 +12,9 @@ import {
   PipelineHandler,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
+  SchemaValidationError,
   type SchemaOutput,
+  type ZType,
   z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
@@ -636,11 +638,27 @@ export class ActionPrimitive<
       return serverActionRequest.reply.body as ClientRequestResponse<TConfig>;
     }
 
+    // A value that fails its schema cannot be encoded, and that failure is
+    // the caller's input being refused, not a fault: it is left as it came,
+    // so `validateRequest` below refuses it the way an HTTP request is
+    // refused, a 400 `ValidationError` naming the part and its fields. A
+    // batched call reaches the action here, and must fail like a lone one.
+    const encode = <V>(schema: ZType, value: V): V => {
+      try {
+        return this.alepha.codec.encode(schema, value) as V;
+      } catch (error) {
+        if (error instanceof SchemaValidationError) {
+          return value;
+        }
+        throw error;
+      }
+    };
+
     const executeHandler = async (): Promise<
       ClientRequestResponse<TConfig>
     > => {
       if (serverActionRequest.query && this.options.schema?.query) {
-        serverActionRequest.query = this.alepha.codec.encode(
+        serverActionRequest.query = encode(
           this.options.schema.query,
           serverActionRequest.query,
         );
@@ -656,7 +674,7 @@ export class ActionPrimitive<
         for (const key of Object.keys(z.schema.shape(schemaHeaders))) {
           const lcKey = key.toLowerCase();
           if (headers[lcKey] !== undefined) {
-            headers[lcKey] = this.alepha.codec.encode(
+            headers[lcKey] = encode(
               z.schema.shape(schemaHeaders)[key],
               headers[lcKey],
             );
@@ -665,14 +683,14 @@ export class ActionPrimitive<
       }
 
       if (serverActionRequest.body && this.options.schema?.body) {
-        serverActionRequest.body = this.alepha.codec.encode(
+        serverActionRequest.body = encode(
           this.options.schema.body,
           serverActionRequest.body,
         ) as unknown;
       }
 
       if (serverActionRequest.params && this.options.schema?.params) {
-        serverActionRequest.params = this.alepha.codec.encode(
+        serverActionRequest.params = encode(
           this.options.schema.params,
           serverActionRequest.params,
         ) as Record<string, any>;

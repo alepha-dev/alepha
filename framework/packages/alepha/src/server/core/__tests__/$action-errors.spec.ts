@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, SchemaValidationError, z } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
@@ -20,6 +20,7 @@ import {
   InternalServerError,
   NotFoundError,
   ServerProvider,
+  ValidationError,
 } from "../index.ts";
 
 const QuotaExceeded = HttpError.extend({
@@ -279,9 +280,10 @@ describe("$action errors", () => {
       const local = await caught(() =>
         api.validated({ body: { n: "x" as unknown as number } }),
       );
-      // A local call encodes the body before validating it, so the codec's
-      // own error escapes first; either way it never reaches the filter.
-      expect(local).toBeInstanceOf(SchemaValidationError);
+      // A local call is refused like an HTTP one (#Q3201): a batched call
+      // runs through here, and must fail with the same 400.
+      expect(local).toBeInstanceOf(ValidationError);
+      expect((local as ValidationError).data.part).toBe("body");
 
       const http = await call("validated", {
         body: JSON.stringify({ n: "x" }),

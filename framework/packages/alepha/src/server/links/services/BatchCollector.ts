@@ -120,7 +120,8 @@ export class BatchCollector {
           // Rebuilt the way `HttpClient.responseError` rebuilds a single
           // request's error: the registered class by name, and the request
           // id in its data (#Q3104).
-          const data: { status: number; requestId?: string } = {
+          const data: Record<string, any> = {
+            ...result.errorData,
             status: result.status,
           };
           if (result.requestId) data.requestId = result.requestId;
@@ -215,4 +216,5 @@ interface BatchResponse {
   error?: string;
   name?: string;
   requestId?: string;
+  errorData?: Record<string, any>;
 }
