@@ -195,6 +195,23 @@ describe("alepha/api/users - MyProfileController", () => {
     expect((await read(ctx)).lastName).toBeFalsy();
   });
 
+  it("should clear a name sent empty or blank, as if sent null", async ({
+    expect,
+  }) => {
+    // What an emptied text box submits. The account form sends its values
+    // as they are (#Q3225), so the server is where "" becomes "no name".
+    const ctx = await setup("prof-clear-empty");
+    await update(ctx, { firstName: "Ada", lastName: "Lovelace" });
+
+    const updated = await update(ctx, { firstName: "", lastName: "   " });
+
+    expect(updated.firstName ?? null).toBeNull();
+    expect(updated.lastName ?? null).toBeNull();
+    const stored = await read(ctx);
+    expect(stored.firstName ?? null).toBeNull();
+    expect(stored.lastName ?? null).toBeNull();
+  });
+
   it("should leave a name alone when its field is absent", async ({
     expect,
   }) => {
