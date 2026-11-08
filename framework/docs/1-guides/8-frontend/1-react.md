@@ -305,6 +305,26 @@ The usual causes, in order of how often they turn out to be it:
 The fix is the same each time: render what the server rendered, then correct it
 in an effect after mount.
 
+## Render crashes an error boundary caught
+
+A page that throws while rendering is caught by the error boundary the router
+mounts around every page and overlay, and the visitor sees its fallback. React
+fires **no** `window.onerror` for an error a boundary caught, so a crash
+reporter listening there never hears it.
+
+Alepha reports it on `react:render:caught`, for the router's boundaries and any
+`ErrorBoundary` the app mounts itself:
+
+```typescript
+alepha.events.on("react:render:caught", ({ error, componentStack, state }) => {
+  console.error(`Render crash on ${state?.url.pathname}`, componentStack);
+});
+```
+
+`state` is the router state at the moment of the crash, so a crash after a
+navigation names the page it happened on. `@alepha/lore` reports these the same
+way as a hydration mismatch.
+
 ## Data fetching and cache invalidation
 
 `useQuery` (from `alepha/react`) is `useAction` pre-wired for reads: it runs on mount and whenever its dependency list changes, and returns `{ data, loading, error, refetch, cancel, isStale }`. It works without a cache - pass a handler, get `data` / `loading` / `error` / `refetch`. Pass a `key` and it joins a shared cache.

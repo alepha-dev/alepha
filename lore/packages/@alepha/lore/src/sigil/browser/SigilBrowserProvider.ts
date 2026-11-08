@@ -210,19 +210,19 @@ export class SigilBrowserProvider {
        * stack - so the subtree that mismatched is what separates one of these
        * from another, which is exactly what a fingerprint should key on.
        */
-      this.alepha.events.on("react:render:recovered", (ev) => {
-        if (!this.wants("errors")) return;
-        if (!this.isCrash(ev.error)) return;
-        const error = this.toError(ev.error, location.href);
-        this.queue!.addError(
-          ev.componentStack
-            ? {
-                ...error,
-                stack: `${error.stack}\n${ev.componentStack}`.slice(0, 4096),
-              }
-            : error,
-        );
-      });
+      this.alepha.events.on("react:render:recovered", (ev) =>
+        this.reportRenderError(ev),
+      );
+
+      /*
+       * A render crash an error boundary caught: the visitor sees a fallback
+       * instead of the page. React fires no `window.error` for what a
+       * boundary caught, so before this listener a pure client-side render
+       * crash reported nothing at all.
+       */
+      this.alepha.events.on("react:render:caught", (ev) =>
+        this.reportRenderError(ev),
+      );
 
       window.addEventListener("error", (e) => {
         if (!this.wants("errors")) return;
@@ -583,6 +583,31 @@ export class SigilBrowserProvider {
     return (
       ev.type === "form" &&
       (ev.error as { name?: string } | undefined)?.name === "FORM_VALIDATION"
+    );
+  }
+
+  /**
+   * A render error React handed to a root option, recovered or caught by a
+   * boundary.
+   *
+   * The component stack is appended to the stack rather than sent beside it:
+   * the envelope has no field for it, and the sink fingerprints on the stack,
+   * so the subtree that failed is what separates one of these from another.
+   */
+  protected reportRenderError(ev: {
+    error: unknown;
+    componentStack?: string;
+  }): void {
+    if (!this.wants("errors")) return;
+    if (!this.isCrash(ev.error)) return;
+    const error = this.toError(ev.error, location.href);
+    this.queue!.addError(
+      ev.componentStack
+        ? {
+            ...error,
+            stack: `${error.stack}\n${ev.componentStack}`.slice(0, 4096),
+          }
+        : error,
     );
   }
 

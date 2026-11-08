@@ -139,6 +139,24 @@ declare module "alepha" {
       componentStack?: string;
       state: ReactRouterState;
     };
+    /**
+     * Fires when an error boundary caught a render error on the browser: the
+     * router's own around every page and overlay, or one the app mounted.
+     *
+     * **Not recovered**, unlike `react:render:recovered`: the visitor sees the
+     * boundary's fallback instead of the page. A crash reporter subscribes
+     * here because React fires no `window.onerror` for an error a boundary
+     * caught, so this event is the only trace a client-side render crash
+     * leaves.
+     *
+     * `state` is the router state at the moment of the crash, absent only
+     * when the app renders without the router.
+     */
+    "react:render:caught": {
+      error: unknown;
+      componentStack?: string;
+      state?: ReactRouterState;
+    };
     // -----------------------------------------------------------------------------------------------------------------
     // SPECIFIC: Route transitions
     /**

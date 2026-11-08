@@ -346,6 +346,55 @@ describe("SigilBrowserProvider", () => {
     });
   });
 
+  /**
+   * #Q3186. React fires no `window.error` for an error a boundary caught, so a
+   * page that crashed into its fallback reported nothing at all.
+   * `ReactBrowserRendererProvider` emits `react:render:caught` from
+   * `onCaughtError`, and this listener is the only path these have.
+   */
+  describe("a render crash an error boundary caught is reported", () => {
+    const startedProvider = async (errors = true) => {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+      return { alepha, provider };
+    };
+
+    it("reports it with the component stack appended", async () => {
+      const { alepha, provider } = await startedProvider();
+      await alepha.events.emit("react:render:caught", {
+        error: Object.assign(new Error("page exploded"), {
+          stack: "Error: page exploded\n    at QuestPage",
+        }),
+        componentStack: "\n    at QuestPage\n    at NestedView",
+      });
+
+      expect(provider.debugPendingErrors()).toEqual(["page exploded"]);
+      expect(provider.debugPendingErrorStacks()[0]).toContain("at NestedView");
+    });
+
+    it("drops a 4xx like every other source", async () => {
+      const { alepha, provider } = await startedProvider();
+      await alepha.events.emit("react:render:caught", {
+        error: Object.assign(new Error("Not found"), { status: 404 }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+
+    it("reports nothing when the project turned errors off", async () => {
+      const { alepha, provider } = await startedProvider(false);
+      await alepha.events.emit("react:render:caught", {
+        error: new Error("page exploded"),
+      });
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+  });
+
   it("attaches the referrer host to the landing pageview", async () => {
     const restore = withReferrer("https://news.ycombinator.com/item?id=42");
     try {

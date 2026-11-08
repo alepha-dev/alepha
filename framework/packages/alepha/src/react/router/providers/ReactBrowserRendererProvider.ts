@@ -15,13 +15,37 @@ export class ReactBrowserRendererProvider {
   protected root?: Root;
 
   /**
-   * An error React caught in a boundary, or could not catch at all, during
-   * the first screen is a failed boot. Later ones are the app's to handle.
+   * An error an error boundary caught: the router's own around every page and
+   * overlay, or one the app mounted.
+   *
+   * During the first screen it is a failed boot. At any time it is a crash the
+   * visitor sees as a fallback, so it is emitted as `react:render:caught` for
+   * a crash reporter: React fires no `window.onerror` for what a boundary
+   * caught, so without this event a client-side render crash reaches nobody.
+   *
+   * The route is read from the store at the moment of the crash, not from the
+   * boot's state: a crash after three navigations is on the third page.
    */
-  protected onCaughtError = (error: unknown) => {
+  protected onCaughtError = (
+    error: unknown,
+    errorInfo?: { componentStack?: string | null },
+  ) => {
     this.bootHealth.report("failed", error);
     // React's own default for a caught error is console.error.
     console.error(error);
+
+    const state = this.alepha.store.get("alepha.react.router.state");
+    this.alepha.events
+      .emit("react:render:caught", {
+        error,
+        componentStack: errorInfo?.componentStack ?? undefined,
+        state,
+      })
+      .catch((err) => {
+        // Never silently: a listener that throws would otherwise make the
+        // report this handler exists to produce disappear.
+        this.log.error("Failed to emit react:render:caught", { error: err });
+      });
   };
 
   protected onUncaughtError = (error: unknown) => {
