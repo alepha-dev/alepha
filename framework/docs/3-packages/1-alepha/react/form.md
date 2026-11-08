@@ -24,6 +24,7 @@ Type-safe forms with validation.
 
 ### React Hooks
 
+- [`useActionForm`](/docs/reference-react-hooks-useactionform) - A form that posts one action: its values are the action's `body`.
 - [`useFieldValue`](/docs/reference-react-hooks-usefieldvalue) - Hook to subscribe to a single form field's value.
 - [`useForm`](/docs/reference-react-hooks-useform) - Custom hook to create a form with validation and field management.
 - [`useFormQuerySync`](/docs/reference-react-hooks-useformquerysync) - Two-way bind a `useForm` instance to the URL query params, keyed

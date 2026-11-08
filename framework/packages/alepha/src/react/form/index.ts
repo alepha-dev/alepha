@@ -4,6 +4,7 @@ import { $module } from "alepha";
 
 export { default as FormState } from "./components/FormState.tsx";
 export * from "./errors/FormValidationError.ts";
+export * from "./hooks/useActionForm.ts";
 export * from "./hooks/useFieldValue.ts";
 export * from "./hooks/useForm.ts";
 export * from "./hooks/useFormQuerySync.ts";
