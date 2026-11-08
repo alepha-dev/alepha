@@ -228,6 +228,27 @@ describe("ProjectEpics - the status filter", () => {
     return screen.findByRole("combobox", { name: label });
   };
 
+  /**
+   * The review questions still open (#E121), on a draft or ready epic only:
+   * past ready the review set is a read-only record, not a to-do.
+   */
+  it("counts the open review questions of a draft or ready epic", async () => {
+    await mount(
+      [],
+      [
+        { ...epicOf(1, "Draft epic", "draft"), openQuestions: 3 },
+        { ...epicOf(2, "Quiet epic", "ready"), openQuestions: 0 },
+        { ...epicOf(3, "Started epic", "in_progress"), openQuestions: 2 },
+      ],
+    );
+
+    expect(screen.getByTestId("epic-open-questions-1").textContent).toBe(
+      "3 review questions open",
+    );
+    expect(screen.queryByTestId("epic-open-questions-2")).toBeNull();
+    expect(screen.queryByTestId("epic-open-questions-3")).toBeNull();
+  });
+
   it("shows every status while nothing is selected", async () => {
     await mount();
 

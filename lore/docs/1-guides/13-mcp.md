@@ -90,16 +90,18 @@ See [Quests](/lore/docs/guides-quests).
 
 See [Epics](/lore/docs/guides-epics).
 
-| Tool              | What it does                                                   |
-| ----------------- | -------------------------------------------------------------- |
-| `epic_list`       | Every epic, whatever its status, with its progress.            |
-| `epic_get`        | One epic, with its progress and folios.                        |
-| `epic_create`     | Create an epic, as a draft.                                    |
-| `epic_update`     | Change its title, description or predecessor, in any status.   |
-| `epic_set_status` | Move an epic between `draft` and `ready`.                      |
-| `epic_shelve`     | Set a whole plan aside, with its open quests.                  |
-| `epic_unshelve`   | Bring it back, with only the quests it set aside.              |
-| `epic_delete`     | Delete an epic and its quests, while it is `draft` or `ready`. |
+| Tool                 | What it does                                                   |
+| -------------------- | -------------------------------------------------------------- |
+| `epic_list`          | Every epic, whatever its status, with its progress.            |
+| `epic_get`           | One epic, with its progress, folios and review log.            |
+| `epic_create`        | Create an epic, as a draft.                                    |
+| `epic_update`        | Change its title, description or predecessor, in any status.   |
+| `epic_set_status`    | Move an epic between `draft` and `ready`.                      |
+| `epic_shelve`        | Set a whole plan aside, with its open quests.                  |
+| `epic_unshelve`      | Bring it back, with only the quests it set aside.              |
+| `epic_delete`        | Delete an epic and its quests, while it is `draft` or `ready`. |
+| `epic_review_create` | File a review: its questions, decisions and changes.           |
+| `epic_review_answer` | Answer, waive or overturn a review item, by its number.        |
 
 ## Releases
 

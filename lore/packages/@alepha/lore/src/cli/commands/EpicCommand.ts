@@ -1,4 +1,4 @@
-import type { EpicController } from "@lore/work/api";
+import type { EpicController, EpicReviewController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -13,7 +13,8 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore epic list | get | create | update | set status | shelve | unshelve | delete`.
+ * `lore epic list | get | create | update | set status | shelve | unshelve | delete`,
+ * and `lore epic review create | answer` (#E121).
  *
  * ```bash
  * lore epic create -p alepha --title "Lore CLI parity" --description @plan.md
@@ -47,6 +48,9 @@ export class EpicCommand {
    * below it sees `undefined`.
    */
   protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly reviewApi = $client<EpicReviewController>(
+    this.client.scope(),
+  );
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -111,11 +115,24 @@ export class EpicCommand {
         const epic = await this.epicApi.getEpicDetailByNumber({
           params: { projectId, number },
         });
+        // `reviews` is what `epic_get` turns into `review` (#E121): the open
+        // questions and the decision log.
+        const { reviews } = epic;
 
         if (flags.output === "json") {
           this.render.json(print, epic);
           return;
         }
+
+        const items = reviews.reviews
+          .flatMap((review) => review.items)
+          .sort((a, b) => a.number - b.number);
+        const open = items.filter((item) => item.state === "open");
+        const log = items.filter((item) =>
+          item.kind === "question"
+            ? item.state === "answered"
+            : item.kind === "decision" && item.replacedBy == null,
+        );
 
         const { progress } = epic;
         this.render.entity(print, {
@@ -137,16 +154,44 @@ export class EpicCommand {
             ["Completed", epic.completedAt],
           ],
           body: epic.description,
-          sections: epic.folios.length
-            ? [
-                {
-                  title: "Folios",
-                  lines: epic.folios.map(
-                    (folio) => `F${folio.shortId}  ${folio.title}`,
-                  ),
-                },
-              ]
-            : [],
+          sections: [
+            ...(epic.folios.length
+              ? [
+                  {
+                    title: "Folios",
+                    lines: epic.folios.map(
+                      (folio) => `F${folio.shortId}  ${folio.title}`,
+                    ),
+                  },
+                ]
+              : []),
+            ...(open.length
+              ? [
+                  {
+                    title: "Open review questions",
+                    lines: open.flatMap((item) => [
+                      `${item.number}. ${item.title}`,
+                      ...item.suggestions.map(
+                        (suggestion, index) =>
+                          `   ${index}${item.recommended === index ? "*" : " "} ${suggestion.label}${suggestion.cost ? ` (${suggestion.cost})` : ""}`,
+                      ),
+                    ]),
+                  },
+                ]
+              : []),
+            ...(log.length
+              ? [
+                  {
+                    title: "Decision log",
+                    lines: log.map((item) =>
+                      item.kind === "question"
+                        ? `${item.number}. ${item.title} Answer: ${item.answer ?? ""}`
+                        : `${item.number}. decision: ${item.title}`,
+                    ),
+                  },
+                ]
+              : []),
+          ],
         });
       });
     },
@@ -293,11 +338,14 @@ export class EpicCommand {
           body: { status: flags.status },
         });
 
+        const open = updated.openQuestions ?? 0;
         this.render.written(
           print,
           flags.output,
           updated,
-          `E${number} is now ${updated.status}`,
+          open > 0
+            ? `E${number} is now ${updated.status}, with ${open} review questions still open`
+            : `E${number} is now ${updated.status}`,
         );
       });
     },
@@ -417,6 +465,145 @@ export class EpicCommand {
   });
 
   /**
+   * `lore epic review create`, `epic_review_create` by the naming rule. The
+   * items are JSON, from a file or stdin (`--items @review.json`,
+   * `--items @-`), in the shape the tool takes them.
+   */
+  public readonly reviewCreate = $command({
+    name: "create",
+    description:
+      "File a review of a draft or ready epic: its questions, decisions and changes, in one record",
+    args: EpicCommand.REF_ARG,
+    flags: z.object({
+      ...EpicCommand.PROJECT_FLAG,
+      summary: z
+        .text({
+          maxLength: 2000,
+          description: "What the review concluded, in a line or two.",
+        })
+        .optional(),
+      items: z.text({
+        size: "rich",
+        atFile: true,
+        description:
+          'The items, a JSON array: [{"kind":"question","title":"...","context":"...","suggestions":[{"label":"...","cost":"..."}],"recommended":0}]. kind is question, decision or change; [] files an empty review.',
+      }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const number = this.refs.epic(args);
+        const items = this.parseItems(flags.items);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const target = await this.epicApi.getEpicByNumber({
+          params: { projectId, number },
+        });
+        const review = await this.reviewApi.createEpicReview({
+          params: { id: target.id },
+          body: { summary: flags.summary, items },
+        });
+
+        if (flags.output === "json") {
+          this.render.json(print, review);
+          return;
+        }
+        if (review.items.length > 0) {
+          print(`Filed a review of E${number}, ${review.items.length} items:`);
+        }
+        this.render.list(
+          print,
+          review.items.map((item) => ({
+            handle: String(item.number),
+            title: item.title,
+            fields: [item.kind],
+          })),
+          undefined,
+          `Filed an empty review of E${number}.`,
+        );
+      });
+    },
+  });
+
+  /**
+   * `lore epic review answer <epic> --item <n>`, `epic_review_answer`. The
+   * item is a flag, not a second positional: help titles one positional only.
+   */
+  public readonly reviewAnswer = $command({
+    name: "answer",
+    description:
+      "Record the owner's answer to a review item: text, a suggestion, or a waive",
+    args: EpicCommand.REF_ARG,
+    flags: z.object({
+      ...EpicCommand.PROJECT_FLAG,
+      item: z
+        .integer()
+        .min(1)
+        .describe("The item's number, per epic, as the review shows it."),
+      answer: z
+        .text({
+          size: "rich",
+          atFile: true,
+          description:
+            "The answer in the owner's words. On a decision, the decision that replaces it.",
+        })
+        .optional(),
+      suggestion: z
+        .integer()
+        .min(0)
+        .describe("Pick one of the item's suggestions, by index from 0.")
+        .optional(),
+      waive: z
+        .boolean()
+        .describe("Set a question aside unanswered.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const number = this.refs.epic(args);
+        const item = flags.item;
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const target = await this.epicApi.getEpicByNumber({
+          params: { projectId, number },
+        });
+        const result = await this.reviewApi.answerEpicReviewItem({
+          params: { id: target.id, number: item },
+          body: {
+            answer: flags.answer,
+            suggestion: flags.suggestion,
+            waive: flags.waive,
+          },
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          result,
+          result.replacement
+            ? `Overturned item ${item} of E${number}: decision ${result.replacement.number} replaces it`
+            : `Item ${item} of E${number} is ${result.outcome}`,
+        );
+      });
+    },
+  });
+
+  /**
+   * `lore epic review`, declared after its children.
+   */
+  public readonly review = $command({
+    name: "review",
+    description: "An epic's reviews: file one, answer an item",
+    children: [this.reviewCreate, this.reviewAnswer],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
    * `findLast`, so a second class declaring `epic` would shadow this one
    * silently.
@@ -424,7 +611,7 @@ export class EpicCommand {
   public readonly epic = $command({
     name: "epic",
     description:
-      "A project's epics: list, read, create, update, set status, shelve and delete them",
+      "A project's epics: list, read, create, update, set status, shelve, delete and review them",
     children: [
       this.list,
       this.get,
@@ -434,6 +621,7 @@ export class EpicCommand {
       this.shelve,
       this.unshelve,
       this.delete,
+      this.review,
     ],
     handler: async ({ help }) => {
       help();
@@ -454,5 +642,26 @@ export class EpicCommand {
       params: { projectId, number: this.refs.epic(ref) },
     });
     return predecessor.id;
+  }
+
+  /**
+   * `--items` as JSON, refused with a usage line before anything is sent.
+   * The server validates each item's shape; this only checks it is a list.
+   */
+  protected parseItems(raw: string): any[] {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      throw new UsageError(
+        `--items is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (!Array.isArray(parsed)) {
+      throw new UsageError(
+        "--items must be a JSON array of items; [] files an empty review.",
+      );
+    }
+    return parsed;
   }
 }

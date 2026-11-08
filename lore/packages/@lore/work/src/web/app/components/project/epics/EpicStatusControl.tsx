@@ -10,6 +10,11 @@ import { epicBlockedBy } from "./epicStatus.ts";
 export interface EpicStatusControlProps {
   epic: EpicResource;
   onChange: (epic: EpicResource) => void;
+  /**
+   * Show the epic's Review tab: where the confirm sends a reader who backs
+   * out of marking an epic ready with review questions still open.
+   */
+  onReview?: () => void;
 }
 
 /**
@@ -46,6 +51,13 @@ export interface EpicStatusControlProps {
  * started yet (a ready epic with an accepted quest is already in progress),
  * and the next click undoes it.
  *
+ * ## Open review questions are named, never a refusal (#E121)
+ *
+ * With review questions still open, the confirm says how many and offers
+ * the Review tab as the way out; marking it ready anyway stays one click.
+ * The server never refuses on them either (`epic_set_status` reports the
+ * count beside the new status).
+ *
  * ## A blocked epic says why
  *
  * `epics.dependsOn` gates the start: no quest of a ready epic is accepted
@@ -63,7 +75,29 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
   const changeAction = useAction<[status: "draft" | "ready"], void>(
     {
       handler: async (_ctx, status) => {
-        if (
+        const open = props.epic.openQuestions ?? 0;
+        if (status === "ready" && open > 0) {
+          // Asks, never refuses (#E121): whether the spec is done is the
+          // owner's call, so the open questions are named and the reader
+          // decides. Backing out opens the Review tab, where they are.
+          const ok = await dialog.confirm({
+            title:
+              open === 1
+                ? tr("epic.ready.openQuestions.title.one")
+                : tr("epic.ready.openQuestions.title", {
+                    args: [String(open)],
+                  }),
+            description: tr("epic.ready.openQuestions.confirm", {
+              args: [props.epic.title],
+            }),
+            confirmLabel: tr("epic.ready.openQuestions.anyway"),
+            cancelLabel: tr("epic.ready.openQuestions.review"),
+          });
+          if (!ok) {
+            props.onReview?.();
+            return;
+          }
+        } else if (
           status === "ready" &&
           !(await dialog.confirm({
             title: tr("epic.ready.title"),
@@ -84,7 +118,16 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
         );
       },
     },
-    [epicApi, dialog, props.epic.id, props.epic.title, props.onChange, tr],
+    [
+      epicApi,
+      dialog,
+      props.epic.id,
+      props.epic.title,
+      props.epic.openQuestions,
+      props.onChange,
+      props.onReview,
+      tr,
+    ],
   );
   const submitting = changeAction.loading;
 
