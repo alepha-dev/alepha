@@ -358,6 +358,12 @@ export class InspectorRoutes {
           page: z.text().optional(),
           size: z.text().optional(),
           sort: z.text().optional(),
+          /**
+           * A JSON object of column to value, equality only:
+           * `{"status":"open","projectId":3}`. A column the entity does not
+           * have is a 400, never a silent empty page.
+           */
+          where: z.text({ size: "rich" }).optional(),
         }),
         response: z.record(z.text(), z.any()),
       },
@@ -373,7 +379,7 @@ export class InspectorRoutes {
             size: query.size ? Number(query.size) : 50,
             sort: query.sort || undefined,
           },
-          {},
+          { where: this.parseWhere(repo, query.where) as any },
           { count: true },
         ) as any;
       },
@@ -883,6 +889,46 @@ export class InspectorRoutes {
     } catch {
       return undefined;
     }
+  }
+
+  /**
+   * The `where` of a `dbList`: a JSON object of column to a string, number
+   * or boolean, as `{ column: { eq: value } }`. Refused (400) when it is not
+   * that, or names a column the entity does not have.
+   */
+  protected parseWhere(
+    repo: { entity: { name: string; schema: unknown } },
+    raw?: string,
+  ): Record<string, { eq: unknown }> {
+    if (!raw) return {};
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new BadRequestError(`"where" is not JSON: ${raw}`);
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new BadRequestError(
+        '"where" is a JSON object of column to value, e.g. {"status":"open"}',
+      );
+    }
+
+    const columns = Object.keys(z.schema.shape(repo.entity.schema));
+    const where: Record<string, { eq: unknown }> = {};
+    for (const [column, value] of Object.entries(parsed)) {
+      if (!columns.includes(column)) {
+        throw new BadRequestError(
+          `"${repo.entity.name}" has no column "${column}". Columns: ${columns.join(", ")}`,
+        );
+      }
+      if (!["string", "number", "boolean"].includes(typeof value)) {
+        throw new BadRequestError(
+          `"where" compares "${column}" by equality to a string, number or boolean`,
+        );
+      }
+      where[column] = { eq: value };
+    }
+    return where;
   }
 
   protected parseId(repo: any, rawId: string): string | number {

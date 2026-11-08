@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { $env, $inject, Alepha, z } from "alepha";
+import { $env, $inject, Alepha, type ServiceEntry, z } from "alepha";
 import { $job, AlephaApiJobs } from "alepha/api/jobs";
 import {
   EmailProvider,
@@ -106,6 +106,18 @@ export class NotesApp {
     schema: z.object({ olderThanDays: z.integer() }),
     handler: async () => {},
   });
+
+  /**
+   * Fails every time: a failed run is kept, a successful one is not.
+   */
+  public readonly fail = $job({
+    name: "notes.fail",
+    description: "Fail with the given reason",
+    schema: z.object({ reason: z.text() }),
+    handler: async ({ payload }) => {
+      throw new Error(payload.reason);
+    },
+  });
 }
 
 /**
@@ -114,6 +126,7 @@ export class NotesApp {
  */
 export const startFixture = async (
   services: any[] = [NotesApp],
+  substitutions: ServiceEntry[] = [],
 ): Promise<{
   app: Alepha;
   server: Alepha;
@@ -141,6 +154,7 @@ export const startFixture = async (
 
   const server = new DevMcpServer().create(process.cwd(), env, [
     { provide: FileSystemProvider, use: NodeFileSystemProvider },
+    ...substitutions,
   ]);
   await server.start();
 
