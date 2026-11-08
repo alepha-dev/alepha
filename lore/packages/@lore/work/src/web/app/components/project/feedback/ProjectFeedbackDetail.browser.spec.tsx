@@ -18,7 +18,7 @@ import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
 /**
  * Stands in for the HTTP-backed `useClient()` calls this pane and its
  * thread make. Same substitution seam as
- * `QuestDependencyPicker.browser.spec.tsx` (`CLAUDE.md`: never
+ * `QuestDependencyPicker.browser.spec.tsx` (`AGENTS.md`: never
  * `vi.mock` / `vi.spyOn`).
  */
 class FakeLinkProvider extends LinkProvider {

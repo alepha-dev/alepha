@@ -48,7 +48,7 @@ This creates a `my-app` directory with:
 - `src/web/` with a React router and page
 - `src/main.server.ts` and `src/main.browser.ts` as the entry files, plus `src/main.css`
 - `vite.config.ts` with the Tailwind plugin
-- `AGENTS.md` and `CLAUDE.md` so AI assistants know the project's conventions
+- `AGENTS.md` so AI assistants know the project's conventions
 - the supporting files: `.gitignore`, `.editorconfig`, `.env.example`,
   `.vscode/` settings, `public/favicon.svg`, and a starter `test/dummy.spec.ts`
 
@@ -362,7 +362,6 @@ my-app/
   .gitignore
   .vscode/                  # Recommended extensions and settings
   AGENTS.md                 # Conventions for AI assistants
-  CLAUDE.md                 # Points to AGENTS.md
   vite.config.ts            # Tailwind plugin + Vitest config
   public/
     favicon.svg

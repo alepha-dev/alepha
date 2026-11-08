@@ -66,7 +66,7 @@ interface RecordedUpdate {
 /**
  * Stands in for the real HTTP-backed client `useClient<FolioController>()`
  * would otherwise build. Overriding `LinkProvider.client()` is the
- * documented Alepha service-substitution seam (`CLAUDE.md`: never
+ * documented Alepha service-substitution seam (`AGENTS.md`: never
  * `vi.mock`/`vi.spyOn`) — `useClient` is a one-line `useInject(LinkProvider)
  * .client<T>()`, so substituting the provider substitutes every action call
  * `useFolioActions` makes, with no network and no real server.

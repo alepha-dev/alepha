@@ -19,7 +19,7 @@ export class WorkAccountRouter {
    * ⚠️ **The route name `myFeedback` is deliberately NOT `accountFeedback`.**
    *
    * It predates this migration, is referenced as a plain string by call sites
-   * and by `apps/lore/CLAUDE.md`, and `router.path("myFeedback")` silently
+   * and by `apps/lore/AGENTS.md`, and `router.path("myFeedback")` silently
    * widens to the plain `string` overload the moment the name stops existing
    * — no type error, a render-time throw in production instead. The path
    * moved from `/auth/profile/feedback` to `/account/feedback`; the name did

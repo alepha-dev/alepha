@@ -182,7 +182,7 @@ export interface UseFolioActionsResult {
  * FIRST save issued right after an in-session Encrypt would read the STALE
  * `false` and send `protected: false` with the live plaintext draft — which
  * the server treats as a deliberate, permitted "remove protection" request
- * (see `apps/lore/CLAUDE.md`'s protection-domain invariant). That would
+ * (see `apps/lore/AGENTS.md`'s protection-domain invariant). That would
  * silently downgrade a folio the user just finished protecting. Local state,
  * seeded once from `props.folio` and updated only by this hook's own
  * successful encrypt/remove-protection calls, avoids that: it is always the
@@ -399,7 +399,7 @@ export const useFolioActions = (
    *
    * Protected folios: `reverted.content` is the OLD ciphertext from that
    * revision (same salt — revisions never cross a protection-domain
-   * boundary, purged instead; see `apps/lore/CLAUDE.md`'s
+   * boundary, purged instead; see `apps/lore/AGENTS.md`'s
    * protection-domain invariant), so it has to be decrypted with the
    * cached key before it can be shown. If this session never unlocked
    * the folio (no cached key), there is no safe way to reflect the

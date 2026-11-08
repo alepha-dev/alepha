@@ -40,7 +40,7 @@ export const folios = $entity({
     /**
      * Pin a folio so it sorts to the top of the project's folio list AND
      * (when not protected) has its full content surfaced by
-     * `project_context` — the per-project equivalent of CLAUDE.md.
+     * `project_context` — the per-project equivalent of AGENTS.md.
      * Per-project (one shared pin set per project, since folios are
      * project-shared since quest #65). Default false.
      */

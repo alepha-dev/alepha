@@ -13,7 +13,7 @@ const CODES = ["aaaa-1111", "bbbb-2222", "cccc-3333", "dddd-4444"];
 
 /**
  * Answers `enrollTotp` and `activateTotp`. Substitution rather than
- * `vi.mock`, per `CLAUDE.md`.
+ * `vi.mock`, per `AGENTS.md`.
  */
 class MfaLinkProvider extends LinkProvider {
   override client(): any {

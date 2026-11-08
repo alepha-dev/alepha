@@ -1,6 +1,6 @@
 # Alepha Lore
 
-Project management app built with [Alepha](https://github.com/alepha-dev/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **areas**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" in [`packages/@lore/core/CLAUDE.md`](../../packages/@lore/core/CLAUDE.md)).
+Project management app built with [Alepha](https://github.com/alepha-dev/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **areas**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" in [`packages/@lore/core/AGENTS.md`](../../packages/@lore/core/AGENTS.md)).
 
 It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (project memory, wiki-linked, optionally end-to-end encrypted, and — since the 2026-08 rename — including the directory tree + binary blobs that used to be a separate "Archive" module), **feedback** (inbound bug/feature triage), and **blights** (deduplicated crash telemetry from partner sites via **sigils**). All four are exposed over **MCP**, which is the primary consumer.
 
@@ -18,7 +18,7 @@ The production Alepha Lore instance hosts the project we actually use to run thi
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with a good `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the _work inside_ a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased: see "De-gamification" in `packages/@lore/core/CLAUDE.md`). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: _Domaine_). Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
+Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the _work inside_ a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased: see "De-gamification" in `packages/@lore/core/AGENTS.md`). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: _Domaine_). Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
 A fourth pass (2026-08-30, epic #14) took **Milestone → `release`**: table, entity, controller, jobs, routes, `$page` names, components, both locales and the specs. It is a rename plus a **wipe** — every milestone row was deleted and Releases start empty in every project — because the two are not the same model. A milestone was a time window that collected whatever happened to complete inside it; a release is a named goal (`0.28.0`, `demo-1`) that **holds** the epics and quests due to ship in it. Membership is an assignment, not a window. Two identifiers deliberately did **not** move with it at the time, `projects.features.milestones` (a REQUIRED key inside a JSON column, see the incident below) and `projects.milestoneDuration`; both columns were dropped with #E74. Migration: `20260830112947_milestones_to_releases`, `DELETE` + two `RENAME`s, zero `DROP TABLE`.
 
@@ -30,12 +30,12 @@ All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
 Since #E75 (2026-10-06) the product lives in four packages, and `apps/lore` is what composes and ships them. Each package documents itself; read the one you are changing:
 
-| package           | is               | its `CLAUDE.md`                                                                                                                                         |
+| package           | is               | its `AGENTS.md`                                                                                                                                         |
 | ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@lore/core`      | the glue         | [`packages/@lore/core/CLAUDE.md`](../../packages/@lore/core/CLAUDE.md): barrels, registries, capabilities, access, routing traps, I18n, no transactions |
-| `@lore/work`      | Lore as Jira     | [`packages/@lore/work/CLAUDE.md`](../../packages/@lore/work/CLAUDE.md): quests, epics, releases, kanban, roadmap, feedback                              |
-| `@lore/knowledge` | Lore as Obsidian | [`packages/@lore/knowledge/CLAUDE.md`](../../packages/@lore/knowledge/CLAUDE.md): folios, directories, attachments, protected folios                    |
-| `@lore/deploy`    | Lore as Vercel   | [`packages/@lore/deploy/CLAUDE.md`](../../packages/@lore/deploy/CLAUDE.md): apps and instances, sigils and telemetry, deployments, estates              |
+| `@lore/core`      | the glue         | [`packages/@lore/core/AGENTS.md`](../../packages/@lore/core/AGENTS.md): barrels, registries, capabilities, access, routing traps, I18n, no transactions |
+| `@lore/work`      | Lore as Jira     | [`packages/@lore/work/AGENTS.md`](../../packages/@lore/work/AGENTS.md): quests, epics, releases, kanban, roadmap, feedback                              |
+| `@lore/knowledge` | Lore as Obsidian | [`packages/@lore/knowledge/AGENTS.md`](../../packages/@lore/knowledge/AGENTS.md): folios, directories, attachments, protected folios                    |
+| `@lore/deploy`    | Lore as Vercel   | [`packages/@lore/deploy/AGENTS.md`](../../packages/@lore/deploy/AGENTS.md): apps and instances, sigils and telemetry, deployments, estates              |
 
 The framework is **vendored**: `.vendor/alepha` and `.vendor/@alepha/ui` are the framework's `main`, synced by `yarn vendor:sync` and committed, and they are workspaces, so `alepha` / `@alepha/ui` resolve to them as source. Alepha has near-zero training data: read `../../.vendor/alepha/src/...` and `../../.vendor/@alepha/ui/src/...` as the authority, and **never edit them here**.
 
@@ -301,7 +301,7 @@ npx wrangler d1 execute lore-production --remote --json --command "SELECT name F
 ```
 
 The companion defect — why no blight was ever raised for any of it — is under
-"Sigils, Blights, Beacon, Vitals" in [`packages/@lore/deploy/CLAUDE.md`](../../packages/@lore/deploy/CLAUDE.md); both are written up in folio #82.
+"Sigils, Blights, Beacon, Vitals" in [`packages/@lore/deploy/AGENTS.md`](../../packages/@lore/deploy/AGENTS.md); both are written up in folio #82.
 
 ### ⚠️ Dropping a conjunct from a gate is a data migration with no SQL (accepted, 2026-08-06)
 
@@ -375,7 +375,7 @@ UPDATE alepha_sequences SET name = 'feedbackShortId' WHERE name = 'petitionShort
 
 Before that, the two runners diverged twice, once in each direction: a path alias present only in the app config (a spec green in the workspace, dead at import time from the root), and Node ≥ 25's native `localStorage` shadowing jsdom's, disabled only at the root (`useFolioPanes.browser.spec.tsx` red in the workspace while CI stayed green). Both are the shape of the `ADD COLUMN … NOT NULL` trap above, a check that could not have gone red. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while running in the wrong environment.
 
-Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subject is one package is listed in that package's `CLAUDE.md`:
+Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subject is one package is listed in that package's `AGENTS.md`:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model across packages: the backfill, the gate, and the route guards
@@ -386,7 +386,7 @@ Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subje
 - `migration-safety.spec.ts` — every dropped table needs a per-migration `SANCTIONED_DROPS` entry, a table with `CASCADE` or `SET NULL` children (read from the previous snapshot) cannot be dropped at all after `CASCADE_BASELINE`, historical replays keep their rows, and a fresh D1-shaped database boots with all migrations applied
 - Shared fixtures live in `test/fixtures/`
 
-End-to-end testing has its own workspace, `apps/e2e`: read `apps/e2e/CLAUDE.md` for the Playwright suite (one Lore instance per worker, ports, one file per feature) and the CLI suite.
+End-to-end testing has its own workspace, `apps/e2e`: read `apps/e2e/AGENTS.md` for the Playwright suite (one Lore instance per worker, ports, one file per feature) and the CLI suite.
 
 ## Manual testing via Playwright (Claude)
 

@@ -25,7 +25,7 @@ import ProjectActivityPage, {
 /**
  * Answers the three calls the page makes and records the activity query it
  * was asked with, so a case can assert both what rendered and what was
- * requested. Substitution rather than `vi.mock`, per CLAUDE.md.
+ * requested. Substitution rather than `vi.mock`, per AGENTS.md.
  */
 class FakeLinkProvider extends LinkProvider {
   public rows: ProjectActivityRow[] = [];

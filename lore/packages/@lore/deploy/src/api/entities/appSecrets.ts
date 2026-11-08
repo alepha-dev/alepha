@@ -24,7 +24,7 @@ import { appInstances } from "./appInstances.ts";
  * right: a deleted copy has no environment left to configure, and secrets kept
  * past their target are secrets nobody can find to revoke. It also makes
  * `app_instances` a cascade parent a second time over - see "Migration safety
- * on D1" in `apps/lore/CLAUDE.md` before any later migration touches it.
+ * on D1" in `apps/lore/AGENTS.md` before any later migration touches it.
  *
  * ## ⚠️ The value is sealed, from the first commit
  *

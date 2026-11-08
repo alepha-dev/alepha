@@ -33,7 +33,6 @@
     "tsconfig.base.json",
     "AGENTS.md",
     "CHANGELOG.md",
-    "CLAUDE.md",
     "docs"
   ],
   "type": "module",

@@ -175,7 +175,7 @@
     // assertions as having none.
     "vitest/expect-expect": "off",
     // Style, not correctness: `expect(fn).toThrow()` without a message is the
-    // documented pattern in CLAUDE.md and reads fine.
+    // documented pattern in AGENTS.md and reads fine.
     "vitest/require-to-throw-message": "off",
     // Would require a type argument on every `vi.fn()` in the repo. The mocks
     // that matter here are DI substitutions, not typed call recorders.

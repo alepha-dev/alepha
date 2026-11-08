@@ -36,7 +36,7 @@ The quest: {{url}}
 1. Work in a git worktree of your own, on a branch named after the quest. Never on main, and never in the primary checkout: other sessions share it.
 2. \`quest_accept\` it.
 3. Do exactly what the quest and its objectives say. Tick each objective with \`quest_objective_set\` as it is met. Anything you discover beyond the quest is a comment (\`quest_comment_add\`), not extra scope.
-4. Run the project's local checks (its CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
+4. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
 5. Commit, one commit, its message naming {{reference}}. Record the sha with \`quest_commit_add\`.
 6. Push the branch. If the project verifies on CI, that run is the source of truth and a green local check is not: wait for it, or carry on with something else and read it when it lands. Fix and push again until it is green.
 7. Only when it is green, finish the branch: merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.

@@ -70,7 +70,7 @@ export class KnowledgeProjectContext {
         folio.epicId != null ? epicNumberById.get(folio.epicId) : undefined,
     }));
 
-    // Pinned-folio content surface (the per-project CLAUDE.md). Drop
+    // Pinned-folio content surface (the per-project AGENTS.md). Drop
     // protected folios: their content is ciphertext and useless to the agent.
     // Cap logic lives in `PinnedFolioFolder` so it can be unit-tested without
     // spinning the MCP transport.

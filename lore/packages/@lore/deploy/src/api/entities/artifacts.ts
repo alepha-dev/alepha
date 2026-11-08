@@ -62,7 +62,7 @@ import { $entity, db } from "alepha/orm";
  * There is no physical foreign key onto `files`, and there must not be one:
  * adding the constraint means a table rebuild, and a rebuild on D1 is the
  * cascade-wipe this app has already been bitten by once (see "Migration safety
- * on D1" in `apps/lore/CLAUDE.md`). `ArtifactService` is what enforces the
+ * on D1" in `apps/lore/AGENTS.md`). `ArtifactService` is what enforces the
  * relationship: it deletes the framework file whenever it drops a row.
  *
  * `projectId` cascades: wiping a project wipes its artifacts. The bytes are

@@ -1,10 +1,10 @@
-# CLAUDE.md: @lore/work
+# AGENTS.md: @lore/work
 
-**Lore as Jira** (#E75, folio #F1356): quests, epics, releases, areas, the kanban, the roadmap and feedback. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `CLAUDE.md` first, then `packages/@lore/core/CLAUDE.md`: the barrels, the registries this package fills, and the conventions every package shares.
+**Lore as Jira** (#E75, folio #F1356): quests, epics, releases, areas, the kanban, the roadmap and feedback. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `AGENTS.md` first, then `packages/@lore/core/AGENTS.md`: the barrels, the registries this package fills, and the conventions every package shares.
 
 ## Layout
 
-The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp/`, `web/`, `testing/`), so the package's files import each other relatively; everything else reaches it through its barrels, `@lore/work/api`, `./mcp`, `./web`, `./schemas` and `./testing`, with the rules core's `CLAUDE.md` gives for keeping them cheap. A barrel exports only what something outside `src/` imports (the entries, another package, `apps/lore/test`, `apps/e2e`, this package's `test/`): a name that becomes needed outside is added to its barrel then, and nothing is re-exported in advance. Its three modules, `LoreWorkApi`, `LoreWorkMcp` and `LoreWorkWeb`, import core's module first, so booting one boots what it depends on; `LoreWorkWeb` injects its router, its shell and its project loader from `register()`, never through `services`.
+The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp/`, `web/`, `testing/`), so the package's files import each other relatively; everything else reaches it through its barrels, `@lore/work/api`, `./mcp`, `./web`, `./schemas` and `./testing`, with the rules core's `AGENTS.md` gives for keeping them cheap. A barrel exports only what something outside `src/` imports (the entries, another package, `apps/lore/test`, `apps/e2e`, this package's `test/`): a name that becomes needed outside is added to its barrel then, and nothing is re-exported in advance. Its three modules, `LoreWorkApi`, `LoreWorkMcp` and `LoreWorkWeb`, import core's module first, so booting one boots what it depends on; `LoreWorkWeb` injects its router, its shell and its project loader from `register()`, never through `services`.
 
 ## Tests
 
@@ -310,7 +310,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 
 ## Inventory
 
-What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/CLAUDE.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
+What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/AGENTS.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
 
 **Controllers (9)** - `Feedback`, `FeedbackComment`, `Kanban`, `Release`, `Roadmap`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`.
 

@@ -14,7 +14,7 @@ describe("DEBUG environment variable", () => {
    *
    * `Alepha.create()` merges `process.env` UNDERNEATH the env it is handed,
    * so every logger variable this helper does not name is inherited from
-   * whoever ran the suite. CLAUDE.md tells contributors to run commands with
+   * whoever ran the suite. AGENTS.md tells contributors to run commands with
    * `LOG_FORMAT=pretty LOG_LEVEL=trace`, and anyone who exports that pair
    * rather than prefixing a single command turns the assertions below into a
    * reading of their shell: `LOG_FORMAT` decides the formatter outright, so

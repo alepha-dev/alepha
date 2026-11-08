@@ -389,7 +389,7 @@ test.describe("Kanban", () => {
    * reload issued at that point cancels the request in flight, the server
    * keeps the old order, and the feature looks broken; that is exactly how
    * this test failed when it was first written. Same trap the folio tree
-   * drag documents in CLAUDE.md.
+   * drag documents in AGENTS.md.
    */
   test("kanban columns can be reordered from settings", async ({ page }) => {
     test.setTimeout(90_000);

@@ -474,7 +474,7 @@ if (flatSpecViolations.length > 0) {
  * No `toThrowError`, the alias Vitest 5 deprecates in favour of `toThrow`.
  *
  * The two are one matcher, so this is about the strike-through in every editor
- * and about `CLAUDE.md` recommending the dead spelling - not behaviour. Why a
+ * and about `AGENTS.md` recommending the dead spelling - not behaviour. Why a
  * grep here when `.oxlintrc.json` turns on `vitest/no-alias-methods`: that rule
  * only recognises an `expect` it can trace to an import, and almost every spec
  * in this repo takes `expect` from the test fixture instead

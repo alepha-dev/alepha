@@ -218,24 +218,14 @@ describe("alepha init", () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("AI agent files", () => {
-    it("should create both AGENTS.md and CLAUDE.md", async () => {
+    it("should create AGENTS.md and no CLAUDE.md", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { root: "/project" });
 
       expect(fs.wasWritten("/project/AGENTS.md")).toBe(true);
-      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(true);
-    });
-
-    it("should write CLAUDE.md as a stub importing AGENTS.md", async () => {
-      const { fs, cli, cmd, json } = createTestEnv();
-      await setupProject(fs, json);
-
-      await cli.run(cmd.init, { root: "/project" });
-
-      const claude = await fs.readTextFile("/project/CLAUDE.md");
-      expect(claude.trim()).toBe("@AGENTS.md");
+      expect(fs.wasWritten("/project/CLAUDE.md")).toBe(false);
     });
 
     it("should include Alepha instructions in agent file", async () => {

@@ -40,7 +40,7 @@ export const questComments = $entity({
      * `DROP COLUMN difficulty` had to land BEFORE this table existed: on D1
      * a table rebuild of `quests` fires this cascade against the freshly
      * copied rows. Any future migration that rebuilds `quests` now wipes
-     * the discussion. See `apps/lore/CLAUDE.md` → "Migration safety on D1".
+     * the discussion. See `apps/lore/AGENTS.md` → "Migration safety on D1".
      */
     questId: db.ref(z.integer(), () => quests.cols.id, {
       onDelete: "cascade",

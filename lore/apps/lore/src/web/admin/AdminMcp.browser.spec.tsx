@@ -13,7 +13,7 @@ import { AdminMcp } from "./AdminMcp.client.tsx";
 
 /**
  * Answers `readMcpCalls` with a fixed body. Substitution rather than
- * `vi.mock`, per `CLAUDE.md`.
+ * `vi.mock`, per `AGENTS.md`.
  */
 class McpLinkProvider extends LinkProvider {
   override client(): any {

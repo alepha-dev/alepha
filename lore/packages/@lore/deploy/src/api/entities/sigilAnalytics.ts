@@ -79,7 +79,7 @@ const uniques = $entity({
      *
      * Added with a `DEFAULT`, deliberately: SQLite refuses `ADD COLUMN … NOT
      * NULL` without one on a populated table, and this table has production
-     * rows. See `apps/lore/CLAUDE.md`.
+     * rows. See `apps/lore/AGENTS.md`.
      */
     count: db.default(z.integer().min(1), 1),
     /**

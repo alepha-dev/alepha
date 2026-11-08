@@ -16,7 +16,7 @@ import MyEstates from "./MyEstates.tsx";
 
 /**
  * Answers `listMyEstates` and `createEstate`, and records what was asked.
- * Substitution rather than `vi.mock`, per `CLAUDE.md`.
+ * Substitution rather than `vi.mock`, per `AGENTS.md`.
  */
 class RecordingLinkProvider extends LinkProvider {
   public calls: string[] = [];

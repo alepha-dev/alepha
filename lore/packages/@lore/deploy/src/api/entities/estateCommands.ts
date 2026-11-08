@@ -36,7 +36,7 @@ import { estates } from "./estates.ts";
  * Hangs off `estates` with `onDelete: "cascade"`: a deleted estate takes its
  * history with it. New columns added later are optional with no
  * `db.default`, so the migration stays a plain `ALTER TABLE ADD COLUMN` (see
- * "Migration safety on D1" in `apps/lore/CLAUDE.md`).
+ * "Migration safety on D1" in `apps/lore/AGENTS.md`).
  */
 export const estateCommands = $entity({
   name: "estate_commands",
@@ -83,7 +83,7 @@ export const estateCommands = $entity({
      * ⚠️ A LOGICAL reference, exactly like `artifacts.fileId`, and for the
      * reason that entity gives: a physical `db.ref` onto `files` is a table
      * rebuild on SQLite, which on D1 is the cascade wipe documented in
-     * `apps/lore/CLAUDE.md`. Nothing here cascades, and the file is swept by
+     * `apps/lore/AGENTS.md`. Nothing here cascades, and the file is swept by
      * the framework's own `FileJobs` when its 24 h expiry passes - which is
      * why `EstateCommandJobs` needs to know nothing about it and an estate
      * deletion needs no blob hook.

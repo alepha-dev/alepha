@@ -909,7 +909,7 @@ export const useFolioTreeModel = (
    * ⚠️ **`content` and `protected` go in the SAME body, and must.**
    * `FolioController.update` refuses `protected` without `content` precisely
    * to stop this shape of write leaving the flag and the bytes in different
-   * protection domains - see `apps/lore/CLAUDE.md`.
+   * protection domains - see `apps/lore/AGENTS.md`.
    *
    * ⚠️ **The key is remembered**, the way `useFolioActions.confirmEncrypt`
    * does. The reader has just typed the passphrase; making them type it again

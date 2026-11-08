@@ -306,7 +306,7 @@ describe("ZipArchive", () => {
    * by feeding the writer 4 GB: the honest end-to-end version spent twelve
    * seconds pushing five gigabytes through the CRC to reach a branch that
    * takes one comparison. Driving the protected methods through a subclass is
-   * the pattern the repo already uses for exactly this (see CLAUDE.md,
+   * the pattern the repo already uses for exactly this (see AGENTS.md,
    * "TestProvider Pattern").
    */
   describe("ZIP64 boundaries", () => {

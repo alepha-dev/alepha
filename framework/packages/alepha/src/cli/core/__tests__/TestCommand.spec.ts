@@ -32,7 +32,7 @@ describe("alepha test", () => {
   });
 
   /**
-   * Project names are package names, and this repo's own CLAUDE.md spells a
+   * Project names are package names, and this repo's own AGENTS.md spells a
    * workspace selection `--project '<name>*'`. `--project` does not declare
    * `atFile`, so a leading `@` is a literal: reading it as a file would look
    * for `alepha/ui*` and refuse a command the docs tell people to type.

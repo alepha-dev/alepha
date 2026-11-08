@@ -21,7 +21,7 @@ export const projects = $entity({
      *
      * Declared `.optional()` with NO `db.default(...)` on purpose: a column
      * DEFAULT triggers the D1 `projects` table rebuild that cascade-wipes
-     * members, quests, releases, folios and feedback. See CLAUDE.md
+     * members, quests, releases, folios and feedback. See AGENTS.md
      * "Migration safety on D1". Optional is a physical-column fact only —
      * the backfill fills every live row and every write path sets it, so
      * readers may treat it as present.
@@ -76,7 +76,7 @@ export const projects = $entity({
      * NB: declared as `z.optional` with NO `db.default(...)` ON PURPOSE.
      * Adding a Drizzle column DEFAULT triggers a `projects` table rebuild
      * on D1 (`DROP TABLE projects`) which cascade-wipes child rows — see
-     * CLAUDE.md "Migration safety on D1". An optional, default-less column
+     * AGENTS.md "Migration safety on D1". An optional, default-less column
      * generates a plain additive `ALTER TABLE ADD COLUMN`, which is D1-safe.
      * The 30-day fallback lives in the purge cron (`project.retentionDays
      * ?? 30`), not in the column DEFAULT.

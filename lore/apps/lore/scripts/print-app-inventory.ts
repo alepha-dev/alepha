@@ -7,13 +7,13 @@ import { AlephaReactRouter, ReactPageProvider } from "alepha/react/router";
 import { bootLore } from "../test/fixtures/bootLore.ts";
 
 /**
- * Prints the three inventories `CLAUDE.md` keeps by hand: the route table,
+ * Prints the three inventories `AGENTS.md` keeps by hand: the route table,
  * the state atoms, and the component count.
  *
  * It exists because all three had rotted at once - the route table was
  * missing four pages, the atom list named two that were gone and missed ten,
  * and the component count was off by a third. A list nobody can regenerate
- * is a list that drifts silently, and CLAUDE.md is read by every session
+ * is a list that drifts silently, and AGENTS.md is read by every session
  * before it touches this app.
  *
  * The routes come from the REAL router, booted the way `app-routes.spec.ts`
@@ -22,13 +22,13 @@ import { bootLore } from "../test/fixtures/bootLore.ts";
  *
  *   yarn w lore inventory
  *
- * The output is meant to be read and folded into CLAUDE.md by hand: the
+ * The output is meant to be read and folded into AGENTS.md by hand: the
  * table's Notes column carries reasoning no generator can produce.
  */
 class AppInventory {
   /**
    * The param name substituted back in for itself, so a path prints as the
-   * `/:projectSlug/quests/:shortId` shape CLAUDE.md documents rather than a
+   * `/:projectSlug/quests/:shortId` shape AGENTS.md documents rather than a
    * sample value. Any param NOT listed here comes out as a literal
    * `:segment`, which is the same thing - the list only exists because
    * `pathname()` throws on a param it was given nothing for.

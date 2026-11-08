@@ -106,7 +106,7 @@ describe("the sigil row's dropped-feedback notice", () => {
     alepha.store.set(currentInstanceAtom, anInstance(options.kinds));
 
     // The delete row calls `useDialog`, which throws without its provider.
-    // Mounted here rather than mocked: `CLAUDE.md` bans `vi.mock`, and the
+    // Mounted here rather than mocked: `AGENTS.md` bans `vi.mock`, and the
     // real provider is three lines of tree.
     return render(
       <AlephaContext.Provider value={alepha}>

@@ -13,7 +13,7 @@ import { stacks } from "./stacks.ts";
  * {@link fileId} is a LOGICAL reference into the artifacts bucket, for the
  * reason `artifacts.fileId` gives: a physical `db.ref` onto `files` is a
  * table rebuild on SQLite, which on D1 is the cascade wipe documented in
- * `apps/lore/CLAUDE.md`. `StackService.delete` removes the bytes with the
+ * `apps/lore/AGENTS.md`. `StackService.delete` removes the bytes with the
  * row. {@link sha256} is what a machine verifies the pulled bytes against.
  *
  * ## The model is what every target reads; the compose text is for people

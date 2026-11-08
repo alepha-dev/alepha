@@ -22,7 +22,7 @@ import { LoreKnowledgeApi } from "../src/api/index.ts";
  * to `body.content` and `isProtected` falls back to `existing.protected`,
  * so the write lands as plaintext `content` on a row still flagged
  * `protected: true`. That crosses the protection-domain boundary
- * described in apps/lore/CLAUDE.md ("Protected folios") without ever
+ * described in apps/lore/AGENTS.md ("Protected folios") without ever
  * triggering `purgeRevisions` — the ciphertext is gone, a plaintext
  * revision snapshot is appended to `folio_revisions`, and the folio is
  * left undecryptable, all silently.

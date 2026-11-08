@@ -1085,7 +1085,7 @@ export class FolioController {
       // would never trigger the purge below, since `isProtected` would
       // still equal `existing.protected`. A plaintext snapshot would also
       // land in `folio_revisions`, violating the protection-domain
-      // invariant (see apps/lore/CLAUDE.md's "Protected folios" section).
+      // invariant (see apps/lore/AGENTS.md's "Protected folios" section).
       // Require the caller to explicitly assert the protection state of
       // the content it is sending: `protected: true` to stay protected
       // (re-encrypt in place) or `protected: false` to remove protection —

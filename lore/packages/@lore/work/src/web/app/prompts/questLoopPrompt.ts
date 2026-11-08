@@ -29,7 +29,7 @@ The quests: {{url}}
 ## Before touching code
 
 - Work in a git worktree of your own, on one branch for the whole run. Never on main.
-- Orient with \`project_context\` (project_name "{{project}}"), and read the repository's CLAUDE.md: it names the local checks.
+- Orient with \`project_context\` (project_name "{{project}}"), and read the repository's AGENTS.md (or CLAUDE.md): it names the local checks.
 
 ## The loop
 

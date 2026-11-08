@@ -57,7 +57,7 @@ export const dashboardCards = $entity({
      *
      * ⚠️ Optional with NO `db.default`, read as 1 when absent: a plain
      * additive `ADD COLUMN`, never a table rebuild (see "Migration safety on
-     * D1" in `apps/lore/CLAUDE.md`).
+     * D1" in `apps/lore/AGENTS.md`).
      */
     height: z.integer().min(1).max(2).optional(),
     /**

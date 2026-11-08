@@ -13,7 +13,7 @@ import { type LoreRouter, bootLore } from "./fixtures/bootLore.ts";
  * `DashboardMetricCatalog.link()` names routes as plain strings, because the
  * catalogue has to stay importable by the browser AND resolvable on the
  * server, and `AppRouter` is a browser module. Plain strings are exactly the
- * shape `apps/lore/CLAUDE.md` warns about: `router.path(name)` widens an
+ * shape `apps/lore/AGENTS.md` warns about: `router.path(name)` widens an
  * unknown name to the `string` overload, so a `$page` rename keeps the build
  * green and throws the first time a reader clicks the tile.
  *

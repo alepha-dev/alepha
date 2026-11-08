@@ -19,7 +19,7 @@ interface FakeQuest {
 /**
  * Stands in for the real HTTP-backed clients the hook builds. Overriding
  * `LinkProvider.client()` is the documented Alepha service-substitution seam
- * (`CLAUDE.md`: never `vi.mock` / `vi.spyOn`).
+ * (`AGENTS.md`: never `vi.mock` / `vi.spyOn`).
  *
  * `getQuests` mirrors the real backlog gate
  * (`EpicVisibilityService.applyBacklogGate`, applied by

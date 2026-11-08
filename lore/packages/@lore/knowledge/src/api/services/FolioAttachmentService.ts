@@ -317,7 +317,7 @@ export class FolioAttachmentService {
    * pointing at a file that no longer existed. Adding the constraint
    * means a table rebuild, and a rebuild on D1 is the cascade-wipe this
    * app has already been bitten by once - see "Migration safety on D1"
-   * in `apps/lore/CLAUDE.md`. The relationship is therefore logical, and
+   * in `apps/lore/AGENTS.md`. The relationship is therefore logical, and
    * this method is what enforces it.
    *
    * The overlay goes first. The reverse order leaves, on a failure in

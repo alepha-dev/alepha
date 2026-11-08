@@ -19,7 +19,7 @@ interface FakeQuest {
 /**
  * Stands in for the real HTTP-backed `useClient<QuestController>()`. Same
  * substitution seam as `useWikiLinkRewrite.browser.spec.tsx` /
- * `useFolioActions.browser.spec.tsx` (`CLAUDE.md`: never
+ * `useFolioActions.browser.spec.tsx` (`AGENTS.md`: never
  * `vi.mock`/`vi.spyOn`).
  *
  * Records the exact query the component sends, and mirrors the real

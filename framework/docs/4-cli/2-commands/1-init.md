@@ -39,7 +39,7 @@ This is the one axis worth branching on because it is the one you cannot easily 
 4. **Installs dependencies**: Gets everything ready to run
 5. **Scaffolds the project**: `src/api/`, `src/web/`, both entry points, and a starter test
 6. **Initializes git**: Runs `git init` and writes a `.gitignore` if you're not already in a repo
-7. **Writes agent docs**: `AGENTS.md` plus a `CLAUDE.md` that imports it, so coding agents understand the project
+7. **Writes agent docs**: `AGENTS.md`, which coding agents read on their own, so they understand the project
 
 ## Options
 
@@ -96,8 +96,7 @@ my-app/
 ├── .oxfmtrc.json
 ├── .editorconfig
 ├── .vscode/settings.json
-├── AGENTS.md
-└── CLAUDE.md                        # @AGENTS.md
+└── AGENTS.md
 ```
 
 The router is wired to the API out of the box - `AppRouter.ts` calls `HelloController` through `$client`, giving you an end-to-end type-safe request on the first run.
@@ -267,7 +266,7 @@ If you run `alepha init` inside a monorepo workspace package (i.e. there's a wor
 
 - Skips workspace-level configs (`tsconfig.json`, `.editorconfig`, `.vscode/settings.json`) if they already exist higher up
 - Skips package-manager bootstrapping (the workspace already owns it)
-- Skips git init and `AGENTS.md`/`CLAUDE.md` (those belong at the workspace root)
+- Skips git init and `AGENTS.md` (those belong at the workspace root)
 - Runs install from the workspace root, not the package
 
 ## Expo Detection

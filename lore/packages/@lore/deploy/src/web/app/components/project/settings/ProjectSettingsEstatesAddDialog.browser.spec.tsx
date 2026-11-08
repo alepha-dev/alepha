@@ -15,7 +15,7 @@ import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.t
 
 /**
  * Answers the two controllers this dialog talks to, and records what was
- * asked. Substitution rather than `vi.mock`, per `CLAUDE.md`.
+ * asked. Substitution rather than `vi.mock`, per `AGENTS.md`.
  */
 class RecordingLinkProvider extends LinkProvider {
   public bodies: Record<string, unknown> = {};

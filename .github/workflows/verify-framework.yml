@@ -8,7 +8,7 @@ on:
   # works in a worktree on a `claude/**` branch, pushes it, and watches CI.
   # Until 2026-09-09 this was `main` alone, so a branch push ran NOTHING and
   # the only way to prove a branch green was to open a PR - which the working
-  # agreement in CLAUDE.md forbids an agent from doing unprompted. A branch
+  # agreement in AGENTS.md forbids an agent from doing unprompted. A branch
   # could therefore only be proven by merging it.
   #
   # ⚠️ **Nothing here deploys.** This workflow verifies and stops; the deploys

@@ -1,6 +1,6 @@
-# CLAUDE.md: @lore/core
+# AGENTS.md: @lore/core
 
-**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/work`, `@lore/knowledge` and `@lore/deploy` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `CLAUDE.md` first, then `apps/lore/CLAUDE.md` for the app itself.
+**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/work`, `@lore/knowledge` and `@lore/deploy` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
 
 ## Layout
 
@@ -275,7 +275,7 @@ effect has the same trap.
 
 ## State atoms
 
-Live in `src/web/app/atoms/`. The `project` route loader (core's, plus each module's `ProjectLoaderRegistry` entry) fills the `current*` atoms on enter and clears them on leave, so components inside the layout can read them without re-fetching. Each module's atoms live in its own package and are listed in its `CLAUDE.md`.
+Live in `src/web/app/atoms/`. The `project` route loader (core's, plus each module's `ProjectLoaderRegistry` entry) fills the `current*` atoms on enter and clears them on leave, so components inside the layout can read them without re-fetching. Each module's atoms live in its own package and are listed in its `AGENTS.md`.
 
 ⚠️ **This list and the route table below are generated.** Run `yarn w lore inventory` to print the real route table (booted from the router, not grepped), the real atom names and the real component count, then fold the result in by hand — the prose against each entry is the part no generator can produce. Both had rotted badly before that script existed.
 
@@ -571,7 +571,7 @@ change that happened invites a retry that repeats it.
 
 ## Inventory
 
-What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/CLAUDE.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
+What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/AGENTS.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
 
 **Controllers (4)** - `AdminMcp` (`GET /admin/mcp/calls`, behind `admin:analytics:read`: the MCP tool-call timeline and the per-tool leaderboard split by outcome, drawn on `/admin/mcp`. Admin rather than a project page, because a tool call is not scoped to a project and the audience is whoever maintains the tool descriptions), `ProjectRank` (one action: the three presets computed from the project's enabled capabilities; everything else about ranks is `alepha/api/organizations`), `Invitation`, `Project`.
 

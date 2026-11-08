@@ -1,10 +1,10 @@
-# CLAUDE.md: @lore/knowledge
+# AGENTS.md: @lore/knowledge
 
-**Lore as Obsidian** (#E75, folio #F1356): folios, their directories, attachments, revisions and names. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `CLAUDE.md` first, then `packages/@lore/core/CLAUDE.md`: the barrels, the registries this package fills, and the conventions every package shares.
+**Lore as Obsidian** (#E75, folio #F1356): folios, their directories, attachments, revisions and names. It imports `@lore/core` only (`check:conventions`, `scripts/lore-package-graph.ts`), and reaches the other modules only through a core registry or a core link. Read the repository's `AGENTS.md` first, then `packages/@lore/core/AGENTS.md`: the barrels, the registries this package fills, and the conventions every package shares.
 
 ## Layout
 
-The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp/`, `web/`, `testing/`), so the package's files import each other relatively; everything else reaches it through its barrels, `@lore/knowledge/api`, `./mcp`, `./web`, `./schemas` and `./testing`, with the rules core's `CLAUDE.md` gives for keeping them cheap. Its three modules, `LoreKnowledgeApi`, `LoreKnowledgeMcp` and `LoreKnowledgeWeb`, import core's module first, so booting one boots what it depends on; `LoreKnowledgeWeb` injects its router, its shell and its project loader from `register()`, never through `services`.
+The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp/`, `web/`, `testing/`), so the package's files import each other relatively; everything else reaches it through its barrels, `@lore/knowledge/api`, `./mcp`, `./web`, `./schemas` and `./testing`, with the rules core's `AGENTS.md` gives for keeping them cheap. Its three modules, `LoreKnowledgeApi`, `LoreKnowledgeMcp` and `LoreKnowledgeWeb`, import core's module first, so booting one boots what it depends on; `LoreKnowledgeWeb` injects its router, its shell and its project loader from `register()`, never through `services`.
 
 ## Tests
 
@@ -99,7 +99,7 @@ Restating the state a folio is already in is not a crossing and stays allowed, s
 
 ## Inventory
 
-What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/CLAUDE.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
+What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/AGENTS.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
 
 **Controllers (3)** - `Directory`, `Folio`, `FolioAttachment`.
 

@@ -61,7 +61,7 @@ const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");
  * naming any of this app's tables deserves a human reading the migration
  * either way. The sanctioned ones are enumerated below.
  *
- * See `apps/lore/CLAUDE.md` → "Migration safety on D1".
+ * See `apps/lore/AGENTS.md` → "Migration safety on D1".
  */
 const entityTables = async (): Promise<string[]> => {
   const alepha = Alepha.create({
@@ -358,7 +358,7 @@ const dropViolations = (
     if (children.length > 0) {
       return [
         `${table} has children it would wipe or detach: ${children.join(", ")}. ` +
-          `No SANCTIONED_DROPS entry can excuse that: see "Migration safety on D1" in apps/lore/CLAUDE.md.`,
+          `No SANCTIONED_DROPS entry can excuse that: see "Migration safety on D1" in apps/lore/AGENTS.md.`,
       ];
     }
     return sanctioned.includes(table)

@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 Bay is a self-hosted application server in Go: one static binary that does
 reverse proxy, deploys, Docker supervision, TLS and backups. Start with

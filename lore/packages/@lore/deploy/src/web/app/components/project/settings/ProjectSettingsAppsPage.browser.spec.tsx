@@ -28,7 +28,7 @@ const aProject = projectFixture({
 
 /**
  * Stands in for the HTTP-backed client that `useProjectFeatureToggle` writes
- * through (`CLAUDE.md`: never `vi.mock`).
+ * through (`AGENTS.md`: never `vi.mock`).
  */
 class FakeLinkProvider extends LinkProvider {
   calls: SetCapabilityCall[] = [];

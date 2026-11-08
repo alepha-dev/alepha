@@ -334,7 +334,7 @@ export class ProjectTools {
    * One-shot orientation tool. Returns the project's metadata and capability
    * set, then only the sections those capabilities own. Designed as the FIRST
    * call any agent makes when picking up a project-scoped task - folios
-   * act as the project's memory for Claude (see apps/lore/CLAUDE.md).
+   * act as the project's memory for Claude (see apps/lore/AGENTS.md).
    *
    * ⚠️ **A disabled capability's sections are ABSENT, never empty.** An agent
    * reading `epics: []` concludes the project tracks epics and has none yet,

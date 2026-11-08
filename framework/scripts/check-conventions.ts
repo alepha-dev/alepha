@@ -468,7 +468,7 @@ if (moduleCodeViolations.length > 0) {
  * The bands are disjoint on purpose: e2e lives in 4300-4999 so a `yarn dev`
  * left running in another terminal cannot be adopted by Playwright.
  *
- * The table in the root CLAUDE.md is the human-readable half, and it had
+ * The table in the root AGENTS.md is the human-readable half, and it had
  * already drifted: `examples/totp` took 3307 and the table never heard about
  * it. A table nobody checks documents the ports that happened to be assigned
  * when someone last read it, which is worse than none - it is the thing a
@@ -492,12 +492,12 @@ const declaredPorts = execFileSync(
     return port ? [{ file, port: Number(port) }] : [];
   });
 
-const tableRow = PORT_TABLE_ROW.exec(readFileSync("CLAUDE.md", "utf8"))?.[1];
+const tableRow = PORT_TABLE_ROW.exec(readFileSync("AGENTS.md", "utf8"))?.[1];
 const portViolations: string[] = [];
 
 if (!tableRow) {
   portViolations.push(
-    "  CLAUDE.md\n    → the `3300-3399` row of the port table is missing",
+    "  AGENTS.md\n    → the `3300-3399` row of the port table is missing",
   );
 }
 
@@ -510,7 +510,7 @@ for (const { file, port } of declaredPorts) {
   }
   if (tableRow && !tableRow.includes(String(port))) {
     portViolations.push(
-      `  ${file}\n    → dev port ${port} is not in CLAUDE.md's port table`,
+      `  ${file}\n    → dev port ${port} is not in AGENTS.md's port table`,
     );
   }
 }
@@ -520,7 +520,7 @@ if (portViolations.length > 0) {
     `\n${portViolations.length} dev port violation(s):\n\n` +
       `${portViolations.join("\n")}\n\n` +
       "Dev servers live in 3300-3399, and the port table in the root\n" +
-      "CLAUDE.md lists every one of them. Both halves matter: the band keeps\n" +
+      "AGENTS.md lists every one of them. Both halves matter: the band keeps\n" +
       "e2e out, and the table is what a person reads before\n" +
       "picking the next number.\n",
   );
@@ -812,7 +812,7 @@ if (flatSpecViolations.length > 0) {
  * No `toThrowError`, the alias Vitest 5 deprecates in favour of `toThrow`.
  *
  * The two are one matcher, so this is about the strike-through in every editor
- * and about `CLAUDE.md` recommending the dead spelling - not behaviour. Why a
+ * and about `AGENTS.md` recommending the dead spelling - not behaviour. Why a
  * grep here when `.oxlintrc.json` turns on `vitest/no-alias-methods`: that rule
  * only recognises an `expect` it can trace to an import, and almost every spec
  * in this repo takes `expect` from the test fixture instead
@@ -1434,7 +1434,7 @@ if (uiViolations.length > 0) {
 }
 
 /**
- * `@alepha/ui` keeps the React conventions CLAUDE.md states for components.
+ * `@alepha/ui` keeps the React conventions AGENTS.md states for components.
  *
  * #E51 converted the package: every component an arrow taking named props,
  * one component per file, Context only under a written exemption. Nothing kept
@@ -1450,7 +1450,7 @@ if (uiViolations.length > 0) {
  *    `props: <Name>Props` (a generic and a default value allowed), declared
  *    as an `export interface` or `export type` in the same file.
  * 4. **One component per file**, except the compound primitive families in
- *    `UI_COMPOUND_FILES`, CLAUDE.md's one exemption.
+ *    `UI_COMPOUND_FILES`, AGENTS.md's one exemption.
  * 5. **`createContext` only with its exemption**: the comment directly above
  *    the call contains `Context exemption:`, the marker #Q2188 fixed.
  *
@@ -1467,7 +1467,7 @@ const UI_REACT_SRC = "packages/@alepha/ui/src/";
 /**
  * The files allowed more than one component: each holds one compound
  * primitive, a root and the parts that only mean something inside it
- * (`DropdownMenu` and its content, items, separators). CLAUDE.md, "One
+ * (`DropdownMenu` and its content, items, separators). AGENTS.md, "One
  * component per file", names this as its one exemption.
  *
  * A list rather than a pattern, on purpose. A prefix rule ("`DropdownMenu*`
@@ -1652,7 +1652,7 @@ if (reactViolations.length > 0) {
       "In `@alepha/ui`, a component is an arrow function taking\n" +
       "`props: <Name>Props`, exported from its own file, one component per file\n" +
       "(compound primitives excepted, see UI_COMPOUND_FILES), and Context is\n" +
-      "used only under a `Context exemption:` comment. See CLAUDE.md, React\n" +
+      "used only under a `Context exemption:` comment. See AGENTS.md, React\n" +
       "components.\n",
   );
   process.exit(1);
@@ -1729,7 +1729,7 @@ for (const [oldName, newName] of Object.entries(HookNamePolicy.retired)) {
 }
 if (hookViolations.length) {
   console.error(
-    `\n${hookViolations.length} hook naming convention violation(s):\n${hookViolations.join("\n")}\nSee CLAUDE.md, Architecture.`,
+    `\n${hookViolations.length} hook naming convention violation(s):\n${hookViolations.join("\n")}\nSee AGENTS.md, Architecture.`,
   );
   process.exit(1);
 }

@@ -92,7 +92,7 @@ export const feedback = $entity({
    * `CREATE __new` / `INSERT FROM SELECT` / `DROP` pattern) wipes every
    * thread unless `PRAGMA foreign_keys=OFF` holds, which D1 does not
    * guarantee; `migration-safety.spec.ts` refuses it. See
-   * `apps/lore/CLAUDE.md` → "Migration safety on D1".
+   * `apps/lore/AGENTS.md` → "Migration safety on D1".
    */
   indexes: [
     { columns: ["projectId", "status", "deletedAt"] },

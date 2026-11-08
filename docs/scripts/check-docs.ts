@@ -58,7 +58,7 @@ export class CheckDocsCommand {
    * Documentation that lives outside `docs/`, in reach order: the repository
    * front page, the page npm renders, and the framework brief an AI assistant
    * reads out of `node_modules` - `release.yml` copies that last one to
-   * `packages/alepha/AGENTS.md` and `CLAUDE.md` on the way to the registry.
+   * `packages/alepha/AGENTS.md` on the way to the registry.
    *
    * Not to be confused with `cli/core/templates/agentMd.ts`, which is the
    * per-project brief `alepha init` writes into a scaffolded app. Different

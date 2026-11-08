@@ -146,7 +146,7 @@ export const quests = $entity({
      * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
      * rebuild, and on D1 `DROP TABLE quests` fires `dependsOn`'s SET NULL
      * against the copied rows AND cascades `quest_comments`, wiping every
-     * questline link and every discussion. See `apps/lore/CLAUDE.md` →
+     * questline link and every discussion. See `apps/lore/AGENTS.md` →
      * "Migration safety on D1". Same reasoning as `epicId` and `commits`.
      */
     heldAt: z.datetime().optional(),
@@ -253,7 +253,7 @@ export const quests = $entity({
              * `history` is a JSON column validated on READ. Any quest that
              * was ever dragged out of Done carries this value, and removing
              * it would make every one of those rows fail to decode - the
-             * exact shape of the 2026-08-05 incident in CLAUDE.md, where a
+             * exact shape of the 2026-08-05 incident in AGENTS.md, where a
              * renamed required key inside a JSON column took every project
              * read down. The check the quest asked for (does production hold
              * one) could not be run from the build, and leaving a value
@@ -284,7 +284,7 @@ export const quests = $entity({
            * ⚠️ Optional, and it has to stay that way. `history` is a JSON
            * column validated on read: making a key required here would
            * fail every existing row to decode, which is exactly how the
-           * 2026-08-05 rename took production down (see CLAUDE.md,
+           * 2026-08-05 rename took production down (see AGENTS.md,
            * "Renaming a REQUIRED key inside a JSON column").
            */
           targetUserId: z.uuid().optional(),
@@ -408,7 +408,7 @@ export const quests = $entity({
      * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
      * rebuild, and on D1 `DROP TABLE quests` fires `dependsOn`'s SET NULL
      * against the copied rows AND cascades `quest_comments`, wiping every
-     * questline link and every discussion. See `apps/lore/CLAUDE.md` →
+     * questline link and every discussion. See `apps/lore/AGENTS.md` →
      * "Migration safety on D1". Same reasoning as `epicId`.
      *
      * A JSON array rather than a `quest_commits` table because a handful of

@@ -56,7 +56,7 @@ const questOf = (
 /**
  * Stands in for the HTTP-backed `useClient()` calls the table and the
  * create sheet make. Same substitution seam as
- * `ProjectFeedbackDetail.browser.spec.tsx` (`CLAUDE.md`: never `vi.mock` /
+ * `ProjectFeedbackDetail.browser.spec.tsx` (`AGENTS.md`: never `vi.mock` /
  * `vi.spyOn`). `quests` is the list the fake serves, and `createQuest`
  * appends to it, so a refetch after a creation sees the new row exactly
  * as the server would show it.

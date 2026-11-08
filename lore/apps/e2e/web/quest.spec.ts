@@ -15,7 +15,7 @@ import {
  * through the real shadcn UI for open → accept → complete. Creating an area
  * from the Area combobox has its own test at the bottom of this file.
  *
- * Per the Lore CLAUDE.md convention, each big feature owns its own spec file.
+ * Per the Lore AGENTS.md convention, each big feature owns its own spec file.
  * Project create + auth are covered by the helpers — kept here as setup,
  * not as the focus of the test.
  */

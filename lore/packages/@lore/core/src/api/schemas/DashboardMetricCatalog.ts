@@ -55,7 +55,7 @@ export type DashboardPresentation =
  * the routers, so the browser hands this straight to `router.push`.
  *
  * ⚠️ Route names are plain strings here and a `$page` rename is not
- * typecheck-protected (see `apps/lore/CLAUDE.md`). `dashboard-links.spec.ts`
+ * typecheck-protected (see `apps/lore/AGENTS.md`). `dashboard-links.spec.ts`
  * asserts every name below still exists in the route table.
  */
 export interface DashboardCardLink {

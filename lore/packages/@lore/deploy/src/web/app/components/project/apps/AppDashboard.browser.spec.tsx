@@ -19,7 +19,7 @@ import AppDashboard from "./AppDashboard.tsx";
  *
  * The point of the whole rebuild is that this page costs nothing to open, and
  * "costs nothing" is only checkable by watching what it asks for. Same
- * substitution seam as `QuestDependencyPicker.browser.spec.tsx` (`CLAUDE.md`:
+ * substitution seam as `QuestDependencyPicker.browser.spec.tsx` (`AGENTS.md`:
  * never `vi.mock` / `vi.spyOn`).
  */
 class RecordingLinkProvider extends LinkProvider {

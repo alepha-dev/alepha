@@ -34,7 +34,7 @@ const anInstance = (app: string, env: string): AppInstanceResource => ({
 
 /**
  * Records what the dialog asks for and answers what a case set. Same
- * substitution seam as the other browser specs here (`CLAUDE.md`: never
+ * substitution seam as the other browser specs here (`AGENTS.md`: never
  * `vi.mock` / `vi.spyOn`).
  */
 class RecordingLinkProvider extends LinkProvider {

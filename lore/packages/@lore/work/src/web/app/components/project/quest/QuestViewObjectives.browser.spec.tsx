@@ -21,7 +21,7 @@ import QuestViewObjectives from "./QuestViewObjectives.tsx";
 /**
  * Stands in for the HTTP-backed `useClient<QuestController>()`, with
  * `completeObjective` rejecting. Same substitution seam as
- * `QuestDependencyPicker.browser.spec.tsx` (`CLAUDE.md`: never `vi.mock` /
+ * `QuestDependencyPicker.browser.spec.tsx` (`AGENTS.md`: never `vi.mock` /
  * `vi.spyOn`).
  */
 class FailingLinkProvider extends LinkProvider {

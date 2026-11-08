@@ -18,7 +18,7 @@ import { projects } from "./projects.ts";
  * Repointing `dashboard_cards` from `userId` to a nullable `projectId` would
  * be the smaller diff and the wrong one. Home is untouched by this epic and
  * has to keep working while this is built; changing an FK on D1 is a table
- * rebuild, and `apps/lore/CLAUDE.md` is unambiguous about what a `DROP TABLE`
+ * rebuild, and `apps/lore/AGENTS.md` is unambiguous about what a `DROP TABLE`
  * does there. And the two boards stop being the same thing the moment the
  * configuration belongs to the project rather than to the reader — one table
  * would leave every query carrying a "which kind of board is this" branch.
@@ -88,7 +88,7 @@ export const projectDashboardCards = $entity({
      *
      * ⚠️ Optional with NO `db.default`, read as 1 when absent: a plain
      * additive `ADD COLUMN`, never a table rebuild (see "Migration safety on
-     * D1" in `apps/lore/CLAUDE.md`).
+     * D1" in `apps/lore/AGENTS.md`).
      */
     height: z.integer().min(1).max(2).optional(),
     /**

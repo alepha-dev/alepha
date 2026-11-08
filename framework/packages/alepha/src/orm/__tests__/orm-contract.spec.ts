@@ -48,7 +48,7 @@ describe("db.* helpers", () => {
       name: "contract_children",
       schema: z.object({
         id: db.primaryKey(z.uuid()),
-        // The order CLAUDE.md used to forbid: the reference was lost.
+        // The order AGENTS.md used to forbid: the reference was lost.
         parentId: db.ref(z.uuid(), () => parents.cols.id).optional(),
       }),
     });

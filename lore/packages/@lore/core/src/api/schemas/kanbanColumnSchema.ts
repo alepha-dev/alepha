@@ -18,7 +18,7 @@ import { paletteColorSchema } from "./paletteColorSchema.ts";
  * `string[]` into an array of objects. Changing the ELEMENT TYPE of a live
  * JSON column means every existing row stops decoding, and that does not
  * degrade to a missing field — it throws on every `projects` read. It is
- * the 2026-08-05 incident exactly (`apps/lore/CLAUDE.md`, "Renaming a
+ * the 2026-08-05 incident exactly (`apps/lore/AGENTS.md`, "Renaming a
  * REQUIRED key inside a JSON column"). A separate nullable column is a
  * plain additive migration with nothing to backfill: `kanbanColumns` keeps
  * holding names and order, untouched, and a project with no config here

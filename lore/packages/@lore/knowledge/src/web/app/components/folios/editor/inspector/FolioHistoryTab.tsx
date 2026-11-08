@@ -34,7 +34,7 @@ import type { FolioRevision } from "../../../../../../api/entities/folioRevision
  *
  * Derived from the action rather than written out, so adding a field to
  * that response schema cannot leave this drifting behind it - the
- * silent-serialisation trap in CLAUDE.md cuts both ways, and a hand-copied
+ * silent-serialisation trap in AGENTS.md cuts both ways, and a hand-copied
  * interface here would compile happily while missing whatever was added.
  */
 type HistoryRevision = Awaited<

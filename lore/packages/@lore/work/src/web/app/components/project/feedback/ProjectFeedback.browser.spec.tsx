@@ -47,7 +47,7 @@ const ACCEPTED = { ...feedbackOf(99), status: "accepted" } as FeedbackResource;
  * Serves the paged list the real endpoint serves, so the page boundary this
  * spec is about is computed here rather than asserted against a constant.
  * Same substitution seam as `ProjectFeedbackDetail.browser.spec.tsx`
- * (`CLAUDE.md`: never `vi.mock` / `vi.spyOn`).
+ * (`AGENTS.md`: never `vi.mock` / `vi.spyOn`).
  */
 class FakeLinkProvider extends LinkProvider {
   listCalls: Array<{ status?: string; limit?: number; offset?: number }> = [];

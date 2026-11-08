@@ -19,7 +19,7 @@ import { folios } from "./folios.ts";
  *
  * Adding the constraint means a table rebuild, and a rebuild on D1 is the
  * cascade-wipe this app has already been bitten by once - see "Migration
- * safety on D1" in `apps/lore/CLAUDE.md`. `FolioAttachmentService.delete` and
+ * safety on D1" in `apps/lore/AGENTS.md`. `FolioAttachmentService.delete` and
  * `FolioAttachmentService.deleteByFolio` are the enforcement instead, and are
  * the only two ways an attachment may be removed.
  *

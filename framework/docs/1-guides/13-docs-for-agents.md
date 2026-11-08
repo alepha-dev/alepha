@@ -110,7 +110,7 @@ each section of the guides and of the CLI has an `llms-full.txt` holding all of 
 
 ## Telling an agent about it
 
-A project created by `alepha init` already does: its `AGENTS.md` (which `CLAUDE.md` imports)
+A project created by `alepha init` already does: its `AGENTS.md`
 tells the agent to run `npx alepha docs` before writing Alepha code.
 
 A project created before that line existed can add it by hand, near the top of `AGENTS.md`,

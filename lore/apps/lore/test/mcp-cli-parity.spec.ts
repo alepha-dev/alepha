@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
- * The rule in `lore/CLAUDE.md`: what MCP can do, the CLI can do. The CLI may
+ * The rule in `lore/AGENTS.md`: what MCP can do, the CLI can do. The CLI may
  * have more (it moves file bytes, MCP cannot), MCP never.
  *
  * Every `$tool` has to resolve to a `$command` by the naming rule the help

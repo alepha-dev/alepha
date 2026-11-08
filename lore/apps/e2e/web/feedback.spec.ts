@@ -23,7 +23,7 @@ import {
  * Linked-quest progression for reporters was removed with the status page; the
  * feedback <-> quest plumbing lives in the controller unit tests. Other
  * features (quest lifecycle, etc.) have their own specs — see
- * apps/lore/CLAUDE.md for the convention.
+ * apps/lore/AGENTS.md for the convention.
  */
 
 const apiPostParams = async <T>(

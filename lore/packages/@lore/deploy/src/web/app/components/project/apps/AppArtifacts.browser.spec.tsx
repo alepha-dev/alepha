@@ -16,7 +16,7 @@ import AppArtifacts from "./AppArtifacts.tsx";
 
 /**
  * Records every action the page reaches for and answers what a case set.
- * Same substitution seam as `AppDashboard.browser.spec.tsx` (`CLAUDE.md`:
+ * Same substitution seam as `AppDashboard.browser.spec.tsx` (`AGENTS.md`:
  * never `vi.mock` / `vi.spyOn`).
  */
 class RecordingLinkProvider extends LinkProvider {

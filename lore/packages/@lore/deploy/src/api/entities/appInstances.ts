@@ -130,7 +130,7 @@ export const appInstances = $entity({
      * ⚠️ The foreign key lives HERE and never on `sigils`. That table is the
      * `ON DELETE CASCADE` parent of its analytics tables and of
      * `blights.sigilId`, and adding a column to it is a drizzle rebuild, which
-     * on D1 is the cascade wipe documented in `apps/lore/CLAUDE.md`. This table
+     * on D1 is the cascade wipe documented in `apps/lore/AGENTS.md`. This table
      * is new, so both its foreign keys are free.
      *
      * ⚠️ `.optional()` goes INSIDE `db.ref(...)`. Outside it, no foreign key is
@@ -214,7 +214,7 @@ export const appInstances = $entity({
      * and restores - requires this to equal `estateId`.
      *
      * A logical reference, not a `db.ref`: a foreign key here would be a
-     * rebuild of `app_instances`, a cascade parent (see `apps/lore/CLAUDE.md`).
+     * rebuild of `app_instances`, a cascade parent (see `apps/lore/AGENTS.md`).
      */
     resourceEstateId: z.uuid().optional(),
     /**

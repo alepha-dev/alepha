@@ -287,7 +287,6 @@ jobs:
       # version being released, not the previous one.
       - name: Copy package docs
         run: |
-          cp packages/alepha/assets/agents-template.md packages/alepha/CLAUDE.md
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
           cp CHANGELOG.md packages/alepha/CHANGELOG.md
 

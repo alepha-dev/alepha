@@ -10,11 +10,11 @@ permissions:
 # its commit, because the Verify Lore run it starts fires no `workflow_run`
 # (#Q2953).
 # There is no human gate: read "Migration safety on D1" in
-# lore/apps/lore/CLAUDE.md before pushing a migration.
+# lore/apps/lore/AGENTS.md before pushing a migration.
 #
 # `workflow_dispatch` ships main as it stands, without waiting for Verify Lore
 # (#Q2707): for a hotfix whose branch was already green, never for a migration
-# Verify Lore has not run on main. See "The workflow" in lore/CLAUDE.md.
+# Verify Lore has not run on main. See "The workflow" in lore/AGENTS.md.
 # `deploy-all.yml` calls this file the same way.
 on:
   workflow_run:

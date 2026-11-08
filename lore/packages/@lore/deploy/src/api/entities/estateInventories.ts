@@ -16,7 +16,7 @@ import { estates } from "./estates.ts";
  *
  * `estates` is a CASCADE parent (`estate_commands`, `estate_projects`, and
  * the `estate_stats` dataset's reference). Adding a column to it is the
- * drizzle rebuild that "Migration safety on D1" in `apps/lore/CLAUDE.md`
+ * drizzle rebuild that "Migration safety on D1" in `apps/lore/AGENTS.md`
  * documents as the cascade wipe. A brand new table cannot rebuild an old one.
  *
  * And `listMyEstates` does a `findMany` over `estates`, so a snapshot column

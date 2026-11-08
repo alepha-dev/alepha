@@ -401,23 +401,19 @@ export class ProjectScaffolder {
   }
 
   /**
-   * Ensure AGENTS.md (cross-tool standard, canonical source) exists, with a
-   * CLAUDE.md stub that imports it via Claude Code's `@` syntax. Single
-   * source of truth, cross-platform, no symlink needed.
+   * Ensure AGENTS.md exists: the cross-tool standard, which every coding
+   * agent reads on its own, Claude Code included, so no CLAUDE.md is written.
    */
   public async ensureAgentMd(
     root: string,
     options: { force?: boolean; saas?: boolean } = {},
   ): Promise<void> {
-    await Promise.all([
-      this.ensureFile(
-        root,
-        "AGENTS.md",
-        agentMd({ saas: options.saas }),
-        options.force,
-      ),
-      this.ensureFile(root, "CLAUDE.md", "@AGENTS.md\n", options.force),
-    ]);
+    await this.ensureFile(
+      root,
+      "AGENTS.md",
+      agentMd({ saas: options.saas }),
+      options.force,
+    );
   }
 
   /**
@@ -880,8 +876,8 @@ export class ProjectScaffolder {
     // Detect workspace context (are we inside packages/ or apps/ of a monorepo?)
     const workspace = await this.pm.getWorkspaceContext(root);
 
-    // Always emit both AGENTS.md and CLAUDE.md at project roots (skip for
-    // monorepo sub-packages where agent files live at workspace root).
+    // Always emit AGENTS.md at project roots (skip for
+    // monorepo sub-packages, where it lives at the workspace root).
     const writeAgentMd = !workspace.isPackage;
 
     // Expo owns its own client runtime, so it is the one case where the web

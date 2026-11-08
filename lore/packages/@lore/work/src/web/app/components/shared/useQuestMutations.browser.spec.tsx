@@ -22,7 +22,7 @@ import { useQuestMutations } from "./useQuestMutations.ts";
 /**
  * Stands in for the HTTP-backed `useClient<QuestController>()`. Same
  * substitution seam as `QuestDependencyPicker.browser.spec.tsx`
- * (`CLAUDE.md`: never `vi.mock` / `vi.spyOn`).
+ * (`AGENTS.md`: never `vi.mock` / `vi.spyOn`).
  *
  * Quests are generated from the resource schema rather than hand-listed:
  * `currentAssignedQuestsAtom` validates on every `set`, and a fixture

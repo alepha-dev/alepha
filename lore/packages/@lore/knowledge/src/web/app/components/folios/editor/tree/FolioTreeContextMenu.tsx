@@ -57,7 +57,7 @@ export interface FolioTreeContextMenuProps {
  * interface has no method that could back it: removing protection means
  * writing `protected: false` together with the PLAINTEXT `content`
  * (`FolioController.update`'s own invariant — see
- * `apps/lore/CLAUDE.md`'s protection-domain section), and the tree only
+ * `apps/lore/AGENTS.md`'s protection-domain section), and the tree only
  * ever has the ciphertext for an arbitrary node. Sending the ciphertext
  * back as if it were plaintext would corrupt the folio, not declassify it.
  * The document pane's own `useFolioActions` CAN do this correctly, but

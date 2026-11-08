@@ -54,7 +54,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  *
  * ## Why this is a const and not a method on a class
  *
- * `apps/lore/CLAUDE.md` says never to write code outside a class, so that
+ * `apps/lore/AGENTS.md` says never to write code outside a class, so that
  * everything stays substitutable through DI. This is the documented
  * exception, for a concrete reason rather than convenience: an in-class
  * `ProjectGates.member(...)` would be reached as

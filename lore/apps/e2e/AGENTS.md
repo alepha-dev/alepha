@@ -1,4 +1,4 @@
-# CLAUDE.md: apps/e2e
+# AGENTS.md: apps/e2e
 
 The end-to-end suites (#Q2628). They drive built artefacts and import no `apps/lore/src`: a pure helper they need comes from a package's barrel or its own subpath (`@lore/work/schemas`, `@lore/deploy/testing/tarball`), never from a barrel that renders React, which Playwright's loader cannot import.
 

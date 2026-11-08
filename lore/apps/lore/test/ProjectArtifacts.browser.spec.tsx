@@ -24,7 +24,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Records every action the page reaches for and answers what a case set.
- * Same substitution seam as `AppArtifacts.browser.spec.tsx` (`CLAUDE.md`:
+ * Same substitution seam as `AppArtifacts.browser.spec.tsx` (`AGENTS.md`:
  * never `vi.mock` / `vi.spyOn`).
  *
  * `denied` refuses one action's `can()` while the rest are allowed, the way

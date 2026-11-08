@@ -18,7 +18,7 @@ import { appInstances } from "./appInstances.ts";
  * in the audit log, not in the table the Deploy tab reads.
  *
  * ⚠️ **This makes `app_instances` a cascade parent**, so
- * `apps/lore/CLAUDE.md`'s "Migration safety on D1" now applies to every later
+ * `apps/lore/AGENTS.md`'s "Migration safety on D1" now applies to every later
  * migration that touches it: a generated `DROP TABLE app_instances` rebuild
  * takes this table with it, silently, on D1.
  *
