@@ -10,8 +10,10 @@ import { useRouter } from "alepha/react/router";
 
 Use this hook to access the React Router instance.
 
-You can add a type parameter to specify the type of your application.
-This will allow you to use the router in a typesafe way.
+It is typed against the app's registered routers (see `Routers`), so page
+names and their params are checked with no type argument. A type argument
+still overrides it, and `useRouter<any>()` opts out, which is what code
+meant to run in any app writes.
 
 ## Examples
 
@@ -19,5 +21,11 @@ class App {
 home = $page();
 }
 
-const router = useRouter<App>();
+declare module "alepha/react/router" {
+interface Routers {
+app: App;
+}
+}
+
+const router = useRouter();
 router.push("home"); // typesafe
