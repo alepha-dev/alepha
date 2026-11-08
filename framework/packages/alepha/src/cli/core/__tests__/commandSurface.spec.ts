@@ -76,6 +76,7 @@ describe("the CLI's build tasks and its commands", () => {
       "gen",
       "init",
       "lint",
+      "mcp",
       "pack",
       "test",
       "typecheck",
