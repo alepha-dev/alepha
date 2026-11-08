@@ -145,6 +145,16 @@ test.describe("Account area", () => {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await expect(page.getByLabel("First name")).toHaveValue("Ada");
+
+    // And back: an emptied box is sent as "", which the server stores as no
+    // name at all (#Q3225), so the field comes back empty after a reload.
+    await page.getByLabel("First name").fill("");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText(/profile updated/i).first()).toBeVisible();
+
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByLabel("First name")).toHaveValue("");
   });
 
   /**

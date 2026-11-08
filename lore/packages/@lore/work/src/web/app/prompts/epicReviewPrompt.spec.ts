@@ -81,6 +81,40 @@ describe("epicReviewPromptDefault", () => {
   });
 
   /**
+   * The review is a record since #E121: one call files it, the reply quotes
+   * the numbers that call returned, and the owner answers by number.
+   */
+  it("reads the decision log first and treats it as binding", () => {
+    expect(prompt).toContain("`review`");
+    expect(prompt).toContain("The log is binding");
+    expect(prompt).toContain("do not ask again a question it answers");
+  });
+
+  it("files every finding with one epic_review_create call", () => {
+    expect(prompt).toContain("ONE `epic_review_create` call");
+    expect(prompt).toContain('project_name "Alepha", number 31');
+    expect(prompt).toContain("`question`");
+    expect(prompt).toContain("`decision`");
+    expect(prompt).toContain("`change`");
+    // The old write-back for questions, retired.
+    expect(prompt).not.toContain("a comment on the quest they concern");
+  });
+
+  it("quotes the returned numbers and says how to answer them", () => {
+    expect(prompt).toContain("the item number `epic_review_create` returned");
+    expect(prompt).toContain("Review tab");
+    expect(prompt).toContain('"answer 3: B"');
+    expect(prompt).toContain("`epic_review_answer`");
+  });
+
+  it("files an empty review rather than padding one", () => {
+    expect(prompt).toContain("file it with no items");
+    expect(prompt).toContain(
+      "If the review raised no open question at all, say so in one line rather than inventing one.",
+    );
+  });
+
+  /**
    * The load-bearing one, kept from the builder this template replaced.
    * The renderer takes seven named fields rather than a resource object
    * precisely so that nothing can ride along. A `sg_` token in a prompt

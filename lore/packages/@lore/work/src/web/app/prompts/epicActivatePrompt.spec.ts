@@ -31,6 +31,17 @@ describe("epicActivatePromptDefault", () => {
     expect(prompt).toContain("`epic: 67`");
   });
 
+  /**
+   * The review record (#E121): its decision log is binding, and a question
+   * still open is the owner's, never the run's to answer.
+   */
+  it("reads the decision log as binding and stops on an open question", () => {
+    expect(prompt).toContain("`review.log`");
+    expect(prompt).toContain("the log is binding");
+    expect(prompt).toContain("`review.openQuestions`");
+    expect(prompt).toContain("they are the owner's: stop and report them");
+  });
+
   it("demands a worktree and a branch, never main", () => {
     expect(prompt).toContain("git worktree");
     expect(prompt).toContain("Never on main");

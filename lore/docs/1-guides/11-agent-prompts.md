@@ -30,12 +30,19 @@ what you pasted.
 
 **Review** asks an agent to sharpen a plan before anyone works it: take the
 decisions the spec left open, tighten the vague quests, and say plainly what
-it cannot answer alone.
+it cannot answer alone. It files what it found as one review on the epic,
+with numbered questions, decisions and changes, and lists the questions in
+its reply by those numbers, so you can answer on the epic's Review tab or in
+the chat ("answer 3: B"). It reads the earlier reviews' decision log first,
+and does not ask again what is already answered. See
+[Reviewing an epic](/lore/docs/guides-epics#reviewing-an-epic).
 
 **Work on it** on an epic hands the whole epic over, quest by quest: accept,
 work, verify, commit and complete each quest in turn. It sets no status. The
 first quest the agent accepts is what moves a ready epic to in progress, and
-the last one it closes is what completes it. It is not offered on a draft
+the last one it closes is what completes it. It treats the epic's
+decision log as settled, and stops on a review question still open rather
+than answering it for you. It is not offered on a draft
 epic: that one's quests refuse to be accepted, and whether its spec is done
 is your call, not the agent's. Copying it changes nothing about the epic.
 

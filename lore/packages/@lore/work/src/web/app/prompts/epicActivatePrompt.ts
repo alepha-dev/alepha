@@ -11,6 +11,10 @@
  * rather than to flip it. Offered on an in-progress epic too, because a
  * half-worked epic can be handed over.
  *
+ * Since #E121 it reads the epic's review record too: the decision log
+ * `epic_get` inlines is binding beside the folios, and an open review
+ * question is the owner's, so the run stops and reports it.
+ *
  * What an agent cannot guess is filled in: which calls read the plan, what
  * the frozen quest set forbids once the epic has started, and what to do
  * when a quest cannot be done as written.
@@ -39,7 +43,8 @@ The epic: {{url}}
 ## Before touching code
 
 - Work in a git worktree of your own, on a branch named after the epic. Never on main.
-- Read the epic with \`epic_get\` (project_name "{{project}}", number {{number}}) and its quests with \`quest_list\` (\`epic: {{id}}\`, \`detail: "full"\`). Read the folios \`epic_get\` lists: they hold the decisions already taken.
+- Read the epic with \`epic_get\` (project_name "{{project}}", number {{number}}) and its quests with \`quest_list\` (\`epic: {{id}}\`, \`detail: "full"\`). Read the folios \`epic_get\` lists, and its \`review.log\`: together they hold the decisions already taken, and the log is binding.
+- If \`epic_get\` lists any \`review.openQuestions\`, they are the owner's: stop and report them in your reply, numbered as the review numbered them, rather than answering one yourself or working around it.
 - The epic must be \`ready\` or \`in_progress\`. If it is still a \`draft\`, stop and say so: its plan is not finished, and marking it ready is the owner's call, not yours.
 - Your first \`quest_accept\` starts the epic, and from then on its quest set is frozen. Anything you discover is an objective on a quest in the epic (\`quest_update\`) or a comment (\`quest_comment_add\`), never a new quest.
 - Order the quests by their dependencies and by the order the epic's description gives.

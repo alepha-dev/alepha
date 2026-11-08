@@ -153,6 +153,7 @@ describe("the Lore CLI command surface", () => {
         "shelve",
         "unshelve",
         "delete",
+        "review",
       ],
       feedback: ["list", "get", "attachment", "comment", "accept", "reject"],
       folio: [
