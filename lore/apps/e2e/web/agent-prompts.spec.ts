@@ -282,6 +282,8 @@ test.describe("agent prompts", () => {
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       expect(copied).toContain("Review the plan of epic");
+      // The review is filed as a record since #E121, not as comments.
+      expect(copied).toContain("epic_review_create");
       expect(copied).not.toContain("Edited review of");
     });
 

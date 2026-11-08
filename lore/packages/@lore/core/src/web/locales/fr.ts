@@ -2912,6 +2912,14 @@ export default {
   "epic.ready.title": "Marquer cette épopée comme prête ?",
   "epic.ready.confirm":
     "Marquer $1 comme prête place ses quêtes dans le backlog, où le reste du projet peut les prendre. La première quête acceptée démarre l'épopée et fige sa liste de quêtes.",
+  "epic.ready.openQuestions.title":
+    "$1 questions de revue sont encore ouvertes",
+  "epic.ready.openQuestions.title.one":
+    "1 question de revue est encore ouverte",
+  "epic.ready.openQuestions.confirm":
+    "Marquer $1 comme prête place ses quêtes dans le backlog alors que sa revue reste sans réponse. Les réponses se donnent dans l’onglet Revue ; vous pouvez aussi la marquer prête maintenant et les laisser ouvertes.",
+  "epic.ready.openQuestions.anyway": "Marquer comme prête quand même",
+  "epic.ready.openQuestions.review": "Ouvrir l’onglet Revue",
   "epic.start.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
   "epic.status.actions.backToDraft": "Repasser en brouillon",
@@ -2939,6 +2947,31 @@ export default {
   "epic.tab.flow": "Flux",
   "epic.tab.folios": "Folios",
   "epic.tab.activity": "Activité",
+  "epic.tab.review": "Revue",
+  "epic.list.openQuestions": "$1 questions de revue ouvertes",
+  "epic.review.empty":
+    "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis les prompts d’agent pour en déposer une.",
+  "epic.review.open": "Questions ouvertes ($1)",
+  "epic.review.open.none": "Aucune question de revue n’est ouverte.",
+  "epic.review.recommended": "Recommandé",
+  "epic.review.pick": "Choisir",
+  "epic.review.write": "Écrire une réponse",
+  "epic.review.waive": "Écarter",
+  "epic.review.answer.title": "Répondre à l’élément $1",
+  "epic.review.answer.label": "Réponse",
+  "epic.review.answer.submit": "Répondre",
+  "epic.review.answer.required": "Écrivez d’abord une réponse.",
+  "epic.review.log": "Journal des décisions",
+  "epic.review.log.empty": "Rien n’a encore été décidé.",
+  "epic.review.kind.question": "question",
+  "epic.review.kind.decision": "décision",
+  "epic.review.answered": "Réponse :",
+  "epic.review.replaces": "Remplace la décision $1",
+  "epic.review.overturn": "Renverser",
+  "epic.review.overturn.title": "Renverser la décision $1",
+  "epic.review.overturn.label": "La décision qui la remplace",
+  "epic.review.timeline": "Revues",
+  "epic.review.filed": "$1, $2 éléments",
   "epic.aside.number": "ID",
   "epic.aside.name": "Nom",
   "epic.aside.status": "Statut",
@@ -3382,6 +3415,12 @@ export default {
   "activity.fields": "a modifié $1",
   "activity.capability.enabled": "a activé $1",
   "activity.capability.disabled": "a désactivé $1",
+  "activity.review.filed":
+    "a déposé une revue (questions : $1, décisions : $2, changements : $3)",
+  "activity.review.answered": "a répondu à l’élément $1",
+  "activity.review.waived": "a écarté l’élément $1",
+  "activity.review.overturned":
+    "a renversé l’élément $1, remplacé par l’élément $2",
 
   // The rank matrix's column labels, one per `$permission` declared in
   // `LorePermissions`, plus a heading per group. Rendered dynamically from the

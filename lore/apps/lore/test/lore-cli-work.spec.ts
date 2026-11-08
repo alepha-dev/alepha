@@ -697,6 +697,94 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(await lore.run("epic list", [])).not.toContain("Renamed epic");
   });
 
+  it("files a review from a file, answers it by number, and shows it on epic get", async () => {
+    const { lore } = await ownProject("Reviews");
+    const epic = JSON.parse(
+      await lore.run("epic create", [
+        "--title",
+        "Reviewed",
+        "--output",
+        "json",
+      ]),
+    );
+    await lore.fs.writeFile(
+      "/work/review.json",
+      JSON.stringify([
+        {
+          kind: "question",
+          title: "Which table?",
+          suggestions: [{ label: "One", cost: "a rebuild" }, { label: "Two" }],
+          recommended: 1,
+        },
+        { kind: "question", title: "Notify anyone?" },
+        { kind: "decision", title: "Keep the name." },
+      ]),
+    );
+
+    const filed = await lore.run("epic review create", [
+      `E${epic.number}`,
+      "--summary",
+      "Two questions",
+      "--items",
+      "@review.json",
+    ]);
+    expect(filed).toContain(`Filed a review of E${epic.number}, 3 items`);
+    expect(filed).toContain("Which table?");
+
+    // The open questions never block the move; the line names them.
+    expect(
+      await lore.run("epic set status", [
+        `E${epic.number}`,
+        "--status",
+        "ready",
+      ]),
+    ).toContain(
+      `E${epic.number} is now ready, with 2 review questions still open`,
+    );
+
+    const before = await lore.run("epic get", [`E${epic.number}`]);
+    expect(before).toContain("Open review questions");
+    expect(before).toContain("1. Which table?");
+    expect(before).toContain("1* Two");
+
+    expect(
+      await lore.run("epic review answer", [
+        `E${epic.number}`,
+        "--item",
+        "1",
+        "--suggestion",
+        "1",
+      ]),
+    ).toContain(`Item 1 of E${epic.number} is answered`);
+    await lore.run("epic review answer", [
+      `E${epic.number}`,
+      "--item",
+      "2",
+      "--waive",
+    ]);
+    expect(
+      await lore.run("epic review answer", [
+        `E${epic.number}`,
+        "--item",
+        "3",
+        "--answer",
+        "Rename it.",
+      ]),
+    ).toContain("decision 4 replaces it");
+
+    const after = await lore.run("epic get", [`E${epic.number}`]);
+    expect(after).not.toContain("Open review questions");
+    expect(after).toContain("1. Which table? Answer: Two");
+    expect(after).toContain("4. decision: Rename it.");
+
+    const bad = await lore.fail("epic review create", [
+      `E${epic.number}`,
+      "--items",
+      "{}",
+    ]);
+    expect(bad.error?.message).toContain("--items must be a JSON array");
+  });
+
   it("moves a quest in and out of an epic, and sets its predecessor", async () => {
     const { lore } = await ownProject("Moves");
     const before = await newQuest(lore, "Goes first");

@@ -4,6 +4,8 @@ import { Alepha, type Infer } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { areas } from "../api/entities/areas.ts";
+import { epicReviewItems } from "../api/entities/epicReviewItems.ts";
+import { epicReviews } from "../api/entities/epicReviews.ts";
 import { type Epic, epics } from "../api/entities/epics.ts";
 import { feedback } from "../api/entities/feedback.ts";
 import { questComments } from "../api/entities/questComments.ts";
@@ -29,6 +31,8 @@ export class WorkTestEntities extends CoreTestEntities {
   feedback = $repository(feedback);
   areas = $repository(areas);
   epics = $repository(epics);
+  epicReviews = $repository(epicReviews);
+  epicReviewItems = $repository(epicReviewItems);
   quests = $repository(quests);
   questComments = $repository(questComments);
   questFlowDaily = $repository(questFlowDaily);

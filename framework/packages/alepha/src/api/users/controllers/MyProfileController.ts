@@ -112,11 +112,24 @@ export class MyProfileController {
       }
 
       const updated = await repo.updateById(user.id, {
-        firstName: body.firstName,
-        lastName: body.lastName,
+        firstName: this.nameOrNull(body.firstName),
+        lastName: this.nameOrNull(body.lastName),
         username: body.username,
       });
       return this.toMyProfile(updated);
     },
   });
+
+  /**
+   * A name sent empty (or blank) clears it, like `null`: an emptied text
+   * box submits `""`, and storing that would leave an account with a first
+   * name of nothing instead of none. `undefined` stays "leave it alone".
+   * Done here so a form can send its values as they are.
+   */
+  protected nameOrNull(value: string | null | undefined) {
+    if (value === undefined || value === null) {
+      return value;
+    }
+    return value.trim() === "" ? null : value;
+  }
 }

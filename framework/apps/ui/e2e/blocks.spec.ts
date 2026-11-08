@@ -381,6 +381,32 @@ test.describe("DataTable", () => {
     ).toHaveAttribute("aria-expanded", "false");
   });
 
+  test("the tab band never scrolls vertically, and its tabs switch the view", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/data-table/addons");
+    await expect(page.getByText("Ada Lovelace")).toBeVisible();
+
+    // Geometry, so a jsdom spec cannot see it: `overflow-x-auto` alone makes
+    // the band scroll vertically too, and a tab reaching past its bottom edge
+    // drew a scrollbar wherever scrollbars are always shown.
+    const band = page.locator('[data-slot="data-table-tabs"]');
+    const overflow = await band.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      overflowY: getComputedStyle(el).overflowY,
+    }));
+    expect(overflow.scrollHeight).toBeLessThanOrEqual(overflow.clientHeight);
+    expect(overflow.overflowY).toBe("hidden");
+
+    const members = band.getByRole("tab", { name: "Members" });
+    const archived = band.getByRole("tab", { name: "Archived" });
+    await expect(members).toHaveAttribute("aria-selected", "true");
+    await archived.click();
+    await expect(archived).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("Ada Lovelace")).toBeHidden();
+  });
+
   test("the help card stays open while the pointer crosses into it", async ({
     page,
   }) => {

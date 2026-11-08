@@ -217,6 +217,38 @@ deleted quest now, and a `CASCADE` would be a rebuild of `quests` that
 skips that path. The web offers Delete on draft and ready epics only, with
 the quest count in the confirm.
 
+⚠️ **Epic reviews are a record, not chat (#E121, folio #F1460).** Each run
+of "Review epic" files ONE `epic_reviews` row with its `epic_review_items`
+(`question | decision | change`), and every rule lives on
+`EpicReviewService`:
+
+- **Numbers are per epic**, 1-based, from the `$sequence`
+  `reviewItemNumber` scoped on the epic id, continuing across reviews and
+  unique on `(epicId, number)`. Renaming that property restarts every
+  epic's numbering, as with `epicNumber`.
+- **Status is the permission**: filing, answering, waiving and overturning
+  are allowed only while the epic is `draft` or `ready`
+  (`EpicWorkflowService.assertReviewWritable`). From `in_progress` on the
+  review set is locked with the quest set, and an open question stays open
+  in the record.
+- **Overturning a decision files a new decision** (`replaces`) and marks the
+  old one (`replacedBy`); the decision log is the answered questions plus
+  the decisions with no `replacedBy`. A change item names its quest or epic
+  by number in `target`, never by a foreign key, so `quests` gains no child.
+- **Readying an epic with open questions asks and never refuses**: the
+  `EpicStatusControl` confirm names the count, `epic_set_status` and
+  `lore epic set status` report `openQuestions`. Whether a spec is done is
+  the owner's call.
+- **Every review and every answer is an `epic` audit row** (`review`,
+  `answer`, never coalesced), so both show on the epic's Activity tab.
+- **Delete order**: `deleteEpic` deletes the reviews explicitly
+  (`EpicReviewService.deleteOf`, items then reviews) after the quests and
+  before the epic; the `epicId` cascades are only the project deletion's
+  backstop. A project merge moves `epic_reviews.project_id` with the epics.
+- `epic_get` inlines the open questions and a decision log capped at 30
+  lines, read inside `getEpicDetailByNumber` beside the rollup, which keeps
+  it at four D1 trips (`mcp-tool-trips.spec.ts`).
+
 ⚠️ It replaced epic #31's `planned | active | done` ratchet, whose Begin and
 Conclude clicks carried no decision: the Work-on-it prompt told the agent to
 make both, and on 2026-09-10 not one of project 1's 49 epics was `active`.
@@ -318,7 +350,7 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 **Services (6)** - `FeedbackRateLimiter`, `QuestCsvFormatter`, `QuestDeletionService` (the one quest delete, shared by `deleteQuest` and `deleteEpic`), `QuestResourceMapper`, `QuestService`, `QuestShelvingService` (the quest shelve and unshelve writes, shared with the epic shelve).
 
-**MCP tools (4)** - `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`).
+**MCP tools (4)** - `EpicTools` (`epic_review_create` / `_answer` and the `review` block on `epic_get` since #E121), `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`).
 
 ## Stock automation presets (#E43, #Q2041)
 

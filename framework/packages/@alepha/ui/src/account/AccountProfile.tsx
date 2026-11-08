@@ -6,7 +6,7 @@ import type {
 } from "alepha/api/users";
 import { updateMyProfileBodySchema } from "alepha/api/users";
 import { useAction, useClient } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useActionForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { AtSign, Camera, Trash2, User } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
@@ -131,30 +131,21 @@ const AccountProfile = (props: AccountProfileProps) => {
    * users while working for everyone who had set one. `undefined` is what an
    * empty optional field means, and it is what the two name fields would use
    * too if they were not `.nullable()` with a real "clear me" state.
+   *
+   * Built from the action (`useActionForm`): the values are the body as they
+   * are. An emptied name box sends `""`, which `updateMyProfile` stores as
+   * "no name" itself (it used to be mapped to `null` here, #Q3225), and an
+   * absent `username` stays "leave it alone".
    */
-  const form = useForm({
+  const form = useActionForm(api.updateMyProfile, {
     initialValues: {
       ...(hasUsername ? { username: props.profile?.username } : {}),
       firstName: props.profile?.firstName ?? "",
       lastName: props.profile?.lastName ?? "",
     },
     schema: updateMyProfileBodySchema,
-    handler: async (values) => {
-      setProfile(
-        await api.updateMyProfile({
-          body: {
-            // Empty is "unset", which the API spells `null` — NOT
-            // `undefined`, which means "leave this column alone" and made
-            // clearing a name a silent no-op that still toasted success.
-            firstName: values.firstName || null,
-            lastName: values.lastName || null,
-            // Absent, not `null`, in a realm without usernames: `null` is the
-            // "clear this column" signal the two name fields use, and
-            // `username` has no such state — absent is "leave it alone".
-            username: values.username,
-          },
-        }),
-      );
+    onSuccess: (updated) => {
+      setProfile(updated);
       toaster.show(
         tr("account.profile.updated", { default: "Profile updated" }),
         "success",

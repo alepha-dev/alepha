@@ -30,6 +30,12 @@
  * recommendation on each question. Asking once, here, is what stops that.
  * A question filed with no context and no candidate answers hands the
  * whole job back to the reader.
+ *
+ * ⚠️ **The findings are a record since #E121**: ONE `epic_review_create`
+ * call files every question, decision and change, and the reply quotes the
+ * numbers it returned, so "answer 3: B" means the same item in chat and on
+ * the Review tab. The decision log `epic_get` inlines is read first and is
+ * binding. An empty review is filed, never padded.
  */
 export const epicReviewPromptDefault = `Review the plan of epic {{reference}} "{{title}}" in the Lore project "{{project}}".
 
@@ -39,7 +45,7 @@ The epic: {{url}}
 
 If you have the Lore MCP, use it:
 
-- \`epic_get\` with project_name "{{project}}" and number {{number}} for the epic's own body.
+- \`epic_get\` with project_name "{{project}}" and number {{number}} for the epic's own body, and its \`review\`: the questions earlier reviews left open, and the decision log. The log is binding: do not ask again a question it answers, and do not reverse a decision in it without filing a new decision item that says so and why.
 - \`quest_list\` with the same project, \`epic: {{id}}\`, and \`detail: "full"\`. ⚠️ Without \`detail: "full"\` the list omits every description and every objective, which is exactly what a review has to read. Read the quests one by one if you prefer.
 
 If you do not have it, open the URL above and read the epic and its quests there.
@@ -61,7 +67,13 @@ Check the plan against the code as it actually is, not as the spec describes it.
 - \`quest_update\` to sharpen a quest's title, description or objectives, and \`quest_objective_set\` to tick one.
 - A folio, filed under this epic, if the review produces a design note worth keeping.
 
-File the open questions where they will be read again: a comment on the quest they concern, or a section in the epic's description.
+Then file the review itself with ONE \`epic_review_create\` call (project_name "{{project}}", number {{number}}), holding every item:
+
+- a \`question\` for each one the owner has to answer: its title in one sentence, its \`context\`, its \`suggestions\` (each with its cost) and the one you \`recommended\`;
+- a \`decision\` for each call you took alone, with its reason in \`context\`;
+- a \`change\` for each edit above (the epic description, a quest created or sharpened), with its \`target\`.
+
+The call returns the number each item was given. Numbers are per epic and continue across reviews, so use the returned ones, never your own count. If the review found nothing to ask, decide or change, file it with no items: an empty review is a record that the plan was read.
 
 ## Then put every open question in your reply
 
@@ -71,4 +83,4 @@ Filing them is not the report. The person who asked for this review is reading y
 - **Context**: what the spec says, what the code actually does today, and why the two together do not settle it. Name the files.
 - **Suggestions**: the two or three answers genuinely on the table, what each one costs, and which one you would take and why.
 
-Number them so they can be answered by number. If the review raised no open question at all, say so in one line rather than inventing one.`;
+Number each block with the item number \`epic_review_create\` returned for that question. Close with how to answer: on the epic's Review tab, or here in chat ("answer 3: B", "waive 4"), which you then record with \`epic_review_answer\` (by item number: a letter is a \`suggestion\`, A being 0 and B being 1; their own words are an \`answer\`; "waive" is \`waive: true\`). Give each block's suggestions as A, B, C in that order. If the review raised no open question at all, say so in one line rather than inventing one.`;

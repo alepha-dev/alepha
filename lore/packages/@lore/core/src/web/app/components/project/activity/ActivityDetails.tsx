@@ -41,6 +41,39 @@ export const ActivityDetails = (props: ActivityDetailsProps) => {
     );
   }
 
+  // An epic review filed (#E121): how many of each kind it held.
+  const questions = props.metadata?.questions;
+  if (typeof questions === "number") {
+    return (
+      <span className="text-muted-foreground text-xs">
+        {tr("activity.review.filed", {
+          args: [
+            String(questions),
+            String(props.metadata?.decisions ?? 0),
+            String(props.metadata?.changes ?? 0),
+          ],
+        })}
+      </span>
+    );
+  }
+
+  // An answer to one review item: which, and what became of it.
+  const outcome = props.metadata?.outcome;
+  const item = props.metadata?.item;
+  if (typeof outcome === "string" && typeof item === "number") {
+    return (
+      <span className="text-muted-foreground text-xs">
+        {outcome === "overturned"
+          ? tr("activity.review.overturned", {
+              args: [String(item), String(props.metadata?.replacement ?? "")],
+            })
+          : outcome === "waived"
+            ? tr("activity.review.waived", { args: [String(item)] })
+            : tr("activity.review.answered", { args: [String(item)] })}
+      </span>
+    );
+  }
+
   const fields = props.metadata?.fields;
   if (!Array.isArray(fields) || fields.length === 0) {
     return null;

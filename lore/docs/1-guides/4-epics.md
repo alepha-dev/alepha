@@ -121,6 +121,46 @@ named:
 > Cannot add a quest: Epic #E30 is in progress. Its plan is frozen. File this
 > in a new epic, or add an objective to a quest already in it.
 
+## Reviewing an epic
+
+A plan is usually reviewed before anyone works it, often by an agent run
+from the epic's **Review Epic** prompt. Each review is kept on the epic, on
+its **Review** tab, as a list of numbered items of three kinds:
+
+- **Questions** for you to answer. Each one comes with its context (what
+  the spec says against what the code does) and two or three suggestions,
+  each with its cost, the reviewer's pick marked.
+- **Decisions** the reviewer took alone, with the reason.
+- **Changes** the review made: an edit to the epic's description, a quest
+  created or sharpened, linked to what it touched.
+
+Items are numbered per epic, and the numbers continue from one review to
+the next, so "answer 3: take B" means the same item in a chat with the
+agent and on the Review tab. Answer a question by picking one of its
+suggestions or writing your own, or waive it to set it aside. A decision
+you disagree with is overturned: you write the decision that replaces it,
+and the old one leaves the log.
+
+The answered questions and the decisions that stand are the epic's
+**decision log**. The next review reads it before asking anything, and an
+agent working the epic treats it as settled; a question still open is
+yours, and the agent stops and reports it instead of answering it.
+
+A review with nothing in it is valid: it records that the plan was read and
+nothing needed asking. Each review and each answer shows on the epic's
+Activity tab.
+
+Reviews are written only while the epic is draft or ready. Once its first
+quest is accepted, they lock with the plan: what was answered stays
+answered, and a question still open stays open in the record.
+
+### Marking it ready with questions open
+
+The epic list and the Review tab count the questions still open. Marking an
+epic ready while some are open asks first, naming how many, and offers the
+Review tab as the way out; you can still mark it ready anyway. Whether the
+spec is done is your call, so nothing refuses.
+
 ## From an agent
 
 Over MCP the same rules apply, and every refusal is a plain message that
@@ -145,6 +185,12 @@ names the epic, so an agent knows what happened.
   epic".
 - There is no call to complete an epic: it completes with the request that
   resolves its last open quest.
+- `epic_review_create` files a review with all its items in one call, and
+  answers with the number each item was given. `epic_review_answer`
+  records an answer by item number: your own words, a suggestion, or a
+  waive. Both work while the epic is draft or ready. `epic_get` carries
+  the open questions and the decision log, and `epic_set_status` says how
+  many questions are open beside the new status.
 
 `quest_list` hides a draft epic's quests by default, exactly as the
 backlog does, so that a list of quests is the list of quests that can be

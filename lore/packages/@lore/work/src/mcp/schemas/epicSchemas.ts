@@ -7,6 +7,9 @@ import {
 import { z } from "alepha";
 
 import { epicManualStatusSchema } from "../../api/schemas/epicManualStatusSchema.ts";
+import { epicReviewItemInputSchema } from "../../api/schemas/epicReviewItemInputSchema.ts";
+import { epicReviewItemKindSchema } from "../../api/schemas/epicReviewItemKindSchema.ts";
+import { epicReviewSuggestionSchema } from "../../api/schemas/epicReviewSuggestionSchema.ts";
 
 /**
  * Epic reference for MCP tools. Unlike quests (`id` / `shortId`) and
@@ -64,6 +67,40 @@ export const epicListResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
+// epic_get's `review` (#E121)
+// -----------------------------------------------------------------------------
+
+/**
+ * What `epic_get` inlines about an epic's reviews, so neither prompt needs a
+ * second call: every open question in full, and the decision log one line
+ * each, bounded (the oldest past the cap go behind `logOmitted`).
+ */
+export const epicGetReviewSchema = z.object({
+  openQuestions: z
+    .array(
+      z.object({
+        number: z.integer(),
+        title: z.string(),
+        context: z.string().optional(),
+        suggestions: z.array(epicReviewSuggestionSchema),
+        recommended: z.integer().optional(),
+      }),
+    )
+    .describe(
+      "Review questions still open. They are the owner's to answer: never answer one yourself.",
+    ),
+  log: z
+    .array(z.string())
+    .describe(
+      "The decision log, oldest first, one line each: every answered question with its answer and every decision that stands. Binding: do not ask again what is answered here, and do not reverse a decision without filing a new decision that says so.",
+    ),
+  logOmitted: z
+    .integer()
+    .describe("How many older log entries were left out to keep this short.")
+    .optional(),
+});
+
+// -----------------------------------------------------------------------------
 // epic_get
 // -----------------------------------------------------------------------------
 
@@ -107,6 +144,9 @@ export const epicGetResultSchema = z.object({
       summary: z.string().optional(),
       updatedAt: z.string(),
     }),
+  ),
+  review: epicGetReviewSchema.describe(
+    "What the epic's plan reviews left: the questions still open, and the decision log. Read it before reviewing or working the epic.",
   ),
 });
 
@@ -181,6 +221,11 @@ export const epicSetStatusResultSchema = z.object({
   number: z.integer(),
   title: z.string(),
   status: epicStatusSchema,
+  openQuestions: z
+    .integer()
+    .describe(
+      "Review questions still open on the epic. Never a refusal: report them to the owner, whose call it is whether the spec is done.",
+    ),
 });
 
 // -----------------------------------------------------------------------------
@@ -222,4 +267,76 @@ export const epicDeleteResultSchema = z.object({
   deletedQuests: z
     .integer()
     .describe("How many quests were deleted with the epic."),
+});
+// -----------------------------------------------------------------------------
+// epic_review_create
+// -----------------------------------------------------------------------------
+
+export const epicReviewCreateParamsSchema = epicRefSchema.extend({
+  summary: z
+    .string()
+    .max(2000)
+    .describe("What the review concluded, in a line or two.")
+    .optional(),
+  items: z
+    .array(epicReviewItemInputSchema)
+    .max(100)
+    .describe(
+      "Every question, decision and change of this review, in one call. An empty list is a valid review: do not invent an item to look thorough.",
+    ),
+});
+
+export const epicReviewCreateResultSchema = z.object({
+  review: z.integer().describe("The review's id."),
+  items: z
+    .array(
+      z.object({
+        number: z.integer(),
+        kind: epicReviewItemKindSchema,
+        title: z.string(),
+      }),
+    )
+    .describe(
+      "Each item with the number it was given, per epic. Quote these numbers in your reply.",
+    ),
+});
+
+// -----------------------------------------------------------------------------
+// epic_review_answer
+// -----------------------------------------------------------------------------
+
+export const epicReviewAnswerParamsSchema = epicRefSchema.extend({
+  item: z
+    .integer()
+    .min(1)
+    .describe(
+      "The item's number, per epic, as the review and epic_get show it.",
+    ),
+  answer: z
+    .string()
+    .describe(
+      "The owner's answer in their words. On a decision, the decision that replaces it.",
+    )
+    .optional(),
+  suggestion: z
+    .integer()
+    .min(0)
+    .describe("Pick one of the item's suggestions instead, by index from 0.")
+    .optional(),
+  waive: z
+    .boolean()
+    .describe(
+      "Set a question aside unanswered. A decision cannot be waived, only overturned.",
+    )
+    .optional(),
+});
+
+export const epicReviewAnswerToolResultSchema = z.object({
+  item: z.integer(),
+  outcome: z.enum(["answered", "waived", "overturned"]),
+  answer: z.string().optional(),
+  replacement: z
+    .integer()
+    .describe("On an overturn: the number of the decision filed in its place.")
+    .optional(),
 });
