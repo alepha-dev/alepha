@@ -6,6 +6,7 @@ export type AsyncLocalStorageData = Record<string, unknown>;
 type ContextLayer = AsyncLocalStorageData & {
   [ALS_PARENT]?: ContextLayer;
   [ALS_NESTED]?: boolean;
+  [ALS_OVERLAY]?: boolean;
 };
 
 /**
@@ -37,6 +38,13 @@ export const ALS_PARENT = Symbol("als.parent");
  * may read through it to the `run()` layer beneath.
  */
 export const ALS_NESTED = Symbol("als.nested");
+
+/**
+ * Marks a layer {@link AlsProvider.overlay} opened: it holds one value, and
+ * every write and every `"current"` / `"parent"` read goes past it to the
+ * layer beneath, as if it were not there.
+ */
+export const ALS_OVERLAY = Symbol("als.overlay");
 
 export class AlsProvider {
   static create = (): ContextStorage | undefined => {
@@ -128,6 +136,56 @@ export class AlsProvider {
     }
 
     return this.als.run(layer, callback);
+  }
+
+  /**
+   * Run `callback` with `key` set to `value` in a layer that is invisible to
+   * everything else: writes inside `callback` land in the caller's layer, and
+   * a `"current"` or `"parent"` read answers as if the overlay were not there.
+   *
+   * What a value that must be scoped to a callback, without changing where
+   * anything else lives, needs: the tracer's active span (#E86). Opened with
+   * {@link nest}, a span would have taken every `set` its callback made (a
+   * page loader writing an atom) and dropped them when it ended.
+   *
+   * With no active parent it is {@link nest}, so the value still has a layer
+   * to live in. With no ALS at all (browser builds) this is `callback()`.
+   */
+  public overlay<R>(key: string, value: unknown, callback: () => R): R {
+    if (!this.als) {
+      return callback();
+    }
+
+    const parent = this.als.getStore() ?? undefined;
+    if (!parent) {
+      return this.nest(() => {
+        this.set(key, value);
+        return callback();
+      });
+    }
+
+    return this.als.run(
+      {
+        [key]: value,
+        [ALS_PARENT]: parent,
+        [ALS_NESTED]: true,
+        [ALS_OVERLAY]: true,
+      },
+      callback,
+    );
+  }
+
+  /**
+   * `layer`, or the first layer beneath it that {@link overlay} did not open.
+   */
+  protected ownLayer(
+    layer: ContextLayer | undefined,
+  ): ContextLayer | undefined {
+    let current = layer;
+    while (current?.[ALS_OVERLAY]) {
+      current = current[ALS_PARENT];
+    }
+    return current;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -293,7 +351,8 @@ export class AlsProvider {
     }
 
     if (scope === "current") {
-      return key in store ? (store[key] as T) : undefined;
+      const own = this.ownLayer(store);
+      return own && key in own ? (own[key] as T) : undefined;
     }
 
     if (scope === "fork") {
@@ -301,7 +360,9 @@ export class AlsProvider {
     }
 
     if (scope === "parent") {
-      return store[ALS_PARENT]?.[key] as T | undefined;
+      return this.ownLayer(this.ownLayer(store)?.[ALS_PARENT])?.[key] as
+        | T
+        | undefined;
     }
 
     // Default: walk up the tree from current layer to root
@@ -392,7 +453,8 @@ export class AlsProvider {
     }
 
     if (scope === "current") {
-      return key in store;
+      const own = this.ownLayer(store);
+      return !!own && key in own;
     }
 
     if (scope === "fork") {
@@ -400,7 +462,8 @@ export class AlsProvider {
     }
 
     if (scope === "parent") {
-      return !!store[ALS_PARENT] && key in store[ALS_PARENT];
+      const parent = this.ownLayer(this.ownLayer(store)?.[ALS_PARENT]);
+      return !!parent && key in parent;
     }
 
     if (key in store) {
@@ -423,7 +486,7 @@ export class AlsProvider {
       return;
     }
 
-    const store = this.als.getStore();
+    const store = this.ownLayer(this.als.getStore());
     if (store) {
       store[key] = value;
     }

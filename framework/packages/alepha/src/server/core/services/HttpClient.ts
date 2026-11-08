@@ -14,6 +14,7 @@ import {
 import { $cache } from "alepha/cache";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 
 import { HttpError } from "../errors/HttpError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
@@ -57,6 +58,7 @@ export class HttpClient {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly redaction = $inject(LogRedaction);
+  protected readonly tracer = $inject(Tracer);
   protected readonly settings = $store(httpClientOptions);
 
   public readonly cache = $cache<HttpClientCache>({
@@ -145,7 +147,7 @@ export class HttpClient {
       ...headers,
     };
 
-    const response = await fetch(url, request);
+    const response = await fetch(url, this.withTraceparent(request));
     if (!response.ok) {
       throw await this.responseError(
         response,
@@ -409,6 +411,76 @@ export class HttpClient {
    * Send the request and decode its response, caching it when asked.
    */
   protected send(
+    url: string,
+    request: RequestInit,
+    options: ResolvedFetchOptions,
+    cacheKey: string,
+  ): Promise<FetchResponse> {
+    if (!this.tracer.current()) {
+      return this.sendUntraced(url, request, options, cacheKey);
+    }
+
+    // One `client` span per call (#E86), and the trace sent on with it. The
+    // attributes name the host, never the URL: a path or a query string can
+    // hold ids and tokens.
+    const method = (request.method ?? "GET").toUpperCase();
+    const host = this.hostOf(url);
+    return this.tracer.startSpan(
+      host ? `${method} ${host}` : method,
+      { kind: "client" },
+      (span) => {
+        span.setAttribute("http.request.method", method);
+        span.setAttribute("server.address", host);
+        const traced = this.withTraceparent(request);
+        return this.sendUntraced(url, traced, options, cacheKey).then(
+          (response) => {
+            span.setAttribute("http.response.status_code", response.status);
+            return response;
+          },
+          (error: unknown) => {
+            const status = (error as { status?: unknown })?.status;
+            if (typeof status === "number") {
+              span.setAttribute("http.response.status_code", status);
+            }
+            throw error;
+          },
+        );
+      },
+    );
+  }
+
+  /**
+   * `request` with a `traceparent` header for the active span, unless the
+   * caller set one or the tracer propagates none (the browser, workerd).
+   */
+  protected withTraceparent<R extends RequestInit>(request: R): R {
+    const traceparent = this.tracer.traceparent();
+    if (!traceparent) {
+      return request;
+    }
+    const headers = new Headers(request.headers);
+    if (headers.has("traceparent")) {
+      return request;
+    }
+    headers.set("traceparent", traceparent);
+    return { ...request, headers };
+  }
+
+  /**
+   * The host of `url`, for the span name, or `""` for a relative URL.
+   */
+  protected hostOf(url: string): string {
+    try {
+      return new URL(url).host;
+    } catch {
+      return "";
+    }
+  }
+
+  /**
+   * {@link send} without its span.
+   */
+  protected sendUntraced(
     url: string,
     request: RequestInit,
     options: ResolvedFetchOptions,

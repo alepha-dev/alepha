@@ -31,6 +31,7 @@ import {
   staticEmbeddedAtom,
 } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
+import { Tracer } from "alepha/tracing";
 
 import { PAGE_ROUTE, type PageServerRoute } from "../constants/PAGE_ROUTE.ts";
 import { Redirection } from "../errors/Redirection.ts";
@@ -90,6 +91,7 @@ export class ReactServerProvider {
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly tracer = $inject(Tracer);
   protected readonly reactDomServer = $inject(ReactDomServerProvider);
   protected readonly pageCache = $inject(ReactPageCacheProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -1084,36 +1086,15 @@ export class ReactServerProvider {
     lang: string | undefined,
     shared: string,
   ): Promise<{ at: number; cached: string; anonymous: string } | undefined> {
-    const html = await this.alepha.context.runIsolated(async () => {
-      const headers = { ...serverRequest.headers };
-      delete headers.cookie;
-      delete headers.authorization;
-      const reply = new ServerReply();
-      const request = {
-        ...serverRequest,
-        headers,
-        reply,
-        user: undefined,
-        cookies: { req: {}, res: {} },
-        metadata: {},
-      } as ServerRequest;
-
-      this.alepha.context.set(ReactPageCacheProvider.CHECK_KEY, true);
-      this.alepha.context.set("alepha.http.request", request);
-      if (lang !== undefined) {
-        this.alepha.context.set("alepha.react.i18n.lang", lang);
-      }
-
-      await this.createHandler(route)(request);
-      const body = reply.body as
-        | string
-        | ReadableStream<Uint8Array>
-        | undefined;
-      if (body === undefined) {
-        return "";
-      }
-      return typeof body === "string" ? body : this.streamToString(body);
-    });
+    const html = await this.alepha.context.runIsolated(() =>
+      // Its own root (#E86): an isolated context sees nothing of the
+      // visitor's, the trace included.
+      this.tracer.startRoot(
+        `page cache anonymous render ${route.name}`,
+        {},
+        () => this.renderAnonymousHtml(route, serverRequest, lang),
+      ),
+    );
 
     const anonymous = html.replace(
       /<script id="__ssr_private" type="application\/json">[\s\S]*?<\/script>/,
@@ -1201,6 +1182,42 @@ export class ReactServerProvider {
   }
 
   /**
+   * The anonymous re-render of {@link renderAnonymously}, run inside its
+   * isolated context: the page's HTML for nobody.
+   */
+  protected async renderAnonymousHtml(
+    route: PageRoute,
+    serverRequest: ServerRequest,
+    lang: string | undefined,
+  ): Promise<string> {
+    const headers = { ...serverRequest.headers };
+    delete headers.cookie;
+    delete headers.authorization;
+    const reply = new ServerReply();
+    const request = {
+      ...serverRequest,
+      headers,
+      reply,
+      user: undefined,
+      cookies: { req: {}, res: {} },
+      metadata: {},
+    } as ServerRequest;
+
+    this.alepha.context.set(ReactPageCacheProvider.CHECK_KEY, true);
+    this.alepha.context.set("alepha.http.request", request);
+    if (lang !== undefined) {
+      this.alepha.context.set("alepha.react.i18n.lang", lang);
+    }
+
+    await this.createHandler(route)(request);
+    const body = reply.body as string | ReadableStream<Uint8Array> | undefined;
+    if (body === undefined) {
+      return "";
+    }
+    return typeof body === "string" ? body : this.streamToString(body);
+  }
+
+  /**
    * Core page rendering logic shared between SSR handler and static prerendering.
    *
    * Handles:
@@ -1230,6 +1247,26 @@ export class ReactServerProvider {
       return { redirect };
     }
 
+    // One span for the render, beside the loaders' (#E86). It ends when the
+    // stream opens (or, buffered, when every deferred value settled): the
+    // rest of the streaming belongs to the request's root span.
+    if (!this.tracer.recording) {
+      return this.renderStream(route, state, options);
+    }
+    return this.tracer.span(`render ${route.name}`, () =>
+      this.renderStream(route, state, options),
+    );
+  }
+
+  /**
+   * The render half of {@link renderPage}, once the layers are resolved:
+   * head, preload links, and the React stream.
+   */
+  protected async renderStream(
+    route: PageRoute,
+    state: ReactRouterState,
+    options: { preloadLinks?: boolean; streamed?: boolean },
+  ): Promise<{ reactStream?: ReadableStream<Uint8Array> }> {
     // Fill head from route config
     this.serverHeadProvider.fillHead(state);
 

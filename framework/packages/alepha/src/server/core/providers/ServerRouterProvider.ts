@@ -21,6 +21,7 @@ import {
 import { CryptoProvider } from "alepha/crypto";
 import { $logger, LogBufferProvider } from "alepha/logger";
 import { RouterProvider } from "alepha/router";
+import { type Span, Tracer } from "alepha/tracing";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { errorNameByStatus, HttpError } from "../errors/HttpError.ts";
@@ -100,6 +101,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);
   protected readonly serverRequestParser = $inject(ServerRequestParser);
   protected readonly logBuffer = $inject(LogBufferProvider);
+  protected readonly tracer = $inject(Tracer);
   protected readonly queryKeysCache = new WeakMap<object, string[]>();
   protected readonly globalMiddlewareRegistry: GlobalMiddlewareEntry[] = [];
 
@@ -222,7 +224,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           this.serverRequestParser.createServerRequest(rawRequest);
 
         return this.alepha.context.run(
-          () => this.processRequest(request, route, responseKind),
+          () => this.traceRequest(request, route, responseKind),
           {
             context: this.getContextId(rawRequest.headers),
             // The request's own signal, aborted on client disconnect, so
@@ -236,6 +238,103 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         );
       },
     });
+  }
+
+  /**
+   * {@link processRequest} under the request's root span (#E86): named
+   * `<METHOD> <route pattern>`, never the raw URL, which holds ids. An
+   * incoming `traceparent` continues the caller's trace.
+   *
+   * The span ends when the response body has been sent, not when the
+   * handler returns: a streamed body (SSR) is wrapped so its end, its error
+   * or its cancel ends the span. A 5xx marks it failed; a 4xx does not.
+   */
+  protected traceRequest(
+    request: ServerRequest,
+    route: ServerRoute,
+    responseKind: ResponseKind,
+  ): ReturnType<ServerRouterProvider["processRequest"]> {
+    if (!this.tracer.recording && !request.headers.traceparent) {
+      return this.processRequest(request, route, responseKind);
+    }
+    const method = route.method ?? "GET";
+    return this.tracer.startRoot(
+      `${method} ${route.path}`,
+      {
+        kind: "server",
+        manualEnd: true,
+        traceparent: request.headers.traceparent,
+        attributes: {
+          "http.request.method": method,
+          "http.route": route.path,
+          "url.scheme": request.url.protocol.replace(":", ""),
+        },
+      },
+      (span) => {
+        const response = this.processRequest(request, route, responseKind);
+        if (!span.recording) {
+          return response;
+        }
+        return response.then(
+          (value) => {
+            span.setAttribute("http.response.status_code", value.status);
+            if (value.status >= 500) {
+              span.setStatus("error");
+            }
+            value.body = this.endSpanWithBody(span, value.body, request);
+            return value;
+          },
+          (error: unknown) => {
+            this.tracer.fail(span, error);
+            span.end();
+            throw error;
+          },
+        );
+      },
+    );
+  }
+
+  /**
+   * End `span` once `body` has been sent: now for a buffered body, at the
+   * stream's end, error or cancel for a streamed one, or when the client
+   * leaves, whichever comes first.
+   */
+  protected endSpanWithBody(span: Span, body: unknown, request: ServerRequest) {
+    const end = () => span.end();
+    if (body instanceof NodeWebStream) {
+      request.signal?.addEventListener("abort", end, { once: true });
+      const reader = body.getReader();
+      return new NodeWebStream({
+        pull: async (controller) => {
+          try {
+            const { done, value } = await reader.read();
+            if (done) {
+              end();
+              controller.close();
+              return;
+            }
+            controller.enqueue(value);
+          } catch (error) {
+            this.tracer.fail(span, error);
+            end();
+            controller.error(error);
+          }
+        },
+        cancel: async (reason) => {
+          end();
+          await reader.cancel(reason);
+        },
+      });
+    }
+    if (body instanceof NodeStream) {
+      request.signal?.addEventListener("abort", end, { once: true });
+      body.once("end", end);
+      body.once("error", end);
+      body.once("close", end);
+      return body;
+    }
+    end();
+    return body;
   }
 
   /**

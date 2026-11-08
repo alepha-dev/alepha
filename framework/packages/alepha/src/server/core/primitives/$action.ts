@@ -20,6 +20,7 @@ import {
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
+import { Tracer } from "alepha/tracing";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { HttpError, HttpErrorClass } from "../errors/HttpError.ts";
@@ -395,10 +396,20 @@ export class ActionPrimitive<
   public readonly handler = new PipelineHandler(
     this.filterDeclaredErrors(this.options.handler),
     this.options.use,
-    (run, args) => this.withDeadline(run, args),
+    (run, args) =>
+      // One span per action call, HTTP or local `run()` alike, so a
+      // `/api/_batch` request shows one child per action it ran (#E86).
+      this.tracer.recording
+        ? this.tracer.span(`action ${this.name}`, (span) => {
+            span.setAttribute("alepha.action.name", this.name);
+            span.setAttribute("alepha.action.group", this.group);
+            return this.withDeadline(run, args);
+          })
+        : this.withDeadline(run, args),
   );
 
   protected readonly settings = $store(serverApiOptions);
+  protected readonly tracer = $inject(Tracer);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);

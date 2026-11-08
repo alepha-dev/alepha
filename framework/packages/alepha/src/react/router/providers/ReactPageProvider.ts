@@ -17,6 +17,7 @@ import { $logger } from "alepha/logger";
 import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";
 import { currentUserAtom } from "alepha/security";
+import { Tracer } from "alepha/tracing";
 import {
   type ComponentType,
   createElement,
@@ -100,6 +101,7 @@ export class ReactPageProvider {
   protected readonly localeProvider = $inject(RouterLocaleProvider);
   protected readonly deferred = $inject(ReactDeferred);
   protected readonly prefetched = $inject(ReactPrefetchCache);
+  protected readonly tracer = $inject(Tracer);
   protected readonly pages: PageRoute[] = [];
   protected nextIdCursor = 0;
 
@@ -492,7 +494,18 @@ export class ReactPageProvider {
         let reached = false;
         const terminal = async (a: any) => {
           reached = true;
-          return (await route.loader?.(a)) ?? {};
+          if (!route.loader) {
+            return {};
+          }
+          // One span per `$page` loader on the server (#E86).
+          if (!this.tracer.recording) {
+            return (await route.loader(a)) ?? {};
+          }
+          return (
+            (await this.tracer.span(`loader ${route.name}`, () =>
+              route.loader!(a),
+            )) ?? {}
+          );
         };
 
         const props = middleware.length

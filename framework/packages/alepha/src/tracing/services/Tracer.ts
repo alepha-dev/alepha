@@ -32,9 +32,10 @@ declare module "alepha" {
  *
  * The active span lives in the ALS context under {@link Tracer.key}: a span
  * opened inside another finds its parent with no argument, and two
- * concurrent callers each see their own. Each span runs its callback in a
- * layer of its own (`alepha.context.nest()`), so the parent is current again
- * when the callback settles.
+ * concurrent callers each see their own. Each span runs its callback in an
+ * overlay layer that holds the span only (`alepha.context.overlay()`), so the
+ * parent is current again when the callback settles, and nothing the
+ * callback writes moves.
  *
  * With no sink registered, nothing is recorded and {@link span} calls its
  * callback directly.
@@ -288,8 +289,12 @@ export class Tracer {
   }
 
   /**
-   * Run `fn` with `span` as the active span, in a layer of its own, and end
-   * the span when `fn` settles (unless `manualEnd`).
+   * Run `fn` with `span` as the active span, and end the span when `fn`
+   * settles (unless `manualEnd`).
+   *
+   * The span lives in an overlay layer (`alepha.context.overlay()`): writes
+   * inside `fn` still land where they would without tracing, so a traced
+   * page loader that sets an atom keeps it for the render.
    *
    * The one place a span becomes current: a runtime adapter that must also
    * open a platform span (Cloudflare's tracer on workerd) overrides it.
@@ -299,10 +304,9 @@ export class Tracer {
     options: SpanOptions,
     fn: (span: Span) => R,
   ): R {
-    return this.alepha.context.nest(() => {
-      this.alepha.context.set(Tracer.key, span);
-      return this.settle(span, options, fn);
-    });
+    return this.alepha.context.overlay(Tracer.key, span, () =>
+      this.settle(span, options, fn),
+    );
   }
 
   /**
