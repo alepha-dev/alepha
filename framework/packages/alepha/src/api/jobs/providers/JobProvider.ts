@@ -756,7 +756,7 @@ export class JobProvider {
   }
 
   /**
-   * Run a job handler under its span (#E86): `job <name>`, with the job
+   * Run a job handler under its span: `job <name>`, with the job
    * name, execution id and attempt. A child of the span already active (the
    * cron tick, the queue message, the request of an inline push), or the
    * root of a new trace when there is none.

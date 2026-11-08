@@ -231,7 +231,7 @@ export class CronProvider {
   }
 
   /**
-   * Run one tick of `task` under its root span (#E86), `cron <name>`.
+   * Run one tick of `task` under its root span, `cron <name>`.
    */
   protected tick(task: CronJob, now: DateTime): Promise<void> {
     if (!this.tracer.recording) {

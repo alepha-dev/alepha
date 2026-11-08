@@ -467,7 +467,7 @@ export class CachePrimitive<
   }
 
   /**
-   * The span of a cache operation (#E86): `cache <op> <name>`, inside a
+   * The span of a cache operation: `cache <op> <name>`, inside a
    * trace only. The cache's name, never its key: a key can hold a user id.
    */
   protected traced<R>(

@@ -241,7 +241,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   }
 
   /**
-   * {@link processRequest} under the request's root span (#E86): named
+   * {@link processRequest} under the request's root span: named
    * `<METHOD> <route pattern>`, never the raw URL, which holds ids. An
    * incoming `traceparent` continues the caller's trace.
    *

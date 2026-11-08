@@ -138,7 +138,7 @@ export abstract class TopicProvider {
   }
 
   /**
-   * The producer's `traceparent` the envelope carries, if any (#E86). A
+   * The producer's `traceparent` the envelope carries, if any. A
    * provider whose wire format is the payload alone (MQTT) carries none and
    * returns undefined.
    */

@@ -46,7 +46,7 @@ export class InspectorRoutes {
   protected readonly emailOptions = $store(localEmailOptions);
   protected readonly smsOptions = $store(localSmsOptions);
   /**
-   * The recent traces devtools draws (#E86). Injecting it is what turns
+   * The recent traces devtools draws. Injecting it is what turns
    * tracing on, whenever the inspector itself is on.
    */
   protected readonly traceStore = $inject(MemoryTraceProvider);

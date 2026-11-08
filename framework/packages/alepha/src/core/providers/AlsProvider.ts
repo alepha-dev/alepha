@@ -144,7 +144,7 @@ export class AlsProvider {
    * a `"current"` or `"parent"` read answers as if the overlay were not there.
    *
    * What a value that must be scoped to a callback, without changing where
-   * anything else lives, needs: the tracer's active span (#E86). Opened with
+   * anything else lives, needs: the tracer's active span. Opened with
    * {@link nest}, a span would have taken every `set` its callback made (a
    * page loader writing an atom) and dropped them when it ended.
    *

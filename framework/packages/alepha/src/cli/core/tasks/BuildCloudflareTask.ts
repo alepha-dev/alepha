@@ -345,7 +345,7 @@ export class BuildCloudflareTask extends BuildTask {
 
   /**
    * Workers Observability: logs always, traces only when the app sets
-   * `TRACING_SAMPLE_RATIO` at build time (#E86). Traces are billed as
+   * `TRACING_SAMPLE_RATIO` at build time. Traces are billed as
    * ingestion, so no app starts paying for them without a line of its own;
    * without them `alepha/tracing` records nothing on a Worker.
    *
