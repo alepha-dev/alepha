@@ -42,6 +42,12 @@ export class FormModel<T extends ZObject> {
    */
   protected readonly touched = new Set<string>();
   protected submitInProgress = false;
+  /**
+   * The error shown under each field, by JSON pointer (`/address/city`,
+   * `/items/0/name`). Read it through `errors`; `useFormState({ form, path })`
+   * does, so every `Control` shows its own.
+   */
+  protected readonly fieldErrors: Record<string, string> = {};
 
   public input: SchemaToInput<T>;
 
@@ -196,6 +202,137 @@ export class FormModel<T extends ZObject> {
     }
 
     return defaults;
+  }
+
+  /**
+   * The error shown under each field, by JSON pointer: `{ "/email": "Email
+   * already in use" }`. Set when a submit fails with a `SchemaValidationError`
+   * (every issue whose path names a field of the schema), or by `setErrors`.
+   * A field's entry clears when that field changes; all of them clear on
+   * reset and when a new submit begins. `form:errors:changed` fires on every
+   * change.
+   *
+   * An issue for the root path, or for a path naming no field, is not here:
+   * it stays the form-level `error` of `useFormState(form)`.
+   */
+  public get errors(): Readonly<Record<string, string>> {
+    return this.fieldErrors;
+  }
+
+  /**
+   * Replace every field error with `issues`. Each issue whose path names a
+   * field of the schema lands on it (the first one per field wins); the
+   * others are left out.
+   *
+   * Returns `true` when every issue landed on a field, which is what tells a
+   * caller the failure is fully shown in place.
+   *
+   * ```ts
+   * form.setErrors([{ path: "/email", message: "Email already in use" }]);
+   * ```
+   */
+  public readonly setErrors = (
+    issues: ReadonlyArray<{ path: string; message: string }>,
+  ): boolean => {
+    const next: Record<string, string> = {};
+    let landed = true;
+    for (const issue of issues) {
+      if (!this.hasField(issue.path)) {
+        landed = false;
+        continue;
+      }
+      next[issue.path] ??= issue.message;
+    }
+    this.replaceErrors(next);
+    return landed && issues.length > 0;
+  };
+
+  /**
+   * Remove the error of `path` and of every field under it (`/address`
+   * clears `/address/city` too), or every error when no path is given.
+   */
+  public readonly clearErrors = (path?: string) => {
+    const next: Record<string, string> = {};
+    if (path) {
+      for (const [key, message] of Object.entries(this.fieldErrors)) {
+        if (key !== path && !key.startsWith(`${path}/`)) {
+          next[key] = message;
+        }
+      }
+    }
+    this.replaceErrors(next);
+  };
+
+  /**
+   * Whether a JSON pointer names a field of the form's schema: an object
+   * key, or an array index followed by the element's own path. `""` (the
+   * whole form) names no field.
+   */
+  public hasField(path: string): boolean {
+    const segments = path.split("/").slice(1);
+    if (!path.startsWith("/") || segments.length === 0) {
+      return false;
+    }
+    let schema: ZType | undefined = this.options.schema;
+    for (const segment of segments) {
+      const inner = z.schema.unwrap(schema);
+      if (z.schema.isObject(inner)) {
+        schema = z.schema.shape(inner)[segment];
+      } else if (z.schema.isArray(inner) && /^\d+$/.test(segment)) {
+        schema = z.schema.element(inner);
+      } else {
+        return false;
+      }
+      if (!schema) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Clear the errors of what actually changed between `before` and `after`
+   * at `path`. An array is written whole (`ControlArray` sets every row at
+   * once), so editing row 0 must not wipe the error still standing on row 2:
+   * containers are compared key by key, and only a changed leaf loses its
+   * error (with everything under it).
+   */
+  protected clearChangedErrors(path: string, before: unknown, after: unknown) {
+    if (this.sameValue(before, after)) {
+      return;
+    }
+    const isContainer = (value: unknown): value is Record<string, unknown> =>
+      value != null && typeof value === "object" && !(value instanceof File);
+    if (!isContainer(before) || !isContainer(after)) {
+      this.clearErrors(path);
+      return;
+    }
+    if (path in this.fieldErrors) {
+      const next = { ...this.fieldErrors };
+      delete next[path];
+      this.replaceErrors(next);
+    }
+    for (const key of new Set([
+      ...Object.keys(before),
+      ...Object.keys(after),
+    ])) {
+      this.clearChangedErrors(`${path}/${key}`, before[key], after[key]);
+    }
+  }
+
+  protected replaceErrors(next: Record<string, string>) {
+    if (this.sameValue(next, this.fieldErrors)) {
+      return;
+    }
+    for (const key of Object.keys(this.fieldErrors)) {
+      delete this.fieldErrors[key];
+    }
+    Object.assign(this.fieldErrors, next);
+    void this.alepha.events.emit(
+      "form:errors:changed",
+      { id: this.id, errors: { ...this.fieldErrors } },
+      { catch: true },
+    );
   }
 
   public get currentValues(): Record<string, any> {
@@ -354,6 +491,7 @@ export class FormModel<T extends ZObject> {
     Object.assign(this.values, { ...this.initialValues });
     // Back to the baseline, so nothing is outstanding.
     this.touched.clear();
+    this.clearErrors();
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
@@ -383,6 +521,9 @@ export class FormModel<T extends ZObject> {
     // during them sailed past the guard and ran the handler twice — a
     // double-clicked button charging a card twice.
     this.submitInProgress = true;
+    // A new attempt starts clean: the errors of the last one describe values
+    // that may have changed since.
+    this.clearErrors();
 
     // Lifecycle events are best-effort NOTIFICATIONS (loading spinners, toasts,
     // analytics). A misbehaving listener must never break form state or reject
@@ -424,6 +565,14 @@ export class FormModel<T extends ZObject> {
       );
     } catch (error) {
       this.log.error("Form submission error:", error);
+
+      if (error instanceof SchemaValidationError) {
+        this.setErrors(
+          error.data.issues ?? [
+            { path: error.data.path, message: error.data.message },
+          ],
+        );
+      }
 
       // A throwing onError callback must not abort the lifecycle either.
       try {
@@ -507,6 +656,7 @@ export class FormModel<T extends ZObject> {
         throw new FormValidationError({
           message: error.data.message,
           path: error.data.path,
+          issues: error.data.issues,
         });
       }
       throw error;
@@ -656,8 +806,11 @@ export class FormModel<T extends ZObject> {
 
     const set = (value: any) => {
       const typedValue = this.getValueFromInput(value, field);
+      const previous = context.store[key];
       context.store[key] = typedValue;
       this.touched.add(key);
+      // The value the error was about is gone.
+      this.clearChangedErrors(path, previous, typedValue);
       const objectField = z.schema.unwrap(field);
       if (typedValue === undefined && z.schema.isObject(objectField)) {
         // Clearing an object clears its flattened children too, or

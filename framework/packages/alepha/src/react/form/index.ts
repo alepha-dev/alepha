@@ -32,6 +32,11 @@ declare module "alepha" {
     "form:submit:error": { id: string; error: Error };
     "form:submit:end": { id: string };
     "form:reset": { id: string };
+    /**
+     * `FormModel.errors` changed: a failed submit set them, a field change
+     * or a reset cleared some. `errors` is the whole new map, by JSON pointer.
+     */
+    "form:errors:changed": { id: string; errors: Record<string, string> };
   }
 }
 
