@@ -166,6 +166,8 @@ describe("alepha mcp: db_rows and the job tools", () => {
       job_executions: { job: "notes.sweep" },
       job_trigger: { job: "notes.sweep", payload: { olderThanDays: 1 } },
       job_retry: { execution: "x" },
+      docs_search: { text: "entity" },
+      docs_read: {},
     };
     const tools = server
       .inject(McpServerProvider)

@@ -68,6 +68,11 @@ word and offline: \`npx alepha docs <slug>\` prints a page,
 markdown in \`node_modules/alepha/docs/\` (and \`node_modules/@alepha/*/docs/\`),
 for agents that grep.
 
+**To see the running app, use the \`alepha mcp\` server**, registered in
+\`.mcp.json\`; an agent that does not read that file starts it with
+\`npx alepha mcp\`. It finds the app \`alepha dev\` runs, maps its actions and
+entities, reads its logs, emails and rows, and calls an action as a test user.
+
 ## Structure
 
 Every Alepha project has the same layout. There are no variants  -  put new

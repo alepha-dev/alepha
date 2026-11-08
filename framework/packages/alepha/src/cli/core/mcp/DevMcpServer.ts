@@ -5,6 +5,7 @@ import { version } from "../alephaPackageJson.ts";
 import { DevMcpActionTools } from "./DevMcpActionTools.ts";
 import { DevMcpAppTools } from "./DevMcpAppTools.ts";
 import { DevMcpDataTools } from "./DevMcpDataTools.ts";
+import { DevMcpDocsTools } from "./DevMcpDocsTools.ts";
 import { DevMcpLogTools } from "./DevMcpLogTools.ts";
 import { DevMcpMapTools } from "./DevMcpMapTools.ts";
 import { DevMcpSession } from "./DevMcpSession.ts";
@@ -27,7 +28,7 @@ export class DevMcpServer {
     "Tools to see and drive the Alepha app running on this machine under `alepha dev`.",
     "Start with apps_list: the app whose folder contains this project is selected on its own, else call app_select.",
     "Then read what the app registers before acting on it, and read its logs to see what a call did.",
-    "When no app runs, the tools say so: start one with `alepha dev`.",
+    "When no app runs, the tools say so: start one with `alepha dev`. docs_search and docs_read answer from the installed Alepha docs, app or not.",
   ].join(" ");
 
   /**
@@ -39,6 +40,7 @@ export class DevMcpServer {
     DevMcpLogTools,
     DevMcpActionTools,
     DevMcpDataTools,
+    DevMcpDocsTools,
   ];
 
   /**
