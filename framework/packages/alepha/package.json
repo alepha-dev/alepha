@@ -515,6 +515,11 @@
       "import": "./src/topic/core/index.ts",
       "default": "./src/topic/core/index.ts"
     },
+    "./tracing": {
+      "types": "./src/tracing/index.ts",
+      "import": "./src/tracing/index.ts",
+      "default": "./src/tracing/index.ts"
+    },
     "./vitals": {
       "types": "./src/vitals/index.ts",
       "import": "./src/vitals/index.ts",
@@ -1011,6 +1016,11 @@
         "browser": "./dist/topic/core/index.browser.js",
         "import": "./dist/topic/core/index.js",
         "default": "./dist/topic/core/index.js"
+      },
+      "./tracing": {
+        "types": "./dist/tracing/index.d.ts",
+        "import": "./dist/tracing/index.js",
+        "default": "./dist/tracing/index.js"
       },
       "./vitals": {
         "types": "./dist/vitals/index.d.ts",

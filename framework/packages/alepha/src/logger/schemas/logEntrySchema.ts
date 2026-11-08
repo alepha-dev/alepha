@@ -9,6 +9,12 @@ export const logEntrySchema = z.object({
   module: z.text(),
   context: z.text().optional(),
   app: z.text().optional(),
+  /**
+   * The trace and span active when the entry was logged, so a log line opens
+   * its trace. Absent outside any trace.
+   */
+  traceId: z.text().optional(),
+  spanId: z.text().optional(),
   data: z.any().optional(),
   timestamp: z.number(),
 });

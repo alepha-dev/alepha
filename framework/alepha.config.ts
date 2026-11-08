@@ -58,6 +58,7 @@ export default defineConfig({
         "system",
         "testing",
         "topic",
+        "tracing",
         "websocket",
         // alepha: api sub-modules, also written bare
         "analytics",

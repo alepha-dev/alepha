@@ -13,6 +13,11 @@ export class JsonFormatterProvider extends LogFormatterProvider {
       time: entry.timestamp,
     };
 
+    if (entry.traceId) {
+      json.traceId = entry.traceId;
+      json.spanId = entry.spanId;
+    }
+
     if (entry.data instanceof Error) {
       json.error = this.formatJsonError(entry.data);
     } else if (this.isFlat(entry.data)) {

@@ -37,6 +37,14 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
       output += " ";
     }
 
+    if (entry.traceId) {
+      output += this.color.set(
+        "GREY_DARK",
+        `[${this.formatContext(entry.traceId)}${entry.spanId ? `/${this.formatContext(entry.spanId)}` : ""}]`,
+      );
+      output += " ";
+    }
+
     const module = this.color.set("GREY_LIGHT", `${entry.module}.`);
     const service = this.color.set(
       this.alepha.isBrowser() ? "RESET" : "WHITE",

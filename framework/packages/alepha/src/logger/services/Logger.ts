@@ -70,6 +70,23 @@ export class Logger implements LoggerInterface {
     return this.alepha.context.get<string>("context");
   }
 
+  /**
+   * The active span, read from the ALS by the key `alepha/tracing` owns
+   * (`Tracer.key`), so this module does not import the tracer. Absent
+   * outside any trace.
+   */
+  protected get span(): { traceId: string; spanId: string } | undefined {
+    return this.alepha.context.get<{ traceId: string; spanId: string }>(
+      Logger.spanKey,
+    );
+  }
+
+  /**
+   * `Tracer.key`, spelled out: `alepha/tracing` imports this module's
+   * consumers, never the reverse.
+   */
+  protected static readonly spanKey = "alepha.tracing.span";
+
   public get level(): string {
     const stateLogLevel = this.alepha.store.get("alepha.logger.level");
     if (stateLogLevel && stateLogLevel !== this.appLogLevel) {
@@ -238,6 +255,12 @@ export class Logger implements LoggerInterface {
       app: this.app,
       timestamp: this.dateTimeProvider.nowMillis(),
     };
+
+    const span = this.span;
+    if (span) {
+      logEntry.traceId = span.traceId;
+      logEntry.spanId = span.spanId;
+    }
 
     // Captured before the level check, for the same reason the `log:entry` event is
     // emitted below it: an entry too verbose to print is exactly the kind of
