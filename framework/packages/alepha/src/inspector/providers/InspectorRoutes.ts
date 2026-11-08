@@ -166,9 +166,18 @@ export class InspectorRoutes {
         response: z.object({
           emails: z.array(
             z.object({
+              /**
+               * The outbox file's name: stable, so one message can be read
+               * back by it.
+               */
+              id: z.text({ size: "long" }),
               to: z.text(),
               subject: z.text(),
               body: z.string(),
+              /**
+               * The plain-text alternative, when the sender gave one.
+               */
+              text: z.string().optional(),
               sentAt: z.text(),
             }),
           ),
@@ -184,9 +193,11 @@ export class InspectorRoutes {
       handler: async () => {
         const dir = this.emailOptions.directory;
         const emails = await this.readOutbox<{
+          id: string;
           to: string;
           subject: string;
           body: string;
+          text?: string;
           sentAt: string;
         }>(dir, ".eml.json");
         return { emails, directory: dir };
@@ -199,6 +210,11 @@ export class InspectorRoutes {
         response: z.object({
           messages: z.array(
             z.object({
+              /**
+               * The outbox file's name: stable, so one message can be read
+               * back by it.
+               */
+              id: z.text({ size: "long" }),
               to: z.text(),
               message: z.string(),
               sentAt: z.text(),
@@ -215,6 +231,7 @@ export class InspectorRoutes {
       handler: async () => {
         const dir = this.smsOptions.directory;
         const messages = await this.readOutbox<{
+          id: string;
           to: string;
           message: string;
           sentAt: string;
@@ -584,10 +601,11 @@ export class InspectorRoutes {
   }
 
   /**
-   * Every `*<suffix>` file of a local outbox directory, newest first.
-   * Malformed files are skipped, and a missing directory is an empty outbox.
+   * Every `*<suffix>` file of a local outbox directory, newest first, each
+   * with its file name as `id`. Malformed files are skipped, and a missing
+   * directory is an empty outbox.
    */
-  protected async readOutbox<T extends { sentAt: string }>(
+  protected async readOutbox<T extends { id: string; sentAt: string }>(
     dir: string,
     suffix: string,
   ): Promise<T[]> {
@@ -599,7 +617,10 @@ export class InspectorRoutes {
 
       for (const file of files) {
         try {
-          items.push(await this.fs.readJsonFile<T>(this.fs.join(dir, file)));
+          items.push({
+            ...(await this.fs.readJsonFile<T>(this.fs.join(dir, file))),
+            id: file,
+          });
         } catch {
           // skip malformed files
         }

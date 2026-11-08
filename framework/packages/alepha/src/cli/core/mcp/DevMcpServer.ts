@@ -3,6 +3,7 @@ import { AlephaMcp, McpServerProvider } from "alepha/mcp";
 
 import { version } from "../alephaPackageJson.ts";
 import { DevMcpAppTools } from "./DevMcpAppTools.ts";
+import { DevMcpLogTools } from "./DevMcpLogTools.ts";
 import { DevMcpMapTools } from "./DevMcpMapTools.ts";
 import { DevMcpSession } from "./DevMcpSession.ts";
 
@@ -30,7 +31,11 @@ export class DevMcpServer {
   /**
    * The tool classes, in the order `tools/list` shows them.
    */
-  protected readonly tools: ServiceEntry[] = [DevMcpAppTools, DevMcpMapTools];
+  protected readonly tools: ServiceEntry[] = [
+    DevMcpAppTools,
+    DevMcpMapTools,
+    DevMcpLogTools,
+  ];
 
   /**
    * A new, unstarted server container whose tools act on the apps found

@@ -50,6 +50,10 @@ describe("the devtools outbox", () => {
 
     expect(body.messages).toHaveLength(1);
     expect(body.messages[0].message).toBe("moved outbox");
+    // The file name is the message's id, stable for a later read.
+    expect((body.messages[0] as { id?: string }).id).toBe(
+      "+33600000000,2026-01-01T00-00-00-000Z.sms.json",
+    );
     // And it says where it looked, so the view can stop printing the default
     // path as a literal.
     expect(body.directory).toBe("/data/sms");

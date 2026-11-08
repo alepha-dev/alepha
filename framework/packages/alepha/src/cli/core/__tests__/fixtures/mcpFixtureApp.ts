@@ -2,14 +2,21 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { $env, Alepha, z } from "alepha";
+import { $env, $inject, Alepha, z } from "alepha";
 import { $job, AlephaApiJobs } from "alepha/api/jobs";
+import {
+  EmailProvider,
+  LocalEmailProvider,
+  localEmailOptions,
+} from "alepha/email";
 import { AlephaInspector } from "alepha/inspector";
+import { $logger } from "alepha/logger";
 import { $entity, $repository, db } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { $secure, AlephaSecurity } from "alepha/security";
 import { $action, HttpError } from "alepha/server";
+import { LocalSmsProvider, localSmsOptions, SmsProvider } from "alepha/sms";
 import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
 
 import { DevMcpServer } from "../../mcp/DevMcpServer.ts";
@@ -43,7 +50,33 @@ export class NotesApp {
     z.object({ MCP_FIXTURE_SECRET: z.text().optional() }),
   );
 
+  protected readonly log = $logger();
+  protected readonly email = $inject(EmailProvider);
+  protected readonly sms = $inject(SmsProvider);
+
   public readonly repo = $repository(notes);
+
+  public readonly invite = $action({
+    method: "POST",
+    path: "/notes/invite",
+    description: "Invite someone by email and SMS",
+    schema: {
+      body: z.object({ email: z.text(), phone: z.text() }),
+      response: z.object({ ok: z.boolean() }),
+    },
+    handler: async ({ body }) => {
+      this.log.info(`inviting ${body.email}`);
+      await this.email.send({
+        to: body.email,
+        subject: "Your invitation",
+        body: `<a href="http://localhost/accept?token=t0k3n">Accept</a>`,
+        text: "Accept: http://localhost/accept?token=t0k3n",
+      });
+      await this.sms.send({ to: body.phone, message: "Your code is 424242" });
+      this.log.info(`invited ${body.email}`);
+      return { ok: true };
+    },
+  });
 
   public readonly getNote = $action({
     method: "GET",
@@ -94,12 +127,16 @@ export const startFixture = async (
     env: { ...env, ALEPHA_INSPECT: "1", MCP_FIXTURE_SECRET: FIXTURE_SECRET },
   })
     .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
+    .with({ provide: EmailProvider, use: LocalEmailProvider })
+    .with({ provide: SmsProvider, use: LocalSmsProvider })
     .with(AlephaOrmPostgres)
     .with(AlephaApiJobs)
     .with(AlephaSecurity)
     .with(AlephaReactRouter)
     .with(AlephaInspector);
   for (const service of services) app.with(service);
+  app.store.set(localEmailOptions.key, { directory: join(dir, "emails") });
+  app.store.set(localSmsOptions.key, { directory: join(dir, "sms") });
   await app.start();
 
   const server = new DevMcpServer().create(process.cwd(), env, [

@@ -25,7 +25,8 @@ export type DevMcpTarget =
  * **Selection** (#E118, decision 2): an app chosen with `app_select` wins;
  * else, among the live runs, the one whose `cwd` or `gitRoot` contains the
  * server's working directory (the deepest `cwd` when several do); else the
- * only live run; else none. A choice is kept by `cwd`, never by run id: under
+ * only live run; else, when nothing runs, the dead run whose `cwd` contains
+ * it, for its logs; else none. A choice is kept by `cwd`, never by run id: under
  * `alepha dev` every reload writes a new entry under a new run id, and the
  * choice follows it.
  */
@@ -113,7 +114,22 @@ export class DevMcpSession {
     }
 
     const apps = [...new Set(live.map((run) => run.cwd))];
-    return apps.length === 1 ? this.pick(live, apps[0]) : undefined;
+    if (apps.length === 1) {
+      return this.pick(live, apps[0]);
+    }
+
+    // No live run to act on: the dead run of the app this server works in,
+    // so the logs of a crash stay readable without an app_select.
+    if (!live.length) {
+      return runs
+        .filter((run) => this.contains(run.cwd, this.root))
+        .sort(
+          (a, b) =>
+            b.cwd.length - a.cwd.length ||
+            b.startedAt.localeCompare(a.startedAt),
+        )[0];
+    }
+    return undefined;
   }
 
   /**

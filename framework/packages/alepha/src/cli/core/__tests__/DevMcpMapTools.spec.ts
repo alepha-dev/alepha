@@ -72,7 +72,7 @@ describe("alepha mcp: app_map and app_describe", () => {
     ).toContain("payload `{ olderThanDays: number }`");
     expect(
       await call("app_describe", { kind: "action", name: "note" }),
-    ).toMatch(/No single action is named "note". Closest: NotesApp.getNote/);
+    ).toMatch(/No single action is named "note". Closest: .*NotesApp.getNote/);
   });
 
   it("never returns an env value, from either tool", async ({ expect }) => {
