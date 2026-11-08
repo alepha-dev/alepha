@@ -66,8 +66,11 @@ export interface AuthRegisterProps {
    * an unauthenticated registration must land somewhere public (home), not the
    * protected destination the user was *heading* to — which would only bounce
    * them back to this page.
+   *
+   * Pass `false` to hide the link, for an application where every page
+   * needs an account.
    */
-  cancelPath?: string;
+  cancelPath?: string | false;
   /**
    * Render the form even though `settings.registrationAllowed` is `false`.
    *
@@ -492,7 +495,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
           </div>
         </CardContent>
       </Card>
-      {!isVerifying && (
+      {!isVerifying && props.cancelPath !== false && (
         <Button
           variant="minimal"
           nativeButton={false}

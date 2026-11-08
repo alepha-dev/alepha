@@ -44,6 +44,14 @@ export interface AuthResetPasswordProps {
    * component (e.g. with light/dark variants or an animation).
    */
   logo?: ReactNode;
+  /**
+   * Where the "Cancel" link under the form leads. Defaults to the
+   * `?redirect=` target of the URL, else "/".
+   *
+   * Pass `false` to hide the link, for an application where every page
+   * needs an account: there the default only leads back to sign-in.
+   */
+  cancelPath?: string | false;
 }
 
 type Step = "email" | "code" | "password" | "success";
@@ -420,13 +428,15 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
             )}
           </CardContent>
         </Card>
-        <Button
-          variant="minimal"
-          nativeButton={false}
-          render={<a href={redirect} />}
-        >
-          {tr("auth.reset.cancel", { default: "Cancel" })}
-        </Button>
+        {props.cancelPath !== false && (
+          <Button
+            variant="minimal"
+            nativeButton={false}
+            render={<a href={props.cancelPath ?? redirect} />}
+          >
+            {tr("auth.reset.cancel", { default: "Cancel" })}
+          </Button>
+        )}
       </div>
     </div>
   );
