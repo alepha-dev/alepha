@@ -1039,7 +1039,13 @@ const pageEdgeFresh = async (cache, key, at) => {
 
     const workerCode = `
 import "./${workerdEntry}";
+import * as __cloudflareWorkers from "cloudflare:workers";
 ${doExport}
+// Cloudflare's custom-span API, for \`alepha/tracing\`'s WorkerdTracer. Read
+// from the namespace, not named-imported: on a compatibility date that
+// predates \`tracing\`, a named import would refuse the whole Worker.
+__alepha.set("cloudflare.tracing", __cloudflareWorkers.tracing);
+
 // Run an invocation inside an Alepha fork carrying THIS invocation's
 // \`executionCtx.waitUntil\`, so background work (notably $job direct dispatch)
 // can keep the isolate alive past the response.

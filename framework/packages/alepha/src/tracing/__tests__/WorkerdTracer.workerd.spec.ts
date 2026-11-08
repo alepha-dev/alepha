@@ -28,18 +28,20 @@ describe("alepha/tracing on workerd", () => {
     await writeFile(
       entry,
       `
+import * as workers from "cloudflare:workers";
 import { $inject, Alepha, run } from "alepha";
 import { $route } from "alepha/server";
 import { Tracer, WorkerdTracer } from "alepha/tracing";
 class App {
  tracer = $inject(Tracer);
+ alepha = $inject(Alepha);
  probe = $route({
   path: "/probe",
   handler: async () => {
    const inner = await this.tracer.span("inner", async () => "ran");
    return JSON.stringify({
     workerd: this.tracer instanceof WorkerdTracer,
-    platform: typeof WorkerdTracer.platformTracing,
+    platform: typeof this.alepha.get("cloudflare.tracing"),
     traceparent: this.tracer.traceparent() ?? null,
     inner,
    });
@@ -47,6 +49,8 @@ class App {
  });
 }
 const app = run(Alepha.create().with(App));
+// What the generated Worker entry does.
+app.set("cloudflare.tracing", workers.tracing);
 export default { async fetch(request) {
  await app.start();
  const ctx = { req: request };

@@ -47,13 +47,14 @@ export interface CloudflareSpan {
  */
 export class WorkerdTracer extends Tracer {
   /**
-   * `cloudflare:workers`' `tracing`, set by the workerd barrel. Absent on
-   * a compatibility date that predates it.
+   * `cloudflare:workers`' `tracing`, which the generated Worker entry stores
+   * as `cloudflare.tracing`. Absent outside a Worker, and on a compatibility
+   * date that predates it.
    */
-  public static platformTracing?: CloudflareTracing;
-
   protected platform(): CloudflareTracing | undefined {
-    return WorkerdTracer.platformTracing;
+    return this.alepha.get("cloudflare.tracing" as any) as
+      | CloudflareTracing
+      | undefined;
   }
 
   /**

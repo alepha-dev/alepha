@@ -155,17 +155,14 @@ describe("OtlpTraceExporter", () => {
     for (let i = 0; i < 4; i++) {
       tracer.span(`s${i}`, () => {});
     }
+    const sizes = () =>
+      posts.map((p) => p.body.resourceSpans[0].scopeSpans[0].spans.length);
+
     // The third span filled a batch, which left at once.
-    await new Promise((r) => setTimeout(r, 50));
-    expect(
-      posts.map((p) => p.body.resourceSpans[0].scopeSpans[0].spans.length),
-    ).toEqual([3]);
+    await expect.poll(sizes, { timeout: 5000 }).toEqual([3]);
 
     await time.travel([5, "seconds"]);
-    await new Promise((r) => setTimeout(r, 50));
-    expect(
-      posts.map((p) => p.body.resourceSpans[0].scopeSpans[0].spans.length),
-    ).toEqual([3, 1]);
+    await expect.poll(sizes, { timeout: 5000 }).toEqual([3, 1]);
   });
 
   it("never exports an unsampled trace", async ({ expect }) => {
