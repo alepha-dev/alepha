@@ -28,33 +28,45 @@ export interface DataTableTabsProps {
 }
 
 /**
- * The band of tabs that opens a table's frame. Its bottom border is the line
- * between it and the band below, which joins under it like the rows join the
- * toolbar.
+ * The band of tabs that opens a table's frame, drawn like a browser's tabs:
+ * the active tab is a tile of the bar below it, flaring into the band at its
+ * two bottom corners, so the tab and the bar read as one surface. A resting
+ * tab is plain text, lit as a tile on hover, with a short divider between two
+ * resting neighbours.
  *
  * The band scrolls sideways when its tabs outrun it, and never vertically:
- * `overflow-x-auto` alone computes `overflow-y` as `auto` too, so anything a
- * tab pushed past the band's bottom edge (a negative margin overlapping the
- * border, say) drew a vertical scrollbar wherever scrollbars are always
- * shown. The tabs therefore sit inside the band, the active underline resting
- * on its bottom border rather than over it.
+ * `overflow-x-auto` alone computes `overflow-y` as `auto` too, so anything
+ * reaching past the band's bottom edge drew a vertical scrollbar wherever
+ * scrollbars are always shown. Its bottom line is therefore an inset shadow,
+ * not a border a tab would have to overlap: the tabs paint over it, so the
+ * active tile covers it and joins the bar, and everywhere else it stays the
+ * line between the band and what follows.
  */
 export const DataTableTabs = (props: DataTableTabsProps) => (
   <div
     role="tablist"
     data-slot="data-table-tabs"
     className={cn(
-      "bg-background flex items-end gap-1 overflow-x-auto overflow-y-hidden rounded-md rounded-b-none border px-2 pt-1",
+      "bg-background flex items-end overflow-x-auto overflow-y-hidden rounded-md rounded-b-none border border-b-0 px-3 pt-1.5 shadow-[inset_0_-1px_0_0_var(--border)]",
       props.className,
     )}
   >
-    {props.tabs.map((tab) => {
+    {props.tabs.map((tab, index) => {
       const Icon = tab.icon;
+      // A divider on the start edge of a resting tab that follows another
+      // resting tab, hidden while either of the two is hovered.
+      const divided =
+        !tab.active && index > 0 && !props.tabs[index - 1]!.active;
       const className = cn(
-        "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+        "relative flex h-9 shrink-0 items-center gap-2 rounded-t-[0.625rem] px-4 text-sm font-medium transition-colors duration-150",
         tab.active
-          ? "border-primary text-primary"
-          : "text-muted-foreground hover:text-foreground border-transparent",
+          ? // The ears: two squares outside the tile's bottom corners, each
+            // filled but for a quarter circle, so the tile's sides curve out
+            // into the band. Swapped under rtl, where the start is the right.
+            "bg-muted text-foreground before:absolute before:start-[-0.625rem] before:bottom-0 before:size-[0.625rem] before:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] before:content-[''] after:absolute after:end-[-0.625rem] after:bottom-0 after:size-[0.625rem] after:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] after:content-[''] rtl:before:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] rtl:after:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))]"
+          : "text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--muted),transparent_40%)]",
+        divided &&
+          "before:bg-border before:absolute before:start-0 before:top-[30%] before:h-[40%] before:w-px before:content-[''] hover:before:opacity-0 [[role=tab]:hover+&]:before:opacity-0",
       );
       const content = (
         <>

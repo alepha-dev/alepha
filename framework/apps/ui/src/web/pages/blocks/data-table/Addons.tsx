@@ -46,9 +46,11 @@ import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
  * filter, so picking "Invited" recounts every invited member rather than the
  * page on screen. And behind the `?` at the end of the icons, the page's help.
  *
- * On top of it all, the tab band: two views of the same page, the members and
- * the archived ones. The archive is empty, which is the point of having it:
- * switching to it shows the empty state under the same frame.
+ * On top of it all, the tab band: three views of the same page, the members,
+ * the invitations nobody answered and the archived members. Three, so two
+ * resting tabs sit side by side and show their divider. The archive is empty,
+ * which is the point of having it: switching to it shows the empty state
+ * under the same frame.
  */
 const FILTER_FIELDS = {
   search: { preset: "search" },
@@ -83,7 +85,9 @@ const fetchArchived = async (): Promise<Page<ShowcaseMember>> => ({
 
 const Addons = () => {
   const { l } = useI18n();
-  const [view, setView] = useState<"members" | "archived">("members");
+  const [view, setView] = useState<"members" | "invited" | "archived">(
+    "members",
+  );
   const toast = useToast();
   const client = useClient<ShowcaseController>();
 
@@ -165,6 +169,14 @@ const Addons = () => {
               onSelect: () => setView("members"),
             },
             {
+              key: "invited",
+              label: "Invitations",
+              icon: MailPlus,
+              count: 11,
+              active: view === "invited",
+              onSelect: () => setView("invited"),
+            },
+            {
               key: "archived",
               label: "Archived",
               icon: Archive,
@@ -173,7 +185,17 @@ const Addons = () => {
               onSelect: () => setView("archived"),
             },
           ]}
-          fetch={view === "archived" ? fetchArchived : fetcher}
+          fetch={
+            view === "archived"
+              ? fetchArchived
+              : view === "invited"
+                ? (params) =>
+                    fetcher({
+                      ...params,
+                      filters: { ...params.filters, status: "invited" },
+                    })
+                : fetcher
+          }
           filters={{
             fields: FILTER_FIELDS,
             initialValues: { status: "all" },
