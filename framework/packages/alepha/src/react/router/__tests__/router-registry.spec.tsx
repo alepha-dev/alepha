@@ -76,6 +76,25 @@ describe("the router registry, at the type level", () => {
     expectTypeOf<RouterPageName<Guarded>>().toEqualTypeOf<"home" | "board">();
   });
 
+  /**
+   * The router answers to a page's `name`, not to the property holding it:
+   * a shared router's `profile = $page({ name: "accountProfile" })` is
+   * `accountProfile`, and `profile` throws at runtime.
+   */
+  it("names a page by its declared name, not its property key", () => {
+    class NamedRouter {
+      profile = $page({
+        name: "accountProfile",
+        path: "/account/profile",
+        component: () => "profile",
+      });
+      home = $page({ path: "/", component: () => "home" });
+    }
+    expectTypeOf<RouterPageName<NamedRouter>>().toEqualTypeOf<
+      "accountProfile" | "home"
+    >();
+  });
+
   it("types navigation on the joined router", () => {
     // Never called: the compiler reads these, the test only has to exist.
     const check = (router: ReactRouter<Registered>) => {
@@ -121,6 +140,18 @@ describe("Link props, at the type level", () => {
       params: { id: "42" },
     };
     expect([misspelled, missing, wrong, onPath]).toHaveLength(4);
+  });
+
+  /**
+   * A library's `<Link href={item.href}>` is compiled by every app that
+   * imports it. A computed string cannot be checked, so it is taken and the
+   * router checks it at runtime; refusing it broke `@alepha/ui` the moment
+   * Lore registered its routers.
+   */
+  it("takes a computed string on a registered router", () => {
+    const computed = ["home", "project"].join("") as string;
+    const dynamic: LinkProps<string, Registered> = { href: computed };
+    expect(dynamic.href).toBe("homeproject");
   });
 
   it("takes any string while nothing is registered", () => {

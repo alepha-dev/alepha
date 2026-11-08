@@ -32,11 +32,15 @@ export const $pageProject = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 >(
-  options: Omit<PagePrimitiveOptions<TConfig, TProps, TPropsParent>, "parent">,
-): PagePrimitive<TConfig, TProps, TPropsParent> => {
+  options: Omit<
+    PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName>,
+    "parent"
+  >,
+): PagePrimitive<TConfig, TProps, TPropsParent, TName> => {
   const { alepha } = $context();
-  return $page<TConfig, TProps, TPropsParent>({
+  return $page<TConfig, TProps, TPropsParent, TName>({
     ...options,
     parent: alepha.inject(ProjectRouter).project as PagePrimitive<
       PageConfigSchema,
@@ -54,11 +58,15 @@ export const $pageProjectSettings = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 >(
-  options: Omit<PagePrimitiveOptions<TConfig, TProps, TPropsParent>, "parent">,
-): PagePrimitive<TConfig, TProps, TPropsParent> => {
+  options: Omit<
+    PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName>,
+    "parent"
+  >,
+): PagePrimitive<TConfig, TProps, TPropsParent, TName> => {
   const { alepha } = $context();
-  return $page<TConfig, TProps, TPropsParent>({
+  return $page<TConfig, TProps, TPropsParent, TName>({
     ...options,
     parent: alepha.inject(ProjectRouter).projectSettings as PagePrimitive<
       PageConfigSchema,

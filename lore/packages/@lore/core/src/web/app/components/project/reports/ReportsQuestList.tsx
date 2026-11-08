@@ -13,7 +13,9 @@ export interface ReportsQuestListProps {
  * report.
  */
 const ReportsQuestList = (props: ReportsQuestListProps) => {
-  const router = useRouter();
+  // Untyped on purpose: `projectQuest` is a Work page, and core's own program
+  // registers only core's routers.
+  const router = useRouter<any>();
 
   if (props.quests.length === 0) {
     return <p className="text-muted-foreground py-2 text-sm">{props.empty}</p>;

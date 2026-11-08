@@ -24,7 +24,10 @@ import type { I18n } from "../../services/I18n.ts";
  */
 const ProjectInboxButton = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
+  // Untyped on purpose: this navigates to a name or href a module
+  // supplies at runtime (a registry entry, a search row), which core's
+  // registered routers cannot name.
+  const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
 
   if (!project?.slug) {

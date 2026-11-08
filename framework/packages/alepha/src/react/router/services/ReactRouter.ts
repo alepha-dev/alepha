@@ -51,13 +51,27 @@ export type RouterPageName<T> = keyof VirtualRouter<T> & string;
 /**
  * The params a page takes, read from its `schema.params`. A page that
  * declares none takes a plain string record.
+ *
+ * Each declared param takes its parsed type or a string, since both are
+ * written into the URL the same way (`shortId: 12` or `shortId: "12"`). Other
+ * string keys are allowed beside them: a child page's path carries its
+ * parents' params (`/:projectSlug/quests/:shortId`), which its own schema
+ * does not declare and the type cannot see.
  */
 export type RouterPageParams<TPage> =
   TPage extends PagePrimitive<infer TConfig, any, any>
     ? TConfig["params"] extends ZType
-      ? Infer<TConfig["params"]>
+      ? RouterDeclaredParams<Infer<TConfig["params"]>> &
+          Record<string, string | number>
       : Record<string, string>
     : Record<string, string>;
+
+/**
+ * A page's declared params, each taking its parsed type or a string.
+ */
+export type RouterDeclaredParams<TParams> = {
+  [K in keyof TParams]: TParams[K] | string;
+};
 
 /**
  * The options of a navigation to a page: `params` is required when the page's
@@ -246,7 +260,7 @@ export class ReactRouter<T extends object> {
       params?: Record<string, any>;
       query?: Record<string, any>;
     } = {},
-  ): string {
+  ): RouterPath {
     const page = this.findPage(name as string);
     const declaresParams = !!page?.schema?.params;
     return this.pageApi.pathname(name as string, {
@@ -607,5 +621,13 @@ export class ReactRouter<T extends object> {
  * defaulted `PagePrimitive`, and used to be left out.
  */
 export type VirtualRouter<T> = {
-  [K in keyof T as T[K] extends PagePrimitive<any, any, any> ? K : never]: T[K];
+  [
+    K in keyof T as T[K] extends PagePrimitive<any, any, any, infer TName>
+      ? // The page's own `name` when it declares one as a literal, since that
+        // is the name the router answers to; the property key otherwise.
+        string extends TName
+        ? K
+        : TName
+      : never
+  ]: T[K];
 };

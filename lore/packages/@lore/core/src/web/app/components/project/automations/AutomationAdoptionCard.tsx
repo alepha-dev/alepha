@@ -23,7 +23,7 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
   const dialog = useDialog();
-  const router = useRouter<AutomationRouter>();
+  const router = useRouter();
   const { tr, l } = useI18n<I18n, "en">();
   const [offset, setOffset] = useState(0);
   const preview = useQuery(

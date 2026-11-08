@@ -73,3 +73,12 @@ export {
 } from "./app/components/folios/folioAssetReference.ts";
 export { FOLIO_IMAGE_MAX_WIDTH } from "./app/components/folios/folioImageBounds.ts";
 export { KnowledgeShell } from "./app/shell/KnowledgeShell.ts";
+
+/**
+ * Knowledge's router in the app's router registry (#Q3187).
+ */
+declare module "alepha/react/router" {
+  interface Routers {
+    loreKnowledge: KnowledgeRouter;
+  }
+}

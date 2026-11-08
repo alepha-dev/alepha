@@ -73,9 +73,10 @@ export const $pageAdmin = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 >(
-  options: Omit<PageNavOptions<TConfig, TProps, TPropsParent>, "parent">,
-): PagePrimitive<TConfig, TProps, TPropsParent> => {
+  options: Omit<PageNavOptions<TConfig, TProps, TPropsParent, TName>, "parent">,
+): PagePrimitive<TConfig, TProps, TPropsParent, TName> => {
   const { alepha } = $context();
   const admin = alepha.inject(AdminRouter);
 
@@ -103,10 +104,10 @@ export const $pageAdmin = <
     prefixed = () => ({ ...head, title: admin.adminTitle(title) });
   }
 
-  return $pageNav<TConfig, TProps, TPropsParent>({
+  return $pageNav<TConfig, TProps, TPropsParent, TName>({
     ...options,
     ...(label !== undefined ? { label } : {}),
     ...(prefixed !== undefined ? { head: prefixed } : {}),
     parent: admin.layout,
-  } as PageNavOptions<TConfig, TProps, TPropsParent>);
+  } as PageNavOptions<TConfig, TProps, TPropsParent, TName>);
 };

@@ -228,7 +228,9 @@ to `/auth/login?redirect=/tpyo`. Unavoidable without a database round-trip ahead
 of the guard. A signed-in visitor gets a real 404 from the `project` route's own
 `errorHandler` — which exists solely for this and must not be removed.
 
-**Router params are not typechecked.** `router.path()` takes
+**Router params are typechecked only where the router is registered** (#Q3187):
+a bare `useRouter()` checks a page's own `schema.params`, and still allows the
+parent's path params beside them, which it cannot see. `router.path()` takes
 `params?: Record<string, any>`, and it merges the _current_ route's params
 before yours — so a call site still passing `projectId` keeps working while you
 are inside a project (the slug is inherited from state) and breaks only when
@@ -264,6 +266,8 @@ URL in the address bar. Any page that acts on its own query in a mount
 effect has the same trap.
 
 ## ⚠️ Deleting or renaming a `$page` is not typecheck-protected
+
+⚠️ **Partly, since #Q3187.** A literal name passed to a bare `useRouter()` or a `<Link>` is checked against the registered routers, so renaming a page breaks those call sites at compile time. What follows still holds for every name that reaches the router as a plain `string`: nav arrays, registry entries, and the `useRouter<any>()` sites.
 
 `router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). **Deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list and `projectViewRoutes.ts`'s `ROUTES_APP` set, which reference route names as plain strings with nothing in the type system tying them to the routes they name (see the comment on `projectSettingsSigils` in `@lore/deploy`'s `ProjectSettingsAppsPage.tsx`). The app half of that set is guarded: `projectViewRoutes.spec.ts` walks the tabs declared under `projectApp` in `DeployRouter` and fails when one is missing from `ROUTES_APP`, `SECTION_HREF_ROUTES` or `SECTION_LABEL_KEYS`, which is how the Explore tab shipped half-registered (quest #1689).
 

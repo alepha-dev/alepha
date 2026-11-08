@@ -77,13 +77,14 @@ export const $pageAccount = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 >(
-  options: Omit<PageNavOptions<TConfig, TProps, TPropsParent>, "parent">,
-): PagePrimitive<TConfig, TProps, TPropsParent> => {
+  options: Omit<PageNavOptions<TConfig, TProps, TPropsParent, TName>, "parent">,
+): PagePrimitive<TConfig, TProps, TPropsParent, TName> => {
   const { alepha } = $context();
   const account = alepha.inject(AccountRouter);
-  return $pageNav<TConfig, TProps, TPropsParent>({
+  return $pageNav<TConfig, TProps, TPropsParent, TName>({
     ...options,
     parent: account.layout,
-  } as PageNavOptions<TConfig, TProps, TPropsParent>);
+  } as PageNavOptions<TConfig, TProps, TPropsParent, TName>);
 };

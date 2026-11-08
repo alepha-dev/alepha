@@ -36,7 +36,10 @@ import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
-  const router = useRouter();
+  // Untyped on purpose: this navigates to a name or href a module
+  // supplies at runtime (a registry entry, a search row), which core's
+  // registered routers cannot name.
+  const router = useRouter<any>();
 
   const projects = overview?.projects ?? [];
   /*

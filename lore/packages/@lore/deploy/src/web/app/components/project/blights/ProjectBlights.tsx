@@ -57,7 +57,9 @@ import { sigilNameParts } from "./sigilNameParts.ts";
  */
 const ProjectBlights = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
+  // Untyped on purpose: a forwarded blight opens `projectQuest`, a Work page,
+  // and Deploy's own program registers only Deploy's and core's routers.
+  const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
   const promptSubject = useAgentPromptSubject();
   // Blights live under Apps: there is no capability of their own, and this

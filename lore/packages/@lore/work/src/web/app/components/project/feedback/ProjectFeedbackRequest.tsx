@@ -11,7 +11,6 @@ import { Control } from "@alepha/ui/form";
 import {
   displayName,
   type I18n,
-  type LoreAccountRouter,
   PageHeader,
   ProjectIcon,
   userProjectsAtom,
@@ -186,7 +185,7 @@ const ProjectFeedbackRequest = () => {
   const { tr } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
   const router = useRouter();
-  const meRouter = useRouter<LoreAccountRouter>();
+  const meRouter = useRouter();
   const auth = useAuth();
   const feedbackApi = useClient<FeedbackController>();
   const toaster = useToast();

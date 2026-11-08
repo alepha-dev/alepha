@@ -51,3 +51,13 @@ export { currentBlightCountAtom } from "./app/atoms/currentBlightCountAtom.ts";
 export { currentInstancesAtom } from "./app/atoms/currentInstancesAtom.ts";
 export { DeployAccountRouter } from "./app/components/account/DeployAccountRouter.ts";
 export { DeployShell } from "./app/shell/DeployShell.ts";
+
+/**
+ * Deploy's routers in the app's router registry (#Q3187).
+ */
+declare module "alepha/react/router" {
+  interface Routers {
+    loreDeploy: DeployRouter;
+    loreDeployAccount: DeployAccountRouter;
+  }
+}

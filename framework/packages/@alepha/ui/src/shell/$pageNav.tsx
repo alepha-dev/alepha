@@ -14,7 +14,8 @@ export interface PageNavOptions<
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
-> extends PagePrimitiveOptions<TConfig, TProps, TPropsParent> {
+  TName extends string = string,
+> extends PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName> {
   /**
    * Nav metadata, widened to {@link NavMeta} so an entry can name the
    * catalogue keys the shell resolves for its label and its group heading.
@@ -46,9 +47,10 @@ export const $pageNav = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 >(
-  options: PageNavOptions<TConfig, TProps, TPropsParent>,
-): PagePrimitive<TConfig, TProps, TPropsParent> => {
+  options: PageNavOptions<TConfig, TProps, TPropsParent, TName>,
+): PagePrimitive<TConfig, TProps, TPropsParent, TName> => {
   const { permission, use, nav, ...rest } = options;
   const permissions = permission
     ? Array.isArray(permission)
@@ -56,7 +58,7 @@ export const $pageNav = <
       : [permission]
     : undefined;
 
-  return $page<TConfig, TProps, TPropsParent>({
+  return $page<TConfig, TProps, TPropsParent, TName>({
     ...rest,
     use: permissions ? [$secure({ permissions }), ...(use ?? [])] : use,
     nav: nav ? { ...nav, permission: nav.permission ?? permission } : nav,

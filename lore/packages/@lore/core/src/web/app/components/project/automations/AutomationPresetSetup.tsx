@@ -27,7 +27,7 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
-  const router = useRouter<AutomationRouter>();
+  const router = useRouter();
   const slots = Object.values(props.preset.slots);
   const members = useAutomationOptions("member");
   const folios = useAutomationOptions("folio");

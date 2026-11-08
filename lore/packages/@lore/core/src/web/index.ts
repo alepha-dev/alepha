@@ -15,6 +15,7 @@ import { AutomationRouter } from "./app/AutomationRouter.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
+import { ProjectRouter } from "./app/ProjectRouter.ts";
 import { I18n } from "./app/services/I18n.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
 
@@ -275,3 +276,19 @@ export type { MarkdownEditorMode } from "./app/components/shared/markdown-editor
 export { default as LazyProjectActivityPage } from "./app/components/project/activity/LazyProjectActivityPage.tsx";
 
 export { AutomationRouter } from "./app/AutomationRouter.ts";
+
+/**
+ * Core's routers in the app's router registry, so `useRouter()` and `<Link>`
+ * are typed against their pages (#Q3187). Each package registers its own:
+ * a page of another package is typed only where that package's barrel is
+ * imported, which is where navigating to it makes sense anyway.
+ */
+declare module "alepha/react/router" {
+  interface Routers {
+    loreCore: CoreRouter;
+    loreCoreProject: ProjectRouter;
+    loreCoreAutomation: AutomationRouter;
+    loreCoreAccount: LoreAccountRouter;
+    loreAccount: AccountRouter;
+  }
+}

@@ -6,7 +6,7 @@ import {
 import { type I18n, formatReference } from "@lore/core/web";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { type RouterPath, useRouter } from "alepha/react/router";
 import {
   Copy,
   ExternalLink,
@@ -105,7 +105,7 @@ const FolioTreeContextMenu = (
   const node = props.node;
   const isDirectory = node.data.kind === "directory";
 
-  const hrefFor = (): string =>
+  const hrefFor = (): RouterPath =>
     isDirectory
       ? `${router.path("projectFolios", { params: { projectSlug: props.projectSlug } })}?dir=${node.data.shortId}`
       : router.path("projectFoliosFolio", {

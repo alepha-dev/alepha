@@ -18,7 +18,7 @@ const AutomationRunPage = (props: AutomationRunPageProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
-  const router = useRouter<AutomationRouter>();
+  const router = useRouter();
   const { tr, l } = useI18n<I18n, "en">();
   const read = useQuery(
     {

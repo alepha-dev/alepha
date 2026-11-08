@@ -88,3 +88,13 @@ export { epicReviewPromptDefault } from "./app/prompts/epicReviewPrompt.ts";
 export { feedbackWorkPromptDefault } from "./app/prompts/feedbackWorkPrompt.ts";
 export { questLoopPromptDefault } from "./app/prompts/questLoopPrompt.ts";
 export { WorkShell } from "./app/shell/WorkShell.ts";
+
+/**
+ * Work's routers in the app's router registry (#Q3187).
+ */
+declare module "alepha/react/router" {
+  interface Routers {
+    loreWork: WorkRouter;
+    loreWorkAccount: WorkAccountRouter;
+  }
+}

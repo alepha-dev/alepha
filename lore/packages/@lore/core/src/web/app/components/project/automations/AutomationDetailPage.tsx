@@ -37,7 +37,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
   const dialog = useDialog();
-  const router = useRouter<AutomationRouter>();
+  const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
   const labels = useAutomationLabels();
   const [saved, setSaved] = useState<AutomationResource>();

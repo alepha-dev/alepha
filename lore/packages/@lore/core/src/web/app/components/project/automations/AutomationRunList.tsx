@@ -15,7 +15,7 @@ export interface AutomationRunListProps {
 const AutomationRunList = (props: AutomationRunListProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
-  const router = useRouter<AutomationRouter>();
+  const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
   const [offset, setOffset] = useState(0);
   const read = useQuery(

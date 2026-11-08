@@ -107,7 +107,10 @@ export interface DashboardCardProps {
  */
 const DashboardCard = (props: DashboardCardProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
+  // Untyped on purpose: this navigates to a name or href a module
+  // supplies at runtime (a registry entry, a search row), which core's
+  // registered routers cannot name.
+  const router = useRouter<any>();
   const Icon = dashboardMetricIcon(props.icon);
   const link = props.value?.link;
   // Defaults to true so home, which has no rank to read, is untouched.

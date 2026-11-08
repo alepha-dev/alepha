@@ -239,7 +239,7 @@ export class ReactPageProvider {
       params?: Record<string, string>;
       query?: Record<string, string>;
     } = {},
-  ) {
+  ): `/${string}` {
     const page = this.page(name);
 
     let url = page.path ?? "";
@@ -255,6 +255,8 @@ export class ReactPageProvider {
     // Apply the active locale prefix (e.g. `/about` → `/fr/about`) to the path
     // portion only, before any query string is appended. A no-op unless
     // `routing: "prefix"` is enabled on the i18n module.
+    // `withPrefix` answers a rooted path, which is what lets this one type as
+    // a router path.
     url = this.localeProvider.withPrefix(url);
 
     if (options.query) {
@@ -264,7 +266,7 @@ export class ReactPageProvider {
       }
     }
 
-    return url;
+    return url as `/${string}`;
   }
 
   public url(

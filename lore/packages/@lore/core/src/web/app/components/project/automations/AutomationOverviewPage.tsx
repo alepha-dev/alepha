@@ -42,7 +42,7 @@ import { useAutomationLabels } from "./useAutomationLabels.ts";
 const AutomationOverviewPage = () => {
   const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AutomationRouter & CoreRouter>();
+  const router = useRouter();
   const api = useClient<AutomationController>();
   const cache = useInject(QueryCache);
   const queries = useQueryClient();

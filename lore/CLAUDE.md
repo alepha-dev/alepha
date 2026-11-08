@@ -157,7 +157,8 @@ Not obvious from the code, so read them before writing any.
 
 ### Router and i18n
 
-- **`router.push("pageName", { params })`** on `useRouter<T>()`. There is no `router.navigate()`.
+- **`router.push("pageName", { params })`** on a bare `useRouter()`. There is no `router.navigate()`.
+- **Each package registers its routers in `Routers`** (`declare module "alepha/react/router"`, at the end of its `web/index.ts`, #Q3187), so a bare `useRouter()` and `<Link>` check page names and params. A package sees its own pages and core's: a core component naming a Work page, or one navigating to a name a registry supplies, writes `useRouter<any>()` with the reason in a comment.
 - **`tr()` and `l()` both return `string`: never wrap either in `String()`.** A helper taking `tr` types it `(key: …) => string` or `I18nProvider<any, any>["tr"]`.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`**: for date+time pass a dayjs format such as `"lll"` to `date`.
 - **`$route` never lives under `/api`**: the `$action` dispatcher shadows `/api/*` (404s). Root paths only.

@@ -36,7 +36,7 @@ const AutomationGalleryPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const labels = useAutomationLabels();
   const [selected, setSelected] = useState<AutomationPresetDescriptor>();
-  const router = useRouter<AutomationRouter>();
+  const router = useRouter();
   const catalogue = useQuery(
     {
       key: ["automation-catalog", project?.id],

@@ -43,23 +43,34 @@ export type LinkTarget<
   K extends string,
   T extends object = RegisteredRouter,
 > = 0 extends 1 & T
-  ? {
-      /**
-       * A path starting with "/", or a page name. A name no page has throws.
-       */
-      href: K;
-      /**
-       * The page's params, when `href` is a page name.
-       */
-      params?: Record<string, string>;
-    }
-  : K extends RouterPath
-    ? { href: K; params?: undefined }
-    : K extends RouterPageName<T>
-      ? { href: K } & ({} extends LinkPageParams<K, T>
-          ? { params?: LinkPageParams<K, T> }
-          : { params: LinkPageParams<K, T> })
-      : { href: RouterPath | RouterPageName<T> };
+  ? LinkUntypedTarget<K>
+  : // A wide `string` (a computed href, a library's prop) cannot be checked
+    // by the compiler, so it is taken as it is and the router checks it at
+    // runtime. A literal is checked: that is where a typo lives.
+    string extends K
+    ? LinkUntypedTarget<K>
+    : K extends RouterPath
+      ? { href: K; params?: undefined }
+      : K extends RouterPageName<T>
+        ? { href: K } & ({} extends LinkPageParams<K, T>
+            ? { params?: LinkPageParams<K, T> }
+            : { params: LinkPageParams<K, T> })
+        : { href: RouterPath | RouterPageName<T> };
+
+/**
+ * `href` and `params` where the compiler cannot check them: no router is
+ * registered, or `href` is a computed `string`.
+ */
+export type LinkUntypedTarget<K extends string> = {
+  /**
+   * A path starting with "/", or a page name. A name no page has throws.
+   */
+  href: K;
+  /**
+   * The page's params, when `href` is a page name.
+   */
+  params?: Record<string, string>;
+};
 
 /**
  * The params of a registered page, by name.
@@ -78,7 +89,7 @@ const Link = <K extends string>(props: LinkProps<K>) => {
   // Untyped on purpose: the props are checked above, against the registered
   // router, and `anchor` only needs to resolve what they say.
   const router = useRouter<any>();
-  const { params, query, prefetch, ...rest } = props as LinkProps;
+  const { params, query, prefetch, ...rest } = props as unknown as LinkProps;
   const anchor = router.anchor(props.href, { params, query });
 
   return createElement(

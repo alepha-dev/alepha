@@ -106,10 +106,14 @@ export const $page = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 >(
-  options: PagePrimitiveOptions<TConfig, TProps, TPropsParent>,
-): PagePrimitive<TConfig, TProps, TPropsParent> => {
-  return createPrimitive(PagePrimitive<TConfig, TProps, TPropsParent>, options);
+  options: PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName>,
+): PagePrimitive<TConfig, TProps, TPropsParent, TName> => {
+  return createPrimitive(
+    PagePrimitive<TConfig, TProps, TPropsParent, TName>,
+    options,
+  );
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -118,13 +122,14 @@ export interface PagePrimitiveOptions<
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
+  TName extends string = string,
 > {
   /**
    * Identifier name for the page. Must be unique.
    *
    * @default Primitive key
    */
-  name?: string;
+  name?: TName;
 
   /**
    * Add a pathname to the page.
@@ -623,7 +628,10 @@ export class PagePrimitive<
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
-> extends Primitive<PagePrimitiveOptions<TConfig, TProps, TPropsParent>> {
+  TName extends string = string,
+> extends Primitive<
+  PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName>
+> {
   protected readonly reactPageService = $inject(ReactPageService);
 
   protected onInit() {
