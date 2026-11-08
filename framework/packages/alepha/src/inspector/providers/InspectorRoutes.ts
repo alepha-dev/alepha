@@ -1,8 +1,19 @@
 import { $inject, $store, Alepha, z } from "alepha";
 import { JobService } from "alepha/api/jobs";
+import { UserService } from "alepha/api/users";
+import { CryptoProvider } from "alepha/crypto";
+import { DateTimeProvider } from "alepha/datetime";
 import { localEmailOptions } from "alepha/email";
 import { $logger, JsonFormatterProvider } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  isHttpError,
+  NotFoundError,
+} from "alepha/server";
 import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider } from "alepha/system";
 import { MemoryTraceProvider, type Span } from "alepha/tracing";
@@ -43,6 +54,8 @@ export class InspectorRoutes {
   protected readonly atomLog = $inject(DevAtomLogProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly json = $inject(JsonFormatterProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly emailOptions = $store(localEmailOptions);
   protected readonly smsOptions = $store(localSmsOptions);
   /**
@@ -201,9 +214,18 @@ export class InspectorRoutes {
         response: z.object({
           emails: z.array(
             z.object({
+              /**
+               * The outbox file's name: stable, so one message can be read
+               * back by it.
+               */
+              id: z.text({ size: "long" }),
               to: z.text(),
               subject: z.text(),
               body: z.string(),
+              /**
+               * The plain-text alternative, when the sender gave one.
+               */
+              text: z.string().optional(),
               sentAt: z.text(),
             }),
           ),
@@ -219,9 +241,11 @@ export class InspectorRoutes {
       handler: async () => {
         const dir = this.emailOptions.directory;
         const emails = await this.readOutbox<{
+          id: string;
           to: string;
           subject: string;
           body: string;
+          text?: string;
           sentAt: string;
         }>(dir, ".eml.json");
         return { emails, directory: dir };
@@ -234,6 +258,11 @@ export class InspectorRoutes {
         response: z.object({
           messages: z.array(
             z.object({
+              /**
+               * The outbox file's name: stable, so one message can be read
+               * back by it.
+               */
+              id: z.text({ size: "long" }),
               to: z.text(),
               message: z.string(),
               sentAt: z.text(),
@@ -250,6 +279,7 @@ export class InspectorRoutes {
       handler: async () => {
         const dir = this.smsOptions.directory;
         const messages = await this.readOutbox<{
+          id: string;
           to: string;
           message: string;
           sentAt: string;
@@ -363,6 +393,12 @@ export class InspectorRoutes {
           page: z.text().optional(),
           size: z.text().optional(),
           sort: z.text().optional(),
+          /**
+           * A JSON object of column to value, equality only:
+           * `{"status":"open","projectId":3}`. A column the entity does not
+           * have is a 400, never a silent empty page.
+           */
+          where: z.text({ size: "rich" }).optional(),
         }),
         response: z.record(z.text(), z.any()),
       },
@@ -378,7 +414,7 @@ export class InspectorRoutes {
             size: query.size ? Number(query.size) : 50,
             sort: query.sort || undefined,
           },
-          {},
+          { where: this.parseWhere(repo, query.where) as any },
           { count: true },
         ) as any;
       },
@@ -443,6 +479,93 @@ export class InspectorRoutes {
         const deleted = Array.isArray(result) ? result.length : result ? 1 : 0;
 
         return { deleted, id: params.id };
+      },
+    }),
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Actions
+    // -----------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Run an `$action` by name, as a chosen user, the way `action.run()`
+     * does in process: the action's own validation and middlewares run, so
+     * a `$secure` refusal is the 401 or 403 that user would get. An
+     * `HttpError` the call throws is the answer's `status` and `body`, not a
+     * failure of this route.
+     *
+     * SECURITY: refused (403) whenever the app runs in production, whatever
+     * `ALEPHA_INSPECT` says. `alepha build --inspect` with `ALEPHA_INSPECT=1`
+     * opens the inspector in production, and this route would otherwise run
+     * any action as any user with no authentication at all.
+     */
+    actionCall: this.route({
+      ...INSPECTOR_ENDPOINTS.actionCall,
+      schema: {
+        params: z.object({ name: z.text() }),
+        body: z.object({
+          params: z.record(z.text(), z.any()).optional(),
+          query: z.record(z.text(), z.any()).optional(),
+          body: z.any().optional(),
+          /**
+           * `"anonymous"`, `{ roles: [...] }` for a synthetic user, or
+           * `{ id }` / `{ email }` for an existing one of `alepha/api/users`.
+           */
+          as: z.any(),
+        }),
+        response: z.object({
+          status: z.integer(),
+          body: z.any().optional(),
+          error: z.text({ size: "rich" }).optional(),
+          durationMs: z.number(),
+        }),
+      },
+      handler: async ({ params, body }) => {
+        if (this.alepha.isProduction()) {
+          throw new ForbiddenError(
+            "Calling an action through the inspector is refused in production, whatever ALEPHA_INSPECT says: it runs as any user, with no authentication.",
+          );
+        }
+
+        const action = this.alepha
+          .primitives($action)
+          .find(
+            (it) =>
+              it.name === params.name ||
+              `${it.group}.${it.name}` === params.name,
+          );
+        if (!action) {
+          throw new NotFoundError(`No action named "${params.name}"`);
+        }
+
+        const user = await this.resolveUser(body.as);
+        const started = this.dateTime.nowMillis();
+        const elapsed = () => this.dateTime.nowMillis() - started;
+        try {
+          const result = await action.run(
+            {
+              params: body.params ?? {},
+              query: body.query ?? {},
+              body: body.body,
+            } as any,
+            user ? { user } : {},
+          );
+          return { status: 200, body: result, durationMs: elapsed() };
+        } catch (error) {
+          if (isHttpError(error)) {
+            const data = (error as { data?: Record<string, unknown> }).data;
+            return {
+              status: error.status,
+              body: { name: error.name, message: error.message, data },
+              error: error.message,
+              durationMs: elapsed(),
+            };
+          }
+          return {
+            status: 500,
+            error: error instanceof Error ? error.message : String(error),
+            durationMs: elapsed(),
+          };
+        }
       },
     }),
   };
@@ -619,10 +742,11 @@ export class InspectorRoutes {
   }
 
   /**
-   * Every `*<suffix>` file of a local outbox directory, newest first.
-   * Malformed files are skipped, and a missing directory is an empty outbox.
+   * Every `*<suffix>` file of a local outbox directory, newest first, each
+   * with its file name as `id`. Malformed files are skipped, and a missing
+   * directory is an empty outbox.
    */
-  protected async readOutbox<T extends { sentAt: string }>(
+  protected async readOutbox<T extends { id: string; sentAt: string }>(
     dir: string,
     suffix: string,
   ): Promise<T[]> {
@@ -634,7 +758,10 @@ export class InspectorRoutes {
 
       for (const file of files) {
         try {
-          items.push(await this.fs.readJsonFile<T>(this.fs.join(dir, file)));
+          items.push({
+            ...(await this.fs.readJsonFile<T>(this.fs.join(dir, file))),
+            id: file,
+          });
         } catch {
           // skip malformed files
         }
@@ -775,6 +902,79 @@ export class InspectorRoutes {
     }
   }
 
+  /**
+   * The user an action call runs as, from its `as`: none for
+   * `"anonymous"`, a synthetic one for `{ roles }`, an existing one of
+   * `alepha/api/users` for `{ id }` or `{ email }`, with its own roles.
+   */
+  protected async resolveUser(
+    as: unknown,
+  ): Promise<UserAccountToken | undefined> {
+    if (as === "anonymous") {
+      return undefined;
+    }
+    if (!as || typeof as !== "object") {
+      throw new BadRequestError(
+        'Say who calls: "anonymous", { roles: [...] }, { id } or { email }.',
+      );
+    }
+
+    const who = as as { roles?: unknown; id?: unknown; email?: unknown };
+    if (Array.isArray(who.roles)) {
+      return {
+        id: this.crypto.randomUUID(),
+        name: "Agent",
+        roles: who.roles.map(String),
+      };
+    }
+
+    if (typeof who.id !== "string" && typeof who.email !== "string") {
+      throw new BadRequestError(
+        'Say who calls: "anonymous", { roles: [...] }, { id } or { email }.',
+      );
+    }
+
+    const users = this.getUserService();
+    if (!users) {
+      throw new BadRequestError(
+        "Calling as an existing user needs alepha/api/users, which this app does not register. Call with { roles: [...] } instead.",
+      );
+    }
+
+    const where =
+      typeof who.id === "string"
+        ? { id: { eq: who.id } }
+        : { email: { eq: String(who.email) } };
+    const user = await users.users().findOne({ where } as any);
+    if (!user) {
+      throw new NotFoundError(
+        `No user with ${typeof who.id === "string" ? `id ${who.id}` : `email ${String(who.email)}`}`,
+      );
+    }
+    return {
+      id: user.id,
+      name:
+        [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+        user.username ||
+        undefined,
+      email: user.email ?? undefined,
+      roles: user.roles,
+      realm: user.realm,
+    };
+  }
+
+  /**
+   * `UserService`, or `undefined` when the app does not register
+   * `alepha/api/users`. Guarded like {@link getJobService}.
+   */
+  protected getUserService(): UserService | undefined {
+    try {
+      return this.alepha.inject(UserService);
+    } catch {
+      return undefined;
+    }
+  }
+
   protected getRepository(entityName: string) {
     try {
       const repositoryProvider = this.alepha.inject(RepositoryProvider);
@@ -783,6 +983,46 @@ export class InspectorRoutes {
     } catch {
       return undefined;
     }
+  }
+
+  /**
+   * The `where` of a `dbList`: a JSON object of column to a string, number
+   * or boolean, as `{ column: { eq: value } }`. Refused (400) when it is not
+   * that, or names a column the entity does not have.
+   */
+  protected parseWhere(
+    repo: { entity: { name: string; schema: unknown } },
+    raw?: string,
+  ): Record<string, { eq: unknown }> {
+    if (!raw) return {};
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new BadRequestError(`"where" is not JSON: ${raw}`);
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new BadRequestError(
+        '"where" is a JSON object of column to value, e.g. {"status":"open"}',
+      );
+    }
+
+    const columns = Object.keys(z.schema.shape(repo.entity.schema));
+    const where: Record<string, { eq: unknown }> = {};
+    for (const [column, value] of Object.entries(parsed)) {
+      if (!columns.includes(column)) {
+        throw new BadRequestError(
+          `"${repo.entity.name}" has no column "${column}". Columns: ${columns.join(", ")}`,
+        );
+      }
+      if (!["string", "number", "boolean"].includes(typeof value)) {
+        throw new BadRequestError(
+          `"where" compares "${column}" by equality to a string, number or boolean`,
+        );
+      }
+      where[column] = { eq: value };
+    }
+    return where;
   }
 
   protected parseId(repo: any, rawId: string): string | number {

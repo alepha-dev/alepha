@@ -30,9 +30,9 @@ alepha docs --app actions                # one section in full, schemas included
 alepha docs --app actions --grep quest   # only the items mentioning "quest"
 ```
 
-The sections are `actions`, `entities`, `pages`, `routes`, `jobs`, `topics` and `env`. Schemas print as TypeScript-like types (`{ id: string (uuid); name?: string }`). The `env` section lists variable names, types, defaults and the service declaring them, **never their values**.
+The sections are `actions`, `entities`, `pages`, `routes`, `jobs`, `topics`, `modules`, `atoms`, `realms`, `roles`, `permissions` and `env`. Schemas print as TypeScript-like types (`{ id: string (uuid); name?: string }`); an action in full also gives its `$secure` rule and the errors it declares. The `env` section lists variable names, types, defaults and the service declaring them, **never their values**, and `atoms` lists atoms by key and type, never their values either.
 
-The overview stays small enough for a prompt and a full section may not: measured on the shop example, the overview is 26 KB and `--app actions` 68 KB; on Lore, 75 KB and 257 KB. Narrow a large section with `--grep`.
+The overview stays small enough for a prompt and a full section may not: measured on the shop example, the overview is 26 KB and `--app actions` 68 KB; on Lore, 88 KB and 300 KB. Narrow a large section with `--grep`.
 
 ## Where the Pages Come From
 

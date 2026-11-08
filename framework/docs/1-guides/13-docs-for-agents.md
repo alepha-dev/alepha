@@ -63,8 +63,8 @@ terminal: the reader is usually an agent piping it.
 The framework's manual is half of what an agent needs; the other half is a map of the app it
 is editing. `npx alepha docs --app` prints it, read from the app's container rather than guessed
 from its source tree: every `$action` with its path, method and schemas, every `$entity` with
-its columns, the `$page`s, `$route`s, `$job`s and `$topic`s, and the environment variables
-(names, types and defaults, never values).
+its columns, the `$page`s, `$route`s, `$job`s and `$topic`s, the modules, atoms, realms, roles
+and permissions, and the environment variables (names, types and defaults, never values).
 
 ```bash
 npx alepha docs --app                        # the overview, one line per item

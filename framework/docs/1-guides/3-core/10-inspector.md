@@ -4,7 +4,8 @@ Every app `alepha dev` runs can be inspected from outside: its actions, jobs,
 entities, atoms, environment and logs, read and edited by a separate tool. The
 devtools app (`npx @alepha/devtools`) is one such tool. `alepha/inspector` is
 the protocol underneath it, and nothing stops you from writing another: a
-script, a TUI, an MCP server for an agent.
+script, a TUI. [`alepha mcp`](/docs/guides-core-dev-mcp) is the MCP server for
+a coding agent, built on it.
 
 > ⚠️ **No stability promise before alepha 1.0.** The protocol carries a version
 > number and a client refuses a run that speaks another one, but routes and
@@ -181,3 +182,8 @@ triggers, and the environment, secrets included, in cleartext. That is why it
 lives on a `0600` socket in a `0700` directory rather than on a port, and why
 a production build carries it only with `--inspect` and runs it only with
 `ALEPHA_INSPECT=1`.
+
+One route goes further: `POST /actions/:name/call` runs an `$action` in the
+app as any user the caller names, with no authentication. It answers 403
+whenever the app runs in production, whatever `ALEPHA_INSPECT` says, so a
+build made with `--inspect` can still be read but never driven.

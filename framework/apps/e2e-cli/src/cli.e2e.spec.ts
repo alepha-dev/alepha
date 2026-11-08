@@ -38,12 +38,14 @@ import {
   chmod,
   copyFile,
   mkdir,
+  mkdtemp,
   readdir,
   readFile,
   rm,
   writeFile,
 } from "node:fs/promises";
 import { type AddressInfo, createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -244,6 +246,96 @@ async function fetchWithRetry(
     }
   }
   throw lastError ?? new Error(`Failed to fetch ${url}`);
+}
+
+/**
+ * An MCP client over a child's stdio, the way an agent starts `alepha mcp`:
+ * newline-delimited JSON-RPC, one request at a time.
+ */
+function startMcp(
+  command: string,
+  cwd: string,
+  env: Record<string, string>,
+): {
+  request: (method: string, params?: unknown) => Promise<any>;
+  tool: (name: string, args?: Record<string, unknown>) => Promise<string>;
+  stderr: () => string;
+  noise: () => string[];
+  kill: () => void;
+} {
+  const proc = spawn(command, [], {
+    cwd,
+    shell: true,
+    stdio: ["pipe", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      NODE_ENV: "development",
+      FORCE_COLOR: "0",
+      NO_COLOR: "1",
+      CLAUDECODE: "",
+      ...env,
+    },
+  });
+  let buffer = "";
+  let stderr = "";
+  let nextId = 1;
+  const noise: string[] = [];
+  const pending = new Map<number, (message: any) => void>();
+  proc.stderr?.on("data", (data) => {
+    stderr += data.toString();
+  });
+  proc.stdout?.on("data", (data) => {
+    buffer += data.toString();
+    let newline = buffer.indexOf("\n");
+    while (newline !== -1) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      newline = buffer.indexOf("\n");
+      if (!line) continue;
+      let message: any;
+      try {
+        message = JSON.parse(line);
+      } catch {
+        // Anything but a protocol message on stdout breaks a real client.
+        noise.push(line);
+        continue;
+      }
+      pending.get(message.id)?.(message);
+      pending.delete(message.id);
+    }
+  });
+
+  const request = (method: string, params?: unknown): Promise<any> =>
+    new Promise((resolveMessage, reject) => {
+      const id = nextId++;
+      const timer = setTimeout(
+        () => reject(new Error(`MCP ${method} timed out\n${stderr}`)),
+        60_000,
+      );
+      pending.set(id, (message) => {
+        clearTimeout(timer);
+        resolveMessage(message);
+      });
+      proc.stdin?.write(
+        `${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`,
+      );
+    });
+
+  return {
+    request,
+    tool: async (name, args = {}) => {
+      const message = await request("tools/call", { name, arguments: args });
+      return (message.result?.content ?? [])
+        .map((block: { text?: string }) => block.text ?? "")
+        .join("\n");
+    },
+    stderr: () => stderr,
+    noise: () => noise,
+    kill: () => {
+      proc.stdin?.end();
+      proc.kill("SIGTERM");
+    },
+  };
 }
 
 describe("Alepha CLI E2E", () => {
@@ -860,6 +952,90 @@ describe("Alepha CLI E2E", () => {
       } finally {
         await writeFile(mainServerPath, originalContent, "utf-8");
         await devServer.kill();
+      }
+    });
+  });
+
+  describe("mcp", () => {
+    it("finds the dev app over stdio, and keeps it selected across a reload", async () => {
+      // The registry of this suite alone, so a dev server of another
+      // worktree on this machine is never listed. Under the system's temp
+      // directory, not WORK_DIR: a Unix socket path is capped at 103 bytes on
+      // darwin, and a worktree's path alone can pass it.
+      const runDir = await mkdtemp(join(tmpdir(), "amcp-"));
+      const env = { ALEPHA_INSPECT: "1", ALEPHA_RUN_DIR: runDir };
+      const mainServerPath = join(PROJECT_DIR, "src/main.server.ts");
+      const originalContent = await readFile(mainServerPath, "utf-8");
+
+      const port = await freePort();
+      const devServer = startProcess(`"${CLI}" dev`, PROJECT_DIR, {
+        ...env,
+        SERVER_PORT: String(port),
+      });
+      const mcp = startMcp(`"${CLI}" mcp`, PROJECT_DIR, env);
+
+      const runIdOf = (listing: string) =>
+        /\* \S+ - live - .* - run (\w+) -/.exec(listing)?.[1];
+      const listedRun = async (other?: string) => {
+        for (let i = 0; i < 120; i++) {
+          const listing = await mcp.tool("apps_list");
+          const runId = runIdOf(listing);
+          if (runId && runId !== other) return { listing, runId };
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        throw new Error(`No live app listed\n${mcp.stderr()}`);
+      };
+
+      try {
+        const init = await mcp.request("initialize", {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "e2e", version: "1.0.0" },
+        });
+        expect(init.result.serverInfo.name).toBe("alepha");
+        expect(init.result.instructions).toContain("apps_list");
+
+        const tools = await mcp.request("tools/list");
+        const names = tools.result.tools.map((t: { name: string }) => t.name);
+        expect(names).toEqual(
+          expect.arrayContaining(["apps_list", "app_select"]),
+        );
+
+        // Before the app is up: an answer naming the fix, not an error.
+        const early = await mcp.request("tools/call", {
+          name: "apps_list",
+          arguments: {},
+        });
+        expect(early.error).toBeUndefined();
+
+        await devServer.waitForOutput(
+          /ready in|Server listening|localhost/i,
+          60_000,
+        );
+        const first = await listedRun();
+        expect(first.listing).toContain(`cwd ${PROJECT_DIR}`);
+        expect(first.listing).toMatch(/Selected: e2e-consumer/);
+
+        // A reload writes the entry again under a new run id.
+        await writeFile(
+          mainServerPath,
+          `${originalContent}\n// reload ${Date.now()}\n`,
+          "utf-8",
+        );
+        const second = await listedRun(first.runId);
+        expect(second.runId).not.toBe(first.runId);
+        expect(second.listing).toMatch(/Selected: e2e-consumer/);
+
+        expect(mcp.noise()).toEqual([]);
+      } catch (error) {
+        throw new AlephaError(
+          `${error instanceof Error ? error.message : String(error)}\n${devServer.stdout()}\n${devServer.stderr()}\n${mcp.stderr()}`,
+        );
+      } finally {
+        await writeFile(mainServerPath, originalContent, "utf-8");
+        mcp.kill();
+        await devServer.kill();
+        await rm(runDir, { recursive: true, force: true });
       }
     });
   });

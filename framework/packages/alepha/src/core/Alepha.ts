@@ -1874,6 +1874,10 @@ export interface AlephaDumpEnvVariable {
    * key. Always present rather than optional for the same reason: a consumer
    * writing `if (v.secret)` gets the safe answer without having to know that
    * absent meant "closed".
+   *
+   * ⚠️ The same key on an entity column has the OPPOSITE default: a column is
+   * not secret unless marked `secret: true` (`EntityPrimitive.secretColumns`),
+   * since a default of secret would hide every column of every entity.
    */
   secret: boolean;
 }
