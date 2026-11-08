@@ -73,6 +73,11 @@ export class DevToolsMetadataProvider {
         query: this.toJsonSchema(schema?.query),
         response: this.toJsonSchema(schema?.response),
         bodyContentType: action.getBodyContentType(),
+        errors: action.errors?.map((cls) => ({
+          name: cls.name,
+          status: (cls as unknown as { defaults?: { status?: number } })
+            .defaults?.status,
+        })),
         middlewares: action.middlewares.filter(Boolean).length
           ? action.middlewares.filter(Boolean)
           : undefined,

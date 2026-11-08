@@ -45,8 +45,8 @@ export class DocsCommand {
    * `--app` describes the project's own app instead: it loads the app into a
    * container without starting it and prints what it registers, its
    * actions with their schemas, entities with their columns, pages, routes,
-   * jobs, topics and environment variables (names and defaults, never
-   * values). `npx alepha docs --app actions` prints one section in full, and
+   * jobs, topics, modules, atoms, realms, roles, permissions and environment
+   * variables (names and defaults, never values). `npx alepha docs --app actions` prints one section in full, and
    * `--grep` keeps the items mentioning a word: `--app actions --grep quest`.
    */
   public readonly docs = $command({
@@ -69,7 +69,7 @@ export class DocsCommand {
       app: z
         .boolean()
         .describe(
-          "Describe this project's app from its container: actions, entities, pages, routes, jobs, topics, env",
+          "Describe this project's app from its container: actions, entities, pages, routes, jobs, topics, modules, atoms, realms, roles, permissions, env",
         )
         .optional(),
     }),
@@ -221,6 +221,11 @@ export class DocsCommand {
       routes,
       jobs: meta.getJobs(),
       topics: meta.getTopics(),
+      modules: meta.getModules(),
+      atoms: meta.getAtoms(),
+      realms: meta.getRealms(),
+      roles: meta.getRoles(),
+      permissions: meta.getPermissions(),
       envs: meta.getEnvs(),
     };
   }
