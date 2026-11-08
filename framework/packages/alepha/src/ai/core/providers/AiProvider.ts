@@ -269,7 +269,8 @@ export interface AiToolCall {
 
 /**
  * A tool as a vendor sees it: a name, a description and a JSON Schema of
- * its input object. Build `inputSchema` with `AiToolSchema.toJsonSchema`.
+ * its input object. Build `inputSchema` with `ActionToolSchema.toJsonSchema`
+ * (`alepha`).
  */
 export interface AiToolDefinition {
   name: string;

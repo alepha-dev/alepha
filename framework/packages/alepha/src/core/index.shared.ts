@@ -50,4 +50,5 @@ export * from "./providers/SchemaValidator.ts";
 export * from "./providers/StateManager.ts";
 export * from "./providers/ZodProvider.ts";
 export * from "./schemas/pageQuerySchema.ts";
+export * from "./services/ActionToolSchema.ts";
 export * from "./schemas/pageSchema.ts";

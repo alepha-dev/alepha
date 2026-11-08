@@ -1,4 +1,11 @@
-import { $inject, createPrimitive, Primitive, type ZType } from "alepha";
+import {
+  $inject,
+  ActionToolSchema,
+  AlephaError,
+  createPrimitive,
+  Primitive,
+  type ZType,
+} from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import type { UserAccountToken } from "alepha/security";
@@ -274,6 +281,7 @@ export interface AiTurnResult {
 export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   protected readonly provider = $inject(AiProvider);
   protected readonly toolSchema = $inject(AiToolSchema);
+  protected readonly actionToolSchema = $inject(ActionToolSchema);
   protected readonly contextBlock = $inject(AiContextBlock);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -726,42 +734,33 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         definition: {
           name: client.name,
           description: client.description,
-          inputSchema: this.toolSchema.toJsonSchema(client.schema),
+          inputSchema: this.actionToolSchema.toJsonSchema(client.schema),
         },
       };
     }
 
     const action = tool as ActionPrimitive<any>;
     this.toolSchema.assertName(action.name);
-    const description = action.options.description;
-    if (!description) {
-      throw new AiConfigError(
-        {},
-        {
-          message: `$ai '${this.name}': action '${action.name}' has no description, and a tool needs one: it is how the model knows when to call it.`,
-        },
-      );
-    }
-    const parts = (["params", "query", "body"] as const).filter(
-      (part) => action.schema?.[part],
-    );
-    const properties: Record<string, unknown> = {};
-    for (const part of parts) {
-      properties[part] = this.toolSchema.toJsonSchema(action.schema![part]);
+    let built: ReturnType<ActionToolSchema["fromAction"]>;
+    try {
+      built = this.actionToolSchema.fromAction(action);
+    } catch (error) {
+      if (error instanceof AlephaError) {
+        throw new AiConfigError(
+          {},
+          { message: `$ai '${this.name}': ${error.message}`, cause: error },
+        );
+      }
+      throw error;
     }
     return {
       kind: "action",
       action,
-      parts,
+      parts: built.parts,
       definition: {
-        name: action.name,
-        description,
-        inputSchema: {
-          type: "object",
-          properties,
-          required: parts.filter((part) => part !== "query"),
-          additionalProperties: false,
-        },
+        name: built.name,
+        description: built.description,
+        inputSchema: built.inputSchema,
       },
     };
   }

@@ -38,7 +38,7 @@ export * from "./tools/aiClientTools.ts";
  * - `MemoryAiProvider`: the default, scripted in specs, and an explicit
  *   placeholder reply in development
  * - `SseReader`: the `text/event-stream` parser every vendor provider shares
- * - `AiToolSchema`: Zod to tool JSON Schema, in input mode
+ * - `AiToolSchema`: the tool name rule every vendor accepts
  *
  * The vendor is the module the app registers, never an env string:
  * `AlephaAiCloudflare` (`alepha/ai/cloudflare`, the Workers AI binding),
