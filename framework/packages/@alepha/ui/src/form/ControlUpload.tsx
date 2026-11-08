@@ -380,6 +380,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
 
   return (
     <FormField
+      onBlur={() => props.input.form?.blur(props.input.path)}
       id={inputId}
       label={fieldMeta.label}
       description={fieldMeta.description}

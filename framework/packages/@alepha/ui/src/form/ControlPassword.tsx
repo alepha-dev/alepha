@@ -22,6 +22,10 @@ export interface ControlPasswordProps {
   icon?: IconComponent;
   value: string;
   onChange: (v: string) => void;
+  /**
+   * Called when focus leaves the field.
+   */
+  onBlur?: () => void;
 }
 
 /**
@@ -36,6 +40,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
   const Icon = props.icon;
   return (
     <FormField
+      onBlur={props.onBlur}
       id={props.id}
       label={props.label}
       description={props.description}

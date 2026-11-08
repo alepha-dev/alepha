@@ -395,6 +395,7 @@ export const Control = (props: ControlProps) => {
     return wrapWithSlots(
       merged,
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={merged.label ?? meta.label}
         description={merged.description ?? meta.description}
@@ -594,6 +595,7 @@ export const Control = (props: ControlProps) => {
     return wrapWithSlots(
       merged,
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={merged.label ?? meta.label}
         description={merged.description ?? meta.description}
@@ -656,6 +658,7 @@ export const Control = (props: ControlProps) => {
     return wrapWithSlots(
       merged,
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={merged.label ?? meta.label}
         description={merged.description ?? meta.description}
@@ -682,6 +685,7 @@ export const Control = (props: ControlProps) => {
     return wrapWithSlots(
       merged,
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={merged.label ?? meta.label}
         description={merged.description ?? meta.description}
@@ -721,6 +725,7 @@ export const Control = (props: ControlProps) => {
     return wrapWithSlots(
       merged,
       <ControlPassword
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         name={props.input.props.name}
         label={merged.label ?? meta.label}
@@ -796,6 +801,7 @@ export const Control = (props: ControlProps) => {
   return wrapWithSlots(
     merged,
     <FormField
+      onBlur={() => props.input.form?.blur(props.input.path)}
       id={meta.id}
       label={merged.label ?? meta.label}
       description={merged.description ?? meta.description}

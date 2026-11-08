@@ -310,6 +310,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
   if (props.segmented) {
     return (
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={meta.label}
         description={meta.description}
@@ -341,6 +342,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
     const ticked = Array.isArray(value) ? (value as unknown[]).map(String) : [];
     return (
       <FormField
+        onBlur={() => props.input.form?.blur(props.input.path)}
         id={meta.id}
         label={meta.label}
         description={meta.description}
@@ -416,6 +418,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
 
   return (
     <FormField
+      onBlur={() => props.input.form?.blur(props.input.path)}
       id={meta.id}
       label={meta.label}
       description={meta.description}
