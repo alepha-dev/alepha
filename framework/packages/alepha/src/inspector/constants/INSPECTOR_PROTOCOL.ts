@@ -4,5 +4,9 @@
  * Bumped on any breaking change to either. A client refuses to talk to a run
  * whose entry carries a different number, rather than guessing. There is no
  * stability promise before alepha 1.0.
+ *
+ * - 2: `/emails` and `/sms` carry each message's `id`,
+ *   `POST /actions/:name/call` runs an action as a chosen user, and
+ *   `/db/:entity/records` takes an equality `where`, for `alepha mcp`.
  */
-export const INSPECTOR_PROTOCOL = 1;
+export const INSPECTOR_PROTOCOL = 2;

@@ -73,6 +73,11 @@ export class DevToolsMetadataProvider {
         query: this.toJsonSchema(schema?.query),
         response: this.toJsonSchema(schema?.response),
         bodyContentType: action.getBodyContentType(),
+        errors: action.errors?.map((cls) => ({
+          name: cls.name,
+          status: (cls as unknown as { defaults?: { status?: number } })
+            .defaults?.status,
+        })),
         middlewares: action.middlewares.filter(Boolean).length
           ? action.middlewares.filter(Boolean)
           : undefined,
@@ -370,6 +375,8 @@ export class DevToolsMetadataProvider {
         const jsonProperties: Record<string, any> =
           this.toJsonSchema(entity.schema)?.properties ?? {};
 
+        const secret = new Set(entity.secretColumns);
+
         // Extract columns from schema
         const columns: DevEntityColumn[] = Object.entries(
           z.schema.shape(schema),
@@ -393,6 +400,7 @@ export class DevToolsMetadataProvider {
             deletedAt: PG_DELETED_AT in fieldSchema,
             version: PG_VERSION in fieldSchema,
             hasDefault: PG_DEFAULT in fieldSchema,
+            ...(secret.has(name) ? { secret: true } : {}),
             ref: refData
               ? {
                   entity: refData.ref?.()?.entity?.name ?? "unknown",

@@ -31,6 +31,7 @@ export const verifications = $entity({
 
     code: z.text({
       description: "Hashed verification token (n-digit code or UUID)",
+      secret: true,
     }),
 
     verifiedAt: z

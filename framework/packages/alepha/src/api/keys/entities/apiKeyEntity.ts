@@ -15,7 +15,7 @@ export const apiKeyEntity = $entity({
     description: z.text({ maxLength: 500 }).optional(),
 
     // Token (hashed) - internal, not user input
-    tokenHash: z.string().max(256),
+    tokenHash: z.string().max(256).meta({ secret: true }),
     tokenPrefix: z.string().max(10),
     tokenSuffix: z.string().max(8),
 

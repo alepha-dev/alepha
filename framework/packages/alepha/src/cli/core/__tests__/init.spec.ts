@@ -256,6 +256,56 @@ describe("alepha init", () => {
     });
   });
 
+  describe("the alepha mcp server", () => {
+    it("registers alepha mcp in .mcp.json, run through the package manager", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/yarn.lock", "");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(await fs.readJsonFile("/project/.mcp.json")).toEqual({
+        mcpServers: { alepha: { command: "yarn", args: ["alepha", "mcp"] } },
+      });
+      expect(await fs.readTextFile("/project/AGENTS.md")).toContain(
+        "**To see the running app, use the `alepha mcp` server**",
+      );
+    });
+
+    it("merges into an existing .mcp.json, keeping other servers and an existing entry", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/package-lock.json", "{}");
+      await fs.writeFile(
+        "/project/.mcp.json",
+        JSON.stringify({ mcpServers: { lore: { command: "lore" } } }),
+      );
+
+      await cli.run(cmd.init, { root: "/project" });
+      expect(await fs.readJsonFile("/project/.mcp.json")).toEqual({
+        mcpServers: {
+          lore: { command: "lore" },
+          alepha: { command: "npx", args: ["alepha", "mcp"] },
+        },
+      });
+
+      const own = { mcpServers: { alepha: { command: "./bin/my-alepha" } } };
+      await fs.writeFile("/project/.mcp.json", JSON.stringify(own));
+      await cli.run(cmd.init, { root: "/project", argv: "--force" });
+      expect(await fs.readJsonFile("/project/.mcp.json")).toEqual(own);
+    });
+
+    it("leaves a .mcp.json that is not a JSON object untouched", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+      await fs.writeFile("/project/.mcp.json", "{ not json");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(await fs.readTextFile("/project/.mcp.json")).toBe("{ not json");
+    });
+  });
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Package Manager Detection
   // ─────────────────────────────────────────────────────────────────────────────

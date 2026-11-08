@@ -1,5 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+import { isHttpError } from "alepha/server";
 
 import { InspectorRoutes } from "../providers/InspectorRoutes.ts";
 
@@ -75,6 +76,11 @@ export class InspectorDispatcher {
       const result = await route.handler(input);
       return { status: 200, body: codec.encode(schema.response, result) };
     } catch (error) {
+      // A refusal the route chose (a 403 in production, a 404 for an unknown
+      // name) keeps its status, rather than reading as a crash.
+      if (isHttpError(error) && error.status >= 400 && error.status < 500) {
+        return { status: error.status, body: { message: error.message } };
+      }
       this.log.warn(`Inspector route ${route.method} ${route.path} failed`, {
         error,
       });

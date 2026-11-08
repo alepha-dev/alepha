@@ -417,6 +417,49 @@ export class ProjectScaffolder {
   }
 
   /**
+   * Register `alepha mcp` in the project's `.mcp.json`, run through the
+   * project's package manager, so a coding agent that reads the file (Claude
+   * Code's project scope) starts it on its own.
+   *
+   * Merged, never overwritten, even with `--force`: other servers are kept,
+   * an existing `alepha` entry is left as it is, and a file that is not a
+   * JSON object is not touched at all. No other agent's config is written:
+   * `AGENTS.md` names the command for the rest.
+   */
+  public async ensureMcpJson(
+    root: string,
+    pm: "yarn" | "pnpm" | "npm" | "bun",
+  ): Promise<void> {
+    const path = this.fs.join(root, ".mcp.json");
+    let config: Record<string, unknown> = {};
+    if (await this.fs.exists(path)) {
+      try {
+        config = await this.fs.readJsonFile<Record<string, unknown>>(path);
+      } catch {
+        return;
+      }
+      if (!config || typeof config !== "object" || Array.isArray(config)) {
+        return;
+      }
+    }
+
+    const servers = (config.mcpServers ?? {}) as Record<string, unknown>;
+    if (typeof servers !== "object" || Array.isArray(servers)) return;
+    if (servers.alepha) return;
+
+    const command = {
+      npm: { command: "npx", args: ["alepha", "mcp"] },
+      yarn: { command: "yarn", args: ["alepha", "mcp"] },
+      pnpm: { command: "pnpm", args: ["exec", "alepha", "mcp"] },
+      bun: { command: "bunx", args: ["alepha", "mcp"] },
+    }[pm];
+    await this.fs.writeJsonFile(path, {
+      ...config,
+      mcpServers: { ...servers, alepha: command },
+    });
+  }
+
+  /**
    * Ensure alepha.config.ts exists with documented options.
    */
   public async ensureAlephaConfig(
@@ -971,6 +1014,11 @@ export class ProjectScaffolder {
       } else {
         await this.pm.ensureNpm(root);
       }
+    }
+
+    // The agent's MCP server sits with the agent files, at a project root.
+    if (writeAgentMd) {
+      await this.ensureMcpJson(root, pmName);
     }
 
     // Run install from workspace root if in a package, otherwise from current root

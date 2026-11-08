@@ -17,6 +17,19 @@ export const devActionMetadataSchema = z.object({
   query: z.any().optional(),
   response: z.any().optional(),
   bodyContentType: z.text().optional(),
+  /**
+   * The errors a strict action declares (its `errors` option), by name and
+   * status. Absent when the action is not strict; empty when it is strict
+   * with nothing expected.
+   */
+  errors: z
+    .array(
+      z.object({
+        name: z.text(),
+        status: z.integer().optional(),
+      }),
+    )
+    .optional(),
   middlewares: z
     .array(
       z.object({

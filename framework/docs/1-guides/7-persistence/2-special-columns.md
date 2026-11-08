@@ -189,6 +189,29 @@ Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set
 
 The helpers return a copy: `db.ref(userIdSchema, ...)` leaves `userIdSchema` a plain uuid everywhere else it is used.
 
+## Secret Columns
+
+A column holding a credential (a password hash, a token, a client secret) declares `secret: true`. The database and the repository treat it like any other column; tools that hand rows to someone else, such as `alepha mcp` giving them to a coding agent, replace its value with `"[redacted]"`.
+
+```typescript
+import { z } from "alepha";
+import { $entity, db } from "alepha/orm";
+
+const accounts = $entity({
+  name: "accounts",
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    email: z.email(),
+    passwordHash: z.text({ secret: true }).optional(),
+    resetToken: z.text().meta({ secret: true }).optional(),
+  }),
+});
+
+accounts.secretColumns; // ["passwordHash", "resetToken"]
+```
+
+A column is not secret unless it says so. That is the opposite of an `$env` variable, which is secret unless declared `secret: false`: a default of secret would hide every column. The framework's own credential columns (`alepha/api/users`, `keys`, `oauth`, `verifications`) are marked.
+
 ## Full Example
 
 ```typescript check

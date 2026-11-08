@@ -199,6 +199,70 @@ describe("AppMapRenderer", () => {
     });
   });
 
+  describe("modules, atoms, realms, roles and permissions", () => {
+    const withAll = (): AppMapInput => ({
+      ...input(),
+      modules: [{ name: "shop", providers: ["OrderService", "CartService"] }],
+      atoms: [
+        {
+          name: "shop.settings",
+          schema: { type: "object", properties: { vat: { type: "number" } } },
+          currentValue: { vat: 0.2, apiKey: "atom_value_never_prints" },
+          serverOnly: true,
+        },
+      ],
+      realms: [{ name: "customers", type: "internal", roles: ["buyer"] }],
+      roles: [
+        {
+          name: "buyer",
+          realm: "customers",
+          grants: [{ name: "orders:read", ownership: true }],
+          effective: ["orders:read"],
+          viaWildcard: [],
+        },
+      ],
+      permissions: [{ id: "orders:read", name: "read", group: "orders" }],
+    });
+
+    it("lists them when the input has them, and leaves out absent sections", () => {
+      const text = renderer().render(withAll());
+      expect(text).toContain(
+        "modules (1), atoms (1), realms (1), roles (1), permissions (1), env (2).",
+      );
+      expect(text).toContain("- `shop` (2 providers)");
+      expect(text).toContain("- `shop.settings` (server only)");
+      expect(text).toContain("- `customers` (internal, roles buyer)");
+      expect(text).toContain("- `buyer` (realm customers, 1 permissions)");
+      expect(text).toContain("- `orders:read`");
+
+      const { routes: _, ...noRoutes } = input();
+      expect(renderer().render(noRoutes)).not.toContain("routes (");
+      expect(renderer().render(input())).not.toContain("modules (");
+    });
+
+    it("prints an atom's type in full, never its value", () => {
+      const text = renderer().render(withAll(), "atoms");
+      expect(text).toContain(
+        "- `shop.settings` ({ vat?: number }, server only)",
+      );
+      expect(text).not.toContain("atom_value_never_prints");
+    });
+
+    it("describes one item by kind and name, and suggests on a miss", () => {
+      const r = renderer();
+      expect(r.describe(withAll(), "role", "buyer")).toContain(
+        "  - grants: orders:read (own)",
+      );
+      expect(r.describe(withAll(), "action", "orders.getOrder")).toContain(
+        "- secure: a signed-in user",
+      );
+      expect(r.describe(withAll(), "action", "nope")).toBeUndefined();
+      expect(r.candidates(withAll(), "action", "order")).toEqual([
+        "orders.getOrder",
+      ]);
+    });
+  });
+
   describe("filtering", () => {
     it("keeps the matching items and recounts the heading", () => {
       const text = renderer().render(input(), "actions", "order");

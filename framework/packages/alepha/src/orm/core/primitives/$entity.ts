@@ -280,6 +280,31 @@ export class EntityPrimitive<T extends ZObject = ZObject> {
     return this.options.name;
   }
 
+  /**
+   * The columns declared secret, in schema order: a credential, a hash, a
+   * bearer token. Tools that hand rows to someone else hide them; the
+   * database and the repository are unaffected.
+   *
+   * A column declares it with `.meta({ secret: true })`, or `secret: true`
+   * in `z.text()`'s options, read like an `$env` variable's (`Alepha.dump()`):
+   * through the optional, nullable and default wrappers, and a non-boolean
+   * value is dropped rather than coerced.
+   *
+   * ⚠️ **Opposite default.** An env variable is secret unless declassified
+   * (`secret: false`). A column is NOT secret unless marked: a default of
+   * secret would hide every column of every entity.
+   */
+  get secretColumns(): string[] {
+    this.cachedSecretColumns ??= Object.entries(
+      z.schema.shape(this.schema),
+    ).flatMap(([name, column]) =>
+      z.schema.meta(column).secret === true ? [name] : [],
+    );
+    return this.cachedSecretColumns;
+  }
+
+  protected cachedSecretColumns?: string[];
+
   get schema(): T {
     return this.options.schema;
   }
