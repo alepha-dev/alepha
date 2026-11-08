@@ -783,10 +783,11 @@ body::before {
  *
  * The collapsed rail carries the same texture, so the pane keeps its
  * material when it shuts instead of turning into a different surface. What
- * it does not keep is the tile size: the rail is 32px wide, and a 28px tile
- * there shows one column of diamonds plus a sliver, which reads as a crop
- * rather than a pattern. `lore-quest-log-facets-rail` scales the mask to
- * 16px so exactly two columns fit the strip.
+ * it does not keep is the tile size: the rail is 36px wide (the kit's
+ * `PaneRail`), and a 28px tile there shows one column of diamonds plus a
+ * sliver, which reads as a crop rather than a pattern.
+ * `lore-quest-log-facets-rail` scales the mask to 18px so exactly two
+ * columns fit the strip.
  */
 .lore-quest-log-facets {
   position: relative;
@@ -822,12 +823,12 @@ body::before {
 /*
  * The rail's tile is scaled down rather than redrawn, so one data URI still
  * serves both. That scaling is also why the alpha goes up: the hairline is
- * 1px in a 28-unit viewBox, so at 16px it rasterises to well under a device
+ * 1px in a 28-unit viewBox, so at 18px it rasterises to well under a device
  * pixel and antialiases away to almost nothing at the pane's opacity.
  */
 .lore-quest-log-facets-rail::before {
-  mask-size: 16px 16px;
-  -webkit-mask-size: 16px 16px;
+  mask-size: 18px 18px;
+  -webkit-mask-size: 18px 18px;
   opacity: 0.06;
 }
 

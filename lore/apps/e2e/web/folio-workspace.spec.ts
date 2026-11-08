@@ -1205,7 +1205,19 @@ test.describe("Folio workspace", () => {
     const rail = page.getByRole("button", { name: /^show the tree$/i });
     await expect(rail).toBeVisible();
     await expect(rail).toHaveAttribute("title", "Show the tree");
-    await rail.click();
+    /*
+     * The whole strip is the button (#Q3206), so the click lands well BELOW
+     * the icon at its top: on the old rail this hit an inert strip and the
+     * tree stayed shut.
+     */
+    const railBox = await rail.boundingBox();
+    expect(railBox?.height ?? 0).toBeGreaterThan(200);
+    await rail.click({
+      position: {
+        x: (railBox?.width ?? 36) / 2,
+        y: (railBox?.height ?? 0) * 0.75,
+      },
+    });
     await expect(tree).toBeVisible({ timeout: 10_000 });
 
     /*

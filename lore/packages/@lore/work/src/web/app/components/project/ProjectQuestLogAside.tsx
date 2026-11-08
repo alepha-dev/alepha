@@ -11,7 +11,7 @@ import QuestLog from "./QuestLog.tsx";
  *
  * Collapsed, the pane becomes a rail, but BOTH carry the same `hidden lg:flex`
  * gate. Below `lg` the quest log does not render at all, so a rail without
- * that gate would introduce 32px of chrome on mobile where there is
+ * that gate would introduce 36px of chrome on mobile where there is
  * otherwise nothing, and a control that expands a pane the viewport then
  * refuses to show.
  */

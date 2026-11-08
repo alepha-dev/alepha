@@ -1437,6 +1437,10 @@ test.describe("Quest", () => {
     });
     await expect(page.getByTestId("quest-log")).toHaveCount(0);
 
+    // The rail is the kit's `PaneRail` (#Q3206): the same 36px strip as the
+    // folio rails, the whole of it the button.
+    const railBox = await page.getByTestId("quest-log-rail").boundingBox();
+    expect(railBox?.width).toBe(36);
     await page.getByTestId("quest-log-rail").click();
     await expect(page.getByTestId("quest-log")).toBeVisible({
       timeout: 10_000,
