@@ -145,24 +145,35 @@ describe("OtlpTraceExporter", () => {
   it("sends a batch when it reaches maxBatchSize, and on the interval otherwise", async ({
     expect,
   }) => {
-    const { posts, endpoint } = await receiver();
-    const { alepha, tracer, exporter } = await boot({
-      OTEL_EXPORTER_OTLP_ENDPOINT: endpoint,
-    });
+    // Batching is about when `send` is called, not about the network: the
+    // wire format has its own spec above, against a real receiver.
+    const sizes: number[] = [];
+    class RecordingExporter extends OtlpTraceExporter {
+      protected override async send(body: string): Promise<Response> {
+        sizes.push(
+          JSON.parse(body).resourceSpans[0].scopeSpans[0].spans.length,
+        );
+        return new Response("{}");
+      }
+    }
+    const alepha = Alepha.create({
+      env: { OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:1" },
+    }).with({ provide: OtlpTraceExporter, use: RecordingExporter });
+    const tracer = alepha.inject(Tracer);
+    const exporter = alepha.inject(OtlpTraceExporter);
+    await alepha.start();
     const time = alepha.inject(DateTimeProvider);
     exporter.maxBatchSize = 3;
 
     for (let i = 0; i < 4; i++) {
       tracer.span(`s${i}`, () => {});
     }
-    const sizes = () =>
-      posts.map((p) => p.body.resourceSpans[0].scopeSpans[0].spans.length);
 
-    // The third span filled a batch, which left at once.
-    await expect.poll(sizes, { timeout: 5000 }).toEqual([3]);
+    // The third span filled a batch, which left at once; the fourth waits.
+    expect(sizes).toEqual([3]);
 
     await time.travel([5, "seconds"]);
-    await expect.poll(sizes, { timeout: 5000 }).toEqual([3, 1]);
+    await expect.poll(() => sizes, { timeout: 5000 }).toEqual([3, 1]);
   });
 
   it("never exports an unsampled trace", async ({ expect }) => {

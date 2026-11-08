@@ -6,6 +6,7 @@ import {
   AlephaApiNotifications,
   NotificationJobs,
 } from "alepha/api/notifications";
+import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { $repository } from "alepha/orm";
@@ -79,12 +80,14 @@ const setup = async (options: { notifications: boolean }) => {
     );
   };
 
-  return { alepha, app, service, time, owner, noticesFor };
+  const background = alepha.inject(BackgroundTaskProvider);
+
+  return { alepha, app, service, time, owner, noticesFor, background };
 };
 
 describe("the API key expiry notice", () => {
   it("tells the owner once across the whole warning window", async () => {
-    const { app, service, time, owner, noticesFor } = await setup({
+    const { app, service, time, owner, noticesFor, background } = await setup({
       notifications: true,
     });
     const name = `expiring ${randomUUID().slice(0, 8)}`;
@@ -99,6 +102,11 @@ describe("the API key expiry notice", () => {
     // Several daily runs inside the seven-day window.
     for (let day = 0; day < 4; day++) {
       await service.notifyExpiring();
+      // The notice's send job runs in the background. Travelling while it is
+      // mid-statement fires its 30 s deadline, and the abort cancelled a
+      // statement on a pooled connection this loop's next read could be on
+      // ("canceling statement due to user request", under load).
+      await background.flush();
       await time.travel(1, "day");
     }
 
