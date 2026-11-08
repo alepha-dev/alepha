@@ -722,6 +722,19 @@ const ProjectEpics = () => {
                   {formatReference("epic", epic.number)}{" "}
                   <span className="text-muted-foreground">-</span> {epic.title}
                 </Link>
+                {/* The review questions still open (#E121), while the plan
+                    is open: past ready they are a record, not a to-do. */}
+                {(epic.status === "draft" || epic.status === "ready") &&
+                (epic.openQuestions ?? 0) > 0 ? (
+                  <span
+                    className="text-warning-text truncate text-xs"
+                    data-testid={`epic-open-questions-${epic.number}`}
+                  >
+                    {tr("epic.list.openQuestions", {
+                      args: [String(epic.openQuestions)],
+                    })}
+                  </span>
+                ) : null}
                 {epic.description ? (
                   <span className="text-muted-foreground truncate text-xs">
                     {epic.description}

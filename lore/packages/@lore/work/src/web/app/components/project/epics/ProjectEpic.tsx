@@ -19,12 +19,21 @@ import {
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { FileText, History, Pencil, Swords, Workflow } from "lucide-react";
+import {
+  ClipboardCheck,
+  FileText,
+  History,
+  Pencil,
+  Swords,
+  Workflow,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
+import type { EpicReviewController } from "../../../../../api/controllers/EpicReviewController.ts";
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
+import type { EpicReviewAnswer } from "../../../../../api/schemas/epicReviewAnswerSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import { currentEpicAtom } from "../../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
@@ -36,6 +45,7 @@ import ProjectEpicAside from "./ProjectEpicAside.tsx";
 import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
+import ProjectEpicReview from "./ProjectEpicReview.tsx";
 
 export interface ProjectEpicProps {
   epic: EpicResource;
@@ -45,7 +55,13 @@ export interface ProjectEpicProps {
  * The page's own tabs, then any a module registered for epics (Knowledge's
  * `folios`), by their own key.
  */
-type TabKey = "overview" | "quests" | "flow" | "activity" | (string & {});
+type TabKey =
+  | "overview"
+  | "quests"
+  | "flow"
+  | "review"
+  | "activity"
+  | (string & {});
 
 /**
  * The Epic detail page (route `projectEpic`, `/epics/:epicNumber`), composed
@@ -77,6 +93,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();
+  const reviewApi = useClient<EpicReviewController>();
   const registeredTabs = useInject(ResourceTabRegistry).tabs("epic");
   const [project] = useStore(currentProjectAtom);
   const [tab, setTab] = useDetailTab<TabKey>("overview");
@@ -242,6 +259,48 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     [epicApi, epic.id, dialog, tr],
   );
 
+  // The epic's reviews (#E121): what the Review tab lists and counts. Keyed
+  // on the epic, and refreshed by every answer.
+  const reviewsKey = ["epic-reviews", project?.id, { epicId: epic.id }];
+  const reviewsQuery = useQuery(
+    {
+      key: reviewsKey,
+      enabled: !!project,
+      handler: async () => ({
+        epicId: epic.id,
+        result: await reviewApi.getEpicReviews({ params: { id: epic.id } }),
+      }),
+    },
+    [reviewApi, project?.id, epic.id],
+  );
+  const reviews =
+    reviewsQuery.data?.epicId === epic.id ? reviewsQuery.data.result : null;
+
+  /**
+   * Answer, pick, waive or overturn one review item. The epic is read back
+   * after, so its `openQuestions`, which the ready confirm reads, follows.
+   */
+  const answerAction = useAction<
+    [number: number, answer: EpicReviewAnswer],
+    void
+  >(
+    {
+      handler: async (_ctx, number, answer) => {
+        await reviewApi.answerEpicReviewItem({
+          params: { id: epic.id, number },
+          body: answer,
+        });
+        setEpic(
+          await epicApi.getEpicByNumber({
+            params: { projectId: epic.projectId, number: epic.number },
+          }),
+        );
+      },
+      invalidates: [reviewsKey],
+    },
+    [reviewApi, epicApi, epic.id, epic.projectId, epic.number],
+  );
+
   // Page-wide: every membership control waits while any write runs, since
   // `run()` drops a call made while its own is in flight.
   const busy =
@@ -288,6 +347,13 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       value: "flow",
       icon: Workflow,
       label: tr("epic.tab.flow"),
+    },
+    {
+      value: "review",
+      icon: ClipboardCheck,
+      label: tr("epic.tab.review"),
+      // The open questions, once the reviews have loaded.
+      count: reviews?.openQuestions,
     },
     ...linked.map((it) => ({
       value: it.tab.key,
@@ -404,6 +470,19 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               ),
             });
           }}
+        />
+      )}
+
+      {tab === "review" && (
+        <ProjectEpicReview
+          epicId={epic.id}
+          reviews={reviews}
+          writable={
+            reviewApi.answerEpicReviewItem.can() &&
+            (epic.status === "draft" || epic.status === "ready")
+          }
+          busy={answerAction.loading}
+          onAnswer={(number, answer) => void answerAction.run(number, answer)}
         />
       )}
 

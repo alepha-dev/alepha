@@ -80,6 +80,13 @@ export const epicResourceSchema = epics.schema.extend({
    * at all, and its status is not the roadmap's to disclose.
    */
   dependsOnStatus: epics.schema.shape.status.optional(),
+  /**
+   * How many review questions are still open on this epic (#E121): the
+   * Review tab's count, the epic list's, and what `epic_set_status` reports
+   * beside a move to `ready`. Optional so a surface that builds a resource
+   * without it (the roadmap picks its own keys) stays valid.
+   */
+  openQuestions: z.integer().optional(),
 });
 
 export type EpicResource = Infer<typeof epicResourceSchema>;

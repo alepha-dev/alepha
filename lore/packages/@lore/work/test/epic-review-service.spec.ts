@@ -311,7 +311,9 @@ describe("EpicReviewService", () => {
   });
 
   describe("counts", () => {
-    it("counts open questions per epic in one read", async ({ expect }) => {
+    it("counts open questions per epic of a project in one read", async ({
+      expect,
+    }) => {
       const project = await createTestProject(ctx.alepha);
       const epic = await createTestEpic(ctx.alepha, project);
       const other = await createTestEpic(ctx.alepha, project);
@@ -321,11 +323,7 @@ describe("EpicReviewService", () => {
       await ctx.service.create(other, undefined, review());
       await ctx.service.answer(other, 1, undefined, { waive: true });
 
-      const counts = await ctx.service.countOpenQuestionsOf([
-        epic.id,
-        other.id,
-        quiet.id,
-      ]);
+      const counts = await ctx.service.countOpenQuestionsOfProject(project.id);
 
       expect(counts.get(epic.id)).toBe(2);
       expect(counts.has(other.id)).toBe(false);

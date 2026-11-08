@@ -10,7 +10,7 @@ import {
   epicReviewItems,
 } from "../entities/epicReviewItems.ts";
 import { type EpicReview, epicReviews } from "../entities/epicReviews.ts";
-import type { Epic } from "../entities/epics.ts";
+import { type Epic, epics } from "../entities/epics.ts";
 import type { EpicReviewItemKind } from "../schemas/epicReviewItemKindSchema.ts";
 import type { EpicReviewsResult } from "../schemas/epicReviewsResultSchema.ts";
 import type { EpicReviewSuggestion } from "../schemas/epicReviewSuggestionSchema.ts";
@@ -77,6 +77,7 @@ export interface EpicReviewAnswerResult {
 export class EpicReviewService {
   protected readonly reviews = $repository(epicReviews);
   protected readonly items = $repository(epicReviewItems);
+  protected readonly epics = $repository(epics);
   protected readonly workflow = $inject(EpicWorkflowService);
   protected readonly dt = $inject(DateTimeProvider);
 
@@ -299,16 +300,23 @@ export class EpicReviewService {
   }
 
   /**
-   * How many questions are still open on each of these epics, in one read,
-   * for the epic list. An epic with none is absent from the map.
+   * How many questions are still open on each epic of a project, in one
+   * read keyed on the project alone, so the epic list runs it beside its
+   * epic read. An epic with none is absent from the map.
    */
-  async countOpenQuestionsOf(epicIds: number[]): Promise<Map<number, number>> {
-    const counts = new Map<number, number>();
-    if (epicIds.length === 0) return counts;
+  async countOpenQuestionsOfProject(
+    projectId: number,
+  ): Promise<Map<number, number>> {
     const rows = await this.items.findMany({
-      where: { epicId: { inArray: epicIds }, state: { eq: "open" } },
+      where: {
+        epicId: {
+          inArray: this.epics.subquery({ projectId: { eq: projectId } }, "id"),
+        },
+        state: { eq: "open" },
+      },
       columns: ["epicId"],
     });
+    const counts = new Map<number, number>();
     for (const row of rows) {
       counts.set(row.epicId, (counts.get(row.epicId) ?? 0) + 1);
     }
