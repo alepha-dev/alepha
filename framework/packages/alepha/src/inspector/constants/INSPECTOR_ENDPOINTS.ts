@@ -22,4 +22,5 @@ export const INSPECTOR_ENDPOINTS = {
   dbCreate: { method: "POST", path: "/db/:entity/records" },
   dbUpdate: { method: "PUT", path: "/db/:entity/records/:id" },
   dbDelete: { method: "DELETE", path: "/db/:entity/records/:id" },
+  actionCall: { method: "POST", path: "/actions/:name/call" },
 } as const;

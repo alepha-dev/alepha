@@ -2,6 +2,7 @@ import { Alepha, type ServiceEntry } from "alepha";
 import { AlephaMcp, McpServerProvider } from "alepha/mcp";
 
 import { version } from "../alephaPackageJson.ts";
+import { DevMcpActionTools } from "./DevMcpActionTools.ts";
 import { DevMcpAppTools } from "./DevMcpAppTools.ts";
 import { DevMcpLogTools } from "./DevMcpLogTools.ts";
 import { DevMcpMapTools } from "./DevMcpMapTools.ts";
@@ -35,6 +36,7 @@ export class DevMcpServer {
     DevMcpAppTools,
     DevMcpMapTools,
     DevMcpLogTools,
+    DevMcpActionTools,
   ];
 
   /**

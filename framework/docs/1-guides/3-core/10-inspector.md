@@ -181,3 +181,8 @@ triggers, and the environment, secrets included, in cleartext. That is why it
 lives on a `0600` socket in a `0700` directory rather than on a port, and why
 a production build carries it only with `--inspect` and runs it only with
 `ALEPHA_INSPECT=1`.
+
+One route goes further: `POST /actions/:name/call` runs an `$action` in the
+app as any user the caller names, with no authentication. It answers 403
+whenever the app runs in production, whatever `ALEPHA_INSPECT` says, so a
+build made with `--inspect` can still be read but never driven.
