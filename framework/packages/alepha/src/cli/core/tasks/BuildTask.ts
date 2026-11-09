@@ -1,4 +1,4 @@
-import type { Alepha, AlephaMeta } from "alepha";
+import { type Alepha, AlephaError, type AlephaMeta } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 
 import type { BuildOptions } from "../atoms/buildOptions.ts";
@@ -151,5 +151,26 @@ export abstract class BuildTask {
       return ctx.env[key];
     }
     return typeof process === "undefined" ? undefined : process.env[key];
+  }
+
+  /**
+   * `TRACING_SAMPLE_RATIO` from the build's environment, as a number from 0
+   * to 1, or `undefined` when unset. It opts a Worker into Cloudflare traces;
+   * the manifest records it, so a prebuilt deploy keeps the decision.
+   *
+   * @throws AlephaError when it is set to anything else.
+   */
+  protected tracingSampleRatioOf(ctx: BuildTaskContext): number | undefined {
+    const raw = this.envOf(ctx, "TRACING_SAMPLE_RATIO");
+    if (raw === undefined || raw.trim() === "") {
+      return undefined;
+    }
+    const ratio = Number(raw);
+    if (!(ratio >= 0 && ratio <= 1)) {
+      throw new AlephaError(
+        `TRACING_SAMPLE_RATIO must be a number from 0 to 1, got '${raw}'.`,
+      );
+    }
+    return ratio;
   }
 }

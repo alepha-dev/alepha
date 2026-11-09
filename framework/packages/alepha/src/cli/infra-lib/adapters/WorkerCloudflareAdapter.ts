@@ -155,6 +155,18 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    */
   protected appSecrets: Record<string, string> = {};
 
+  /**
+   * The environment the prebuilt config build sees: the provisioned ids,
+   * plus the copy's `TRACING_SAMPLE_RATIO` when it sets one. Nothing else
+   * of the copy's set: a secret has no business in `wrangler.jsonc`.
+   */
+  protected buildEnv(): Record<string, string> {
+    const ratio = this.appSecrets.TRACING_SAMPLE_RATIO;
+    return ratio === undefined || ratio === ""
+      ? this.provisioned
+      : { ...this.provisioned, TRACING_SAMPLE_RATIO: ratio };
+  }
+
   protected get estate(): WorkerCloudflareCredential {
     if (!this.credential) {
       throw new AlephaError(
@@ -358,8 +370,10 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       flags: { prebuilt: true },
       // ⚠️ The ids from `provision`, and ONLY those. `ctx.env` present means it
       // is the whole environment, so this build cannot inherit Lore's own
-      // `DATABASE_URL` for a database it never provisioned.
-      env: this.provisioned,
+      // `DATABASE_URL` for a database it never provisioned. The one addition
+      // is the copy's own `TRACING_SAMPLE_RATIO`, which turns Cloudflare
+      // traces on or overrides the rate the artifact recorded (#Q3227).
+      env: this.buildEnv(),
     });
   }
 

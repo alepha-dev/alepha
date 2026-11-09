@@ -2854,7 +2854,7 @@ export default {
     "Proposée sur une épopée que personne n’a commencée, en brouillon ou prête. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
   "agentPrompts.settings.epicActivate.title": "Épopée : s’en charger",
   "agentPrompts.settings.epicActivate.description":
-    "Proposée sur une épopée prête ou en cours. Confie l’épopée entière, quête par quête.",
+    "Proposée sur une épopée en brouillon, prête ou en cours, et passe un brouillon à prête. Confie l’épopée entière, quête par quête.",
   "agentPrompts.settings.questWork.title": "Quête : s’en charger",
   "agentPrompts.settings.questWork.description":
     "Proposée sur une quête non terminée. Une quête, une branche, un commit.",

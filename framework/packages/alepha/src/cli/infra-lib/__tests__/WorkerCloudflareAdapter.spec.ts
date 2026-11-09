@@ -291,6 +291,48 @@ describe("the worker-side Cloudflare adapter", () => {
     });
   });
 
+  it("adds the copy's own TRACING_SAMPLE_RATIO to that environment, and no other secret", async ({
+    expect,
+  }) => {
+    // Without it a copy could never opt into Cloudflare traces: the config is
+    // regenerated here, and the build's own environment is not (#Q3227).
+    const { adapter, fs } = setup();
+    adapter.withSecrets({ TRACING_SAMPLE_RATIO: "0.5", API_TOKEN: "secret" });
+    await fs.writeFile(
+      "/deploy/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "my-app",
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+        crons: [],
+        secrets: [],
+        variables: [],
+        cloudflare: { websocketPaths: [] },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+      }),
+    );
+
+    let seen: Record<string, string> | undefined;
+    Object.assign(adapter as unknown as Record<string, unknown>, {
+      buildTask: {
+        run: async (built: { env: Record<string, string> }) => {
+          seen = built.env;
+        },
+      },
+    });
+    await adapter.build(context(setup().naming), run);
+
+    expect(seen).toEqual({ TRACING_SAMPLE_RATIO: "0.5" });
+  });
+
   it("says where to run inspect and teardown instead of half-answering", async ({
     expect,
   }) => {

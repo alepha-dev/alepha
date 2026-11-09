@@ -136,6 +136,28 @@ describe("BuildManifestTask", () => {
       expect(manifest.variables).toEqual([]);
     });
 
+    it("records TRACING_SAMPLE_RATIO for a workerd slice, so a prebuilt deploy keeps the traces opt-in", async () => {
+      const { task, fs } = createTask();
+      const ctx = contextFor({ runtime: "workerd" });
+      ctx.env = { TRACING_SAMPLE_RATIO: "0.25" };
+
+      await task.testWriteManifest(ctx, "dist");
+
+      expect(readManifest(fs).cloudflare.tracingSampleRatio).toBe(0.25);
+    });
+
+    it("records no ratio when the build did not set one", async () => {
+      const { task, fs } = createTask();
+      const ctx = contextFor({ runtime: "workerd" });
+      ctx.env = {};
+
+      await task.testWriteManifest(ctx, "dist");
+
+      expect(readManifest(fs).cloudflare).not.toHaveProperty(
+        "tracingSampleRatio",
+      );
+    });
+
     it("captures registered $websocket channel paths into the manifest", async () => {
       const { task, fs } = createTask();
 

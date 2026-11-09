@@ -46,7 +46,10 @@ describe("AgentPromptsMenu", () => {
   });
 
   const mount = async (
-    items: Array<{ kind: "epicReview" | "epicActivate" | "questWork" }>,
+    items: Array<{
+      kind: "epicReview" | "epicActivate" | "questWork";
+      onSelect?: () => void;
+    }>,
     project: unknown = projectFixture(),
   ) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
@@ -212,5 +215,41 @@ describe("AgentPromptsMenu", () => {
     expect(written[0]).toContain("#E41");
     // The subject is seven fields, so nothing else can be in there.
     expect(written[0]).not.toContain("sg_");
+  });
+
+  /**
+   * An entry's own follow-up runs with the copy, and after it has started
+   * (feedback #P2226, #Q3228): an epic's Work on it on a draft epic marks it
+   * ready that way. The other entry's follow-up does not run.
+   */
+  it("runs the clicked entry's onSelect after starting the copy", async () => {
+    const written: string[] = [];
+    const order: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          order.push("copy");
+          written.push(text);
+        },
+      },
+    });
+    await mount([
+      { kind: "epicReview", onSelect: () => order.push("review") },
+      { kind: "epicActivate", onSelect: () => order.push("ready") },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: /agent prompts/i }));
+    const items = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')];
+      if (found.length === 0) throw new Error("not open yet");
+      return found;
+    });
+    fireEvent.click(
+      items.find((it) => it.textContent?.includes("Work on it"))!,
+    );
+
+    await waitFor(() => expect(written).toHaveLength(1));
+    expect(order).toEqual(["copy", "ready"]);
   });
 });

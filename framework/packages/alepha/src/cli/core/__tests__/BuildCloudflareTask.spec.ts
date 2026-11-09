@@ -1792,6 +1792,57 @@ describe("BuildCloudflareTask", () => {
       expect(wrangler.observability).toEqual({ enabled: false });
     });
 
+    it("takes the ratio the artifact recorded on a prebuilt deploy, whose environment has none", ({
+      expect,
+    }) => {
+      // Lore regenerates this config from the manifest with an environment of
+      // provisioned ids only (#Q3227).
+      process.env.TRACING_SAMPLE_RATIO = "1";
+      const task = createTask();
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceObservability(
+        {
+          env: { DATABASE_URL: "d1://x:y" },
+          manifest: { cloudflare: { tracingSampleRatio: 0.25 } },
+        } as unknown as BuildTaskContext,
+        wrangler,
+      );
+      expect(wrangler.observability.traces).toEqual({
+        enabled: true,
+        head_sampling_rate: 0.25,
+      });
+    });
+
+    it("lets the deployed copy's own ratio override the recorded one", ({
+      expect,
+    }) => {
+      const task = createTask();
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceObservability(
+        {
+          env: { TRACING_SAMPLE_RATIO: "0.5" },
+          manifest: { cloudflare: { tracingSampleRatio: 0.25 } },
+        } as unknown as BuildTaskContext,
+        wrangler,
+      );
+      expect(wrangler.observability.traces.head_sampling_rate).toBe(0.5);
+    });
+
+    it("writes no traces on a prebuilt deploy whose artifact recorded none", ({
+      expect,
+    }) => {
+      const task = createTask();
+      const wrangler: Record<string, any> = {};
+      task.testEnhanceObservability(
+        {
+          env: {},
+          manifest: { cloudflare: { websocketPaths: [] } },
+        } as unknown as BuildTaskContext,
+        wrangler,
+      );
+      expect(wrangler.observability.traces).toBeUndefined();
+    });
+
     it("refuses a ratio outside 0 to 1", ({ expect }) => {
       process.env.TRACING_SAMPLE_RATIO = "2";
       const task = createTask();

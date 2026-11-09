@@ -2857,7 +2857,7 @@ export default {
     "Offered on an epic nobody has started, whether a draft or ready. Asks an agent to sharpen the plan before anyone works it.",
   "agentPrompts.settings.epicActivate.title": "Epic: Work on it",
   "agentPrompts.settings.epicActivate.description":
-    "Offered on a ready or in-progress epic. Hands the whole epic over, quest by quest.",
+    "Offered on a draft, ready or in-progress epic, and marks a draft one ready. Hands the whole epic over, quest by quest.",
   "agentPrompts.settings.questWork.title": "Quest: Work on it",
   "agentPrompts.settings.questWork.description":
     "Offered on a quest that is not finished. One quest, one branch, one commit.",

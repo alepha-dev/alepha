@@ -227,6 +227,14 @@ export const buildManifestSchema = z
          * Absent for an app with no pages.
          */
         pageEdge: z.record(z.string(), z.any()).optional(),
+        /**
+         * `TRACING_SAMPLE_RATIO` as the build saw it: the Worker's opt-in to
+         * Cloudflare traces, and their sampling rate. Recorded so a prebuilt
+         * deploy, which regenerates `wrangler.jsonc` without the build's
+         * environment, still writes `observability.traces`. Absent when the
+         * build did not set it.
+         */
+        tracingSampleRatio: z.number().min(0).max(1).optional(),
       })
       .loose()
       .optional(),
