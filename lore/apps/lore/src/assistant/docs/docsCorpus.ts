@@ -473,7 +473,7 @@ export const docsCorpus: DocsSection[] = [
     section: "The thread",
     url: "https://alepha.dev/lore/docs/guides-feedback#the-thread",
     capability: "support",
-    text: "Every report has a discussion, shared by the project's members and the reporter,\nfor a question that needs an answer before anyone can decide. The reporter can\nread and write in it without being a member. Comments are plain text.\n\n- **Writing.** Support must be on.\n- **Deleting** is for its author, or anyone with `feedback:triage`.\n- **The reporter** is told when someone else comments.\n- **`@name`** in a member's comment reaches that member's\n  [notifications](/lore/docs/guides-notifications). In a comment from anyone\n  else, it reaches nobody.",
+    text: "Every report has a discussion, shared by the project's members and the reporter,\nfor a question that needs an answer before anyone can decide. The reporter can\nread and write in it without being a member. Comments are plain text, and\ncan carry attachments: pick files, or paste a screenshot into the box. They\nfollow the same limits as a report's.\n\n- **Writing.** Support must be on.\n- **Deleting** is for its author, or anyone with `feedback:triage`.\n- **The reporter** is told when someone else comments.\n- **`@name`** in a member's comment reaches that member's\n  [notifications](/lore/docs/guides-notifications). In a comment from anyone\n  else, it reaches nobody.",
   },
   {
     guide: "Feedback",
