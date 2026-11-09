@@ -198,7 +198,12 @@ export class FeedbackCommand {
                     title: "Discussion",
                     lines: comments.flatMap((comment) => [
                       `${comment.authorName ?? "someone"}, ${comment.createdAt}:`,
-                      comment.body,
+                      ...(comment.body ? [comment.body] : []),
+                      // Read like the item's own: `attachment get --attachment <id>`.
+                      ...(comment.attachmentUrls ?? []).map(
+                        (file) =>
+                          `  ${file.id}  ${file.name}  ${file.mimeType}  ${file.size} bytes`,
+                      ),
                     ]),
                   },
                 ]
@@ -218,7 +223,9 @@ export class FeedbackCommand {
       ...FeedbackCommand.PROJECT_FLAG,
       attachment: z
         .uuid()
-        .describe("The file's id, as lore feedback get lists it."),
+        .describe(
+          "The file's id, as lore feedback get lists it, on the item or on a comment.",
+        ),
       out: z
         .text({ description: "Save the file here instead of printing it." })
         .optional(),

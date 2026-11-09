@@ -23,6 +23,7 @@ import {
 import { FileSystemProvider } from "alepha/system";
 
 import { type Feedback, feedback } from "../entities/feedback.ts";
+import { feedbackComments } from "../entities/feedbackComments.ts";
 import type { Quest } from "../entities/quests.ts";
 import { workRelations } from "../relations/workRelations.ts";
 import { feedbackBodySchema } from "../schemas/feedbackBodySchema.ts";
@@ -73,6 +74,7 @@ export class FeedbackController {
   protected feedbackWith = $repository(workRelations, "feedback");
   protected projects = $repository(projects);
   protected fileRepo = $repository(files);
+  protected feedbackComments = $repository(feedbackComments);
 
   /**
    * What every feedback read needs alongside the row itself. Declared once so
@@ -564,7 +566,8 @@ export class FeedbackController {
   /**
    * Read a single feedback attachment's bytes (base64) plus its metadata.
    * Project-member gated, with an IDOR guard: the `attachmentId` must be one
-   * of that feedback row's own `attachments`. Backs the
+   * of that feedback row's own `attachments`, or one carried by a comment in
+   * its thread. Backs the
    * `feedback_attachment_get` MCP tool, which wraps the bytes into an MCP
    * `image` content block so an agent can actually see the screenshot. The
    * 5 MB upload cap bounds the base64 payload (~6.7 MB).
@@ -595,7 +598,11 @@ export class FeedbackController {
 
       // IDOR guard: only attachments that belong to THIS feedback are
       // readable — a member can't read an arbitrary file id this way.
-      if (!(feedback.attachments ?? []).includes(params.attachmentId)) {
+      // A comment's files count as the item's: the thread is part of it.
+      if (
+        !(feedback.attachments ?? []).includes(params.attachmentId) &&
+        !(await this.commentCarries(feedback.id, params.attachmentId))
+      ) {
         throw new NotFoundError("Attachment not found on this feedback");
       }
 
@@ -1143,6 +1150,23 @@ export class FeedbackController {
           : { id: resource.projectId, title: "—", icon: null },
       };
     });
+  }
+
+  /**
+   * Whether a comment on this feedback item carries the file. Reads the
+   * thread's `attachments` columns only: a thread is capped by use, not by
+   * schema, but its rows are small, and this runs on a member's explicit
+   * fetch of one file.
+   */
+  protected async commentCarries(
+    feedbackId: number,
+    attachmentId: string,
+  ): Promise<boolean> {
+    const rows = await this.feedbackComments.findMany({
+      where: { feedbackId: { eq: feedbackId } },
+      columns: ["attachments"],
+    });
+    return rows.some((row) => (row.attachments ?? []).includes(attachmentId));
   }
 
   /**

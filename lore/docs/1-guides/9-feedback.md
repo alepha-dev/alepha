@@ -152,14 +152,14 @@ report is rejected.
 
 ## For agents
 
-| Tool                      | What it does                                                                                                     |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `feedback_list`           | Pending reports by default; `status` takes `accepted`, `rejected` or `all`. At most 50 a page, with `hasMore`.   |
-| `feedback_get`            | One report by `id` or `shortId`: its text, tags, `context`, attachments, linked quests and the last 50 comments. |
-| `feedback_attachment_get` | One attachment's content. Images come back inline, text decoded, and other types as a note.                      |
-| `feedback_comment_add`    | Comment on the thread, marked as written by an agent. Needs Support on.                                          |
-| `feedback_accept`         | Move a pending report to accepted. Refused on a report already triaged.                                          |
-| `feedback_reject`         | Move a pending report to rejected. Refused on a report already triaged.                                          |
+| Tool                      | What it does                                                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `feedback_list`           | Pending reports by default; `status` takes `accepted`, `rejected` or `all`. At most 50 a page, with `hasMore`.               |
+| `feedback_get`            | One report by `id` or `shortId`: its text, tags, `context`, attachments, linked quests and the last 50 comments with theirs. |
+| `feedback_attachment_get` | One attachment's content, on the report or a comment. Images inline, text decoded, others as a note.                         |
+| `feedback_comment_add`    | Comment on the thread, marked as written by an agent. Needs Support on.                                                      |
+| `feedback_accept`         | Move a pending report to accepted. Refused on a report already triaged.                                                      |
+| `feedback_reject`         | Move a pending report to rejected. Refused on a report already triaged.                                                      |
 
 The two triage tools need `feedback:triage` and Support on. Accepting creates no
 quest: file one with `quest_create` and `feedback_shortId`. Deleting a report has

@@ -1,7 +1,11 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
 import { ProjectController } from "@lore/core/api";
 import { blights } from "@lore/deploy/schemas";
-import { EpicController, FeedbackController } from "@lore/work/api";
+import {
+  EpicController,
+  FeedbackCommentController,
+  FeedbackController,
+} from "@lore/work/api";
 import { Alepha, AlephaError, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -184,6 +188,51 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     clis.push(lore.cli);
     return { owner: user, project: project.data, lore };
   };
+
+  it("lists a comment's files on feedback get, and reads one with attachment get", async () => {
+    const { owner, project, lore } = await ownProject();
+    const feedbackApi = ctx.alepha.inject(FeedbackController);
+    const submitted = await feedbackApi.submitFeedback.fetch(
+      {
+        params: { projectId: project.id },
+        body: { title: "Broken export", description: "See the log" },
+      },
+      { user: owner },
+    );
+    const upload = await feedbackApi.uploadFeedbackAttachment.fetch(
+      {
+        params: { projectId: project.id },
+        body: {
+          file: new File(["export failed at row 12"], "export.txt", {
+            type: "text/plain",
+          }),
+        },
+      },
+      { user: owner },
+    );
+    await ctx.alepha
+      .inject(FeedbackCommentController)
+      .createFeedbackComment.fetch(
+        {
+          params: { id: submitted.data.id },
+          body: { body: "The log", attachments: [upload.data.id] },
+        },
+        { user: owner },
+      );
+    const { items } = await lore.json("feedback list");
+    const ref = `P${items[0].shortId}`;
+
+    expect(await lore.run("feedback get", [ref])).toContain(
+      `${upload.data.id}  export.txt`,
+    );
+    expect(
+      await lore.run("feedback attachment get", [
+        ref,
+        "--attachment",
+        upload.data.id,
+      ]),
+    ).toContain("export failed at row 12");
+  });
 
   it("triages feedback: reads it, answers it, accepts one and rejects one", async () => {
     const { owner, project, lore } = await ownProject();

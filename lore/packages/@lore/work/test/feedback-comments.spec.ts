@@ -260,6 +260,62 @@ describe("Lore feedback comment attachments", () => {
     }
   });
 
+  it("hands a comment's files to an agent: listed by feedback_get, read by feedback_attachment_get", async () => {
+    const {
+      feedbackApi,
+      feedbackTools,
+      commentApi,
+      call,
+      asUser,
+      report,
+      project,
+      REPORTER,
+    } = await setup();
+    const item = await report("It crashes");
+    const other = await report("Something else");
+    const uploaded = await asUser(REPORTER, () =>
+      feedbackApi.uploadFeedbackAttachment({
+        params: { projectId: project.id },
+        body: { file: png("answer.png") },
+      }),
+    );
+    await asUser(REPORTER, () =>
+      commentApi.createFeedbackComment({
+        params: { id: item.id },
+        body: { body: "Here", attachments: [uploaded.id] },
+      }),
+    );
+
+    const got: any = await call(feedbackTools.feedback_get, {
+      project: project.id,
+      id: item.id,
+    });
+    expect(got.discussion[0].attachments).toEqual([
+      {
+        id: uploaded.id,
+        name: "answer.png",
+        mimeType: "image/png",
+        size: PNG.length,
+      },
+    ]);
+
+    const content: any = await call(feedbackTools.feedback_attachment_get, {
+      project: project.id,
+      id: item.id,
+      attachmentId: uploaded.id,
+    });
+    expect(JSON.stringify(content)).toContain("image/png");
+
+    // The guard still binds the file to its own item's thread.
+    await expect(
+      call(feedbackTools.feedback_attachment_get, {
+        project: project.id,
+        id: other.id,
+        attachmentId: uploaded.id,
+      }),
+    ).rejects.toThrow(/not found/i);
+  });
+
   it("refuses somebody else's upload, and an empty comment", async () => {
     const {
       feedbackApi,

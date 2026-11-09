@@ -53,6 +53,11 @@ const feedbackCommentRefSchema = z.object({
       "Who actually wrote this. Over MCP the session user is the project owner's account, so on an agent-written comment the name says nothing about who to answer.",
     ),
   body: z.string(),
+  attachments: z
+    .array(feedbackAttachmentRefSchema)
+    .describe(
+      "Files posted with this comment, often a screenshot answering a question. Fetch one with feedback_attachment_get.",
+    ),
   createdAt: z.datetime(),
   editedAt: z.datetime().optional(),
 });
@@ -229,7 +234,7 @@ export const feedbackAttachmentGetParamsSchema = projectParamsSchema.extend({
   attachmentId: z
     .uuid()
     .describe(
-      "Attachment id to fetch — one of the `attachments[].id` values returned by feedback_get.",
+      "Attachment id to fetch: one of the `attachments[].id` values returned by feedback_get, on the item itself or on a comment in its `discussion`.",
     ),
 });
 
