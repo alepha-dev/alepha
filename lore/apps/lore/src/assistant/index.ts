@@ -6,6 +6,7 @@ import { LoreAiAssistant } from "./LoreAiAssistant.ts";
 import { LoreAiAudits } from "./LoreAiAudits.ts";
 import { LoreAiContext } from "./LoreAiContext.ts";
 import { LoreAiController } from "./LoreAiController.ts";
+import { LoreAiDocsController } from "./LoreAiDocsController.ts";
 import { LoreAiPrompt } from "./LoreAiPrompt.ts";
 import { LoreAiSettings } from "./LoreAiSettings.ts";
 import { LoreAiStatusController } from "./LoreAiStatusController.ts";
@@ -17,6 +18,7 @@ export { LoreAiAssistant } from "./LoreAiAssistant.ts";
 export { LoreAiAudits } from "./LoreAiAudits.ts";
 export { LoreAiContext } from "./LoreAiContext.ts";
 export { LoreAiController } from "./LoreAiController.ts";
+export { LoreAiDocsController } from "./LoreAiDocsController.ts";
 export { LoreAiPrompt } from "./LoreAiPrompt.ts";
 export { LoreAiSettings } from "./LoreAiSettings.ts";
 export { LoreAiStatusController } from "./LoreAiStatusController.ts";
@@ -51,6 +53,7 @@ export const LoreAssistant = $module({
     LoreAiSwitch,
     LoreAiContext,
     LoreAiPrompt,
+    LoreAiDocsController,
     LoreAiToolset,
     LoreAiToolAccess,
     LoreAiAssistant,

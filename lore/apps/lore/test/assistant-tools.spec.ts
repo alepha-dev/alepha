@@ -30,6 +30,7 @@ const READ_SET = [
   "feedback_list",
   "feedback_get",
   "search",
+  "searchDocs",
 ];
 
 /**
@@ -80,7 +81,7 @@ describe("the assistant's read tools", () => {
     );
   };
 
-  it("declares the twelve read tools in a stable order, the epic index and search as $actions", async ({
+  it("declares the read tools in a stable order, the epic index and search as $actions", async ({
     expect,
   }) => {
     const { alepha } = await boot();
@@ -88,7 +89,7 @@ describe("the assistant's read tools", () => {
     expect(toolset.inProject.map((entry) => toolset.nameOf(entry))).toEqual(
       READ_SET,
     );
-    for (const name of ["getEpicRefs", "search"]) {
+    for (const name of ["getEpicRefs", "search", "searchDocs"]) {
       const action = toolset.inProject.find(
         (entry) => toolset.nameOf(entry) === name,
       )!.tool as ActionPrimitive<any>;

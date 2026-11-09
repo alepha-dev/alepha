@@ -19,6 +19,8 @@ import { $inject } from "alepha";
 import type { ToolPrimitive } from "alepha/mcp";
 import type { ActionPrimitive } from "alepha/server";
 
+import { LoreAiDocsController } from "./LoreAiDocsController.ts";
+
 /**
  * The assistant's tools and the permission each needs (#Q3208, #Q3209).
  *
@@ -53,6 +55,7 @@ export class LoreAiToolset {
   protected readonly releaseController = $inject(ReleaseController);
   protected readonly feedbackController = $inject(FeedbackController);
   protected readonly commentController = $inject(QuestCommentController);
+  protected readonly docsController = $inject(LoreAiDocsController);
 
   /**
    * Offered off a project page, where nothing project-scoped can be: Lore's
@@ -136,6 +139,12 @@ export class LoreAiToolset {
       tool: this.searchController.search,
       permissions: ["quest:read", "folio:read"],
       gate: this.searchController.search,
+    },
+    {
+      // Lore's own guides, for a how-to (#Q3212).
+      tool: this.docsController.searchDocs,
+      permissions: ["project:read"],
+      gate: this.docsController.searchDocs,
     },
   ];
 
