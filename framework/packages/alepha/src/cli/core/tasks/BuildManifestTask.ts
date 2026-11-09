@@ -388,6 +388,7 @@ export class BuildManifestTask extends BuildTask {
             email,
             ai,
             pageEdge: await this.pageEdgeOf(ctx),
+            tracingSampleRatio: this.tracingSampleRatioOf(ctx),
           }
         : undefined,
     };

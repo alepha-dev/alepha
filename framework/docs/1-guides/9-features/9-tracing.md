@@ -135,6 +135,12 @@ ratio as its sampling rate. Without the variable, no traces key is written and
 nothing is recorded. An app that declares its own `observability` block keeps it
 untouched.
 
+The build also records the ratio in the artifact's `manifest.json`, so a deploy
+that regenerates `wrangler.jsonc` from a built artifact, as a Lore deploy does,
+keeps traces on. A deployed copy can set `TRACING_SAMPLE_RATIO` in its own
+environment too: that value wins over the recorded one, which turns traces on,
+off (`0`) or to another rate without a rebuild.
+
 No `traceparent` leaves a Worker: Cloudflare does not say whether a request is
 sampled, and its trace ids are not propagated outside Cloudflare.
 

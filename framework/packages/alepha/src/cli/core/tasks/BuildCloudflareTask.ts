@@ -349,6 +349,11 @@ export class BuildCloudflareTask extends BuildTask {
    * ingestion, so no app starts paying for them without a line of its own;
    * without them `alepha/tracing` records nothing on a Worker.
    *
+   * A prebuilt deploy (Lore's) regenerates this config with an environment
+   * of its own, so the ratio comes from that environment when it sets one
+   * (a deployed copy's own `TRACING_SAMPLE_RATIO`), else from the manifest,
+   * where the artifact's build recorded it.
+   *
    * An app that declares `observability` itself keeps exactly its block.
    */
   protected enhanceObservability(
@@ -358,13 +363,9 @@ export class BuildCloudflareTask extends BuildTask {
     if (wrangler.observability !== undefined) {
       return;
     }
-    const raw = this.envOf(ctx, "TRACING_SAMPLE_RATIO");
-    const ratio = raw === undefined || raw === "" ? undefined : Number(raw);
-    if (ratio !== undefined && !(ratio >= 0 && ratio <= 1)) {
-      throw new AlephaError(
-        `TRACING_SAMPLE_RATIO must be a number from 0 to 1, got '${raw}'.`,
-      );
-    }
+    const ratio =
+      this.tracingSampleRatioOf(ctx) ??
+      ctx.manifest?.cloudflare?.tracingSampleRatio;
     wrangler.observability = {
       enabled: true,
       head_sampling_rate: 1,
