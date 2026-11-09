@@ -561,4 +561,57 @@ describe("$ai", () => {
     expect(api.created).toEqual([]);
     expect((resumed.messages[0] as any).isError).toBe(true);
   });
+  it("hands allow the turn's page context, on a chat and on a resume", async ({
+    expect,
+  }) => {
+    const seen: unknown[] = [];
+    const { support, ai, api } = await setup({
+      allow: ({ context }) => {
+        seen.push(context?.data);
+        return (context?.data as { canWrite?: boolean } | undefined)?.canWrite
+          ? ["list", "create"]
+          : ["list"];
+      },
+    });
+
+    ai.script([{ type: "text", text: "Hi." }]);
+    await support.run({
+      messages: ask("hi"),
+      user: member,
+      context: { page: "invoices", data: { canWrite: false } },
+    });
+    expect(ai.last!.tools?.map((t) => t.name)).toEqual(["list"]);
+
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c1",
+        name: "create",
+        input: { body: { amount: 5 } },
+      },
+    ]);
+    const paused = await support.run({
+      messages: ask("bill 5"),
+      user: member,
+      context: { page: "invoices", data: { canWrite: true } },
+    });
+    expect(ai.last!.tools?.map((t) => t.name)).toEqual(["list", "create"]);
+    expect(paused.pending).toMatchObject({ callId: "c1", kind: "confirm" });
+
+    // Resumed under the context it paused in, the approved call is still
+    // offered, so it runs.
+    ai.script([{ type: "text", text: "Done." }]);
+    await support.run({
+      messages: [...ask("bill 5"), ...paused.messages.slice(1)],
+      user: member,
+      context: { page: "invoices", data: { canWrite: true } },
+      resume: { callId: "c1", decision: "approve" },
+    });
+    expect(api.created).toEqual([{ by: "u1", amount: 5 }]);
+    expect(seen).toEqual([
+      { canWrite: false },
+      { canWrite: true },
+      { canWrite: true },
+    ]);
+  });
 });

@@ -1,7 +1,9 @@
 import { ButtonSettings } from "@alepha/ui/shell";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 
+import { ShellExtensionRegistry } from "../../../registries/ShellExtensionRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 export interface HeaderActionsProps {
@@ -56,6 +58,20 @@ export interface HeaderActionsProps {
  */
 const HeaderActions = (props: HeaderActionsProps) => {
   const { tr } = useI18n<I18n, "en">();
+  // The app's own controls (`ShellExtensionRegistry`), after the surface's:
+  // core names none of them.
+  const extensions = useInject(ShellExtensionRegistry).headerActions();
+  const before =
+    extensions.length > 0 ? (
+      <>
+        {props.before}
+        {extensions.map((entry) => (
+          <entry.component key={entry.key} />
+        ))}
+      </>
+    ) : (
+      props.before
+    );
 
   return (
     <ButtonSettings
@@ -64,7 +80,7 @@ const HeaderActions = (props: HeaderActionsProps) => {
       // they now live in the account menu; this drops them for a signed-out
       // visitor on a phone.
       compact
-      before={props.before}
+      before={before}
       labels={{
         signIn: tr("header.actions.login"),
         account: tr("header.actions.profile"),

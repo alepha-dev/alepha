@@ -139,6 +139,12 @@ export interface AiPrimitiveOptions {
    * It narrows what the model is shown, it is not the security boundary:
    * every action still runs its own `use: [$secure(...)]`.
    *
+   * `context` is the turn's page context, on a chat and on a resume alike,
+   * so an app can offer per page what the user may do there (the tools of
+   * the project they are looking at). ⚠️ It is client-supplied: it narrows
+   * what the model is shown and is never a security input, since every
+   * tool still runs its own gate.
+   *
    * @example
    * ```ts
    * allow: ({ user }) => user?.roles?.includes("admin") ? undefined : ["list"],
@@ -146,6 +152,7 @@ export interface AiPrimitiveOptions {
    */
   allow?: (ctx: {
     user?: UserAccountToken;
+    context?: AiPageContext;
   }) => string[] | undefined | Promise<string[] | undefined>;
 
   /**
@@ -195,7 +202,10 @@ export interface AiTurnInput {
   messages: AiMessage[];
 
   /**
-   * The page the user is on, appended to their new message.
+   * The page the user is on: appended to their new message, and passed to
+   * the `allow` option. A resume appends nothing, but should carry the
+   * context of the turn it continues, so `allow` offers the same tools and
+   * the approved call is still offered (client-supplied either way).
    */
   context?: AiPageContext;
 
@@ -694,7 +704,10 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
     const names =
       input.tools ??
       (this.options.allow
-        ? await this.options.allow({ user: input.user })
+        ? await this.options.allow({
+            user: input.user,
+            context: input.context,
+          })
         : undefined);
     if (!names) {
       return this.definitions;

@@ -2,6 +2,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import {
   $ai,
   type AiMessage,
+  type AiPageContext,
   type AiPrimitive,
   type AiResume,
   type AiTurnEvent,
@@ -152,13 +153,17 @@ export class AiChatService {
   }
 
   /**
-   * Continue a claimed conversation from its stored messages.
+   * Continue a claimed conversation from its stored messages. `context` is
+   * the page the user answered from: it is appended to nothing, only handed
+   * to the assistant's `allow`, so the resume offers what the paused turn
+   * offered.
    */
   public async *resume(
     conversation: AiConversationEntity,
     user: UserAccountToken,
     resume: AiResume,
     assistantName?: string,
+    context?: AiPageContext,
   ): AsyncIterable<AiStreamEvent> {
     yield { type: "conversation", conversationId: conversation.id };
     const assistant = this.assistant(assistantName);
@@ -181,7 +186,7 @@ export class AiChatService {
     yield* this.drive(
       conversation,
       seq,
-      assistant.stream({ messages: history, user, resume }),
+      assistant.stream({ messages: history, user, resume, context }),
     );
   }
 

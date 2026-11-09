@@ -29,6 +29,11 @@ export interface AiChatViewProps {
    */
   title?: string;
   /**
+   * The app's own controls in the panel's header, before the history menu:
+   * a link to the assistant's help page, say.
+   */
+  headerActions?: ReactNode;
+  /**
    * Offer the list of past conversations, in a header menu. Default true.
    */
   history?: boolean;
@@ -118,6 +123,7 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
         ) : (
           <h2 className={titleClassName}>{title}</h2>
         )}
+        {props.headerActions}
         {props.history !== false && (
           <AiChatHistory
             current={chat.conversationId}

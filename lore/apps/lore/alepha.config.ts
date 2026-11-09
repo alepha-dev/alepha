@@ -235,6 +235,10 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        // The assistant's tool steps (#Q3211), named after the tool.
+        "assistant.tool.",
+        // The assistant's confirmation cards (#Q3210), titled by tool.
+        "assistant.confirm.",
         // The Reports bar (#Q2996): its period and grain, built from the value.
         "reports.filter.range.",
         "reports.filter.grain.",

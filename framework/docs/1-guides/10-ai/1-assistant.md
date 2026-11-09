@@ -226,6 +226,26 @@ and it is client-sent data, which the model must read as the user's. The augment
 emitted as a `message` event, so what you store is what the model saw; `AiContextBlock.strip()`
 removes the block for display.
 
+The context also reaches the `allow` option, so an assistant can offer per page what the user
+may do there. A resume carries the context of the page the user answers from (`useAiChat` sends
+it), so the call they approved is still offered when it runs:
+
+```typescript
+class Assistant {
+  invoices = $inject(InvoiceApi);
+
+  support = $ai({
+    system: "You help with invoices.",
+    tools: [this.invoices.list, this.invoices.create],
+    allow: ({ context }) =>
+      context?.page === "invoices" ? ["list", "create"] : ["list"],
+  });
+}
+```
+
+The context is sent by the browser: it narrows what the model is shown, and is never a security
+input. Every tool still runs its own gate.
+
 ## The server side: `alepha/api/ai`
 
 `AlephaApiAi` stores conversations per user and serves them, on top of your `$ai`:

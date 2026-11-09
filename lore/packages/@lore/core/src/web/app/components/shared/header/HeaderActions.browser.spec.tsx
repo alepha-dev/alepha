@@ -8,6 +8,7 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { ShellExtensionRegistry } from "../../../registries/ShellExtensionRegistry.ts";
 import { I18n } from "../../../services/I18n.ts";
 import HeaderActions from "./HeaderActions.tsx";
 
@@ -38,6 +39,9 @@ describe("HeaderActions' account avatar", () => {
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
     alepha.inject(I18n);
+    // What `LoreCoreWeb` registers for every page: the header renders the
+    // app's entries from it.
+    alepha.inject(ShellExtensionRegistry);
     alepha.store.set("alepha.security.user", {
       id: "u-1",
       email: "ada@example.com",

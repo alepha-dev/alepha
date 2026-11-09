@@ -40,8 +40,10 @@ import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
 import { ScopeGrantsProvider } from "alepha/server/links";
 
+import { LoreAssistant } from "@/assistant/index.ts";
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
+import { LoreAssistantWeb } from "@/web/assistant/index.ts";
 
 import { LoreSigilSinkProvider } from "./providers/LoreSigilSinkProvider.ts";
 
@@ -200,6 +202,13 @@ alepha.with(LoreWorkMcp);
 alepha.with(LoreKnowledgeMcp);
 alepha.with(LoreDeployMcp);
 
+// The in-app assistant (#E120), after every module: its tools are theirs.
+// Always registered, so its tables are in every schema; `AI_ASSISTANT_ENABLED`
+// decides whether it answers. It brings its own vendor module
+// (`AlephaAiCloudflare`), which on Workers makes the build declare the `ai`
+// binding.
+alepha.with(LoreAssistant);
+
 // Lore reports to Lore, and this line is what makes that possible.
 //
 // It is both the reporting app and the sink, so the ordinary transport would
@@ -216,6 +225,8 @@ alepha.with(LoreCoreWeb);
 alepha.with(LoreWorkWeb);
 alepha.with(LoreKnowledgeWeb);
 alepha.with(LoreDeployWeb);
+// The assistant's header toggle and dock (#E120), on core's shell registry.
+alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);
 alepha.with(LoreWebAdmin);
 

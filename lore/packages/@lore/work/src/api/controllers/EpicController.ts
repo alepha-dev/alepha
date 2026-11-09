@@ -250,6 +250,8 @@ export class EpicController {
   getEpicRefs = $action({
     path: "/getEpicRefs/:projectId",
     method: "GET",
+    description:
+      "Every epic of a project, as id, number, title and status, sorted by number: the index to find an epic by name or status. Read one with its number for its description and quests.",
     use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({

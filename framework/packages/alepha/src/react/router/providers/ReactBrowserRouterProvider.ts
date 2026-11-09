@@ -307,4 +307,29 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
   public root(state: ReactRouterState): ReactNode {
     return this.pageApi.root(state);
   }
+
+  /**
+   * Whether `path` resolves to one of the app's pages: a path the router
+   * answers with a page other than the catch-all not-found one, the locale
+   * prefix and the query string ignored.
+   * What a renderer asks before routing a link in-app rather than leaving it
+   * as text.
+   */
+  public resolvesToPage(path: string): boolean {
+    if (!path.startsWith("/")) {
+      return false;
+    }
+    const pathname = path.split(/[?#]/, 1)[0];
+    try {
+      const canonical = this.localeProvider.enabled
+        ? this.localeProvider.detect(pathname).pathname
+        : pathname;
+      const { route } = this.match(canonical);
+      // The catch-all `/*` (the not-found page) answers every path: a path
+      // only it matches resolves to no page.
+      return isPageRoute(route) && !route.path.endsWith("/*");
+    } catch {
+      return false;
+    }
+  }
 }

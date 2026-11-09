@@ -61,6 +61,21 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
   }, []);
 
   /**
+   * The page context a turn carries: the route, and the innermost page's
+   * name and data. Sent on a chat and on every resume, since the server's
+   * `allow` reads it to decide what the assistant is offered.
+   */
+  const pageContext = useCallback(() => {
+    const stack = alepha.store.get(aiContextAtom) ?? [];
+    const innermost = stack[stack.length - 1];
+    return {
+      route: router.pathname,
+      page: innermost?.page,
+      data: innermost?.data,
+    };
+  }, [alepha, router]);
+
+  /**
    * Run a client tool the turn paused on, and return its result. A failure
    * is a result too: the model reads it and recovers.
    */
@@ -117,6 +132,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
     ): Promise<void> => {
       let stream: AsyncIterable<AiStreamEvent> | undefined = first;
       let ranTools = false;
+      const succeeded: string[] = [];
       while (stream) {
         let text = "";
         let clientCall: AiPendingCallResource | undefined;
@@ -131,6 +147,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
             setActivity(event.name);
           } else if (event.type === "tool_result") {
             ranTools = true;
+            if (!event.isError && event.name) {
+              succeeded.push(event.name);
+            }
             setActivity(undefined);
             push({
               role: "tool",
@@ -171,6 +190,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
           for (const key of options.invalidates ?? []) {
             queries.invalidate(key);
           }
+          if (succeeded.length) {
+            options.onToolsRan?.(succeeded.splice(0));
+          }
           ranTools = false;
         }
         if (clientCall && idRef.current) {
@@ -178,14 +200,26 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
           stream = await api.resume(
             {
               params: { id: idRef.current },
-              body: { callId: clientCall.callId, result },
+              body: {
+                callId: clientCall.callId,
+                result,
+                context: pageContext(),
+              },
             },
             { request: { signal } },
           );
         }
       }
     },
-    [api, push, runClientTool, queries, options.invalidates],
+    [
+      api,
+      push,
+      runClientTool,
+      queries,
+      options.invalidates,
+      options.onToolsRan,
+      pageContext,
+    ],
   );
 
   const send = useAction<[message: string]>(
@@ -193,19 +227,13 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
       handler: async ({ signal }, message) => {
         setError(undefined);
         push({ role: "user", content: message });
-        const stack = alepha.store.get(aiContextAtom) ?? [];
-        const innermost = stack[stack.length - 1];
         const stream = await api.chat(
           {
             body: {
               conversationId: idRef.current,
               message,
               assistant: options.assistant,
-              context: {
-                route: router.pathname,
-                page: innermost?.page,
-                data: innermost?.data,
-              },
+              context: pageContext(),
             },
           },
           { request: { signal } },
@@ -214,7 +242,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
       },
       onError: (cause) => setError(cause.message),
     },
-    [api, alepha, consume, options.assistant, push, router],
+    [api, consume, options.assistant, push, pageContext],
   );
 
   const answer = useAction<[decision: "approve" | "deny"]>(
@@ -230,14 +258,17 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
         }
         setPending(undefined);
         const stream = await api.resume(
-          { params: { id: idRef.current }, body: { callId, decision } },
+          {
+            params: { id: idRef.current },
+            body: { callId, decision, context: pageContext() },
+          },
           { request: { signal } },
         );
         await consume(stream, signal);
       },
       onError: (cause) => setError(cause.message),
     },
-    [api, consume, pending],
+    [api, consume, pending, pageContext],
   );
 
   const open = useAction<[id?: string]>(
@@ -321,6 +352,12 @@ export interface UseAiChatOptions {
    * what the assistant may have changed (`[["notes"]]`).
    */
   invalidates?: unknown[][];
+  /**
+   * Called after a stream in which tools ran, with the names of those that
+   * succeeded, for what `invalidates` cannot reach: a page whose data its
+   * route loaders fill re-runs them (`router.invalidate()`) after a write.
+   */
+  onToolsRan?: (names: string[]) => void;
   /**
    * The app's own client tools, by name, beside `navigate` and `fillForm`.
    * The result goes back to the model.

@@ -16,6 +16,7 @@ import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.
 import { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
+import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
 
@@ -54,6 +55,9 @@ export const LoreCoreWeb = $module({
     // Core's own dashboard metric descriptors (#Q2656), as each module's are.
     alepha.inject(CoreDashboardMetrics);
     alepha.inject(ThemesProvider);
+    // Read by `Layout` and `HeaderActions` on every page, so it exists before
+    // the container locks whether or not the app registers anything on it.
+    alepha.inject(ShellExtensionRegistry);
     alepha.inject(CoreRouter);
     alepha.inject(AutomationRouter);
     alepha.inject(AccountRouter);
@@ -113,6 +117,7 @@ export {
 } from "./app/components/dashboard/dashboardEligibility.ts";
 export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilterFields.ts";
 export { default as ProjectPageSkeleton } from "./app/components/project/ProjectPageSkeleton.tsx";
+export { default as ProjectAiContextPublisher } from "./app/components/project/ProjectAiContextPublisher.tsx";
 export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,
@@ -222,6 +227,10 @@ export {
   type DashboardScopeOption,
 } from "./app/registries/DashboardPickerRegistry.ts";
 export { DocumentSinkRegistry } from "./app/registries/DocumentSinkRegistry.ts";
+export {
+  type ShellExtension,
+  ShellExtensionRegistry,
+} from "./app/registries/ShellExtensionRegistry.ts";
 export {
   ElementReferenceRegistry,
   type ElementReferenceSet,

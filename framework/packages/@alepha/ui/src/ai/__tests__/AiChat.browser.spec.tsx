@@ -310,11 +310,56 @@ describe("AiChat", () => {
         name: "resume",
         input: {
           params: { id: conversationId },
-          body: { callId: "c1", decision: "approve" },
+          body: {
+            callId: "c1",
+            decision: "approve",
+            // The page context rides on the resume, for the server's `allow`.
+            context: expect.objectContaining({ route: "/" }),
+          },
         },
       },
     ]);
     expect(view.queryByTestId("ai-chat-confirm")).toBeNull();
+  });
+
+  it("tells onToolsRan which tools succeeded once the stream ends", async () => {
+    const ran: string[][] = [];
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "confirm",
+            callId: "c4",
+            name: "createInvoice",
+            input: { body: { amount: 5 } },
+          },
+          { type: "end", reason: "paused" },
+        ]);
+        l.streams.push([
+          {
+            type: "tool_result",
+            callId: "c4",
+            name: "createInvoice",
+            isError: false,
+          },
+          {
+            type: "tool_result",
+            callId: "c5",
+            name: "listInvoices",
+            isError: true,
+          },
+          { type: "text", text: "Billed." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      { onToolsRan: (names) => ran.push(names) },
+    );
+    await say("bill 5");
+    fireEvent.click(await view.findByRole("button", { name: "Approve" }));
+    await view.findByText("Billed.");
+    // The failed one is left out: only a success changed anything.
+    expect(ran).toEqual([["createInvoice"]]);
   });
 
   it("denies a mutation by call id only", async () => {
@@ -339,7 +384,11 @@ describe("AiChat", () => {
     fireEvent.click(await view.findByRole("button", { name: "Deny" }));
     await view.findByText("Not done.");
     expect(links.bodies("resume")).toEqual([
-      { callId: "c2", decision: "deny" },
+      {
+        callId: "c2",
+        decision: "deny",
+        context: expect.objectContaining({ route: "/" }),
+      },
     ]);
     // A denial reads as cancelled, not as a failure.
     expect(view.getByTestId("ai-chat-tool").textContent).toBe(
@@ -381,6 +430,7 @@ describe("AiChat", () => {
           ignored: ["password"],
           submitted: false,
         },
+        context: expect.objectContaining({ route: "/" }),
       },
     ]);
   });
@@ -469,7 +519,11 @@ describe("AiChat", () => {
     fireEvent.click(view.getByRole("button", { name: "Book it" }));
     await view.findByText("Booked.");
     expect(links.bodies("resume")).toEqual([
-      { callId: "c3", decision: "approve" },
+      {
+        callId: "c3",
+        decision: "approve",
+        context: expect.objectContaining({ route: "/" }),
+      },
     ]);
   });
 
