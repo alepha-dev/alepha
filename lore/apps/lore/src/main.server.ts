@@ -40,6 +40,7 @@ import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
 import { ScopeGrantsProvider } from "alepha/server/links";
 
+import { LoreAssistant } from "@/assistant/index.ts";
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
@@ -199,6 +200,13 @@ alepha.with(LoreCoreMcp);
 alepha.with(LoreWorkMcp);
 alepha.with(LoreKnowledgeMcp);
 alepha.with(LoreDeployMcp);
+
+// The in-app assistant (#E120), after every module: its tools are theirs.
+// Always registered, so its tables are in every schema; `AI_ASSISTANT_ENABLED`
+// decides whether it answers. It brings its own vendor module
+// (`AlephaAiCloudflare`), which on Workers makes the build declare the `ai`
+// binding.
+alepha.with(LoreAssistant);
 
 // Lore reports to Lore, and this line is what makes that possible.
 //
