@@ -4083,4 +4083,11 @@ export default {
   "assistant.tool.quest_complete.done": "Quête terminée",
   "assistant.tool.folio_create.running": "Rédaction d'un folio",
   "assistant.tool.folio_create.done": "Folio rédigé",
+  "assistant.confirm.quest_create": "Créer cette quête ?",
+  "assistant.confirm.quest_comment_add": "Publier ce commentaire ?",
+  "assistant.confirm.quest_update": "Mettre à jour cette quête ?",
+  "assistant.confirm.quest_complete": "Terminer cette quête ?",
+  "assistant.confirm.folio_create": "Rédiger ce folio ?",
+  "assistant.confirm.project": "Dans",
+  "assistant.confirm.elsewhere": "(pas le projet affiché)",
 };

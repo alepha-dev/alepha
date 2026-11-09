@@ -5,6 +5,7 @@ import { FolioTools } from "@lore/knowledge/mcp";
 import {
   EpicController,
   FeedbackController,
+  QuestCommentController,
   QuestController,
   ReleaseController,
 } from "@lore/work/api";
@@ -51,6 +52,7 @@ export class LoreAiToolset {
   protected readonly folioController = $inject(FolioController);
   protected readonly releaseController = $inject(ReleaseController);
   protected readonly feedbackController = $inject(FeedbackController);
+  protected readonly commentController = $inject(QuestCommentController);
 
   /**
    * Offered off a project page, where nothing project-scoped can be: Lore's
@@ -138,10 +140,57 @@ export class LoreAiToolset {
   ];
 
   /**
+   * The writes a member does most from the web (#Q3210), offered like the
+   * reads and each paused on a confirmation card: none declares
+   * `readOnlyHint: true`, which is what makes `$ai` wait for the user. Nothing
+   * that deletes, shelves, deploys or touches an estate.
+   *
+   * `quest_update` is offered whole, every field of its schema: the card
+   * shows each one the call sets. A comment needs `quest:update`, not
+   * `quest:read`: that is what `createQuestComment`'s gate requires.
+   */
+  public readonly writes: LoreAiTool[] = [
+    {
+      tool: this.questTools.quest_create,
+      permissions: ["quest:create"],
+      gate: this.questController.createQuest,
+    },
+    {
+      tool: this.questTools.quest_comment_add,
+      permissions: ["quest:update"],
+      gate: this.commentController.createQuestComment,
+    },
+    {
+      tool: this.questTools.quest_update,
+      permissions: ["quest:update"],
+      gate: this.questController.updateQuestById,
+    },
+    {
+      tool: this.questTools.quest_complete,
+      permissions: ["quest:update"],
+      gate: this.questController.completeQuest,
+    },
+    {
+      tool: this.folioTools.folio_create,
+      permissions: ["folio:write"],
+      gate: this.folioController.create,
+    },
+  ];
+
+  /**
+   * Every project-scoped tool, reads then writes.
+   */
+  public get projectScoped(): LoreAiTool[] {
+    return [...this.inProject, ...this.writes];
+  }
+
+  /**
    * Every tool, in declaration order: what `$ai({ tools })` takes.
    */
   public get tools(): Array<ToolPrimitive<any> | ActionPrimitive<any>> {
-    return [...this.offProject, ...this.inProject].map((entry) => entry.tool);
+    return [...this.offProject, ...this.projectScoped].map(
+      (entry) => entry.tool,
+    );
   }
 
   /**

@@ -9,6 +9,14 @@ import { LoreAiToolAccess, LoreAiToolset } from "@/assistant/index.ts";
 
 import { bootAssistant } from "./fixtures/bootAssistant.ts";
 
+const WRITE_SET = [
+  "quest_create",
+  "quest_comment_add",
+  "quest_update",
+  "quest_complete",
+  "folio_create",
+];
+
 const READ_SET = [
   "project_info",
   "quest_list",
@@ -111,7 +119,7 @@ describe("the assistant's read tools", () => {
   }) => {
     const { alepha } = await boot();
     const toolset = alepha.inject(LoreAiToolset);
-    for (const entry of toolset.inProject) {
+    for (const entry of toolset.projectScoped) {
       expect(entry.gate, toolset.nameOf(entry)).toBeDefined();
       const required = new Set(
         entry
@@ -128,7 +136,7 @@ describe("the assistant's read tools", () => {
     await alepha.stop();
   });
 
-  it("offers an owner the whole read set on their project", async ({
+  it("offers an owner the whole read and write set on their project", async ({
     expect,
   }) => {
     const { alepha, controller, owner, project, context, read, ai } =
@@ -140,7 +148,10 @@ describe("the assistant's read tools", () => {
         body: { message: "hi", context: context(project.id) },
       }),
     );
-    expect(ai.last!.tools?.map((t) => t.name)).toEqual(READ_SET);
+    expect(ai.last!.tools?.map((t) => t.name)).toEqual([
+      ...READ_SET,
+      ...WRITE_SET,
+    ]);
     await alepha.stop();
   });
 

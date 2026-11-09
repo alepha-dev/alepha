@@ -132,6 +132,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
     ): Promise<void> => {
       let stream: AsyncIterable<AiStreamEvent> | undefined = first;
       let ranTools = false;
+      const succeeded: string[] = [];
       while (stream) {
         let text = "";
         let clientCall: AiPendingCallResource | undefined;
@@ -146,6 +147,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
             setActivity(event.name);
           } else if (event.type === "tool_result") {
             ranTools = true;
+            if (!event.isError && event.name) {
+              succeeded.push(event.name);
+            }
             setActivity(undefined);
             push({
               role: "tool",
@@ -186,6 +190,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
           for (const key of options.invalidates ?? []) {
             queries.invalidate(key);
           }
+          if (succeeded.length) {
+            options.onToolsRan?.(succeeded.splice(0));
+          }
           ranTools = false;
         }
         if (clientCall && idRef.current) {
@@ -204,7 +211,15 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
         }
       }
     },
-    [api, push, runClientTool, queries, options.invalidates, pageContext],
+    [
+      api,
+      push,
+      runClientTool,
+      queries,
+      options.invalidates,
+      options.onToolsRan,
+      pageContext,
+    ],
   );
 
   const send = useAction<[message: string]>(
@@ -337,6 +352,12 @@ export interface UseAiChatOptions {
    * what the assistant may have changed (`[["notes"]]`).
    */
   invalidates?: unknown[][];
+  /**
+   * Called after a stream in which tools ran, with the names of those that
+   * succeeded, for what `invalidates` cannot reach: a page whose data its
+   * route loaders fill re-runs them (`router.invalidate()`) after a write.
+   */
+  onToolsRan?: (names: string[]) => void;
   /**
    * The app's own client tools, by name, beside `navigate` and `fillForm`.
    * The result goes back to the model.

@@ -322,6 +322,46 @@ describe("AiChat", () => {
     expect(view.queryByTestId("ai-chat-confirm")).toBeNull();
   });
 
+  it("tells onToolsRan which tools succeeded once the stream ends", async () => {
+    const ran: string[][] = [];
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "confirm",
+            callId: "c4",
+            name: "createInvoice",
+            input: { body: { amount: 5 } },
+          },
+          { type: "end", reason: "paused" },
+        ]);
+        l.streams.push([
+          {
+            type: "tool_result",
+            callId: "c4",
+            name: "createInvoice",
+            isError: false,
+          },
+          {
+            type: "tool_result",
+            callId: "c5",
+            name: "listInvoices",
+            isError: true,
+          },
+          { type: "text", text: "Billed." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      { onToolsRan: (names) => ran.push(names) },
+    );
+    await say("bill 5");
+    fireEvent.click(await view.findByRole("button", { name: "Approve" }));
+    await view.findByText("Billed.");
+    // The failed one is left out: only a success changed anything.
+    expect(ran).toEqual([["createInvoice"]]);
+  });
+
   it("denies a mutation by call id only", async () => {
     const { links, view, say } = await mount((l) => {
       l.streams.push([

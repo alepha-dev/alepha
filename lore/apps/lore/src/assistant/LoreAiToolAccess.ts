@@ -59,7 +59,7 @@ export class LoreAiToolAccess {
     const enabled = Object.keys(
       await this.security.capabilitiesOf(projectId),
     ) as CapabilityKey[];
-    return this.toolset.inProject.filter(
+    return this.toolset.projectScoped.filter(
       (entry) =>
         entry.permissions.every((permission) => granted.has(permission)) &&
         this.capabilities.isOwnerEnabled(

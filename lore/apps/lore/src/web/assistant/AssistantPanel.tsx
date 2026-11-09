@@ -26,7 +26,7 @@ const AssistantPanel = () => {
   const [open, setOpen] = useStore(assistantOpenAtom);
   const [contexts] = useStore(aiContextAtom);
   const toolLabel = useAssistantToolLabel();
-  const invalidates = useAssistantInvalidates();
+  const refresh = useAssistantInvalidates();
 
   if (!enabled) {
     return null;
@@ -56,7 +56,8 @@ const AssistantPanel = () => {
       suggestions={suggestions}
       toolLabel={toolLabel}
       confirmCards={assistantConfirmCards}
-      invalidates={invalidates}
+      invalidates={refresh.invalidates}
+      onToolsRan={refresh.onToolsRan}
       renderLink={(link) => (
         <AssistantReplyLink href={link.href}>
           {link.children}

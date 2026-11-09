@@ -3,6 +3,7 @@ import { AlephaAiCloudflare } from "alepha/ai/cloudflare";
 import { AiController, AiSettings, AlephaApiAi } from "alepha/api/ai";
 
 import { LoreAiAssistant } from "./LoreAiAssistant.ts";
+import { LoreAiAudits } from "./LoreAiAudits.ts";
 import { LoreAiContext } from "./LoreAiContext.ts";
 import { LoreAiController } from "./LoreAiController.ts";
 import { LoreAiPrompt } from "./LoreAiPrompt.ts";
@@ -13,6 +14,7 @@ import { LoreAiToolAccess } from "./LoreAiToolAccess.ts";
 import { LoreAiToolset } from "./LoreAiToolset.ts";
 
 export { LoreAiAssistant } from "./LoreAiAssistant.ts";
+export { LoreAiAudits } from "./LoreAiAudits.ts";
 export { LoreAiContext } from "./LoreAiContext.ts";
 export { LoreAiController } from "./LoreAiController.ts";
 export { LoreAiPrompt } from "./LoreAiPrompt.ts";
@@ -52,6 +54,7 @@ export const LoreAssistant = $module({
     LoreAiToolset,
     LoreAiToolAccess,
     LoreAiAssistant,
+    LoreAiAudits,
     LoreAiStatusController,
   ],
 });

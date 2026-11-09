@@ -4062,4 +4062,11 @@ export default {
   "assistant.tool.quest_complete.done": "Completed a quest",
   "assistant.tool.folio_create.running": "Writing a folio",
   "assistant.tool.folio_create.done": "Wrote a folio",
+  "assistant.confirm.quest_create": "File this quest?",
+  "assistant.confirm.quest_comment_add": "Post this comment?",
+  "assistant.confirm.quest_update": "Update this quest?",
+  "assistant.confirm.quest_complete": "Complete this quest?",
+  "assistant.confirm.folio_create": "Write this folio?",
+  "assistant.confirm.project": "In",
+  "assistant.confirm.elsewhere": "(not the project you are looking at)",
 };
