@@ -2,7 +2,7 @@ import { $hook, $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $head, type Head } from "alepha/react/head";
-import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
+import { $page, ReactRouter, Redirection } from "alepha/react/router";
 import { $manifest, $robots } from "alepha/react/sitemap";
 import { $secure, currentUserAtom } from "alepha/security";
 import { isHttpError, NotFoundError } from "alepha/server";
@@ -23,6 +23,7 @@ import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { isOAuthReturnTarget } from "./components/auth/oauthReturnTarget.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
+import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
@@ -595,6 +596,6 @@ export class CoreRouter {
 
   notFound = $page({
     path: "/*",
-    component: NotFound,
+    component: NotFoundPage,
   });
 }

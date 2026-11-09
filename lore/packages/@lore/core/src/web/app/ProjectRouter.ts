@@ -1,7 +1,7 @@
 import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { $inject, Alepha, z } from "alepha";
 import type { NotificationInboxController } from "alepha/api/notifications";
-import { $page, NotFound } from "alepha/react/router";
+import { $page } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -12,6 +12,7 @@ import type { ProjectPromptController } from "../../api/controllers/ProjectPromp
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
+import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectLoaderRegistry } from "./registries/ProjectLoaderRegistry.ts";
 import { capabilityOption } from "./services/projectCapabilities.ts";
 
@@ -167,7 +168,7 @@ export class ProjectRouter {
       // instead of a 404. (An anonymous one is bounced to login by `$secure()`
       // before the loader runs at all — see the note on `use` above.)
       if (isHttpError(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
+        return createElement(NotFoundPage);
       }
     },
   });

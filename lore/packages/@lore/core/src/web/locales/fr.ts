@@ -1851,6 +1851,8 @@ export default {
   "error.reload": "Recharger",
   "error.home": "Accueil",
 
+  "notFound.title": "Page introuvable",
+
   "common.cancel": "Annuler",
   "common.none": "Aucune",
   "common.download": "Télécharger",

@@ -40,7 +40,17 @@ const QuestItem = (props: QuestItemProps) => {
     return lastSession && !lastSession.stoppedAt;
   };
 
-  const targetHref = isActive ? router.path("project") : anchorProps.href;
+  // The row of the open quest closes it: back to the project.
+  //
+  // ⚠️ The slug is passed, never inherited. `project` declares
+  // `schema.params`, and `router.path` gives such a page exactly the params
+  // it was handed. Called bare, this answered the literal `/:projectSlug`: a
+  // 404, and a URL, so a refresh reloaded it (feedback #P2228).
+  const targetHref = isActive
+    ? router.path("project", {
+        params: { projectSlug: router.state.params.projectSlug },
+      })
+    : anchorProps.href;
 
   return (
     <Link

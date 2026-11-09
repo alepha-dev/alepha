@@ -1863,6 +1863,8 @@ export default {
   "error.reload": "Reload App",
   "error.home": "Home",
 
+  "notFound.title": "Page not found",
+
   "common.cancel": "Cancel",
   "common.none": "None",
   "common.download": "Download",
