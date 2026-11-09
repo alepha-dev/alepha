@@ -3,16 +3,24 @@ import { AlephaAiCloudflare } from "alepha/ai/cloudflare";
 import { AiController, AiSettings, AlephaApiAi } from "alepha/api/ai";
 
 import { LoreAiAssistant } from "./LoreAiAssistant.ts";
+import { LoreAiContext } from "./LoreAiContext.ts";
 import { LoreAiController } from "./LoreAiController.ts";
+import { LoreAiPrompt } from "./LoreAiPrompt.ts";
 import { LoreAiSettings } from "./LoreAiSettings.ts";
 import { LoreAiStatusController } from "./LoreAiStatusController.ts";
 import { LoreAiSwitch } from "./LoreAiSwitch.ts";
+import { LoreAiToolAccess } from "./LoreAiToolAccess.ts";
+import { LoreAiToolset } from "./LoreAiToolset.ts";
 
 export { LoreAiAssistant } from "./LoreAiAssistant.ts";
+export { LoreAiContext } from "./LoreAiContext.ts";
 export { LoreAiController } from "./LoreAiController.ts";
+export { LoreAiPrompt } from "./LoreAiPrompt.ts";
 export { LoreAiSettings } from "./LoreAiSettings.ts";
 export { LoreAiStatusController } from "./LoreAiStatusController.ts";
 export { LoreAiSwitch } from "./LoreAiSwitch.ts";
+export { LoreAiToolAccess } from "./LoreAiToolAccess.ts";
+export { type LoreAiTool, LoreAiToolset } from "./LoreAiToolset.ts";
 
 /**
  * Lore's in-app assistant, the server half (#E120): `alepha/api/ai` on
@@ -37,5 +45,13 @@ export const LoreAssistant = $module({
     alepha.with({ provide: AiSettings, use: LoreAiSettings });
   },
   imports: [AlephaApiAi],
-  services: [LoreAiSwitch, LoreAiAssistant, LoreAiStatusController],
+  services: [
+    LoreAiSwitch,
+    LoreAiContext,
+    LoreAiPrompt,
+    LoreAiToolset,
+    LoreAiToolAccess,
+    LoreAiAssistant,
+    LoreAiStatusController,
+  ],
 });

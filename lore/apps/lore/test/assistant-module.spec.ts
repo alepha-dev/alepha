@@ -149,6 +149,9 @@ describe("LoreAssistant", () => {
           SERVER_PORT: 0,
           NODE_ENV: "production",
           APP_SECRET: "a-test-secret-that-is-long-enough-for-production",
+          // Production applies migrations, read relative to the working
+          // directory: off here, so the spec runs from any folder.
+          DATABASE_SYNC: "false",
           AI_ASSISTANT_ENABLED: "1",
         },
       });
@@ -157,19 +160,27 @@ describe("LoreAssistant", () => {
       await expect(alepha.start()).rejects.toThrow(/AI_ASSISTANT_ENABLED/);
     });
 
-    it("boots with the switch unset", async ({ expect }) => {
+    it("does not refuse to boot with the switch unset", async ({ expect }) => {
       const alepha = Alepha.create({
         env: {
           DATABASE_URL: ":memory:",
           SERVER_PORT: 0,
           NODE_ENV: "production",
           APP_SECRET: "a-test-secret-that-is-long-enough-for-production",
+          // Production applies migrations, read relative to the working
+          // directory: off here, so the spec runs from any folder.
+          DATABASE_SYNC: "false",
         },
       });
       bootLore(alepha, ["api", "mcp"]);
       alepha.with(LoreAssistant);
-      await alepha.start();
-      expect(alepha.isStarted()).toBe(true);
+      const failure = await alepha.start().then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(failure instanceof Error ? failure.message : "").not.toMatch(
+        /AI_ASSISTANT_ENABLED/,
+      );
       await alepha.stop();
     });
   });

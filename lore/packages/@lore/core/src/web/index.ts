@@ -113,6 +113,7 @@ export {
 } from "./app/components/dashboard/dashboardEligibility.ts";
 export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilterFields.ts";
 export { default as ProjectPageSkeleton } from "./app/components/project/ProjectPageSkeleton.tsx";
+export { default as ProjectAiContextPublisher } from "./app/components/project/ProjectAiContextPublisher.tsx";
 export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,

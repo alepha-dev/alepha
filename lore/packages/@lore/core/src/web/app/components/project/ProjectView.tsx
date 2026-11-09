@@ -21,6 +21,7 @@ import {
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
+import ProjectAiContextPublisher from "./ProjectAiContextPublisher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import {
   ROUTES_FULL_WIDTH,
@@ -226,6 +227,7 @@ const ProjectView = () => {
           component because this view returns early above and hooks may not
           sit below a return. */}
       <ProjectViewNavPublisher nav={nav} />
+      <ProjectAiContextPublisher project={project} />
       <AppShell
         embedded
         fill
