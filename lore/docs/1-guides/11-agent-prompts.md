@@ -20,7 +20,7 @@ what you pasted.
 | Prompt                      | Where                                                              | Offered when                                                                         |
 | --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | **Review**                  | an epic's row menu, and the epic page                              | nobody has started the epic: it is `draft` or `ready`                                |
-| **Work on it** (epic)       | the same two places                                                | the epic is `ready` or `in_progress`                                                 |
+| **Work on it** (epic)       | the same two places                                                | the epic is `ready` or `in_progress`, or `draft` when you may mark it ready          |
 | **Work on it** (quest)      | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is `ready` or `in_progress` |
 | **Work on it**              | the feedback detail panel                                          | the report is `pending` or `accepted`, and Support is on                             |
 | **Triage the inbox**        | the feedback detail panel                                          | Support is on                                                                        |
@@ -42,9 +42,12 @@ work, verify, commit and complete each quest in turn. It sets no status. The
 first quest the agent accepts is what moves a ready epic to in progress, and
 the last one it closes is what completes it. It treats the epic's
 decision log as settled, and stops on a review question still open rather
-than answering it for you. It is not offered on a draft
-epic: that one's quests refuse to be accepted, and whether its spec is done
-is your call, not the agent's. Copying it changes nothing about the epic.
+than answering it for you. On a draft epic, whose quests refuse to be
+accepted, it is offered only if you may mark the epic ready, and clicking
+it does both: it copies the prompt and marks the epic ready, so handing a
+finished spec over is one click. The list shows the same Undo as its own
+Mark as ready. Whether the spec is done stays your call, never the agent's.
+Copying it from a ready or started epic changes nothing about the epic.
 
 **Work on it** on a quest is the narrow version: one quest, one branch, one
 commit, and anything discovered beyond it is a comment rather than extra

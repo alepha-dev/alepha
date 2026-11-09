@@ -259,6 +259,29 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     [epicApi, epic.id, dialog, tr],
   );
 
+  /**
+   * Work on it on a DRAFT epic marks it ready as well, so handing it to an
+   * agent is one click (feedback #P2226, #Q3228). No confirm, unlike
+   * `EpicStatusControl`'s: the click already says the spec is done, and the
+   * list's Mark as ready asks nothing either. The copy has been started by
+   * then, in the click's own frame.
+   */
+  const markReadyAction = useAction<[], void>(
+    {
+      handler: async () => {
+        applyStatusChange(
+          await epicApi.setEpicStatus({
+            params: { id: epic.id },
+            body: { status: "ready" },
+          }),
+        );
+      },
+      // The quests leave the draft gate with their epic.
+      invalidates: [questsKey, ["quests", project?.id], ["epics", project?.id]],
+    },
+    [epicApi, epic.id, epic.status],
+  );
+
   // The epic's reviews (#E121): what the Review tab lists and counts. Keyed
   // on the epic, and refreshed by every answer.
   const reviewsKey = ["epic-reviews", project?.id, { epicId: epic.id }];
@@ -383,8 +406,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               come to call the actions different things. `AgentPromptsMenu`
               renders nothing when the option is off or the list is empty,
               which is what a completed epic produces. Review while the plan
-              is open, Work on it once the epic is ready: a draft epic's
-              quests refuse to be accepted. */}
+              is open, Work on it once the epic is ready, and on a draft one
+              for a reader who may mark it ready, which the click then does
+              (#P2226): a draft epic's quests refuse to be accepted. */}
           <AgentPromptsMenu
             items={[
               ...(epic.status === "draft" || epic.status === "ready"
@@ -395,11 +419,17 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                     },
                   ]
                 : []),
-              ...(epic.status === "ready" || epic.status === "in_progress"
+              ...(epic.status === "ready" ||
+              epic.status === "in_progress" ||
+              (epic.status === "draft" && epicApi.setEpicStatus.can())
                 ? [
                     {
                       kind: "epicActivate" as const,
                       subject: () => promptSubject.forEpic(epic),
+                      onSelect:
+                        epic.status === "draft"
+                          ? () => void markReadyAction.run()
+                          : undefined,
                     },
                   ]
                 : []),

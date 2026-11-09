@@ -828,12 +828,15 @@ const ProjectEpics = () => {
           // being worked, not what is being written. Work on it is offered
           // on a ready epic, whose first accepted quest starts it, and on
           // one in progress, because a half-worked epic can be handed over.
-          // NOT on a draft one: its quests refuse to be accepted, and
-          // whether the spec is done is the owner's call, not the agent's.
+          //
+          // On a draft one too, but only to a reader who may mark it ready,
+          // and the click does both: it copies the prompt, then makes the
+          // same optimistic, undoable write as the row's Mark as ready
+          // (feedback #P2226, #Q3228). A draft epic's quests refuse to be
+          // accepted, so the prompt would be useless without it, and whether
+          // the spec is done stays the owner's call: it is the owner's click.
           // A completed epic gets neither, so the group has no children and
           // `DataTable` renders nothing for it.
-          //
-          // Nothing here calls `setEpicStatus`.
           ...(agentPrompt.enabled
             ? [
                 {
@@ -853,7 +856,9 @@ const ProjectEpics = () => {
                           },
                         ]
                       : []),
-                    ...(epic.status === "ready" || epic.status === "in_progress"
+                    ...(epic.status === "ready" ||
+                    epic.status === "in_progress" ||
+                    (epic.status === "draft" && epicApi.setEpicStatus.can())
                       ? [
                           {
                             // The verb and glyph quests and feedback use for
@@ -861,11 +866,21 @@ const ProjectEpics = () => {
                             // does through AGENT_PROMPT_MENU_META (#P2182).
                             icon: Wrench,
                             label: tr("agentPrompts.workOnIt"),
-                            onClick: (row: EpicResource) =>
-                              agentPrompt.copy(
+                            onClick: (
+                              row: EpicResource,
+                              ctx: RowActionContext<EpicResource>,
+                            ) => {
+                              // The copy first, inside the click: Safari's
+                              // clipboard activation does not survive an
+                              // await.
+                              void agentPrompt.copy(
                                 "epicActivate",
                                 promptSubject.forEpic(row),
-                              ),
+                              );
+                              if (row.status === "draft") {
+                                setStatus(row, "ready", ctx);
+                              }
+                            },
                           },
                         ]
                       : []),

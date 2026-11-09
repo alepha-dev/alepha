@@ -34,6 +34,15 @@ export interface AgentPromptsMenuItem {
    * which broke four unrelated specs before this was a thunk.
    */
   subject: () => AgentPromptSubject;
+  /**
+   * What else the click does, run AFTER the copy has been started. The copy
+   * goes first because Safari's clipboard activation does not survive an
+   * `await`; a write here may await whatever it likes.
+   *
+   * An epic's Work on it on a draft epic marks the epic ready with it, so
+   * the hand-over is one click (feedback #P2226, #Q3228).
+   */
+  onSelect?: () => void;
 }
 
 export interface AgentPromptsMenuProps {
@@ -106,7 +115,10 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
             // every surface, so do not bring it back from an older comment.
             <DropdownMenuItem
               key={item.kind}
-              onClick={() => agentPrompt.copy(item.kind, item.subject())}
+              onClick={() => {
+                void agentPrompt.copy(item.kind, item.subject());
+                item.onSelect?.();
+              }}
             >
               <meta.icon />
               {tr(meta.labelKey)}
