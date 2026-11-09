@@ -518,8 +518,8 @@ describe("$job — queue mode (outbox)", () => {
     // email lives 300 s and the sweep runs every 900.
     expect(rows[0].scheduledAt).toBeTruthy();
     const sched = new Date(rows[0].scheduledAt!).getTime();
-    expect(sched).toBeGreaterThanOrEqual(Date.now() - 2_000);
-    expect(sched).toBeLessThanOrEqual(Date.now() + 5_000);
+    expect(sched).toBeGreaterThan(Date.now());
+    expect(sched).toBeLessThanOrEqual(Date.now() + 3_000);
   });
 
   it("retry: terminal error after all retries exhausted", async ({
@@ -781,7 +781,13 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
         name: "app.work",
         description: "A job under test.",
         schema: z.object({ n: z.integer() }),
-        retry: { retries: 2 },
+        // A fixed backoff, no jitter: full jitter can draw a delay of a few
+        // milliseconds, and the retry then runs before the poll below reads
+        // the row, which it found at `attempt` 2 on CI.
+        retry: {
+          retries: 2,
+          backoff: { initial: [3, "seconds"], jitter: false },
+        },
         handler: async () => {
           throw new Error("nope");
         },
@@ -810,9 +816,9 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     expect(row.status).toBe("scheduled");
     expect(row.attempt).toBe(1);
     expect(row.error).toBe("nope");
-    // `scheduledAt` is in the future, inside the first attempt's backoff
-    // ceiling (`retryBackoffBase`, 5 s). It used to be exactly "now", which
-    // is what put every retry on the 15-minute sweep grid.
+    // `scheduledAt` is in the future, on the first attempt's backoff (3 s).
+    // It used to be exactly "now", which is what put every retry on the
+    // 15-minute sweep grid.
     const sched = new Date(row.scheduledAt).getTime();
     expect(sched).toBeGreaterThanOrEqual(Date.now() - 2_000);
     expect(sched).toBeLessThanOrEqual(Date.now() + 5_000);
