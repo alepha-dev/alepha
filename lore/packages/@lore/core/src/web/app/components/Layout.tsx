@@ -1,14 +1,18 @@
 import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
+import { AiChatDockSlot } from "@alepha/ui/ai";
 import { ActionErrorToaster, NavigationProgress } from "@alepha/ui/shell";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { useEffect } from "react";
 
+import { ShellExtensionRegistry } from "../registries/ShellExtensionRegistry.ts";
 import Spotlight from "./shared/spotlight/Spotlight.tsx";
 
 const Layout = () => {
   const { lang } = useI18n();
+  const overlays = useInject(ShellExtensionRegistry).overlays();
 
   // Keep <html lang> in sync with the active locale (driven by the URL prefix).
   useEffect(() => {
@@ -29,9 +33,21 @@ const Layout = () => {
             the layout it outlives every transition the app can make.
             `ProjectView` passes `progress={false}` so there is exactly one. */}
         <NavigationProgress />
-        <div className="flex h-svh flex-col overflow-hidden">
-          <NestedView />
+        {/* A row: the page, and beside it the framework's dock slot, where a
+            docked panel (the app's assistant, through an overlay below) takes
+            its width from the page rather than covering it. Empty, the slot
+            takes none. */}
+        <div className="flex h-svh overflow-hidden">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <NestedView />
+          </div>
+          <AiChatDockSlot />
         </div>
+        {/* What the app adds at the root (`ShellExtensionRegistry`), mounted
+            once so it outlives every page. Core names none of them. */}
+        {overlays.map((entry) => (
+          <entry.component key={entry.key} />
+        ))}
         {/* App-wide so ⌘K works from any page, not just the ones that
             happen to render a header. */}
         <Spotlight />

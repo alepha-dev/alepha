@@ -19,6 +19,7 @@ const DOCS_ROOT = "https://alepha.dev/lore/docs";
  * leading digits and dashes eaten, under `guides-`.
  */
 const GUIDES = [
+  "guides-assistant",
   "guides-automations",
   "guides-artifacts",
   "guides-cloudflare-token",

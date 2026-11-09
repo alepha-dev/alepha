@@ -188,6 +188,17 @@ export class ReactRouter<T extends object> {
   }
 
   /**
+   * Whether `path` (an absolute path, query string allowed) resolves to one
+   * of the app's pages, through the router's own matching rather than a
+   * pattern: what decides whether a link from untrusted text (an assistant's
+   * reply, a pasted note) is routed in-app. Always `false` on the server,
+   * which renders no such link interactively.
+   */
+  public matches(path: string): boolean {
+    return this.browser?.resolvesToPage(path) ?? false;
+  }
+
+  /**
    * Whether `href` names the current page, or with `startWith` one of its
    * ancestors.
    *

@@ -941,6 +941,14 @@ export class ReactBrowserProvider {
   });
 
   /**
+   * Whether `path` resolves to one of the app's pages. See
+   * {@link ReactBrowserRouterProvider.resolvesToPage}.
+   */
+  public resolvesToPage(path: string): boolean {
+    return this.router.resolvesToPage(path);
+  }
+
+  /**
    * Fetch the code of the page at `url`. See {@link ReactPrefetchProvider}.
    */
   public prefetch(url: string): void {

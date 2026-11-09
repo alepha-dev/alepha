@@ -43,6 +43,7 @@ import { ScopeGrantsProvider } from "alepha/server/links";
 import { LoreAssistant } from "@/assistant/index.ts";
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
+import { LoreAssistantWeb } from "@/web/assistant/index.ts";
 
 import { LoreSigilSinkProvider } from "./providers/LoreSigilSinkProvider.ts";
 
@@ -224,6 +225,8 @@ alepha.with(LoreCoreWeb);
 alepha.with(LoreWorkWeb);
 alepha.with(LoreKnowledgeWeb);
 alepha.with(LoreDeployWeb);
+// The assistant's header toggle and dock (#E120), on core's shell registry.
+alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);
 alepha.with(LoreWebAdmin);
 
