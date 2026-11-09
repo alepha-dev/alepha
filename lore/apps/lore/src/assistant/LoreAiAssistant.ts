@@ -24,6 +24,11 @@ export class LoreAiAssistant {
 
   public readonly assistant = $ai({
     name: "lore",
+    // Picked by the model check (#Q3213, `scripts/model-check.ts`, 2026-11-09):
+    // 59/60 on twelve prompts against Llama 4 Scout's 50 and Llama 3.3 70B's
+    // 20. Set here rather than through `AI_MODEL`, so no copy boots without
+    // one.
+    model: "@cf/mistralai/mistral-small-3.1-24b-instruct",
     system: ({ user }) => this.prompt.system(user),
     tools: this.toolset.tools,
     allow: (ctx) => this.access.offered(ctx),
