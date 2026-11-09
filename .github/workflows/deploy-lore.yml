@@ -104,6 +104,10 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          # The in-app assistant's switch (#E120): unset, empty, `false` or
+          # `0` is off. The repository variable turns it on or off; a
+          # redeploy applies it.
+          AI_ASSISTANT_ENABLED: ${{ vars.AI_ASSISTANT_ENABLED }}
 
       - name: Build lore (node + workerd)
         working-directory: lore/apps/lore
