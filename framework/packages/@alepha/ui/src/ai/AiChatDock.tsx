@@ -105,7 +105,7 @@ export const AiChatDock = (props: AiChatDockProps) => {
       aria-label={tr("ai.chat.title", { default: "Assistant" })}
       style={{ width }}
       className={cn(
-        "bg-background text-foreground relative flex flex-col overflow-hidden rounded-xl border text-sm shadow-sm",
+        "bg-card text-card-foreground relative flex flex-col overflow-hidden rounded-xl border text-sm shadow-sm",
         target.slot
           ? // In the layout's column: a card the page narrows for, kept in
             // view when the page itself scrolls.

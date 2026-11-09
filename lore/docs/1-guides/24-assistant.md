@@ -1,7 +1,7 @@
 # Assistant
 
-The **assistant** is a chat inside Lore. Open it from the sparkle button in the
-header: from 1024px up it docks beside the page, so a link in a reply opens the
+The **assistant** is a chat inside Lore's projects. Open it from the sparkle
+button in a project's header: from 1024px up it docks beside the page, so a link in a reply opens the
 page next to the conversation; on a narrower screen it slides in as a drawer.
 Fold it into a pill to keep the conversation for later.
 
@@ -25,8 +25,8 @@ Ask it what you would otherwise click through:
 
 It works inside the project you are looking at, and only there. It acts as
 you: it can never do anything your rank in that project does not allow, and
-it is not offered the tools your rank does not grant. Off a project page it
-asks which project you mean.
+it is not offered the tools your rank does not grant. It is offered on
+project pages only: Home and your account have no assistant.
 
 What it writes is marked as written by an agent: a comment it posts shows your
 name with the agent badge and the client `lore-ai`.

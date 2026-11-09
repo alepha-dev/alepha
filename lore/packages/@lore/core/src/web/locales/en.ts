@@ -4023,7 +4023,6 @@ export default {
   "assistant.suggest.open": "What is still open in this project?",
   "assistant.suggest.epic": "What does the current epic still lack?",
   "assistant.suggest.file": "File a quest for ...",
-  "assistant.suggest.projects": "Which projects am I in?",
   "assistant.tool.failed": "$1 failed",
   "assistant.tool.denied": "$1 cancelled",
   "assistant.tool.project_list.running": "Listing your projects",

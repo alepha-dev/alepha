@@ -38,7 +38,7 @@ export const AiChatLauncher = (props: AiChatLauncherProps) => {
         args: [title],
       })}
       className={cn(
-        "bg-background text-foreground hover:bg-accent focus-visible:ring-ring/50 fixed end-4 bottom-4 z-40 inline-flex items-center gap-2 rounded-full border py-2 ps-3.5 pe-4 text-sm font-medium shadow-lg transition-colors outline-none focus-visible:ring-3",
+        "bg-card text-card-foreground hover:bg-accent focus-visible:ring-ring/50 fixed end-4 bottom-4 z-40 inline-flex items-center gap-2 rounded-full border py-2 ps-3.5 pe-4 text-sm font-medium shadow-lg transition-colors outline-none focus-visible:ring-3",
         props.className,
       )}
     >

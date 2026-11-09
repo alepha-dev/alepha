@@ -107,6 +107,12 @@ test.describe("the assistant", () => {
     await page.waitForURL((url) => url.pathname === `/${slug}/quests`);
     // The page changed beside the conversation, which is still there.
     await expect(dock.getByText("Two quests are open.")).toBeVisible();
+
+    // Project pages only: Home has neither the button nor the dock.
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByTestId("assistant-button")).toHaveCount(0);
+    await expect(page.getByTestId("ai-chat-dock")).toHaveCount(0);
   });
 
   test("shows no button while the server says the assistant is off", async ({

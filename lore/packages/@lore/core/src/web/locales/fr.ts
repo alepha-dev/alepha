@@ -4044,7 +4044,6 @@ export default {
   "assistant.suggest.open": "Qu'est-ce qui reste ouvert dans ce projet ?",
   "assistant.suggest.epic": "Que manque-t-il encore à l'epic en cours ?",
   "assistant.suggest.file": "Créer une quête pour ...",
-  "assistant.suggest.projects": "De quels projets suis-je membre ?",
   "assistant.tool.failed": "Échec : $1",
   "assistant.tool.denied": "Annulé : $1",
   "assistant.tool.project_list.running": "Liste de vos projets",
