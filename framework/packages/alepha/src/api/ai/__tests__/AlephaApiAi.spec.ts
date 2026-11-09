@@ -1,5 +1,11 @@
 import { Alepha, z } from "alepha";
-import { $ai, AiProvider, clientTool, MemoryAiProvider } from "alepha/ai";
+import {
+  $ai,
+  type AiPrimitiveOptions,
+  AiProvider,
+  clientTool,
+  MemoryAiProvider,
+} from "alepha/ai";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -73,6 +79,7 @@ class Rows {
 const boot = async (
   db: "sqlite" | "postgres" = "sqlite",
   extra?: (alepha: Alepha) => void,
+  allow?: AiPrimitiveOptions["allow"],
 ) => {
   const alepha = (
     db === "sqlite"
@@ -89,6 +96,7 @@ const boot = async (
   class Assistant {
     support = $ai({
       system: "You help with invoices.",
+      allow,
       tools: [
         api.list,
         api.create,
@@ -505,4 +513,79 @@ describe("alepha/api/ai entities", () => {
       expect(await rows.messages.count()).toBe(0);
     });
   }
+  it("resumes an approved call under the page context it was approved on", async ({
+    expect,
+  }) => {
+    const { chat, resume, read, ai, api } = await boot(
+      "sqlite",
+      undefined,
+      ({ context }) =>
+        (context?.data as { project?: number } | undefined)?.project === 7
+          ? ["list", "create"]
+          : ["list"],
+    );
+    const context = { page: "invoices", data: { project: 7 } };
+    ai.script([
+      {
+        type: "tool_call",
+        id: "call-1",
+        name: "create",
+        input: { body: { amount: 9 } },
+      },
+    ]);
+    const paused = await read(await chat("u1", { message: "bill 9", context }));
+    const id = paused[0].conversationId!;
+    expect(paused.some((e) => e.type === "confirm")).toBe(true);
+
+    ai.script([{ type: "text", text: "Billed." }]);
+    const resumed = await read(
+      await resume("u1", id, {
+        callId: "call-1",
+        decision: "approve",
+        context,
+      }),
+    );
+    expect(resumed.find((e) => e.type === "tool_result")).toMatchObject({
+      name: "create",
+      isError: false,
+    });
+    expect(api.created).toEqual([{ by: "u1", amount: 9 }]);
+  });
+
+  it("refuses an approved call whose resume carries a context that does not offer it", async ({
+    expect,
+  }) => {
+    const { chat, resume, read, ai, api } = await boot(
+      "sqlite",
+      undefined,
+      ({ context }) =>
+        (context?.data as { project?: number } | undefined)?.project === 7
+          ? ["list", "create"]
+          : ["list"],
+    );
+    ai.script([
+      {
+        type: "tool_call",
+        id: "call-2",
+        name: "create",
+        input: { body: { amount: 9 } },
+      },
+    ]);
+    const paused = await read(
+      await chat("u1", {
+        message: "bill 9",
+        context: { data: { project: 7 } },
+      }),
+    );
+    const id = paused[0].conversationId!;
+
+    ai.script([{ type: "text", text: "Cannot." }]);
+    const resumed = await read(
+      await resume("u1", id, { callId: "call-2", decision: "approve" }),
+    );
+    expect(resumed.find((e) => e.type === "tool_result")).toMatchObject({
+      isError: true,
+    });
+    expect(api.created).toEqual([]);
+  });
 });

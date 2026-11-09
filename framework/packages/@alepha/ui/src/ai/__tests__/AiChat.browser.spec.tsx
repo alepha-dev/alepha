@@ -310,7 +310,12 @@ describe("AiChat", () => {
         name: "resume",
         input: {
           params: { id: conversationId },
-          body: { callId: "c1", decision: "approve" },
+          body: {
+            callId: "c1",
+            decision: "approve",
+            // The page context rides on the resume, for the server's `allow`.
+            context: expect.objectContaining({ route: "/" }),
+          },
         },
       },
     ]);
@@ -339,7 +344,11 @@ describe("AiChat", () => {
     fireEvent.click(await view.findByRole("button", { name: "Deny" }));
     await view.findByText("Not done.");
     expect(links.bodies("resume")).toEqual([
-      { callId: "c2", decision: "deny" },
+      {
+        callId: "c2",
+        decision: "deny",
+        context: expect.objectContaining({ route: "/" }),
+      },
     ]);
     // A denial reads as cancelled, not as a failure.
     expect(view.getByTestId("ai-chat-tool").textContent).toBe(
@@ -381,6 +390,7 @@ describe("AiChat", () => {
           ignored: ["password"],
           submitted: false,
         },
+        context: expect.objectContaining({ route: "/" }),
       },
     ]);
   });
@@ -469,7 +479,11 @@ describe("AiChat", () => {
     fireEvent.click(view.getByRole("button", { name: "Book it" }));
     await view.findByText("Booked.");
     expect(links.bodies("resume")).toEqual([
-      { callId: "c3", decision: "approve" },
+      {
+        callId: "c3",
+        decision: "approve",
+        context: expect.objectContaining({ route: "/" }),
+      },
     ]);
   });
 

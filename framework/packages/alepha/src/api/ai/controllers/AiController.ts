@@ -95,6 +95,8 @@ export class AiController {
         conversation,
         user,
         this.chatService.toResume(body),
+        undefined,
+        body.context,
       )) {
         emit(event);
       }
