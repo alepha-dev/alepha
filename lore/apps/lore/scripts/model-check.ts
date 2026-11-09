@@ -194,9 +194,9 @@ const prompts: Prompt[] = [
     text: "File a quest in the web area titled 'Add a dark mode toggle'.",
     expect: ["quest_create"],
     args: (call) =>
-      String(call.title ?? "")
-        .toLowerCase()
-        .includes("dark mode") && call.area === "web",
+      typeof call.title === "string" &&
+      call.title.toLowerCase().includes("dark mode") &&
+      call.area === "web",
   },
   {
     id: "write-comment",
