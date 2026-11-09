@@ -25,9 +25,9 @@ describe("Badge tone", () => {
 
   it.each([
     ["neutral", "bg-muted"],
-    ["success", "bg-emerald-500/15"],
-    ["warning", "bg-amber-500/15"],
-    ["danger", "bg-red-500/15"],
+    ["success", "bg-success/15"],
+    ["warning", "bg-warning/15"],
+    ["danger", "bg-danger/15"],
   ] as const)("paints %s with %s", (tone, fill) => {
     render(
       <Badge variant="tint" tone={tone}>
@@ -43,7 +43,7 @@ describe("Badge tone", () => {
     const badge = screen.getByText("Default");
 
     expect(badge.className).toContain("bg-primary");
-    expect(badge.className).not.toContain("bg-red-500/15");
-    expect(badge.className).not.toContain("border-red-500/40");
+    expect(badge.className).not.toContain("bg-danger/15");
+    expect(badge.className).not.toContain("border-danger/40");
   });
 });

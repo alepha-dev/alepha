@@ -47,6 +47,10 @@ const badgeVariants = cva(
        * would fight them: before this was enforced, a `default` badge given a
        * tone lost its primary fill to the tone's wash, since tailwind-merge
        * keeps the last `bg-*`.
+       *
+       * success, warning and danger paint from the signal tokens, not fixed
+       * Tailwind hues, so colour-blind mode (`:root.cvd`) repaints them.
+       * info stays blue: blue is already safe under every common deficiency.
        */
       tone: {
         neutral: "",
@@ -70,17 +74,17 @@ const badgeVariants = cva(
       {
         variant: "tint",
         tone: "success",
-        class: "border-emerald-500/40 bg-emerald-500/15",
+        class: "border-success/40 bg-success/15",
       },
       {
         variant: "tint",
         tone: "warning",
-        class: "border-amber-500/40 bg-amber-500/15",
+        class: "border-warning/40 bg-warning/15",
       },
       {
         variant: "tint",
         tone: "danger",
-        class: "border-red-500/40 bg-red-500/15",
+        class: "border-danger/40 bg-danger/15",
       },
     ],
     defaultVariants: {
