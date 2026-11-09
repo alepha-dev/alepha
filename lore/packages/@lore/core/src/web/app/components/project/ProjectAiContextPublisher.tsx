@@ -4,10 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { ProjectResource } from "../../../../api/schemas/projectResourceSchema.ts";
 
 export interface ProjectAiContextPublisherProps {
-  project: Pick<
-    ProjectResource,
-    "id" | "slug" | "title" | "preferredLanguage"
-  >;
+  project: Pick<ProjectResource, "id" | "slug" | "title" | "preferredLanguage">;
 }
 
 /**

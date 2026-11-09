@@ -19,9 +19,9 @@ import {
   type ProjectShellContext,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
+import ProjectAiContextPublisher from "./ProjectAiContextPublisher.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
-import ProjectAiContextPublisher from "./ProjectAiContextPublisher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import {
   ROUTES_FULL_WIDTH,

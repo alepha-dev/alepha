@@ -151,7 +151,7 @@ describe("LoreAssistant", () => {
           APP_SECRET: "a-test-secret-that-is-long-enough-for-production",
           // Production applies migrations, read relative to the working
           // directory: off here, so the spec runs from any folder.
-          DATABASE_SYNC: "false",
+          DATABASE_SYNC: false,
           AI_ASSISTANT_ENABLED: "1",
         },
       });
@@ -169,7 +169,7 @@ describe("LoreAssistant", () => {
           APP_SECRET: "a-test-secret-that-is-long-enough-for-production",
           // Production applies migrations, read relative to the working
           // directory: off here, so the spec runs from any folder.
-          DATABASE_SYNC: "false",
+          DATABASE_SYNC: false,
         },
       });
       bootLore(alepha, ["api", "mcp"]);
