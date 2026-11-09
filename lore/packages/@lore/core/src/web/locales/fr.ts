@@ -2703,6 +2703,8 @@ export default {
   "feedback.thread.unknownAuthor": "Un ancien membre",
   "feedback.thread.delete": "Supprimer",
   "feedback.thread.deleteTitle": "Supprimer ce commentaire ?",
+  "feedback.thread.attach": "Joindre des fichiers",
+  "feedback.thread.removeAttachment": "Retirer la pièce jointe",
   "feedback.deleted": "Retour supprimé",
   "feedback.deleteConfirmTitle": "Supprimer le retour ?",
   "feedback.deleteConfirm":

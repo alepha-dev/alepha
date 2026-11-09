@@ -227,6 +227,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
             <div className="border-border border-t pt-4">
               <FeedbackThread
                 feedbackId={props.feedback.id}
+                projectId={props.feedback.projectId}
                 currentUserId={currentUser?.id}
               />
             </div>

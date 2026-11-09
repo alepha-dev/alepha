@@ -58,6 +58,13 @@ export const feedbackComments = $entity({
     }),
     body: z.string().meta({ size: "rich" }),
     /**
+     * File ids, uploaded through `POST /projects/:id/feedback/attachments`
+     * like the item's own, so a reporter answering "which browser?" can
+     * paste the screenshot instead of describing it. A `uuid[]`, mirroring
+     * `feedback.attachments`.
+     */
+    attachments: db.default(z.array(z.uuid()), []),
+    /**
      * Set on every edit after the first save, so the thread can say
      * "edited" honestly. `updatedAt` cannot: the ORM stamps it on any write.
      */

@@ -78,6 +78,7 @@ const setup = async () => {
 
   return {
     feedbackTools,
+    feedbackApi,
     commentApi,
     project,
     call,
@@ -209,6 +210,90 @@ describe("Lore feedback comments", () => {
         commentApi.deleteFeedbackComment({ params: { id: question.id } }),
       ),
     ).rejects.toThrow(/triages feedback/i);
+  });
+});
+
+describe("Lore feedback comment attachments", () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const png = (name = "shot.png") =>
+    new File([PNG], name, { type: "image/png" });
+
+  it("lets the reporter and a member each attach files to a comment", async () => {
+    const {
+      feedbackApi,
+      commentApi,
+      asUser,
+      report,
+      project,
+      OWNER,
+      REPORTER,
+    } = await setup();
+    const item = await report("It crashes");
+
+    for (const who of [REPORTER, OWNER]) {
+      const uploaded = await asUser(who, () =>
+        feedbackApi.uploadFeedbackAttachment({
+          params: { projectId: project.id },
+          body: { file: png() },
+        }),
+      );
+      // An image alone is an answer: the body may be empty.
+      await asUser(who, () =>
+        commentApi.createFeedbackComment({
+          params: { id: item.id },
+          body: { body: "", attachments: [uploaded.id] },
+        }),
+      );
+    }
+
+    const thread = await asUser(REPORTER, () =>
+      commentApi.listFeedbackComments({ params: { id: item.id }, query: {} }),
+    );
+    expect(thread).toHaveLength(2);
+    for (const comment of thread) {
+      expect(comment.attachmentUrls).toHaveLength(1);
+      expect(comment.attachmentUrls?.[0]).toMatchObject({
+        name: "shot.png",
+        mimeType: "image/png",
+        url: `/api/files/${comment.attachments[0]}`,
+      });
+    }
+  });
+
+  it("refuses somebody else's upload, and an empty comment", async () => {
+    const {
+      feedbackApi,
+      commentApi,
+      asUser,
+      report,
+      project,
+      OWNER,
+      REPORTER,
+    } = await setup();
+    const item = await report("It crashes");
+    const ownersFile = await asUser(OWNER, () =>
+      feedbackApi.uploadFeedbackAttachment({
+        params: { projectId: project.id },
+        body: { file: png() },
+      }),
+    );
+
+    await expect(
+      asUser(REPORTER, () =>
+        commentApi.createFeedbackComment({
+          params: { id: item.id },
+          body: { body: "look", attachments: [ownersFile.id] },
+        }),
+      ),
+    ).rejects.toThrow(/attachments are invalid/);
+    await expect(
+      asUser(REPORTER, () =>
+        commentApi.createFeedbackComment({
+          params: { id: item.id },
+          body: { body: "  " },
+        }),
+      ),
+    ).rejects.toThrow(/body or an attachment/);
   });
 });
 

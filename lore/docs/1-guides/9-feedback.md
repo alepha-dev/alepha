@@ -122,7 +122,9 @@ too. Linking needs `feedback:triage`, and the report must already be accepted.
 
 Every report has a discussion, shared by the project's members and the reporter,
 for a question that needs an answer before anyone can decide. The reporter can
-read and write in it without being a member. Comments are plain text.
+read and write in it without being a member. Comments are plain text, and
+can carry attachments: pick files, or paste a screenshot into the box. They
+follow the same limits as a report's.
 
 - **Writing.** Support must be on.
 - **Deleting** is for its author, or anyone with `feedback:triage`.

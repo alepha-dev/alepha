@@ -1,9 +1,14 @@
-import { LoreAudits, ProjectSecurityService } from "@lore/core/api";
+import {
+  BoundParameters,
+  LoreAudits,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 // The helper the UI labels a user with, so a name reads identically in a
 // thread and on the rest of the page. Same precedent as `ProjectController`.
 import { formatReference, displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
+import { files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -11,6 +16,7 @@ import { $repository } from "alepha/orm";
 import { $secure, type UserAccountToken } from "alepha/security";
 import {
   $action,
+  BadRequestError,
   ForbiddenError,
   NotFoundError,
   okSchema,
@@ -21,6 +27,7 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
+import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 
 /**
@@ -55,6 +62,9 @@ export class FeedbackCommentController {
   feedback = $repository(feedback);
   users = $repository(users);
   projects = $repository(projects);
+  fileRepo = $repository(files);
+  rateLimiter = $inject(FeedbackRateLimiter);
+  bound = $inject(BoundParameters);
   audits = $inject(LoreAudits);
   mentions = $inject(MentionNotifier);
   reporterNotifier = $inject(FeedbackNotifier);
@@ -72,9 +82,24 @@ export class FeedbackCommentController {
    * Attach display names to a page of comments, in one lookup for the
    * distinct authors rather than one per row.
    */
-  protected async withAuthors<T extends { authorId?: string }>(
+  protected async withAuthors<
+    T extends { authorId?: string; attachments?: string[] },
+  >(
     rows: T[],
-  ): Promise<Array<T & { authorName?: string }>> {
+  ): Promise<
+    Array<
+      T & {
+        authorName?: string;
+        attachmentUrls: Array<{
+          id: string;
+          name: string;
+          url: string;
+          mimeType: string;
+          size: number;
+        }>;
+      }
+    >
+  > {
     const ids = [...new Set(rows.map((row) => row.authorId).filter(Boolean))];
     const people = ids.length
       ? await this.users.findMany({
@@ -82,9 +107,30 @@ export class FeedbackCommentController {
           columns: ["id", "username", "email"],
         })
       : [];
+    // Chunked like `FeedbackController.toResources`: the list grows with the
+    // attachments a thread carries, not with its length.
+    const fileIds = [...new Set(rows.flatMap((row) => row.attachments ?? []))];
+    const fileRows = await this.bound.collect(fileIds, (batch) =>
+      this.fileRepo.findMany({ where: { id: { inArray: batch } } }),
+    );
+    const fileById = new Map(fileRows.map((f) => [f.id, f]));
 
     return rows.map((row) => ({
       ...row,
+      attachmentUrls: (row.attachments ?? []).flatMap((id) => {
+        const f = fileById.get(id);
+        return f
+          ? [
+              {
+                id: f.id,
+                name: f.name,
+                url: `/api/files/${f.id}`,
+                mimeType: f.mimeType,
+                size: f.size,
+              },
+            ]
+          : [];
+      }),
       authorName: row.authorId
         ? displayName(
             people.find((person) => person.id === row.authorId),
@@ -157,7 +203,16 @@ export class FeedbackCommentController {
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
-        body: z.string().min(1).meta({ size: "rich" }),
+        /**
+         * May be empty when the comment carries attachments: a screenshot is
+         * an answer on its own.
+         */
+        body: z.string().meta({ size: "rich" }),
+        /**
+         * File ids from `POST /projects/:id/feedback/attachments`, uploaded
+         * by the same caller. Same cap as on the item itself.
+         */
+        attachments: z.array(z.uuid()).optional(),
         /**
          * Set by `FeedbackTools.feedback_comment_add` and nothing else. The
          * web client never sends it, so an absent `source` means a human
@@ -177,10 +232,25 @@ export class FeedbackCommentController {
         action: "comment on feedback",
       });
 
+      const attachments = [...new Set(body.attachments ?? [])];
+      if (!body.body.trim() && attachments.length === 0) {
+        throw new BadRequestError("A comment needs a body or an attachment");
+      }
+      const limits = this.rateLimiter.options();
+      if (attachments.length > limits.maxAttachmentsPerFeedback) {
+        throw new BadRequestError(
+          `Too many attachments (max ${limits.maxAttachmentsPerFeedback})`,
+        );
+      }
+      if (attachments.length > 0) {
+        await this.assertAttachmentsBelongToUser(attachments, user.id);
+      }
+
       const created = await this.comments.create({
         feedbackId: row.id,
         authorId: user.id,
         body: body.body,
+        attachments,
         source: body.source,
       });
       // Filed under `feedback` rather than a comment type of its own, for the
@@ -241,6 +311,29 @@ export class FeedbackCommentController {
       return resource;
     },
   });
+
+  /**
+   * Every claimed attachment must be the caller's own upload to the feedback
+   * bucket, the same check `FeedbackController` makes on submit: without it a
+   * comment could surface somebody else's file by id.
+   */
+  protected async assertAttachmentsBelongToUser(
+    ids: string[],
+    userId: string,
+  ): Promise<void> {
+    const found = await this.bound.collect(ids, (batch) =>
+      this.fileRepo.findMany({
+        where: {
+          id: { inArray: batch },
+          creator: { eq: userId },
+          bucket: { eq: FeedbackRateLimiter.ATTACHMENT_BUCKET },
+        },
+      }),
+    );
+    if (found.length !== ids.length) {
+      throw new BadRequestError("One or more attachments are invalid");
+    }
+  }
 
   /**
    * Where a mention on this feedback item points, and what it is called.

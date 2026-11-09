@@ -20,6 +20,21 @@ export const feedbackCommentResourceSchema = feedbackComments.schema.extend({
       "Display name of the author. Absent once they delete their account.",
     )
     .optional(),
+  /**
+   * The comment's attachments, resolved like `FeedbackResource.attachmentUrls`
+   * so the thread renders them without a request per file.
+   */
+  attachmentUrls: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        name: z.string(),
+        url: z.string(),
+        mimeType: z.string(),
+        size: z.number(),
+      }),
+    )
+    .optional(),
 });
 
 export type FeedbackCommentResource = Infer<

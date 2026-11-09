@@ -2705,6 +2705,8 @@ export default {
   "feedback.thread.unknownAuthor": "A former member",
   "feedback.thread.delete": "Delete",
   "feedback.thread.deleteTitle": "Delete this comment?",
+  "feedback.thread.attach": "Attach files",
+  "feedback.thread.removeAttachment": "Remove attachment",
   "feedback.deleted": "Feedback deleted",
   "feedback.deleteConfirmTitle": "Delete feedback?",
   "feedback.deleteConfirm": "Delete this feedback? This cannot be undone.",
