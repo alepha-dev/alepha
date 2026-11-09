@@ -221,40 +221,42 @@ test.describe("agent prompts", () => {
       expect(copied).toBe(`Edited review of #E${epic.number}.`);
     });
 
-    await test.step("Work on it waits for the epic to be ready, then sits beside Review Epic", async () => {
-      // A draft epic's quests refuse to be accepted, and whether its spec
-      // is done is the owner's call (#Q2223), so the hand-over is not on
-      // offer yet: Review Epic alone.
+    await test.step("Work on it on a draft epic copies the prompt and marks the epic ready", async () => {
+      // A draft epic's quests refuse to be accepted, so the click that hands
+      // it over also marks it ready: one click, not Mark as ready and then
+      // Work on it (feedback #P2226, #Q3228). Review Epic sits beside it.
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
       await expect(
         page.getByRole("menuitem", { name: /^review epic$/i }),
       ).toBeVisible();
-      await expect(
-        page.getByRole("menuitem", { name: /^work on it$/i }),
-      ).toHaveCount(0);
-      await page.keyboard.press("Escape");
-
-      await page.evaluate(async (epicId) => {
-        const r = await fetch(`/api/setEpicStatus/${epicId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ status: "ready" }),
-        });
-        if (!r.ok)
-          throw new Error(`setEpicStatus ${r.status} ${await r.text()}`);
-      }, epic.id);
-      await page.reload();
-
-      await page.getByRole("button", { name: "Open row actions" }).click();
-      await page.getByRole("menuitem", { name: /agent prompts/i }).click();
       await page.getByRole("menuitem", { name: /^work on it$/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       // epicActivate's own default, not the review's.
       expect(copied).toContain("to completion, quest by quest");
       expect(copied).toContain(`#E${epic.number}`);
+
+      // The status write goes out with the click, behind an Undo toast.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              async ({ projectId, epicId }) => {
+                const r = await fetch(`/api/getEpics/${projectId}`, {
+                  credentials: "include",
+                });
+                const all = (await r.json()) as Array<{
+                  id: number;
+                  status: string;
+                }>;
+                return all.find((it) => it.id === epicId)?.status;
+              },
+              { projectId, epicId: epic.id },
+            ),
+          { timeout: 15_000 },
+        )
+        .toBe("ready");
     });
 
     await test.step("Reset restores the built-in default", async () => {

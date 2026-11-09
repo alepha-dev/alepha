@@ -605,7 +605,7 @@ describe("ProjectEpics - the status filter", () => {
       });
     };
 
-    it("offers Review but not Work on it on a draft epic, beside Mark as ready", async () => {
+    it("offers Review and Work on it on a draft epic, beside Mark as ready", async () => {
       await mount();
 
       // The top level carries the group and Mark as ready. Review is one
@@ -626,9 +626,49 @@ describe("ProjectEpics - the status filter", () => {
       // (feedback #P2182): "Review Epic", and "Work on it" for epicActivate.
       // The list also holds the row menu's own entries, hence contains.
       expect(inside).toContain("Review Epic");
-      // A draft epic's quests refuse to be accepted, and whether its spec
-      // is done is the owner's call, not the agent's (#Q2223).
-      expect(inside).not.toContain("Work on it");
+      // Offered on a draft too since feedback #P2226: the click marks it
+      // ready, which the case below drives.
+      expect(inside).toContain("Work on it");
+    });
+
+    /**
+     * One click, two acts (feedback #P2226, #Q3228): the prompt on the
+     * clipboard, and the epic marked ready behind the same Undo toast as the
+     * row's Mark as ready. Without the second a draft epic's quests refuse
+     * to be accepted and the prompt is useless.
+     */
+    it("copies Work on it on a draft epic and marks the epic ready", async () => {
+      const written = stubClipboard();
+      await mount();
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const items = await openAgentPrompts(
+        await openRowMenu("#E1 - Draft epic"),
+      );
+      fireEvent.click(items.find((item) => item.textContent === "Work on it")!);
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain("to completion, quest by quest");
+      expect(written[0]).toContain("#E1");
+      await waitFor(() =>
+        expect(fake.statusCalls).toEqual([{ id: 1, status: "ready" }]),
+      );
+      await undoIn("#E1 is ready");
+    });
+
+    it("copies Work on it on a ready epic without touching its status", async () => {
+      const written = stubClipboard();
+      await mount();
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const items = await openAgentPrompts(
+        await openRowMenu("#E2 - Ready epic"),
+      );
+      fireEvent.click(items.find((item) => item.textContent === "Work on it")!);
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain("#E2");
+      expect(fake.statusCalls).toEqual([]);
     });
 
     it("offers both on a ready epic, beside Back to draft", async () => {

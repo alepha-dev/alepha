@@ -200,6 +200,8 @@ its status, or `includeDrafts: true` to see everything.
 Going the other way, an epic can hand ITSELF to an agent: **Review** asks
 one to sharpen the plan while it is still open (draft or ready), and
 **Work on it** hands the whole epic over, quest by quest, once it is ready.
+On a draft epic, Work on it marks the epic ready as it copies, so a finished
+spec is handed over in one click.
 Both are in the epic's Agent Prompts menu, which is off until a project
 turns it on. See [Agent prompts](/lore/docs/guides-agent-prompts).
 
