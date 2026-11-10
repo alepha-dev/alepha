@@ -5,7 +5,7 @@ void React;
 import { useI18n } from "alepha/react/i18n";
 import { ListChecks, Loader2 } from "lucide-react";
 import type { HTMLAttributes } from "react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactElement, type ReactNode, useRef, useState } from "react";
 
 import {
   ComboboxContent,
@@ -111,6 +111,14 @@ export interface ControlSelectComboboxProps {
    * See `ControlSelectProps.popupClassName` in `ControlSelect.tsx`.
    */
   popupClassName?: string;
+  /**
+   * See `ControlSelectProps.trigger` in `ControlSelect.tsx`.
+   */
+  trigger?: ReactElement<{ children?: ReactNode }>;
+  /**
+   * See `ControlSelectProps.onPopupOpenChange` in `ControlSelect.tsx`.
+   */
+  onPopupOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -388,6 +396,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
         ((a: ComboOption, b: ComboOption) => a.value === b.value) as never
       }
       filter={null}
+      onOpenChange={(open) => props.onPopupOpenChange?.(open)}
       // Base UI leaves `autoHighlight` off by default, so nothing is
       // highlighted while typing and Enter has no target — the user has to
       // click a row (including the `createNewEntry` one). Highlighting the
@@ -407,53 +416,69 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
 
           Wrapped so the clear button below can sit ON the trigger without
           being INSIDE it: a button nested in a button is invalid, and Base
-          UI renders this trigger as a real `<button>`. */}
-      <div className={TRIGGER_WRAPPER_CLASSES}>
+          UI renders this trigger as a real `<button>`.
+
+          A caller's own `trigger` replaces all of it: the element is the
+          button, as it was drawn, and opens the same popup. Its children are
+          handed over explicitly, because the trigger's own children would
+          otherwise replace them. */}
+      {props.trigger ? (
         <ComboboxTrigger
           id={props.id}
           disabled={props.disabled}
           {...props.triggerProps}
-          // Read by the hover-border rule in `styles.css`, which leaves a
-          // minimal trigger borderless on hover too: its hover is the tint.
-          data-minimal={props.minimal ? "" : undefined}
-          className={cn(
-            TRIGGER_CLASSES,
-            sizeClasses.trigger,
-            sizeClasses.chevron,
-            props.minimal && TRIGGER_MINIMAL_CLASSES,
-            // Muted means "nothing chosen yet", and now that is simply
-            // "nothing selected" for every shape.
-            //
-            // It used to carve out `clearable` singles, because for those empty
-            // WAS a selected value - the injected clear row - and muting it made
-            // one filter look unset while its neighbour looked set for the same
-            // meaning. That row is gone (see `items` in
-            // `controlSelectOptions.ts`), so empty is empty and reads as a
-            // placeholder everywhere.
-            selected.length === 0 && "text-muted-foreground",
-            props.triggerClassName,
-          )}
+          chevron={false}
+          render={props.trigger}
         >
-          {/* The room for the clear button, per size - see `clearGap` in
+          {props.trigger.props.children}
+        </ComboboxTrigger>
+      ) : (
+        <div className={TRIGGER_WRAPPER_CLASSES}>
+          <ComboboxTrigger
+            id={props.id}
+            disabled={props.disabled}
+            {...props.triggerProps}
+            // Read by the hover-border rule in `styles.css`, which leaves a
+            // minimal trigger borderless on hover too: its hover is the tint.
+            data-minimal={props.minimal ? "" : undefined}
+            className={cn(
+              TRIGGER_CLASSES,
+              sizeClasses.trigger,
+              sizeClasses.chevron,
+              props.minimal && TRIGGER_MINIMAL_CLASSES,
+              // Muted means "nothing chosen yet", and now that is simply
+              // "nothing selected" for every shape.
+              //
+              // It used to carve out `clearable` singles, because for those empty
+              // WAS a selected value - the injected clear row - and muting it made
+              // one filter look unset while its neighbour looked set for the same
+              // meaning. That row is gone (see `items` in
+              // `controlSelectOptions.ts`), so empty is empty and reads as a
+              // placeholder everywhere.
+              selected.length === 0 && "text-muted-foreground",
+              props.triggerClassName,
+            )}
+          >
+            {/* The room for the clear button, per size - see `clearGap` in
               TRIGGER_SIZES for why it is a margin here and not padding on the
               trigger. `trigger-label` lets a container that hides the button
               (`DataTableFilterControl`) take the room back. */}
-          <span
-            data-slot="trigger-label"
-            className={cn(
-              "flex min-w-0 items-center gap-2",
-              showClear && sizeClasses.clearGap,
-            )}
-          >
-            {props.icon && (
-              <props.icon
-                className={cn(
-                  "text-muted-foreground shrink-0",
-                  sizeClasses.icon,
-                )}
-              />
-            )}
-            {/*
+            <span
+              data-slot="trigger-label"
+              className={cn(
+                "flex min-w-0 items-center gap-2",
+                showClear && sizeClasses.clearGap,
+              )}
+            >
+              {props.icon && (
+                <props.icon
+                  className={cn(
+                    "text-muted-foreground shrink-0",
+                    sizeClasses.icon,
+                  )}
+                />
+              )}
+              {/*
               The prefix rides in the SAME text run as the label, separated by
               an ordinary space. As a flex sibling it was spaced by the row's
               `gap-2`, 8px, while the words inside it were a font space apart,
@@ -461,23 +486,24 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
               every gap the same space, and truncation eats from the end of
               the value rather than squeezing the two apart.
             */}
-            <span className="truncate">
-              {props.triggerPrefix && selected.length > 0 && (
-                <span className="text-muted-foreground">
-                  {props.triggerPrefix}{" "}
-                </span>
-              )}
-              {triggerLabel}
+              <span className="truncate">
+                {props.triggerPrefix && selected.length > 0 && (
+                  <span className="text-muted-foreground">
+                    {props.triggerPrefix}{" "}
+                  </span>
+                )}
+                {triggerLabel}
+              </span>
             </span>
-          </span>
-        </ComboboxTrigger>
-        {showClear && (
-          <ControlClearButton
-            size={props.size}
-            onClick={() => props.onChange(props.multi ? [] : undefined)}
-          />
-        )}
-      </div>
+          </ComboboxTrigger>
+          {showClear && (
+            <ControlClearButton
+              size={props.size}
+              onClick={() => props.onChange(props.multi ? [] : undefined)}
+            />
+          )}
+        </div>
+      )}
       <ComboboxContent className={props.popupClassName}>
         {props.popupHeader}
         {props.searchable && (

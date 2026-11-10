@@ -440,6 +440,24 @@ export interface DataTableFilterFieldOptions {
    */
   mode?: DataTableFilterMode;
   /**
+   * The key of the column this filter belongs to. Its header then carries a
+   * funnel that opens the filter in place: a list's options, with its
+   * operator switch, a date range's calendar, a text filter's box. The
+   * funnel is dim at rest and takes the accent colour while the filter
+   * holds a value.
+   *
+   * The bar is unchanged: a filter set from its header still shows there,
+   * so the list is never narrowed with nothing on screen saying why, even
+   * with the column scrolled off or hidden. Emptying an `optional` filter
+   * from its header takes it back off the bar.
+   *
+   * Named explicitly rather than matched on the key: a filter and its
+   * column are often keyed apart (`roles` against `role`), and a search
+   * spanning two columns belongs to neither. A column carries one filter;
+   * the first that names it wins. Read every render.
+   */
+  column?: string;
+  /**
    * Anything else `Control` takes: `clearLabel`, `countLabel`, `searchable`,
    * `inputProps`.
    */

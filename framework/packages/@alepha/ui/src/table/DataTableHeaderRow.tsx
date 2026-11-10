@@ -8,7 +8,9 @@ import {
   ChevronRight,
   ChevronsUpDown,
   EyeOff,
+  Funnel,
 } from "lucide-react";
+import { type ReactNode, useRef } from "react";
 
 import { Checkbox } from "../core/Checkbox.tsx";
 import {
@@ -46,6 +48,12 @@ export interface DataTableHeaderRowProps<T> {
   ) => void;
   moveColumn: (key: string, delta: -1 | 1) => void;
   toggleColumn: (id: string) => void;
+  /**
+   * The funnel a column's header carries, for a column some filter names in
+   * its `column`; `undefined` for every other column. See
+   * `DataTableHeaderFilter`.
+   */
+  headerFilter?: (columnKey: string) => ReactNode;
 }
 
 /**
@@ -67,9 +75,22 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
     toggleColumn,
   } = props;
   const { tr } = useI18n();
+  const row = useRef<HTMLTableRowElement>(null);
+
+  // The menu's "Filter" opens the funnel, so the filter is reachable from the
+  // keyboard menu too (Shift+F10). Clicked on the next frame: the menu is
+  // still closing on this one, and hands focus back to the header as it goes,
+  // which would close a popup opened under it.
+  const openFilter = (key: string) => {
+    requestAnimationFrame(() => {
+      row.current
+        ?.querySelector<HTMLElement>(`[data-header-filter="${key}"]`)
+        ?.click();
+    });
+  };
 
   return (
-    <TableRow>
+    <TableRow ref={row}>
       {hasCheckbox && (
         <TableHead className={cn(props.headClassName, "w-10")}>
           <Checkbox
@@ -84,6 +105,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
       )}
       {visibleCols.map(([key, def], index) => {
         const sorted = def.sortable && sort?.field === (def.sortKey ?? key);
+        const filter = props.headerFilter?.(key);
         return (
           // ⚠️ The menu is on the HEADER and never on a body cell.
           // Overriding the browser's own menu is acceptable on
@@ -117,23 +139,28 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                 />
               }
             >
-              {def.sortable ? (
-                // A real button so keyboard and assistive-tech
-                // users can sort — a th onClick is mouse-only.
-                <button
-                  type="button"
-                  onClick={() => toggleSort(key, def)}
-                  className="group/sort hover:text-foreground inline-flex items-center gap-1 select-none"
-                >
-                  <span
-                    className={cn(
-                      def.hint &&
-                        "decoration-muted-foreground/60 underline decoration-dotted underline-offset-4",
-                    )}
+              {/* One line: the label (or the sort button), then the funnel.
+                  The funnel sits OUTSIDE the sort button, never in it - a
+                  button nested in a button is invalid, and a click on it
+                  would also sort. */}
+              <span className="inline-flex items-center gap-1">
+                {def.sortable ? (
+                  // A real button so keyboard and assistive-tech
+                  // users can sort — a th onClick is mouse-only.
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(key, def)}
+                    className="group/sort hover:text-foreground inline-flex items-center gap-1 select-none"
                   >
-                    {def.label}
-                  </span>
-                  {/* A sortable column says so at rest. The arrow
+                    <span
+                      className={cn(
+                        def.hint &&
+                          "decoration-muted-foreground/60 underline decoration-dotted underline-offset-4",
+                      )}
+                    >
+                      {def.label}
+                    </span>
+                    {/* A sortable column says so at rest. The arrow
                     used to appear only once a column WAS sorted,
                     so an unsorted sortable header and a dead one
                     were indistinguishable until you happened to
@@ -148,30 +175,32 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
 
                     `aria-hidden` throughout: `aria-sort` on the
                     `th` already states this to assistive tech. */}
-                  {sorted ? (
-                    sort?.direction === "asc" ? (
-                      <ArrowUp className="size-3.5" aria-hidden />
+                    {sorted ? (
+                      sort?.direction === "asc" ? (
+                        <ArrowUp className="size-3.5" aria-hidden />
+                      ) : (
+                        <ArrowDown className="size-3.5" aria-hidden />
+                      )
                     ) : (
-                      <ArrowDown className="size-3.5" aria-hidden />
-                    )
-                  ) : (
-                    <ChevronsUpDown
-                      className="size-3.5 opacity-40 transition-opacity group-hover/sort:opacity-100"
-                      aria-hidden
-                    />
-                  )}
-                </button>
-              ) : (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1",
-                    def.hint &&
-                      "decoration-muted-foreground/60 underline decoration-dotted underline-offset-4",
-                  )}
-                >
-                  {def.label}
-                </span>
-              )}
+                      <ChevronsUpDown
+                        className="size-3.5 opacity-40 transition-opacity group-hover/sort:opacity-100"
+                        aria-hidden
+                      />
+                    )}
+                  </button>
+                ) : (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1",
+                      def.hint &&
+                        "decoration-muted-foreground/60 underline decoration-dotted underline-offset-4",
+                    )}
+                  >
+                    {def.label}
+                  </span>
+                )}
+                {filter}
+              </span>
             </ContextMenuTrigger>
             <ContextMenuContent>
               {/* Explicit directions rather than the header's
@@ -202,6 +231,15 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                     {tr("dataTable.sortClear", {
                       default: "Clear sort",
                     })}
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
+              )}
+              {filter && (
+                <>
+                  <ContextMenuItem onClick={() => openFilter(key)}>
+                    <Funnel className="size-4" />
+                    {tr("dataTable.filterColumnMenu", { default: "Filter" })}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>

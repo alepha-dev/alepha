@@ -19,10 +19,16 @@ const ComboboxValue = (props: ComboboxValueProps) => {
   return <ComboboxPrimitive.Value data-slot="combobox-value" {...props} />;
 };
 
-export type ComboboxTriggerProps = ComboboxPrimitive.Trigger.Props;
+export type ComboboxTriggerProps = ComboboxPrimitive.Trigger.Props & {
+  /**
+   * Draw the trailing caret. Defaults to true; off for a trigger that is not
+   * a field, such as a table header's funnel button.
+   */
+  chevron?: boolean;
+};
 
 const ComboboxTrigger = (props: ComboboxTriggerProps) => {
-  const { className, children, ...rest } = props;
+  const { className, children, chevron = true, ...rest } = props;
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
@@ -30,7 +36,9 @@ const ComboboxTrigger = (props: ComboboxTriggerProps) => {
       {...rest}
     >
       {children}
-      <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4" />
+      {chevron && (
+        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4" />
+      )}
     </ComboboxPrimitive.Trigger>
   );
 };

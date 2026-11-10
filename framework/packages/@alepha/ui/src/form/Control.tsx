@@ -15,6 +15,7 @@ import { Check, X } from "lucide-react";
 import {
   type ComponentType,
   type HTMLAttributes,
+  type ReactElement,
   type ReactNode,
   useEffect,
   useState,
@@ -339,6 +340,17 @@ export interface ControlProps {
    */
   popupClassName?: string;
   /**
+   * Forwarded to `ControlSelect` and `ControlDateRange`: an element drawn
+   * INSTEAD of the field, as the button that opens its popup. See
+   * `ControlSelectProps.trigger`.
+   */
+  trigger?: ReactElement<{ children?: ReactNode }>;
+  /**
+   * Forwarded to `ControlSelect` and `ControlDateRange`: the popup opened or
+   * closed.
+   */
+  onPopupOpenChange?: (open: boolean) => void;
+  /**
    * Render a managed upload control (image preview, multi, drag-drop)
    * that calls `FileController.uploadFile` and stores the file ID(s) in
    * the form value. Pass `true` for defaults or an options object.
@@ -529,6 +541,8 @@ export const Control = (props: ControlProps) => {
         // From `props`, like the select's below: a node has no place in a
         // schema's `$control`.
         triggerPrefix={props.triggerPrefix}
+        trigger={props.trigger}
+        onPopupOpenChange={props.onPopupOpenChange}
       />,
     );
   }
@@ -586,6 +600,8 @@ export const Control = (props: ControlProps) => {
         popupHeader={props.popupHeader}
         triggerPrefix={props.triggerPrefix}
         popupClassName={merged.popupClassName}
+        trigger={props.trigger}
+        onPopupOpenChange={props.onPopupOpenChange}
       />,
     );
   }
