@@ -22,6 +22,7 @@ export * from "./hooks/useAlepha.ts";
 export * from "./hooks/useClient.ts";
 export * from "./hooks/useComputed.ts";
 export * from "./hooks/useEvents.ts";
+export * from "./hooks/useInfiniteQuery.ts";
 export * from "./hooks/useInject.ts";
 export * from "./hooks/useQuery.ts";
 export * from "./hooks/useQueryClient.ts";

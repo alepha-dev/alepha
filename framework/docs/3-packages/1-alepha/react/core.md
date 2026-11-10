@@ -40,6 +40,7 @@ Full-stack React framework with server-side rendering.
 - [`useAlepha`](/docs/reference-react-hooks-usealepha) - Main Alepha hook.
 - [`useClient`](/docs/reference-react-hooks-useclient) - Hook to get a virtual client for the specified scope.
 - [`useEvents`](/docs/reference-react-hooks-useevents) - Allow subscribing to multiple Alepha events. See `Hooks` for available events.
+- [`useInfiniteQuery`](/docs/reference-react-hooks-useinfinitequery) - Hook for a list read page by page, every page loaded so far kept under one
 - [`useInject`](/docs/reference-react-hooks-useinject) - Hook to inject a service instance.
 - [`useQuery`](/docs/reference-react-hooks-usequery) - Hook for declarative data fetching with automatic execution and refetch.
 - [`useQueryClient`](/docs/reference-react-hooks-usequeryclient) - Imperative access to the query cache used by `useQuery`.

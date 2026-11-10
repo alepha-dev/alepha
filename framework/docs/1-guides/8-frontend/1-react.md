@@ -471,6 +471,48 @@ When the signed-in user changes inside the page, `alepha/react/auth` empties the
 
 On the server no eviction timer runs: the cache lives in the request's state and dies with it, and no in-flight request is ever shared between two visitors.
 
+### Lists loaded page by page
+
+`useInfiniteQuery` keeps every page loaded so far under one key, for a "load more" button or an infinite scroll. It is `useQuery` underneath, so the cache, dedupe, `staleTime`, `invalidates`, retries, the refetch on reconnect and eviction all apply.
+
+```tsx
+const { pages, loadMore, hasMore, loadingMore, loading } = useInfiniteQuery(
+  {
+    key: ["orders", userId],
+    handler: ({ signal }, page: number) =>
+      orderApi.list({ query: { page, size: 20 } }, { request: { signal } }),
+    initialPageParam: 0,
+    getNextPageParam: (last) =>
+      last.page.isLast ? undefined : last.page.number + 1,
+  },
+  [userId],
+);
+const orders = pages.flatMap((page) => page.content);
+```
+
+`handler(ctx, pageParam)` reads one page, `initialPageParam` is the first page's param, and `getNextPageParam(lastPage, pages)` returns the next one, or `undefined` at the end. Offset and cursor are two uses of it: on a cursor API, `initialPageParam: undefined` and `getNextPageParam: (last) => last.nextCursor`.
+
+It returns `{ pages, loadMore, hasMore, loadingMore, loading, error, refetch }`. `loadMore()` never rejects, and sends nothing while one is in flight or when `hasMore` is false. `loadingMore` is `true` only during `loadMore()`, and `loading` stays `false` then, so the list does not fall back to its skeleton when the reader asks for more. A key change starts again from the first page.
+
+**A refetch reloads what is loaded.** After an invalidation, `refetch()`, a reconnect or a tab-return refetch, the pages loaded so far are read again in order, each from the fresh previous page, stopping early if the list got shorter, and the entry is written once at the end. A list with 20 pages loaded sends 20 requests each time: keep that in mind before invalidating a long list on every write.
+
+The cache entry is an `InfiniteQueryData<Page, Param>`, `{ pages, pageParams }`, so an optimistic write is a `setData` that maps over `pages`:
+
+```tsx
+queries.setData<InfiniteQueryData<Page<Order>, number>>(
+  ["orders", userId],
+  (data) => ({
+    ...data!,
+    pages: data!.pages.map((page) => ({
+      ...page,
+      content: page.content.map((order) =>
+        order.id === id ? { ...order, status } : order,
+      ),
+    })),
+  }),
+);
+```
+
 ### Optimistic writes with Undo
 
 A write the reader should see land in the frame of their click, with a way back, uses `useUndoable` from `@alepha/ui`. `run()` changes the screen first, raises a toast with an Undo button, then talks to the server:
