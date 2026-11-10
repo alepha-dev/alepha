@@ -7,7 +7,7 @@ import { $atom, type Infer, z } from "alepha";
  * change the default for the whole app, or for one spec file:
  *
  * ```ts
- * alepha.store.set(queryOptionsAtom, { retry: 0 });
+ * alepha.store.mut(queryOptionsAtom, (options) => ({ ...options, retry: 0 }));
  * ```
  */
 export const queryOptionsAtom = $atom({
@@ -20,9 +20,23 @@ export const queryOptionsAtom = $atom({
         "How many times a failed read is tried again after its first attempt, on a network failure or a 408, 502, 503 or 504. Waits 1 s, then doubles, capped at 30 s, with jitter. `0` or `false` turns retries off.",
       )
       .default(2),
+    refetchOnReconnect: z
+      .boolean()
+      .describe(
+        "When the browser comes back online, re-run every mounted keyed query whose entry is stale or whose last run failed. The entry is kept while it runs.",
+      )
+      .default(true),
+    refetchOnFocus: z
+      .boolean()
+      .describe(
+        "When the page becomes visible again, re-run every mounted keyed query whose entry is stale. Off by default: with staleTime at 0, every keyed query is stale.",
+      )
+      .default(false),
   }),
   default: {
     retry: 2,
+    refetchOnReconnect: true,
+    refetchOnFocus: false,
   },
 });
 

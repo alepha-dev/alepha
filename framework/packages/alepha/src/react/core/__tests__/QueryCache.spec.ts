@@ -3,6 +3,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { describe, test } from "vitest";
 
 import { QueryCache } from "../services/QueryCache.ts";
+import { QueryWakeEvents } from "../services/QueryWakeEvents.ts";
 
 const createCache = async () => {
   const alepha = Alepha.create().with(AlephaDateTime);
@@ -66,5 +67,25 @@ describe("QueryCache", () => {
 
     expect(cache.get(["a"])).toBe(undefined);
     expect(cache.get(["b"])).toBe(undefined);
+  });
+
+  test("never listens for a tab return or a reconnect on the server", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    const cache = alepha.inject(QueryCache);
+    await alepha.start();
+
+    const unobserve = cache.observe({
+      key: ["k"],
+      refetch: () => {},
+      failed: () => false,
+      options: () => ({ staleTime: 0 }),
+    });
+
+    expect(cache.observerCount(["k"])).toBe(1);
+    expect(alepha.inject(QueryWakeEvents).listening()).toBe(false);
+    unobserve();
+    expect(cache.observerCount(["k"])).toBe(0);
   });
 });

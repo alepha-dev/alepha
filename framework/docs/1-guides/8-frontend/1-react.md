@@ -342,19 +342,21 @@ const { data, loading, isStale } = useQuery(
 
 **Options** (besides `handler`, which receives `{ signal }`):
 
-| Option             | Default | Description                                                                                            |
-| ------------------ | ------- | ------------------------------------------------------------------------------------------------------ |
-| `key`              | none    | Cache key (an array). Without it, nothing is shared or cached.                                         |
-| `staleTime`        | `0`     | `DurationLike`. While an entry is fresh, mounting renders it from cache without fetching.              |
-| `keepPreviousData` | `false` | Keep rendering the previous key's data while a new key loads (pagination, filters). Requires `key`.    |
-| `enabled`          | `true`  | `false` skips the automatic runs (mount, dependency change, `runEvery`); `refetch()` still works.      |
-| `initialData`      | none    | Value of `data` before the first successful fetch.                                                     |
-| `runEvery`         | none    | Poll at this interval, as in `useAction`.                                                              |
-| `retry`            | `2`     | Retries of a failed read: a number, `false`, or `(error, attempt) => boolean`. See "Retries" below.    |
-| `debounce`         | none    | Debounce delay in milliseconds.                                                                        |
-| `onSuccess`        | none    | Called with the resolved value.                                                                        |
-| `onError`          | none    | Marks the failure handled: `onError: () => {}` is how a read that can do without its data stays quiet. |
-| `id`               | none    | Identifier carried by the `react:action:*` events.                                                     |
+| Option               | Default | Description                                                                                            |
+| -------------------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `key`                | none    | Cache key (an array). Without it, nothing is shared or cached.                                         |
+| `staleTime`          | `0`     | `DurationLike`. While an entry is fresh, mounting renders it from cache without fetching.              |
+| `keepPreviousData`   | `false` | Keep rendering the previous key's data while a new key loads (pagination, filters). Requires `key`.    |
+| `enabled`            | `true`  | `false` skips the automatic runs (mount, dependency change, `runEvery`); `refetch()` still works.      |
+| `initialData`        | none    | Value of `data` before the first successful fetch.                                                     |
+| `runEvery`           | none    | Poll at this interval, as in `useAction`. Paused while the page is hidden.                             |
+| `refetchOnReconnect` | `true`  | Re-run a stale or failed keyed query when the browser comes back online.                               |
+| `refetchOnFocus`     | `false` | Re-run a stale keyed query when the page becomes visible again.                                        |
+| `retry`              | `2`     | Retries of a failed read: a number, `false`, or `(error, attempt) => boolean`. See "Retries" below.    |
+| `debounce`           | none    | Debounce delay in milliseconds.                                                                        |
+| `onSuccess`          | none    | Called with the resolved value.                                                                        |
+| `onError`            | none    | Marks the failure handled: `onError: () => {}` is how a read that can do without its data stays quiet. |
+| `id`                 | none    | Identifier carried by the `react:action:*` events.                                                     |
 
 `loading` is already `true` on the very first render of an enabled query with no `initialData`, so a skeleton renders without a flash of empty content. `isStale` is `true` when a cached entry outlived `staleTime` and is being revalidated in the background.
 
@@ -381,10 +383,38 @@ useQuery(
   [],
 );
 
-alepha.store.set(queryOptionsAtom, { retry: 0 }); // the whole app, or one spec file
+alepha.store.mut(queryOptionsAtom, (options) => ({ ...options, retry: 0 })); // the whole app, or one spec file
 ```
 
 A spec asserting the error of a retried failure either travels past the backoff with `DateTimeProvider.travel()`, or sets `retry: 0` on the query or in the atom.
+
+### Refetch on reconnect and on tab return
+
+A keyed query re-runs itself when the app comes back, keeping its entry so `data` stays on screen while the request runs:
+
+- **`refetchOnReconnect`** (default `true`): when the browser comes back online, every mounted keyed query whose entry is stale, or whose last run failed, re-runs. A read that failed while a phone was offline recovers on its own.
+- **`refetchOnFocus`** (default `false`): when the page becomes visible again, every mounted keyed query whose entry is stale re-runs. It is off by default because `staleTime` defaults to `0`, so every entry is stale: turned on app-wide, a tab return sends one request per mounted keyed query. Set it on the query that needs it (a basket, a price), with a `staleTime` to bound how often it asks.
+
+```tsx
+useQuery(
+  {
+    key: ["basket"],
+    handler,
+    refetchOnFocus: true,
+    staleTime: [30, "seconds"],
+  },
+  [],
+);
+
+alepha.store.mut(queryOptionsAtom, (options) => ({
+  ...options,
+  refetchOnReconnect: false,
+}));
+```
+
+A keyless query has no entry and no staleness, and never refetches on either event. Two components on one key send one request. The events are `visibilitychange` and `online`, one listener each per container, browser only; a native shell substitutes `QueryWakeEvents` to listen to its own resume and network events.
+
+**Polling pauses while the page is hidden.** A `runEvery` tick, on `useQuery` or `useAction`, is skipped while `document.hidden`, and the poll resumes at its next tick. There is no switch to keep polling in the background.
 
 ### Invalidating after a write
 

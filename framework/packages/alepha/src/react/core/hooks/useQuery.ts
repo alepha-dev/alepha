@@ -212,6 +212,34 @@ export function useQuery<Result>(
     serializedKey ? [...deps, serializedKey] : deps,
   );
 
+  // Register with the cache while mounted, enabled and keyed, so a tab
+  // return or a reconnect can re-run this query without dropping its entry
+  // (`QueryCache.refetchMounted`). A keyless query never registers.
+  const errorRef = useRef<Error | undefined>(undefined);
+  errorRef.current = action.error;
+  const refetchRef = useRef(action.refetch);
+  refetchRef.current = action.refetch;
+  useEffect(() => {
+    if (!cache || !serializedKey || !enabled) {
+      return;
+    }
+    return cache.observe({
+      key: optionsRef.current.key!,
+      refetch: () => void refetchRef.current(),
+      failed: () => errorRef.current !== undefined,
+      options: () => {
+        const current = optionsRef.current;
+        return {
+          staleTime: current.staleTime
+            ? dateTime.duration(current.staleTime).asMilliseconds()
+            : 0,
+          refetchOnFocus: current.refetchOnFocus,
+          refetchOnReconnect: current.refetchOnReconnect,
+        };
+      },
+    });
+  }, [cache, serializedKey, enabled, dateTime]);
+
   const refetch = useCallback(async () => {
     const run = await action.refetch();
     return run.ok ? run.value : undefined;
@@ -311,6 +339,27 @@ export interface UseQueryOptions<Result> {
    * ({@link queryOptionsAtom}), which is `2`: 1 s, then 2 s.
    */
   retry?: QueryRetry;
+
+  /**
+   * Re-run this query when the browser comes back online, if its entry is
+   * stale or its last run failed. The entry is kept while it runs, so `data`
+   * stays rendered. Keyed queries only.
+   *
+   * Defaults to the `refetchOnReconnect` field of
+   * `alepha.react.query.options`, which is `true`.
+   */
+  refetchOnReconnect?: boolean;
+
+  /**
+   * Re-run this query when the page becomes visible again (a tab return, a
+   * phone unlocked), if its entry is stale. The entry is kept while it runs.
+   * Keyed queries only. With `staleTime` at its default of `0` every entry
+   * is stale, so set a `staleTime` to bound how often a tab return asks.
+   *
+   * Defaults to the `refetchOnFocus` field of `alepha.react.query.options`,
+   * which is `false`.
+   */
+  refetchOnFocus?: boolean;
 
   /**
    * Keep rendering the previous key's data while a new key loads, instead of

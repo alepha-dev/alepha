@@ -1,7 +1,9 @@
-import { $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 
 import { queryCacheAtom } from "../atoms/queryCacheAtom.ts";
+import { queryOptionsAtom } from "../atoms/queryOptionsAtom.ts";
+import { QueryWakeEvents } from "./QueryWakeEvents.ts";
 
 /**
  * Keyed cache behind `useQuery`, with prefix invalidation.
@@ -14,6 +16,108 @@ import { queryCacheAtom } from "../atoms/queryCacheAtom.ts";
 export class QueryCache {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly wake = $inject(QueryWakeEvents);
+
+  /**
+   * Every mounted, enabled, keyed `useQuery`, by serialized key.
+   *
+   * The cache had no way to reach a mounted query other than dropping its
+   * entry, which blanks `data`. Through this registry a reconnect or a tab
+   * return re-runs the hooks and keeps the entry, and eviction knows whether
+   * anyone still reads a key.
+   */
+  protected readonly observers = new Map<string, Set<QueryObserver>>();
+
+  protected readonly onStop = $hook({
+    on: "stop",
+    handler: () => {
+      this.wake.stop();
+    },
+  });
+
+  /**
+   * Register a mounted query, and return what unregisters it.
+   *
+   * `useQuery` calls it from an effect, so it re-registers on a key change
+   * and unregisters on unmount or when `enabled` turns false. The first
+   * registration starts the container's `visibilitychange` and `online`
+   * listeners, in the browser only.
+   */
+  public observe(observer: QueryObserver): () => void {
+    const serialized = this.serialize(observer.key);
+    let set = this.observers.get(serialized);
+    if (!set) {
+      set = new Set();
+      this.observers.set(serialized, set);
+    }
+    set.add(observer);
+
+    this.wake.start({
+      visible: () => this.refetchMounted("focus"),
+      online: () => this.refetchMounted("reconnect"),
+    });
+
+    return () => {
+      const current = this.observers.get(serialized);
+      if (!current?.delete(observer)) {
+        return;
+      }
+      if (current.size === 0) {
+        this.observers.delete(serialized);
+      }
+    };
+  }
+
+  /**
+   * How many mounted queries read `key`.
+   */
+  public observerCount(key: unknown[]): number {
+    return this.observers.get(this.serialize(key))?.size ?? 0;
+  }
+
+  /**
+   * Whether the entry under `key` is still fresh for a reader whose
+   * `staleTime` is `staleTimeMs`.
+   */
+  public isFresh(key: unknown[], staleTimeMs: number): boolean {
+    const entry = this.get(key);
+    return (
+      entry !== undefined &&
+      staleTimeMs > 0 &&
+      this.dateTime.nowMillis() - entry.updatedAt < staleTimeMs
+    );
+  }
+
+  /**
+   * Re-run the mounted queries a tab return or a reconnect concerns.
+   *
+   * `focus`: every query with `refetchOnFocus` on whose entry is not fresh.
+   * `reconnect`: every query with `refetchOnReconnect` on whose entry is not
+   * fresh or whose last run failed, which is the read that failed offline.
+   * A query's own switch wins over `alepha.react.query.options`.
+   *
+   * Each re-run has `refetch()`'s semantics: the entry stays, so `data` stays
+   * rendered. Two hooks on one key meet in {@link dedupe}: one request.
+   */
+  public refetchMounted(reason: "focus" | "reconnect"): void {
+    const defaults = this.alepha.store.get(queryOptionsAtom);
+    for (const set of Array.from(this.observers.values())) {
+      for (const observer of Array.from(set)) {
+        const own = observer.options();
+        const on =
+          reason === "focus"
+            ? (own.refetchOnFocus ?? defaults.refetchOnFocus)
+            : (own.refetchOnReconnect ?? defaults.refetchOnReconnect);
+        if (!on) {
+          continue;
+        }
+        const stale = !this.isFresh(observer.key, own.staleTime);
+        if (stale || (reason === "reconnect" && observer.failed())) {
+          observer.refetch();
+        }
+      }
+    }
+  }
 
   /**
    * Stable string form of a key array.
@@ -244,6 +348,36 @@ export interface QueryCacheEntry {
    * When it was stored, in epoch milliseconds — the basis for `staleTime`.
    */
   updatedAt: number;
+}
+
+/**
+ * One mounted, enabled, keyed `useQuery`, as {@link QueryCache.observe}
+ * holds it.
+ */
+export interface QueryObserver {
+  /**
+   * The key it reads.
+   */
+  key: unknown[];
+
+  /**
+   * Re-run it, keeping its entry: `refetch()`'s semantics.
+   */
+  refetch: () => void;
+
+  /**
+   * Whether its last run failed.
+   */
+  failed: () => boolean;
+
+  /**
+   * Its current options: read at each event, so a re-render applies.
+   */
+  options: () => {
+    staleTime: number;
+    refetchOnFocus?: boolean;
+    refetchOnReconnect?: boolean;
+  };
 }
 
 /**

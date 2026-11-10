@@ -781,7 +781,10 @@ describe("useQuery retry", () => {
     }
     {
       const { wrapper } = await setup((alepha) =>
-        alepha.store.set(queryOptionsAtom, { retry: false }),
+        alepha.store.mut(queryOptionsAtom, (options) => ({
+          ...options,
+          retry: false as const,
+        })),
       );
       const handler = vi.fn(async () => {
         throw unavailable();
@@ -798,7 +801,10 @@ describe("useQuery retry", () => {
     expect,
   }) => {
     const { dateTime, wrapper } = await setup((alepha) =>
-      alepha.store.set(queryOptionsAtom, { retry: 0 }),
+      alepha.store.mut(queryOptionsAtom, (options) => ({
+        ...options,
+        retry: 0,
+      })),
     );
     const seen: number[] = [];
     const handler = vi.fn(async () => {
