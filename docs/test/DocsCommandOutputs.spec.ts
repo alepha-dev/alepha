@@ -42,3 +42,64 @@ describe("DocsCommand", () => {
     });
   });
 });
+
+describe("DocsCommand option tables", () => {
+  const docs = () => Alepha.create().inject(DocsCommand);
+
+  it("should read a type written over several lines whole, without its members' comments", () => {
+    const fields = docs().parseInterfaceFields(`
+  /**
+   * Foreign key constraints.
+   */
+  foreignKeys?: Array<{
+    /**
+     * Optional name (not a field: it sits in a comment).
+     */
+    name?: string;
+    // columns: a line comment
+    columns: Array<keyof Infer<T>>;
+    foreignColumns: Array<() => EntityColumn<any>>;
+  }>;
+
+  /**
+   * The table name.
+   */
+  name: string;
+`);
+
+    expect(fields).toEqual([
+      {
+        name: "foreignKeys",
+        type: "Array<{ name?: string; columns: Array<keyof Infer<T>>; foreignColumns: Array<() => EntityColumn<any>> }>",
+        required: false,
+        description: "Foreign key constraints.",
+      },
+      {
+        name: "name",
+        type: "string",
+        required: true,
+        description: "The table name.",
+      },
+    ]);
+  });
+
+  it("should keep a long single-line type whole", () => {
+    const type =
+      'Service<CacheProvider> | "memory" | "redis" | "cloudflare-kv" | "something-longer-than-sixty"';
+    const [field] = docs().parseInterfaceFields(`  provider?: ${type};\n`);
+
+    expect(field.type).toBe(type);
+  });
+
+  it("should leave a type's angle brackets alone, and escape its pipes", () => {
+    expect(docs().escapeTypeCell('Service<CacheProvider> | "memory"')).toBe(
+      'Service<CacheProvider> \\| "memory"',
+    );
+  });
+
+  it("should escape angle brackets in prose, outside code spans only", () => {
+    expect(
+      docs().escapeTableCell("Named `<domain>.<action>`, or <b>bold</b> | x"),
+    ).toBe("Named `<domain>.<action>`, or &lt;b&gt;bold&lt;/b&gt; \\| x");
+  });
+});

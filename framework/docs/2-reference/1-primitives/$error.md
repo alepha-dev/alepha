@@ -46,10 +46,10 @@ HTTP errors are one family of declared errors: `HttpError` from
 
 ## Options
 
-| Option        | Type                                 | Required | Description                                                          |
-| ------------- | ------------------------------------ | -------- | -------------------------------------------------------------------- |
-| `name`        | `string`                             | Yes      | The error's name: SCREAMING_SNAKE, unique, its identity on the wire. |
-| `schema`      | `S`                                  | No       | Schema of `data`                                                     |
-| `default`     | `D`                                  | No       | Default data                                                         |
-| `message`     | `string \| ((data: T) =&gt; string)` | No       | The default message, or a function of the data                       |
-| `description` | `string`                             | No       | Prose for OpenAPI and the docs.                                      |
+| Option        | Type                              | Required | Description                                                          |
+| ------------- | --------------------------------- | -------- | -------------------------------------------------------------------- |
+| `name`        | `string`                          | Yes      | The error's name: SCREAMING_SNAKE, unique, its identity on the wire. |
+| `schema`      | `S`                               | No       | Schema of `data`                                                     |
+| `default`     | `D`                               | No       | Default data                                                         |
+| `message`     | `string \| ((data: T) => string)` | No       | The default message, or a function of the data                       |
+| `description` | `string`                          | No       | Prose for OpenAPI and the docs.                                      |

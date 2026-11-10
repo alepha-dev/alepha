@@ -13,10 +13,10 @@ provider - the in-memory provider under test, a real gateway in production.
 
 ## Options
 
-| Option     | Type                                               | Required | Description |
-| ---------- | -------------------------------------------------- | -------- | ----------- |
-| `name`     | `string`                                           | No       |             |
-| `provider` | `InstantiableClass&lt;SmsProvider&gt; \| "memory"` | No       |             |
+| Option     | Type                                         | Required | Description |
+| ---------- | -------------------------------------------- | -------- | ----------- |
+| `name`     | `string`                                     | No       |             |
+| `provider` | `InstantiableClass<SmsProvider> \| "memory"` | No       |             |
 
 ## Examples
 

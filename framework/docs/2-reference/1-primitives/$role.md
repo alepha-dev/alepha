@@ -17,4 +17,4 @@ Create a new role.
 | `name`        | `string`                    | No       | Name of the role.              |
 | `description` | `string`                    | No       | Describe the role.             |
 | `issuer`      | `string \| IssuerPrimitive` | No       | The realm this role belongs to |
-| `permissions` | `Array&lt;`                 | No       |                                |
+| `permissions` | `Array<`                    | No       |                                |

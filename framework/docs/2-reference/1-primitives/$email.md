@@ -17,10 +17,10 @@ in-memory provider under test).
 
 ## Options
 
-| Option     | Type                                                 | Required | Description |
-| ---------- | ---------------------------------------------------- | -------- | ----------- |
-| `name`     | `string`                                             | No       |             |
-| `provider` | `InstantiableClass&lt;EmailProvider&gt; \| "memory"` | No       |             |
+| Option     | Type                                           | Required | Description |
+| ---------- | ---------------------------------------------- | -------- | ----------- |
+| `name`     | `string`                                       | No       |             |
+| `provider` | `InstantiableClass<EmailProvider> \| "memory"` | No       |             |
 
 ## Examples
 

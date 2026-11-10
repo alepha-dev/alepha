@@ -68,17 +68,17 @@ class CampaignController {
 
 ## Options
 
-| Option       | Type                                 | Required | Description                                                                                                                         |
-| ------------ | ------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `repository` | `Object`                             | Yes      | Repository the guarded resource is loaded from, as a thunk                                                                          |
-| `param`      | `string`                             | No       | Key holding the resource id, in whichever source `OwnsOptions.from` names                                                           |
-| `resolve`    | `Object`                             | No       | Compute the resource id instead of reading it off the request                                                                       |
-| `from`       | `"params" \| "query" \| "body"`      | No       | Where to read `OwnsOptions.param` from                                                                                              |
-| `through`    | `OwnsHop \| OwnsHop[]`               | No       | The second hop: say that ownership is not held by the row the param names, but by a row it belongs to                               |
-| `owner`      | `string`                             | No       | Column holding the owner's user id, on the row the decision is made against - the resource itself, or the row `through` lands on    |
-| `requires`   | `string \| string[]`                 | No       | Permission(s) the caller must hold **inside this resource**, on top of being its owner or one of its members                        |
-| `via`        | `Object`                             | No       | Membership fallback: a join entity linking users to the row the decision is made against                                            |
-| `cast`       | `Object`                             | No       | Coerce the raw value before querying                                                                                                |
-| `cache`      | `StatementOptions["cache"]`          | No       | Cache window for the **authority read** - the row the gate decides against, which is the resource itself when there is no `through` |
-| `message`    | `string`                             | No       | Message used for both the owner and the membership denial                                                                           |
-| `secure`     | `Omit&lt;SecureOptions, "guard"&gt;` | No       | Additional `$secure` checks layered on top - roles, permissions, issuers.                                                           |
+| Option       | Type                            | Required | Description                                                                                                                         |
+| ------------ | ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `repository` | `Object`                        | Yes      | Repository the guarded resource is loaded from, as a thunk                                                                          |
+| `param`      | `string`                        | No       | Key holding the resource id, in whichever source `OwnsOptions.from` names                                                           |
+| `resolve`    | `Object`                        | No       | Compute the resource id instead of reading it off the request                                                                       |
+| `from`       | `"params" \| "query" \| "body"` | No       | Where to read `OwnsOptions.param` from                                                                                              |
+| `through`    | `OwnsHop \| OwnsHop[]`          | No       | The second hop: say that ownership is not held by the row the param names, but by a row it belongs to                               |
+| `owner`      | `string`                        | No       | Column holding the owner's user id, on the row the decision is made against - the resource itself, or the row `through` lands on    |
+| `requires`   | `string \| string[]`            | No       | Permission(s) the caller must hold **inside this resource**, on top of being its owner or one of its members                        |
+| `via`        | `Object`                        | No       | Membership fallback: a join entity linking users to the row the decision is made against                                            |
+| `cast`       | `Object`                        | No       | Coerce the raw value before querying                                                                                                |
+| `cache`      | `StatementOptions["cache"]`     | No       | Cache window for the **authority read** - the row the gate decides against, which is the resource itself when there is no `through` |
+| `message`    | `string`                        | No       | Message used for both the owner and the membership denial                                                                           |
+| `secure`     | `Omit<SecureOptions, "guard">`  | No       | Additional `$secure` checks layered on top - roles, permissions, issuers.                                                           |

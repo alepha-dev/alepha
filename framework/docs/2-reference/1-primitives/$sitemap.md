@@ -25,7 +25,7 @@ to `""` (relative URLs). URLs that no page answers, a feed or an
 
 | Option     | Type       | Required | Description                                                                                      |
 | ---------- | ---------- | -------- | ------------------------------------------------------------------------------------------------ |
-| `hostname` | `string`   | No       | Absolute base URL used to build `&lt;loc&gt;` entries (e.g                                       |
+| `hostname` | `string`   | No       | Absolute base URL used to build `<loc>` entries (e.g                                             |
 | `urls`     | `string[]` | No       | Extra URLs to list after the pages: files and routes that are not a `$page`, such as `/llms.txt` |
 | `path`     | `string`   | No       | Route path the sitemap is served at.                                                             |
 | `static`   | `boolean`  | No       | Prerender the sitemap to a static file at build time                                             |

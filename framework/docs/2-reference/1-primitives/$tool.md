@@ -34,18 +34,18 @@ true.
 
 ## Options
 
-| Option        | Type                            | Required | Description                                                                       |
-| ------------- | ------------------------------- | -------- | --------------------------------------------------------------------------------- |
-| `name`        | `string`                        | No       | The name of the tool                                                              |
-| `title`       | `string`                        | No       | Human-friendly display title (spec 2025-11-25)                                    |
-| `description` | `string`                        | Yes      | A human-readable description of what the tool does                                |
-| `annotations` | `McpToolAnnotations`            | No       | Behavior hints (spec 2025-03-26+)                                                 |
-| `icons`       | `McpIcon[]`                     | No       | Icons surfaced in client tool palettes / picker UIs (spec 2025-11-25).            |
-| `_meta`       | `Record&lt;string, unknown&gt;` | No       | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+) |
-| `schema`      | `T`                             | No       | Zod schema defining the tool's parameters and result type                         |
-| `use`         | `TUse`                          | No       | Middlewares run on every call, outermost first, before the handler                |
-| `timeout`     | `DurationLike \| false`         | No       | How long a call may run, middlewares and handler, before it fails                 |
-| `handler`     | `Object`                        | Yes      | The handler function that executes when the tool is called                        |
+| Option        | Type                      | Required | Description                                                                       |
+| ------------- | ------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `name`        | `string`                  | No       | The name of the tool                                                              |
+| `title`       | `string`                  | No       | Human-friendly display title (spec 2025-11-25)                                    |
+| `description` | `string`                  | Yes      | A human-readable description of what the tool does                                |
+| `annotations` | `McpToolAnnotations`      | No       | Behavior hints (spec 2025-03-26+)                                                 |
+| `icons`       | `McpIcon[]`               | No       | Icons surfaced in client tool palettes / picker UIs (spec 2025-11-25).            |
+| `_meta`       | `Record<string, unknown>` | No       | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+) |
+| `schema`      | `T`                       | No       | Zod schema defining the tool's parameters and result type                         |
+| `use`         | `TUse`                    | No       | Middlewares run on every call, outermost first, before the handler                |
+| `timeout`     | `DurationLike \| false`   | No       | How long a call may run, middlewares and handler, before it fails                 |
+| `handler`     | `Object`                  | Yes      | The handler function that executes when the tool is called                        |
 
 ## Examples
 

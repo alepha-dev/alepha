@@ -40,11 +40,11 @@ explorer only when someone opens it.
 
 ## Options
 
-| Option   | Type           | Required | Description                                                                                                                           |
-| -------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`   | `string`       | No       | The page's name in the router, for `router.push(name)`.                                                                               |
-| `path`   | `string`       | No       | Where the explorer is mounted.                                                                                                        |
-| `spec`   | `string`       | No       | Where the OpenAPI document is served: `&lt;prefix&gt;/json` of the app's `$swagger`, or any OpenAPI 3 document the browser may fetch. |
-| `title`  | `string`       | No       | The browser tab's title.                                                                                                              |
-| `signIn` | `string`       | No       | Where to sign in, linked from a gated operation when nobody is signed in.                                                             |
-| `use`    | `Middleware[]` | No       | Middlewares guarding the page, `[$secure({ roles: ["admin"] })]` for an explorer only the team should see                             |
+| Option   | Type           | Required | Description                                                                                                                     |
+| -------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `name`   | `string`       | No       | The page's name in the router, for `router.push(name)`.                                                                         |
+| `path`   | `string`       | No       | Where the explorer is mounted.                                                                                                  |
+| `spec`   | `string`       | No       | Where the OpenAPI document is served: `<prefix>/json` of the app's `$swagger`, or any OpenAPI 3 document the browser may fetch. |
+| `title`  | `string`       | No       | The browser tab's title.                                                                                                        |
+| `signIn` | `string`       | No       | Where to sign in, linked from a gated operation when nobody is signed in.                                                       |
+| `use`    | `Middleware[]` | No       | Middlewares guarding the page, `[$secure({ roles: ["admin"] })]` for an explorer only the team should see                       |

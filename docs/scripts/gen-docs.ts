@@ -178,11 +178,51 @@ export class DocsCommand {
       .join(" ");
   }
 
+  /**
+   * Prose for a table cell: a pipe would end the cell, and a bare `<tag>`
+   * would be read as HTML.
+   *
+   * ⚠️ Angle brackets are escaped OUTSIDE code spans only. Inside backticks
+   * markdown prints an entity as written, so `<domain>` escaped there reached
+   * the reader, and an agent reading the page as text, as `&lt;domain&gt;`.
+   */
   escapeTableCell(str: string): string {
     return str
-      .replace(/\|/g, "\\|")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+      .split(/(`[^`]*`)/)
+      .map((part) =>
+        part.startsWith("`")
+          ? part
+          : part.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+      )
+      .join("")
+      .replace(/\|/g, "\\|");
+  }
+
+  /**
+   * A type for a table cell, which the caller wraps in backticks: only the
+   * pipe is escaped. `Array<Service>` inside a code span needs nothing, and
+   * escaping it printed `Array&lt;Service&gt;`.
+   */
+  escapeTypeCell(type: string): string {
+    return type.replace(/\|/g, "\\|");
+  }
+
+  /**
+   * A type written over several lines, as one line: the JSDoc of its members
+   * and its line comments dropped, whitespace collapsed, and no space left
+   * inside the brackets a formatter broke the line at.
+   */
+  flattenType(source: string): string {
+    return source
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/^\s*\/\/.*$/gm, " ")
+      .replace(/\s+/g, " ")
+      .replace(/ ;/g, ";")
+      .replace(/([(<[]) /g, "$1")
+      .replace(/ ([)>\]])/g, "$1")
+      .replace(/;? }/g, " }")
+      .replace(/[;,]\s*$/, "")
+      .trim();
   }
 
   buildImportPathMap(pkgJson: any): Map<string, string> {
@@ -261,8 +301,26 @@ export class DocsCommand {
       return d;
     };
 
+    // A field whose type runs over several lines: collected here until the
+    // brackets it opened are closed, then flattened. It used to be cut at its
+    // first line, which printed `Array<{` for `foreignKeys`.
+    let open: { field: OptionField; lines: string[] } | undefined;
+
     for (const line of body.split("\n")) {
       const trimmed = line.trim();
+
+      if (open) {
+        open.lines.push(line);
+        // Comments are dropped by `flattenType`; counting their brackets
+        // here would close, or never close, the type they sit in.
+        if (!/^(\/\*\*|\*|\/\/)/.test(trimmed)) depth += countBalance(line);
+        if (depth <= 0) {
+          depth = 0;
+          open.field.type = this.flattenType(open.lines.join("\n"));
+          open = undefined;
+        }
+        continue;
+      }
 
       if (trimmed.startsWith("/**")) {
         inJsDoc = true;
@@ -301,9 +359,8 @@ export class DocsCommand {
         let typeStr = fm[3].replace(/[;,]\s*$/, "").trim();
         if (typeStr.startsWith("{") || typeStr.startsWith("("))
           typeStr = "Object";
-        if (typeStr.length > 60) typeStr = `${typeStr.slice(0, 57)}...`;
 
-        fields.push({
+        const field: OptionField = {
           name: fm[1],
           type: typeStr,
           required: fm[2] !== "?",
@@ -314,7 +371,12 @@ export class DocsCommand {
               .split(". ")[0]
               .trim(),
           ),
-        });
+        };
+        fields.push(field);
+        // Still inside the brackets this line opened: the type goes on.
+        if (depth > 0 && typeStr !== "Object") {
+          open = { field, lines: [fm[3]] };
+        }
         jsDocLines = [];
       }
     }
@@ -721,7 +783,7 @@ export class DocsCommand {
     if (doc.options && doc.options.length > 0) {
       md += `## Options\n\n| Option | Type | Required | Description |\n|--------|------|----------|-------------|\n`;
       for (const o of doc.options) {
-        md += `| \`${o.name}\` | \`${this.escapeTableCell(o.type)}\` | ${o.required ? "Yes" : "No"} | ${this.escapeTableCell(o.description)} |\n`;
+        md += `| \`${o.name}\` | \`${this.escapeTypeCell(o.type)}\` | ${o.required ? "Yes" : "No"} | ${this.escapeTableCell(o.description)} |\n`;
       }
       md += `\n`;
     }

@@ -45,20 +45,20 @@ renaming the property never moves the URL.
 
 ## Options
 
-| Option        | Type                                       | Required | Description                                                                                                                                 |
-| ------------- | ------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | `string`                                   | No       | Name of the action                                                                                                                          |
-| `group`       | `string`                                   | No       | Group actions together                                                                                                                      |
-| `path`        | `string`                                   | Yes      | Pathname of the route, below the API prefix (`/api` by default)                                                                             |
-| `method`      | `RouteMethod`                              | Yes      | The route method                                                                                                                            |
-| `schema`      | `TConfig`                                  | No       | The config schema of the route                                                                                                              |
-| `description` | `string`                                   | No       | A short description of the action                                                                                                           |
-| `disabled`    | `boolean`                                  | No       | Disable the route                                                                                                                           |
-| `use`         | `TUse`                                     | No       | Middlewares wrapping the handler, outermost first                                                                                           |
-| `errors`      | `TErrors`                                  | No       | The errors this action answers with: `$error` constants or built-in `HttpError` classes (`NotFoundError`)                                   |
-| `timeout`     | `DurationLike \| false`                    | No       | How long the action may run before it answers 503 with a `TimeoutError`                                                                     |
-| `mcp`         | `boolean \| ActionMcpOptions`              | No       | Also serve this action as an MCP tool, when `alepha/mcp` is registered: `tools/list` lists it beside the `$tool`s, and `tools/call` runs it |
-| `handler`     | `ServerActionHandler&lt;TConfig, TUse&gt;` | Yes      | Main route handler                                                                                                                          |
+| Option        | Type                                 | Required | Description                                                                                                                                 |
+| ------------- | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `string`                             | No       | Name of the action                                                                                                                          |
+| `group`       | `string`                             | No       | Group actions together                                                                                                                      |
+| `path`        | `string`                             | Yes      | Pathname of the route, below the API prefix (`/api` by default)                                                                             |
+| `method`      | `RouteMethod`                        | Yes      | The route method                                                                                                                            |
+| `schema`      | `TConfig`                            | No       | The config schema of the route                                                                                                              |
+| `description` | `string`                             | No       | A short description of the action                                                                                                           |
+| `disabled`    | `boolean`                            | No       | Disable the route                                                                                                                           |
+| `use`         | `TUse`                               | No       | Middlewares wrapping the handler, outermost first                                                                                           |
+| `errors`      | `TErrors`                            | No       | The errors this action answers with: `$error` constants or built-in `HttpError` classes (`NotFoundError`)                                   |
+| `timeout`     | `DurationLike \| false`              | No       | How long the action may run before it answers 503 with a `TimeoutError`                                                                     |
+| `mcp`         | `boolean \| ActionMcpOptions`        | No       | Also serve this action as an MCP tool, when `alepha/mcp` is registered: `tools/list` lists it beside the `$tool`s, and `tools/call` runs it |
+| `handler`     | `ServerActionHandler<TConfig, TUse>` | Yes      | Main route handler                                                                                                                          |
 
 ## Examples
 

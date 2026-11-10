@@ -12,13 +12,13 @@ Creates a database entity primitive that defines table structure using Zod schem
 
 ## Options
 
-| Option        | Type         | Required | Description                                                  |
-| ------------- | ------------ | -------- | ------------------------------------------------------------ |
-| `name`        | `string`     | Yes      | The database table name that will be created for this entity |
-| `schema`      | `T`          | Yes      | Zod schema defining the table structure and column types.    |
-| `indexes`     | `Object`     | No       | Database indexes to create for query optimization.           |
-| `foreignKeys` | `Array&lt;{` | No       | Foreign key constraints to maintain referential integrity.   |
-| `constraints` | `Array&lt;{` | No       | Additional table constraints for data validation             |
+| Option        | Type                                                                                                       | Required | Description                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------ |
+| `name`        | `string`                                                                                                   | Yes      | The database table name that will be created for this entity |
+| `schema`      | `T`                                                                                                        | Yes      | Zod schema defining the table structure and column types.    |
+| `indexes`     | `Object`                                                                                                   | No       | Database indexes to create for query optimization.           |
+| `foreignKeys` | `Array<{ name?: string; columns: Array<keyof Infer<T>>; foreignColumns: Array<() => EntityColumn<any>> }>` | No       | Foreign key constraints to maintain referential integrity.   |
+| `constraints` | `Array<{ columns: Array<keyof Infer<T>>; name?: string; unique?: boolean \| {}; check?: SQL }>`            | No       | Additional table constraints for data validation             |
 
 ## Examples
 

@@ -16,15 +16,15 @@ Wrap Services and Primitives into a Module.
 
 ## Options
 
-| Option       | Type                                 | Required | Description                                                                      |
-| ------------ | ------------------------------------ | -------- | -------------------------------------------------------------------------------- |
-| `name`       | `string`                             | Yes      | Name of the module                                                               |
-| `services`   | `Array&lt;Service&gt;`               | No       | Services that belong to this module                                              |
-| `variants`   | `Array&lt;Service&gt;`               | No       | Alternative implementations that belong to this module but are NOT auto-injected |
-| `imports`    | `Array&lt;Service&lt;Module&gt;&gt;` | No       | Other modules this module depends on                                             |
-| `primitives` | `Array&lt;PrimitiveFactoryLike&gt;`  | No       | List of $primitives to register in the module.                                   |
-| `register`   | `Object`                             | No       | Additive side-effect hook                                                        |
-| `atoms`      | `Array&lt;Atom&lt;any&gt;&gt;`       | No       | List of atoms to register in the module.                                         |
+| Option       | Type                          | Required | Description                                                                      |
+| ------------ | ----------------------------- | -------- | -------------------------------------------------------------------------------- |
+| `name`       | `string`                      | Yes      | Name of the module                                                               |
+| `services`   | `Array<Service>`              | No       | Services that belong to this module                                              |
+| `variants`   | `Array<Service>`              | No       | Alternative implementations that belong to this module but are NOT auto-injected |
+| `imports`    | `Array<Service<Module>>`      | No       | Other modules this module depends on                                             |
+| `primitives` | `Array<PrimitiveFactoryLike>` | No       | List of $primitives to register in the module.                                   |
+| `register`   | `Object`                      | No       | Additive side-effect hook                                                        |
+| `atoms`      | `Array<Atom<any>>`            | No       | List of atoms to register in the module.                                         |
 
 ## Examples
 
