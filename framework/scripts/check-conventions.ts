@@ -2,25 +2,25 @@
 /**
  * Guards the conventions that had quietly drifted, so they stop drifting.
  *
- *   1. Errors extend `AlephaError` — a bare `Error` loses the framework's
- *      `name` and the handling that keys off it.
- *   2. Time comes from `DateTimeProvider` — `Date.now()` in business logic is
- *      what makes a behaviour untestable with `travel()` / `pause()`.
- *   3. A workspace declares a `version` if and only if it is published.
- *
- * The first two have legitimate exceptions, and a guard that cannot express
- * them gets disabled the first time it is wrong. They are listed below, each
- * with the reason it is exempt — an unexplained entry is how an allowlist
- * rots into a list of things nobody dares touch.
- *
- * Rules 1 and 2 read framework sources only. Tests may do whatever is
- * convenient; that is the point of a test. Rule 3 spans every workspace,
- * because that is the scope of the thing it protects.
+ *   1. The rules `alepha check` ships to every app (`no-date-now`,
+ *      `no-bare-error`, `no-error-class`, `describe-it`, `no-vi-mock`,
+ *      `no-module-code`), run through its runner over the trees below. An
+ *      exception is an `// alepha-allow <rule>: <reason>` comment at the
+ *      site: an unexplained entry is how an allowlist rots into a list of
+ *      things nobody dares touch.
+ *   2. A workspace declares a `version` if and only if it is published.
+ *   3. Everything else here is about this repository, not about an app.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { Alepha } from "alepha";
+import {
+  AlephaCliServices,
+  ConventionRunner,
+  NoModuleCodeRule,
+} from "alepha/cli";
 import { parseAst } from "rolldown/parseAst";
 
 import { HookNamePolicy } from "../packages/alepha/src/core/helpers/HookNamePolicy.ts";
@@ -71,110 +71,6 @@ const SRC = "packages/alepha/src";
 // The docs site sits beside the framework since #Q2766 (`../docs`), and is
 // still held to the framework's rules: it renders the guides that state them.
 const SRC_ROOTS = ["packages/alepha/src", "../docs/src", "../docs/scripts"];
-
-/**
- * A file is exempt from the `Date.now()` rule when the timestamp it produces is
- * not a decision the application makes — file metadata, or a unique-ish suffix.
- * Faking the clock there would buy nothing and cost a provider injection in
- * code that has no container.
- */
-const DATE_NOW_EXEMPT = [
-  "packages/alepha/src/server/core/services/HttpClient.ts",
-  // The provider itself has to read the wall clock somewhere.
-  "packages/alepha/src/datetime/providers/DateTimeProvider.ts",
-  // `now: () => Date.now()` is already an injectable seam: the default is
-  // overridden wherever the clock needs to be controlled.
-  "packages/alepha/src/websocket/providers/WebSocketRoom.ts",
-  "packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts",
-  // Unique temp-directory suffix, never compared or asserted on.
-  "packages/alepha/src/bucket/providers/LocalFileStorageProvider.ts",
-  // `alepha check` names the call it refuses in its own strings, which this
-  // grep cannot tell from code. Both go when the grep does (#Q3249).
-  "packages/alepha/src/cli/core/conventions/NoDateNowRule.ts",
-  "packages/alepha/src/cli/core/commands/check.ts",
-];
-
-/**
- * `BuildServerTask` emits a `throw new Error(...)` **into the generated
- * bundle** as a string. That code runs in the built app, where `AlephaError`
- * is not in scope — it is not this codebase throwing.
- */
-const THROW_EXEMPT = ["packages/alepha/src/cli/core/tasks/BuildServerTask.ts"];
-
-const search = (pattern: string): string[] => {
-  try {
-    return execFileSync(
-      "grep",
-      ["-rn", "--include=*.ts", "--include=*.tsx", pattern, ...SRC_ROOTS],
-      { encoding: "utf8" },
-    )
-      .split("\n")
-      .filter(Boolean);
-  } catch {
-    // grep exits 1 when it matches nothing, which is the outcome we want.
-    return [];
-  }
-};
-
-/**
- * Drop tests, and comment lines — an example is documentation, not logic.
- *
- * Both comment styles, and the `//` half is not cosmetic: the honest way to
- * write one of these fixes is to say in a comment which construct was avoided
- * and why, and that sentence necessarily contains the banned string. Without
- * this, explaining the rule trips the rule.
- */
-const isRelevant = (line: string): boolean => {
-  const [file] = line.split(":");
-  if (/__tests__|\.spec\.|fixtures/.test(file)) return false;
-  const body = line.slice(line.indexOf(":", line.indexOf(":") + 1) + 1);
-  return !/^\s*(\*|\/\/)/.test(body);
-};
-
-const violations: string[] = [];
-
-for (const line of search("throw new Error(").filter(isRelevant)) {
-  const file = line.split(":")[0];
-  if (THROW_EXEMPT.some((e) => file.endsWith(e))) continue;
-  violations.push(`  ${line.trim()}\n    → use AlephaError`);
-}
-
-for (const line of search("Date.now()").filter(isRelevant)) {
-  const file = line.split(":")[0];
-  if (DATE_NOW_EXEMPT.some((e) => file.endsWith(e))) continue;
-  violations.push(
-    `  ${line.trim()}\n    → inject DateTimeProvider, use nowMillis()`,
-  );
-}
-
-if (violations.length > 0) {
-  console.error(
-    `\n${violations.length} convention violation(s):\n\n${violations.join("\n")}\n\n` +
-      "If one of these is genuinely exempt, add it to the allowlist in\n" +
-      "scripts/check-conventions.ts — with the reason.\n",
-  );
-  process.exit(1);
-}
-
-// An allowlist entry that no longer matches anything is a stale exemption:
-// it will silently cover a future violation in the same file.
-const stale = [...DATE_NOW_EXEMPT, ...THROW_EXEMPT].filter((f) => {
-  try {
-    const src = readFileSync(f, "utf8");
-    return !src.includes("Date.now()") && !src.includes("throw new Error(");
-  } catch {
-    return true; // file gone
-  }
-});
-
-if (stale.length > 0) {
-  console.error(
-    `\nStale exemption(s) in scripts/check-conventions.ts — nothing to exempt:\n` +
-      stale.map((f) => `  ${f}`).join("\n") +
-      "\n\nRemove them.\n",
-  );
-  process.exit(1);
-}
 
 /**
  * `yarn workspaces list` answers for the whole project: framework, lore and
@@ -432,36 +328,60 @@ const stripLiterals = (src: string): string => {
   return out;
 };
 
-const serviceFiles = execFileSync(
-  "find",
-  [...NO_MODULE_CODE_TREES, "-type", "f", "-name", "*.ts"],
-  { encoding: "utf8" },
-)
-  .split("\n")
-  .filter(Boolean)
-  .filter((file) => SERVICE_DIRS.some((dir) => file.includes(`/${dir}/`)))
-  .filter((file) => !/__tests__|\.spec\.|fixtures/.test(file));
-
-const moduleCodeViolations: string[] = [];
-
-for (const file of serviceFiles) {
-  const lines = stripLiterals(readFileSync(file, "utf8")).split("\n");
-  lines.forEach((line, index) => {
-    if (/^(export )?(const|let|var|function|async function) /.test(line)) {
-      moduleCodeViolations.push(
-        `  ${file}:${index + 1}\n    → ${line.trim().slice(0, 72)}\n` +
-          "      move it onto the class (protected member) or into its own service",
-      );
-    }
-  });
+/**
+ * The rules `alepha check` ships, run here through its runner, each over the
+ * trees this file has always held it to (#E122, decision 2: one
+ * implementation). The framework replaces the built-in `verify`, so it never
+ * gets the `check` step from it: this is where the shipped rules run for it.
+ *
+ * Called rule by rule rather than through an `alepha.config.ts` `check` key:
+ * that key's `ignore` hides a path from every rule, and each rule here reads
+ * a different tree.
+ *
+ * An exception is an `// alepha-allow <rule>: <reason>` comment on the line
+ * above the code, never an entry in a list here. `no-zod-import` and
+ * `no-window-dialog` are not run: `packages/alepha` is the one place that
+ * imports `zod`, and the framework's dialogs are the ones `useDialog` renders.
+ */
+class FrameworkNoModuleCodeRule extends NoModuleCodeRule {
+  // The framework keeps commands and tasks in their own service-shaped
+  // directories, which a user's app does not have.
+  protected override readonly directories = SERVICE_DIRS;
 }
 
-if (moduleCodeViolations.length > 0) {
+const conventions = Alepha.create({ env: { LOG_LEVEL: "error" } })
+  .with({ provide: NoModuleCodeRule, use: FrameworkNoModuleCodeRule })
+  .with(AlephaCliServices)
+  .inject(ConventionRunner);
+
+const SHIPPED_RULE_RUNS: Array<{ rules: string[]; paths: string[] }> = [
+  { rules: ["no-bare-error", "no-date-now"], paths: SRC_ROOTS },
+  // Every `.ts` and `.tsx` of the framework's packages and apps.
+  { rules: ["no-error-class"], paths: ["packages", "apps"] },
+  // Every spec of the framework (the rule skips `e2e/` and Playwright), and
+  // the docs site's, which publishes the guide stating the rule.
+  { rules: ["describe-it", "no-vi-mock"], paths: ["packages", "apps"] },
+  { rules: ["no-vi-mock"], paths: ["../docs/test"] },
+  // Only the trees that are clean (see NO_MODULE_CODE_TREES).
+  { rules: ["no-module-code"], paths: NO_MODULE_CODE_TREES },
+];
+
+const shippedViolations: string[] = [];
+for (const run of SHIPPED_RULE_RUNS) {
+  const report = await conventions.run({ root: process.cwd(), ...run });
+  for (const finding of report.findings) {
+    shippedViolations.push(
+      `  ${finding.file}:${finding.line}  ${finding.rule}\n    → ${finding.message} ${finding.fix}`,
+    );
+  }
+}
+
+if (shippedViolations.length > 0) {
   console.error(
-    `\n${moduleCodeViolations.length} module-level code violation(s):\n\n` +
-      `${moduleCodeViolations.join("\n")}\n\n` +
-      "Service files hold classes only - a helper outside one cannot be\n" +
-      "substituted through the container, which is what makes it untestable.\n",
+    `\n${shippedViolations.length} convention violation(s):\n\n` +
+      `${shippedViolations.join("\n")}\n\n` +
+      "A genuine exception carries `// alepha-allow <rule>: <reason>` on the\n" +
+      "line above it. The rules are alepha check's: `alepha check --list`.\n",
   );
   process.exit(1);
 }
@@ -749,32 +669,6 @@ if (changelogViolations.length > 0) {
   process.exit(1);
 }
 
-/**
- * A spec's cases live inside a `describe`.
- *
- * The house style is `describe` + `it`, and the thing that actually costs
- * something when it drifts is the `describe`: without it the reporter prints
- * a flat list of sentences with no subject, and `vitest run -t` has no handle
- * to select a subject by. Five specs had drifted to a bare `test(...)` at the
- * top of the file - `Alepha-with`, `Router`, `ReactServerProvider`, `$channel`
- * and `$websocket-new`.
- *
- * Indentation is the test for "top level", not a parse. Every file here is
- * formatted by oxfmt, so a case at column zero is a case outside every block,
- * and the check stays a grep rather than a second TypeScript dependency.
- *
- * `it` is refused at column zero for the same reason as `test`: renaming the
- * call without adding the `describe` fixes the half that was never the
- * problem. Inside a block, both spellings are left alone - `test` and `it` are
- * the same function in vitest, and rewriting 1200 call sites would be a diff
- * nobody can review for a difference nobody can observe.
- *
- * `e2e/` is excluded because Playwright's API *is* `test`, with no `it` to
- * move to, and its specs are files of independent scenarios rather than a
- * suite about one subject.
- */
-const FLAT_CASE = /^(test|it)(\.\w+)*\(/;
-
 // Untracked files too (`-o`), so a spec written five minutes ago is checked
 // where it is cheap to fix rather than on the CI run after the commit.
 const specFiles = [
@@ -788,29 +682,6 @@ const specFiles = [
       .filter(Boolean),
   ),
 ].filter((file) => existsSync(file) && !file.includes("/e2e/"));
-
-const flatSpecViolations: string[] = [];
-
-for (const file of specFiles) {
-  const lines = readFileSync(file, "utf8").split("\n");
-  for (const [index, line] of lines.entries()) {
-    if (FLAT_CASE.test(line)) {
-      flatSpecViolations.push(
-        `  ${file}:${index + 1}\n    → wrap the file's cases in a describe() named after the subject`,
-      );
-    }
-  }
-}
-
-if (flatSpecViolations.length > 0) {
-  console.error(
-    `\n${flatSpecViolations.length} flat spec case(s):\n\n` +
-      `${flatSpecViolations.join("\n")}\n\n` +
-      "A case at the top level of a spec has no subject in the reporter and no\n" +
-      "handle for `vitest run -t`. Wrap the file in a describe() and use it().\n",
-  );
-  process.exit(1);
-}
 
 /**
  * No `toThrowError`, the alias Vitest 5 deprecates in favour of `toThrow`.
@@ -1734,57 +1605,6 @@ for (const [oldName, newName] of Object.entries(HookNamePolicy.retired)) {
 if (hookViolations.length) {
   console.error(
     `\n${hookViolations.length} hook naming convention violation(s):\n${hookViolations.join("\n")}\nSee AGENTS.md, Architecture.`,
-  );
-  process.exit(1);
-}
-
-/**
- * Errors are declared with `$error`, never written as classes.
- *
- * `$error({ name, schema })` and `.extend({ ... })` build the classes, so a
- * declared error is a constant the registry knows by name: the browser
- * rebuilds it from a response body, and `instanceof` holds on both sides. A
- * hand-written `class X extends HttpError` is invisible to that registry and
- * comes back as a plain error. The two bases themselves (`AlephaError`, the
- * generic error, and `DeclaredError`, the root `$error` extends) are the only
- * classes allowed. Specs may still throw a local `class Rollback extends
- * Error` as control flow.
- */
-const ERROR_CLASS_ALLOWED = new Set([
-  "packages/alepha/src/core/errors/AlephaError.ts",
-  "packages/alepha/src/core/errors/DeclaredError.ts",
-]);
-const errorClassViolations = execFileSync(
-  "git",
-  [
-    "ls-files",
-    "packages/**/*.ts",
-    "packages/**/*.tsx",
-    "apps/**/*.ts",
-    "apps/**/*.tsx",
-  ],
-  { encoding: "utf8" },
-)
-  .split("\n")
-  .filter(Boolean)
-  .filter((file) => !ERROR_CLASS_ALLOWED.has(file))
-  .filter((file) => !/__tests__|\.spec\.|\/e2e\//.test(file))
-  .flatMap((file) => {
-    const lines = stripLiterals(readFileSync(file, "utf8")).split("\n");
-    return lines.flatMap((line, index) =>
-      /\bclass\s+\w+\s+extends\s+[\w.]*Error\b/.test(line)
-        ? [`  ${file}:${index + 1}\n    → ${line.trim().slice(0, 72)}`]
-        : [],
-    );
-  });
-
-if (errorClassViolations.length > 0) {
-  console.error(
-    `\n${errorClassViolations.length} error class violation(s):\n\n` +
-      `${errorClassViolations.join("\n")}\n\n` +
-      "Declare an error with $error({ name, schema }), or derive one with\n" +
-      "Parent.extend({ name, ... }). An error class is invisible to the\n" +
-      "registry the browser rebuilds errors from.\n",
   );
   process.exit(1);
 }

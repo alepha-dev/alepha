@@ -830,6 +830,7 @@ export class HttpClient {
       name: match?.[1] ? match[1] : defaultFileName,
       type: response.headers.get("Content-Type") ?? "application/octet-stream",
       size: Number(response.headers.get("Content-Length") ?? 0),
+      // alepha-allow no-date-now: file metadata, the moment a download was received, never a decision the app makes
       lastModified: Date.now(),
       stream: () => {
         // `response.body` was right there — throwing here broke every

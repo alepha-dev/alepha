@@ -91,6 +91,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
         this.storagePath === localFileStorageOptions.options.default.storagePath
       ) {
         this.alepha.store.set(localFileStorageOptions, {
+          // alepha-allow no-date-now: a unique temp-directory suffix, never compared or asserted on
           storagePath: join(tmpdir(), `alepha-test-${Date.now()}`),
         });
       }

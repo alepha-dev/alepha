@@ -133,7 +133,7 @@ Every Playwright config takes its port from `e2ePort("<app>")` in `scripts/playw
 - `Alepha.create()` handles start/stop in tests. Arrange-Act-Assert, descriptive names, `expect` taken from the test fixture.
 - **`describe` + `it`, never a bare `test()` or `it()` at the top level** (`check:conventions`; `e2e/` is exempt, Playwright has no `it`).
 - Errors: `expect().toThrow()` and `expect().rejects.toThrow()`. Never `toThrowError` (`check:conventions`).
-- **NEVER `vi.mock()` or `vi.spyOn()`.** Substitute services instead:
+- **NEVER `vi.mock()` or `vi.spyOn()`** (`check:conventions`, also `vi.doMock`, `vi.useFakeTimers` and `vi.setSystemTime`). Substitute services instead:
 
 ```typescript
 const alepha = Alepha.create()

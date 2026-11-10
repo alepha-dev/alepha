@@ -27,6 +27,7 @@ describe("Dialog", () => {
   });
 
   test("calls onClose when Escape is pressed", async () => {
+    // alepha-allow no-vi-mock: this Dialog is a plain React component rendered outside any container, and its close animation is a window setTimeout, so there is no DateTimeProvider to travel
     vi.useFakeTimers();
     const onClose = vi.fn();
 
@@ -51,6 +52,7 @@ describe("Dialog", () => {
   });
 
   test("does not call onClose on Escape when closeOnEscape is false", () => {
+    // alepha-allow no-vi-mock: this Dialog is a plain React component rendered outside any container, and its close animation is a window setTimeout, so there is no DateTimeProvider to travel
     vi.useFakeTimers();
     const onClose = vi.fn();
 
@@ -71,6 +73,7 @@ describe("Dialog", () => {
   });
 
   test("calls onClose when overlay is clicked", async () => {
+    // alepha-allow no-vi-mock: this Dialog is a plain React component rendered outside any container, and its close animation is a window setTimeout, so there is no DateTimeProvider to travel
     vi.useFakeTimers();
     const onClose = vi.fn();
 
@@ -96,6 +99,7 @@ describe("Dialog", () => {
   });
 
   test("does not call onClose on overlay click when closeOnOverlayClick is false", () => {
+    // alepha-allow no-vi-mock: this Dialog is a plain React component rendered outside any container, and its close animation is a window setTimeout, so there is no DateTimeProvider to travel
     vi.useFakeTimers();
     const onClose = vi.fn();
 
@@ -117,6 +121,7 @@ describe("Dialog", () => {
   });
 
   test("does not close when clicking dialog content", () => {
+    // alepha-allow no-vi-mock: this Dialog is a plain React component rendered outside any container, and its close animation is a window setTimeout, so there is no DateTimeProvider to travel
     vi.useFakeTimers();
     const onClose = vi.fn();
 
@@ -159,6 +164,7 @@ describe("Dialog", () => {
   });
 
   test("cleans up event listener on unmount", () => {
+    // alepha-allow no-vi-mock: this Dialog is a plain React component rendered outside any container, and its close animation is a window setTimeout, so there is no DateTimeProvider to travel
     vi.useFakeTimers();
     const onClose = vi.fn();
 

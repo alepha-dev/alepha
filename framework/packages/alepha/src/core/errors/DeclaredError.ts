@@ -1,6 +1,7 @@
 import type { ZObject } from "../providers/ZodProvider.ts";
 import { AlephaError } from "./AlephaError.ts";
 
+// alepha-allow no-error-class: the root `$error` extends, which builds every declared error class
 /**
  * The base of every error declared with `$error`.
  *

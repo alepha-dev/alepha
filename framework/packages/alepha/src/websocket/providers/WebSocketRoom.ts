@@ -21,6 +21,7 @@ const defaultRoomClock: RoomClock = {
   setInterval: (fn, ms) => setInterval(fn, ms),
   clearInterval: (handle) =>
     clearInterval(handle as ReturnType<typeof setInterval>),
+  // alepha-allow no-date-now: `now` is already an injectable seam, overridden wherever the clock needs to be controlled
   now: () => Date.now(),
 };
 

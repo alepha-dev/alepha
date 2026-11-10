@@ -396,6 +396,7 @@ export class DateTimeProvider {
     if (this.ref) {
       return this.ref.valueOf();
     }
+    // alepha-allow no-date-now: the provider itself has to read the wall clock somewhere
     return Date.now();
   }
 
