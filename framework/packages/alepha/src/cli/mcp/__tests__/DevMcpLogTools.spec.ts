@@ -40,6 +40,33 @@ describe("alepha mcp: logs, emails and SMS", () => {
     ).toMatch(/Nothing matching was logged after marker/);
   });
 
+  it("says nothing was logged, not nothing matching, when since is the only filter", async ({
+    expect,
+  }) => {
+    const { call } = await fixture();
+    const marker = Number(/Marker: (-?\d+)/.exec(await call("logs_mark"))?.[1]);
+
+    expect(await call("logs_tail", { since: marker })).toBe(
+      `Nothing was logged after marker ${marker}.`,
+    );
+  });
+
+  it("says a live run's total counts the restored history", async ({
+    expect,
+  }) => {
+    const { call, app } = await fixture();
+    const notes = app.inject(NotesApp);
+    for (let i = 0; i < 12; i++) {
+      (notes as any).log.info(`counted ${i}`);
+    }
+
+    const capped = await call("logs_tail", { text: "counted", limit: 5 });
+
+    expect(capped.split("\n")[0]).toBe(
+      "Showing the newest 5 of 12 matching entries (the total counts the previous run's restored history, numbered below zero); raise `limit` or narrow the filters for the rest.",
+    );
+  });
+
   it("pages through a burst after a marker instead of keeping one page", async ({
     expect,
   }) => {
@@ -62,7 +89,10 @@ describe("alepha mcp: logs, emails and SMS", () => {
     expect(lines[259]).toContain("burst 259");
 
     const capped = await call("logs_tail", { since: marker, text: "burst" });
-    expect(capped).toMatch(/^Showing the newest 50 of 260/);
+    // After a marker everything counted is this run's: no history note.
+    expect(capped).toMatch(
+      /^Showing the newest 50 of 260 matching entries; raise/,
+    );
   });
 
   it("reads an email and an SMS an action sent, by id", async ({ expect }) => {

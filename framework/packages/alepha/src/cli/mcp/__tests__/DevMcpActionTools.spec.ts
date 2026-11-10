@@ -28,6 +28,8 @@ describe("alepha mcp: action_call", () => {
     });
     expect(text).toMatch(/^200 in \d+ ms/);
     expect(text).toContain('"title": "hello"');
+    // The call leaves no access line: the answer says so itself.
+    expect(text).toContain("no HTTP access line is logged");
   });
 
   it("answers a $secure refusal with the status that user would get", async ({

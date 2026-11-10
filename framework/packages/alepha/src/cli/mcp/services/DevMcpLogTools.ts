@@ -70,15 +70,25 @@ export class DevMcpLogTools {
       const limit = params.limit ?? 50;
       const { entries, total } = await this.read(target.connection, params);
       if (!entries.length) {
-        return params.since !== undefined
+        if (params.since === undefined) return "No log entry matches.";
+        // "Nothing matching" with no filter reads as a filter that hid
+        // something: with `since` alone, nothing was logged at all.
+        return this.filtered(params)
           ? `Nothing matching was logged after marker ${params.since}.`
-          : "No log entry matches.";
+          : `Nothing was logged after marker ${params.since}.`;
       }
       const shown = entries.slice(-limit);
       const lines = shown.map((entry) => this.line(entry, !!params.full));
       if (total > shown.length) {
+        // A live run's total counts the history it restored from the run
+        // before it, which is numbered below zero: "5 of 155" while the
+        // newest seq is 45 otherwise reads as 110 entries gone missing.
+        const history =
+          params.since === undefined && target.connection.run.status !== "dead"
+            ? " (the total counts the previous run's restored history, numbered below zero)"
+            : "";
         lines.unshift(
-          `Showing the newest ${shown.length} of ${total} matching entries; raise \`limit\` or narrow the filters for the rest.`,
+          `Showing the newest ${shown.length} of ${total} matching entries${history}; raise \`limit\` or narrow the filters for the rest.`,
           "",
         );
       }
@@ -267,6 +277,23 @@ export class DevMcpLogTools {
       if (!page.hasMore || !batch.length) break;
     }
     return { entries, total: entries.length };
+  }
+
+  /**
+   * Whether anything but `since` and `limit` narrows the tail.
+   */
+  protected filtered(params: {
+    level?: string;
+    logger?: string;
+    text?: string;
+    slowerThan?: number;
+  }): boolean {
+    return (
+      params.level !== undefined ||
+      params.logger !== undefined ||
+      params.text !== undefined ||
+      params.slowerThan !== undefined
+    );
   }
 
   /**

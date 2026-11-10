@@ -276,7 +276,20 @@ describe("AppMapRenderer", () => {
       const text = renderer().render(input(), undefined, "health");
 
       expect(text).toContain('## Routes (1 matching "health")');
-      expect(text).toContain('## Actions (0 matching "health")');
+      // A section with no match is left out, heading included.
+      expect(text).not.toContain("## Actions");
+      expect(text).not.toContain("(0 matching");
+    });
+
+    it("says so when nothing matches at all", () => {
+      const r = renderer();
+
+      expect(r.render(input(), undefined, "zzz-nowhere")).toContain(
+        'Nothing matches "zzz-nowhere".',
+      );
+      expect(r.render(input(), "actions", "zzz-nowhere")).toContain(
+        'Nothing in `actions` matches "zzz-nowhere".',
+      );
     });
   });
 

@@ -39,6 +39,24 @@ describe("alepha mcp: app_map and app_describe", () => {
 
     const filtered = await call("app_map", { filter: "getNote" });
     expect(filtered).toContain('## Actions (1 matching "getNote")');
+    // The sections with no match are left out, not printed as zero.
+    expect(filtered).not.toContain("(0 matching");
+    expect(filtered).not.toContain("## Entities");
+  });
+
+  it("says a public action is public, and that it declares no errors", async ({
+    expect,
+  }) => {
+    const { call } = await fixture();
+
+    const text = await call("app_describe", { kind: "action", name: "invite" });
+
+    expect(text).toContain("- secure: public (no $secure)");
+    expect(text).toContain("- errors: no declared errors");
+    // And only when one action is described: a section stays terse.
+    expect(await call("app_map", { section: "actions" })).not.toContain(
+      "public (no $secure)",
+    );
   });
 
   it("describes an action with its types, $secure rule and declared errors", async ({

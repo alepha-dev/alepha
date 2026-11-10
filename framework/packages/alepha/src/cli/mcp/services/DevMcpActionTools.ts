@@ -14,10 +14,13 @@ import { DevMcpSession } from "./DevMcpSession.ts";
 export class DevMcpActionTools {
   protected readonly session = $inject(DevMcpSession);
 
+  protected readonly logNote =
+    "(Called in process: no HTTP access line is logged. logs_tail shows only what the action itself logged.)";
+
   public readonly actionCall = $tool({
     name: "action_call",
     description:
-      'Call one of the selected app\'s actions, in process, as a chosen user: its validation and middlewares run, so a $secure refusal comes back as the 401 or 403 that user would get. `action` is `group.name` or the bare name (app_map lists them, app_describe gives the input shape). `as` is "anonymous", { roles: ["admin"] } for a synthetic user, or { id } / { email } for an existing user of alepha/api/users. Answers with the status, the response body and the duration. Development only.',
+      'Call one of the selected app\'s actions, in process, as a chosen user: its validation and middlewares run, so a $secure refusal comes back as the 401 or 403 that user would get. `action` is `group.name` or the bare name (app_map lists them, app_describe gives the input shape). `as` is "anonymous", { roles: ["admin"] } for a synthetic user, or { id } / { email } for an existing user of alepha/api/users. Answers with the status, the response body and the duration. The call does not pass through the HTTP server, so it writes no access log line: logs_tail shows only what the action itself logged. Development only.',
     annotations: { destructiveHint: true, openWorldHint: false },
     schema: {
       params: z.object({
@@ -78,6 +81,10 @@ export class DevMcpActionTools {
       if (result.body !== undefined) {
         lines.push("", JSON.stringify(result.body, null, 2));
       }
+      // Said in the answer, not only in the description: an agent that
+      // marks the logs, calls a quiet action and tails finds nothing, and
+      // spent two more calls working out why.
+      lines.push("", this.logNote);
       return lines.join("\n");
     },
   });

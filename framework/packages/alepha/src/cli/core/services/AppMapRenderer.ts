@@ -151,9 +151,23 @@ export class AppMapRenderer {
         : `This is the overview. Print a section in full, schemas and columns included, ${origin.detail}.`,
     ];
 
+    let printed = 0;
     for (const section of sections) {
       const rendered = this.renderSection(section, input, detail);
-      lines.push("", ...(filter ? this.filter(rendered, filter) : rendered));
+      const kept = filter ? this.filter(rendered, filter) : rendered;
+      // A section the filter emptied is left out: a dozen headings reading
+      // `(0 matching ...)` buried the one that matched.
+      if (!kept.length) continue;
+      lines.push("", ...kept);
+      printed += 1;
+    }
+    if (filter && !printed) {
+      lines.push(
+        "",
+        only
+          ? `Nothing in \`${only}\` matches "${filter}".`
+          : `Nothing matches "${filter}".`,
+      );
     }
     return lines.join("\n");
   }
@@ -176,7 +190,7 @@ export class AppMapRenderer {
     const item = found[0] as any;
     switch (kind) {
       case "action":
-        return this.renderActions([item]).slice(2).join("\n");
+        return this.renderActions([item], true).slice(2).join("\n");
       case "entity":
         return this.renderEntities([item]).slice(2).join("\n");
       case "page":
@@ -336,7 +350,15 @@ export class AppMapRenderer {
     }
   }
 
-  protected renderActions(actions: DevActionMetadata[]): string[] {
+  /**
+   * `explicit` is for one action described on its own: what it does NOT have
+   * is said too, since "no `- secure:` line" reads as "not printed" to a
+   * reader who has not seen the other actions. A whole section stays terse.
+   */
+  protected renderActions(
+    actions: DevActionMetadata[],
+    explicit = false,
+  ): string[] {
     const visible = actions
       .filter((action) => !action.hide)
       .sort((a, b) => a.fullPath.localeCompare(b.fullPath));
@@ -364,6 +386,13 @@ export class AppMapRenderer {
       const rule = this.secureRule(action);
       if (rule) {
         lines.push(`- secure: ${rule}`);
+      } else if (explicit) {
+        lines.push("- secure: public (no $secure)");
+      }
+      if (!action.errors && explicit) {
+        // Not the strict action's "none declared": that one turns anything
+        // it throws into a 500, this one declares nothing either way.
+        lines.push("- errors: no declared errors");
       }
       if (action.errors) {
         lines.push(
@@ -419,6 +448,7 @@ export class AppMapRenderer {
    * Keep the items of one rendered section that contain `text`, and recount
    * its `## Title (n)` heading. An item is a `### ` block when the section has
    * them, else a `- ` line, else a table row below the `| --- |` separator.
+   * Empty when nothing matched, so the caller leaves the section out.
    */
   protected filter(lines: string[], text: string): string[] {
     const needle = text.toLowerCase();
@@ -447,6 +477,7 @@ export class AppMapRenderer {
     const kept = items.filter((item) =>
       item.join("\n").toLowerCase().includes(needle),
     );
+    if (!kept.length) return [];
     head[0] = head[0].replace(
       /\(\d+\)$/,
       `(${kept.length} matching "${text}")`,
