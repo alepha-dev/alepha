@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "miniflare": "5.20261103.0-beta",
-    "vite": "^8.3.5"
+    "vite": "^8.3.7"
   }
 }

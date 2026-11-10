@@ -55,6 +55,11 @@ describe("AdminFilesUsageCard", () => {
   const segment = (view: ReturnType<typeof render>, bucket: string) =>
     view.container.querySelector<HTMLElement>(`[data-bucket="${bucket}"]`);
 
+  // A segment's width in percent. jsdom, like a browser, serializes a CSS
+  // percentage to six significant digits, so it is compared as a number.
+  const width = (view: ReturnType<typeof render>, bucket: string) =>
+    Number.parseFloat(segment(view, bucket)?.style.width ?? "0");
+
   it("says what is used out of the quota, and what is free", async () => {
     const view = await mount(stats(10 * GB));
     const text = view.container.textContent;
@@ -77,8 +82,9 @@ describe("AdminFilesUsageCard", () => {
   it("draws each bucket as its share of the quota", async () => {
     const view = await mount(stats(10 * GB));
 
-    expect(segment(view, "artifacts")?.style.width).toBe(
-      `${((150 * MB) / (10 * GB)) * 100}%`,
+    expect(width(view, "artifacts")).toBeCloseTo(
+      ((150 * MB) / (10 * GB)) * 100,
+      3,
     );
   });
 
@@ -90,8 +96,9 @@ describe("AdminFilesUsageCard", () => {
     expect(text).toContain("used");
     expect(text).toContain("14 file(s), no quota");
     expect(text).not.toContain("free");
-    expect(segment(view, "artifacts")?.style.width).toBe(
-      `${((150 * MB) / (200 * MB + 1024)) * 100}%`,
+    expect(width(view, "artifacts")).toBeCloseTo(
+      ((150 * MB) / (200 * MB + 1024)) * 100,
+      3,
     );
   });
 
@@ -151,8 +158,9 @@ describe("AdminFilesUsageCard", () => {
       const view = await mount(stats(10 * GB));
 
       expect(quotaOption().getAttribute("aria-checked")).toBe("true");
-      expect(segment(view, "artifacts")?.style.width).toBe(
-        `${((150 * MB) / (10 * GB)) * 100}%`,
+      expect(width(view, "artifacts")).toBeCloseTo(
+        ((150 * MB) / (10 * GB)) * 100,
+        3,
       );
       expect(screen.queryAllByTestId("usage-share")).toEqual([]);
     });
@@ -164,10 +172,10 @@ describe("AdminFilesUsageCard", () => {
 
       const total = 150 * MB + 50 * MB + 1024;
       const widths = ["artifacts", "backups", "seeds"].map((bucket) =>
-        Number.parseFloat(segment(view, bucket)?.style.width ?? "0"),
+        width(view, bucket),
       );
-      expect(widths[0]).toBeCloseTo(((150 * MB) / total) * 100, 5);
-      expect(widths.reduce((sum, width) => sum + width, 0)).toBeCloseTo(100, 5);
+      expect(widths[0]).toBeCloseTo(((150 * MB) / total) * 100, 3);
+      expect(widths.reduce((sum, w) => sum + w, 0)).toBeCloseTo(100, 3);
       expect(
         screen.getAllByTestId("usage-share").map((node) => node.textContent),
       ).toEqual(["75%", "25%", "0%"]);
