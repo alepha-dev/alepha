@@ -9,8 +9,7 @@ import { NotificationUnsubscribeService } from "../services/NotificationUnsubscr
  * The page and the endpoint an unsubscribe link points at.
  *
  * **A `$route`, not an `$action`.** `$action` lives under `/api`, which mail
- * clients and one-click POSTs have no business reaching, and the `$action`
- * dispatcher shadows anything under `/api/*` anyway. This is a root path.
+ * clients and one-click POSTs have no business reaching. This is a root path.
  *
  * **Unauthenticated by design.** Someone arriving from a six-month-old email
  * has no session, and the app's SPA may be behind a login they cannot pass.

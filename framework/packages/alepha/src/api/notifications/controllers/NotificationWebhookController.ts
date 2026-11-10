@@ -18,8 +18,7 @@ const envSchema = z.object({
  * Inbound delivery events from providers that push rather than queue.
  *
  * A root-level `$route`, not an `$action`: a provider posting a webhook has
- * no session and no business under `/api`, which the `$action` dispatcher
- * shadows anyway.
+ * no session and no business under `/api`, the actions' namespace.
  *
  * SMTP has no equivalent. Nodemailer bounces arrive as mail to the `From`
  * address, out of band, and are deliberately out of scope: parsing DSN mail

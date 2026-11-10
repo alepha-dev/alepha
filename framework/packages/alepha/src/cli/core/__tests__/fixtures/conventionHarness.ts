@@ -17,10 +17,13 @@ export const checkFiles = async (
   rule: string,
   configure?: (alepha: Alepha) => void,
 ): Promise<ConventionReport> => {
-  const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-    .with(AlephaCliServices);
+  const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with({
+    provide: FileSystemProvider,
+    use: MemoryFileSystemProvider,
+  });
+  // Before the module: a substitution made after it is refused.
   configure?.(alepha);
+  alepha.with(AlephaCliServices);
   const fs = alepha.inject(MemoryFileSystemProvider);
   for (const [path, content] of Object.entries(files)) {
     const absolute = `/app/${path}`;

@@ -27,8 +27,8 @@ import { EstateTokenService } from "../services/EstateTokenService.ts";
  * again. The enrolment secret is retired by the first handshake made with a
  * long-lived secret (`EstateSocketController`), or by its expiry.
  *
- * A root `$route`, like `EstatePullController`: the `$action` dispatcher
- * shadows `/api`. A missing, unknown, used-up or expired secret is the same
+ * A root `$route`, like `EstatePullController`: `/api/*` is the actions'
+ * namespace. A missing, unknown, used-up or expired secret is the same
  * 401, and hands over nothing.
  */
 export class EstateEnrolController {

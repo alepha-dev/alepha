@@ -25,9 +25,9 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
  * Hence `$secure` is deliberately absent: these are not "public" endpoints,
  * they are endpoints with their own credential, resolved by hand below.
  *
- * **`$route`, not `$action`.** `$action` prefixes `/api` and its dispatcher
- * shadows anything else under that prefix, so an ingest endpoint declared there
- * answers 404 to the very client it exists for. The cable posts to a root path.
+ * **`$route`, not `$action`.** `$action` prefixes `/api`, the actions'
+ * namespace, and an ingest endpoint with its own credential is not an action.
+ * The cable posts to a root path.
  */
 export class SigilIngestController {
   protected readonly tokens = $inject(SigilTokenService);

@@ -5,7 +5,9 @@ import { DescribeItRule } from "../conventions/DescribeItRule.ts";
 import { NoBareErrorRule } from "../conventions/NoBareErrorRule.ts";
 import { NoDateNowRule } from "../conventions/NoDateNowRule.ts";
 import { NoErrorClassRule } from "../conventions/NoErrorClassRule.ts";
+import { NoModuleCodeRule } from "../conventions/NoModuleCodeRule.ts";
 import { NoViMockRule } from "../conventions/NoViMockRule.ts";
+import { NoWindowDialogRule } from "../conventions/NoWindowDialogRule.ts";
 import { NoZodImportRule } from "../conventions/NoZodImportRule.ts";
 
 /**
@@ -25,6 +27,8 @@ export class ConventionRegistry {
     $inject(NoZodImportRule),
     $inject(NoViMockRule),
     $inject(DescribeItRule),
+    $inject(NoModuleCodeRule),
+    $inject(NoWindowDialogRule),
   ];
 
   /**

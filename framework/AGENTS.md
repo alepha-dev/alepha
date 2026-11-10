@@ -205,7 +205,7 @@ Not obvious from the code, so read them before writing any.
 - **A package writes `useRouter<any>()`, never a bare `useRouter()`** (`check:conventions`, #Q3187). An app registers its routers in `Routers` (`declare module "alepha/react/router"`), and a bare `useRouter()` is typed against them, so in a package, whose source every importing app compiles, it would be typed against whichever app compiles it. Apps and specs may rely on the registration.
 - **`tr()` and `l()` both return `string`: never wrap either in `String()`.** A helper taking `tr` types it `(key: …) => string` or `I18nProvider<any, any>["tr"]`.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`**: for date+time pass a dayjs format such as `"lll"` to `date`.
-- **`$route` never lives under `/api`**: the `$action` dispatcher shadows `/api/*` (404s). Root paths only.
+- **A `$route` under `/api` answers** like any other: the `$action` dispatcher does not shadow it (`server/core/__tests__/$route-under-api.spec.ts`). Still, an API endpoint is an `$action`, and a raw `$route` takes a root path, so `/api/*` stays the actions' namespace.
 
 ### Repository / query API
 

@@ -9,7 +9,7 @@ import { DownloadService } from "../services/DownloadService.ts";
  * Where a buyer collects what they bought.
  *
  * A `$route` for the file, at a root path: it is the URL an email carries, and
- * `$route` never lives under `/api`.
+ * `/api/*` is the actions' namespace.
  */
 export class DownloadController {
   protected readonly group = "commerce:downloads";

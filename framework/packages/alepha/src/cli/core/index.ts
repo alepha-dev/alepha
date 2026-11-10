@@ -40,7 +40,9 @@ import { DescribeItRule } from "./conventions/DescribeItRule.ts";
 import { NoBareErrorRule } from "./conventions/NoBareErrorRule.ts";
 import { NoDateNowRule } from "./conventions/NoDateNowRule.ts";
 import { NoErrorClassRule } from "./conventions/NoErrorClassRule.ts";
+import { NoModuleCodeRule } from "./conventions/NoModuleCodeRule.ts";
 import { NoViMockRule } from "./conventions/NoViMockRule.ts";
+import { NoWindowDialogRule } from "./conventions/NoWindowDialogRule.ts";
 import { NoZodImportRule } from "./conventions/NoZodImportRule.ts";
 import { AlephaCliExtensionProvider } from "./providers/AlephaCliExtensionProvider.ts";
 import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
@@ -104,7 +106,9 @@ export * from "./conventions/DescribeItRule.ts";
 export * from "./conventions/NoBareErrorRule.ts";
 export * from "./conventions/NoDateNowRule.ts";
 export * from "./conventions/NoErrorClassRule.ts";
+export * from "./conventions/NoModuleCodeRule.ts";
 export * from "./conventions/NoViMockRule.ts";
+export * from "./conventions/NoWindowDialogRule.ts";
 export * from "./conventions/NoZodImportRule.ts";
 export * from "./providers/AlephaCliExtensionProvider.ts";
 export * from "./providers/AppEntryProvider.ts";
@@ -202,6 +206,8 @@ export const AlephaCliServices = $module({
     NoZodImportRule,
     NoViMockRule,
     DescribeItRule,
+    NoModuleCodeRule,
+    NoWindowDialogRule,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.

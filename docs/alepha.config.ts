@@ -64,8 +64,8 @@ export default defineConfig({
   //
   // Safe here because every route is prerendered (`static: true`, and
   // `static.entries` for `/docs/:slug`), so nothing but the sigil endpoint
-  // needs to reach the worker. An app with a `$route` at a root path - which
-  // never lives under `/api` - would need that path listed here too.
+  // needs to reach the worker. An app with a `$route` at a root path, outside
+  // the `/api` prefix, would need that path listed here too.
   // ---------------------------------------------------------------------------
   build: {
     cloudflare: {
