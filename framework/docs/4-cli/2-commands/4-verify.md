@@ -12,13 +12,14 @@ Without a project override, the framework runs these steps sequentially:
 
 1. Clean generated build artifacts.
 2. Lint with oxlint, then format with oxfmt.
-3. Typecheck.
-4. Run Vitest when specs exist.
-5. Check database migrations (returns cleanly when no database is declared).
-6. Build, except for Expo projects.
-7. Clean generated build artifacts again.
+3. Check the conventions (`alepha check`), unless `alepha.config.ts` sets `check: false`.
+4. Typecheck.
+5. Run Vitest when specs exist.
+6. Check database migrations (returns cleanly when no database is declared).
+7. Build, except for Expo projects.
+8. Clean generated build artifacts again.
 
-The first failure stops the pipeline. This checks the app's default build, not every runtime, deployed environment, browser flow or SSR response. There are no verify flags. Project CLI extensions can replace the command.
+The first failure stops the pipeline. This checks the app's default build, not every runtime, deployed environment, browser flow or SSR response. There are no verify flags; the one way to skip a step is `check: false` in `alepha.config.ts`, which removes the conventions check (see [Conventions](/docs/guides-testing-conventions)). Project CLI extensions can replace the command.
 
 ## This repository's inner loop
 

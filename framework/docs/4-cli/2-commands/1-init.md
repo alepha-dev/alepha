@@ -39,7 +39,7 @@ This is the one axis worth branching on because it is the one you cannot easily 
 4. **Installs dependencies**: Gets everything ready to run
 5. **Scaffolds the project**: `src/api/`, `src/web/`, both entry points, and a starter test
 6. **Initializes git**: Runs `git init` and writes a `.gitignore` if you're not already in a repo
-7. **Writes agent docs**: `AGENTS.md`, which coding agents read on their own, so they understand the project
+7. **Writes agent docs**: `AGENTS.md`, which coding agents read on their own, so they understand the project. It carries the conventions `alepha check` enforces, generated from the installed version's rule list
 
 ## Options
 

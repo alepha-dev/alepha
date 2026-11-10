@@ -41,6 +41,20 @@ Lint findings in the `correctness` category are **errors**, so `alepha lint` exi
 
 `.oxlintrc.json` and `.oxfmtrc.json` are created if missing, so the command works on a bare project. Both, or neither: a formatter with no linter silently stops gating, and a linter with no formatter reformats to oxfmt's Prettier defaults, tabs included.
 
+## check
+
+Check the source against the framework's conventions: no `Date.now()`, no bare `Error`, no error class, no `zod` import, no `vi.mock()`, no test case outside a `describe`, no code beside a service class, no browser dialog. The [Conventions guide](/docs/guides-testing-conventions) explains each rule; the [reference](/docs/reference-conventions) lists them.
+
+```bash
+alepha check                     # every rule, the whole project
+alepha check src/api             # one file or directory
+alepha check --rule no-date-now  # one rule (comma-separated for several)
+alepha check --json              # [{ file, line, column, rule, message, fix }]
+alepha check --list              # the rules, with their state in this project
+```
+
+It exits non-zero on any finding, and reads the source without booting the app. A genuine exception carries `// alepha-allow <rule>: <reason>` on the line above it. The `check` key of `alepha.config.ts` turns one rule `off` (`check: { rules: { "no-module-code": "off" } }`) or hides paths from every rule (`ignore`); `check: false` removes the step from `alepha verify` only.
+
 ## typecheck
 
 Run the TypeScript 7 type checker with no emit. Alias: `alepha tc`.
@@ -63,4 +77,4 @@ alepha clean
 
 ## Together
 
-These are the building blocks of [`alepha verify`](/docs/cli-commands-verify), which runs them in order (clean → lint → typecheck → test → migrations check → build → clean). Use them individually for the tight inner loop, and `verify` before you commit.
+These are the building blocks of [`alepha verify`](/docs/cli-commands-verify), which runs them in order (clean → lint → check → typecheck → test → migrations check → build → clean). Use them individually for the tight inner loop, and `verify` before you commit.

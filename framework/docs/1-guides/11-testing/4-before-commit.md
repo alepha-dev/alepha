@@ -22,7 +22,7 @@ If any command fails, fix the issue before committing. Do not skip these steps.
 
 ```mermaid
 flowchart LR
-  clean[clean] --> lint[lint] --> tc[typecheck] --> hasTests{spec files?}
+  clean[clean] --> lint[lint] --> check[check] --> tc[typecheck] --> hasTests{spec files?}
   hasTests -->|yes| test[test] --> db[db migrations check]
   hasTests -->|no| db
   db --> expo{Expo project?}
@@ -31,6 +31,8 @@ flowchart LR
 ```
 
 Each step is the `alepha` command of the same name, and the first one to fail stops the pipeline.
+
+`check` is `alepha check`: it refuses the constructs that break what the framework promises, such as a `Date.now()` a test cannot move or a `vi.mock()` that bypasses the container. See [Conventions](/docs/guides-testing-conventions). `check: false` in `alepha.config.ts` removes the step.
 
 The `test` step is skipped when the project has no tests, and `build` is skipped for Expo projects. `db migrations check` always runs: it returns cleanly when the app has no database, so a project with entities and no migrations fails here instead of in production - that is deliberate. This is the same pipeline you should use in CI. Run it before opening a pull request:
 

@@ -111,7 +111,11 @@ each section of the guides and of the CLI has an `llms-full.txt` holding all of 
 ## Telling an agent about it
 
 A project created by `alepha init` already does: its `AGENTS.md`
-tells the agent to run `npx alepha docs` before writing Alepha code.
+tells the agent to run `npx alepha docs` before writing Alepha code, and
+lists the [conventions](/docs/guides-testing-conventions) `alepha check`
+enforces. An agent checks its own work with `npx alepha check --json`, which
+prints one array of `{ file, line, column, rule, message, fix }`, each `fix`
+the sentence to act on.
 
 A project created before that line existed can add it by hand, near the top of `AGENTS.md`,
 `CLAUDE.md`, or whatever file its agent reads:

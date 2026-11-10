@@ -1,6 +1,8 @@
 import { promises as fs } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
+import { $inject } from "alepha";
+import { ConventionRegistry } from "alepha/cli";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
@@ -47,6 +49,12 @@ export class DocsCommand {
   protected log = $logger();
 
   /**
+   * The rules `alepha check` ships. Injected from the command-free
+   * `AlephaCliServices`, so this container gains no CLI command.
+   */
+  protected readonly conventions = $inject(ConventionRegistry);
+
+  /**
    * The two page trees a run deletes and rewrites whole, relative to the
    * repository root.
    */
@@ -75,6 +83,36 @@ export class DocsCommand {
       }
     }
     return [...Object.values(this.pageTrees), ...readmes];
+  }
+
+  /**
+   * The rule reference page, `2-reference/4-conventions.md`: every rule the
+   * registry holds, with its default, what it refuses and the fix it prints.
+   * A rule added to the registry appears here on the next `yarn copy`, and
+   * `check:docs` refuses the commit until the page is staged.
+   */
+  generateConventionsMarkdown(): string {
+    // A `<rule>` placeholder in a fix sentence would open an HTML tag.
+    const cell = (text: string) =>
+      text.replaceAll("|", "\\|").replaceAll("<", "&lt;");
+    const rows = this.conventions
+      .list()
+      .map(
+        (rule) =>
+          `| \`${rule.id}\` | on | ${cell(rule.description)} | ${cell(rule.fix)} |`,
+      );
+    return [
+      "# Conventions",
+      "",
+      "The rules `alepha check` enforces, as this version ships them. `alepha verify` runs the command between lint and typecheck. The [Conventions guide](/docs/guides-testing-conventions) explains why each rule exists, how to exempt a line and how to configure the command.",
+      "",
+      "| Rule | Default | Refuses | Write instead |",
+      "| --- | --- | --- | --- |",
+      ...rows,
+      "",
+      "A line that is a genuine exception carries `// alepha-allow <rule>: <reason>` on the line above it. The reason is mandatory.",
+      "",
+    ].join("\n");
   }
 
   /**
@@ -1265,6 +1303,12 @@ export class DocsCommand {
           );
         }
         stats.providers = allProviderDocs.length;
+
+        await fs.writeFile(
+          join(referenceDocsDir, "4-conventions.md"),
+          this.generateConventionsMarkdown(),
+          "utf-8",
+        );
       });
 
       this.log.debug(
