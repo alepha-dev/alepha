@@ -113,6 +113,34 @@ refuses a key an app already holds on its own.
 Every key sits in clear in `state.json`, at mode `0600`, and an app's key in
 its `.env` too.
 
+**The backups hold the apps' signing keys.** Each snapshot carries the
+instance's `APP_SECRET` beside its databases, compressed and not encrypted.
+So an upload key that can read the backups prefix (one key for both targets,
+or an apps key not scoped away from `apps/*/db/`) can read every instance's
+signing key, not only delete its backups: whoever holds it can sign sessions
+for those apps. Keep the backups in a bucket of their own, or give each app
+its own key with `bay config s3:apps <name/env>`, and run
+`bay doctor --probe-keys` to prove the apps key is refused there.
+
+## The signing key
+
+An app's `APP_SECRET` signs its sessions and links and seals its MFA secrets.
+It lives in three places:
+
+- **the host**, in the instance's `.env` at mode `0600`;
+- **the backups bucket**, in every snapshot of the instance (see above);
+- **Lore**, sealed, for a host connected to it: Bay sends Lore the key each
+  instance runs on, so a rebuilt host gets it back.
+
+The key follows its app from one machine to another through Lore. So a machine
+an app has left, and that machine's backups bucket, still hold the key the app
+runs on now, and whoever controls them can sign sessions for it. After moving
+an app off a machine you do not control, change its key on the Bay it runs on
+now with
+[`bay secret replace`](/bay/docs/guides-operating#replacing-the-signing-key):
+every session is signed out, and what the old key sealed (MFA enrolled under
+it) is lost.
+
 ## The Lore connector
 
 An enrolled host keeps an outbound websocket to Lore, and nothing listens for

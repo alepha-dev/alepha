@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -211,6 +212,18 @@ type deploySink struct {
 	// registries answers /registries when set; empty is an older Lore's 404.
 	registries string
 	artifacts  atomic.Int32
+	// appSecret is the key Lore holds for the copy; appSecretStatus, when
+	// set, is the status /app-secret answers instead (404 an older Lore).
+	appSecret       string
+	appSecretStatus int
+	// appSecretRaw, when set, is answered verbatim instead.
+	appSecretRaw string
+	// appSecretAsks is each query /app-secret was asked with.
+	appSecretAsks []string
+	// escrowed is each key PUT to /app-secret; escrowStatus, when set, is
+	// what that PUT answers instead.
+	escrowed     []string
+	escrowStatus int
 }
 
 func newDeploySink(t *testing.T, artifactPath string) *deploySink {
@@ -235,6 +248,36 @@ func newDeploySink(t *testing.T, artifactPath string) *deploySink {
 			_, _ = w.Write([]byte(s.secrets))
 		case strings.HasSuffix(r.URL.Path, "/registries") && s.registries != "":
 			_, _ = w.Write([]byte(s.registries))
+		case strings.HasSuffix(r.URL.Path, "/app-secret") && r.Method == http.MethodPut:
+			if s.escrowStatus != 0 {
+				w.WriteHeader(s.escrowStatus)
+				return
+			}
+			var body struct{ Value string }
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			s.escrowed = append(s.escrowed, body.Value)
+			replaced := s.appSecret != "" && s.appSecret != body.Value
+			s.appSecret = body.Value
+			_ = json.NewEncoder(w).Encode(map[string]bool{"stored": true, "replaced": replaced})
+		case strings.HasSuffix(r.URL.Path, "/app-secret"):
+			s.appSecretAsks = append(s.appSecretAsks, r.URL.RawQuery)
+			if s.appSecretStatus != 0 {
+				w.WriteHeader(s.appSecretStatus)
+				return
+			}
+			if s.appSecretRaw != "" {
+				_, _ = w.Write([]byte(s.appSecretRaw))
+				return
+			}
+			ans := map[string]string{}
+			if s.appSecret != "" {
+				sum := sha256.Sum256([]byte(s.appSecret))
+				ans["sha256"] = hex.EncodeToString(sum[:])
+				if r.URL.Query().Get("value") == "1" {
+					ans["value"] = s.appSecret
+				}
+			}
+			_ = json.NewEncoder(w).Encode(ans)
 		default:
 			http.NotFound(w, r)
 		}

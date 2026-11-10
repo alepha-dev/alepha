@@ -59,6 +59,12 @@ export const estateBackupVerifyResultSchema = z.object({
     .max(100)
     .nullable()
     .optional(),
+  /**
+   * Whether the backup carries the instance's `APP_SECRET`: `carried`,
+   * `absent` (taken before backups carried it) or `missing` (named by the
+   * manifest, gone from the bucket). Never the key.
+   */
+  appSecret: z.string().max(20).optional(),
   error: text.optional(),
 });
 

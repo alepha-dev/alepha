@@ -115,7 +115,10 @@ never will be**: it takes SSH.
 The secret points the other way. It sits on the host in clear, and it is the
 bearer the machine shows Lore when it dials, so whoever holds it can pose as
 this machine to Lore, down to pulling the artifacts and secret sets of the
-commands queued for it. It sends no command to the host.
+commands queued for it. That includes an app's `APP_SECRET`, which Lore hands
+to a deploy whose instance has none, and the copy Lore holds of it, which the
+holder can replace: Lore says so on that deploy's log. It sends no command to
+the host.
 
 **Deploys are refused until the estate's owner allows them** on the estate, and
 the machine enforces that switch on its own side too. `stack-deploy` is held to

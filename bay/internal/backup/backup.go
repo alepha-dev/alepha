@@ -1,10 +1,13 @@
 // Package backup snapshots app databases to S3 and puts them back.
 //
-// Scope is deliberately narrow: the SQLite databases of data/ only. Not `storage/`, not
-// `.env`, not Bay's own state. The database is the irreplaceable part; the rest
-// is either reproducible from the developer's machine (secrets live in
-// `.env.<env>` there already) or explicitly out of scope — and what is out of
-// scope must be *shown*, never inferred.
+// Scope is deliberately narrow: the SQLite databases of data/, and the
+// instance's APP_SECRET with them. Not `storage/`, not the rest of `.env`, not
+// Bay's own state. The database is the irreplaceable part. APP_SECRET is the one
+// value of `.env` that exists nowhere else, since Bay mints it, and the data is
+// sealed with it (MFA secrets, signed links): a database restored under another
+// key is restored broken. The other secrets live on the developer's machine or
+// in Lore and come back with the next deploy; what is out of scope must be
+// *shown*, never inferred.
 package backup
 
 import (

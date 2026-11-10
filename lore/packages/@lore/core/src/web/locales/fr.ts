@@ -1986,6 +1986,7 @@ export default {
   "app.environment.empty":
     "Rien de défini pour l\u2019instant. Cette copie se déploie très bien sans variable.",
   "app.environment.encrypted": "Valeur chiffrée",
+  "app.environment.setByMachine": "définie par la machine",
   "app.environment.masked": "commence par $1",
   "app.environment.remove": "Supprimer",
   "app.environment.remove.title": "Supprimer cette variable ?",

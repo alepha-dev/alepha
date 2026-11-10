@@ -55,6 +55,8 @@ const setup = async (): Promise<Ctx> => {
     ...Object.values(
       permissions as unknown as Record<string, { toString(): string }>,
     ),
+    organizationPermissions.organizationUpdate,
+    organizationPermissions.organizationDelete,
     organizationPermissions.memberRead,
     organizationPermissions.memberManage,
     organizationPermissions.rankManage,

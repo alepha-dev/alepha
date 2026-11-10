@@ -27,8 +27,20 @@ type Outcome struct {
 	Reason string `json:"reason,omitempty"`
 	// URL is a deploy's address, kept so a re-ack after a lost one says it
 	// again (#Q3155).
-	URL string    `json:"url,omitempty"`
-	At  time.Time `json:"at"`
+	URL string `json:"url,omitempty"`
+	// AppSecretSource and Warning are what a deploy says of its key and what
+	// went wrong without failing it, kept for the same reason.
+	AppSecretSource string    `json:"appSecretSource,omitempty"`
+	Warning         string    `json:"warning,omitempty"`
+	At              time.Time `json:"at"`
+}
+
+// Extra is what a terminal outcome carries beside its status, a deploy's
+// only: where it answers, where its APP_SECRET came from, its warning.
+type Extra struct {
+	URL             string
+	AppSecretSource string
+	Warning         string
 }
 
 /*
@@ -107,11 +119,12 @@ func (o *Outcomes) Begin(id string) bool {
 }
 
 // Finish records the terminal outcome of an id and persists it.
-func (o *Outcomes) Finish(id, status, step, reason, url string, at time.Time) (Outcome, error) {
+func (o *Outcomes) Finish(id, status, step, reason string, extra Extra, at time.Time) (Outcome, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	delete(o.running, id)
-	out := Outcome{ID: id, Status: status, Step: step, Reason: reason, URL: url, At: at.UTC()}
+	out := Outcome{ID: id, Status: status, Step: step, Reason: reason, URL: extra.URL,
+		AppSecretSource: extra.AppSecretSource, Warning: extra.Warning, At: at.UTC()}
 	if _, known := o.done[id]; !known {
 		o.order = append(o.order, id)
 	}

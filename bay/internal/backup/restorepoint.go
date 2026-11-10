@@ -83,6 +83,10 @@ type VerifyReport struct {
 	CreatedAt time.Time      `json:"createdAt"`
 	Release   string         `json:"release,omitempty"`
 	Files     []VerifiedFile `json:"files"`
+	// AppSecret says whether the backup carries the instance's key:
+	// SecretCarried (and it matched its checksum), SecretAbsent or
+	// SecretMissing. Never the key.
+	AppSecret string `json:"appSecret,omitempty"`
 }
 
 /*
@@ -100,7 +104,7 @@ func (m *Manager) VerifyBackup(ctx context.Context, key, kind string, runtime In
 		return nil, err
 	}
 	defer cleanup()
-	report := &VerifyReport{Key: key, Kind: kind}
+	report := &VerifyReport{Key: key, Kind: kind, AppSecret: fetched.AppSecretStatus()}
 	recorded := map[string]int{}
 	if man := fetched.Manifest; man != nil {
 		report.CreatedAt, report.Release = man.CreatedAt, man.Release

@@ -137,6 +137,11 @@ type App struct {
 	// real ones, so `keep N` would delete the real data N runs later. While
 	// this is set and a backup older than `Since` exists, pruning is skipped.
 	RestorePending *RestorePending `json:"restorePending,omitempty"`
+	// AppSecret is where the instance's APP_SECRET came from, as the verb
+	// that last set it says (a deploy, a restore, `bay secret replace`), and
+	// what the last deploy found Lore held. Never the key, nor its hash. Nil
+	// on a record written before Bay said it.
+	AppSecret *AppSecretState `json:"appSecret,omitempty"`
 
 	// BackupDeclared is the backup policy the app's deploy asked for
 	// (`--backup-policy`), already validated as untrusted input. Replaced on
@@ -251,6 +256,42 @@ type App struct {
 	BackupHook *BackupHook `json:"backupHook,omitempty"`
 }
 
+// The sources of an instance's APP_SECRET, as AppSecretState.Source says them.
+const (
+	SecretKept     = "kept"     // a deploy found a key and kept it
+	SecretSnapshot = "snapshot" // restored from the instance's own backup, with its data
+	SecretLore     = "lore"     // the instance had none and took Lore's
+	SecretMinted   = "minted"   // Bay made a new one
+	SecretReplaced = "replaced" // `bay secret replace`, on purpose
+)
+
+// What the last deploy found of Lore's key, as AppSecretState.Lore says it.
+const (
+	LoreSecretMatch   = "match"   // Lore held the key the instance runs on
+	LoreSecretSent    = "sent"    // Lore's was missing or differed, and Bay sent it
+	LoreSecretUnknown = "unknown" // no Lore, an older one, a send that failed, or a pending restore
+)
+
+// AppSecretState is the record of an instance's key: where it came from, and
+// how Lore's compared at the last deploy.
+type AppSecretState struct {
+	// Source is SecretKept, SecretSnapshot, SecretLore, SecretMinted or
+	// SecretReplaced; At when, RFC3339 UTC; By what set it: "deploy",
+	// "restore" or "cli".
+	Source string `json:"source"`
+	At     string `json:"at"`
+	By     string `json:"by,omitempty"`
+	// Warning is set while the instance runs on a key minted over data
+	// restored from a backup that carried none: the restored MFA rows and
+	// signed links do not open under it. The next deploy clears it.
+	Warning string `json:"warning,omitempty"`
+	// Lore is LoreSecretMatch, LoreSecretSent or LoreSecretUnknown, as the
+	// last deploy found it; LoreAt when. A record, not a live check: Lore
+	// answers its hash only inside a deploy command.
+	Lore   string `json:"lore,omitempty"`
+	LoreAt string `json:"loreAt,omitempty"`
+}
+
 // RestorePending records when and why an instance started on an empty
 // database without its backups having been checked.
 type RestorePending struct {
@@ -345,6 +386,12 @@ type RestoreRecord struct {
 	Error  string `json:"error,omitempty"`
 	// PreRestoreKey is the backup taken of the data the restore replaced.
 	PreRestoreKey string `json:"preRestoreKey,omitempty"`
+	// AppSecret is what the restore did with the instance's key: restored,
+	// kept, absent, missing or not-restored. Never the key.
+	AppSecret string `json:"appSecret,omitempty"`
+	// WithKey records a `bay restore --with-key`: the operator chose to
+	// replace the instance's key with the backup's.
+	WithKey bool `json:"withKey,omitempty"`
 }
 
 // BackupHook is one service's dump declaration: postgres, or a command.
@@ -568,6 +615,9 @@ func (s *Store) Upsert(app App) error {
 			// A redeploy onto the existing database changes nothing about
 			// whether the backups taken before it still need protecting.
 			app.RestorePending = a.RestorePending
+			// Said by the verb that set the key, which a deploy's Upsert
+			// precedes: the deploy writes its own once it knows.
+			app.AppSecret = a.AppSecret
 			// The operator's backup policy outlives releases; the app's own
 			// declaration (BackupDeclared) comes with each deploy instead.
 			app.BackupOverride = a.BackupOverride
@@ -744,6 +794,35 @@ func (s *Store) SetRestorePending(key, reason string, at time.Time) error {
 			since = a.RestorePending.Since
 		}
 		a.RestorePending = &RestorePending{Since: since, Reason: reason}
+	})
+}
+
+/*
+SetAppSecretSource records where the instance's key came from, and the warning
+that goes with it ("" for none). What Lore was found to hold is kept: only a
+deploy learns that, through RecordLoreSecret.
+*/
+func (s *Store) SetAppSecretSource(key, source, by, warning string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		st := AppSecretState{}
+		if a.AppSecret != nil {
+			st = *a.AppSecret
+		}
+		st.Source, st.By, st.Warning = source, by, warning
+		st.At = at.UTC().Format(time.RFC3339)
+		a.AppSecret = &st
+	})
+}
+
+// RecordLoreSecret records what a deploy found of Lore's key.
+func (s *Store) RecordLoreSecret(key, result string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		st := AppSecretState{}
+		if a.AppSecret != nil {
+			st = *a.AppSecret
+		}
+		st.Lore, st.LoreAt = result, at.UTC().Format(time.RFC3339)
+		a.AppSecret = &st
 	})
 }
 

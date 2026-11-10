@@ -382,7 +382,7 @@ export class StackDeployService {
    */
   protected readonly onCommandProgressed = $hook({
     on: "estate:command:progressed",
-    handler: async ({ command, url }) => {
+    handler: async ({ command, url, appSecretSource, warning }) => {
       const stackRow = await this.rows.findOne({
         where: { commandId: { eq: command.id } },
       });
@@ -423,6 +423,15 @@ export class StackDeployService {
                   ? `On the machine: ${command.step}`
                   : `The machine reports ${command.status}`,
             },
+            // Said where the deploy is read: the 2026-11-10 recovery test
+            // reported identical data while every MFA user was locked out,
+            // because nothing said the key was new.
+            ...(appSecretSource
+              ? [{ at: now, text: this.secretSourceLine(appSecretSource) }]
+              : []),
+            ...(warning
+              ? [{ at: now, text: `Warning: ${warning}`.slice(0, 500) }]
+              : []),
           ].slice(-200),
         });
         // A copy with no address of its own takes the machine's, so its
@@ -590,6 +599,59 @@ export class StackDeployService {
   async memberSecretsFor(
     command: EstateCommand,
   ): Promise<Record<string, string> | undefined> {
+    const instanceId = await this.memberInstanceFor(command);
+    if (!instanceId) {
+      return undefined;
+    }
+    return await this.appSecrets.open(instanceId, {
+      except: BAY_OWNED_SECRET_KEYS,
+    });
+  }
+
+  /**
+   * The deploy log's line for where the instance's key came from.
+   */
+  protected secretSourceLine(source: string): string {
+    switch (source) {
+      case "kept":
+        return "APP_SECRET: kept, the instance's own key";
+      case "snapshot":
+        return "APP_SECRET: restored from the instance's backup, with its data";
+      case "lore":
+        return "APP_SECRET: the key Lore holds for this copy";
+      case "minted":
+        return "APP_SECRET: minted by the machine, a new key";
+      default:
+        return `APP_SECRET: ${source.slice(0, 20)}`;
+    }
+  }
+
+  /**
+   * Append a line to the log of the app deploy riding on this command, the
+   * row carrying its `commandId`. Nothing when there is none.
+   */
+  async noteOnDeploy(command: EstateCommand, text: string): Promise<void> {
+    const row = await this.appDeployments.findOne({
+      where: { commandId: { eq: command.id } },
+    });
+    if (!row) {
+      return;
+    }
+    await this.appDeployments.updateById(row.id, {
+      log: [
+        ...row.log,
+        { at: new Date(this.dateTime.nowMillis()).toISOString(), text },
+      ].slice(-200),
+    });
+  }
+
+  /**
+   * The stack member a `deploy` command deploys, by its `payload.instanceId`,
+   * and only when that instance's deploy row carries this command id: the
+   * one check that ties a machine's command to a member copy. Undefined for
+   * anything else, which callers refuse like an unknown command.
+   */
+  async memberInstanceFor(command: EstateCommand): Promise<string | undefined> {
     const instanceId = command.payload.instanceId;
     if (command.kind !== "deploy" || !instanceId) {
       return undefined;
@@ -597,12 +659,7 @@ export class StackDeployService {
     const row = await this.appDeployments.findOne({
       where: { commandId: { eq: command.id }, instanceId: { eq: instanceId } },
     });
-    if (!row) {
-      return undefined;
-    }
-    return await this.appSecrets.open(instanceId, {
-      except: BAY_OWNED_SECRET_KEYS,
-    });
+    return row ? instanceId : undefined;
   }
 
   /**

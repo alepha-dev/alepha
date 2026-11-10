@@ -189,6 +189,33 @@ describe("an app deploy to a Bay estate", () => {
     expect(copy?.url).toBe("https://minpricing-production.bay.example.com");
   });
 
+  it("says on the deploy's log where the APP_SECRET came from, and the machine's warning", async ({
+    expect,
+  }) => {
+    // A recovery that restored the data on a new key locked every MFA user
+    // out while every check was green: the deploy now says so where it is read.
+    const a = await arrange();
+    const row = await deploy(a);
+    await alepha.inject(DeployService).run(row);
+    await alepha.inject(EstateCommandService).ack(a.estateId, {
+      type: "ack",
+      id: row.commandId,
+      status: "done",
+      appSecretSource: "minted",
+      warning:
+        "demo/production runs on a NEW APP_SECRET over data restored from a backup that carried none",
+    } as never);
+
+    const [after] = await alepha
+      .inject(DeployService)
+      .list(a.w.project.id, a.instance.id);
+    const lines = after.log.map((line) => line.text);
+    expect(lines).toContain("APP_SECRET: minted by the machine, a new key");
+    expect(lines).toContain(
+      "Warning: demo/production runs on a NEW APP_SECRET over data restored from a backup that carried none",
+    );
+  });
+
   it("keeps a copy's own address, and drops an address that is not http(s)", async ({
     expect,
   }) => {

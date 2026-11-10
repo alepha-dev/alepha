@@ -70,11 +70,36 @@ visible in `ps` to every user on the machine.
   variable the process never sees has not been set.
 - Keys Bay owns (`NODE_ENV`, `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`,
   `SERVER_HOST`, `APP_NAME`, `DATA_DIR`, `STORAGE_PATH`, `S3_*`) are refused,
-  not overwritten.
+  not overwritten. `APP_SECRET` comes from the instance itself, its snapshot
+  or Lore (see [Backups](/bay/docs/guides-backups#the-signing-key)), never from
+  a push; the one way to set it is below.
 - `bay env list` prints names only, never values.
 
 Secrets the project declares travel with `alepha deploy` instead, so the app
 never boots without them: see [Deploying](/bay/docs/guides-deploying#environment-and-secrets).
+
+### Replacing the signing key
+
+```bash
+ssh HOST 'BAY_SOCKET=/run/bay/control.sock bay secret replace myapp/production APP_SECRET -' < old-key.txt
+```
+
+`bay secret replace` is the one deliberate way to set an app's `APP_SECRET`:
+to put back the key of a host rebuilt before snapshots carried it, or to
+change a key a machine you no longer control still holds. The key is read from
+stdin only. It asks you to type the instance's name on the terminal (or takes
+`--yes`), because it costs:
+
+- every session is signed out;
+- what the current key sealed (MFA enrolled since it was minted) can no longer
+  be opened;
+- the current key is gone for good.
+
+It restarts a running app on the new key (a stopped one stays stopped),
+records `replaced` as the key's source in `bay status`, and logs and emits
+`appsecret.replaced`, never the value. On a host connected to Lore, Lore keeps
+the previous key until the app's next deploy from Lore, which replaces it and
+says so on that deploy's log.
 
 ## Stopping and starting
 

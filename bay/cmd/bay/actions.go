@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/deploy"
+	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -132,10 +134,11 @@ type actions struct {
 	// else - a CLI path with no connection has nothing to tell.
 	kick func()
 
-	// urls holds a finished deploy's address by command id, from the deploy
-	// to its terminal ack (#Q3155). A map rather than a fourth return value
-	// on every action, since only a deploy has one.
-	urls sync.Map
+	// extras holds what a finished deploy says beside its status, by command
+	// id, from the deploy to its terminal ack: its address (#Q3155), where
+	// its APP_SECRET came from and its warning. A map rather than a fourth
+	// return value on every action, since only a deploy has them.
+	extras sync.Map
 }
 
 func newActions(s *server) *actions {
@@ -176,6 +179,8 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		log.Info("lore command redelivered, re-acking the stored outcome", "status", prior.Status)
 		ack := connector.NewAck(cmd.ID, prior.Status, prior.Step, prior.Reason)
 		ack.URL = prior.URL
+		ack.AppSecretSource = prior.AppSecretSource
+		ack.Warning = connector.CutWarning(prior.Warning)
 		_ = send(ack)
 		return
 	}
@@ -287,16 +292,18 @@ moves the release, a backup moves lastBackupAt - and the alternative is a page
 that shows the old state for up to half an hour after the click that changed it.
 */
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
-	url := ""
-	if held, ok := a.urls.LoadAndDelete(id); ok && status == "done" {
-		url = held.(string)
+	extra := connector.Extra{}
+	if held, ok := a.extras.LoadAndDelete(id); ok && status == "done" {
+		extra = held.(connector.Extra)
 	}
-	out, err := a.outcomes.Finish(id, status, step, reason, url, time.Now())
+	out, err := a.outcomes.Finish(id, status, step, reason, extra, time.Now())
 	if err != nil {
 		a.s.log.Warn("could not persist a command outcome", "command", id, "err", err)
 	}
 	ack := connector.NewAck(id, out.Status, out.Step, out.Reason)
 	ack.URL = out.URL
+	ack.AppSecretSource = out.AppSecretSource
+	ack.Warning = connector.CutWarning(out.Warning)
 	if err := send(ack); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)
@@ -537,6 +544,10 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	if err != nil {
 		return "failed", "deploying", "could not pull the secret set: " + err.Error()
 	}
+	candidate, lore, err := a.appSecretCandidate(ctx, client, cfg, cmd)
+	if err != nil {
+		return "failed", "deploying", err.Error()
+	}
 	secretsFile, err := a.writeSecretsFile(secrets)
 	if err != nil {
 		return "failed", "deploying", err.Error()
@@ -550,18 +561,130 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
 		SecretsFile: secretsFile,
 		// A console deploy pushes an artifact, which carries no backup policy.
-		KeepBackupPolicy: true,
+		KeepBackupPolicy:   true,
+		AppSecretCandidate: candidate,
 	})
 	if derr != nil {
 		return "failed", "deploying", derr.Error()
 	}
 	a.s.log.Info("lore deploy served", "command", cmd.ID, "release", out.Result.Release)
+	// Before the terminal ack, which `finish` sends once this returns: Lore
+	// answers the escrow only while the command is sent or running.
+	a.escrowAppSecret(ctx, client, cfg, cmd, out.Result.App, lore)
+	extra := connector.Extra{AppSecretSource: out.AppSecret}
 	if domain := out.Result.App.Domain(); domain != "" {
 		// The address `bay deploy` prints, for the terminal ack (#Q3155).
-		a.urls.Store(cmd.ID, "https://"+domain+"/")
+		extra.URL = "https://" + domain + "/"
 	}
+	// The deploy's warning (an empty database, a key minted over restored
+	// data), which reached nobody on a Lore deploy before it rode the ack.
+	extra.Warning, _ = out.Restore["warning"].(string)
+	a.extras.Store(cmd.ID, extra)
 	a.pruneArtifacts(dir, keepArtifacts)
 	return "done", "", ""
+}
+
+/*
+appSecretCandidate asks Lore for the APP_SECRET it holds for the copy this
+command deploys, before anything is provisioned.
+
+An instance with a key of its own asks for the hash only: Lore's key is never
+used over the instance's (a mismatch is reported back by the escrow, not
+fixed here). An instance without one asks for the value, which goes to the
+deploy as a candidate in memory, after the snapshot in precedence: a snapshot
+restored in the same deploy still replaces it.
+
+A 404 is an older Lore: no candidate, the deploy mints as before. Any other
+failure fails the deploy before it provisions, because a key minted over an
+answer Bay could not read would then replace Lore's row, the only copy of
+the real one.
+*/
+func (a *actions) appSecretCandidate(ctx context.Context, client *http.Client, cfg connector.Config, cmd connector.Command) (string, loreSecret, error) {
+	instance := filepath.Join(a.s.root, "apps", naming.Instance(instanceName(cmd), cmd.Environment))
+	current, err := deploy.ReadAppSecret(instance)
+	if err != nil {
+		return "", loreSecret{}, fmt.Errorf("could not read the instance's APP_SECRET: %w", err)
+	}
+	ans, supported, err := connector.PullAppSecret(ctx, client, cfg, cmd.ID, current == "")
+	if err != nil {
+		return "", loreSecret{}, fmt.Errorf("could not ask Lore for the app's APP_SECRET, so the deploy stops before minting one: %w", err)
+	}
+	lore := loreSecret{supported: supported, sha256: ans.SHA256}
+	if current != "" || ans.Value == "" {
+		return "", lore, nil
+	}
+	if err := deploy.CheckAppSecret(ans.Value); err != nil {
+		return "", loreSecret{}, fmt.Errorf("the APP_SECRET Lore holds for this copy cannot be an instance's key (%v), so the deploy stops before minting one", err)
+	}
+	a.s.log.Info("the instance has no APP_SECRET; Lore holds one for this copy", "command", cmd.ID)
+	return ans.Value, lore, nil
+}
+
+/*
+escrowAppSecret sends Lore the key the instance now runs on, when the hash
+Lore answered before the deploy is missing or differs, so Lore's row is the
+running key and a rebuilt host gets it back. Every instance deployed before
+this existed has a key Lore never saw: its first deploy sends it.
+
+Never while the instance is under RestorePending: its key may still be
+replaced by the restore that clears the hold, and Lore must not be given a
+key the snapshot is about to supersede. The deploy after the restore sends
+it.
+
+A send that fails is a warning, never a failed deploy: the app is already up,
+and the next deploy finds the hash still different and sends again.
+*/
+func (a *actions) escrowAppSecret(ctx context.Context, client *http.Client, cfg connector.Config, cmd connector.Command, app state.App, lore loreSecret) {
+	if app.Static {
+		return
+	}
+	// What this deploy found, for `bay doctor` and `bay status`: Lore answers
+	// its hash only inside a deploy command, so it is recorded, not asked.
+	result := state.LoreSecretUnknown
+	defer func() {
+		if err := a.s.store.RecordLoreSecret(app.Key(), result, time.Now()); err != nil {
+			a.s.log.Error("could not record the Lore APP_SECRET comparison", "app", app.Key(), "err", err)
+		}
+	}()
+	if !lore.supported {
+		return
+	}
+	if current, ok := a.s.store.Get(app.Key()); ok && current.RestorePending != nil {
+		a.s.log.Info("APP_SECRET not escrowed to Lore while a restore is pending", "app", app.Key(), "command", cmd.ID)
+		return
+	}
+	key, err := deploy.ReadAppSecret(a.s.instanceDir(app))
+	if err != nil || key == "" {
+		a.s.log.Warn("could not read the instance's APP_SECRET to escrow it to Lore", "app", app.Key(), "err", err)
+		return
+	}
+	if connector.SHA256Hex(key) == lore.sha256 {
+		result = state.LoreSecretMatch
+		return
+	}
+	ans, supported, err := connector.PushAppSecret(ctx, client, cfg, cmd.ID, key)
+	switch {
+	case err != nil:
+		a.s.log.Warn("could not escrow the instance's APP_SECRET to Lore; the next deploy tries again", "app", app.Key(), "command", cmd.ID, "err", err)
+	case !supported:
+		a.s.log.Info("Lore has no APP_SECRET escrow for this command (an older Lore)", "app", app.Key(), "command", cmd.ID)
+	case ans.Replaced:
+		result = state.LoreSecretSent
+		a.s.log.Warn("Lore held another APP_SECRET for this copy and now holds the one this instance runs on", "app", app.Key(), "command", cmd.ID)
+	case ans.Stored:
+		result = state.LoreSecretSent
+		a.s.log.Info("APP_SECRET escrowed to Lore", "app", app.Key(), "command", cmd.ID)
+	default:
+		result = state.LoreSecretMatch
+	}
+}
+
+// loreSecret is what a deploy learned of Lore's APP_SECRET for its copy:
+// whether Lore has the route, and the hash of what it holds ("" for none),
+// for the escrow that follows the deploy.
+type loreSecret struct {
+	supported bool
+	sha256    string
 }
 
 // keepArtifacts bounds the local cache under <root>/artifacts: enough for a

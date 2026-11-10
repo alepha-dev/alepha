@@ -190,6 +190,20 @@ export class RankService {
       );
     }
     await this.assertNoSelfLockout(organizationId, input, writer);
+    // Rewriting a rank acts on everyone who holds it, so the rank as it
+    // stands must be inside the writer's set too: otherwise a `rank:manage`
+    // holder could cut down a rank above their own and demote its holders.
+    const current = (await this.ranksOf(organizationId)).find(
+      (item) => item.key === input.key,
+    );
+    if (current) {
+      await this.assertWithinWriterSet(
+        organizationId,
+        current.permissions,
+        writer,
+        `"${current.name}" holds permissions you do not`,
+      );
+    }
     const existing = await this.definitionOf(organizationId, input.key);
     if (existing?.builtin && input.key !== "member") {
       throw new BadRequestError(`"${existing.name}" cannot be edited`);
@@ -217,7 +231,7 @@ export class RankService {
   public async delete(
     organizationId: string,
     key: string,
-    _writer: UserAccountToken,
+    writer: UserAccountToken,
   ): Promise<void> {
     if (key === "owner" || key === "member") {
       throw new BadRequestError("A built-in rank cannot be deleted");
@@ -228,6 +242,12 @@ export class RankService {
     if (existing.builtin) {
       throw new BadRequestError(`"${existing.name}" cannot be deleted`);
     }
+    await this.assertWithinWriterSet(
+      organizationId,
+      existing.permissions,
+      writer,
+      `"${existing.name}" holds permissions you do not`,
+    );
     const holders = await this.members.count({
       organizationId: { eq: organizationId },
       rank: { eq: key },
@@ -258,6 +278,7 @@ export class RankService {
     if (member.rank === "owner") {
       throw new BadRequestError("Ownership is transferred, not assigned");
     }
+    await this.assertOutranks(organizationId, userId, writer);
     await this.assertAssignable(organizationId, key, writer);
     // `null`, not `undefined`: an update skips an undefined field, so the
     // member would silently keep their old rank instead of going back to
@@ -265,6 +286,38 @@ export class RankService {
     await this.members.updateById(member.id, {
       rank: key === "member" ? null : key,
     });
+  }
+
+  /**
+   * Refuse an act on a member whose rank holds a permission the actor does
+   * not: moving them to another rank, or removing them.
+   *
+   * The ceiling on the TARGET rank alone let a `member:manage` holder demote
+   * or remove somebody ranked above them, as long as where they were sent
+   * was low enough. The owner is never inside anybody's set, and a member
+   * with no row is nobody to protect.
+   */
+  public async assertOutranks(
+    organizationId: string,
+    userId: string,
+    actor: RankWriter,
+  ): Promise<void> {
+    if (actor.ownership === false) return;
+    const target = await this.loadMembership(organizationId, userId);
+    if (!target) return;
+    const key = target.rank ?? "member";
+    if (key === "owner") {
+      throw new ForbiddenError("The owner cannot be moved or removed");
+    }
+    const rank = (await this.ranksOf(organizationId)).find(
+      (item) => item.key === key,
+    );
+    await this.assertWithinWriterSet(
+      organizationId,
+      rank?.permissions ?? [],
+      actor,
+      `This member's rank (${rank?.name ?? key}) holds permissions you do not`,
+    );
   }
 
   public async assertAssignable(
@@ -337,7 +390,8 @@ export class RankService {
   protected async assertWithinWriterSet(
     organizationId: string,
     permissions: string[],
-    writer: UserAccountToken,
+    writer: RankWriter,
+    reason = "You cannot grant a permission you do not hold",
   ): Promise<void> {
     if (writer.ownership === false) return;
     const membership = await this.membership(organizationId, writer.id);
@@ -351,9 +405,7 @@ export class RankService {
       (permission) => !this.grants(held, permission),
     );
     if (beyond.length) {
-      throw new BadRequestError(
-        `You cannot grant a permission you do not hold: ${beyond.join(", ")}`,
-      );
+      throw new BadRequestError(`${reason}: ${beyond.join(", ")}`);
     }
   }
 
@@ -426,6 +478,12 @@ export class RankService {
     return [...merged];
   }
 }
+
+/**
+ * Who is acting on a rank or a member: an id, and `ownership: false` for the
+ * privileged identity that bypasses ranks.
+ */
+export type RankWriter = Pick<UserAccountToken, "id" | "ownership">;
 
 export interface Rank {
   key: string;

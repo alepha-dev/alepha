@@ -26,7 +26,7 @@ stack's service is the instance `stack.service/env`, as in
 |             | `--acme-http-port N`, `--acme-tls-port N` challenge ports, default 80 and 443                               |
 |             | `--control-socket PATH`, `--control-group bay-control`                                                      |
 |             | `--backup-interval 24h` (`0` disables), `--keep-releases 2` (minimum 2; per app, and stack revisions too)   |
-| `bay doctor [--root /opt/bay/data] [--control-socket PATH] [--probe-keys]` | can this host run Bay; exits 1 on a failed check, not on a `WARN`. On a live host it needs the socket (found as above), or ports 80 and 443 fail. Read-only on S3 unless `--probe-keys`, which writes probe objects to re-prove each app key |
+| `bay doctor [--root /opt/bay/data] [--control-socket PATH] [--probe-keys]` | can this host run Bay; exits 1 on a failed check, not on a `WARN`. On a live host it needs the socket (found as above), or ports 80 and 443 fail. Read-only on S3 unless `--probe-keys`, which writes probe objects to re-prove each app key. One `key <name/env>` line per app: whether the latest snapshot carries the `APP_SECRET` it runs on (`WARN` when it holds another), and whether Lore held the same key at the last deploy |
 | `bay version`              | the binary's version (`dev` for a local build)                                               |
 
 ## Apps
@@ -37,13 +37,14 @@ stack's service is the instance `stack.service/env`, as in
 | `bay deploy --image REF@sha256:... --port N --name N [--health /path] [--env E] [--domain D]... [--secrets-file F]` | deploy a container image, by digest |
 | `bay deploy <stack>/<env>/<service> (FILE\|-\|--image ...)`                 | deploy into a stack's app service                |
 | `bay list`                                                  | every instance, as a JSON array                                          |
-| `bay status [--json] [--backup-interval D]`                 | releases, process, traffic, backup freshness, warnings; exits 1 on a warning. `D` judges staleness against another schedule |
+| `bay status [--json] [--backup-interval D]`                 | releases, process, traffic, backup freshness, warnings; exits 1 on a warning. `D` judges staleness against another schedule. Says where each app's `APP_SECRET` came from (`kept`, `snapshot`, `lore`, `minted`, `replaced`), and warns while one minted over restored data runs |
 | `bay logs (<name/env>\|--name N [--env E]) [-n\|--lines 200] [--since 15m] [--grep RE] [--json]` | the container's log, at most 2000 lines; `--since` and `--grep` filter those on the client |
 | `bay stop <name/env>`                                       | out of service until `start` or a deploy; survives reboots               |
 | `bay start <name/env>`                                      | back into service                                                        |
 | `bay remove <name/env> [--purge]`                           | unregister; data kept unless `--purge`                                   |
 | `bay env set <name/env> (-\|FILE)`                          | merge `KEY=VALUE` lines; a changed value restarts the app               |
 | `bay env list <name/env>`                                   | variable names only                                                      |
+| `bay secret replace <name/env> APP_SECRET - [--yes]`        | set the app's `APP_SECRET` from stdin, confirmed: signs every session out, restarts a running app |
 | `bay harden <name/env> --relax writable-rootfs[,capabilities]` | lift isolation defaults for this app; replaces the previous set       |
 | `bay harden <name/env> --memory 1g\|default`                | memory ceiling, 64m to 64g (default 512m)                                |
 | `bay harden <name/env> --clear`                             | remove every relaxation; the memory, pids and mounts stay                |
@@ -73,7 +74,9 @@ See [Deploying](/bay/docs/guides-deploying) and [Operating](/bay/docs/guides-ope
 | `bay config s3 --endpoint URL --bucket B [--region R] [--keep N]`         | both from one credential (warned about)                    |
 | `bay backup <name/env>`                                                   | snapshot, verify, upload, now                              |
 | `bay backups <name/env>`                                                  | stored snapshots                                           |
-| `bay restore <name/env> [--key K]`                                        | restore the latest or a given snapshot; old DB set aside   |
+| `bay restore <name/env> [--key K]`                                        | restore the latest or a given snapshot; old DB set aside. Brings the snapshot's `APP_SECRET` back into an instance with none, or one that ran empty until now |
+| `bay restore <name/env> [--key K] --with-key [--yes]`                     | the snapshot's databases and its `APP_SECRET` together, confirmed; refused with `--from` |
+| `bay backup verify <name/env> [--key K \| --at TIME] \| --all`              | restore test: checksum and open every database; says whether the snapshot carries an `APP_SECRET` |
 | `bay backup list <stack>/<env> [service]`                                 | a stack's service dumps                                    |
 | `bay backup restore <stack>/<env> <service> <backup> [--from S/E] [--yes]` | restore a service dump                                    |
 | `bay storage migrate <name/env>`                                          | copy local uploads into the apps bucket, then repoint      |

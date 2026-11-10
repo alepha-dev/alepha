@@ -52,7 +52,8 @@ func storageChecks(root string, probeKeys bool) []check {
 	}
 	// No budget over the whole: each check bounds its own calls, so a host
 	// with many apps does not see its last keys "unverified" for want of time.
-	return storageChecksFor(context.Background(), &st, probeKeys)
+	return append(storageChecksFor(context.Background(), &st, probeKeys),
+		appSecretChecks(context.Background(), root, &st)...)
 }
 
 func storageChecksFor(ctx context.Context, st *state.State, probeKeys bool) []check {
@@ -81,12 +82,12 @@ func storageChecksFor(ctx context.Context, st *state.State, probeKeys bool) []ch
 		shared := check{Name: "s3 separate keys", OK: true, Detail: "the backup key is held by no app"}
 		if state.SameCredential(&st.S3.S3Target, st.Storage) {
 			shared = check{Name: "s3 separate keys", Warn: true,
-				Detail: "the backup key is also the s3:apps key: any hosted app can delete every backup. Mint two keys (bay config s3:backups / s3:apps)"}
+				Detail: "the backup key is also the s3:apps key: any hosted app can delete every backup, and read every instance's APP_SECRET stored with them. Mint two keys (bay config s3:backups / s3:apps)"}
 		}
 		for k, t := range instances {
 			if state.SameCredential(&st.S3.S3Target, &t) {
 				shared = check{Name: "s3 separate keys", Warn: true,
-					Detail: "the backup key is also " + k + "'s upload key: that app can delete every backup"}
+					Detail: "the backup key is also " + k + "'s upload key: that app can delete every backup, and read every instance's APP_SECRET stored with them"}
 			}
 		}
 		checks = append(checks, shared)
@@ -164,7 +165,7 @@ func hostWideKeyCheck(ctx context.Context, st *state.State) check {
 	}
 	c.Warn = true
 	c.Detail = "the key every app without its own holds is not refused on the backups (" + strings.Join(bad, "; ") +
-		"): scope it to the blob prefixes, or move backups to a bucket it cannot reach"
+		"): an app can read every instance's APP_SECRET there, not only the data. Scope it to the blob prefixes, or move backups to a bucket it cannot reach"
 	return c
 }
 

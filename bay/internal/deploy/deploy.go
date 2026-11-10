@@ -104,6 +104,12 @@ type Options struct {
 	// the caller. Recorded on the instance as its app layer; nil drops any
 	// earlier declaration, because it describes this release.
 	BackupPolicy *backuppolicy.Policy
+	// AppSecretCandidate is a key to give the instance when it has none:
+	// the one Lore holds for this copy (a rebuilt host, or a copy moved from
+	// another estate). Never used over a key the instance already has, and
+	// never written anywhere but its `.env`. A key taken from it counts as
+	// fresh, like a minted one: a snapshot restored in the same deploy wins.
+	AppSecretCandidate string
 }
 
 // Result reports what was deployed.
@@ -129,7 +135,16 @@ type Result struct {
 	// StorageBackend is where this app's blobs ended up: "local", "s3", or
 	// empty when it declares no bucket.
 	StorageBackend string
+	// SecretSource is where the instance's APP_SECRET came from in this
+	// deploy: SecretKept when it had one before, SecretMinted when this
+	// deploy made it. Empty for a static site, which has no key.
+	SecretSource string
 }
+
+// SecretFresh says whether this deploy gave the instance its key, rather than
+// finding one: such a key counts as no key to the auto-restore that follows,
+// which replaces it with the snapshot's.
+func (r *Result) SecretFresh() bool { return r.SecretSource != "" && r.SecretSource != SecretKept }
 
 // Run unpacks, provisions and registers an app. It does not start it — the
 // caller decides, because starting is what needs a health check around it.
@@ -284,6 +299,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		dbPath         string
 		dbCreated      bool
 		storageBackend string
+		secretSource   string
 	)
 	if m.IsStatic() && len(opts.Secrets) > 0 {
 		// Refused rather than dropped. A static site has no `.env` and no
@@ -311,7 +327,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 			}
 		}
 
-		dbPath, dbCreated, storageBackend, err = provision(opts, instance, m, port, existing.StorageBackend)
+		dbPath, dbCreated, storageBackend, secretSource, err = provision(opts, instance, m, port, existing.StorageBackend)
 		if err != nil {
 			return nil, fmt.Errorf("provision: %w", err)
 		}
@@ -373,7 +389,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	return &Result{
 		App: app, Manifest: m, Release: release, Previous: previous,
 		DatabasePath: dbPath, DatabaseCreated: dbCreated,
-		StorageBackend: storageBackend,
+		StorageBackend: storageBackend, SecretSource: secretSource,
 	}, nil
 }
 
@@ -417,20 +433,20 @@ func uniqueRelease(instance, base string) string {
 //
 // These live OUTSIDE the release directory on purpose: they belong to the app
 // instance, not to a version, so they survive deploys and rollbacks.
-func provision(opts Options, instance string, m *manifest.Manifest, port int, currentBackend string) (dbPath string, dbCreated bool, backend string, err error) {
+func provision(opts Options, instance string, m *manifest.Manifest, port int, currentBackend string) (dbPath string, dbCreated bool, backend string, secretSource string, err error) {
 	dataDir := filepath.Join(instance, "data")
 	storageDir := filepath.Join(instance, "storage")
 	scratchDir := filepath.Join(instance, "scratch")
 	for _, d := range []string{dataDir, storageDir, scratchDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
-			return "", false, "", err
+			return "", false, "", "", err
 		}
 	}
 
 	envPath := filepath.Join(instance, ".env")
 	env, err := runner.LoadEnvFile(envPath)
 	if err != nil {
-		return "", false, "", err
+		return "", false, "", "", err
 	}
 
 	// The app's own secrets, arriving with this deploy.
@@ -451,12 +467,23 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 	// APP_SECRET belongs to the instance, not the release. Regenerating it on
 	// every deploy would invalidate every session on every push — a bug that
 	// takes weeks to trace back to its cause.
-	if env["APP_SECRET"] == "" {
+	//
+	// Said, never inferred: the caller needs to know whether this deploy made
+	// the key, because a key minted a second ago is "no key" to the
+	// auto-restore that follows (provision runs first, and writes it).
+	secretSource = SecretKept
+	switch {
+	case env["APP_SECRET"] != "":
+	case opts.AppSecretCandidate != "":
+		env["APP_SECRET"] = opts.AppSecretCandidate
+		secretSource = SecretFromLore
+	default:
 		secret, err := randomHex(32)
 		if err != nil {
-			return "", false, "", err
+			return "", false, "", "", err
 		}
 		env["APP_SECRET"] = secret
+		secretSource = SecretMinted
 	}
 
 	// Managed vs BYO: a DATABASE_URL supplied by the user wins and Bay steps
@@ -471,7 +498,7 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 			f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY, 0o600)
 			if err != nil {
-				return "", false, "", err
+				return "", false, "", "", err
 			}
 			f.Close()
 			dbCreated = true
@@ -494,7 +521,7 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 			delete(env, "STORAGE_PATH")
 		case opts.Storage != nil:
 			if err := refuseToStrandFiles(storageDir, opts, currentBackend); err != nil {
-				return "", false, "", err
+				return "", false, "", "", err
 			}
 			backend = BackendS3
 			env["S3_ENDPOINT"] = opts.Storage.Endpoint
@@ -569,9 +596,9 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 	env["NODE_ENV"] = "production"
 
 	if err := writeEnvFile(envPath, env); err != nil {
-		return "", false, "", err
+		return "", false, "", "", err
 	}
-	return dbPath, dbCreated, backend, nil
+	return dbPath, dbCreated, backend, secretSource, nil
 }
 
 // RepointStorage rewrites a deployed app's .env to read blobs from the bucket.

@@ -1999,6 +1999,7 @@ export default {
   "app.environment.empty":
     "Nothing set yet. This copy deploys fine with no variables.",
   "app.environment.encrypted": "Value encrypted",
+  "app.environment.setByMachine": "set by the machine",
   "app.environment.masked": "starts with $1",
   "app.environment.remove": "Remove",
   "app.environment.remove.title": "Remove this variable?",

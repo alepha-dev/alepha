@@ -223,6 +223,16 @@ const AppEnvironment = () => {
                     <span className="italic">
                       {tr("app.environment.encrypted")}
                     </span>
+                    {/* A Bay copy's key is the machine's own, escrowed by
+                        Bay: no person set it, which is what an empty
+                        updatedBy says here. */}
+                    {row.key === "APP_SECRET" &&
+                    !row.updatedBy &&
+                    (data?.reserved ?? []).includes("APP_SECRET") ? (
+                      <span className="text-xs">
+                        {tr("app.environment.setByMachine")}
+                      </span>
+                    ) : null}
                     {row.valuePrefix ? (
                       <span className="text-xs">
                         {tr("app.environment.masked", {

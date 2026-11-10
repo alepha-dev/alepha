@@ -307,8 +307,16 @@ func (s *server) backupInstanceAs(ctx context.Context, app state.App, trigger, t
 			s.recordBackupFailure(ctx, app, "resolve paths", err)
 			return backupOutcome{}, err
 		}
+		// The key the data is sealed with goes into the bundle beside it, so
+		// a rebuilt host gets both back. Read at the moment of the backup:
+		// the bundle carries the key its databases were written under.
+		appSecret, err := deploy.ReadAppSecret(s.instanceDir(app))
+		if err != nil {
+			s.recordBackupFailure(ctx, app, "read the instance's APP_SECRET", err)
+			return backupOutcome{}, err
+		}
 		res, manifest, err = mgr.BackupBundle(ctx, app.Name, app.Env, runtime, dataDir,
-			backup.BundleMeta{Release: app.Release, Trigger: trigger, Tag: tag, Bay: version})
+			backup.BundleMeta{Release: app.Release, Trigger: trigger, Tag: tag, Bay: version, AppSecret: appSecret})
 		if err != nil {
 			s.recordBackupFailure(ctx, app, "backup", err)
 			return backupOutcome{}, err
@@ -601,12 +609,18 @@ var installBundle = backup.InstallBundle
 // It never runs against an existing database. That single condition is what
 // separates "recovery" from "a redeploy silently reverted my data".
 //
+// The backup's APP_SECRET comes back with the data when this deploy gave the
+// instance its key (secretFresh: provision minted it a moment ago, before
+// this ran), or when the instance ran empty under RestorePending until now. A
+// key that predates both is kept, and the answer says when it is not the one
+// the restored data was sealed with.
+//
 // A failure does not fail the deploy: the app starts on the empty database. See
 // `startedEmptyUnchecked` for what keeps that from costing the snapshot it missed.
 // The one exception is an install that could not put back what it had already
 // replaced (a `backup.NotRolledBackError`, returned as is): the data folder is
 // then in neither state, and the app must not be started on it.
-func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string, deployStart time.Time) (map[string]any, error) {
+func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath string, deployStart time.Time, secretFresh bool) (map[string]any, error) {
 	// The scheduler takes the same lock: without it, it could back the empty
 	// database up between its creation and the restore.
 	defer s.lockBackup(app.Key())()
@@ -630,7 +644,9 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 	// database up since: then the cut-off is when it did, as for a
 	// `bay restore` without a key.
 	cutoff := beforeSecondOf(deployStart)
+	pending := false
 	if current, ok := s.store.Get(app.Key()); ok && current.RestorePending != nil {
+		pending = true
 		if since := current.RestorePending.SinceTime(); !since.IsZero() && beforeSecondOf(since).Before(cutoff) {
 			cutoff = beforeSecondOf(since)
 		}
@@ -673,16 +689,26 @@ func (s *server) maybeAutoRestore(ctx context.Context, app state.App, dbPath str
 		}
 		return restore, nil
 	}
+	// The key in the same step as the database, before the app starts.
+	current, err := deploy.ReadAppSecret(s.instanceDir(app))
+	if err != nil {
+		s.log.Error("could not read the instance's APP_SECRET", "app", app.Key(), "err", err)
+	}
+	plan := s.applySecretPlan(app, planSecretRestore(fetched, secretInput{
+		app: app, sameInstance: true, current: current, fresh: secretFresh, pending: pending,
+	}))
 	s.clearRestorePending(app.Key())
-	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key)
+	s.log.Info("database auto-restored", "app", app.Key(), "key", latest.Key, "appSecret", plan.outcome)
 	s.recordRestore(app, state.RestoreRecord{Key: latest.Key, Trigger: "deploy", Status: "done",
-		Reason: "empty database on deploy, latest backup restored"})
-	return map[string]any{
+		Reason: "empty database on deploy, latest backup restored", AppSecret: plan.outcome})
+	out := map[string]any{
 		"database":    "restored from " + latest.Key,
 		"restoredAt":  latest.Timestamp.Format(time.RFC3339),
 		"files":       fetchedPaths(fetched),
 		"notRestored": []string{"storage/ (uploaded files)"},
-	}, nil
+	}
+	plan.say(out)
+	return out, nil
 }
 
 /*

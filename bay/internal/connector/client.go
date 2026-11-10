@@ -134,7 +134,20 @@ type Ack struct {
 	// (#Q3155): `https://<the instance's canonical domain>/`, what `bay deploy`
 	// prints. Optional on the wire, so a Lore that predates it ignores it.
 	URL string `json:"url,omitempty"`
+	// AppSecretSource is where the deployed instance's APP_SECRET came from
+	// (kept, snapshot, lore, minted), and Warning what the deploy has to say
+	// without failing (an empty database, a key minted over restored data),
+	// on a deploy's terminal `done` ack only. Never the key nor its hash.
+	// Optional, like URL: an older Lore drops them.
+	AppSecretSource string `json:"appSecretSource,omitempty"`
+	Warning         string `json:"warning,omitempty"`
 }
+
+// MaxAckWarning is what Lore's ack schema accepts of a warning.
+const MaxAckWarning = 2000
+
+// CutWarning bounds a warning to what Lore accepts.
+func CutWarning(s string) string { return cut(s, MaxAckWarning) }
 
 // MaxAckStep and MaxAckReason are what Lore's ack schema accepts. An ack over
 // either limit is refused whole by the sink, which would read as a command

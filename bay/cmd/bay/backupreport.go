@@ -186,7 +186,8 @@ func (s *server) recordRestore(app state.App, r state.RestoreRecord) {
 		kind = "restore.auto"
 	}
 	s.emit(kind, &app, map[string]any{"key": r.Key, "from": r.From, "reason": r.Reason,
-		"trigger": r.Trigger, "error": r.Error, "preRestoreKey": r.PreRestoreKey})
+		"trigger": r.Trigger, "error": r.Error, "preRestoreKey": r.PreRestoreKey,
+		"appSecret": r.AppSecret, "withKey": r.WithKey})
 }
 
 // claimInstance marks an instance busy with a deploy or a restore, so the

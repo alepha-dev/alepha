@@ -53,7 +53,8 @@ func (s *server) handleConfigStorage(w http.ResponseWriter, r *http.Request) {
 	// This key goes into every app's .env. If it is also the backup key, any
 	// hosted app can delete every backup - the one thing the split prevents.
 	if b := s.store.S3(); b != nil && state.SameCredential(&b.S3Target, &body) && !req.AllowShared {
-		writeError(w, http.StatusConflict, "this is the BACKUP key: every app is given this one, so any app could delete every backup on this host. "+
+		writeError(w, http.StatusConflict, "this is the BACKUP key: every app is given this one, so any app could delete every backup on this host, "+
+			"and read every instance's APP_SECRET stored with them. "+
 			"Mint a separate key, or pass --allow-shared-key to accept the risk")
 		return
 	}

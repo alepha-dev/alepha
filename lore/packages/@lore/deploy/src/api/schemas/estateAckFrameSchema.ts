@@ -17,6 +17,16 @@ export const estateAckFrameSchema = z.object({
    * `https://<domain>/` `bay deploy` prints. Bounded like `deployments.url`.
    */
   url: z.string().max(500).optional(),
+  /**
+   * Where the deployed instance's `APP_SECRET` came from (`kept`,
+   * `snapshot`, `lore`, `minted`), on a deploy's `done` ack. Never the key.
+   */
+  appSecretSource: z.string().max(20).optional(),
+  /**
+   * What the deploy has to say without failing: it started on an empty
+   * database, or on a key minted over restored data. Bounded like `reason`.
+   */
+  warning: z.string().max(2000).optional(),
 });
 
 export type EstateAckFrame = Infer<typeof estateAckFrameSchema>;

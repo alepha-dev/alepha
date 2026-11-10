@@ -146,7 +146,13 @@ Bay writes some keys itself and refuses to let anything overwrite them:
 `NODE_ENV`, `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `SERVER_HOST`,
 `APP_NAME`, `DATA_DIR`, `STORAGE_PATH` and the `S3_*` keys. `APP_SECRET` is
 generated once per instance and never regenerated: a new one would sign every
-user out.
+user out. It never comes from a push (a secrets file holding it is refused):
+an instance without one takes it from the snapshot restored into it, then from
+Lore, and only then mints one, and each deploy says which (see
+[Backups](/bay/docs/guides-backups#the-signing-key)). The one way to set it on
+purpose is
+[`bay secret replace`](/bay/docs/guides-operating#replacing-the-signing-key),
+which signs every session out.
 
 Your own variables arrive two ways:
 

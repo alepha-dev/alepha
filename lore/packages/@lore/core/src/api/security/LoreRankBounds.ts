@@ -53,5 +53,27 @@ export class LoreRankBounds {
     "estate:create",
     "estate:update",
     "estate:delete",
+    // The organization behind a project is plumbing Lore never shows: it is
+    // created with the project, renamed with it, and its deletion is refused
+    // outright (`LoreOrganizationPolicyProvider`). The framework still
+    // declares and gates both, so they are withheld from every rank too, in
+    // {@link LoreRankBounds.NEVER_GRANTED}.
+    "organization:update",
+    "organization:delete",
+  ];
+
+  /**
+   * Every permission the server refuses to put in a rank, whoever writes it:
+   * the ceiling, and the organization's own two acts.
+   *
+   * ⚠️ This is what `organizationConfigAtom.ownerOnly` is set to. Setting it
+   * to {@link OWNER_ONLY} alone replaced the framework's default
+   * (`organization:delete`) instead of adding to it, and the rank editor then
+   * offered both organization permissions as ordinary checkboxes.
+   */
+  public static readonly NEVER_GRANTED: string[] = [
+    ...LoreRankBounds.OWNER_ONLY,
+    "organization:update",
+    "organization:delete",
   ];
 }

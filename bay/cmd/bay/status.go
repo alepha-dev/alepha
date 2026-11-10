@@ -53,6 +53,11 @@ type statusLine struct {
 	// field. Absent for an app with no Bay-managed database, and from an older
 	// `serve` that has no policies.
 	BackupPolicy *backuppolicy.Effective `json:"backupPolicy,omitempty"`
+	// AppSecret is where the instance's key came from (kept, snapshot,
+	// lore, minted, replaced), and AppSecretLore what the last deploy found
+	// of Lore's (match, sent, unknown). Additive; never the key.
+	AppSecret     string `json:"appSecret,omitempty"`
+	AppSecretLore string `json:"appSecretLore,omitempty"`
 
 	// Problems is the same set the human view marks with a warning sign, in
 	// words. Present so a monitor never has to infer severity from the fields:
@@ -132,6 +137,14 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	}
 	if a.BackupHold != "" {
 		line.Problems = append(line.Problems, "scheduled backups are held after a failed restore: "+a.BackupHold)
+	}
+	if st := a.AppSecret; st != nil {
+		line.AppSecret, line.AppSecretLore = st.Source, st.Lore
+		// Until the next deploy: restored data under a key it was not sealed
+		// with is an outage for every MFA user, whatever else is green.
+		if st.Warning != "" {
+			line.Problems = append(line.Problems, st.Warning)
+		}
 	}
 	return line
 }

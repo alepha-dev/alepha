@@ -371,6 +371,42 @@ describe("BayAdapter  -  the deploy it composes", () => {
     expect(warnings).toContain("demo/production started on an EMPTY database");
   });
 
+  it("says where the APP_SECRET came from, and warns on a key minted over restored data", async () => {
+    // The recovery test this came from reported identical data while every
+    // MFA user was locked out, because nothing said the key was new.
+    const { alepha, adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        [[
+          "ssh",
+          "-o",
+          "BatchMode=yes",
+          "deploy@bay.example.com",
+          "bay deploy - --name demo --env production",
+        ].join(" ")]: JSON.stringify({
+          url: "https://demo.bay.example.com/",
+          appSecret: "minted",
+          restore: {
+            database: "restored from apps/demo-production/db/x/manifest.json",
+            warning:
+              "demo/production runs on a NEW APP_SECRET over data restored from a backup that carried none",
+          },
+        }),
+      },
+    });
+    const lines: string[] = [];
+    alepha.events.on("log:entry", (e) => {
+      lines.push(`${e.entry.level} ${e.entry.message}`);
+    });
+
+    await adapter.deploy(context(), run);
+
+    expect(lines).toContain("INFO APP_SECRET: minted");
+    expect(lines).toContain(
+      "WARN demo/production runs on a NEW APP_SECRET over data restored from a backup that carried none",
+    );
+  });
+
   it("returns the URL Bay reported", async () => {
     const { adapter, shell } = await setup();
     shell.configure({

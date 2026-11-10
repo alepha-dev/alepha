@@ -413,7 +413,9 @@ bay env list myapp/production    # which variables are set, by NAME only
 Keys Bay writes itself (`NODE_ENV`, `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `SERVER_HOST`,
 `APP_NAME`, `DATA_DIR`, `STORAGE_PATH`, `S3_*`) are **refused**, naming the key. `APP_SECRET` is the reason: it is generated
 once per instance and never regenerated, because a new value signs every user out and the one it
-replaced is gone.
+replaced is gone. A rebuilt host gets it back from the app's snapshot, or from Lore; never from a
+push. `bay secret replace <name/env> APP_SECRET -` (the key on stdin, confirmed) is the one deliberate
+way to set it, and signs every session out.
 
 Anything whose value actually changes restarts the app — an environment variable the running process
 never sees has not been set. An identical push writes nothing and restarts nothing.

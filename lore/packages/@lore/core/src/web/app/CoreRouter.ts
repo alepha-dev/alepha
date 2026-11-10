@@ -26,6 +26,7 @@ import ErrorPage from "./components/shared/ErrorPage.tsx";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
+import { canInProject } from "./services/projectRank.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
 import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
 import { ReportsSummaryMarkdown } from "./services/ReportsSummaryMarkdown.ts";
@@ -565,10 +566,12 @@ export class CoreRouter {
    * - and none of them is read anywhere else, so putting them in the layout's
    * loader would make every other settings page pay for this one.
    *
-   * ⚠️ Unguarded, like every other settings route. Who may EDIT ranks is
-   * `rank:manage`, which hides the nav entry and which the module re-checks on
-   * every write; a route guard would only turn a link somebody already holds
-   * into a 404, and the page reads nothing a member may not read.
+   * Guarded on `rank:manage`, unlike the other settings routes: every read
+   * the page makes (the ranks, the catalogue, the presets) is `rank:manage`,
+   * so without the guard a member who typed the URL got the editor's chrome,
+   * a live "Create rank" button, an empty matrix and a 403 toast per read.
+   * The server refuses every write either way; this answers 404 instead, as
+   * the Automations pages do for a rank that cannot open them.
    */
   projectSettingsRanks = $pageProjectSettings({
     name: "projectSettingsRanks",
@@ -576,6 +579,13 @@ export class CoreRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Ranks`,
     }),
+    loader: async () => {
+      if (
+        !canInProject(this.alepha.store.get(currentProjectAtom), "rank:manage")
+      ) {
+        throw new NotFoundError("Ranks are not available for this rank");
+      }
+    },
     lazy: () =>
       import("./components/project/settings/ProjectSettingsRanksPage.tsx"),
   });

@@ -120,6 +120,8 @@ docker run --rm -v lore:/data -v "$PWD:/backup" alpine \
 
 Restoring is the same command in reverse, into an empty volume, with the container stopped.
 
+⚠️ **`/data/.app_secret` seals every value Lore stores**: the environment variables of every copy, registry credentials, and the `APP_SECRET` of every Bay copy, which Lore keeps so a rebuilt Bay host gets its keys back. Losing that file loses every sealed value at once, and a Lore image running on Bay is not backed up by Bay (an image app has no database Bay can snapshot). Back the volume up yourself, and keep `/data/.app_secret` somewhere apart from the machine.
+
 ## Upgrading
 
 Pull the new tag and restart. Migrations run on boot.

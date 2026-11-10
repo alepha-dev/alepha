@@ -157,6 +157,132 @@ func PullSecrets(ctx context.Context, client *http.Client, cfg Config, commandID
 	return set, nil
 }
 
+// AppSecretAnswer is what Lore holds of a copy's APP_SECRET: the hex SHA-256
+// of the key, empty when it holds none, and the key itself only when it was
+// asked for. The value is never logged and never put in an error.
+type AppSecretAnswer struct {
+	SHA256 string `json:"sha256,omitempty"`
+	Value  string `json:"value,omitempty"`
+}
+
+/*
+PullAppSecret asks Lore what it holds of the APP_SECRET of the copy a deploy
+command deploys: the hash always, the key only with wantValue, which Bay asks
+for only when the instance has no key of its own.
+
+Its own route, never a field of the secret set: that set is written as a
+secrets file and run through refuseBayOwned, so APP_SECRET inside it would
+fail the deploy of every Bay older than this route.
+
+A 404 is an older Lore with no such route: supported is false and the deploy
+goes on without a candidate, as before. Any other failure is an error, and
+the caller fails the deploy rather than minting over an answer it could not
+read: a minted key would then be escrowed over Lore's, the only copy of the
+real one.
+*/
+func PullAppSecret(ctx context.Context, client *http.Client, cfg Config, commandID string, wantValue bool) (ans AppSecretAnswer, supported bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	url := commandURL(cfg, commandID, "app-secret")
+	if wantValue {
+		url += "?value=1"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return ans, false, err
+	}
+	req.Header.Set("Authorization", "Bearer "+cfg.Secret)
+	res, err := client.Do(req)
+	if err != nil {
+		return ans, false, fmt.Errorf("pull the app secret: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return ans, false, nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return ans, false, fmt.Errorf("pull the app secret: the sink answered %d", res.StatusCode)
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&ans); err != nil {
+		return AppSecretAnswer{}, false, errors.New("pull the app secret: the answer is not the JSON object Bay reads")
+	}
+	if ans.SHA256 != "" && !isHexSHA256(ans.SHA256) {
+		return AppSecretAnswer{}, false, errors.New("pull the app secret: the hash Lore answered is not a hex SHA-256")
+	}
+	if ans.Value != "" {
+		if !wantValue {
+			// Never kept when it was not asked for: an instance with a key
+			// has no use for another one in memory.
+			ans.Value = ""
+		} else if ans.SHA256 != sha256Hex(ans.Value) {
+			return AppSecretAnswer{}, false, errors.New("pull the app secret: the key Lore sent does not match the hash it sent with it")
+		}
+	}
+	return ans, true, nil
+}
+
+// EscrowAnswer is what Lore did with an escrowed key.
+type EscrowAnswer struct {
+	Stored   bool `json:"stored"`
+	Replaced bool `json:"replaced"`
+}
+
+/*
+PushAppSecret sends the key the instance runs on to Lore, which stores it
+sealed as the copy's APP_SECRET row, so a rebuilt host gets it back. Its own
+route, inside the deploy command, never the command's result or ack: a
+result is stored as a file the owner reads.
+
+supported is false on a 404 (an older Lore, or a command Lore knows no copy
+for). The key is never put in an error.
+*/
+func PushAppSecret(ctx context.Context, client *http.Client, cfg Config, commandID, key string) (ans EscrowAnswer, supported bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	body, err := json.Marshal(map[string]string{"value": key})
+	if err != nil {
+		return ans, false, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, commandURL(cfg, commandID, "app-secret"), bytes.NewReader(body))
+	if err != nil {
+		return ans, false, err
+	}
+	req.Header.Set("Authorization", "Bearer "+cfg.Secret)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := client.Do(req)
+	if err != nil {
+		return ans, false, fmt.Errorf("escrow the app secret: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return ans, false, nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return ans, false, fmt.Errorf("escrow the app secret: the sink answered %d", res.StatusCode)
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 4<<10)).Decode(&ans); err != nil {
+		return EscrowAnswer{}, false, errors.New("escrow the app secret: the answer is not the JSON object Bay reads")
+	}
+	return ans, true, nil
+}
+
+// SHA256Hex is the hex SHA-256 Lore answers for a key, for the comparison
+// that decides whether to escrow.
+func SHA256Hex(s string) string { return sha256Hex(s) }
+
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+func isHexSHA256(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil && strings.ToLower(s) == s
+}
+
 // RegistryCredential is one registry login a stack-deploy pulls, for the
 // stack's images.
 type RegistryCredential struct {

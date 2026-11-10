@@ -179,6 +179,12 @@ func main() {
 		} else {
 			err = errors.New("usage: bay storage migrate <name/env>")
 		}
+	case "secret":
+		if len(os.Args) > 2 && os.Args[2] == "replace" {
+			err = cmdSecretReplace(os.Args[3:])
+		} else {
+			err = errors.New(secretReplaceUsage)
+		}
 	case "env":
 		switch {
 		case len(os.Args) > 2 && os.Args[2] == "set":
@@ -345,6 +351,10 @@ func usageText() string {
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
+  bay secret replace <name/env> APP_SECRET - [--yes]
+                # put a known key back (stdin only): every session is signed
+                # out and what the current key sealed is lost. Confirmed,
+                # audited; Lore follows on the next deploy from Lore
   bay env set <name/env> (-|FILE)  # merge KEY=VALUE lines into the app's .env
                 # Values are read from stdin, never from argv — an argument is
                 # visible in "ps" to every user here. Keys Bay owns are
@@ -373,12 +383,17 @@ func usageText() string {
   bay backups <name/env> [--plan] # list what is stored, with kind and file count;
                                   # --plan: what retention keeps or deletes, and why
   bay restore <name/env> [--key K | --at TIME [--tz ZONE]] [--from <name/env>] [--dry-run]
+              [--with-key [--yes]]
               # destructive: the newest backup, key/stamp K, or the newest at
               # or before TIME ("2026-10-30 14:00", read in the policy's
               # timezone). --from reads another instance's backups (staging
               # into production). The data replaced is first backed up,
               # tagged pre-restore, and kept aside on disk. --dry-run only
               # verifies the backup and says what would change.
+              # The backup's APP_SECRET comes back with its data when the
+              # instance has no key of its own, or ran empty until now;
+              # --with-key also replaces a key it has (every session signed
+              # out), and is refused with --from.
   bay backup verify <name/env> [--key K | --at TIME] | --all
               # restore test: download, checksum and open every database of a
               # backup (the newest by default) without touching the app
@@ -1118,6 +1133,7 @@ func (s *server) controlMux() *http.ServeMux {
 	s.registerBackupRoutes(mux)
 	s.registerStorageRoutes(mux)
 	s.registerEnvRoutes(mux)
+	s.registerSecretRoutes(mux)
 	s.registerConnectorRoutes(mux)
 	return mux
 }
@@ -1336,6 +1352,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		"pruned":          out.Pruned,
 		"runtime":         out.Runtime,
 		"preDeployBackup": out.PreDeployBackup,
+		"appSecret":       out.AppSecret,
 	})
 }
 
@@ -1403,6 +1420,11 @@ type deployArtifactOptions struct {
 	// artifact pushed from the Lore console): it keeps the one the last
 	// deploy declared instead of reading its silence as "none".
 	KeepBackupPolicy bool
+	// AppSecretCandidate is the key Lore holds for this copy, pulled only
+	// for an instance with no key of its own and passed in memory, never
+	// through the secrets file. Used only when the instance has no key
+	// before this deploy (see deploy.Options.AppSecretCandidate).
+	AppSecretCandidate string
 }
 
 // deployOutcome is what a completed deploy has to say for itself.
@@ -1417,6 +1439,10 @@ type deployOutcome struct {
 	// something the build did not say, why. Reported to whoever deployed,
 	// because "it runs on Node 26" is a fact they may not have chosen.
 	Runtime *deployRuntime `json:"runtime,omitempty"`
+	// AppSecret is where the instance's key came from in this deploy: kept,
+	// snapshot, lore or minted; empty for a static site. A minted key over
+	// restored data is also a warning, in Restore["warning"].
+	AppSecret string `json:"appSecret,omitempty"`
 }
 
 // deployRuntime is the runtime part of a deploy's answer.
@@ -1539,11 +1565,12 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		// same contract `backupManager` has.
 		// The instance's own key when it has one (`bay config s3:apps
 		// <name/env>`), so no other app's credential ever lands in its .env.
-		Storage:         s.store.StorageFor(key),
-		MigratedStorage: opts.MigratedStorage,
-		Secrets:         secrets,
-		StackVars:       stackVars,
-		BackupPolicy:    opts.BackupPolicy,
+		Storage:            s.store.StorageFor(key),
+		MigratedStorage:    opts.MigratedStorage,
+		Secrets:            secrets,
+		StackVars:          stackVars,
+		BackupPolicy:       opts.BackupPolicy,
+		AppSecretCandidate: opts.AppSecretCandidate,
 	}, s.store)
 	if err != nil {
 		if blueGreen {
@@ -1560,7 +1587,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
 		var halfRestored error
-		restore, halfRestored = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart)
+		restore, halfRestored = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart, res.SecretFresh())
 		if halfRestored != nil {
 			return nil, &deployFailure{Status: http.StatusInternalServerError,
 				Err: fmt.Errorf("%s is left stopped: the auto-restore failed half way and could not put the data folder back, so the app is not started on it: %w",
@@ -1605,6 +1632,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	pruned := s.pruneReleases(res.App, res.Previous)
 
 	outcome := &deployOutcome{Result: *res, Restore: restore, Pruned: pruned, PreDeployBackup: preDeploy}
+	outcome.AppSecret = s.recordSecretSource(res, restore)
 	if _, inContainers := s.runner.(containerRunner); inContainers && !res.App.Static {
 		if sel, err := s.runtimeSelection(res.App); err == nil {
 			outcome.Runtime = &deployRuntime{Image: sel.Ref, Warning: sel.Warning}
@@ -2387,6 +2415,17 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ scheduled backups are held after a failed restore: %s\n", a.BackupHold)
 		}
+		if st := a.AppSecret; st != nil && !a.Static {
+			lore := ""
+			if st.Lore != "" {
+				lore = ", Lore " + st.Lore + " at the last deploy"
+			}
+			fmt.Printf("  key      APP_SECRET %s by %s %s%s\n", st.Source, st.By, st.At, lore)
+			if st.Warning != "" {
+				problems++
+				fmt.Printf("           ⚠ %s\n", st.Warning)
+			}
+		}
 		// Named, not counted as a problem: an unhooked volume is a choice the
 		// stack's author made, and a status that always fails is one nobody
 		// reads. It is still said on every run.
@@ -2397,7 +2436,7 @@ func cmdStatus(args []string) error {
 		// someone reading a green status should know the shape of it before
 		// they need it, not after.
 		if a.Backups {
-			fmt.Printf("           .env is not backed up — secrets come from the deploy\n")
+			fmt.Printf("           .env is not backed up, APP_SECRET aside: the other secrets come from the deploy\n")
 			// Uploads are not in the backup set at all. An app still on local
 			// storage therefore has exactly one copy of them, on this disk, and
 			// a green backup line must not be read as covering that.
