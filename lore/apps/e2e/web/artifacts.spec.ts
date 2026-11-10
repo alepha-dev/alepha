@@ -112,8 +112,20 @@ test("opens a build from the table and reads what it declares", async ({
     .getByRole("tab", { name: "Manifest" })
     .click();
   await expect(page).toHaveURL(/tab=manifest/);
-  await expect(page.getByTestId("artifact-manifest")).toContainText(
+  // Drawn (#Q3286): a section per thing the build declares...
+  await expect(page.getByTestId("artifact-manifest-runtimes")).toContainText(
     "index.node.js",
+  );
+  await expect(page.getByTestId("artifact-manifest-secrets")).toContainText(
+    "APP_SECRET",
+  );
+  // ...and the verbatim document one click away.
+  await page
+    .getByTestId("artifact-manifest")
+    .getByRole("tab", { name: "Raw" })
+    .click();
+  await expect(page.getByTestId("artifact-manifest-raw")).toContainText(
+    '"entry": "index.node.js"',
   );
 
   await page.goto(`/${project.slug}/artifacts/my-app/9.9.9`);
