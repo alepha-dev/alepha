@@ -3,6 +3,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
 import { ViteUtils } from "../services/ViteUtils.ts";
+import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
 
 /**
@@ -10,7 +11,10 @@ import { BuildServerTask } from "../tasks/BuildServerTask.ts";
  * and stops there, since the config is all these specs read.
  */
 class RecordingViteUtils extends ViteUtils {
-  public configs: Array<{ plugins?: Array<{ name?: string }> }> = [];
+  public configs: Array<{
+    plugins?: Array<{ name?: string }>;
+    build?: { rolldownOptions?: { output?: { assetFileNames?: string } } };
+  }> = [];
 
   public async importVite(): Promise<any> {
     return {
@@ -55,5 +59,29 @@ describe("BuildServerTask", () => {
       (plugin) => plugin?.name,
     );
     expect(names).toContain("alepha-client-modules");
+  });
+
+  it("names an imported asset as the client build does, so the server-rendered URL is the file the client writes", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ViteUtils, use: RecordingViteUtils });
+    const task = alepha.inject(TestBuildServerTask);
+    const vite = alepha.inject(RecordingViteUtils);
+
+    await expect(
+      task.testBuildServer({
+        root: "/project",
+        entry: "src/main.server.ts",
+        distDir: "dist",
+        runtime: "node",
+        alepha: Alepha.create(),
+      }),
+    ).rejects.toThrow(/stop/);
+
+    expect(
+      vite.configs[0]?.build?.rolldownOptions?.output?.assetFileNames,
+    ).toBe(`${BuildClientTask.HASHED_PREFIXES.asset}[hash][extname]`);
   });
 });

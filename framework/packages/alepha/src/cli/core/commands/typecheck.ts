@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha, type State } from "alepha";
 import { $command } from "alepha/command";
 
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
@@ -7,6 +7,7 @@ import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 export class TypecheckCommand {
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Run TypeScript type checking across the codebase with no emit.
@@ -42,8 +43,24 @@ export class TypecheckCommand {
         JSON.stringify({ plugins: [], categories: {}, rules: {} }),
         root,
       );
+      // ⚠️ The vendored packages are skipped like `node_modules`. They carry
+      // their own monorepo's configs (a `vitest.config.ts` importing
+      // `../../scripts/`), which only resolve upstream, and the generated
+      // config above means the project's own `ignorePatterns`, where
+      // `alepha lint` learns to skip them, never apply here (#Q3310). Their
+      // code is still checked wherever the project imports it.
+      //
+      // The `vendor()` options are read by their atom's key: `alepha/cli/vendor`
+      // imports `alepha/cli`, so importing the atom here would be a cycle.
+      const vendor = this.alepha.store.get(
+        "alepha.cli.vendor.options" as keyof State,
+      ) as { dir?: string } | undefined;
+      const ignores = ["node_modules"];
+      if (vendor) {
+        ignores.push(`${vendor.dir ?? ".vendor"}/**`);
+      }
       await run(
-        `node "${oxlint}" -c "${config}" --type-aware --type-check --ignore-pattern node_modules`,
+        `node "${oxlint}" -c "${config}" --type-aware --type-check ${ignores.map((it) => `--ignore-pattern "${it}"`).join(" ")}`,
         { alias: "typecheck" },
       );
     },

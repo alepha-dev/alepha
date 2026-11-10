@@ -17,6 +17,7 @@ import {
   PreloadTableBuilder,
 } from "../services/PreloadTableBuilder.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
+import { BuildClientTask } from "./BuildClientTask.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
@@ -377,7 +378,14 @@ export class BuildServerTask extends BuildTask {
           output: {
             entryFileNames: "[hash].js",
             chunkFileNames: "[hash].js",
-            assetFileNames: "[hash][extname]",
+            // ⚠️ The client's name, never a bare `[hash]`: an asset a component
+            // imports (`import logo from "./logo.png"`) is a URL the server
+            // renders into the page, and only the client build writes the file
+            // (`dist/public/asset.<hash>.<ext>`). Both builds hash the same
+            // content, so with the same template they agree on the URL; with
+            // `[hash]` alone the server-rendered `src` pointed at a file that
+            // does not exist, and hydration keeps the server's attribute.
+            assetFileNames: `${BuildClientTask.HASHED_PREFIXES.asset}[hash][extname]`,
             format: "esm",
             // No `codeSplitting.groups` on purpose  -  default splitting wins here.
             //
