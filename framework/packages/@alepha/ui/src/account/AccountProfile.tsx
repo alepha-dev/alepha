@@ -18,6 +18,7 @@ import { useToast } from "../core/useToast.tsx";
 import { AutoForm } from "../form/AutoForm.tsx";
 import { SettingsRow } from "../settings/SettingsRow.tsx";
 import { SettingsSection } from "../settings/SettingsSection.tsx";
+import { AccountDisplay } from "./AccountDisplay.tsx";
 import { AccountPage } from "./AccountPage.tsx";
 
 export interface AccountProfileProps {
@@ -341,6 +342,8 @@ const AccountProfile = (props: AccountProfileProps) => {
           </span>
         </SettingsRow>
       </SettingsSection>
+
+      <AccountDisplay />
     </AccountPage>
   );
 };

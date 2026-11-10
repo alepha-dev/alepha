@@ -59,6 +59,46 @@ test.describe("Account area", () => {
     ).toHaveAttribute("href", "/");
   });
 
+  test("holds colour-blind mode on the profile, not in the account menu", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await registerAndVerify(
+      page,
+      `cb-${Date.now()}@example.com`,
+      "GoodPassw0rd",
+    );
+    await page.goto("/account");
+    await page.waitForLoadState("networkidle");
+
+    // The switch drives the real preference: the `cvd` class on <html>, which
+    // is what the palette is keyed on.
+    const toggle = page.getByRole("switch", { name: "Colour-blind mode" });
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await expect(page.locator("html")).not.toHaveClass(/\bcvd\b/);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("html")).toHaveClass(/\bcvd\b/);
+
+    // Kept across a reload (the UI cookie), and the switch reads it back.
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("html")).toHaveClass(/\bcvd\b/);
+    await expect(
+      page.getByRole("switch", { name: "Colour-blind mode" }),
+    ).toHaveAttribute("aria-checked", "true");
+
+    // The account menu still has its display mode, and no colour-blind item.
+    await page.getByLabel("Account menu").click();
+    await expect(
+      page.getByRole("menuitem", { name: "Display Mode" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitemcheckbox", { name: "Colour-blind mode" }),
+    ).toHaveCount(0);
+  });
+
   test("highlights exactly one sidebar entry per page", async ({ page }) => {
     test.setTimeout(90_000);
 

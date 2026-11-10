@@ -66,10 +66,10 @@ export interface ButtonSettingsProps {
    * Labels, for an application that names its chrome itself. An omitted
    * entry is read from the catalogue under `shell.settings.*`, English by
    * default and French through `uiFr`, so the admin console and the account
-   * area are localised without passing any. `language`, `theme`,
-   * `colorMode` and `vision` name the control in both placements: the
-   * submenu (or, for `vision`, the checkbox item) in the menu, the tooltip
-   * and `aria-label` as a button.
+   * area are localised without passing any. `language`, `theme` and
+   * `colorMode` name the control in both placements: the submenu in the
+   * menu, the tooltip and `aria-label` as a button. `vision` names the
+   * colour-blind button, which only exists as a button.
    */
   labels?: {
     signIn?: string;
@@ -109,8 +109,8 @@ export interface ButtonSettingsProps {
 }
 
 /**
- * The account button with the viewer's settings attached: language, theme,
- * display mode and colour-blind mode, wrapped around {@link ButtonUser}.
+ * The account button with the viewer's settings attached: language, theme
+ * and display mode, wrapped around {@link ButtonUser}.
  *
  * Signed out, it draws icon buttons: language, theme, dark mode,
  * colour-blind mode (`ButtonVision`), sign in. Signed in, it draws ONE button, the avatar, and
@@ -124,10 +124,15 @@ export interface ButtonSettingsProps {
  * Language      ›
  * Theme         ›
  * Display Mode  ›
- * Colour-blind mode  ✓
  * ───────────
  * Logout
  * ```
+ *
+ * Colour-blind mode is not in that menu: it is set once, so a signed-in
+ * viewer finds it on the account page (`AccountDisplay`, on the profile). A
+ * signed-out visitor has no account page, and keeps the `ButtonVision` icon.
+ * `ButtonSettings.VisionMenuItem` is still exported for an application that
+ * wants the item among its own `children`.
  *
  * Pass `placement="buttons"` to keep them as buttons once signed in too.
  *
@@ -215,7 +220,6 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
                 light: labels.colorModeLight,
               }}
             />
-            <ButtonSettingsVisionMenuItem label={labels.vision} />
           </>
         )}
         <DropdownMenuSeparator />

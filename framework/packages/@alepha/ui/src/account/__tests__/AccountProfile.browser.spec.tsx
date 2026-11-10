@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import type { MyProfile, RealmConfig } from "alepha/api/users";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { AlephaReactUi, uiAtom } from "alepha/react/ui";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -59,6 +60,7 @@ describe("AccountProfile", () => {
       .with(AlephaLogger)
       .with({ provide: LinkProvider, use: Links })
       .with(AlephaReact)
+      .with(AlephaReactUi)
       .with(AlephaReactI18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
@@ -92,5 +94,48 @@ describe("AccountProfile", () => {
   it("shows the username when no realm is described", async () => {
     await mount();
     expect(screen.queryByText("Username")).not.toBeNull();
+  });
+
+  /**
+   * Colour-blind mode is set here, not in the account menu: one switch bound
+   * to the vision preference, both ways.
+   */
+  it("holds the colour-blind switch, bound to the vision preference", async () => {
+    await mount();
+
+    expect(screen.getByText("Display")).toBeTruthy();
+    const toggle = screen.getByRole("switch", { name: "Colour-blind mode" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => fireEvent.click(toggle));
+    expect(alepha!.store.get(uiAtom).vision).toBe("cvd");
+    expect(
+      screen
+        .getByRole("switch", { name: "Colour-blind mode" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole("switch", { name: "Colour-blind mode" }),
+      ),
+    );
+    expect(alepha!.store.get(uiAtom).vision).toBe("normal");
+  });
+
+  it("shows the switch on when the preference already is", async () => {
+    await mount();
+    await act(async () =>
+      alepha!.store.set(uiAtom, {
+        ...alepha!.store.get(uiAtom),
+        vision: "cvd",
+      }),
+    );
+
+    expect(
+      screen
+        .getByRole("switch", { name: "Colour-blind mode" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
   });
 });

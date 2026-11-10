@@ -125,31 +125,37 @@ describe("ButtonSettings", () => {
     expect(screen.getByLabelText("Colour-blind mode")).toBeTruthy();
   });
 
-  it("offers colour-blind mode as a checkbox item of the menu when signed in", async () => {
+  it("keeps colour-blind mode out of the signed-in menu: it lives on the account page", async () => {
     await mount({ signedIn: true });
+    // No button either: signed in, the settings are not drawn as buttons.
     expect(screen.queryByLabelText("Colour-blind mode")).toBeNull();
 
     openMenu();
-    const item = await screen.findByRole("menuitemcheckbox", {
-      name: "Colour-blind mode",
-    });
-    expect(item.getAttribute("aria-checked")).toBe("false");
+    // The menu is open (its display-mode submenu is there) and has no such item.
+    expect(
+      await screen.findByRole("menuitem", { name: "Display Mode" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("menuitemcheckbox", { name: "Colour-blind mode" }),
+    ).toBeNull();
+    expect(screen.queryByText("Colour-blind mode")).toBeNull();
+  });
 
-    await act(async () => fireEvent.click(item));
+  it("keeps the colour-blind button when placement is 'buttons'", async () => {
+    await mount({ signedIn: true, props: { placement: "buttons" } });
+
+    const button = screen.getByLabelText("Colour-blind mode");
+    await act(async () => fireEvent.click(button));
 
     expect(alepha!.store.get(uiAtom).vision).toBe("cvd");
   });
 
-  it("names the colour-blind item from labels", async () => {
+  it("names the colour-blind button from labels", async () => {
     await mount({
-      signedIn: true,
+      signedIn: false,
       props: { labels: { vision: "Mode daltonien" } },
     });
 
-    openMenu();
-
-    expect(
-      await screen.findByRole("menuitemcheckbox", { name: "Mode daltonien" }),
-    ).toBeTruthy();
+    expect(screen.getByLabelText("Mode daltonien")).toBeTruthy();
   });
 });

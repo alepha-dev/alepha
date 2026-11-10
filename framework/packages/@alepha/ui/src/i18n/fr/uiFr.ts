@@ -1121,6 +1121,12 @@ export const uiFr: Record<string, string> = {
   "account.password.setDescription":
     "Vous pourrez vous connecter avec votre mot de passe en plus de votre méthode actuelle.",
   "account.password.setTitle": "Définir un mot de passe",
+  "account.display.description":
+    "La façon dont l'interface est dessinée pour vous, sur ce navigateur.",
+  "account.display.title": "Affichage",
+  "account.display.vision": "Mode daltonien",
+  "account.display.visionDescription":
+    "Des couleurs d'état qui restent distinctes pour le daltonisme rouge-vert.",
   "account.profile.accountDescription":
     "Informations que vous ne pouvez pas modifier depuis cette page.",
   "account.profile.accountTitle": "Compte",
