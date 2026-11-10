@@ -13,10 +13,11 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  *   occurrence, so a placeholder used twice is substituted once.
  */
 class Probe extends I18nProvider<any, any> {
-  public substitute(template: string, args: string[]) {
-    return (
-      this as unknown as { render(t: string, a: string[]): string }
-    ).render(template, args);
+  public substitute(
+    template: string,
+    args: string[] | Record<string, string | number>,
+  ) {
+    return this.render(template, args);
   }
 }
 
@@ -81,6 +82,20 @@ describe("i18n placeholder substitution", () => {
     // A user-supplied value that happens to contain "$2" must be inserted
     // literally, not treated as another placeholder.
     expect(probe.substitute("$1 then $2", ["$2", "end"])).toBe("$2 then end");
+  });
+
+  it("does not rescan a named value containing {name}, $2 or markup", async () => {
+    const probe = await setup();
+    // #Q3331: braces are syntax now, and the single pass still holds: a
+    // substituted value is inserted as written, whatever it contains.
+    expect(
+      probe.substitute("{a} and {b} and {c}", {
+        a: "{b}",
+        b: "$2",
+        c: "<b>bold</b>",
+      }),
+    ).toBe("{b} and $2 and <b>bold</b>");
+    expect(probe.substitute("$1 then {x}", ["{x}"])).toBe("{x} then {x}");
   });
 
   it("returns the template unchanged when there are no arguments", async () => {

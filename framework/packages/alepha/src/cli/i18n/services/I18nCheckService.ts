@@ -37,6 +37,25 @@ export interface I18nCheckResult {
    * `tr(...)` call sites that pass fewer arguments than their key needs.
    */
   missingArgs: I18nMissingArg[];
+  /**
+   * `tr(...)` call sites that leave a `{name}` of their entry unfilled.
+   */
+  missingNames: I18nMissingName[];
+}
+
+export interface I18nMissingName {
+  /**
+   * The dotted key whose `{name}` placeholders go unfilled.
+   */
+  key: string;
+  /**
+   * The names the call does not pass, `count` meaning the `count` option.
+   */
+  names: string[];
+  /**
+   * Absolute path of the file holding the call.
+   */
+  file: string;
 }
 
 export interface I18nMissingArg {
@@ -130,14 +149,23 @@ export class I18nCheckService {
    * Matches an ICU/`String.format`-style placeholder — `{0}`, `{1}`, … — inside a
    * dictionary file.
    *
-   * Alepha interpolates `$1`, `$2`, … (see `I18nProvider.render`). `{0}` is not a
-   * syntax it knows, so it survives verbatim into the rendered string and the user
+   * Alepha interpolates `$1`, `$2`, … and `{name}` (see `I18nProvider.render`),
+   * and a name is never a number: `{0}` is not a placeholder, so it survives
+   * verbatim into the rendered string and the user
    * reads a literal `{0}` where a number or a name belonged. The failure is
    * entirely silent — no throw, no missing-key fallback — which is why it is worth
    * a check rather than a code review. The two syntaxes are unambiguous, so a
    * match is always a mistake and never a deliberate choice.
    */
   protected readonly badPlaceholderRe = /\{\d+\}/g;
+
+  /**
+   * Matches a `{name}` placeholder, or the `{{` / `}}` escape that writes a
+   * literal brace (matched so the scan steps over it, never collected).
+   * A `${name}` is a template literal's substitution in the file's own code,
+   * not a placeholder.
+   */
+  protected readonly namedPlaceholderRe = /\{\{|\}\}|(?<!\$)\{(\w+)\}/g;
 
   /**
    * Find unused translation keys.
@@ -198,6 +226,8 @@ export class I18nCheckService {
     // key → highest `$N` its value uses. Only keys that need arguments are
     // recorded, so the call-site scan below stays proportional to those.
     const arity = new Map<string, number>();
+    // key → the `{name}` placeholders its value uses, across its variants.
+    const names = new Map<string, Set<string>>();
     for (const file of dictionarySet) {
       const raw = fileContents.get(file);
       if (!raw) continue;
@@ -217,6 +247,7 @@ export class I18nCheckService {
         ...this.findBadPlaceholders(file, text, declarations),
       );
       this.collectArity(text, declarations, arity);
+      this.collectNames(text, declarations, names);
       if (allKeys.size > before) dictionaryFiles.push(file);
     }
 
@@ -234,8 +265,10 @@ export class I18nCheckService {
     const corpus = corpusParts.join("\n");
 
     const missingArgs: I18nMissingArg[] = [];
+    const missingNames: I18nMissingName[] = [];
     for (const [file, text] of sourceFiles) {
       missingArgs.push(...this.findMissingArgs(file, text, arity));
+      missingNames.push(...this.findMissingNames(file, text, names));
     }
 
     let exemptKeys = 0;
@@ -261,6 +294,7 @@ export class I18nCheckService {
       unused: unused.sort(),
       badPlaceholders,
       missingArgs,
+      missingNames,
     };
   }
 
@@ -384,6 +418,185 @@ export class I18nCheckService {
         into.set(key, Math.max(into.get(key) ?? 0, max));
       }
     }
+  }
+
+  /**
+   * Record the `{name}` placeholders of each entry, across every variant of a
+   * variant object (the same positional attribution as {@link collectArity}).
+   * `{count}` is recorded too: the `count` option fills it. A numeric `{0}` is
+   * the bad placeholder's, and an escaped `{{name}}` is text.
+   */
+  protected collectNames(
+    text: string,
+    declarations: Array<{ key: string; index: number }>,
+    into: Map<string, Set<string>>,
+  ): void {
+    for (let i = 0; i < declarations.length; i++) {
+      const start = declarations[i].index;
+      const end = declarations[i + 1]?.index ?? text.length;
+      for (const m of text
+        .slice(start, end)
+        .matchAll(this.namedPlaceholderRe)) {
+        const name = m[1];
+        if (!name || /^\d+$/.test(name)) continue;
+        const key = declarations[i].key;
+        const set = into.get(key) ?? new Set<string>();
+        set.add(name);
+        into.set(key, set);
+      }
+    }
+  }
+
+  /**
+   * Find `tr("key")` calls that leave a `{name}` of `"key"` unfilled: a name
+   * missing from `args: { ... }`, every name when the call passes positional
+   * arguments or none, and `{count}` when it passes no `count`.
+   *
+   * As conservative as {@link findMissingArgs}: a spread, an `args` that is a
+   * variable, or an options object it cannot read leaves the call alone.
+   */
+  protected findMissingNames(
+    file: string,
+    text: string,
+    names: Map<string, Set<string>>,
+  ): I18nMissingName[] {
+    const found: I18nMissingName[] = [];
+    for (const [key, used] of names) {
+      const literal = key.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`);
+      const call = new RegExp(
+        `\\b(tr|translate)\\s*\\(\\s*["'\`]${literal}["'\`]`,
+        "g",
+      );
+      for (const m of text.matchAll(call)) {
+        const rest = this.callTail(text, (m.index ?? 0) + m[0].length);
+        if (rest === undefined) continue;
+        const passed = this.passedNames(rest, m[1] === "translate");
+        if (passed === undefined) continue;
+        const missing = [...used].filter((name) =>
+          name === "count" ? !passed.count : !passed.names?.has(name),
+        );
+        if (passed.names === undefined) {
+          // `args` could not be read: only `{count}` is proven.
+          const onlyCount = missing.filter((name) => name === "count");
+          if (onlyCount.length > 0) found.push({ key, names: onlyCount, file });
+          continue;
+        }
+        if (missing.length > 0) found.push({ key, names: missing, file });
+      }
+    }
+    return found;
+  }
+
+  /**
+   * What a call passes for named placeholders: whether it passes a `count`,
+   * and the names of its `args` record (an empty set for positional or absent
+   * arguments, `undefined` when `args` cannot be read). `undefined` overall
+   * when the options themselves cannot be read.
+   *
+   * `translate(key, args, { count })` takes the arguments positionally.
+   */
+  protected passedNames(
+    tail: string,
+    positional: boolean,
+  ): { count: boolean; names: Set<string> | undefined } | undefined {
+    const trimmed = tail.trim();
+    if (trimmed === "") return { count: false, names: new Set() };
+    if (!trimmed.startsWith(",")) return undefined;
+    const after = trimmed.slice(1).trimStart();
+
+    if (positional) {
+      // translate(key, args?, options?)
+      let args: Set<string> | undefined;
+      let rest = after;
+      if (after.startsWith("[")) {
+        const list = this.balanced(after, "[", "]");
+        if (list === undefined) return undefined;
+        args = new Set();
+        rest = after.slice(list.length);
+      } else if (after.startsWith("{")) {
+        const obj = this.balanced(after, "{", "}");
+        if (obj === undefined) return undefined;
+        args = this.propertyNames(obj.slice(1, -1));
+        rest = after.slice(obj.length);
+      } else {
+        return undefined;
+      }
+      rest = rest.trim();
+      if (rest === "") return { count: false, names: args };
+      if (!rest.startsWith(",")) return undefined;
+      const opts = rest.slice(1).trim();
+      if (!opts.startsWith("{")) return undefined;
+      const obj = this.balanced(opts, "{", "}");
+      if (obj === undefined) return undefined;
+      const keys = this.propertyNames(obj.slice(1, -1));
+      if (keys === undefined) return undefined;
+      return { count: keys.has("count"), names: args };
+    }
+
+    if (!after.startsWith("{")) return undefined;
+    const obj = this.balanced(after, "{", "}");
+    if (obj === undefined) return undefined;
+    const inner = obj.slice(1, -1);
+    const keys = this.propertyNames(inner);
+    if (keys === undefined) return undefined;
+    const count = keys.has("count");
+    if (!keys.has("args")) return { count, names: new Set() };
+
+    const m = /(^|[{,\s])args\s*:\s*/.exec(inner);
+    const value = m ? inner.slice(m.index + m[0].length) : "";
+    if (value.startsWith("[")) return { count, names: new Set() };
+    if (value.startsWith("{")) {
+      const record = this.balanced(value, "{", "}");
+      return {
+        count,
+        names: record ? this.propertyNames(record.slice(1, -1)) : undefined,
+      };
+    }
+    return { count, names: undefined };
+  }
+
+  /**
+   * The top-level property names of an object literal's body, shorthand
+   * included, or `undefined` when a spread makes them unknowable.
+   */
+  protected propertyNames(body: string): Set<string> | undefined {
+    const parts: string[] = [];
+    let depth = 0;
+    let quote: string | undefined;
+    let current = "";
+    for (let i = 0; i < body.length; i++) {
+      const c = body[i];
+      if (quote) {
+        if (c === "\\") {
+          current += c + (body[i + 1] ?? "");
+          i++;
+          continue;
+        }
+        if (c === quote) quote = undefined;
+      } else if (c === '"' || c === "'" || c === "`") {
+        quote = c;
+      } else if (c === "(" || c === "[" || c === "{") {
+        depth++;
+      } else if (c === ")" || c === "]" || c === "}") {
+        depth--;
+      } else if (c === "," && depth === 0) {
+        parts.push(current);
+        current = "";
+        continue;
+      }
+      current += c;
+    }
+    parts.push(current);
+
+    const names = new Set<string>();
+    for (const raw of parts) {
+      const part = raw.trim();
+      if (part === "") continue;
+      if (part.startsWith("...")) return undefined;
+      const m = /^["']?([\w$]+)["']?\s*(?::|$)/.exec(part);
+      if (m) names.add(m[1]);
+    }
+    return names;
   }
 
   /**

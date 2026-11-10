@@ -1,19 +1,18 @@
 import { useI18n } from "../hooks/useI18n.ts";
 import type { DictionaryEntry } from "../primitives/$dictionary.ts";
+import type { I18nArgs, I18nSelector } from "../providers/I18nProvider.ts";
 
-export interface TranslateProps {
+export type TranslateProps = TranslateBaseProps & I18nSelector;
+
+export interface TranslateBaseProps {
   /**
    * Dictionary key to look up — the same key you would pass to `tr(...)`.
    */
   k: string;
   /**
-   * Positional substitutions for `$1`, `$2`, … placeholders in the entry.
+   * Substitutions: positional for `$1`, `$2`, …, or named for `{name}`.
    */
-  args?: string[];
-  /**
-   * The number a variant entry is selected by; also fills `{count}`.
-   */
-  count?: number;
+  args?: I18nArgs;
   /**
    * Shown when the key is missing from every registered dictionary (otherwise
    * the raw key is rendered, matching `tr`'s behaviour).
@@ -45,8 +44,10 @@ export const Translate = (props: TranslateProps) => {
     <>
       {tr(props.k, {
         args: props.args,
-        count: props.count,
         default: props.fallback,
+        ...(props.select !== undefined
+          ? { select: props.select }
+          : { count: props.count }),
       })}
     </>
   );

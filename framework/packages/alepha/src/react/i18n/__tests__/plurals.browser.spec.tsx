@@ -18,7 +18,11 @@ describe("plurals across a locale switch", () => {
   class App {
     en = $dictionary({
       lazy: async () => ({
-        default: { files: { one: "{count} file", other: "{count} files" } },
+        default: {
+          files: { one: "{count} file", other: "{count} files" },
+          greeting: "Hello {name}",
+          status: { open: "Open", other: "Unknown" },
+        },
       }),
     });
     pl = $dictionary({
@@ -42,6 +46,12 @@ describe("plurals across a locale switch", () => {
         <span data-testid="tr">{tr("files", { count: 2 })}</span>
         <span data-testid="component">
           <Translate k="files" count={5} />
+        </span>
+        <span data-testid="named">
+          <Translate k="greeting" args={{ name: "Ada" }} />
+        </span>
+        <span data-testid="select">
+          <Translate k="status" select="open" />
         </span>
         <span data-testid="fallback">
           <Translate
@@ -69,6 +79,9 @@ describe("plurals across a locale switch", () => {
     expect(ui.getByTestId("tr").textContent).toBe("2 files");
     expect(ui.getByTestId("component").textContent).toBe("5 files");
     expect(ui.getByTestId("fallback").textContent).toBe("1 thing");
+    // #Q3331: <Translate> takes named arguments and select too.
+    expect(ui.getByTestId("named").textContent).toBe("Hello Ada");
+    expect(ui.getByTestId("select").textContent).toBe("Open");
 
     await act(async () => {
       await i18n.setLang("pl");

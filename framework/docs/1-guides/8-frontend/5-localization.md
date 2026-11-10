@@ -162,17 +162,24 @@ tr("hello");
 tr("welcome", { args: ["Alice"] });
 // "Welcome, Alice"
 
+tr("greeting", { args: { name: "Alice", last4: 4242 } });
+// "Hello Alice, your card ends in 4242"
+
+tr("ticket.status", { select: "open" });
+// "Open"
+
 tr("missing_key", { default: "Fallback text" });
 // "Fallback text"
 ```
 
 **Options:**
 
-| Option    | Type              | Description                                                       |
-| --------- | ----------------- | ----------------------------------------------------------------- |
-| `args`    | `string[]`        | Positional arguments for `$1`, `$2`, etc.                         |
-| `count`   | `number`          | Selects a plural variant and fills `{count}` (see Plurals below). |
-| `default` | `DictionaryEntry` | Fallback if the key is not found: a string or a variant object.   |
+| Option    | Type                               | Description                                                       |
+| --------- | ---------------------------------- | ----------------------------------------------------------------- |
+| `args`    | `(string \| number)[]` or a record | Positional arguments for `$1`, `$2`, or named ones for `{name}`.  |
+| `count`   | `number`                           | Selects a plural variant and fills `{count}` (see Plurals below). |
+| `select`  | `string`                           | Selects the variant of that name (see Select below).              |
+| `default` | `DictionaryEntry`                  | Fallback if the key is not found: a string or a variant object.   |
 
 Fallback behavior: if the key is not found in the current language, the fallback language (`"en"` by default) is checked. If still not found, the raw key string is returned.
 
@@ -216,6 +223,42 @@ tr("files.deleted", {
   default: { one: "{count} file deleted", other: "{count} files deleted" },
 });
 ```
+
+### Named arguments
+
+A `{name}` placeholder is filled from a record passed as `args`; values are strings or numbers, inserted as written. Positional `$1`, `$2` keep working, and an array never fills a name.
+
+```typescript
+// en.ts
+export default {
+  greeting: "Hello {name}, your card ends in {last4}",
+};
+
+tr("greeting", { args: { name: "Alice", last4: 4242 } });
+```
+
+- **`{count}` is the `count` option's**: a named argument called `count` does not fill it.
+- **A placeholder with no argument is left as written**, and a substituted value is never read again: a value containing `{name}`, `$2` or `<b>` is inserted literally.
+- **A literal brace is written doubled**: `{{` renders `{` and `}}` renders `}`, so `"Write {{name}}"` renders `Write {name}`.
+
+Braces are syntax since named arguments: a catalog written before them that holds a literal `{word}` keeps rendering it only while no argument has that name, and should double its braces.
+
+Names are type-checked when the catalog is written `as const`: a missing or misspelled name is then a compile error at `tr()`, across every variant of the entry. Any other catalog types its values `string` and accepts any record, and `alepha i18n check` reports a call that omits a name.
+
+### Select
+
+A variant object can also be chosen by a string, with the `select` option. `other` is what a value with no variant of its own renders:
+
+```typescript
+// en.ts
+export default {
+  "ticket.status": { open: "Open", closed: "Closed", other: "Unknown" },
+};
+
+tr("ticket.status", { select: ticket.status });
+```
+
+A call takes one selector: `count` and `select` together are a type error. A variant name carries no dot.
 
 To type a catalog file, use `DictionaryEntry`:
 
@@ -313,7 +356,7 @@ import { Tr } from "alepha/react/i18n";
 <Tr k="tickets.count" count={3} />;
 ```
 
-It takes the same `count` as `tr()`, and its `fallback` can be a variant object.
+It takes the same `args` (positional or named), `count` and `select` as `tr()`, and its `fallback` can be a variant object.
 
 ## Localize Component
 

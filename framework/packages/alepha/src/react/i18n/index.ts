@@ -32,8 +32,8 @@ declare module "alepha" {
  * **Features:**
  * - Translation loading
  * - Locale detection
- * - Positional interpolation (`$1`, `$2`) and localized dates/numbers
- * - Plurals: a variant entry chosen by `count` through `Intl.PluralRules`
+ * - Interpolation, positional (`$1`, `$2`) or named (`{name}`), and localized dates/numbers
+ * - Plurals and select: a variant entry chosen by `count` through `Intl.PluralRules`, or by `select`
  *
  * @module alepha.react.i18n
  */

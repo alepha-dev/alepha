@@ -383,6 +383,112 @@ export class I18n {
     ]);
   });
 
+  describe("named placeholders (#Q3331)", () => {
+    const run = async (dict: string, source: string) => {
+      await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+      await env.fs.writeFile(`${ROOT}/src/web/I18n.ts`, dict);
+      await env.fs.writeFile(`${ROOT}/src/web/Page.tsx`, source);
+      return env.service.check({
+        root: ROOT,
+        scan: ["src"],
+        dynamicPrefixes: [],
+        exclude: [],
+      });
+    };
+
+    const variantDictionary = `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({
+      default: {
+        "greet.user": "Hello {name}, card {last4}",
+        "files.count": {
+          one: "{count} file by {owner}",
+          // {ignored} sits in a comment
+          other: "{count} files",
+        },
+        "ticket.status": { open: "Open", other: "Unknown" },
+        "literal.brace": "Write {{name}} here",
+        "old.style": "Hi $1",
+      },
+    }),
+  });
+}
+`;
+
+    it("reports a readable call that omits a {name} used in any variant", async () => {
+      const result = await run(
+        variantDictionary,
+        `export const P = () => [
+           tr("greet.user", { args: { name } }),
+           tr("greet.user", { args: { name: user.name, last4 } }),
+           tr("greet.user", { args: ["a", "b"] }),
+           tr("greet.user"),
+           tr("files.count", { count: n, args: { owner: "x" } }),
+           tr("files.count", { count: n }),
+           tr("files.count", { args: { owner } }),
+           tr("ticket.status", { select: s }),
+           tr("literal.brace"),
+           tr("old.style", { args: ["x"] }),
+         ];`,
+      );
+
+      const file = `${ROOT}/src/web/Page.tsx`;
+      expect(result.missingNames).toEqual([
+        { key: "greet.user", names: ["last4"], file },
+        { key: "greet.user", names: ["name", "last4"], file },
+        { key: "greet.user", names: ["name", "last4"], file },
+        { key: "files.count", names: ["owner"], file },
+        { key: "files.count", names: ["count"], file },
+      ]);
+      expect(result.missingArgs).toEqual([]);
+      expect(result.badPlaceholders).toEqual([]);
+    });
+
+    it("leaves alone what it cannot read, and reads translate()'s positional form", async () => {
+      const result = await run(
+        variantDictionary,
+        "export const P = () => [\n" +
+          '  tr("greet.user", options),\n' +
+          '  tr("greet.user", { args }),\n' +
+          '  tr("greet.user", { args: { ...rest } }),\n' +
+          '  tr("greet.user", { ...options }),\n' +
+          '  tr("files.count", { args: values }),\n' +
+          '  translate("greet.user", { name, last4 }),\n' +
+          '  translate("greet.user", ["a"]),\n' +
+          '  translate("files.count", { owner }, { count }),\n' +
+          '  `${tr("literal.brace")}`,\n' +
+          "];",
+      );
+
+      const file = `${ROOT}/src/web/Page.tsx`;
+      expect(result.missingNames).toEqual([
+        { key: "greet.user", names: ["name", "last4"], file },
+        // `args: values` is unreadable, but no `count` is proven.
+        { key: "files.count", names: ["count"], file },
+      ]);
+    });
+
+    it("still refuses {0}, and ignores a template literal's ${name}", async () => {
+      const result = await run(
+        `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({ default: { "a.num": "Count {0}" } }),
+  });
+  label = \`\${this.name}\`;
+}
+`,
+        `export const P = () => tr("a.num");`,
+      );
+
+      expect(result.badPlaceholders).toEqual([
+        { file: `${ROOT}/src/web/I18n.ts`, key: "a.num", placeholder: "{0}" },
+      ]);
+      expect(result.missingNames).toEqual([]);
+    });
+  });
+
   it("returns totalKeys=0 when no dictionary is found", async () => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
