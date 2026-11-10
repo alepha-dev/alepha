@@ -23,6 +23,7 @@ import {
   type RowActionContext,
 } from "@alepha/ui/table";
 import {
+  capabilityOption,
   currentProjectAtom,
   descriptionSnippet,
   displayName,
@@ -64,6 +65,7 @@ import {
 import { useState } from "react";
 
 import type { QuestController } from "../../../../api/controllers/QuestController.ts";
+import { QUEST_EPIC_NONE } from "../../../../api/schemas/questEpicFilter.ts";
 import { QUEST_RELEASE_NONE } from "../../../../api/schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
@@ -444,6 +446,23 @@ const ProjectQuestsTable = () => {
     })),
   ];
 
+  // Every epic, whatever its status: naming an epic here is addressing it,
+  // so a draft epic's quests are listed although the backlog hides them.
+  //
+  // Led by "No epic" for the reason the release list is led by "No release",
+  // and named that rather than "None" for the same one.
+  const epicsEnabled = capabilityOption(project, "work", "epics");
+  const epicOptions = [
+    {
+      value: QUEST_EPIC_NONE,
+      label: tr("board.filter.noEpic"),
+    },
+    ...(epics ?? []).map((e) => ({
+      value: String(e.id),
+      label: `${formatReference("epic", e.number)} - ${e.title}`,
+    })),
+  ];
+
   /**
    * The board's filters. Every filter but `search` is a LIST, and empty means
    * all: "new or in progress", or two areas at once, has to be expressible
@@ -521,6 +540,20 @@ const ProjectQuestsTable = () => {
       hidden: (releases ?? []).length === 0,
       control: {
         clearLabel: tr("board.filter.allReleases"),
+      },
+    },
+    // Epic ids as strings, plus the sentinel, as for `release`. Offered with
+    // no epic yet too: "No epic" is then every quest, which is true, and the
+    // entry does not come and go with the first epic.
+    epic: {
+      schema: z.array(z.string()),
+      label: tr("board.filter.epic"),
+      icon: Layers,
+      items: epicOptions,
+      hidden: !epicsEnabled,
+      control: {
+        clearLabel: tr("board.filter.allEpics"),
+        searchable: true,
       },
     },
   } satisfies DataTableFilterFields;
@@ -681,6 +714,7 @@ const ProjectQuestsTable = () => {
               statusOp: f?.statusOp,
               tagOp: f?.tagOp,
               releaseId: list(f?.release),
+              epicId: list(f?.epic),
             },
           });
         }}

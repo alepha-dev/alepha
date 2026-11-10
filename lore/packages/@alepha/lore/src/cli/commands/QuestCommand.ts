@@ -132,7 +132,16 @@ export class QuestCommand {
         .describe("Only quests carrying this tag; several match any of them.")
         .optional(),
       epic: z
-        .text({ description: "Only the quests of this epic: 45 or E45." })
+        .array(z.text())
+        .describe(
+          "Only the quests of this epic: 45 or E45; several match any of them.",
+        )
+        .optional(),
+      loose: z
+        .boolean()
+        .describe(
+          "Only the quests filed under no epic. With --epic: those too.",
+        )
         .optional(),
       search: z
         .text({ description: "Only titles containing this." })
@@ -163,11 +172,18 @@ export class QuestCommand {
 
         // `getQuests` filters on the epic's global id, so a number is always
         // a lookup first.
-        const epic = flags.epic
-          ? await this.epicApi.getEpicByNumber({
-              params: { projectId, number: this.refs.epic(flags.epic) },
-            })
-          : undefined;
+        const epics = await Promise.all(
+          (flags.epic ?? []).map((ref) =>
+            this.epicApi.getEpicByNumber({
+              params: { projectId, number: this.refs.epic(ref) },
+            }),
+          ),
+        );
+        // "none" is the sentinel `getQuests` reads as "under no epic".
+        const epicId = [
+          ...(flags.loose ? ["none"] : []),
+          ...epics.map((epic) => epic.id),
+        ].join(",");
 
         const page = await this.questApi.getQuests({
           params: { projectId },
@@ -176,7 +192,7 @@ export class QuestCommand {
             offset: flags.offset,
             ...(flags.status?.length ? { status: flags.status.join(",") } : {}),
             ...(flags.tag?.length ? { tag: flags.tag.join(",") } : {}),
-            ...(epic ? { epic: epic.id } : {}),
+            ...(epicId ? { epicId } : {}),
             ...(flags.search ? { search: flags.search } : {}),
             ...(flags["include-drafts"] ? { includeDrafts: true } : {}),
           },

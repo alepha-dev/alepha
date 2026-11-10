@@ -43,6 +43,7 @@ import {
 import { type Release, releases } from "../entities/releases.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
+import { QUEST_EPIC_NONE } from "../schemas/questEpicFilter.ts";
 import {
   exceedsObjectiveCap,
   objectiveCapMessage,
@@ -465,6 +466,20 @@ export class QuestController {
     return {
       ids: this.parseIdList(value),
       unattached: this.parseList(value).includes(QUEST_RELEASE_NONE),
+    };
+  }
+
+  /**
+   * The epic filter: ids plus the `QUEST_EPIC_NONE` sentinel, read the way
+   * {@link parseReleaseFilter} reads its own.
+   */
+  protected parseEpicFilter(value: string | undefined): {
+    ids: number[];
+    loose: boolean;
+  } {
+    return {
+      ids: this.parseIdList(value),
+      loose: this.parseList(value).includes(QUEST_EPIC_NONE),
     };
   }
 
@@ -1264,6 +1279,13 @@ export class QuestController {
          */
         releaseId: z.string().optional(),
         epic: z.integer().optional(),
+        /**
+         * One epic id, or several comma-separated, with `QUEST_EPIC_NONE`
+         * for the quests filed under no epic. Text for the reason
+         * `releaseId` is. `epic` above stays the single-epic form its
+         * callers already send; both given, both apply.
+         */
+        epicId: z.string().optional(),
         includeDrafts: z.boolean().optional(),
         area: z.string().optional(),
         tag: z.string().optional(),
@@ -1340,6 +1362,24 @@ export class QuestController {
 
       if (query.epic) {
         where.epicId = { eq: query.epic };
+      }
+
+      // Always a group, never `where.epicId`: `epic` above may hold that key.
+      const epic = this.parseEpicFilter(query.epicId);
+      const epicFiltered = epic.loose || epic.ids.length > 0;
+      if (epicFiltered) {
+        const named =
+          epic.ids.length === 1
+            ? { epicId: { eq: epic.ids[0] } }
+            : { epicId: { inArray: epic.ids } };
+        const none = { epicId: { isNull: true } };
+        groups.push(
+          epic.loose && epic.ids.length > 0
+            ? { or: [none, named] }
+            : epic.loose
+              ? none
+              : named,
+        );
       }
 
       const areas = this.parseList(query.area);
@@ -1430,13 +1470,14 @@ export class QuestController {
       // otherwise. `epic` is the implicit one: a caller addressing one epic
       // is looking at that epic's own quests, draft or not, which is what
       // lets an agent that just filed a quest into a draft epic read it
-      // back without any flag.
+      // back without any flag. `epicId` names its epics too, and a quest
+      // under no epic was never gated, so it passes the same way.
       //
       // `includeDrafts` is client-settable and that is fine — every caller
       // has already passed the membership gate, so it exposes nothing the
       // caller could not already read. This is a backlog-organisation
       // affordance, NOT an authorization control. Do not "harden" it into one.
-      if (!query.includeDrafts && !query.epic) {
+      if (!query.includeDrafts && !query.epic && !epicFiltered) {
         await this.epicVisibility.applyBacklogGate(where, params.projectId);
       }
 

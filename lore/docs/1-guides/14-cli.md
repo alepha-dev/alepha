@@ -110,23 +110,23 @@ the rest in the project's settings.
 
 ### Quests
 
-| Command                           | What it does                                                                                                                      |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `lore quest list`                 | Newest-updated first. `--status`, `--tag`, `--epic`, `--search`, `--include-drafts`, `--limit` (default 20, max 100), `--offset`. |
-| `lore quest get <ref>`            | One quest with its description, objectives (and their ids) and discussion.                                                        |
-| `lore quest create`               | `--title`, `--area`, `--priority` (required); `--description`, `--size`, `--tag`, `--objective`, `--epic`, `--accept`.            |
-| `lore quest update <ref>`         | Change the title, description, area and other fields.                                                                             |
-| `lore quest accept <ref>`         | Take the quest and start it.                                                                                                      |
-| `lore quest objective set <ref>`  | Tick an objective by `--objective <id>`; `--no-completed` unticks it.                                                             |
-| `lore quest comment add <ref>`    | `--body`; `--as <name>` marks it as written by an agent.                                                                          |
-| `lore quest commit add <ref>`     | `--sha`, `--message`, `--repo`. Records a commit, on a completed quest too.                                                       |
-| `lore quest hold <ref>`           | `--reason`, posted to the discussion. `lore quest unhold <ref>` lifts it.                                                         |
-| `lore quest shelve <ref>`         | Set a todo quest aside. `lore quest unshelve <ref>` brings it back.                                                               |
-| `lore quest unassign <ref>`       | Send an accepted quest back to todo.                                                                                              |
-| `lore quest complete <ref>`       | `--message`, `--commit <sha>` (repeatable), `--waive <id>=<reason>` for an objective not done.                                    |
-| `lore quest delete <ref>`         | For good, with `--yes`.                                                                                                           |
-| `lore quest tags`                 | The tags the project uses.                                                                                                        |
-| `lore quest attachment get <ref>` | `--attachment <id>`, as `quest get` lists it. Prints text; `--out <path>` saves anything.                                         |
+| Command                           | What it does                                                                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore quest list`                 | Newest-updated first. `--status`, `--tag`, `--epic` (repeatable), `--loose` (under no epic), `--search`, `--include-drafts`, `--limit` (default 20, max 100), `--offset`. |
+| `lore quest get <ref>`            | One quest with its description, objectives (and their ids) and discussion.                                                                                                |
+| `lore quest create`               | `--title`, `--area`, `--priority` (required); `--description`, `--size`, `--tag`, `--objective`, `--epic`, `--accept`.                                                    |
+| `lore quest update <ref>`         | Change the title, description, area and other fields.                                                                                                                     |
+| `lore quest accept <ref>`         | Take the quest and start it.                                                                                                                                              |
+| `lore quest objective set <ref>`  | Tick an objective by `--objective <id>`; `--no-completed` unticks it.                                                                                                     |
+| `lore quest comment add <ref>`    | `--body`; `--as <name>` marks it as written by an agent.                                                                                                                  |
+| `lore quest commit add <ref>`     | `--sha`, `--message`, `--repo`. Records a commit, on a completed quest too.                                                                                               |
+| `lore quest hold <ref>`           | `--reason`, posted to the discussion. `lore quest unhold <ref>` lifts it.                                                                                                 |
+| `lore quest shelve <ref>`         | Set a todo quest aside. `lore quest unshelve <ref>` brings it back.                                                                                                       |
+| `lore quest unassign <ref>`       | Send an accepted quest back to todo.                                                                                                                                      |
+| `lore quest complete <ref>`       | `--message`, `--commit <sha>` (repeatable), `--waive <id>=<reason>` for an objective not done.                                                                            |
+| `lore quest delete <ref>`         | For good, with `--yes`.                                                                                                                                                   |
+| `lore quest tags`                 | The tags the project uses.                                                                                                                                                |
+| `lore quest attachment get <ref>` | `--attachment <id>`, as `quest get` lists it. Prints text; `--out <path>` saves anything.                                                                                 |
 
 `lore quest update` also takes `--epic` (`0` takes it out) and `--depends-on`
 (`0` clears it); `lore quest create` takes `--depends-on`.

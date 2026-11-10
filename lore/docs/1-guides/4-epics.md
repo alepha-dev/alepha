@@ -195,7 +195,10 @@ names the epic, so an agent knows what happened.
 `quest_list` hides a draft epic's quests by default, exactly as the
 backlog does, so that a list of quests is the list of quests that can be
 accepted. Pass the epic's id as `epic` to read one epic's quests whatever
-its status, or `includeDrafts: true` to see everything.
+its status, or `includeDrafts: true` to see everything. `epics` takes
+several ids at once, and `loose: true` keeps only the quests filed under no
+epic. The Quests table asks the same question with its optional **Epic**
+filter, whose first entry is **No epic**.
 
 Going the other way, an epic can hand ITSELF to an agent: **Review** asks
 one to sharpen the plan while it is still open (draft or ready), and

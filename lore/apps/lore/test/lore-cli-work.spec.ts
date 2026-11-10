@@ -426,6 +426,55 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(nothing.error?.name).toBe("USAGE");
   });
 
+  it("lists the loose quests, and those of several epics", async () => {
+    const { owner, project, lore } = await ownProject();
+    const epic = async (title: string) =>
+      (
+        await ctx.epicController.createEpic.fetch(
+          { params: { projectId: project.id }, body: { title } },
+          { user: owner },
+        )
+      ).data;
+    const first = await epic("First epic");
+    const second = await epic("Second epic");
+    const quest = async (title: string, epicNumber?: number) =>
+      JSON.parse(
+        await lore.run("quest create", [
+          "--title",
+          title,
+          "--area",
+          "core",
+          "--priority",
+          "low",
+          ...(epicNumber ? ["--epic", String(epicNumber)] : []),
+          "--output",
+          "json",
+        ]),
+      ).shortId as number;
+    const inFirst = await quest("In the first", first.number);
+    const inSecond = await quest("In the second", second.number);
+    const loose = await quest("Under no epic");
+
+    const listed = async (argv: string[]) =>
+      JSON.parse(await lore.run("quest list", [...argv, "--output", "json"]))
+        .content.map((it: any) => it.shortId)
+        .sort((a: number, b: number) => a - b);
+
+    expect(await listed(["--loose"])).toEqual([loose]);
+    expect(
+      await listed([
+        "--epic",
+        `E${first.number}`,
+        "--epic",
+        `${second.number}`,
+      ]),
+    ).toEqual([inFirst, inSecond]);
+    expect(await listed(["--epic", `E${second.number}`, "--loose"])).toEqual([
+      inSecond,
+      loose,
+    ]);
+  });
+
   it("refuses before writing when the epic's status already says no", async () => {
     const { owner, project, lore } = await ownProject();
     const draft = await ctx.epicController.createEpic.fetch(

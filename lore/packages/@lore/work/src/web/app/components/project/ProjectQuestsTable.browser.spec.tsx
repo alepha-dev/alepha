@@ -63,6 +63,10 @@ const questOf = (
  */
 class FakeLinkProvider extends LinkProvider {
   quests: QuestResource[] = [questOf(1, "Existing quest")];
+  /**
+   * Every `getQuests` query, in order: a filter is proven by what it sends.
+   */
+  queries: Array<Record<string, unknown>> = [];
   created: string[] = [];
   fetches = 0;
   /**
@@ -92,10 +96,13 @@ class FakeLinkProvider extends LinkProvider {
       Object.assign(fn, { can: () => true });
     return new Proxy(
       {
-        getQuests: action(async () => {
-          this.fetches += 1;
-          return page();
-        }),
+        getQuests: action(
+          async (config: { query: Record<string, unknown> }) => {
+            this.queries.push(config.query);
+            this.fetches += 1;
+            return page();
+          },
+        ),
         createQuest: action(async (config: { body: { title: string } }) => {
           const quest = questOf(this.quests.length + 1, config.body.title);
           this.quests.push(quest);
@@ -400,6 +407,63 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
 
     expect(options[0]).toContain("None");
     expect(options.join(" ")).toContain("0.28.0");
+  });
+
+  /**
+   * The Epic filter (#Q3270): optional, led by "No epic", several at once.
+   */
+  describe("the Epic filter", () => {
+    const openAddMenu = (view: Awaited<ReturnType<typeof mount>>["view"]) =>
+      fireEvent.keyDown(view.getByRole("button", { name: "Add filters" }), {
+        key: "ArrowDown",
+      });
+
+    const epicOptions = async (
+      view: Awaited<ReturnType<typeof mount>>["view"],
+    ) => {
+      openAddMenu(view);
+      fireEvent.click(await view.findByRole("menuitem", { name: /Epic/ }));
+      return waitFor(() => {
+        const found = view.baseElement.querySelectorAll('[role="option"]');
+        if (found.length === 0) throw new Error("not open yet");
+        return [...found] as HTMLElement[];
+      });
+    };
+
+    it("leads with No epic, then each epic by its number and title", async () => {
+      const { view } = await mount();
+
+      const options = await epicOptions(view);
+
+      expect(options.map((option) => option.textContent)).toEqual([
+        expect.stringContaining("No epic"),
+        expect.stringContaining("#E7 - Epic Workflow"),
+      ]);
+    });
+
+    it("sends No epic and an epic as one list", async () => {
+      const { view, links } = await mount();
+
+      const [none, epic] = await epicOptions(view);
+      fireEvent.click(none);
+      fireEvent.click(epic);
+
+      // The epic by its id (42), which is what the column holds, not by the
+      // number (7) the option shows.
+      await waitFor(() => expect(links.queries.at(-1)?.epicId).toBe("none,42"));
+    });
+
+    it("is not offered when the project has epics off", async () => {
+      const { view } = await mount(
+        undefined,
+        projectFixture({ options: { work: { epics: false } } }),
+      );
+
+      openAddMenu(view);
+      await view.findByRole("menuitem", { name: /Release/ });
+
+      expect(view.queryByRole("menuitem", { name: /Epic/ })).toBeNull();
+    });
   });
 
   /**

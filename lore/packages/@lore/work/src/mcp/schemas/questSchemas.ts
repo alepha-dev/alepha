@@ -82,6 +82,18 @@ export const questListParamsSchema = projectParamsSchema.extend({
       "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). An epic-filtered call is never gated: it returns that epic's quests whatever the epic's status, with no need for `includeDrafts`.",
     )
     .optional(),
+  epics: z
+    .array(z.integer())
+    .describe(
+      "Filter to quests filed under any of several epics, by global id as for `epic`. Ungated like `epic`. With `loose: true` the two OR together: those epics' quests, and the loose ones.",
+    )
+    .optional(),
+  loose: z
+    .boolean()
+    .describe(
+      "Only the quests filed under NO epic: the loose ones. This is the list to read when the task is the work that belongs to no epic, rather than filtering rows by a missing `epic` field.",
+    )
+    .optional(),
   includeDrafts: z
     .boolean()
     .describe(

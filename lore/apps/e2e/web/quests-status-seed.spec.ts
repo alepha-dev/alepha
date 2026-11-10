@@ -3,6 +3,7 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -169,6 +170,71 @@ test.describe("Quests — the URL seeds the filters", () => {
         timeout: 15_000,
       });
       await expect(table.getByText(acceptedTitle)).toHaveCount(0);
+    });
+
+    await test.step("?epic= takes several epics and the no-epic sentinel", async () => {
+      // The Epic filter (#Q3270). Seeded last: a draft epic's quest is out of
+      // the backlog, so the steps above never see it.
+      await setCapability(page, projectId, "work", {
+        options: { epics: true },
+      });
+      const filedTitle = `Filed${t}`;
+      const epicId = await page.evaluate(
+        async ({ projectId, title }) => {
+          const post = async (path: string, body: unknown) => {
+            const r = await fetch(path, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(body),
+            });
+            if (!r.ok) throw new Error(`${path} ${r.status} ${await r.text()}`);
+            return r.json();
+          };
+          const epic = await post(`/api/createEpic/${projectId}`, {
+            title: "Filter epic",
+          });
+          const quest = await post("/api/createQuest", {
+            projectId,
+            title,
+            description: "seeded",
+            area: "Main",
+            priority: "medium",
+            objectives: [],
+            attachments: [],
+          });
+          await post(`/api/attachQuest/${epic.id}`, { questId: quest.id });
+          return epic.id as number;
+        },
+        { projectId, title: filedTitle },
+      );
+
+      await page.goto(`/${slug}/quests?epic=none`);
+      await page.waitForLoadState("networkidle");
+      await expect(table.getByText(newTitle)).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(table.getByText(filedTitle)).toHaveCount(0);
+
+      await page.goto(`/${slug}/quests?epic=${epicId}`);
+      await page.waitForLoadState("networkidle");
+      await expect(table.getByText(filedTitle)).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(table.getByText(newTitle)).toHaveCount(0);
+
+      await page.goto(`/${slug}/quests?epic=none,${epicId}`);
+      await page.waitForLoadState("networkidle");
+      await expect(table.getByText(filedTitle)).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(table.getByText(newTitle)).toHaveCount(1);
+
+      // And back out through Share, as one list.
+      await page.getByRole("button", { name: "Filters", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Share filters" }).click();
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(new URL(copied).searchParams.get("epic")).toBe(`none,${epicId}`);
     });
   });
 });

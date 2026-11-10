@@ -15,6 +15,7 @@ import { FeedbackController } from "../../api/controllers/FeedbackController.ts"
 import { QuestCommentController } from "../../api/controllers/QuestCommentController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
+import { QUEST_EPIC_NONE } from "../../api/schemas/questEpicFilter.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 // Same helper the UI labels a user with, so a name reads identically over
@@ -299,12 +300,25 @@ export class QuestTools {
   });
 
   /**
+   * `getQuests`' `epicId` from the tool's two params: the ids, and the
+   * sentinel for `loose`. Absent when neither is given, so the key is not
+   * sent.
+   */
+  protected epicFilter(
+    epics: number[] | undefined,
+    loose: boolean | undefined,
+  ): string | undefined {
+    const values = [...(loose ? [QUEST_EPIC_NONE] : []), ...(epics ?? [])];
+    return values.length > 0 ? values.join(",") : undefined;
+  }
+
+  /**
    * List quests for a project.
    */
   quest_list = $tool({
     description:
       'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`. ' +
-      "Quests filed under a `draft` epic are hidden too by default, exactly as they are in Lore's own backlog: pass `includeDrafts: true` to see them, or `epic:` (an epic's global id) to read one epic's quests whatever its status. Without either, this list is the set of quests that can be accepted: loose ones, and those of ready and in-progress epics. " +
+      "Quests filed under a `draft` epic are hidden too by default, exactly as they are in Lore's own backlog: pass `includeDrafts: true` to see them, or `epic:` (an epic's global id) to read one epic's quests whatever its status; `epics:` takes several, and `loose: true` keeps only the quests under no epic. Without any of them, this list is the set of quests that can be accepted: loose ones, and those of ready and in-progress epics. " +
       "Rows carry `updatedAt`, `commentCount` and `lastCommentAt`, and the default order is newest-updated first: keep the timestamp of your last call, and any row whose `lastCommentAt` is later than it means someone spoke since. Read that quest with `quest_get` before writing back to it, or you will answer a conversation you have not seen. " +
       'Descriptions and objectives are NOT inlined by default; pass `detail: "full"` only when you mean to read them all, and `quest_get` when you want one quest in depth.',
     title: "List quests",
@@ -333,6 +347,7 @@ export class QuestTools {
             search: params.search,
             tag: params.tag,
             epic: params.epic,
+            epicId: this.epicFilter(params.epics, params.loose),
             size,
             // Honoured as given. It used to be divided into a page number, so
             // `offset: 25, limit: 20` returned rows 20-39 while the tool doc

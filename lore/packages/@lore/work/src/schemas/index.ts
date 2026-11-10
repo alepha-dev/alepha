@@ -24,6 +24,7 @@ export {
   MAX_QUEST_OBJECTIVES,
   exceedsObjectiveCap,
 } from "../api/schemas/questObjectivesLimit.ts";
+export { QUEST_EPIC_NONE } from "../api/schemas/questEpicFilter.ts";
 export { QUEST_RELEASE_NONE } from "../api/schemas/questReleaseFilter.ts";
 export type { QuestResource } from "../api/schemas/questResourceSchema.ts";
 export { supportCapabilityOptionsSchema } from "../api/schemas/supportCapabilityOptionsSchema.ts";

@@ -139,4 +139,29 @@ describe("Lore MCP — quest_list / quest_get carry the quest's epic", () => {
     const getRes = await call(questTools.quest_get, { id: unfiled.id });
     expect(getRes.epic).toBeUndefined();
   });
+
+  it("quest_list keeps the loose quests with `loose`, several epics with `epics`", async () => {
+    const { questTools, project, draftEpic, quest, call } = await setup();
+
+    const unfiled = await call(questTools.quest_create, {
+      project: project.id,
+      title: "Standalone quest",
+      description: "x",
+      area: "core",
+      priority: "medium",
+    });
+    const ids = async (params: Record<string, unknown>) =>
+      (
+        await call(questTools.quest_list, { project: project.id, ...params })
+      ).quests
+        .map((q: any) => q.id)
+        .sort((a: number, b: number) => a - b);
+
+    expect(await ids({ loose: true })).toEqual([unfiled.id]);
+    // Ungated, as `epic:` is: the epic is a draft and its quest is listed.
+    expect(await ids({ epics: [draftEpic.id] })).toEqual([quest.id]);
+    expect(await ids({ epics: [draftEpic.id], loose: true })).toEqual(
+      [quest.id, unfiled.id].sort((a, b) => a - b),
+    );
+  });
 });
