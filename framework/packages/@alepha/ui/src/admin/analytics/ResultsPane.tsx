@@ -7,11 +7,7 @@ import { Spinner } from "../../core/Spinner.tsx";
 import { cn } from "../../core/utils.ts";
 import { AnalyticsChart } from "./AnalyticsChart.tsx";
 import { AnalyticsEmpty } from "./AnalyticsEmpty.tsx";
-import {
-  analyticsNumber,
-  analyticsSpanLabel,
-  analyticsWindowLabel,
-} from "./analyticsModel.ts";
+import { analyticsSpanLabel, analyticsWindowLabel } from "./analyticsModel.ts";
 import type { AnalyticsView } from "./analyticsTypes.ts";
 import { analyticsChartModel } from "./chartModel.ts";
 import { CoarsenedBadge } from "./CoarsenedBadge.tsx";
@@ -65,8 +61,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
 
   // Both notes count things that can legitimately be one: a dataset may
   // declare a single measure, and dropping every group key leaves exactly one
-  // group. The repo has no plural engine, so the singular is its own key, the
-  // way `quest.create.estimate.unit.*.one` already is.
+  // group. Each is a plural entry, selected by its `count`.
   const columns = result ? result.groupBy.length + result.measures.length : 0;
   const shapeLabel = model ? labels.label(model.shape, stacked) : "";
 
@@ -75,39 +70,29 @@ export const ResultsPane = (props: ResultsPaneProps) => {
   // is "1 group"; a one-measure dataset ungrouped is "1 column"), and folding
   // them into a single key would need a variant per combination.
   //
-  // Each key is also a literal sitting directly after `tr(`. A ternary that
-  // picks between two key strings reads fine but is invisible to the
-  // catalogue scanner (`uiFr.spec.ts` and `alepha i18n check` both match
-  // on `tr("..."`), so the singular would silently never be translated, which
-  // is the exact rot those checks exist to catch.
-  const groupsText =
-    result?.groupCount === 1
-      ? tr("admin.analytics.noteGroups.one", { default: "1 group" })
-      : tr("admin.analytics.noteGroups", {
-          default: "$1 groups",
-          args: [analyticsNumber(result?.groupCount ?? 0)],
-        });
-  const columnsText =
-    columns === 1
-      ? tr("admin.analytics.noteColumns.one", { default: "1 column" })
-      : tr("admin.analytics.noteColumns", {
-          default: "$1 columns",
-          args: [String(columns)],
-        });
+  // Each key is also a literal sitting directly after `tr(`, which is what
+  // the catalogue scanners (`uiFr.spec.ts` and `alepha i18n check`) match.
+  const groupsText = tr("admin.analytics.noteGroups", {
+    count: result?.groupCount ?? 0,
+    default: { one: "{count} group", other: "{count} groups" },
+  });
+  const columnsText = tr("admin.analytics.noteColumns", {
+    count: columns,
+    default: { one: "{count} column", other: "{count} columns" },
+  });
 
   const viewNote = !result
     ? ""
     : table
       ? `${groupsText} · ${columnsText}`
-      : result.measures.length === 1
-        ? tr("admin.analytics.overviewNote.one", {
-            default: "1 measure · $1",
-            args: [shapeLabel],
-          })
-        : tr("admin.analytics.overviewNote", {
-            default: "$1 measures · $2",
-            args: [String(result.measures.length), shapeLabel],
-          });
+      : tr("admin.analytics.overviewNote", {
+          count: result.measures.length,
+          default: {
+            one: "{count} measure · $1",
+            other: "{count} measures · $1",
+          },
+          args: [shapeLabel],
+        });
 
   const compareLabel =
     query.state.compare === "off"

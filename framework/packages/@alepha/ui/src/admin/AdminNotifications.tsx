@@ -232,8 +232,12 @@ export const AdminNotifications = () => {
           default: "Delete notifications",
         }),
         description: tr("admin.notifications.bulkDeleteConfirm", {
-          default: `Delete ${items.length} notification record(s)? This cannot be undone.`,
-          args: [String(items.length)],
+          count: items.length,
+          default: {
+            one: "Delete {count} notification record? This cannot be undone.",
+            other:
+              "Delete {count} notification records? This cannot be undone.",
+          },
         }),
         destructive: true,
       }),
@@ -244,8 +248,11 @@ export const AdminNotifications = () => {
         });
         toast.success(
           tr("admin.notifications.bulkDeleted", {
-            default: `${res.deleted.length} notification(s) deleted`,
-            args: [String(res.deleted.length)],
+            count: res.deleted.length,
+            default: {
+              one: "{count} notification deleted",
+              other: "{count} notifications deleted",
+            },
           }),
         );
         ctx.clearSelection();

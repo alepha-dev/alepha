@@ -27,8 +27,8 @@ export const ApiKeyScopeSummary = (props: ApiKeyScopeSummaryProps) => {
     <details className="text-xs">
       <summary className="text-muted-foreground cursor-pointer select-none">
         {tr("account.keys.scopeCount", {
-          default: "$1 permission(s)",
-          args: [String(props.permissions.length)],
+          count: props.permissions.length,
+          default: { one: "{count} permission", other: "{count} permissions" },
         })}
       </summary>
       <ul className="mt-1 flex flex-col gap-0.5 font-mono">

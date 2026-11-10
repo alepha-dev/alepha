@@ -66,8 +66,8 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
       <div className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
         <span className="pl-2 text-sm">
           {tr("dataTable.selected", {
-            default: `${selection.size} selected`,
-            args: [String(selection.size)],
+            count: selection.size,
+            default: "{count} selected",
           })}
         </span>
         <span className="mx-1 h-4 w-px bg-white/20" />

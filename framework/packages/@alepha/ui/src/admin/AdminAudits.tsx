@@ -180,8 +180,12 @@ export const AdminAudits = () => {
           default: "Delete audit entries",
         }),
         description: tr("admin.audits.bulkDeleteConfirm", {
-          default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance. This cannot be undone.`,
-          args: [String(items.length)],
+          count: items.length,
+          default: {
+            one: "Delete {count} audit record? Audit logs are usually retained for compliance. This cannot be undone.",
+            other:
+              "Delete {count} audit records? Audit logs are usually retained for compliance. This cannot be undone.",
+          },
         }),
         destructive: true,
       }),
@@ -192,8 +196,11 @@ export const AdminAudits = () => {
         });
         toast.success(
           tr("admin.audits.bulkDeleted", {
-            default: `${res.deleted.length} audit(s) deleted`,
-            args: [String(res.deleted.length)],
+            count: res.deleted.length,
+            default: {
+              one: "{count} audit record deleted",
+              other: "{count} audit records deleted",
+            },
           }),
         );
         ctx.clearSelection();

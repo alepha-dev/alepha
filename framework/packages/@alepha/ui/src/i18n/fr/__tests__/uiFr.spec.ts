@@ -91,10 +91,26 @@ describe("uiFr", () => {
     expect(extra).toEqual([]);
   });
 
-  it("leaves no value empty", () => {
+  it("leaves no value empty, nor any variant of a plural entry", () => {
+    // A variant entry (#Q3360) is blank when any of its variants is: an empty
+    // `one` is an empty string for every count that selects it.
     const blank = Object.entries(uiFr)
-      .filter(([, value]) => value.trim() === "")
+      .filter(([, value]) =>
+        typeof value === "string"
+          ? value.trim() === ""
+          : Object.values(value).some((variant) => variant.trim() === ""),
+      )
       .map(([key]) => key);
     expect(blank).toEqual([]);
+  });
+
+  it("writes every variant entry with other", () => {
+    const withoutOther = Object.entries(uiFr)
+      .filter(
+        ([, value]) =>
+          typeof value !== "string" && typeof value.other !== "string",
+      )
+      .map(([key]) => key);
+    expect(withoutOther).toEqual([]);
   });
 });

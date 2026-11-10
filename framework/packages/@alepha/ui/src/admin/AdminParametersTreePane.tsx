@@ -56,12 +56,18 @@ export const AdminParametersTreePane = (
             )}
             {props.showOrphans
               ? tr("admin.parameters.orphansHide", {
-                  default: `Hide ${props.orphanCount} orphan(s)`,
-                  args: [String(props.orphanCount)],
+                  count: props.orphanCount,
+                  default: {
+                    one: "Hide {count} orphan",
+                    other: "Hide {count} orphans",
+                  },
                 })
               : tr("admin.parameters.orphansShow", {
-                  default: `Show ${props.orphanCount} orphan(s)`,
-                  args: [String(props.orphanCount)],
+                  count: props.orphanCount,
+                  default: {
+                    one: "Show {count} orphan",
+                    other: "Show {count} orphans",
+                  },
                 })}
           </Button>
         )}

@@ -160,8 +160,11 @@ export const AdminFiles = () => {
       confirm: (items) => ({
         title: tr("admin.files.bulkDeleteTitle", { default: "Delete files" }),
         description: tr("admin.files.bulkDeleteConfirm", {
-          default: `Permanently delete ${items.length} file(s)? This cannot be undone.`,
-          args: [String(items.length)],
+          count: items.length,
+          default: {
+            one: "Permanently delete {count} file? This cannot be undone.",
+            other: "Permanently delete {count} files? This cannot be undone.",
+          },
         }),
         destructive: true,
       }),
@@ -172,8 +175,11 @@ export const AdminFiles = () => {
         });
         toast.success(
           tr("admin.files.bulkDeleted", {
-            default: `${res.deleted.length} file(s) deleted`,
-            args: [String(res.deleted.length)],
+            count: res.deleted.length,
+            default: {
+              one: "{count} file deleted",
+              other: "{count} files deleted",
+            },
           }),
         );
         clearSelection();

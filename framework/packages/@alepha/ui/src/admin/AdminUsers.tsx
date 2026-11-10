@@ -252,8 +252,11 @@ export const AdminUsers = (props: AdminUsersProps) => {
         const ok = await dialog.confirm({
           title: tr("admin.users.bulkDeleteTitle", { default: "Delete users" }),
           description: tr("admin.users.bulkDeleteConfirm", {
-            default: `Delete ${targets.length} user(s)? This cannot be undone.`,
-            args: [String(targets.length)],
+            count: targets.length,
+            default: {
+              one: "Delete {count} user? This cannot be undone.",
+              other: "Delete {count} users? This cannot be undone.",
+            },
           }),
           destructive: true,
         });
@@ -264,8 +267,11 @@ export const AdminUsers = (props: AdminUsersProps) => {
         });
         toast.success(
           tr("admin.users.bulkDeleted", {
-            default: `${res.deleted.length} user(s) deleted`,
-            args: [String(res.deleted.length)],
+            count: res.deleted.length,
+            default: {
+              one: "{count} user deleted",
+              other: "{count} users deleted",
+            },
           }),
         );
       },
@@ -290,8 +296,12 @@ export const AdminUsers = (props: AdminUsersProps) => {
             default: "Disable users",
           }),
           description: tr("admin.users.bulkDisableConfirm", {
-            default: `Disable ${enabled.length} user(s)? They will no longer be able to sign in.`,
-            args: [String(enabled.length)],
+            count: enabled.length,
+            default: {
+              one: "Disable {count} user? They will no longer be able to sign in.",
+              other:
+                "Disable {count} users? They will no longer be able to sign in.",
+            },
           }),
           destructive: true,
         });
@@ -305,8 +315,11 @@ export const AdminUsers = (props: AdminUsersProps) => {
         }
         toast.success(
           tr("admin.users.bulkDisabled", {
-            default: `${enabled.length} user(s) disabled`,
-            args: [String(enabled.length)],
+            count: enabled.length,
+            default: {
+              one: "{count} user disabled",
+              other: "{count} users disabled",
+            },
           }),
         );
       },

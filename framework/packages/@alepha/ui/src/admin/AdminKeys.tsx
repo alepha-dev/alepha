@@ -147,8 +147,12 @@ export const AdminKeys = () => {
             default: "Revoke API keys",
           }),
           description: tr("admin.keys.bulkRevokeConfirm", {
-            default: `Revoke ${targets.length} API key(s)? Any apps using these keys will lose access.`,
-            args: [String(targets.length)],
+            count: targets.length,
+            default: {
+              one: "Revoke {count} API key? Any apps using this key will lose access.",
+              other:
+                "Revoke {count} API keys? Any apps using these keys will lose access.",
+            },
           }),
           destructive: true,
         });
@@ -158,8 +162,11 @@ export const AdminKeys = () => {
         });
         toast.success(
           tr("admin.keys.bulkRevoked", {
-            default: `${res.revoked.length} API key(s) revoked`,
-            args: [String(res.revoked.length)],
+            count: res.revoked.length,
+            default: {
+              one: "{count} API key revoked",
+              other: "{count} API keys revoked",
+            },
           }),
         );
         ctx.clearSelection();

@@ -61,21 +61,20 @@ export const ResultsTable = (props: ResultsTableProps) => {
         </span>
         <span className="text-muted-foreground text-[11.5px]">
           {/* Dropping every group key leaves exactly one group, so the
-              singular is reachable in two clicks and needs its own key. */}
-          {result.groupCount === 1
-            ? tr("admin.analytics.rowNote.one", {
-                default: "1 group · order $1 $2",
-                args: [result.orderBy.key, result.orderBy.direction],
-              })
-            : tr("admin.analytics.rowNote", {
-                default: "$1 groups · showing $2 · order $3 $4",
-                args: [
-                  analyticsNumber(result.groupCount),
-                  analyticsNumber(result.rows.length),
-                  result.orderBy.key,
-                  result.orderBy.direction,
-                ],
-              })}
+              singular is reachable in two clicks: its variant says less. */}
+          {tr("admin.analytics.rowNote", {
+            count: result.groupCount,
+            default: {
+              one: "{count} group · order {key} {direction}",
+              other:
+                "{count} groups · showing {shown} · order {key} {direction}",
+            },
+            args: {
+              shown: analyticsNumber(result.rows.length),
+              key: result.orderBy.key,
+              direction: result.orderBy.direction,
+            },
+          })}
         </span>
         <span className="flex-1" />
         <Button

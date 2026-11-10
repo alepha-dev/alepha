@@ -146,8 +146,11 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
                 ],
               })
             : tr("admin.files.usageNoQuota", {
-                default: `${stats.totalFiles} file(s), no quota`,
-                args: [l(stats.totalFiles)],
+                count: stats.totalFiles,
+                default: {
+                  one: "{count} file, no quota",
+                  other: "{count} files, no quota",
+                },
               })}
         </span>
       </div>
