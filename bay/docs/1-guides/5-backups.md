@@ -4,17 +4,18 @@ Bay snapshots every app's SQLite database to an S3-compatible bucket on a
 schedule, verifies each snapshot, prunes old ones, and restores the latest one
 on its own when an app is redeployed onto an empty machine.
 
-**Backups cover the database and nothing else**, and every backup response says
-so in words. Uploads and `.env` are never archived: uploads are made durable by
-putting them in a bucket, and the secrets a project declares come from the
-deploy. A backup system's worst failure is somebody believing it covers more
+**Backups cover the database and the key it was sealed with, and nothing
+else**, and every backup response says so in words. Uploads and the rest of
+`.env` are never archived: uploads are made durable by putting them in a
+bucket, and the secrets a project declares come from the deploy. A backup system's worst failure is somebody believing it covers more
 than it does.
 
 | Data                  | Covered                     | How it survives the host                                                 |
 | --------------------- | --------------------------- | ------------------------------------------------------------------------ |
 | the app's SQLite file | yes                         | scheduled snapshots in the backups bucket                                |
+| `APP_SECRET`          | yes, with the database      | each snapshot carries it; a host connected to Lore also gets it from Lore. [See below](#the-signing-key) |
 | `storage/` (uploads)  | no                          | `bay config s3:apps` + `bay storage migrate`: uploads live in a bucket   |
-| `.env`, secrets       | no                          | declared secrets are redeployed from the project (`.env.<env>`, `alepha deploy`); [the rest is lost](#disaster-recovery) |
+| the rest of `.env`    | no                          | declared secrets are redeployed from the project (`.env.<env>`, `alepha deploy`); [the rest is lost](#disaster-recovery) |
 | a stack service       | when it declares a hook     | `x-lore.backup`, see [Stacks](/bay/docs/guides-stacks#backups-and-volumes) |
 | an image app          | no database to back up      | no host path is mounted: keep state in a stack service or a bucket       |
 
@@ -76,7 +77,9 @@ run:
 4. prunes the app's snapshots down to `--keep`.
 
 A snapshot is compressed, not encrypted: whoever reads the bucket reads the
-database.
+database, and the app's `APP_SECRET` beside it, which signs its sessions and
+seals its MFA secrets. **Read access to the backups bucket is as sensitive as
+access to the host.**
 
 `bay status` shows each app's last backup and its age. It warns when the last
 one is older than **twice** the interval, when no backup was ever taken, and
@@ -111,12 +114,10 @@ So recovering from a lost host is:
 3. Point DNS at the new machine, and redeploy each app with
    `alepha deploy --env production`.
 
-Each app comes back with its data as of its last snapshot, the secrets the
-deploy carries and its uploads from the apps bucket. What does not come back:
+Each app comes back with its data as of its last snapshot, the `APP_SECRET`
+that data was sealed with, the secrets the deploy carries and its uploads from
+the apps bucket. What does not come back:
 
-- **`APP_SECRET`.** It lives only in the instance's `.env`, and neither a deploy
-  nor `bay env set` can write it, so the new host generates a new one and every
-  user is signed out.
 - **Values set with `bay env set`.** They were in that `.env` too: set them
   again.
 - **Uploads that were on the old host's disk only**, which is why the next
@@ -124,7 +125,12 @@ deploy carries and its uploads from the apps bucket. What does not come back:
 - **Stacks.** Recovery covers apps only. A stack's variables, routes and registry
   credentials are in no bucket, and its dumps are never restored on their own:
   put the variables and credentials back, run `bay stack deploy`, add the routes,
-  then `bay backup restore` each service.
+  then `bay backup restore` each service. A stack's app services have no
+  snapshot to carry their `APP_SECRET`: connected to Lore they get it back from
+  Lore on their first deploy; without Lore they get a new one.
+- **The `APP_SECRET` of an app Bay does not back up** (one on its own
+  `DATABASE_URL`, or with no database), for the same reason: Lore gives it back
+  on a host connected to it, and a host without Lore mints a new one.
 - **The Lore connector.** `connector.json` is in no bucket: run
   `bay connector set` again.
 
@@ -136,6 +142,53 @@ latest, and `bay status` flags the hold. Run `bay restore myapp/production` to
 bring it back, or `bay backup myapp/production` to keep the database the app has
 now. Either one ends the hold. Bay holds only when a snapshot may exist: an app
 with an empty bucket, or none configured, starts empty and backs up as usual.
+
+## The signing key
+
+Bay mints an app's `APP_SECRET` on its first deploy. It signs sessions and
+links, and the framework seals MFA secrets with it, so a database restored
+under another key comes back broken: every user signed out, and every user
+with MFA locked out.
+
+So a snapshot carries the key, as an object of its own beside the databases
+(`apps/<name>-<env>/db/<stamp>/app-secret`; the manifest records only its
+SHA-256). A deploy never changes the key of an instance that already has one.
+An instance without one takes it in this order:
+
+1. **the snapshot being restored into it**, because it is the key the restored
+   rows were sealed with;
+2. **the key Lore holds for the app**, on a host connected to Lore. Bay sends
+   Lore the key each instance runs on, so Lore's copy follows the machine;
+3. **a new key**, minted.
+
+Every deploy says which it was (`kept`, `snapshot`, `lore` or `minted`), in
+what `alepha deploy` prints, in `bay deploy`'s answer and in `bay status`. A
+key minted over data the restore brought back is a **warning**, not a log
+line, and `bay status` flags the instance until its next deploy: the data is
+back, and every MFA user is locked out of it.
+
+**A bucket configured after the first deploy.** The deploy on a fresh host
+before `bay config s3:backups` starts the app empty, on a new key, and holds
+its backups. The `bay restore` that ends the hold brings back the snapshot's
+key with its data, so sessions signed in that window are signed out, and the
+restore says so. A restore from a snapshot that predates keys in snapshots
+leaves the instance on the new key, and warns.
+
+**Outside that window**, a restore keeps the instance's key, and says when the
+snapshot was sealed with another one. To restore a snapshot's key together
+with its databases, on purpose:
+
+```bash
+bay restore myapp/production --key 20261101T030000Z --with-key
+```
+
+It asks for confirmation (or `--yes`), signs every session out, and is refused
+with `--from`: another instance's key never comes with its data. To put back a
+key you kept somewhere (a host rebuilt before snapshots carried keys), see
+[`bay secret replace`](/bay/docs/guides-operating#replacing-the-signing-key).
+
+`bay backup verify` says whether a snapshot carries a key, and `bay doctor`
+whether the latest one carries the key the instance runs on.
 
 ## Moving uploads to a bucket
 

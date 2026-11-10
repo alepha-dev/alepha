@@ -140,15 +140,33 @@ Three families of name are refused, and the refusal says so:
   value stored here would be overwritten - or worse, would win, and point a
   fresh deploy at somebody else's database.
 - Framework knobs the platform sets itself, like `LOG_LEVEL`.
-- On a copy that deploys to a **Bay** estate, the names Bay writes into every
-  instance itself: `APP_SECRET`, `APP_NAME`, `NODE_ENV`, `DATABASE_URL`,
-  `DATA_DIR`, `STORAGE_PATH`, `SERVER_HOST`, `SERVER_PORT` and the `S3_*`
-  names. A value stored under one would never reach the app.
+- On a copy that runs on a **Bay** (one deploying to a Bay estate, or a
+  stack's app service), the names Bay writes into every instance itself:
+  `APP_SECRET`, `APP_NAME`, `NODE_ENV`, `DATABASE_URL`, `DATA_DIR`,
+  `STORAGE_PATH`, `SERVER_HOST`, `SERVER_PORT` and the `S3_*` names. A value
+  stored under one would never reach the app, or, for `APP_SECRET`, would
+  become the key of the next rebuilt host.
+
+**A Bay copy's `APP_SECRET` row is the machine's key.** Bay mints it, and
+sends Lore the key each instance runs on, sealed on arrival, so the row always
+holds the running key (the tab says it was set by the machine). A Bay host
+rebuilt from scratch, or a copy moved onto a Bay estate, takes that key back
+on its first deploy instead of minting a new one, so nobody is signed out. If
+the row held another key, the machine's replaces it and the deploy's log says
+so. The same holds for a stack's app service.
 
 A copy moved onto a Bay estate keeps the variables it already had, including
-the `APP_SECRET` and `APP_NAME` a Cloudflare deploy gave it. Bay's names
-among them stay listed here and are simply not sent to the machine, so moving
-the copy back finds them where they were.
+the `APP_SECRET` and `APP_NAME` a Cloudflare deploy gave it. Bay's other names
+among them stay listed here and are not sent to the machine, so moving the
+copy back finds them where they were.
+
+**A copy keeps its key when it moves between estates**, in either direction,
+so the estate it left, and that machine's backups bucket on a Bay, still hold
+the key it runs on: whoever controls them can sign sessions for it. After
+moving a copy off a machine you do not control, change its key: with
+`bay secret replace` on its new Bay, or by setting `APP_SECRET` on this tab
+for a copy now on Cloudflare. Either one signs every session out and loses
+what was sealed with the old key, such as MFA enrolments.
 
 ### Three you do not have to set
 
