@@ -4,6 +4,8 @@ import {
   appEntryOptions,
   type BuildOptions,
   buildOptions,
+  type CheckOptions,
+  checkOptions,
   type DesktopOptions,
   desktopOptions,
   type DevOptions,
@@ -33,6 +35,16 @@ export interface AlephaCliConfig {
    * Configure Alepha build command.
    */
   build?: Omit<BuildOptions, "runtimes">;
+
+  /**
+   * Configure `alepha check`, the convention rules: turn a rule `off` by its
+   * id, or hide paths from every rule with `ignore` globs. Every rule is on
+   * by default. `check: false` removes the step from `alepha verify` and
+   * nothing else: `alepha check` typed by hand still runs.
+   *
+   * @example check: { rules: { "no-module-code": "off" }, ignore: ["src/legacy/**"] }
+   */
+  check?: false | Omit<CheckOptions, "enabled">;
 
   /**
    * Configure Alepha dev command.
@@ -97,6 +109,12 @@ export const defineConfig = (input: AlephaCliConfig) => {
 
     if (config.build) {
       alepha.set(buildOptions, config.build);
+    }
+
+    if (config.check === false) {
+      alepha.set(checkOptions, { enabled: false });
+    } else if (config.check) {
+      alepha.set(checkOptions, { ...config.check, enabled: true });
     }
 
     if (config.dev) {

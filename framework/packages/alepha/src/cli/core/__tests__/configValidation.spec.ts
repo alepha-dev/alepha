@@ -4,6 +4,7 @@ import { describe, it } from "vitest";
 import { defineConfig } from "../../config/defineConfig.ts";
 import { StrictConfigSchema } from "../../config/StrictConfigSchema.ts";
 import { buildOptions } from "../atoms/buildOptions.ts";
+import { checkOptions } from "../atoms/checkOptions.ts";
 import { AlephaCliExtensionProvider } from "../providers/AlephaCliExtensionProvider.ts";
 
 class TestExtensionProvider extends AlephaCliExtensionProvider {
@@ -86,6 +87,43 @@ describe("CLI config validation", () => {
     expect(schema.safeParse({ entries: [{ unknown: true }] }).success).toBe(
       false,
     );
+  });
+
+  describe("check", () => {
+    for (const [input, path] of [
+      [{ check: { rule: {} } }, "check.rule"],
+      [{ check: { rules: { "no-date-now": "warn" } } }, "check.rules"],
+      [{ check: true }, "check"],
+      [{ check: { ignore: "src/legacy/**" } }, "check.ignore"],
+    ] as const) {
+      it(`refuses a wrong shape: ${JSON.stringify(input)}`, ({ expect }) => {
+        expect(() => defineConfig(input as never)).toThrow(path);
+      });
+    }
+
+    it("writes rules and ignore to the atom, and check: false disables the verify step", ({
+      expect,
+    }) => {
+      const on = Alepha.create();
+      defineConfig({
+        check: { rules: { "no-date-now": "off" }, ignore: ["src/legacy/**"] },
+      })(on);
+      expect(on.get(checkOptions)).toEqual({
+        enabled: true,
+        rules: { "no-date-now": "off" },
+        ignore: ["src/legacy/**"],
+      });
+
+      const off = Alepha.create();
+      defineConfig({ check: false })(off);
+      expect(off.get(checkOptions).enabled).toBe(false);
+
+      // An unknown rule id is the runner's to refuse: the config cannot see
+      // the registry.
+      expect(() =>
+        defineConfig({ check: { rules: { "no-such-rule": "off" } } }),
+      ).not.toThrow();
+    });
   });
 
   it("refuses a non-function default export and names defineConfig", ({

@@ -1,5 +1,5 @@
 /**
- * The Alepha CLI core: `init`, `dev`, `build`, `verify`, `db`, `test`,
+ * The Alepha CLI core: `init`, `dev`, `build`, `verify`, `check`, `db`, `test`,
  * `lint`, `typecheck`, `gen`, `pack` and `docs`. Loaded automatically when the
  * `alepha` binary runs; each command is documented in the CLI section of the
  * docs site.
@@ -10,11 +10,13 @@ import { $module } from "alepha";
 
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
+import { checkOptions } from "./atoms/checkOptions.ts";
 import { desktopOptions } from "./atoms/desktopOptions.ts";
 import { devOptions } from "./atoms/devOptions.ts";
 import { imageOptions } from "./atoms/imageOptions.ts";
 import { metaOptions } from "./atoms/metaOptions.ts";
 import { BuildCommand } from "./commands/build.ts";
+import { CheckCommand } from "./commands/check.ts";
 import { CleanCommand } from "./commands/clean.ts";
 import { CompileCommand } from "./commands/compile.ts";
 import { DbCommand } from "./commands/db.ts";
@@ -34,6 +36,7 @@ import { RootCommand } from "./commands/root.ts";
 import { TestCommand } from "./commands/test.ts";
 import { TypecheckCommand } from "./commands/typecheck.ts";
 import { VerifyCommand } from "./commands/verify.ts";
+import { NoDateNowRule } from "./conventions/NoDateNowRule.ts";
 import { AlephaCliExtensionProvider } from "./providers/AlephaCliExtensionProvider.ts";
 import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
@@ -43,6 +46,8 @@ import { AppMapRenderer } from "./services/AppMapRenderer.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
 import { BuildPipeline } from "./services/BuildPipeline.ts";
 import { BuildSlices } from "./services/BuildSlices.ts";
+import { ConventionRegistry } from "./services/ConventionRegistry.ts";
+import { ConventionRunner } from "./services/ConventionRunner.ts";
 import { DesktopAdapterResolver } from "./services/DesktopAdapterResolver.ts";
 import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
 import { DocsLibrary } from "./services/DocsLibrary.ts";
@@ -67,11 +72,13 @@ export * from "./alephaPackageJson.ts";
 export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
 export * from "./atoms/changelogOptions.ts";
+export * from "./atoms/checkOptions.ts";
 export * from "./atoms/devOptions.ts";
 export * from "./atoms/desktopOptions.ts";
 export * from "./atoms/imageOptions.ts";
 export * from "./atoms/metaOptions.ts";
 export * from "./commands/build.ts";
+export * from "./commands/check.ts";
 export * from "./commands/clean.ts";
 export * from "./commands/compile.ts";
 export * from "./commands/image.ts";
@@ -87,6 +94,8 @@ export * from "./commands/root.ts";
 export * from "./commands/test.ts";
 export * from "./commands/typecheck.ts";
 export * from "./commands/verify.ts";
+export * from "./conventions/ConventionRule.ts";
+export * from "./conventions/NoDateNowRule.ts";
 export * from "./providers/AlephaCliExtensionProvider.ts";
 export * from "./providers/AppEntryProvider.ts";
 export * from "./providers/ViteBuildProvider.ts";
@@ -103,6 +112,8 @@ export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ArchiveCompressor.ts";
 export * from "./services/BuildPipeline.ts";
 export * from "./services/BuildSlices.ts";
+export * from "./services/ConventionRegistry.ts";
+export * from "./services/ConventionRunner.ts";
 export * from "./services/DockerImageBuilder.ts";
 export * from "./services/ViteUtils.ts";
 export * from "./services/DesktopAdapterResolver.ts";
@@ -150,7 +161,7 @@ export const AlephaCliServices = $module({
   // The tasks resolve `buildOptions`, so it belongs to whichever module
   // declares them. Left behind on `AlephaCli` it would read as unregistered
   // from a container that has the tasks and not the commands.
-  atoms: [buildOptions, desktopOptions, imageOptions],
+  atoms: [buildOptions, checkOptions, desktopOptions, imageOptions],
   services: [
     // Services & providers
     AlephaCliUtils,
@@ -170,6 +181,12 @@ export const AlephaCliServices = $module({
     DocsLibrary,
     AppMapRenderer,
     WorkspaceCompiler,
+    // Convention rules, and what reads them: `alepha check`, the docs
+    // generator and the repository script all inject the runner, and none of
+    // them wants the commands.
+    ConventionRegistry,
+    ConventionRunner,
+    NoDateNowRule,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.
@@ -203,6 +220,7 @@ export const AlephaCli = $module({
     AlephaCliExtensionProvider,
     // Commands
     BuildCommand,
+    CheckCommand,
     CleanCommand,
     DbCommand,
     DevCommand,

@@ -2,6 +2,7 @@ import { AlephaError, z } from "alepha";
 import {
   appEntryOptions,
   buildOptions,
+  checkOptions,
   desktopOptions,
   devOptions,
   imageOptions,
@@ -22,6 +23,12 @@ export class CliConfigValidator {
       build: StrictConfigSchema.from(
         buildOptions.schema.omit({ runtimes: true }),
       ).optional(),
+      // `check: false` is taken out before this schema runs (see `parse`):
+      // as a union, a wrong key inside the object reported "check: Invalid
+      // input" instead of naming the key.
+      check: StrictConfigSchema.from(
+        checkOptions.schema.omit({ enabled: true }),
+      ).optional(),
       dev: StrictConfigSchema.from(devOptions.schema).optional(),
       desktop: StrictConfigSchema.from(desktopOptions.schema).optional(),
       image: StrictConfigSchema.from(imageOptions.schema).optional(),
@@ -32,8 +39,18 @@ export class CliConfigValidator {
     .strict();
 
   public static parse(input: unknown): AlephaCliConfig {
-    const result = this.schema.safeParse(input);
-    if (result.success) return result.data as AlephaCliConfig;
+    const checkDisabled =
+      typeof input === "object" &&
+      input !== null &&
+      (input as { check?: unknown }).check === false;
+    const result = this.schema.safeParse(
+      checkDisabled ? { ...input, check: undefined } : input,
+    );
+    if (result.success) {
+      return (
+        checkDisabled ? { ...result.data, check: false } : result.data
+      ) as AlephaCliConfig;
+    }
     const messages = result.error.issues.flatMap((issue) => {
       const paths =
         issue.code === "unrecognized_keys"

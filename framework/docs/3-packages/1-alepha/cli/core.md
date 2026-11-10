@@ -10,7 +10,7 @@ npm install alepha
 
 ## Overview
 
-The Alepha CLI core: `init`, `dev`, `build`, `verify`, `db`, `test`,
+The Alepha CLI core: `init`, `dev`, `build`, `verify`, `check`, `db`, `test`,
 `lint`, `typecheck`, `gen`, `pack` and `docs`. Loaded automatically when the
 `alepha` binary runs; each command is documented in the CLI section of the
 docs site.

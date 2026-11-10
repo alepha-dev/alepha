@@ -88,6 +88,10 @@ const DATE_NOW_EXEMPT = [
   "packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts",
   // Unique temp-directory suffix, never compared or asserted on.
   "packages/alepha/src/bucket/providers/LocalFileStorageProvider.ts",
+  // `alepha check` names the call it refuses in its own strings, which this
+  // grep cannot tell from code. Both go when the grep does (#Q3249).
+  "packages/alepha/src/cli/core/conventions/NoDateNowRule.ts",
+  "packages/alepha/src/cli/core/commands/check.ts",
 ];
 
 /**

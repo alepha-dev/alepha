@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildOptions } from "../atoms/buildOptions.ts";
 import { AlephaCli, AlephaCliServices } from "../index.ts";
 import { AlephaCliExtensionProvider } from "../providers/AlephaCliExtensionProvider.ts";
+import { ConventionRunner } from "../services/ConventionRunner.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 
 /**
@@ -51,6 +52,18 @@ describe("the CLI's build tasks and its commands", () => {
     expect(cli.commands.map((command) => command.name)).toEqual([]);
   });
 
+  it("registers no command for a container that only wanted the convention runner", () => {
+    // The docs generator and the repository's check-conventions script both
+    // inject the runner; declared beside the commands, it would drag every
+    // command into their container.
+    const cli = cliOf((alepha) => {
+      alepha.with(AlephaCommand).with(AlephaCliServices);
+      alepha.inject(ConventionRunner);
+    });
+
+    expect(cli.commands.map((command) => command.name)).toEqual([]);
+  });
+
   it("registers no commands for the infrastructure library alone", () => {
     const cli = cliOf((alepha) => alepha.with(AlephaInfraLibPlugin));
     expect(cli.commands).toEqual([]);
@@ -69,6 +82,7 @@ describe("the CLI's build tasks and its commands", () => {
       "deploy",
       "infra",
       "build",
+      "check",
       "clean",
       "db",
       "dev",
