@@ -137,6 +137,14 @@ export class ChangelogCommand {
    * read. Backslashes are escaped first so an existing `\*` in a subject
    * stays a backslash followed by a star.
    *
+   * ## ⚠️ Why a `<` is escaped
+   *
+   * GitHub renders the release body with raw HTML allowed, so `named <verb>
+   * <table>` opened a real, never-closed `<table>`: the rest of the 0.37.0
+   * Features list ran into one line and swallowed the Bug Fixes heading, and
+   * `asset.<hash>.<ext>` printed as `asset..` (#Q3368). An escaped `\<` is a
+   * literal angle bracket, so no subject can open a tag.
+   *
    * ## ⚠️ Why an `@word` goes in a code span
    *
    * This output is the GitHub release body, and GitHub turns every `@name`
@@ -161,6 +169,7 @@ export class ChangelogCommand {
               .replace(/\\/g, "\\\\")
               .replace(/\*/g, "\\*")
               .replace(/(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])/g, "\\_")
+              .replace(/</g, "\\<")
               .replace(
                 /(?<![A-Za-z0-9._/-])@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?![A-Za-z0-9/-])/g,
                 "`$&`",
