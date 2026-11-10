@@ -508,9 +508,9 @@ describe("alepha/api/organizations - RankService", () => {
     // Somebody inside the manager's own set is still theirs to manage.
     await ctx.ranks.assign(org, below, "manager", ctx.member);
     await ctx.members.remove(org, below, ctx.member);
-    expect(
-      (await ctx.members.list(org)).map((it) => it.userId),
-    ).not.toContain(below);
+    expect((await ctx.members.list(org)).map((it) => it.userId)).not.toContain(
+      below,
+    );
     expect(
       (await ctx.members.list(org)).find((it) => it.userId === above)?.rank,
     ).toBe("senior");
