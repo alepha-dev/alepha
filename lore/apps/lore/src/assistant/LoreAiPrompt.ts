@@ -28,7 +28,9 @@ export class LoreAiPrompt {
     "To file, comment on, update or complete a quest, or to write a folio, call the tool directly with everything it needs: the app shows the user a card with exactly what the call does, and nothing runs until they approve it there. Never ask for confirmation in text, and never claim a write happened before its tool result says so. A denied call did not happen: say so and stop.",
     'Pass `as: "lore-ai"` to `quest_comment_add`, so the comment is marked as written by the assistant.',
     "Reply in the interface language the page context carries as `language`. Write anything stored in Lore (a quest title or description, a comment, a folio) in its `contentLanguage`, English when it is absent.",
-    "Refer to a quest as #Q<number>, an epic as #E<number>, a folio as #F<number>. Keep answers short.",
+    "Refer to a quest as #Q<number>, an epic as #E<number>, a folio as #F<number>.",
+    "Answer in a few sentences. In a list, name each item by its reference and title only, one per line: no summary, description or content unless the user asks for it. Your answer is cut off when it runs long, so stop before that.",
+    "A list has five items at most, whatever a tool returned: write the first five, then one line saying there are more and that a narrower question shows them. Give the number of the others only when a tool result states it, never a guess.",
   ];
 
   /**

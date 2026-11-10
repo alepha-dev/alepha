@@ -23,6 +23,12 @@ Ask it what you would otherwise click through:
 - **Answer how-to questions** from these guides, with a link to the page it
   read.
 
+Its answers are short on purpose: a list names each item by its reference and
+title, a handful at a time, and says when there are more. An answer has a
+length limit; when one reaches it, the assistant says the answer was cut short
+and offers to continue, so a reply that stops early is never shown as
+complete.
+
 It works inside the project you are looking at, and only there. It acts as
 you: it can never do anything your rank in that project does not allow, and
 it is not offered the tools your rank does not grant. It is offered on

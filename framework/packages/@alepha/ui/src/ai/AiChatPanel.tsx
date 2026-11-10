@@ -174,12 +174,27 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
           />
         ) : (
           <>
-            {chat.items.map((item) => (
+            {chat.items.map((item, index) => (
               <AiChatMessage
                 key={item.id}
                 item={item}
                 renderLink={props.renderLink}
                 toolLabel={props.toolLabel}
+                // Only where continuing still means "this answer": the last
+                // line, with no turn running and no card waiting.
+                onContinue={
+                  item.cut &&
+                  index === chat.items.length - 1 &&
+                  !chat.loading &&
+                  !chat.pending
+                    ? () =>
+                        void chat.send(
+                          tr("ai.chat.continueMessage", {
+                            default: "Continue",
+                          }),
+                        )
+                    : undefined
+                }
               />
             ))}
             {chat.streaming && (

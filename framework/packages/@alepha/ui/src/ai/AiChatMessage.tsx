@@ -1,6 +1,7 @@
 import { useI18n } from "alepha/react/i18n";
-import { Ban, Check, X } from "lucide-react";
+import { Ban, Check, Scissors, X } from "lucide-react";
 
+import { Button } from "../core/Button.tsx";
 import { cn } from "../core/utils.ts";
 import {
   type MarkdownLinkRenderer,
@@ -18,6 +19,12 @@ export interface AiChatMessageProps {
    * The words a tool step shows: `AiChat`'s `toolLabel`.
    */
   toolLabel?: AiChatToolLabel;
+  /**
+   * Asks the assistant to go on, from the notice under a reply that was cut
+   * short. Absent, the notice shows without its button: `AiChatPanel` passes
+   * it on the last line only, and never while a turn runs.
+   */
+  onContinue?: () => void;
 }
 
 /**
@@ -83,7 +90,34 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
       data-testid="ai-chat-assistant"
       className="mr-4 self-start text-sm leading-relaxed"
     >
-      <MarkdownView content={item.content} renderLink={props.renderLink} />
+      {item.content ? (
+        <MarkdownView content={item.content} renderLink={props.renderLink} />
+      ) : null}
+      {item.cut ? (
+        <div
+          data-testid="ai-chat-cut"
+          role="status"
+          className="text-warning-text mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+        >
+          <Scissors className="size-3.5 shrink-0" />
+          <span>
+            {tr("ai.chat.cut", {
+              default:
+                "This answer was cut short: it reached the length limit. Ask a narrower question, or continue.",
+            })}
+          </span>
+          {props.onContinue ? (
+            <Button
+              type="button"
+              variant="outlined"
+              size="xs"
+              onClick={props.onContinue}
+            >
+              {tr("ai.chat.continue", { default: "Continue" })}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 };

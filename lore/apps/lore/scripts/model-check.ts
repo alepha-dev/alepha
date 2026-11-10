@@ -59,6 +59,16 @@ interface Prompt {
     calls: Array<{ name: string; input: any }>;
     reply: string;
   }) => boolean;
+  /**
+   * The page the prompt is asked from, when it is not the project page.
+   */
+  context?: typeof context;
+  /**
+   * A brevity prompt (#Q3297): the reply has to end on its own, inside the
+   * output cap, and stay under this many characters. Scored apart from the
+   * twelve, so their total stays comparable from one run to the next.
+   */
+  maxChars?: number;
 }
 
 const models = process.argv.slice(2);
@@ -137,12 +147,49 @@ const q3 = await createTestQuest(alepha, acme, {
   title: "Fix the login redirect loop",
   area: "auth",
 });
-await createTestFolio(alepha, acme, {
-  title: "Deployment runbook",
-  content:
-    "# Deployment runbook\n\nWe deploy from main through CI. Roll back with `wrangler rollback`. The database is migrated before the worker ships.",
-});
+// ⚠️ A folio is found through `searchText`, which the API fills on every save
+// and this fixture writes past. Left empty, every search of the check found
+// nothing, and the model was scored for saying so (the "miss" on the two-step
+// read of 2026-11-09 was this, not the model).
+const seedFolio = (title: string, content: string, summary = "") =>
+  createTestFolio(alepha, acme, {
+    title,
+    summary,
+    content,
+    searchText: `${title} ${summary} ${content}`.toLowerCase(),
+  });
+await seedFolio(
+  "Deployment runbook",
+  "# Deployment runbook\n\nWe deploy from main through CI. Roll back with `wrangler rollback`. The database is migrated before the worker ships.",
+);
 await createTestQuest(alepha, beta, { title: "Push notifications on iOS" });
+// Enough folios, each with a real summary, for a list of them to run past the
+// output cap when the model recites every summary: the report of #Q3297.
+const folioTopics = [
+  "Authentication",
+  "Billing",
+  "Caching",
+  "Database migrations",
+  "Email delivery",
+  "Feature flags",
+  "Image uploads",
+  "Job queue",
+  "Localization",
+  "Monitoring",
+  "Notifications",
+  "Offline sync",
+  "Permissions",
+  "Rate limiting",
+  "Search indexing",
+  "Webhooks",
+];
+for (const topic of folioTopics) {
+  await seedFolio(
+    `${topic}: decisions`,
+    `# ${topic}\n\nThe decisions taken for ${topic.toLowerCase()}.`,
+    `Decision record for ${topic.toLowerCase()}: what was chosen, the two alternatives that were rejected and why, the constraints that held at the time, the migration path from the previous design, and the open questions left for the next review of this part of the system.`,
+  );
+}
 
 const context = {
   route: `/${acme.slug}`,
@@ -154,6 +201,26 @@ const context = {
     language: "en",
     contentLanguage: "en",
   },
+};
+
+/**
+ * What the prompt's list rules ask of a reply over sixteen matches: some
+ * folios named, no summary recited, and a word that there are more. No count
+ * is asked for: `folio_search` returns ten rows and no total, so a number
+ * there would be invented.
+ *
+ * ⚠️ The five-item cap is NOT part of the pass: Mistral Small 3.1 followed it
+ * in three runs of six (2026-11-10, #Q3297) and listed ten or twelve titles
+ * in the others, at 170 output tokens at most. It is printed as `listed`, so
+ * a model that follows it shows.
+ */
+const brief = (reply: string) => {
+  const named = new Set(reply.match(/#F\d+/g) ?? []).size;
+  return (
+    named >= 3 &&
+    !/alternatives that were rejected/i.test(reply) &&
+    /\b(more|others?)\b/i.test(reply)
+  );
 };
 
 const prompts: Prompt[] = [
@@ -245,6 +312,31 @@ const prompts: Prompt[] = [
     expect: [],
     mustStop: true,
   },
+  {
+    // Every seeded folio is titled "<topic>: decisions": the search returns
+    // all sixteen with their summaries, which is the list the report ran past
+    // the cap reciting.
+    id: "brief-title",
+    kind: "brevity",
+    text: "Which folios are about decisions?",
+    expect: ["folio_search", "search"],
+    context: {
+      ...context,
+      route: `/${acme.slug}/folios`,
+      page: "projectFolios",
+    },
+    answer: (turn) => brief(turn.reply),
+    maxChars: 700,
+  },
+  {
+    // The same sixteen, matched on their summaries this time.
+    id: "brief-summary",
+    kind: "brevity",
+    text: "List the folios that mention a migration path.",
+    expect: ["folio_search", "search"],
+    answer: (turn) => brief(turn.reply),
+    maxChars: 700,
+  },
 ];
 
 // ---- run and score -----------------------------------------------------------------------------------------------
@@ -255,16 +347,19 @@ const calls = (messages: AiMessage[]) =>
   );
 
 const report: Array<Record<string, unknown>> = [];
+// `MODEL_CHECK_ONLY=brevity` runs one kind, for iterating on a prompt rule.
+const only = process.env.MODEL_CHECK_ONLY;
 for (const model of models) {
   assistant.options.model = model;
   for (const prompt of prompts) {
+    if (only && prompt.kind !== only) continue;
     let result: AiTurnResult | undefined;
     let failure: string | undefined;
     try {
       result = await assistant.run({
         messages: [{ role: "user", content: prompt.text }],
         user,
-        context,
+        context: prompt.context ?? context,
       });
     } catch (error) {
       failure = error instanceof Error ? error.message : String(error);
@@ -303,8 +398,22 @@ for (const model of models) {
         Number(!invented) +
         Number(staysInProject) +
         Number(stops);
+    // A brevity prompt passes when the reply answers (it names folios), ended
+    // on its own and is short: "there are none" is short too, and wrong.
+    const brief =
+      prompt.maxChars === undefined
+        ? undefined
+        : !failure &&
+          result?.reason !== "length" &&
+          rightArgs &&
+          reply.length <= prompt.maxChars;
     report.push({
       model,
+      brief,
+      reason: result?.reason,
+      outputTokens: result?.usage.outputTokens,
+      replyChars: reply.length,
+      listed: new Set(reply.match(/#[QEF]\d+/g) ?? []).size,
       prompt: prompt.id,
       kind: prompt.kind,
       score,
@@ -319,18 +428,32 @@ for (const model of models) {
       failure,
     });
     console.log(
-      `${model.padEnd(48)} ${prompt.id.padEnd(16)} ${score}/5${failure ? ` FAILED ${failure.slice(0, 120)}` : ""}`,
+      `${model.padEnd(48)} ${prompt.id.padEnd(16)} ${
+        brief === undefined ? `${score}/5` : brief ? "brief" : "LONG"
+      } ${String(result?.reason ?? "-").padEnd(7)} ${String(result?.usage.outputTokens ?? "-").padStart(5)} tok ${String(reply.length).padStart(5)} chars${failure ? ` FAILED ${failure.slice(0, 120)}` : ""}`,
     );
   }
 }
 
-const totals = models.map((model) => ({
-  model,
-  total: report
-    .filter((row) => row.model === model)
-    .reduce((sum, row) => sum + Number(row.score), 0),
-  of: prompts.length * 5,
-}));
+const scored = prompts.filter((prompt) => prompt.maxChars === undefined);
+const totals = models.map((model) => {
+  const rows = report.filter((row) => row.model === model);
+  return {
+    model,
+    total: rows
+      .filter((row) => row.brief === undefined)
+      .reduce((sum, row) => sum + Number(row.score), 0),
+    of: scored.length * 5,
+    brief: `${rows.filter((row) => row.brief === true).length}/${
+      rows.filter((row) => row.brief !== undefined).length
+    }`,
+    cutAtTheCap: rows.filter((row) => row.reason === "length").length,
+    maxOutputTokens: Math.max(
+      0,
+      ...rows.map((row) => Number(row.outputTokens ?? 0)),
+    ),
+  };
+});
 console.table(totals);
 if (process.env.MODEL_CHECK_OUT) {
   await writeFile(process.env.MODEL_CHECK_OUT, JSON.stringify(report, null, 2));

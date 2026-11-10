@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
@@ -187,6 +187,59 @@ describe("AiChat", () => {
         context: { route: "/", page: "invoice", data: { id: 7 } },
       },
     ]);
+  });
+
+  it("says when a reply was cut at the length limit, and continues on request", async () => {
+    const { links, view, say } = await mount((l) => {
+      l.streams.push([
+        { type: "conversation", conversationId },
+        { type: "text", text: "Folio 1, folio 2, **" },
+        { type: "end", reason: "length" },
+      ]);
+      l.streams.push([
+        { type: "text", text: "folio 3." },
+        { type: "end", reason: "stop" },
+      ]);
+    });
+
+    await say("list the folios");
+
+    const notice = await waitFor(() => view.getByTestId("ai-chat-cut"));
+    expect(notice.textContent).toContain("This answer was cut short");
+    // The cut text stays, and the notice belongs to that reply.
+    const cut = view.getByTestId("ai-chat-assistant");
+    expect(cut.textContent).toContain("Folio 1, folio 2,");
+    expect(cut.contains(notice)).toBe(true);
+
+    fireEvent.click(within(notice).getByRole("button", { name: "Continue" }));
+
+    await waitFor(() =>
+      expect(view.getAllByTestId("ai-chat-assistant").at(-1)?.textContent).toBe(
+        "folio 3.",
+      ),
+    );
+    expect(links.bodies("chat").map((body: any) => body.message)).toEqual([
+      "list the folios",
+      "Continue",
+    ]);
+    // The older reply keeps its notice and loses its button: continuing now
+    // would no longer mean that answer. A finished reply carries none.
+    const notices = view.getAllByTestId("ai-chat-cut");
+    expect(notices).toHaveLength(1);
+    expect(within(notices[0]!).queryByRole("button")).toBeNull();
+  });
+
+  it("marks a turn cut before any text, so an empty reply is not silence", async () => {
+    const { view, say } = await mount((l) => {
+      l.streams.push([
+        { type: "conversation", conversationId },
+        { type: "end", reason: "length" },
+      ]);
+    });
+
+    await say("list everything");
+
+    await waitFor(() => expect(view.getByTestId("ai-chat-cut")).toBeTruthy());
   });
 
   it("keeps what was typed when the drawer re-renders before Send", async () => {

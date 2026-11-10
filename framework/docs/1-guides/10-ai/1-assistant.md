@@ -330,6 +330,8 @@ const InvoicePage = (props: InvoicePageProps) => {
   drawer below. A dock renders into an `<AiChatDockSlot />` placed in your layout, which narrows
   the page to make room (`AppShell` takes one as `aside={<AiChatDockSlot />}`); without a slot it
   floats over the page's right edge.
+- A reply the model did not finish (`end: length`, the turn reached `maxTokens`) is shown with a
+  notice that it was cut short and a Continue button. `useAiChat()` marks that line `cut`.
 - `<AiChatPanel />` is the conversation without a container, for a layout that holds it itself.
 - `useAiChat()` is the same state and actions without the UI: `items`, `streaming`, `pending`,
   `send`, `approve`, `deny`, `open`, each resolving a `RunResult`. `invalidates` lists the query

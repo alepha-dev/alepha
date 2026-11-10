@@ -48,6 +48,10 @@ export const uiFr: Record<string, string> = {
   "ai.chat.awaiting": "Action à valider",
   "ai.chat.close": "Fermer",
   "ai.chat.confirmTitle": "Exécuter $1 ?",
+  "ai.chat.continue": "Continuer",
+  "ai.chat.continueMessage": "Continue",
+  "ai.chat.cut":
+    "Cette réponse a été coupée : elle a atteint la limite de longueur. Posez une question plus précise, ou continuez.",
   "ai.chat.deny": "Refuser",
   "ai.chat.empty": "Posez une question sur cette page.",
   "ai.chat.emptyTitle": "Que voulez-vous faire ?",

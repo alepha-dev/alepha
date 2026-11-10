@@ -177,8 +177,14 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
           } else if (event.type === "error") {
             setError(event.message ?? event.name ?? "The assistant failed");
           }
-          if (text && (event.type === "tool_call" || event.type === "end")) {
-            push({ role: "assistant", content: text });
+          // The model ran out of output tokens (or of steps): the reply is
+          // marked, so it reads as cut short and not as a finished answer.
+          const cut = event.type === "end" && event.reason === "length";
+          if (
+            (text && (event.type === "tool_call" || event.type === "end")) ||
+            cut
+          ) {
+            push({ role: "assistant", content: text, ...(cut ? { cut } : {}) });
             text = "";
             setStreaming("");
           }
@@ -382,6 +388,12 @@ export interface AiChatItem {
    * model, a cancellation to the user.
    */
   denied?: boolean;
+  /**
+   * An `assistant` line the model did not finish: the turn ended on its
+   * output limit (`reason: "length"`). Known for a reply streamed in this
+   * session only; a stored conversation does not keep it.
+   */
+  cut?: boolean;
 }
 
 /**
