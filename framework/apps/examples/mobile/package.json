@@ -24,17 +24,17 @@
     "@capacitor/haptics": "8.0.2",
     "@capacitor/ios": "8.6.0",
     "@capacitor/splash-screen": "8.0.2",
-    "@capgo/capacitor-updater": "8.54.0",
+    "@capgo/capacitor-updater": "8.54.2",
     "alepha": "workspace:^",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@capacitor/cli": "8.6.0",
-    "@playwright/test": "^1.64.1",
-    "@tailwindcss/vite": "^4.3.3",
-    "tailwindcss": "^4.3.3",
-    "vite": "^8.3.5",
-    "wrangler": "^4.157.0"
+    "@playwright/test": "^1.65.0",
+    "@tailwindcss/vite": "^4.3.5",
+    "tailwindcss": "^4.3.5",
+    "vite": "^8.3.7",
+    "wrangler": "^4.158.0"
   }
 }

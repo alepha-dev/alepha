@@ -295,7 +295,20 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       todo: tr("kanban.column.todo"),
       completed: tr("kanban.column.completed"),
     });
-    let acceptedSeen = 0;
+    // Each untinted in-progress column takes the next derived dot, in order.
+    const derivedTint = new Map(
+      resolved
+        .filter(
+          (column) =>
+            !column.color &&
+            column.status !== "todo" &&
+            column.status !== "completed",
+        )
+        .map((column, index) => [
+          column,
+          SUB_COLUMN_DOTS[index % SUB_COLUMN_DOTS.length],
+        ]),
+    );
     return resolved.map((column) => ({
       // Keyed by name, which is unique among configured columns; the
       // synthesized ends carry their translated label, which cannot
@@ -319,7 +332,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           ? "bg-blue-500"
           : column.status === "completed"
             ? "bg-green-500"
-            : SUB_COLUMN_DOTS[acceptedSeen++ % SUB_COLUMN_DOTS.length],
+            : (derivedTint.get(column) ?? SUB_COLUMN_DOTS[0]),
     }));
   }, [project.kanbanColumns, project.kanbanColumnConfig, tr]);
 

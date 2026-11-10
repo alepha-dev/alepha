@@ -13,12 +13,12 @@
     "@alepha/lore": "workspace:*",
     "@lore/deploy": "workspace:*",
     "@lore/work": "workspace:*",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@types/bun": "^1.4.4",
     "@types/ws": "^8.18.2",
     "alepha": "workspace:*",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5",
-    "ws": "^8.22.1"
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0",
+    "ws": "^8.22.2"
   }
 }

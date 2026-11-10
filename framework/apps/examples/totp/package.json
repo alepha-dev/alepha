@@ -14,14 +14,14 @@
   "dependencies": {
     "@alepha/ui": "workspace:*",
     "alepha": "workspace:^",
-    "lucide-react": "^1.66.0",
+    "lucide-react": "^1.70.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "tailwindcss": "^4.3.3",
-    "vite": "^8.3.5",
-    "wrangler": "^4.157.0"
+    "@tailwindcss/vite": "^4.3.5",
+    "tailwindcss": "^4.3.5",
+    "vite": "^8.3.7",
+    "wrangler": "^4.158.0"
   }
 }

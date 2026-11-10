@@ -1,7 +1,3 @@
-// oxlint-disable react/globals -- Test harness. Each case renders a throwaway
-// component whose only job is to hand the hook's return value back to the
-// assertion, so the writes to the enclosing `let` are the measurement, not a
-// side effect the component depends on.
 import { DialogProvider } from "@alepha/ui";
 import { virtualClientFake } from "@lore/core/testing";
 import { render, waitFor } from "@testing-library/react";
