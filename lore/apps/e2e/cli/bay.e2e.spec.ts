@@ -889,6 +889,23 @@ describe("Bay connector against a real Lore", () => {
     );
     const settled = await commandSettles(queued.id);
     expect(settled.status, settled.reason).toBe("done");
+    // ⚠️ The machine has to run the copy under the name Lore looks it up by,
+    // project segment included (#Q3285). The frame once dropped the segment:
+    // the deploy still came back done, as `<app>/<env>`, and the copy's
+    // Backups tab then asked the machine for an instance it did not have.
+    const reported = await until(
+      "the machine to report the copy under the name Lore looks up",
+      async () => {
+        const view = await ok<{ status: string; machineApp?: string }>(
+          call(lore, owner, "getAppBackup", {
+            params: { projectId, app: "demo", env: "production" },
+          }),
+        );
+        return view.status === "reported" ? view : undefined;
+      },
+      60_000,
+    );
+    expect(reported.machineApp).toMatch(/.-demo$/);
     // Bay names a pulled artifact after its digest and the CURRENT suffix.
     // The suffix is only a file name — `untar` sniffs the compression from the
     // stream — but the cache lookup composes it, so the two have to agree.

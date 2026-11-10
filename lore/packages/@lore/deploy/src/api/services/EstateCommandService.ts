@@ -395,6 +395,14 @@ export class EstateCommandService {
       kind: command.kind,
       app: command.payload.app,
       environment: command.payload.environment,
+      // Bay composes a copy's instance key from it (`<project>-<app>`): dropped
+      // here, the machine runs `<app>/<env>` while Lore looks the copy up, and
+      // sends its backups and removal, under the name with the segment
+      // (#Q3285). On a `deploy` only: a `stack-deploy` records the slug in its
+      // payload, and Bay names a stack without it.
+      ...(command.kind === "deploy" && command.payload.project
+        ? { project: command.payload.project }
+        : {}),
       ...(command.payload.artifact
         ? { artifact: command.payload.artifact }
         : {}),

@@ -128,6 +128,11 @@ describe("an app deploy to a Bay estate", () => {
       environment: "production",
       artifact: { id: row.artifactId, sha256: row.sha256 },
     });
+    // ⚠️ The segment the copy is named with has to reach the machine: without
+    // it Bay runs `<app>/<env>` and Lore asks for `<project>-<app>` (#Q3285).
+    expect(a.w.project.slug).toBeTruthy();
+    expect(command.payload.project).toBe(a.w.project.slug);
+    expect(frame.project).toBe(a.w.project.slug);
     // The project segment is optional on the wire; every other key is Bay's.
     expect(
       Object.keys(frame)
