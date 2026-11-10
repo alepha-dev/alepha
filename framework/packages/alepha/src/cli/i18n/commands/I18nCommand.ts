@@ -120,6 +120,38 @@ export class I18nCommand {
         );
       }
 
+      const pluralErrors = result.pluralIssues.filter(
+        (i) => i.severity === "error",
+      );
+      if (result.pluralIssues.length > 0) {
+        process.stdout.write(
+          `\n${c.set(pluralErrors.length > 0 ? "RED" : "ORANGE", pluralErrors.length > 0 ? "✗" : "warn")} ` +
+            `Plural entries that do not fit their language ` +
+            `(${result.pluralIssues.length}):\n`,
+        );
+        for (const i of result.pluralIssues) {
+          const file = i.file.startsWith(root)
+            ? i.file.slice(root.length + 1)
+            : i.file;
+          const what =
+            i.kind === "missing"
+              ? `missing ${i.categories.join(", ")}`
+              : i.kind === "unexpected"
+                ? `${i.categories.join(", ")} never selected (warning)`
+                : `a plain string in ${i.categories.join(", ")}`;
+          process.stdout.write(
+            `  ${c.set("DIM", "-")} ${i.key} [${i.lang}] ` +
+              `${c.set("DIM", `(${file})`)}: ${what}\n`,
+          );
+        }
+        process.stdout.write(
+          `\nA plural entry needs ${c.set("CYAN", "other")} and every ` +
+            `category its language selects for a whole number. A language ` +
+            `with no distinction writes ${c.set("CYAN", '{ other: "..." }')} ` +
+            `alone, so the call passes a count in every language.\n`,
+        );
+      }
+
       if (result.unused.length > 0) {
         process.stdout.write(
           `\n${c.set("RED", "✗")} Unused translations (${result.unused.length}):\n`,
@@ -138,7 +170,8 @@ export class I18nCommand {
         result.unused.length === 0 &&
         result.badPlaceholders.length === 0 &&
         result.missingArgs.length === 0 &&
-        result.missingNames.length === 0
+        result.missingNames.length === 0 &&
+        pluralErrors.length === 0
       ) {
         process.stdout.write(
           `\n${c.set("GREEN", "✓")} All translations are referenced.\n\n`,

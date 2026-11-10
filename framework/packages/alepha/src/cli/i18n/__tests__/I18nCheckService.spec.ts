@@ -489,6 +489,236 @@ export class I18n {
     });
   });
 
+  describe("plural categories per locale (#Q3344)", () => {
+    const check = () =>
+      env.service.check({
+        root: ROOT,
+        scan: ["src"],
+        dynamicPrefixes: [],
+        exclude: [],
+      });
+
+    const usage = `export const P = () => [
+  tr("files.count", { count }),
+  tr("ticket.state", { select: state }),
+  tr("only.other", { count }),
+  tr("mixed.key", { count }),
+];`;
+
+    it("checks lazily imported per-language files against their language", async () => {
+      await env.fs.mkdir(`${ROOT}/src/locales`, { recursive: true });
+      await env.fs.writeFile(
+        `${ROOT}/src/I18n.ts`,
+        `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({ lazy: () => import("./locales/en.ts") });
+  fr = $dictionary({ lazy: () => import("./locales/fr.ts") });
+  polish = $dictionary({ lang: "pl", lazy: () => import("./locales/pl.ts") });
+  ar = $dictionary({ lazy: () => import("./locales/ar.ts") });
+}
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/locales/en.ts`,
+        `export default {
+  "files.count": { one: "{count} file", other: "{count} files" },
+  // Only CLDR names, but a call passes select: a select, left alone.
+  "ticket.state": { one: "Single", other: "Shared" },
+  "only.other": { other: "{count} items" },
+  "mixed.key": { one: "{count} thing", other: "{count} things" },
+};
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/locales/fr.ts`,
+        `export default {
+  // one and other: French many is allowed and not required.
+  "files.count": { one: "{count} fichier", many: "{count} de fichiers", other: "{count} fichiers" },
+  "ticket.state": { one: "Seul", other: "Partagé" },
+  "only.other": { other: "{count} éléments" },
+  "mixed.key": "{count} choses",
+};
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/locales/pl.ts`,
+        `export default {
+  // Copied from English: few and many are missing.
+  "files.count": {
+    one: "{count} plik",
+    other: "{count} plików",
+  },
+  "ticket.state": { one: "Jeden", other: "Wspólny" },
+  "only.other": { other: "{count} rzeczy" },
+  "mixed.key": { one: "{count} a", few: "{count} b", many: "{count} c", other: "{count} d" },
+};
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/locales/ar.ts`,
+        `export default {
+  "files.count": {
+    zero: "a", one: "b", two: "c", few: "d", many: "e", other: "f",
+  },
+  "ticket.state": { other: "x" },
+  "only.other": { other: "x" },
+  "mixed.key": { zero: "a", one: "b", two: "c", few: "d", many: "e", other: "f" },
+};
+`,
+      );
+      await env.fs.writeFile(`${ROOT}/src/Page.tsx`, usage);
+
+      const result = await check();
+      const at = (lang: string) => `${ROOT}/src/locales/${lang}.ts`;
+
+      expect(result.pluralIssues).toEqual([
+        {
+          severity: "error",
+          kind: "missing",
+          key: "files.count",
+          lang: "pl",
+          categories: ["few", "many"],
+          file: at("pl"),
+        },
+        {
+          severity: "error",
+          kind: "missing",
+          key: "only.other",
+          lang: "en",
+          categories: ["one"],
+          file: at("en"),
+        },
+        {
+          severity: "error",
+          kind: "missing",
+          key: "only.other",
+          lang: "fr",
+          categories: ["one"],
+          file: at("fr"),
+        },
+        {
+          severity: "error",
+          kind: "missing",
+          key: "only.other",
+          lang: "pl",
+          categories: ["one", "few", "many"],
+          file: at("pl"),
+        },
+        {
+          severity: "error",
+          kind: "missing",
+          key: "only.other",
+          lang: "ar",
+          categories: ["zero", "one", "two", "few", "many"],
+          file: at("ar"),
+        },
+        ...["en", "pl", "ar"].map((lang) => ({
+          severity: "error",
+          kind: "mixed",
+          key: "mixed.key",
+          lang,
+          categories: ["fr"],
+          file: at(lang),
+        })),
+      ]);
+    });
+
+    it("reads an inline dictionary with two languages in one file, wrapped and commented", async () => {
+      await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
+      await env.fs.writeFile(
+        `${ROOT}/src/I18n.ts`,
+        `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({
+      default: {
+        "files.count": {
+          one: "{count} file", // the singular
+          /* two: "never" */
+          other: "{count} files",
+          few: "{count} files (few)",
+        },
+      },
+    }),
+  });
+
+  pl = $dictionary({
+    lazy: async () => ({
+      default: {
+        "files.count": { one: "a", few: "b", other: "d" },
+      },
+    }),
+  });
+}
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/Page.tsx`,
+        `export const P = () => tr("files.count", { count });`,
+      );
+
+      const result = await check();
+
+      expect(result.pluralIssues).toEqual([
+        {
+          severity: "warning",
+          kind: "unexpected",
+          key: "files.count",
+          lang: "en",
+          categories: ["few"],
+          file: `${ROOT}/src/I18n.ts`,
+        },
+        {
+          severity: "error",
+          kind: "missing",
+          key: "files.count",
+          lang: "pl",
+          categories: ["many"],
+          file: `${ROOT}/src/I18n.ts`,
+        },
+      ]);
+    });
+
+    it("skips a spread record, which has no provable language, and leaves a select alone", async () => {
+      await env.fs.mkdir(`${ROOT}/src/i18n`, { recursive: true });
+      await env.fs.writeFile(
+        `${ROOT}/src/i18n/kitPl.ts`,
+        `export const kitPl = {
+  "kit.count": { one: "{count} a", other: "{count} b" },
+};
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/I18n.ts`,
+        `import { $dictionary } from "alepha/react/i18n";
+import { kitPl } from "./i18n/kitPl.ts";
+export const kitEn = {
+  "kit.count": { one: "{count} a", other: "{count} b" },
+};
+export class I18n {
+  pl = $dictionary({
+    lazy: async () => ({
+      default: {
+        ...kitPl,
+        "ticket.status": { open: "Otwarte", other: "Nieznany" },
+      },
+    }),
+  });
+}
+`,
+      );
+      await env.fs.writeFile(
+        `${ROOT}/src/Page.tsx`,
+        `export const P = () => [tr("kit.count", { count }), tr("ticket.status", { select })];`,
+      );
+
+      const result = await check();
+
+      // `kitEn` sits outside every $dictionary call: no language, no check.
+      expect(result.pluralIssues).toEqual([]);
+    });
+  });
+
   it("returns totalKeys=0 when no dictionary is found", async () => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
