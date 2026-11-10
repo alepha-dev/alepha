@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { dashboardScopeSchema } from "../schemas/dashboardScopeSchema.ts";
+import { projectDashboards } from "./projectDashboards.ts";
 import { projects } from "./projects.ts";
 
 /**
@@ -40,6 +41,26 @@ export const projectDashboardCards = $entity({
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
+    /**
+     * The dashboard this card sits on (#Q3298).
+     *
+     * ⚠️ **Null reads as the project's first dashboard, permanently.** The
+     * backfill leaves none behind, but the previous Worker can write one in
+     * the deploy window, and a project whose dashboards are still implicit
+     * writes none at all. Whenever the service creates or resolves the first
+     * dashboard for a write, it adopts the project's null cards, so they
+     * cannot drift to another dashboard when the first is deleted.
+     *
+     * Optional INSIDE `db.ref`, so the foreign key is generated: a plain
+     * additive `ADD COLUMN ... REFERENCES`, never a rebuild of this table.
+     */
+    dashboardId: db.ref(
+      z.integer().optional(),
+      () => projectDashboards.cols.id,
+      {
+        onDelete: "cascade",
+      },
+    ),
     /**
      * The metric registry key.
      *
@@ -99,7 +120,10 @@ export const projectDashboardCards = $entity({
     section: z.string().max(60).optional(),
     createdAt: db.createdAt(),
   }),
-  indexes: [{ columns: ["projectId", "position"] }],
+  indexes: [
+    { columns: ["projectId", "position"] },
+    { columns: ["dashboardId", "position"] },
+  ],
 });
 
 export type ProjectDashboardCard = Infer<typeof projectDashboardCards.schema>;

@@ -9,6 +9,10 @@ import {
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
+import {
+  type DashboardTarget,
+  ProjectDashboardService,
+} from "./ProjectDashboardService.ts";
 
 /**
  * Storage and layout of one project's dashboard cards.
@@ -25,7 +29,12 @@ import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
  *    re-parsed, so a card stored before a metric's vocabulary changed
  *    degrades to that metric's defaults instead of resolving against a
  *    half-understood config.
- * 2. **Nothing seeds.** {@link list} returns what is there, which on a new
+ * 2. **Every list is one dashboard's (#Q3298).** A method takes the
+ *    dashboard's id, and none means the project's first. A card with no
+ *    `dashboardId` belongs to the first, so a read of the first matches it,
+ *    and a write that needs the first's row creates it and adopts it
+ *    (`ProjectDashboardService.targetForWrite`).
+ * 3. **Nothing seeds.** {@link list} returns what is there, which on a new
  *    project is an empty array, and it writes nothing on the way. There is no
  *    seeding marker here because there is nothing for one to tell apart —
  *    see `projectDashboardCards`.
@@ -33,6 +42,7 @@ import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
 export class ProjectDashboardCardService {
   protected readonly cards = $repository(projectDashboardCards);
   protected readonly catalog = $inject(DashboardMetricCatalog);
+  protected readonly dashboards = $inject(ProjectDashboardService);
 
   /**
    * This project's cards, in grid order.
@@ -40,9 +50,20 @@ export class ProjectDashboardCardService {
    * ⚠️ Writes nothing. A project that has never been looked at and a project
    * whose board was emptied by hand are the same state on purpose.
    */
-  async list(projectId: number): Promise<DashboardCardResource[]> {
+  async list(
+    projectId: number,
+    dashboardId?: number,
+  ): Promise<DashboardCardResource[]> {
+    const target = await this.dashboards.target(projectId, dashboardId);
+    return this.listOn(target);
+  }
+
+  /**
+   * The cards of a dashboard already resolved, in grid order.
+   */
+  async listOn(target: DashboardTarget): Promise<DashboardCardResource[]> {
     const rows = await this.cards.findMany({
-      where: { projectId: { eq: projectId } },
+      where: this.on(target),
       orderBy: [
         { column: "position", direction: "asc" },
         { column: "id", direction: "asc" },
@@ -52,10 +73,11 @@ export class ProjectDashboardCardService {
   }
 
   /**
-   * Add a card at the end of the grid.
+   * Add a card at the end of the dashboard's grid.
    */
   async add(
     projectId: number,
+    dashboardId: number | undefined,
     input: {
       metric: string;
       scope: DashboardScope;
@@ -66,15 +88,17 @@ export class ProjectDashboardCardService {
     },
   ): Promise<DashboardCardResource> {
     const filters = this.validate(input.metric, input.scope, input.filters);
+    const target = await this.dashboards.targetForWrite(projectId, dashboardId);
 
     const last = await this.cards.findMany({
-      where: { projectId: { eq: projectId } },
+      where: this.on(target),
       orderBy: [{ column: "position", direction: "desc" }],
       limit: 1,
     });
 
     const row = await this.cards.create({
       projectId,
+      dashboardId: target.row.id,
       metric: input.metric,
       scope: input.scope,
       filters,
@@ -134,7 +158,7 @@ export class ProjectDashboardCardService {
   /**
    * Copy the computed board into storage: "Customize" (#Q2660).
    *
-   * Refused when the project already has stored cards: the computed board
+   * Refused when the dashboard already has stored cards: the computed board
    * only exists while it has none, so a second copy can only be a stale
    * click, and appending it would double the board.
    *
@@ -148,6 +172,7 @@ export class ProjectDashboardCardService {
    */
   async copy(
     projectId: number,
+    dashboardId: number | undefined,
     cards: Array<{
       metric: string;
       scope: DashboardScope;
@@ -157,17 +182,22 @@ export class ProjectDashboardCardService {
       section?: string;
     }>,
   ): Promise<DashboardCardResource[]> {
+    const target = await this.dashboards.targetForWrite(projectId, dashboardId);
     const existing = await this.cards.findMany({
-      where: { projectId: { eq: projectId } },
+      where: this.on(target),
       columns: ["id"],
       limit: 1,
     });
     if (existing.length > 0) {
       throw new BadRequestError("This board is already customized");
     }
+    if (cards.length === 0) {
+      return [];
+    }
     const rows = await this.cards.createMany(
       cards.map((card, position) => ({
         projectId,
+        dashboardId: target.row.id,
         metric: card.metric,
         scope: card.scope,
         filters: this.validate(card.metric, card.scope, card.filters),
@@ -181,11 +211,13 @@ export class ProjectDashboardCardService {
   }
 
   /**
-   * Delete every stored card: "Reset to default" (#Q2660). The project is
-   * back on the computed board on the next load.
+   * Delete every stored card of one dashboard: "Reset to default" (#Q2660).
+   * The first dashboard is back on the computed board on the next load;
+   * any other is empty.
    */
-  async reset(projectId: number): Promise<void> {
-    await this.cards.deleteMany({ projectId: { eq: projectId } });
+  async reset(projectId: number, dashboardId?: number): Promise<void> {
+    const target = await this.dashboards.target(projectId, dashboardId);
+    await this.cards.deleteMany(this.on(target));
   }
 
   /**
@@ -203,9 +235,14 @@ export class ProjectDashboardCardService {
    * cannot describe a reorder without the client and the server agreeing on
    * what happened to the cards it left out.
    */
-  async reorder(projectId: number, ids: number[]): Promise<void> {
+  async reorder(
+    projectId: number,
+    dashboardId: number | undefined,
+    ids: number[],
+  ): Promise<void> {
+    const target = await this.dashboards.target(projectId, dashboardId);
     const mine = await this.cards.findMany({
-      where: { projectId: { eq: projectId } },
+      where: this.on(target),
       columns: ["id"],
     });
     const owned = new Set(mine.map((it) => it.id));
@@ -219,6 +256,32 @@ export class ProjectDashboardCardService {
         this.cards.updateOne({ id: { eq: id } }, { position }),
       ),
     );
+  }
+
+  /**
+   * The where clause of one dashboard's cards.
+   *
+   * The first dashboard's are its own and the project's cards with no
+   * dashboard; while it is implicit that is every card of the project, since
+   * no other dashboard exists for a card to name.
+   */
+  protected on(target: DashboardTarget) {
+    if (!target.first) {
+      return {
+        projectId: { eq: target.projectId },
+        dashboardId: { eq: target.row!.id },
+      };
+    }
+    if (!target.row) {
+      return { projectId: { eq: target.projectId } };
+    }
+    return {
+      projectId: { eq: target.projectId },
+      or: [
+        { dashboardId: { eq: target.row.id } },
+        { dashboardId: { isNull: true } },
+      ],
+    };
   }
 
   /**

@@ -111,6 +111,7 @@ import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
 import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
+import { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
@@ -291,6 +292,7 @@ export const LoreCoreApi = $module({
     // inside the one above: the configuration belongs to the project, so
     // every query here names a project and none of them names a user.
     ProjectDashboardCardService,
+    ProjectDashboardService,
     DashboardMetricRegistry,
     DashboardSlotRegistry,
     // "Needs you" (#Q2656): core's own metric over the modules' sources.
@@ -411,6 +413,8 @@ export { AssignedWorkRegistry } from "./services/AssignedWorkRegistry.ts";
 export { BestEffort } from "./services/BestEffort.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
+export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
+export { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 export { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 export {

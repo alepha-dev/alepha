@@ -29,8 +29,11 @@ import {
  *   target's organization. Their rank comes too when the target defines
  *   it; `owner` never does, since ownership is transferred and never
  *   assigned, and a rank the target lacks becomes `member`.
- * - **Dashboard cards stay** in the source: a dashboard is laid out for one
- *   project, and the target's own is the one the merged project shows.
+ * - **Dashboards and their cards stay** in the source: a dashboard is laid
+ *   out for one project, and the target's own are the ones the merged
+ *   project shows. Moving them cannot be an `UPDATE project_id` alone: a
+ *   stored card's scope holds its project's id, so every moved card would
+ *   still point at the source (#Q3298).
  */
 export class CoreProjectMerge {
   protected readonly crypto = $inject(CryptoProvider);
@@ -88,6 +91,7 @@ export class CoreProjectMerge {
         ...CoreProjectMerge.moved.map((table) => table.table),
         // Stays with the source: see the class comment.
         "project_dashboard_cards",
+        "project_dashboards",
       ],
       plan: (context) => this.plan(context),
     });

@@ -128,6 +128,7 @@ export { dashboardSettings } from "../api/entities/dashboardSettings.ts";
 export { notificationPreferences } from "../api/entities/notificationPreferences.ts";
 export { projectCapabilities } from "../api/entities/projectCapabilities.ts";
 export { projectDashboardCards } from "../api/entities/projectDashboardCards.ts";
+export { projectDashboards } from "../api/entities/projectDashboards.ts";
 
 export {
   type AutomationRule,

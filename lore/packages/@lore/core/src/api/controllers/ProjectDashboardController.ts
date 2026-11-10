@@ -121,7 +121,7 @@ export class ProjectDashboardController {
       response: dashboardCardResourceSchema,
     },
     handler: async ({ params, body, user }) =>
-      this.cards.add(params.projectId, {
+      this.cards.add(params.projectId, undefined, {
         metric: body.metric,
         scope: await this.proveScope(params.projectId, body.scope, user),
         filters: body.filters,
@@ -191,7 +191,7 @@ export class ProjectDashboardController {
       response: z.object({ cards: z.array(dashboardCardResourceSchema) }),
     },
     handler: async ({ params, body }) => {
-      await this.cards.reorder(params.projectId, body.ids);
+      await this.cards.reorder(params.projectId, undefined, body.ids);
       return { cards: await this.cards.list(params.projectId) };
     },
   });
@@ -264,6 +264,7 @@ export class ProjectDashboardController {
       return {
         cards: await this.cards.copy(
           params.projectId,
+          undefined,
           computed.cards.map((card) => ({
             metric: card.metric,
             scope: card.scope,
