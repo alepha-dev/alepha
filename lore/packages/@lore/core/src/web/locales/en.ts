@@ -812,6 +812,8 @@ export default {
   // both mount. Under `quest.view.*` until it was lifted (#Q2021).
   "attachments.position": "$1 of $2",
   "attachments.previewTooLarge": "Too large to preview. Open the file instead.",
+  "attachments.tab.preview": "Preview",
+  "attachments.tab.code": "Code",
 
   "quest.view.actions.accept": "Accept the quest",
 

@@ -14,7 +14,16 @@
 export type AttachmentPreview =
   | { kind: "image" }
   | { kind: "markdown" }
-  | { kind: "text"; language: string }
+  | {
+      kind: "text";
+      language: string;
+      /**
+       * Set on an HTML file: the viewer can also RENDER it, sandboxed (see
+       * `AttachmentHtmlPreview`). It stays `text`, because its source is
+       * still shown, on the Code tab.
+       */
+      html?: true;
+    }
   | { kind: "none" };
 
 /**
@@ -66,6 +75,11 @@ export const attachmentPreview = (
   }
   if (ext === "md" || ext === "markdown") {
     return { kind: "markdown" };
+  }
+  // By the name first, as everything here is, and by the type for an HTML
+  // file whose name does not say so.
+  if (ext === "html" || ext === "htm" || mimeType.startsWith("text/html")) {
+    return { kind: "text", language: "xml", html: true };
   }
   if (LANGUAGES[ext]) {
     return { kind: "text", language: LANGUAGES[ext] };

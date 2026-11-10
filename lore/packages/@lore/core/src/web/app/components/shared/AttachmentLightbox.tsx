@@ -1,10 +1,19 @@
-import { Button, Dialog, DialogContent, DialogTitle } from "@alepha/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { I18n } from "../../services/I18n.ts";
+import AttachmentHtmlPreview from "./AttachmentHtmlPreview.tsx";
 import { attachmentPreview, PREVIEW_MAX_BYTES } from "./attachmentPreview.ts";
 
 export interface PreviewableAttachment {
@@ -43,15 +52,31 @@ export interface AttachmentLightboxProps {
  * text-like renders inside a fenced block so the shared `MarkdownView` gives
  * it the highlighter's colouring for free (see `LANGUAGES` in `attachmentPreview.ts`).
  *
- * HTML is shown as SOURCE, never rendered. It is an uploaded file served
- * from our own origin, so rendering it would execute it, and the fence is
- * what keeps a preview a preview.
+ * HTML opens on a Preview tab, RENDERED, with its source on a Code tab
+ * beside it (#Q3268). The rule this replaces was "HTML is shown as source,
+ * never rendered", and its reason still holds: nothing uploaded executes on
+ * our origin. The preview keeps it by rendering in a sandboxed frame with an
+ * opaque origin, which is `AttachmentHtmlPreview`'s whole job; read its
+ * comment before touching the `sandbox` attribute.
+ *
+ * ⚠️ The code view scrolls on both axes INSIDE the dialog. Two things make
+ * that true and both are easy to lose: the dialog's one grid column is
+ * `minmax(0, 1fr)`, since an `auto` track grows to the longest line and the
+ * dialog then cuts it; and for a code file the `<pre>` itself carries the
+ * height limit, so its horizontal scrollbar stays in view rather than at the
+ * foot of a block taller than the dialog. For the same reason the
+ * highlighted `<code>` inside it, which `MarkdownView` makes its own
+ * horizontal scroller, is widened to its content here: one scroller, the
+ * `<pre>`, on both axes.
  */
 const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [index, setIndex] = useState(0);
   const [text, setText] = useState<string | null>(null);
   const [tooLarge, setTooLarge] = useState(false);
+  // Which face of an HTML file is up. Preview first: it is what the file
+  // was attached to show.
+  const [tab, setTab] = useState<"preview" | "code">("preview");
 
   // Re-seed from the tile that was clicked. Keyed on `openId` rather than on
   // `open` so re-opening a different item moves the carousel instead of
@@ -77,6 +102,14 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
     ? attachmentPreview(current.name, current.mimeType)
     : { kind: "none" as const };
   const go = (delta: number) => setIndex((i) => (i + delta + count) % count);
+  const isHtml = preview.kind === "text" && preview.html === true;
+
+  // Each file opens on its preview, whatever tab the last one was left on.
+  const [tabFor, setTabFor] = useState(current?.fileId);
+  if (tabFor !== current?.fileId) {
+    setTabFor(current?.fileId);
+    setTab("preview");
+  }
 
   // Fetch the body only for what will be read as text, and only up to the
   // ceiling: a preview should never be the reason a tab stops responding.
@@ -123,6 +156,10 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   useEffect(() => {
     if (!props.openId || count < 2) return;
     const onKey = (e: KeyboardEvent) => {
+      // The arrows belong to the Preview / Code tabs while one has focus.
+      if (e.target instanceof Element && e.target.closest('[role="tablist"]')) {
+        return;
+      }
       if (e.key === "ArrowLeft") go(-1);
       if (e.key === "ArrowRight") go(1);
     };
@@ -136,7 +173,7 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
 
   return (
     <Dialog open={!!props.openId} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-[92vw] sm:max-w-3xl">
+      <DialogContent className="max-w-[92vw] grid-cols-[minmax(0,1fr)] sm:max-w-3xl">
         <div className="flex items-center gap-2 pr-8">
           <DialogTitle className="min-w-0 flex-1 truncate text-sm">
             {current.name}
@@ -154,7 +191,25 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
           </a>
         </div>
 
-        <div className="flex items-center justify-center">
+        {isHtml && (
+          <Tabs
+            value={tab}
+            onValueChange={(value) =>
+              setTab(value === "code" ? "code" : "preview")
+            }
+          >
+            <TabsList>
+              <TabsTrigger value="preview">
+                {tr("attachments.tab.preview")}
+              </TabsTrigger>
+              <TabsTrigger value="code">
+                {tr("attachments.tab.code")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
+        <div className="flex min-w-0 items-center justify-center">
           {preview.kind === "image" && (
             <img
               src={`/api/files/${current.fileId}`}
@@ -164,7 +219,14 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
           )}
 
           {isTextual && (
-            <div className="max-h-[70vh] w-full overflow-auto rounded-md">
+            <div
+              data-testid="attachment-text-preview"
+              className={
+                preview.kind === "markdown"
+                  ? "max-h-[70vh] w-full min-w-0 overflow-auto rounded-md"
+                  : "w-full min-w-0 [&_code]:w-max [&_code]:min-w-full [&_code]:overflow-x-visible [&_pre]:my-0 [&_pre]:max-h-[70vh]"
+              }
+            >
               {tooLarge ? (
                 <p className="text-muted-foreground p-4 text-sm italic">
                   {tr("attachments.previewTooLarge")}
@@ -173,6 +235,8 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
                 <p className="text-muted-foreground p-4 text-sm italic">
                   {tr("loading")}
                 </p>
+              ) : isHtml && tab === "preview" ? (
+                <AttachmentHtmlPreview html={text} title={current.name} />
               ) : (
                 <MarkdownView
                   content={
