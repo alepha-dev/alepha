@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { BadRequestError } from "alepha/server";
 
 import { isAllowedRegistryHost } from "../schemas/registryHosts.ts";
@@ -819,7 +819,7 @@ export class ImageRegistryClient {
     try {
       const value = JSON.parse(text) as RegistryDocumentBody;
       if (!value || typeof value !== "object") {
-        throw new Error("not an object");
+        throw new AlephaError("not an object");
       }
       return value;
     } catch {

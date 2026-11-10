@@ -115,6 +115,7 @@ try {
     }),
   ) as SaveManifest[];
   if (!manifest?.Layers?.length) {
+    // alepha-allow no-bare-error: a standalone node script that runs outside any container and imports nothing from alepha
     throw new Error(`no layers in the saved ${image}`);
   }
 

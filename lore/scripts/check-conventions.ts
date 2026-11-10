@@ -4,11 +4,14 @@
  *
  * A trimmed copy of the Alepha monorepo's `scripts/check-conventions.ts`,
  * keeping the rules that read this repository: subpath exports, no module-level
- * code in the Lore API, CI concurrency and setup, `describe` + `it`, no
- * `toThrowError`, one Vitest project per workspace, the project-atom writer,
- * no `$transactional` in Lore, and job names. The rules about the framework,
+ * code in the Lore API, CI concurrency and setup, no `toThrowError`, one
+ * Vitest project per workspace, the project-atom writer, no `$transactional`
+ * in Lore, and job names. The rules about the framework,
  * the docs site and `@alepha/ui` stay where those live; the vendored copies
  * under `.vendor/` are never read here.
+ *
+ * `describe` + `it`, like the framework's other conventions, is `alepha
+ * check`'s (`describe-it`), which `check:conventions` runs after this script.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -406,30 +409,6 @@ if (setupViolations.length > 0) {
   process.exit(1);
 }
 
-/**
- * A spec's cases live inside a `describe`.
- *
- * The house style is `describe` + `it`, and the thing that actually costs
- * something when it drifts is the `describe`: without it the reporter prints
- * a flat list of sentences with no subject, and `vitest run -t` has no handle
- * to select a subject by.
- *
- * Indentation is the test for "top level", not a parse. Every file here is
- * formatted by oxfmt, so a case at column zero is a case outside every block,
- * and the check stays a grep rather than a second TypeScript dependency.
- *
- * `it` is refused at column zero for the same reason as `test`: renaming the
- * call without adding the `describe` fixes the half that was never the
- * problem. Inside a block, both spellings are left alone - `test` and `it` are
- * the same function in vitest, and rewriting 1200 call sites would be a diff
- * nobody can review for a difference nobody can observe.
- *
- * `e2e/` is excluded because Playwright's API *is* `test`, with no `it` to
- * move to, and its specs are files of independent scenarios rather than a
- * suite about one subject.
- */
-const FLAT_CASE = /^(test|it)(\.\w+)*\(/;
-
 // Untracked files too (`-o`), so a spec written five minutes ago is checked
 // where it is cheap to fix rather than on the CI run after the commit.
 const specFiles = [
@@ -446,29 +425,6 @@ const specFiles = [
   (file) =>
     existsSync(file) && !file.includes("/e2e/") && !file.startsWith(".vendor/"),
 );
-
-const flatSpecViolations: string[] = [];
-
-for (const file of specFiles) {
-  const lines = readFileSync(file, "utf8").split("\n");
-  for (const [index, line] of lines.entries()) {
-    if (FLAT_CASE.test(line)) {
-      flatSpecViolations.push(
-        `  ${file}:${index + 1}\n    → wrap the file's cases in a describe() named after the subject`,
-      );
-    }
-  }
-}
-
-if (flatSpecViolations.length > 0) {
-  console.error(
-    `\n${flatSpecViolations.length} flat spec case(s):\n\n` +
-      `${flatSpecViolations.join("\n")}\n\n` +
-      "A case at the top level of a spec has no subject in the reporter and no\n" +
-      "handle for `vitest run -t`. Wrap the file in a describe() and use it().\n",
-  );
-  process.exit(1);
-}
 
 /**
  * No `toThrowError`, the alias Vitest 5 deprecates in favour of `toThrow`.

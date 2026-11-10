@@ -1,6 +1,7 @@
 import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../api/schemas/projectResourceSchema.ts";
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Reading a project's capabilities, web-side.
  *
@@ -23,6 +24,7 @@ export const hasCapability = (
   key: CapabilityKey,
 ): boolean => (project?.capabilities ?? []).some((it) => it.key === key);
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 export const capabilityOption = (
   project: Pick<ProjectResource, "capabilities"> | undefined,
   key: CapabilityKey,

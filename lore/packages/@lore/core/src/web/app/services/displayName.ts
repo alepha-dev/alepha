@@ -1,3 +1,4 @@
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Render a human-friendly label for a user across the UI.
  *

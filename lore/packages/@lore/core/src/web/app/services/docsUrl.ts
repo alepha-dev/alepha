@@ -1,3 +1,4 @@
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Where Lore's own guides are read: `alepha.dev/lore/docs/<slug>`, the site
  * that documents the framework, Lore and Bay from one repository (#Q2766).
@@ -14,6 +15,7 @@
  */
 const DOCS_ROOT = "https://alepha.dev/lore/docs";
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Every guide Lore links to, by its slug on the site: the file name with its
  * leading digits and dashes eaten, under `guides-`.
@@ -27,6 +29,7 @@ const GUIDES = [
   "guides-releases",
 ] as const;
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Link to one page of Lore's own guides.
  *

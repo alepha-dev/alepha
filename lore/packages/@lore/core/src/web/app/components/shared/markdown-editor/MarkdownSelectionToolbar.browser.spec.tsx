@@ -28,6 +28,7 @@ describe("MarkdownSelectionToolbar", () => {
   let alepha: Alepha | undefined;
 
   beforeEach(() => {
+    // alepha-allow no-vi-mock: the toolbar's show delay is a window setTimeout inside a React component, not a DateTimeProvider timer, so there is nothing to travel
     vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 

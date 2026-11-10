@@ -2,6 +2,7 @@ import type { Alepha } from "alepha";
 
 import { userProjectsAtom } from "../atoms/userProjectsAtom.ts";
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Replace one project's row in `userProjectsAtom` with what a write answered,
  * keeping what only `getHomeOverview` knows.

@@ -1,5 +1,6 @@
 import { CapabilityRegistry } from "../../../api/schemas/CapabilityRegistry.ts";
 
+// alepha-allow no-module-code: the one shared instance the components read outside any container, see the comment below
 /**
  * The capability declarations, for the web.
  *

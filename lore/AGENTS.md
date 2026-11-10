@@ -111,6 +111,8 @@ Not obvious from the code, so read them before writing any.
 
 ### Core rules
 
+`alepha check` enforces the first three, and `describe` + `it`, no `vi.mock` and no error class, over the whole of `lore/` through `yarn check:conventions` (run by `yarn v` and by Verify Lore). A genuine exception carries `// alepha-allow <rule>: <reason>` on the line above it; `npx alepha check --list` prints the rules.
+
 - **Never `Date.now()`**: inject `DateTimeProvider` and call `this.dateTime.nowMillis()`, which makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime`. `travel()` also fires every `$job` cron in the container: assert end state, not call counts.
 - **Never throw `Error`**: always `AlephaError` (from `"alepha"`).
 - **No code outside classes**: no standalone functions or constants in service files, so everything stays substitutable.

@@ -1,3 +1,4 @@
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * URL for a publicly-served file — the anonymous, edge-cacheable route
  * (`GET /api/public/files/:id`, `Cache-Control: public, immutable`).

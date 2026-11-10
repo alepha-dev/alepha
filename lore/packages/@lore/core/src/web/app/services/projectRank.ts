@@ -22,6 +22,7 @@ export interface ProjectRankSource {
   rank?: { key: string; name: string };
 }
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Does the caller hold this permission in this project?
  *

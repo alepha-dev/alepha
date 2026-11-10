@@ -1,7 +1,8 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { JobProvider } from "alepha/api/jobs";
 import type { SQLLike } from "alepha/orm";
 
+import { AutomationLegacyHandled } from "../errors/AutomationLegacyHandled.ts";
 import type { AutomationAdoptionPolicy } from "../schemas/automationAdoptionPolicySchema.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationLegacyJobProvider } from "./AutomationLegacyJobProvider.ts";
@@ -58,4 +59,5 @@ export interface AutomationLegacyFence {
   statements?: SQLLike[];
   changedTables?: string[];
 }
-export class AutomationLegacyHandled extends AlephaError {}
+
+export { AutomationLegacyHandled } from "../errors/AutomationLegacyHandled.ts";

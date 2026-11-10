@@ -89,10 +89,12 @@ async function download(remote: string): Promise<string> {
   const cached = downloaded.get(remote);
   if (cached) return cached;
   const m = remote.match(/\/s\/([^/]+)\/[^/]+\/([^/]+\.woff2)$/);
+  // alepha-allow no-bare-error: a standalone node script that runs outside any container and imports nothing from alepha
   if (!m) throw new Error(`unexpected gstatic url: ${remote}`);
   const name = `${m[1]}-${m[2]}`;
   const local = `/fonts/files/${name}`;
   const res = await fetch(remote);
+  // alepha-allow no-bare-error: a standalone node script that runs outside any container and imports nothing from alepha
   if (!res.ok) throw new Error(`fetch ${remote} -> ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   await writeFile(join(FILES_DIR, name), buf);
@@ -119,6 +121,7 @@ function filterCharsets(css: string): string {
 for (const theme of THEMES) {
   console.log(`[${theme.id}] fetching CSS`);
   const res = await fetch(theme.url, { headers: { "User-Agent": UA } });
+  // alepha-allow no-bare-error: a standalone node script that runs outside any container and imports nothing from alepha
   if (!res.ok) throw new Error(`CSS ${theme.url} -> ${res.status}`);
   let css = filterCharsets(await res.text());
 
@@ -148,6 +151,7 @@ const declared = new Set(
 const generated = new Set(THEMES.map((t) => `${t.id}.css`));
 const missing = [...declared].filter((f) => !generated.has(f));
 if (missing.length > 0) {
+  // alepha-allow no-bare-error: a standalone node script that runs outside any container and imports nothing from alepha
   throw new Error(
     `ThemesProvider references CSS that this script doesn't generate: ${missing.join(", ")}. Add them to THEMES or fix the fontHref.`,
   );

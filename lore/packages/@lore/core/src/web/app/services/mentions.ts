@@ -23,6 +23,7 @@
  * other way disagrees about what `@nfo` even is.
  */
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * A fresh matcher for `@handle`.
  *
@@ -35,6 +36,7 @@
  */
 export const mentionPattern = (): RegExp => /(^|[^\w@/])@([\w.-]+)/g;
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * The member a handle names, or undefined when it names nobody.
  *
@@ -48,6 +50,7 @@ const resolveMention = <T extends { name: string }>(
 ): T | undefined =>
   members.find((m) => m.name.toLowerCase() === handle.toLowerCase());
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * What one `@` capture names: the member, the part of the capture that is
  * their handle, and whatever trails it.
@@ -77,6 +80,7 @@ export const resolveMentionCapture = <T extends { name: string }>(
   return { member, handle, trailing: capture.slice(handle.length) };
 };
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Every member mentioned in one segment of text, each at most once.
  *

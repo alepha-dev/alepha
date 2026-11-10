@@ -5,9 +5,11 @@ import {
   displayName,
   useProjectUsers,
 } from "@lore/core/web";
+import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
   useClient,
+  useInject,
   useQuery,
   useQueryClient,
   useStore,
@@ -71,6 +73,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<FeedbackCommentController>();
   const dialog = useDialog();
+  const dateTime = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
   // Empty outside the project shell, which is exactly the reporter's own
   // sheet: no roster to read there, and no handle should link.
@@ -181,9 +184,13 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
         const ext = file.name.includes(".")
           ? file.name.slice(file.name.lastIndexOf("."))
           : ".png";
-        return new File([file], `pasted-${Date.now()}-${index}${ext}`, {
-          type: file.type,
-        });
+        return new File(
+          [file],
+          `pasted-${dateTime.nowMillis()}-${index}${ext}`,
+          {
+            type: file.type,
+          },
+        );
       });
     if (pasted.length === 0) return;
     event.preventDefault();

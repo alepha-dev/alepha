@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit && yarn workspaces foreach -Wpt --exclude lore-monorepo -j 4 run typecheck",
     "test": "yarn vitest run",
     "check:deps": "yarn workspaces foreach -Wpt exec depcheck .",
-    "check:conventions": "node scripts/check-conventions.ts",
+    "check:conventions": "node scripts/check-conventions.ts && alepha check",
     "check:i18n": "yarn workspaces foreach -Wpt run check:i18n",
     "check:migrations": "yarn workspaces foreach -Wpt run check:migrations",
     "build": "yarn workspaces foreach -Wpt run build",

@@ -1,6 +1,7 @@
-import { $inject, AlephaError } from "alepha";
+import { $inject } from "alepha";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationDependencyError } from "../errors/AutomationDependencyError.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -104,4 +105,4 @@ export class AutomationDependencies {
   }
 }
 
-export class AutomationDependencyError extends AlephaError {}
+export { AutomationDependencyError } from "../errors/AutomationDependencyError.ts";

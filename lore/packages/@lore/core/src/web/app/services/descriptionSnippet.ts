@@ -1,5 +1,7 @@
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
  * Turn a markdown description into a one-line snippet.
  *
