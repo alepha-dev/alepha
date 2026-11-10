@@ -28,7 +28,14 @@ import { defineConfig } from "tsdown";
  * another, which would give that sibling two copies of its state.
  */
 export default defineConfig({
-  entry: ["src/**/*.{ts,tsx}", "!src/**/__tests__/**", "!src/**/*.spec.*"],
+  // `*.d.ts` is excluded: an ambient declaration (`src/markdown/css.d.ts`) is not a
+  // module and would otherwise ship as an empty `.js`.
+  entry: [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/__tests__/**",
+    "!src/**/*.spec.*",
+  ],
   outDir: "dist",
   format: ["esm"],
   platform: "browser",
