@@ -28,7 +28,7 @@ export const downloads = $entity({
     fileId: z.uuid(),
     name: z.text({ maxLength: 200 }),
 
-    token: z.text({ minLength: 16, maxLength: 128 }),
+    token: z.text({ minLength: 16, maxLength: 128, secret: true }),
 
     expiresAt: z.text(),
 

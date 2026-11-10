@@ -60,7 +60,7 @@ export const checkoutSessions = $entity({
     /**
      * What a reminder's unsubscribe link carries. Set with the consent.
      */
-    recoveryToken: z.text({ maxLength: 64 }).optional(),
+    recoveryToken: z.text({ maxLength: 64, secret: true }).optional(),
 
     /**
      * A VAT number the registry confirmed, normalised. What a business buyer

@@ -21,7 +21,7 @@ export const carts = $entity({
     /**
      * Opaque handle for an anonymous visitor.
      */
-    token: z.text({ minLength: 16, maxLength: 128 }),
+    token: z.text({ minLength: 16, maxLength: 128, secret: true }),
 
     /**
      * Set once the visitor authenticates.
