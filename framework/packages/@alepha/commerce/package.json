@@ -1,6 +1,6 @@
 {
   "name": "@alepha/commerce",
-  "version": "0.36.1",
+  "version": "0.37.0",
   "description": "Headless commerce for Alepha apps: catalog, cart, checkout. Extended by product-kind handlers.",
   "keywords": [
     "alepha",
@@ -139,7 +139,7 @@
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
-    "alepha": "0.36.1",
+    "alepha": "0.37.0",
     "react": "^19.3.1",
     "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
@@ -147,7 +147,7 @@
     "vitest": "^5.1.0"
   },
   "peerDependencies": {
-    "alepha": "^0.36.1",
+    "alepha": "^0.37.0",
     "react": "*"
   },
   "engines": {

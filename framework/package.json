@@ -37,7 +37,7 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@vitest/coverage-v8": "^5.1.0",
-    "alepha": "^0.36.1",
+    "alepha": "^0.37.0",
     "depcheck": "^1.4.7",
     "oxfmt": "^0.77.0",
     "oxlint": "^1.93.0",

@@ -1,3 +1,62 @@
+## [0.37.0] - 2026-11-10
+
+### Features
+
+- **ui**: colour-blind mode leaves the signed-in account menu for a Display section on the account profile #Q3308 (`ddb545eb`)
+- **ui/table**: a filter can sit in its column's header, behind a funnel that opens it in place #Q3288 (`cfa8260b`)
+- **alepha/cli**: alepha mcp says an action call writes no access log line, what a log total counts, that a public action is public, and leaves out map sections with no match #Q3229 (`b4b4d62a`)
+- **ai**: $ai's allow receives the turn's page context, and a resume carries it #E120 #Q3214 (`47690acd`)
+- **devtools**: span waterfall per trace, from new inspector routes GET /traces and /traces/:id; a span shows its log lines and same-name siblings flag their parent as N+1 #E86 #Q2721 (`7513b829`)
+- **cli**: alepha mcp serves the installed docs, alepha init registers it, and a guide #E118 #Q3199 (`1a4367f9`)
+- **tracing**: Workers sink, alepha spans become Cloudflare custom spans nested with the platform's, the request root renames the invocation span, traces opt in through TRACING_SAMPLE_RATIO at build #E86 #Q3188 (`194e0272`)
+- **inspector,cli**: alepha mcp reads database rows, lists jobs and triggers one #E118 #Q3198 (`289a8d9f`)
+- **tracing**: hand-written OTLP/HTTP JSON exporter for Node and Bun, configured by OTEL_EXPORTER_OTLP_ENDPOINT and \_HEADERS, batched and flushed on stop #E86 #Q2720 (`f2ae774b`)
+- **inspector,cli**: alepha mcp calls an action as a test user, in development only #E118 #Q3197 (`ce262e02`)
+- **cli,inspector**: alepha mcp tails and filters the logs, reads captured emails and SMS #E118 #Q3196 (`c5ac4652`)
+- **orm**: one span per statement, named <verb> <table> with OTel db.\* attributes, raw execute spanned as query; $cache and $lock acquire spans; instrumentation spans only inside a trace #E86 #Q2728 (`61d7c3e5`)
+- **cli**: alepha mcp app_map and app_describe, over AppMapRenderer #E118 #Q3195 (`2f892dd0`)
+- **api**: root spans for $job runs, cron ticks, queue and topic messages; producers carry traceparent and consumers link to it; topic handlers get their own context #E86 #Q2727 (`a3290bca`)
+- **orm,inspector**: entity columns declare secret: true, and /metadata says which #E118 #Q3221 (`ef9eb2c8`)
+- **ui**: the DataTable tab band draws browser tabs: the active tab a tile of the bar below, flaring into the band by two ears (mirrored in rtl), resting tabs lit on hover with a divider between neighbours, no underline; the band's bottom line is an inset shadow the active tile covers, so nothing overflows it. The showcase gets a third tab #Q3226 (`fe0bc9a6`)
+- **server**: request root spans ended after the response stream, a span per $action, $page loader and SSR render, HttpClient client spans sending traceparent #E86 #Q2719 (`c6289d00`)
+- **cli**: alepha mcp, a stdio MCP server that finds the running apps #E118 #Q3194 (`599c57f2`)
+- **tracing**: alepha/tracing, a Tracer whose active span lives in the ALS context, a memory sink, traceparent, and log entries carrying traceId and spanId #E86 #Q2718 (`7c4cd179`)
+- **api/users**: updateMyProfile clears a name sent empty, and the account profile form is built with useActionForm #Q3225 (`365165cf`)
+- **ui**: Controls show nested field errors, the forms guide teaches useActionForm, and two Lore forms adopt it #E119 #Q3204 (`ff1dc50e`)
+- **ui**: AuthLogin, AuthRegister and AuthResetPassword take cancelPath, a path or false to hide the Cancel link #Q3224 (`f0aa71ae`)
+- **react/form**: useActionForm(action, { schema }), a form posting one action whose server 400s land on fields #E119 #Q3202 (`589697bf`)
+- **react/form**: forms validate a field on blur or on change when asked #E119 #Q3203 (`d25f31ad`)
+- **server**: a field-level 400 carries its part and every failing field, from validation or from a handler #E119 #Q3201 (`7829604c`)
+- **mcp**: $action({ mcp }) serves the action as an MCP tool #E117 #Q3190 (`39788a88`)
+- **ai**: $ai({ tools }) accepts a $tool #E117 #Q3191 (`7df0dadd`)
+- **react/form**: FormModel holds every field's error, from all of a schema failure's issues #E119 #Q3200 (`1f1aa34d`)
+- **ui**: colour-blind display mode, a vision preference painted through a .cvd class #Q3223 (`eeefeb6a`)
+- **ui**: PaneRail is one full-height button, and Lore's Quest Log rail is built on it #Q3206 (`66ef3dfc`)
+- **ui**: Collapsible, a disclosure whose panel animates its height open and closed #Q3205 (`49f67171`)
+- **react/router**: register the app's routers once, and useRouter() and <Link> are typed without a type argument #Q3187 (`6b127ef3`)
+- **react**: a render error an error boundary caught emits react:render:caught, and Lore's sigil reports it #Q3186 (`ac437586`)
+- **lock,topic**: $lock and $topic say they are per-isolate on serverless, and parameters stop relying on them there #Q3184 (`b89b4937`)
+- **api/jobs**: a $job cron tick is claimed in the database, so replicas run it once without Redis #Q3185 (`d06d591b`)
+- **orm**: $transactional refuses to run on D1 instead of silently doing nothing, unless the block declares allowNonAtomic #Q3183 (`743f9d3d`)
+- **ui**: Stepper, the step-state header of a multi-step form #Q3182 (`8119fb90`)
+- **ui**: DataTable takes tabs, a band of views with counts that opens the table's own frame #Q3181 (`bf23da2d`)
+- **ui**: AiChat docks beside the page without a backdrop and minimizes into a pill; mode auto | dock | drawer, AiChatPanel, AiChatDockSlot and AppShell aside #Q3178 (`c5004554`)
+
+### Bug Fixes
+
+- **cli**: the server build names imported assets asset.<hash>.<ext>, as the client build does #Q3356 (`4537f2cb`)
+- **cli**: a vendoring project builds @alepha/ui and typechecks without the vendored packages' own configs #Q3310 (`39418c1d`)
+- **ui**: the account page hides the username row in "email" realms, as the registration form does #Q3295 (`abed49fe`)
+- **ui**: Badge tint tones paint success, warning and danger from the signal tokens, so colour-blind mode repaints quest priority and status chips #Q3232 (`81abb7ef`)
+- **cli**: a Lore deploy keeps Cloudflare traces: the manifest records TRACING_SAMPLE_RATIO, the prebuilt config reads it, and a copy's own value overrides it #E86 #Q3227 (`bb935cd6`)
+- **tracing**: the generated Worker entry hands cloudflare:workers' tracing to the container, so the workerd barrel loads outside a Worker; exporter spec polls instead of sleeping #E86 #Q3188 (`de969480`)
+- **ui**: the DataTable tab band never scrolls vertically: overflow-y-hidden, and no -mb-px overhang past its bottom edge; the showcase's Addons page gets a band, measured in a Playwright spec #Q3226 (`6830fbc1`)
+- **mcp**: an $action tool's malformed argument answers with every field ValidationError names #E119 #Q3201 (`2a2153b5`)
+- **core**: caught is a past participle the hook name policy accepts, so react:render:caught passes check:conventions #Q3186 (`d5bba528`)
+- **ui**: a DataTable whose stored column set names none of today's columns shows the declared ones instead of empty rows, and the last visible column cannot be hidden #Q3180 (`06a97029`)
+- **ai**: a tool call a model writes as JSON text runs as a tool call, instead of streaming as the reply #Q3179 (`83f490fa`)
+- **alepha/react/intro**: the starter page prints the server time in UTC, so it hydrates #Q3149 (`c379a7c1`)
+
 ## [0.36.1] - 2026-11-06
 
 ### Features
