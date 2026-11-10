@@ -55,6 +55,23 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  * - Hierarchical error handling (child → parent)
  * - HTTP status code handling (404, 401, etc.)
  *
+ * **Extending a page from another module**
+ * - `page.override({ ... })` replaces options of a page you did not write
+ *   (its `component`, `lazy`, `loader`, `head`), before the app starts: a
+ *   shallow merge, so every option you leave out stays as declared
+ * - `parent` on your page puts it under a page of another router, and
+ *   `children` on your layout adopts another router's pages
+ * - See the guide "Extending a Module"
+ *
+ * @example Replacing the component of a page declared by a package
+ * ```typescript
+ * const alepha = Alepha.create().with(CrmModule);
+ *
+ * alepha.inject(CrmRouter).clients.override({
+ *   lazy: () => import("./AcmeClients.tsx"),
+ * });
+ * ```
+ *
  * @example Simple page with data fetching
  * ```typescript
  * const userProfile = $page({
