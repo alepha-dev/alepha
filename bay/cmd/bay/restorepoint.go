@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"net/http"
 	neturl "net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/alepha-dev/bay/internal/backup"
+	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/state"
 )
 
@@ -121,7 +123,9 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	// the app is stopped must not leave it stopped half way through.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), deployTimeout)
 	defer cancel()
-	resp, err := s.restoreInstance(ctx, app, q, restoreOptions{DryRun: dryRun, Reason: q.Get("reason"), Trigger: "cli"})
+	// --with-key reaches here only: the restore Lore queues never carries it.
+	withKey := q.Get("withKey") == "yes"
+	resp, err := s.restoreInstance(ctx, app, q, restoreOptions{DryRun: dryRun, Reason: q.Get("reason"), Trigger: "cli", WithKey: withKey})
 	if err != nil {
 		var re restoreError
 		if errors.As(err, &re) {
@@ -141,6 +145,9 @@ type restoreOptions struct {
 	Reason string
 	// Trigger is what asked: "cli" or "console".
 	Trigger string
+	// WithKey replaces the instance's APP_SECRET with the backup's, together
+	// with its databases (`bay restore --with-key`, the CLI only).
+	WithKey bool
 }
 
 /*
@@ -163,6 +170,13 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 			return nil, restoreError{status: http.StatusBadRequest, msg: "--from: " + err.Error()}
 		}
 	}
+	// Another instance's key never crosses, not even by request.
+	if opts.WithKey && src.key() != app.Key() {
+		return nil, restoreError{status: http.StatusBadRequest,
+			msg: "--with-key restores a backup's own key into its own instance: it cannot be used with --from"}
+	}
+	// Read before the restore clears it.
+	pending := app.RestorePending != nil
 	runtime, dataDir, err := s.appPaths(app)
 	if err != nil {
 		return nil, restoreError{status: http.StatusInternalServerError, msg: err.Error()}
@@ -204,6 +218,19 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 	}
 	defer cleanup()
 
+	if opts.WithKey && fetched.AppSecretStatus() != backup.SecretCarried {
+		return nil, restoreError{status: http.StatusPreconditionFailed,
+			msg: key + " carries no APP_SECRET (" + fetched.AppSecretStatus() + "): --with-key has no key to restore"}
+	}
+	current, err := deploy.ReadAppSecret(s.instanceDir(app))
+	if err != nil {
+		return nil, restoreError{status: http.StatusInternalServerError, msg: "read the instance's APP_SECRET: " + err.Error()}
+	}
+	plan := planSecretRestore(fetched, secretInput{
+		app: app, sameInstance: src.key() == app.Key(), current: current, pending: pending, withKey: opts.WithKey,
+	})
+	rec.WithKey = opts.WithKey
+
 	resp := map[string]any{"app": app.Key(), "files": fetchedPaths(fetched)}
 	if src.key() != app.Key() {
 		resp["from"] = src.key()
@@ -222,6 +249,7 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 		if len(untouched) > 0 {
 			resp["untouched"] = untouched
 		}
+		plan.say(resp)
 		return resp, nil
 	}
 
@@ -268,6 +296,11 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 		}
 		return fail(http.StatusInternalServerError, msg, nil)
 	}
+	// The key with its databases, while the app is stopped, so it starts on
+	// the key its restored data was sealed with.
+	plan = s.applySecretPlan(app, plan)
+	rec.AppSecret = plan.outcome
+	plan.say(resp)
 	// The data is back the moment the install succeeds: the backups the guards
 	// were protecting have done their job, whether or not the app boots on it.
 	s.clearRestorePending(app.Key())
@@ -279,7 +312,8 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 		s.recordRestore(app, rec)
 		return nil, restoreError{status: http.StatusBadGateway, msg: msg, extra: map[string]any{"restored": key}}
 	}
-	s.log.Info("database restored", "app", app.Key(), "key", key, "from", src.key(), "by", opts.Trigger)
+	s.log.Info("database restored", "app", app.Key(), "key", key, "from", src.key(), "by", opts.Trigger,
+		"appSecret", plan.outcome, "withKey", opts.WithKey)
 	rec.Status = "done"
 	s.recordRestore(app, rec)
 	resp["restored"] = key
@@ -463,14 +497,14 @@ func (s *server) runDueVerifies(ctx context.Context) {
 // client commands
 // ---------------------------------------------------------------------------
 
-const restoreUsage = "bay restore <name/env> [--key K | --at TIME [--tz ZONE]] [--from <name/env>] [--dry-run] | --dismiss"
+const restoreUsage = "bay restore <name/env> [--key K | --at TIME [--tz ZONE]] [--from <name/env>] [--dry-run] [--with-key [--yes]] | --dismiss"
 
 func cmdRestore(args []string) error {
 	key, err := appKeyArg(args, restoreUsage)
 	if err != nil {
 		return err
 	}
-	if err := checkFlags(args[1:], map[string]bool{"--dismiss": true, "--dry-run": true},
+	if err := checkFlags(args[1:], map[string]bool{"--dismiss": true, "--dry-run": true, "--with-key": true, "--yes": true},
 		map[string]bool{"--key": true, "--at": true, "--tz": true, "--from": true}); err != nil {
 		return err
 	}
@@ -502,9 +536,28 @@ func cmdRestore(args []string) error {
 			return fmt.Errorf("--from: %w", err)
 		}
 	}
+	withKey := hasFlag(args, "--with-key")
+	if hasFlag(args, "--yes") && !withKey {
+		return errors.New("--yes confirms --with-key, and only that")
+	}
+	if withKey {
+		if q.Get("from") != "" {
+			return errors.New("--with-key restores a backup's own key into its own instance: it cannot be used with --from")
+		}
+		q.Set("withKey", "yes")
+	}
 	if hasFlag(args, "--dry-run") {
 		q.Set("dryRun", "1")
 	} else {
+		if withKey && !hasFlag(args, "--yes") {
+			fmt.Fprintf(os.Stderr, "--with-key replaces the APP_SECRET of %[1]s with the backup's. Every session is signed out, "+
+				"MFA enrolled since that backup is lost, and the current key is gone for good. Type %[1]s to confirm: ", key)
+			var typed string
+			_, _ = fmt.Scanln(&typed)
+			if strings.TrimSpace(typed) != key {
+				return errors.New("not confirmed; nothing was restored")
+			}
+		}
 		q.Set("confirm", "yes")
 	}
 	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/restore?"+q.Encode(), nil)

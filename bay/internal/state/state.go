@@ -345,6 +345,12 @@ type RestoreRecord struct {
 	Error  string `json:"error,omitempty"`
 	// PreRestoreKey is the backup taken of the data the restore replaced.
 	PreRestoreKey string `json:"preRestoreKey,omitempty"`
+	// AppSecret is what the restore did with the instance's key: restored,
+	// kept, absent, missing or not-restored. Never the key.
+	AppSecret string `json:"appSecret,omitempty"`
+	// WithKey records a `bay restore --with-key`: the operator chose to
+	// replace the instance's key with the backup's.
+	WithKey bool `json:"withKey,omitempty"`
 }
 
 // BackupHook is one service's dump declaration: postgres, or a command.

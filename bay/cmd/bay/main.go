@@ -373,12 +373,17 @@ func usageText() string {
   bay backups <name/env> [--plan] # list what is stored, with kind and file count;
                                   # --plan: what retention keeps or deletes, and why
   bay restore <name/env> [--key K | --at TIME [--tz ZONE]] [--from <name/env>] [--dry-run]
+              [--with-key [--yes]]
               # destructive: the newest backup, key/stamp K, or the newest at
               # or before TIME ("2026-10-30 14:00", read in the policy's
               # timezone). --from reads another instance's backups (staging
               # into production). The data replaced is first backed up,
               # tagged pre-restore, and kept aside on disk. --dry-run only
               # verifies the backup and says what would change.
+              # The backup's APP_SECRET comes back with its data when the
+              # instance has no key of its own, or ran empty until now;
+              # --with-key also replaces a key it has (every session signed
+              # out), and is refused with --from.
   bay backup verify <name/env> [--key K | --at TIME] | --all
               # restore test: download, checksum and open every database of a
               # backup (the newest by default) without touching the app
@@ -1560,7 +1565,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	restore := map[string]any{"database": "existing"}
 	if res.DatabaseCreated && res.DatabasePath != "" {
 		var halfRestored error
-		restore, halfRestored = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart)
+		restore, halfRestored = s.maybeAutoRestore(ctx, res.App, res.DatabasePath, deployStart, res.SecretFresh())
 		if halfRestored != nil {
 			return nil, &deployFailure{Status: http.StatusInternalServerError,
 				Err: fmt.Errorf("%s is left stopped: the auto-restore failed half way and could not put the data folder back, so the app is not started on it: %w",

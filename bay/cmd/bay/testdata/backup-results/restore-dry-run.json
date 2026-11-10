@@ -1,5 +1,7 @@
 {
   "app": "demo/production",
+  "appSecret": "kept",
+  "appSecretNote": "the backup carries no APP_SECRET (taken before backups carried it): demo/production keeps its current key",
   "backup": {
     "createdAt": "2026-11-02T14:49:15.355696383Z",
     "release": "2026-11-02-144915.320",
@@ -8,7 +10,14 @@
   },
   "creates": null,
   "dryRun": true,
-  "files": ["app.db", "queue/jobs.db"],
-  "replaces": ["app.db", "queue/jobs.db"],
+  "files": [
+    "app.db",
+    "queue/jobs.db"
+  ],
+  "replaces": [
+    "app.db",
+    "queue/jobs.db"
+  ],
+  "warning": "demo/production keeps its current APP_SECRET, which is not the one this backup's data was sealed with",
   "wouldRestore": "apps/demo-production/db/20261102T144915Z/manifest.json"
 }

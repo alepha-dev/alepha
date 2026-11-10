@@ -25,6 +25,7 @@ import (
 A bundle is one backup of every SQLite database in an app's `data/` folder:
 
 	apps/<instance>/db/<stamp>/files/<path>.gz    one per database, gzipped
+	apps/<instance>/db/<stamp>/app-secret         the instance's APP_SECRET (see appsecret.go)
 	apps/<instance>/db/<stamp>/manifest.json      uploaded LAST
 
 The manifest is what makes a bundle exist. Its files go first, so a backup
@@ -76,6 +77,10 @@ type Manifest struct {
 	// file or folder, a symbolic link), so its absence from the bundle is
 	// stated, not inferred.
 	Skipped []string `json:"skipped,omitempty"`
+	// AppSecretSHA256 is the hex SHA-256 of the instance's APP_SECRET, stored
+	// beside the databases as its own object. Empty for a bundle that carries
+	// no key (one taken before keys were carried). Never the key itself.
+	AppSecretSHA256 string `json:"appSecretSha256,omitempty"`
 }
 
 // ManifestFile is one database in a bundle.
@@ -99,6 +104,9 @@ type BundleMeta struct {
 	// Tag goes into the bundle's directory name (see ValidTag), so retention
 	// can tell a pre-deploy or labelled backup without opening its manifest.
 	Tag string
+	// AppSecret is the instance's key, uploaded as the bundle's own object.
+	// Empty uploads none. Never serialised: BundleMeta is not written anywhere.
+	AppSecret string
 }
 
 /*
@@ -286,6 +294,20 @@ func (m *Manager) BackupBundle(ctx context.Context, app, env string, runtime Int
 		})
 	}
 
+	// The key goes up with the databases, before the manifest, so a bundle
+	// whose manifest names a key is a bundle whose key was stored.
+	if meta.AppSecret != "" {
+		if err := validAppSecret(meta.AppSecret); err != nil {
+			return fail(fmt.Errorf("the instance's APP_SECRET cannot be backed up: %w", err))
+		}
+		key := prefix + appSecretName
+		uploaded = append(uploaded, key)
+		if err := m.store.Put(ctx, key, []byte(meta.AppSecret)); err != nil {
+			return fail(fmt.Errorf("upload %s: %w", key, err))
+		}
+		manifest.AppSecretSHA256 = AppSecretSHA256(meta.AppSecret)
+	}
+
 	body, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return fail(err)
@@ -340,6 +362,29 @@ type FetchedFile struct {
 type Fetched struct {
 	Manifest *Manifest
 	Files    []FetchedFile
+
+	// appSecret is the bundle's key, unexported so no json.Marshal of a
+	// Fetched can ever carry it; read it with AppSecret.
+	appSecret       string
+	appSecretStatus string
+}
+
+// AppSecret is the key the bundle carries, "" when it carries none.
+func (f *Fetched) AppSecret() string { return f.appSecret }
+
+// AppSecretStatus is SecretCarried, SecretAbsent or SecretMissing.
+func (f *Fetched) AppSecretStatus() string {
+	if f.appSecretStatus == "" {
+		return SecretAbsent
+	}
+	return f.appSecretStatus
+}
+
+// WithAppSecret is a Fetched carrying key, for tests of what a restore does
+// with one.
+func (f *Fetched) WithAppSecret(key string) *Fetched {
+	f.appSecret, f.appSecretStatus = key, SecretCarried
+	return f
 }
 
 /*
@@ -400,6 +445,14 @@ func (m *Manager) FetchBundle(ctx context.Context, manifestKey string, runtime I
 			return nil, nil, fmt.Errorf("backup %s is corrupt: %s", f.Key, inspection.Integrity)
 		}
 		out.Files = append(out.Files, FetchedFile{Path: f.Path, Local: local, Inspection: inspection})
+	}
+	// Checked like the databases, before anything is installed: a key that
+	// does not match its checksum refuses the bundle, a key that is gone
+	// leaves the data restorable and is said by the caller.
+	out.appSecret, out.appSecretStatus, err = m.fetchAppSecret(ctx, prefix, man)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
 	}
 	return out, cleanup, nil
 }
