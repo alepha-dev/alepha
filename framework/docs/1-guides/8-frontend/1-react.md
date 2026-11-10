@@ -350,6 +350,7 @@ const { data, loading, isStale } = useQuery(
 | `enabled`          | `true`  | `false` skips the automatic runs (mount, dependency change, `runEvery`); `refetch()` still works.      |
 | `initialData`      | none    | Value of `data` before the first successful fetch.                                                     |
 | `runEvery`         | none    | Poll at this interval, as in `useAction`.                                                              |
+| `retry`            | `2`     | Retries of a failed read: a number, `false`, or `(error, attempt) => boolean`. See "Retries" below.    |
 | `debounce`         | none    | Debounce delay in milliseconds.                                                                        |
 | `onSuccess`        | none    | Called with the resolved value.                                                                        |
 | `onError`          | none    | Marks the failure handled: `onError: () => {}` is how a read that can do without its data stays quiet. |
@@ -363,6 +364,27 @@ A key buys four things:
 - **Deduplication.** Two components mounting on the same key in one tick share a single in-flight request - the second joins the first rather than issuing its own.
 - **`staleTime`.** While an entry is fresh, mounting renders it straight from cache with no network call and `loading: false`.
 - **SSR hydration.** The cache is a registered atom, so a server-rendered result arrives in the hydration payload for free.
+
+### Retries
+
+A failed read is tried again twice by default, after 1 s and then 2 s (the wait doubles up to 30 s, with jitter). Only what may succeed when sent again is retried: no HTTP response at all (a network failure), or a 408, 502, 503 or 504, a `TimeoutError` included. An abort, another 4xx, a 429, a 500 (a defect, which fails the same way twice) or a plain `Error` fails at once.
+
+`loading` stays `true` across the retries, and `error`, `onError` and the toast arrive once, after the last attempt. An unmount, a dependency change, `refetch()` or `cancel()` stops the sequence. Two components on one key share one sequence. `useAction` never retries: a write is not idempotent.
+
+```tsx
+useQuery({ key: ["basket"], handler, retry: 0 }, []); // this query only
+useQuery(
+  {
+    handler,
+    retry: (error, attempt) => attempt <= 5 && isRetryableError(error),
+  },
+  [],
+);
+
+alepha.store.set(queryOptionsAtom, { retry: 0 }); // the whole app, or one spec file
+```
+
+A spec asserting the error of a retried failure either travels past the backoff with `DateTimeProvider.travel()`, or sets `retry: 0` on the query or in the atom.
 
 ### Invalidating after a write
 

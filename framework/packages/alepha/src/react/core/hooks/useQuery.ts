@@ -10,7 +10,9 @@ import {
 } from "react";
 
 import { queryCacheAtom } from "../atoms/queryCacheAtom.ts";
+import { queryOptionsAtom } from "../atoms/queryOptionsAtom.ts";
 import { QueryCache } from "../services/QueryCache.ts";
+import { type QueryRetry, withRetry } from "../utils/queryRetry.ts";
 import type { ActionContext } from "./useAction.ts";
 import { useAction } from "./useAction.ts";
 import { useAlepha } from "./useAlepha.ts";
@@ -109,6 +111,16 @@ export function useQuery<Result>(
   // `keepPreviousData` can render it while the new key loads.
   const previousDataRef = useRef<Result | undefined>(undefined);
 
+  // Every attempt of one run, retries included. Read when the run starts, so
+  // a change of the atom or of the option applies from the next run.
+  const attempt = (context: ActionContext): Promise<Result> =>
+    withRetry(() => optionsRef.current.handler(context), {
+      retry:
+        optionsRef.current.retry ?? alepha.store.get(queryOptionsAtom).retry,
+      signal: context.signal,
+      dateTime,
+    });
+
   const cached = serializedKey
     ? (entry?.data as Result | undefined)
     : undefined;
@@ -147,6 +159,12 @@ export function useQuery<Result>(
       // the write, so it never reaches the cache: the run asks again, under
       // the new generation. Before this, a first fetch in flight during an
       // `invalidate()` stored its pre-mutation result.
+      //
+      // Retries run inside the deduped request, under its signal: two
+      // components on one key share one sequence of attempts, and the
+      // backoff stops when the last of them has gone. `useAction` sees one
+      // run, so a failure reaches `error`, `onError` and the toast once,
+      // after the last attempt.
       handler: options.key
         ? async (context) => {
             const key = optionsRef.current.key!;
@@ -154,8 +172,7 @@ export function useQuery<Result>(
               const generation = cache!.generation(key);
               const result = await cache!.dedupe(
                 key,
-                async (signal) =>
-                  optionsRef.current.handler({ ...context, signal }),
+                (signal) => attempt({ ...context, signal }),
                 // Without the signal, a run that superseded another was handed
                 // back the promise it had just aborted, and the query settled
                 // empty. See `QueryCache.dedupe`.
@@ -170,7 +187,7 @@ export function useQuery<Result>(
               }
             }
           }
-        : options.handler,
+        : attempt,
       runOnInit: shouldRun,
       // A disabled query does not poll either. Passing `runEvery` through
       // regardless kept the timer running behind `enabled: !!id`, so the gate
@@ -275,6 +292,25 @@ export interface UseQueryOptions<Result> {
    * renders from cache without fetching. Defaults to `0` — always revalidate.
    */
   staleTime?: DurationLike;
+
+  /**
+   * Try a failed read again. A number is how many retries follow the first
+   * attempt, `false` or `0` turns them off, and a predicate
+   * `(error, attempt) => boolean` decides each one (`attempt` counts from 1).
+   *
+   * A number retries only what may succeed when sent again: no HTTP response
+   * (a network failure), or a 408, 502, 503 or 504, a `TimeoutError`
+   * included. An abort, another 4xx, a 429, a 500 or a plain `Error` fails at
+   * once. The waits are 1 s, then doubling, capped at 30 s, with jitter.
+   *
+   * `loading` stays `true` across the retries, and `error`, `onError` and the
+   * `react:action:error` event fire once, after the last attempt. An unmount,
+   * a dependency change, `refetch()` or `cancel()` stops them.
+   *
+   * Defaults to the `retry` field of `alepha.react.query.options`
+   * ({@link queryOptionsAtom}), which is `2`: 1 s, then 2 s.
+   */
+  retry?: QueryRetry;
 
   /**
    * Keep rendering the previous key's data while a new key loads, instead of

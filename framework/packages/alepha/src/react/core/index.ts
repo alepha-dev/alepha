@@ -8,6 +8,7 @@ import { QueryCache } from "./services/QueryCache.ts";
 
 export * from "./atoms/personalRenderedAtom.ts";
 export * from "./atoms/queryCacheAtom.ts";
+export * from "./atoms/queryOptionsAtom.ts";
 export type * from "./components/ClientOnly.tsx";
 export { default as ClientOnly } from "./components/ClientOnly.tsx";
 export type * from "./components/ErrorBoundary.tsx";
@@ -28,6 +29,8 @@ export * from "./hooks/useSelector.ts";
 export * from "./hooks/useStore.ts";
 export * from "./services/ActionErrorPolicy.ts";
 export * from "./services/QueryCache.ts";
+export * from "./utils/isNetworkError.ts";
+export * from "./utils/queryRetry.ts";
 export * from "./utils/shallowEqual.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
