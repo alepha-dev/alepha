@@ -381,8 +381,14 @@ export default {
   "folios.editor.find.previous": "Previous match",
   "folios.editor.find.close": "Close find",
 
-  "folios.editor.empty.title": "No folio open.",
-  "folios.editor.empty.hint": "Pick one from the tree, or start a new one.",
+  "folios.editor.listing.path": "Directory path",
+  "folios.editor.listing.name": "Name",
+  "folios.editor.listing.updated": "Updated",
+  "folios.editor.listing.parent": "Parent directory",
+  "folios.editor.listing.item": "1 item",
+  "folios.editor.listing.items": "$1 items",
+  "folios.editor.listing.pinned": "Pinned",
+  "folios.editor.listing.empty": "This directory is empty.",
 
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "New folio",

@@ -12,7 +12,13 @@ import {
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import type { HTMLAttributes } from "react";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { Checkbox } from "../core/Checkbox.tsx";
 import { Segmented } from "../core/Segmented.tsx";
@@ -204,6 +210,26 @@ export interface ControlSelectProps {
    * floor (`w-max min-w-48`) sizes it from its own content instead.
    */
   popupClassName?: string;
+  /**
+   * An element drawn INSTEAD of the field: it becomes the button that opens
+   * the popup, rendered as written, with none of the field's own icon,
+   * label, caret or clear button. For a list opened from somewhere that is
+   * not a form, such as the funnel in a table column's header.
+   *
+   * Pass a `<button>`. Its children are kept; its click and its ARIA state
+   * are the popup's. The popup is anchored to it, so give `popupClassName`
+   * a width (`w-max min-w-48`): it would otherwise be as narrow as an icon.
+   *
+   * ⚠️ Only the combobox shape has a popup, so a segmented or checkbox
+   * rendering of the same field ignores it.
+   */
+  trigger?: ReactElement<{ children?: ReactNode }>;
+  /**
+   * The popup opened or closed. For a caller that acts on the reader's
+   * choice once they are done with the list, such as a table header that
+   * takes an emptied filter off the bar. The combobox shape only.
+   */
+  onPopupOpenChange?: (open: boolean) => void;
 }
 
 export const ControlSelect = (props: ControlSelectProps) => {
@@ -454,6 +480,8 @@ export const ControlSelect = (props: ControlSelectProps) => {
         popupHeader={props.popupHeader}
         triggerPrefix={props.triggerPrefix}
         popupClassName={props.popupClassName}
+        trigger={props.trigger}
+        onPopupOpenChange={props.onPopupOpenChange}
         // An optional field must also be able to go back to empty without a
         // dedicated row: Base UI never emits `null`, so re-pressing the
         // selected row deselects (see `handleSingle` in

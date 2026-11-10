@@ -13,7 +13,8 @@ Data tables.
 `DataTable` is a table wired for server-side pagination, sorting and
 filtering, with row and bulk actions, persisted filters and a static mode for
 local data (`paginateLocal`). Its filters are a record of fields
-(`DataTableFilterFields`) that it draws on its own filter bar. Above that
+(`DataTableFilterFields`) that it draws on its own filter bar, and a field
+naming a `column` also behind a funnel in that column's header. Above that
 bar it can hold a collapsible summary (`DataTableSummary`): stat cards
 (`DataTableStatCard`) given or fetched with the table's filters, and any
 node beside them, and above everything a band of `tabs` (`DataTableTab`),

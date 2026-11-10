@@ -14,7 +14,10 @@ import type { DataTableBaseProps } from "./dataTableBaseProps.ts";
 import { DataTableBody } from "./DataTableBody.tsx";
 import { DataTableBulkBar } from "./DataTableBulkBar.tsx";
 import { DATA_TABLE_CELL_PADDING } from "./dataTableCellPadding.ts";
+import type { DataTableFilterBarField } from "./DataTableFilterBar.tsx";
+import { dataTableFilterBarFields } from "./dataTableFilterFields.ts";
 import { DataTableFooter, PAGE_SIZES } from "./DataTableFooter.tsx";
+import { DataTableHeaderFilter } from "./DataTableHeaderFilter.tsx";
 import { DataTableHeaderRow } from "./DataTableHeaderRow.tsx";
 import {
   persistedColumns,
@@ -130,6 +133,33 @@ export const DataTable = <
     definition: filterDefinition,
     filtersKey,
   });
+
+  // The filters that sit in a column's header, by column: the first field
+  // naming a column wins it. Only for the bar the table draws itself - a
+  // caller's `filters.render` owns where its filters go, and the bar's rule
+  // that a set filter shows on it is what makes a header filter safe.
+  const headerFilters: Record<string, DataTableFilterBarField> = {};
+  if (untyped.filters && !untyped.filters.render && filterDefinition) {
+    for (const field of dataTableFilterBarFields(
+      untyped.filters.fields,
+      filterDefinition,
+    )) {
+      if (!field.column || field.hidden) continue;
+      if (!(field.column in headerFilters)) headerFilters[field.column] = field;
+    }
+  }
+  const headerFilter = (columnKey: string) => {
+    const field = headerFilters[columnKey];
+    if (!field || !form) return undefined;
+    return (
+      <DataTableHeaderFilter
+        form={form}
+        field={field}
+        shown={filterVisibility.shown}
+        onShownChange={filterVisibility.setShown}
+      />
+    );
+  };
 
   const {
     page,
@@ -641,6 +671,7 @@ export const DataTable = <
                 setSortTo={setSortTo}
                 moveColumn={moveColumn}
                 toggleColumn={toggleColumn}
+                headerFilter={headerFilter}
               />
             </TableHeader>
             <DataTableBody<T>

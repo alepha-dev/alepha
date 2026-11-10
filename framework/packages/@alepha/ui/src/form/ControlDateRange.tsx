@@ -13,7 +13,7 @@ import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { LazyCalendar, preloadCalendar } from "../calendar/LazyCalendar.tsx";
@@ -63,6 +63,15 @@ export interface ControlDateRangeProps {
    * placeholder already names it. Same contract as `ControlSelect`'s.
    */
   triggerPrefix?: ReactNode;
+  /**
+   * An element drawn INSTEAD of the field, as the button that opens the
+   * calendar. Same contract as `ControlSelect`'s.
+   */
+  trigger?: ReactElement<{ children?: ReactNode }>;
+  /**
+   * The calendar opened or closed. Same contract as `ControlSelect`'s.
+   */
+  onPopupOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -159,6 +168,9 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
     setPending(false);
     setValue([formatDateOnly(next.from), formatDateOnly(next.to)]);
     setOpen(false);
+    // Closed by hand, not through the popover, so its own callback is not
+    // called for this one.
+    props.onPopupOpenChange?.(false);
   };
 
   const showClear = Boolean(props.clearable && stored?.from && !props.disabled);
@@ -178,6 +190,7 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
         onOpenChange={(next) => {
           setOpen(next);
           if (next) setPending(false);
+          props.onPopupOpenChange?.(next);
         }}
       >
         {/* The kit's field trigger, and the kit's clear button positioned on
@@ -185,44 +198,58 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
             filter bar beside this one draw (feedback #2197). The clear sits
             BESIDE the trigger rather than inside it because a button nested
             in a button is invalid, and Base UI's popover trigger would
-            swallow its click anyway. */}
-        <div className={TRIGGER_WRAPPER_CLASSES}>
+            swallow its click anyway.
+
+            A caller's own `trigger` replaces both, children handed over for
+            the reason `ControlSelectCombobox` gives. */}
+        {props.trigger ? (
           <PopoverTrigger
             id={meta.id}
-            // `date-trigger`, the same slot `ControlDate` claims: `styles.css`
-            // gives the `--border-hover` border to a list of `data-slot`s, and
-            // this is how the two calendars are on it.
-            data-slot="date-trigger"
             disabled={props.disabled}
-            // The calendar is a chunk of its own (`LazyCalendar`), fetched as
-            // the pointer arrives or focus lands rather than on the click.
             onPointerEnter={preloadCalendar}
             onFocus={preloadCalendar}
-            // `name` only, never the whole `input.props` spread: those
-            // are an `<input>`'s props and this is a button, so their
-            // `onChange` signature is genuinely incompatible. The name is
-            // what `AutoForm`'s scroll-to-first-error looks a field up by.
-            name={props.input.props.name}
-            className={cn(
-              TRIGGER_CLASSES,
-              size.trigger,
-              size.chevron,
-              // Muted means "nothing picked yet", exactly as on a select.
-              !formatted && "text-muted-foreground",
-              props.triggerClassName,
-            )}
+            render={props.trigger}
           >
-            {/* The room for the clear button - see `clearGap` in
-                TRIGGER_SIZES for why it is a margin here and not padding on
-                the trigger, and `ControlSelectCombobox` for `trigger-label`. */}
-            <span
-              data-slot="trigger-label"
+            {props.trigger.props.children}
+          </PopoverTrigger>
+        ) : (
+          <div className={TRIGGER_WRAPPER_CLASSES}>
+            <PopoverTrigger
+              id={meta.id}
+              // `date-trigger`, the same slot `ControlDate` claims: `styles.css`
+              // gives the `--border-hover` border to a list of `data-slot`s, and
+              // this is how the two calendars are on it.
+              data-slot="date-trigger"
+              disabled={props.disabled}
+              // The calendar is a chunk of its own (`LazyCalendar`), fetched as
+              // the pointer arrives or focus lands rather than on the click.
+              onPointerEnter={preloadCalendar}
+              onFocus={preloadCalendar}
+              // `name` only, never the whole `input.props` spread: those
+              // are an `<input>`'s props and this is a button, so their
+              // `onChange` signature is genuinely incompatible. The name is
+              // what `AutoForm`'s scroll-to-first-error looks a field up by.
+              name={props.input.props.name}
               className={cn(
-                "flex min-w-0 items-center gap-2",
-                showClear && size.clearGap,
+                TRIGGER_CLASSES,
+                size.trigger,
+                size.chevron,
+                // Muted means "nothing picked yet", exactly as on a select.
+                !formatted && "text-muted-foreground",
+                props.triggerClassName,
               )}
             >
-              {/*
+              {/* The room for the clear button - see `clearGap` in
+                TRIGGER_SIZES for why it is a margin here and not padding on
+                the trigger, and `ControlSelectCombobox` for `trigger-label`. */}
+              <span
+                data-slot="trigger-label"
+                className={cn(
+                  "flex min-w-0 items-center gap-2",
+                  showClear && size.clearGap,
+                )}
+              >
+                {/*
                 Muted whatever the field holds, matching every other leading
                 icon in the kit. Without the class it inherits the trigger's
                 own `color`, which swaps between muted and foreground to grey
@@ -230,39 +257,40 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
                 picked. An icon says what kind of field this is, which does
                 not change when you fill it.
               */}
-              <CalendarIcon
-                className={cn("text-muted-foreground shrink-0", size.icon)}
-              />
-              {/* The prefix rides in the same text run as the range, for the
+                <CalendarIcon
+                  className={cn("text-muted-foreground shrink-0", size.icon)}
+                />
+                {/* The prefix rides in the same text run as the range, for the
                   reason `ControlSelectCombobox` gives: one run, one space. */}
-              <span className="truncate">
-                {props.triggerPrefix && formatted && (
-                  <span className="text-muted-foreground">
-                    {props.triggerPrefix}{" "}
-                  </span>
-                )}
-                {formatted ||
-                  props.placeholder ||
-                  tr("controlDateRange.placeholder", {
-                    default: "Pick a date range",
-                  })}
+                <span className="truncate">
+                  {props.triggerPrefix && formatted && (
+                    <span className="text-muted-foreground">
+                      {props.triggerPrefix}{" "}
+                    </span>
+                  )}
+                  {formatted ||
+                    props.placeholder ||
+                    tr("controlDateRange.placeholder", {
+                      default: "Pick a date range",
+                    })}
+                </span>
               </span>
-            </span>
-            {/* The same trailing caret a select trigger carries, appended by
+              {/* The same trailing caret a select trigger carries, appended by
                 `ComboboxTrigger` there and written out here: this opens a
                 popover, and without it the control reads as a text field that
                 happens to have a calendar glyph. */}
-            <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0" />
-          </PopoverTrigger>
-          {showClear && (
-            <ControlClearButton
-              onClick={() => {
-                setDraft(undefined);
-                setValue(undefined);
-              }}
-            />
-          )}
-        </div>
+              <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0" />
+            </PopoverTrigger>
+            {showClear && (
+              <ControlClearButton
+                onClick={() => {
+                  setDraft(undefined);
+                  setValue(undefined);
+                }}
+              />
+            )}
+          </div>
+        )}
         <PopoverContent className="w-auto p-0" align="start">
           {/* The range visuals were built and unused: `calendar.tsx` passes
               `...props` straight to DayPicker and already defines

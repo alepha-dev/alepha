@@ -61,8 +61,12 @@ export interface FolioTreeProps {
 }
 
 export interface FolioTreeActions {
-  createFolio: () => void;
-  createDirectory: () => void;
+  /**
+   * `parentId` is the directory to create in; absent creates at the root.
+   * The empty workspace's directory listing passes the one it lists.
+   */
+  createFolio: (parentId?: string) => void;
+  createDirectory: (parentId?: string) => void;
 }
 
 /**
@@ -105,8 +109,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   const { commands, canWrite } = tree;
   useEffect(() => {
     onActions?.({
-      createFolio: () => void commands.createFolio(),
-      createDirectory: () => void commands.createDirectory(),
+      createFolio: (parentId) => void commands.createFolio(parentId),
+      createDirectory: (parentId) => void commands.createDirectory(parentId),
     });
   }, [onActions, commands]);
 

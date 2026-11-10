@@ -103,6 +103,8 @@ export const uiFr: Record<string, string> = {
   "dataTable.addFilter": "Ajouter des filtres",
   "dataTable.addFilterLabel": "Ajouter un filtre",
   "dataTable.filterBy": "Filtrer par",
+  "dataTable.filterColumn": "Filtrer : $1",
+  "dataTable.filterColumnMenu": "Filtrer",
   "dataTable.filterName": "$1 :",
   "dataTable.filterType.date": "date",
   "dataTable.filterType.list": "liste",
