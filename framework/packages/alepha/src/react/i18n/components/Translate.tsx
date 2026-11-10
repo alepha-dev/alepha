@@ -1,4 +1,5 @@
 import { useI18n } from "../hooks/useI18n.ts";
+import type { DictionaryEntry } from "../primitives/$dictionary.ts";
 
 export interface TranslateProps {
   /**
@@ -10,10 +11,14 @@ export interface TranslateProps {
    */
   args?: string[];
   /**
+   * The number a variant entry is selected by; also fills `{count}`.
+   */
+  count?: number;
+  /**
    * Shown when the key is missing from every registered dictionary (otherwise
    * the raw key is rendered, matching `tr`'s behaviour).
    */
-  fallback?: string;
+  fallback?: DictionaryEntry;
 }
 
 /**
@@ -31,12 +36,20 @@ export interface TranslateProps {
  * @example
  * ```tsx
  * nav: { label: <Translate k="admin.nav.users" /> }
- * <Translate k="cart.items" args={[String(count)]} fallback="Items" />
+ * <Translate k="cart.items" count={count} fallback={{ one: "{count} item", other: "{count} items" }} />
  * ```
  */
 export const Translate = (props: TranslateProps) => {
   const { tr } = useI18n();
-  return <>{tr(props.k, { args: props.args, default: props.fallback })}</>;
+  return (
+    <>
+      {tr(props.k, {
+        args: props.args,
+        count: props.count,
+        default: props.fallback,
+      })}
+    </>
+  );
 };
 
 /**

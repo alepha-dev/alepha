@@ -168,12 +168,64 @@ tr("missing_key", { default: "Fallback text" });
 
 **Options:**
 
-| Option    | Type       | Description                               |
-| --------- | ---------- | ----------------------------------------- |
-| `args`    | `string[]` | Positional arguments for `$1`, `$2`, etc. |
-| `default` | `string`   | Fallback if the key is not found.         |
+| Option    | Type              | Description                                                       |
+| --------- | ----------------- | ----------------------------------------------------------------- |
+| `args`    | `string[]`        | Positional arguments for `$1`, `$2`, etc.                         |
+| `count`   | `number`          | Selects a plural variant and fills `{count}` (see Plurals below). |
+| `default` | `DictionaryEntry` | Fallback if the key is not found: a string or a variant object.   |
 
 Fallback behavior: if the key is not found in the current language, the fallback language (`"en"` by default) is checked. If still not found, the raw key string is returned.
+
+### Plurals
+
+A catalog value can be a variant object instead of a string, keyed by the plural categories of `Intl.PluralRules` (`zero`, `one`, `two`, `few`, `many`, `other`). `other` is required: a variant object without it does not compile.
+
+```typescript
+// en.ts
+export default {
+  "tickets.count": { one: "{count} ticket", other: "{count} tickets" },
+};
+
+// pl.ts
+export default {
+  "tickets.count": {
+    one: "{count} zgłoszenie",
+    few: "{count} zgłoszenia",
+    many: "{count} zgłoszeń",
+    other: "{count} zgłoszenia",
+  },
+};
+```
+
+```typescript
+tr("tickets.count", { count: 1 }); // "1 ticket"
+tr("tickets.count", { count: 1234 }); // "1,234 tickets"
+```
+
+- **`count` picks the variant**, through `Intl.PluralRules` of the language the entry is written in. An English entry reached through the fallback on a Polish page is selected with English rules, since it is English text.
+- **`{count}` is the count formatted for that language** with `Intl.NumberFormat` (`1,234` in English, `1 234` in French). `$1`, `$2` keep working inside a variant.
+- **A category the entry lacks renders `other`**, and so does a variant entry read without a `count`. A language with no plural distinction writes `{ other: "..." }` alone.
+- A plain string entry is unchanged, and fills `{count}` when it is given one.
+- There are no exact-number variants: a zero case that needs its own sentence is its own key.
+
+A `default` can carry a variant object too. It belongs to no dictionary, so it is selected with the rules of the fallback language:
+
+```typescript
+tr("files.deleted", {
+  count,
+  default: { one: "{count} file deleted", other: "{count} files deleted" },
+});
+```
+
+To type a catalog file, use `DictionaryEntry`:
+
+```typescript
+import type { DictionaryEntry } from "alepha/react/i18n";
+
+export default {
+  "tickets.count": { one: "{count} ticket", other: "{count} tickets" },
+} satisfies Record<string, DictionaryEntry>;
+```
 
 ### l(value, options?)
 
@@ -258,7 +310,10 @@ Array of all available language codes, derived from registered dictionaries.
 import { Tr } from "alepha/react/i18n";
 
 <Tr k="welcome" args={["Alice"]} fallback="Welcome, $1" />;
+<Tr k="tickets.count" count={3} />;
 ```
+
+It takes the same `count` as `tr()`, and its `fallback` can be a variant object.
 
 ## Localize Component
 

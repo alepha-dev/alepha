@@ -33,6 +33,7 @@ declare module "alepha" {
  * - Translation loading
  * - Locale detection
  * - Positional interpolation (`$1`, `$2`) and localized dates/numbers
+ * - Plurals: a variant entry chosen by `count` through `Intl.PluralRules`
  *
  * @module alepha.react.i18n
  */

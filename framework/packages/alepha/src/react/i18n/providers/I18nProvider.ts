@@ -11,6 +11,7 @@ import { RouterLocaleProvider } from "alepha/react/router";
 import { $cookie } from "alepha/server/cookies";
 
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
+import type { DictionaryEntry } from "../primitives/$dictionary.ts";
 import { RequestLangResolver } from "../services/RequestLangResolver.ts";
 
 export class I18nProvider<
@@ -70,8 +71,8 @@ export class I18nProvider<
     target: string;
     name: string;
     lang: string;
-    loader: () => Promise<Record<string, string>>;
-    translations: Record<string, string>;
+    loader: () => Promise<Record<string, DictionaryEntry>>;
+    translations: Record<string, DictionaryEntry>;
 
     /**
      * Whether {@link loader} has already run for this entry.
@@ -172,6 +173,24 @@ export class I18nProvider<
     this.numberFormatRef ??= new Intl.NumberFormat(this.lang);
     return this.numberFormatRef;
   }
+
+  /**
+   * One `Intl.PluralRules` per language, built on first use.
+   *
+   * A Map and not a single cached instance in the manner of `numberFormatRef`:
+   * this provider is one instance for every request while the language is per
+   * request, and the language here is the ENTRY's, not the active one, so one
+   * render can need two. `null` records a language `Intl` refused, so a bad
+   * tag is tried once. The keys are dictionary languages, which are the
+   * developer's, never a request's raw `lang` cookie.
+   */
+  protected pluralRules = new Map<string, Intl.PluralRules | null>();
+
+  /**
+   * One `Intl.NumberFormat` per language for `{count}`, for the same reasons
+   * as {@link pluralRules}.
+   */
+  protected countFormats = new Map<string, Intl.NumberFormat | null>();
 
   public get languages() {
     const languages = new Set<string>();
@@ -474,25 +493,49 @@ export class I18nProvider<
     return this.alepha.store.get("alepha.react.i18n.lang") || this.fallbackLang;
   }
 
-  public translate = (key: string, args: string[] = []) => {
-    for (const item of this.registry) {
-      if (item.lang === this.lang) {
-        if (item.translations[key]) {
-          return this.render(item.translations[key], args); // append lang for fallback
-        }
-      }
+  /**
+   * Translate `key` in the active language, then in the fallback language.
+   * Returns the key itself when neither has it.
+   */
+  public translate = (
+    key: string,
+    args: string[] = [],
+    options: { count?: number } = {},
+  ): string => {
+    const found = this.lookup(key);
+    if (!found) {
+      return key;
     }
-
-    for (const item of this.registry) {
-      if (item.lang === this.fallbackLang) {
-        if (item.translations[key]) {
-          return this.render(item.translations[key], args); // append lang for fallback
-        }
-      }
-    }
-
-    return key; // fallback to the key itself if not found
+    return this.render(found.entry, args, { ...options, lang: found.lang });
   };
+
+  /**
+   * Find `key` in the active language, then in the fallback language, and say
+   * which language the entry is written in: a variant is selected with the
+   * rules of that language, not of the active one (an English entry reached
+   * through the fallback on a Polish page is English text).
+   */
+  protected lookup(
+    key: string,
+  ): { entry: DictionaryEntry; lang: string } | undefined {
+    for (const lang of [this.lang, this.fallbackLang]) {
+      for (const item of this.registry) {
+        if (item.lang !== lang) {
+          continue;
+        }
+        const entry = item.translations[key];
+        // A plain object inherits `constructor` and friends: only a string or
+        // a variant object is an entry, and an empty string is a missing one.
+        if (
+          (typeof entry === "string" && entry) ||
+          (typeof entry === "object" && entry !== null)
+        ) {
+          return { entry, lang };
+        }
+      }
+    }
+    return undefined;
+  }
 
   public readonly l = (
     value: I18nLocalizeType,
@@ -571,26 +614,43 @@ export class I18nProvider<
    */
   public readonly tr = (
     key: keyof ServiceDictionary<S>[K] | (string & {}),
-    options: {
-      args?: string[];
-      default?: string;
-    } = {},
+    options: I18nTrOptions = {},
   ): string => {
     const args = options.args || [];
-    const translation = this.translate(key as string, args);
-    if (translation === (key as string) && options.default) {
+    const found = this.lookup(key as string);
+    if (found) {
+      return this.render(found.entry, args, {
+        count: options.count,
+        lang: found.lang,
+      });
+    }
+    if (options.default) {
       // The default goes through `render` too. It used to be returned raw, so
       // every `tr(key, { default: "$1 rows", args })` whose key was not in a
       // catalogue displayed the literal `$1` - and the default's whole job is
       // to be what an application without that key shows. It was the admin
       // kit's own analytics counts, among others.
-      return this.render(options.default, args);
+      //
+      // A default belongs to no dictionary, so it is read as written in the
+      // fallback language: it is what shows when no catalog has the key, which
+      // is where the fallback chain ends.
+      return this.render(options.default, args, {
+        count: options.count,
+        lang: this.fallbackLang,
+      });
     }
-    return translation;
+    return key as string;
   };
 
   /**
-   * Substitute `$1`, `$2`, … placeholders with their arguments.
+   * Select the variant of an entry, then substitute its placeholders: `$1`,
+   * `$2`, … with their arguments, and `{count}` with the count formatted for
+   * the entry's language.
+   *
+   * A variant object read with a count takes the category the entry's
+   * language selects for it, or `other` when the entry lacks that category or
+   * the language is one `Intl` refuses. Read with no count, it renders
+   * `other`.
    *
    * One regex pass, not a loop of `String.replace(string, …)`. The loop had
    * two faults: it replaced `$1` before it ever considered `$10`, so `$10`
@@ -603,12 +663,100 @@ export class I18nProvider<
    * instead of being treated as another placeholder. A placeholder with no
    * corresponding argument is left as written.
    */
-  protected render(item: string, args: string[]): string {
-    return item.replace(/\$(\d+)/g, (match, digits: string) => {
-      const index = Number.parseInt(digits, 10) - 1;
-      return index >= 0 && index < args.length ? String(args[index]) : match;
-    });
+  protected render(
+    item: DictionaryEntry,
+    args: string[],
+    options: I18nRenderOptions = {},
+  ): string {
+    const lang = options.lang ?? this.lang;
+    const count = options.count;
+    const text = this.selectVariant(item, lang, count);
+    return text.replace(
+      /\{count\}|\$(\d+)/g,
+      (match, digits: string | undefined) => {
+        if (digits === undefined) {
+          return count === undefined ? match : this.formatCount(count, lang);
+        }
+        const index = Number.parseInt(digits, 10) - 1;
+        return index >= 0 && index < args.length ? String(args[index]) : match;
+      },
+    );
   }
+
+  /**
+   * The text of an entry for a count: the string itself, or the variant
+   * `Intl.PluralRules` selects in `lang`, falling back to `other`.
+   */
+  protected selectVariant(
+    item: DictionaryEntry,
+    lang: string,
+    count: number | undefined,
+  ): string {
+    if (typeof item === "string") {
+      return item;
+    }
+    if (count === undefined) {
+      return item.other;
+    }
+    const category = this.pluralRulesFor(lang)?.select(count);
+    return (category && item[category]) || item.other;
+  }
+
+  protected pluralRulesFor(lang: string): Intl.PluralRules | undefined {
+    if (!this.pluralRules.has(lang)) {
+      let rules: Intl.PluralRules | null = null;
+      try {
+        rules = new Intl.PluralRules(lang);
+      } catch {
+        // A dictionary `lang` Intl refuses (a RangeError): `other` it is.
+      }
+      this.pluralRules.set(lang, rules);
+    }
+    return this.pluralRules.get(lang) ?? undefined;
+  }
+
+  protected formatCount(count: number, lang: string): string {
+    if (!this.countFormats.has(lang)) {
+      let format: Intl.NumberFormat | null = null;
+      try {
+        format = new Intl.NumberFormat(lang);
+      } catch {
+        // Same as `pluralRulesFor`: a refused tag prints the bare number.
+      }
+      this.countFormats.set(lang, format);
+    }
+    return this.countFormats.get(lang)?.format(count) ?? String(count);
+  }
+}
+
+/**
+ * The options of `tr()`.
+ */
+export interface I18nTrOptions {
+  /**
+   * Positional substitutions for `$1`, `$2`, … in the entry.
+   */
+  args?: string[];
+  /**
+   * The number a variant entry is selected by, through the `Intl.PluralRules`
+   * of the entry's own language. Also fills `{count}`, formatted with
+   * `Intl.NumberFormat` for that language.
+   */
+  count?: number;
+  /**
+   * What renders when no dictionary has the key: a string or a variant
+   * object, read as written in the fallback language.
+   */
+  default?: DictionaryEntry;
+}
+
+/**
+ * How `render` reads an entry: the count it is selected by, and the language
+ * the entry is written in.
+ */
+export interface I18nRenderOptions {
+  count?: number;
+  lang?: string;
 }
 
 export type I18nLocalizeType =
