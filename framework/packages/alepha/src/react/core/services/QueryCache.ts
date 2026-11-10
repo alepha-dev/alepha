@@ -1,5 +1,9 @@
 import { $hook, $inject, Alepha } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
+import {
+  DateTimeProvider,
+  type DurationLike,
+  type Timeout,
+} from "alepha/datetime";
 
 import { queryCacheAtom } from "../atoms/queryCacheAtom.ts";
 import { queryOptionsAtom } from "../atoms/queryOptionsAtom.ts";
@@ -28,10 +32,51 @@ export class QueryCache {
    */
   protected readonly observers = new Map<string, Set<QueryObserver>>();
 
+  /**
+   * The pending eviction of each key nobody observes, by serialized key.
+   */
+  protected readonly evictions = new Map<string, Timeout>();
+
+  /**
+   * The `staleTime` each key was last read with, in milliseconds: an entry is
+   * never evicted before it has run out.
+   */
+  protected readonly staleTimes = new Map<string, number>();
+
+  /**
+   * Keys dropped by a `clear({ refetch: false })` while mounted queries read
+   * them. Those queries do not refetch until the key is written again or
+   * they unmount: the page is being left.
+   */
+  protected readonly silenced = new Set<string>();
+
   protected readonly onStop = $hook({
     on: "stop",
     handler: () => {
       this.wake.stop();
+      for (const timeout of this.evictions.values()) {
+        this.dateTime.clearTimeout(timeout);
+      }
+      this.evictions.clear();
+    },
+  });
+
+  /**
+   * Entries already in the cache when the app is ready (hydrated from the
+   * server) are evicted `gcTime` after they were written, unless a query
+   * mounts on them first, which is the usual case.
+   */
+  protected readonly onReady = $hook({
+    on: "ready",
+    handler: () => {
+      for (const serialized of Object.keys(this.entries())) {
+        if (!this.observers.get(serialized)?.size) {
+          this.scheduleEviction(
+            serialized,
+            this.entries()[serialized].updatedAt,
+          );
+        }
+      }
     },
   });
 
@@ -51,6 +96,8 @@ export class QueryCache {
       this.observers.set(serialized, set);
     }
     set.add(observer);
+    this.cancelEviction(serialized);
+    this.staleTimes.set(serialized, observer.options().staleTime);
 
     this.wake.start({
       visible: () => this.refetchMounted("focus"),
@@ -64,6 +111,9 @@ export class QueryCache {
       }
       if (current.size === 0) {
         this.observers.delete(serialized);
+        this.silenced.delete(serialized);
+        this.staleTimes.set(serialized, observer.options().staleTime);
+        this.scheduleEviction(serialized, this.dateTime.nowMillis());
       }
     };
   }
@@ -103,6 +153,9 @@ export class QueryCache {
     const defaults = this.alepha.store.get(queryOptionsAtom);
     for (const set of Array.from(this.observers.values())) {
       for (const observer of Array.from(set)) {
+        if (this.silenced.has(this.serialize(observer.key))) {
+          continue;
+        }
         const own = observer.options();
         const on =
           reason === "focus"
@@ -147,10 +200,25 @@ export class QueryCache {
   }
 
   public set(key: unknown[], data: unknown): void {
+    const serialized = this.serialize(key);
+    this.silenced.delete(serialized);
     this.alepha.store.set(queryCacheAtom, {
       ...this.entries(),
-      [this.serialize(key)]: { data, updatedAt: this.dateTime.nowMillis() },
+      [serialized]: { data, updatedAt: this.dateTime.nowMillis() },
     });
+    // An entry nobody observes (written by `setData`, or by a request whose
+    // last reader left) is evicted `gcTime` after it was written.
+    if (!this.observers.get(serialized)?.size) {
+      this.scheduleEviction(serialized, this.dateTime.nowMillis());
+    }
+  }
+
+  /**
+   * Whether `clear({ refetch: false })` dropped `serialized` under a mounted
+   * query, which then stays quiet. See {@link clear}.
+   */
+  public isSilenced(serialized: string): boolean {
+    return this.silenced.has(serialized);
   }
 
   /**
@@ -191,15 +259,106 @@ export class QueryCache {
         this.inflight.delete(candidate);
       }
     }
+    for (const candidate of Array.from(this.evictions.keys())) {
+      if (matches(candidate)) {
+        this.cancelEviction(candidate);
+      }
+    }
 
     this.alepha.store.set(queryCacheAtom, next);
   }
 
-  public clear(): void {
+  /**
+   * Drop every entry.
+   *
+   * Mounted queries refetch, as after an invalidation: that is what a change
+   * of signed-in user wants, the page re-read under the new identity. With
+   * `refetch: false` they stay quiet instead, until their key is written
+   * again or they unmount: that is a sign-out, where the page is being left
+   * and every protected read would answer 401.
+   */
+  public clear(options: { refetch?: boolean } = {}): void {
+    this.silenced.clear();
+    if (options.refetch === false) {
+      for (const serialized of this.observers.keys()) {
+        this.silenced.add(serialized);
+      }
+    }
+    for (const timeout of this.evictions.values()) {
+      this.dateTime.clearTimeout(timeout);
+    }
+    this.evictions.clear();
     this.alepha.store.set(queryCacheAtom, {});
     this.inflight.clear();
     for (const [candidate, generation] of this.generations) {
       this.generations.set(candidate, generation + 1);
+    }
+  }
+
+  /**
+   * Plan the eviction of `serialized`, which nobody observes: at the later of
+   * `from + gcTime` and the end of the `staleTime` it was last read with, so
+   * no `staleTime` call site refetches earlier than it would without
+   * eviction. Browser only: on the server an entry lives in the request's
+   * state and dies with it.
+   */
+  protected scheduleEviction(serialized: string, from: number): void {
+    this.cancelEviction(serialized);
+    if (!this.alepha.isBrowser()) {
+      return;
+    }
+    const gcTime = this.alepha.store.get(queryOptionsAtom).gcTime;
+    const entry = this.entries()[serialized];
+    if (gcTime === false || !entry) {
+      return;
+    }
+    const at = Math.max(
+      from + this.dateTime.duration(gcTime as DurationLike).asMilliseconds(),
+      entry.updatedAt + (this.staleTimes.get(serialized) ?? 0),
+    );
+    const delay = at - this.dateTime.nowMillis();
+    if (delay <= 0) {
+      this.evict(serialized);
+      return;
+    }
+    this.evictions.set(
+      serialized,
+      this.dateTime.createTimeout(
+        () => {
+          this.evictions.delete(serialized);
+          this.evict(serialized);
+        },
+        delay,
+        undefined,
+        { unref: true },
+      ),
+    );
+  }
+
+  protected cancelEviction(serialized: string): void {
+    const timeout = this.evictions.get(serialized);
+    if (timeout) {
+      this.dateTime.clearTimeout(timeout);
+      this.evictions.delete(serialized);
+    }
+  }
+
+  /**
+   * Drop the entry of `serialized` if still nobody observes it, and forget
+   * its generation when nothing is in flight for it.
+   */
+  protected evict(serialized: string): void {
+    if (this.observers.get(serialized)?.size) {
+      return;
+    }
+    const entries = this.entries();
+    if (serialized in entries) {
+      const { [serialized]: _evicted, ...rest } = entries;
+      this.alepha.store.set(queryCacheAtom, rest);
+    }
+    if (!this.inflight.has(serialized)) {
+      this.generations.delete(serialized);
+      this.staleTimes.delete(serialized);
     }
   }
 
@@ -251,6 +410,20 @@ export class QueryCache {
     fn: (signal: AbortSignal) => Promise<T>,
     options: { signal?: AbortSignal } = {},
   ): Promise<T> {
+    // On the server a container serves many visitors at once, so one
+    // visitor's in-flight promise must never reach another: nothing is
+    // shared there.
+    if (!this.alepha.isBrowser()) {
+      const controller = new AbortController();
+      const entry: InflightRequest = {
+        controller,
+        subscribers: 0,
+        promise: fn(controller.signal),
+      };
+      entry.promise.catch(() => {});
+      return this.subscribe(entry, options.signal) as Promise<T>;
+    }
+
     const serialized = this.serialize(key);
     const pending = this.inflight.get(serialized);
 

@@ -6,6 +6,7 @@ import { AlephaServerLinks } from "alepha/server/links";
 
 import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
+import { ReactAuthQueryReset } from "./services/ReactAuthQueryReset.ts";
 import { ReactAuthTransport } from "./services/ReactAuthTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -44,5 +45,6 @@ export const AlephaReactAuth = $module({
     ReactAuthProvider,
     ReactAuthTransport,
     ReactAuth,
+    ReactAuthQueryReset,
   ],
 });

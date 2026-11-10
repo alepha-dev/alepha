@@ -451,8 +451,25 @@ const queries = useQueryClient();
 queries.invalidate(["folios", campaignId]);
 queries.setData(["folio", id], (previous) => ({ ...previous, pinned: true }));
 queries.get(["folio", id]); // read without subscribing
-queries.clear(); // on logout
+queries.clear(); // drop everything; mounted queries refetch
 ```
+
+The app never needs `clear()` on a sign-out: see "Eviction and a change of user" below.
+
+### Eviction and a change of user
+
+An entry no mounted query reads is dropped 5 minutes after its last reader left, and never before the `staleTime` it was read with has run out, so a query with `staleTime: [10, "minutes"]` remounted after 6 minutes still renders from cache. An entry nothing ever read (hydrated from the server, or written by `setData`) is dropped 5 minutes after it was written. A remount before then cancels it. The delay is app-wide, `gcTime` in `queryOptionsAtom`; `false` keeps every entry for the life of the page:
+
+```tsx
+alepha.store.mut(queryOptionsAtom, (options) => ({
+  ...options,
+  gcTime: false,
+}));
+```
+
+When the signed-in user changes inside the page, `alepha/react/auth` empties the whole cache. On a sign-out (the user becomes nobody) no mounted query refetches, since the page is being left; on a sign-in or a switch of account, mounted queries re-run under the new identity. On the web a sign-out is a full navigation anyway; this matters in a native shell, which signs out in place, and after a cookie sign-in that does not reload.
+
+On the server no eviction timer runs: the cache lives in the request's state and dies with it, and no in-flight request is ever shared between two visitors.
 
 ### Optimistic writes with Undo
 

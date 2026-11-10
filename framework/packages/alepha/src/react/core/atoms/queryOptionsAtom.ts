@@ -32,11 +32,18 @@ export const queryOptionsAtom = $atom({
         "When the page becomes visible again, re-run every mounted keyed query whose entry is stale. Off by default: with staleTime at 0, every keyed query is stale.",
       )
       .default(false),
+    gcTime: z
+      .union([z.number(), z.tuple([z.number(), z.string()]), z.literal(false)])
+      .describe(
+        "How long an entry nobody observes stays in the cache, as milliseconds or a [number, unit] tuple; never less than the staleTime it was read with. `false` keeps entries for the life of the page.",
+      )
+      .default([5, "minutes"]),
   }),
   default: {
     retry: 2,
     refetchOnReconnect: true,
     refetchOnFocus: false,
+    gcTime: [5, "minutes"],
   },
 });
 

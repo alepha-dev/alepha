@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaDateTime } from "alepha/datetime";
+import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
 import { describe, test } from "vitest";
 
 import { QueryCache } from "../services/QueryCache.ts";
@@ -87,5 +87,48 @@ describe("QueryCache", () => {
     expect(alepha.inject(QueryWakeEvents).listening()).toBe(false);
     unobserve();
     expect(cache.observerCount(["k"])).toBe(0);
+  });
+
+  test("creates no eviction timer on the server", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    const cache = alepha.inject(QueryCache);
+    await alepha.start();
+    const dateTime = alepha.inject(DateTimeProvider);
+
+    cache.set(["k"], "v");
+    const unobserve = cache.observe({
+      key: ["j"],
+      refetch: () => {},
+      failed: () => false,
+      options: () => ({ staleTime: 0 }),
+    });
+    unobserve();
+
+    expect(
+      (dateTime as unknown as { timeouts: unknown[] }).timeouts,
+    ).toHaveLength(0);
+  });
+
+  test("dedupe never shares a request between two request contexts", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    const cache = alepha.inject(QueryCache);
+    await alepha.start();
+
+    let calls = 0;
+    const read = () =>
+      cache.dedupe(["me"], async () => {
+        const call = ++calls;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return call;
+      });
+
+    const [a, b] = await Promise.all([
+      alepha.context.run(read),
+      alepha.context.run(read),
+    ]);
+    expect(calls).toBe(2);
+    expect(a).not.toBe(b);
   });
 });

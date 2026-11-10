@@ -135,7 +135,12 @@ export function useQuery<Result>(
   // A fresh cache hit means the initial fetch is skipped entirely — that is
   // the point of `staleTime`. Invalidation removes the entry, which flips
   // this back to true and re-runs the effect below.
-  const shouldRun = enabled && !isFresh;
+  //
+  // A key a sign-out dropped stays quiet while this query is mounted
+  // (`QueryCache.clear({ refetch: false })`): the page is being left.
+  const silenced =
+    serializedKey !== undefined && cache?.isSilenced(serializedKey) === true;
+  const shouldRun = enabled && !isFresh && !silenced;
 
   const action = useAction<[], Result>(
     {
@@ -260,11 +265,13 @@ export function useQuery<Result>(
     }
     if (hadEntryRef.current === serializedKey && entry === undefined) {
       hadEntryRef.current = undefined;
-      void action.refetch();
+      if (!cache?.isSilenced(serializedKey)) {
+        void action.refetch();
+      }
       return;
     }
     hadEntryRef.current = entry !== undefined ? serializedKey : undefined;
-  }, [entry, serializedKey, enabled, action.refetch]);
+  }, [entry, serializedKey, enabled, action.refetch, cache]);
 
   const data = serializedKey
     ? (cached ??
@@ -318,6 +325,10 @@ export interface UseQueryOptions<Result> {
   /**
    * How long a cached entry stays fresh. While fresh, mounting the query
    * renders from cache without fetching. Defaults to `0` — always revalidate.
+   *
+   * Also a floor for eviction: an entry nobody reads is dropped `gcTime`
+   * after its last reader left (`alepha.react.query.options`, 5 minutes by
+   * default), and never before its `staleTime` has run out.
    */
   staleTime?: DurationLike;
 
