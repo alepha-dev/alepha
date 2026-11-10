@@ -613,6 +613,9 @@ func (a *actions) appSecretCandidate(ctx context.Context, client *http.Client, c
 	if current != "" || ans.Value == "" {
 		return "", lore, nil
 	}
+	if err := deploy.CheckAppSecret(ans.Value); err != nil {
+		return "", loreSecret{}, fmt.Errorf("the APP_SECRET Lore holds for this copy cannot be an instance's key (%v), so the deploy stops before minting one", err)
+	}
 	a.s.log.Info("the instance has no APP_SECRET; Lore holds one for this copy", "command", cmd.ID)
 	return ans.Value, lore, nil
 }

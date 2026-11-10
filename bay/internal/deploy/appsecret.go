@@ -34,6 +34,27 @@ func ReadAppSecret(instance string) (string, error) {
 	return env["APP_SECRET"], nil
 }
 
+// maxAppSecretBytes bounds a key Bay accepts from anywhere but its own
+// minting: a snapshot's, Lore's, or one given to `bay secret replace`.
+const maxAppSecretBytes = 4096
+
+// CheckAppSecret refuses a value that cannot be an instance's key: empty,
+// oversized, or holding a space or a control character. Never says the value.
+func CheckAppSecret(key string) error {
+	if key == "" {
+		return errors.New("the key is empty")
+	}
+	if len(key) > maxAppSecretBytes {
+		return fmt.Errorf("the key is %d bytes, more than %d", len(key), maxAppSecretBytes)
+	}
+	for _, r := range key {
+		if r < 0x21 || r == 0x7f {
+			return errors.New("the key holds a space or a control character")
+		}
+	}
+	return nil
+}
+
 /*
 InstallAppSecret writes key as the instance's APP_SECRET, leaving every other
 line of its `.env` as it is.
@@ -45,8 +66,8 @@ putting back the key its snapshot was sealed with, and the deliberate
 never logged here.
 */
 func InstallAppSecret(instance, key string) error {
-	if key == "" {
-		return errors.New("refusing to install an empty APP_SECRET")
+	if err := CheckAppSecret(key); err != nil {
+		return fmt.Errorf("refusing to install that APP_SECRET: %w", err)
 	}
 	envPath := filepath.Join(instance, ".env")
 	if _, err := os.Stat(envPath); err != nil {

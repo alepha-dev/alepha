@@ -179,6 +179,12 @@ func main() {
 		} else {
 			err = errors.New("usage: bay storage migrate <name/env>")
 		}
+	case "secret":
+		if len(os.Args) > 2 && os.Args[2] == "replace" {
+			err = cmdSecretReplace(os.Args[3:])
+		} else {
+			err = errors.New(secretReplaceUsage)
+		}
 	case "env":
 		switch {
 		case len(os.Args) > 2 && os.Args[2] == "set":
@@ -345,6 +351,10 @@ func usageText() string {
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
+  bay secret replace <name/env> APP_SECRET - [--yes]
+                # put a known key back (stdin only): every session is signed
+                # out and what the current key sealed is lost. Confirmed,
+                # audited; Lore follows on the next deploy from Lore
   bay env set <name/env> (-|FILE)  # merge KEY=VALUE lines into the app's .env
                 # Values are read from stdin, never from argv — an argument is
                 # visible in "ps" to every user here. Keys Bay owns are
@@ -1123,6 +1133,7 @@ func (s *server) controlMux() *http.ServeMux {
 	s.registerBackupRoutes(mux)
 	s.registerStorageRoutes(mux)
 	s.registerEnvRoutes(mux)
+	s.registerSecretRoutes(mux)
 	s.registerConnectorRoutes(mux)
 	return mux
 }
