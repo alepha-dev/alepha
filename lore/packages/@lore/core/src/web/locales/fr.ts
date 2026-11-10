@@ -382,9 +382,14 @@ export default {
   "folios.editor.find.previous": "Résultat précédent",
   "folios.editor.find.close": "Fermer la recherche",
 
-  "folios.editor.empty.title": "Aucun folio ouvert.",
-  "folios.editor.empty.hint":
-    "Choisissez-en un dans l'arborescence, ou créez-en un.",
+  "folios.editor.listing.path": "Chemin du dossier",
+  "folios.editor.listing.name": "Nom",
+  "folios.editor.listing.updated": "Mis à jour",
+  "folios.editor.listing.parent": "Dossier parent",
+  "folios.editor.listing.item": "1 élément",
+  "folios.editor.listing.items": "$1 éléments",
+  "folios.editor.listing.pinned": "Épinglé",
+  "folios.editor.listing.empty": "Ce dossier est vide.",
 
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "Nouveau folio",
