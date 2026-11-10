@@ -44,6 +44,12 @@ export interface BackupSource {
   /** The machine name, typed back to confirm a restore. */
   appLabel: string;
   backup?: EstateInventoryBackup;
+  /**
+   * What to say in place of the backup facts while `backup` is absent, when
+   * the caller knows more than "not reported": why this copy is missing from
+   * the machine's report.
+   */
+  notice?: string;
   events: EstateEvent[];
   online: boolean;
   deployAllowed: boolean;
@@ -206,7 +212,9 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
             <p className="text-muted-foreground">{tr("backup.offline")}</p>
           )}
           {!backup ? (
-            <p className="text-muted-foreground">{tr("backup.notReported")}</p>
+            <p className="text-muted-foreground" data-testid="backup-notice">
+              {source.notice ?? tr("backup.notReported")}
+            </p>
           ) : (
             <>
               {backup.restorePending && (

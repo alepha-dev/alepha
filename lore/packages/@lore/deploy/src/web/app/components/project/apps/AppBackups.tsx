@@ -15,9 +15,18 @@ import BackupPanel, { type BackupSource } from "../../backup/BackupPanel.tsx";
  * ⚠️ Everything goes through the project-scoped `BackupController`, never the
  * estate's own routes: a project member who may deploy here has no business
  * reading the rest of a lent machine.
+ *
+ * ⚠️ A copy the machine's inventory does not list still gets the panel and
+ * its verbs (#Q3285). `sendAppBackupCommand` never reads the inventory: it
+ * needs a lent Bay and a stored machine name, which `not-reported` already
+ * has. Withholding the buttons there hid a command the server accepts, on a
+ * copy that was deployed and serving. The panel's notice says which of the
+ * two it is: no inventory received yet, or one that does not list this copy
+ * under the name Lore deployed it as. Only the four states with no machine
+ * to ask keep a message and no button.
  */
 const AppBackups = () => {
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
   const { can } = useRank();
   const api = useClient<BackupController>();
   const [project] = useStore(currentProjectAtom);
@@ -43,12 +52,28 @@ const AppBackups = () => {
   );
 
   const source = useMemo<BackupSource | undefined>(() => {
-    if (!scope || !data || data.status !== "reported" || !data.estate) {
+    if (
+      !scope ||
+      !data?.estate ||
+      (data.status !== "reported" && data.status !== "not-reported")
+    ) {
       return undefined;
     }
+    const machineApp = data.machineApp ?? scope.app;
     return {
-      appLabel: data.machineApp ?? scope.app,
+      appLabel: machineApp,
       backup: data.instance?.backup,
+      notice:
+        data.status === "reported"
+          ? undefined
+          : data.reportedAt
+            ? tr("backup.status.notListed", {
+                args: [
+                  l(data.reportedAt, { date: "fromNow" }),
+                  `${machineApp}/${scope.env}`,
+                ],
+              })
+            : tr("backup.status.noInventory"),
       events: data.events,
       online: data.estate.online,
       deployAllowed: data.estate.deployAllowed,
@@ -71,7 +96,17 @@ const AppBackups = () => {
       },
       reload: () => void refetch(),
     };
-  }, [api, can, data, refetch, scope?.projectId, scope?.app, scope?.env]);
+  }, [
+    api,
+    can,
+    data,
+    l,
+    refetch,
+    scope?.projectId,
+    scope?.app,
+    scope?.env,
+    tr,
+  ]);
 
   if (!project || !instance) {
     return null;

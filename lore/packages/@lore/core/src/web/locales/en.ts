@@ -3953,6 +3953,10 @@ export default {
   "backup.status.notLent": "The machine is no longer lent to this project.",
   "backup.status.notDeployed": "This copy has not been deployed yet.",
   "backup.status.notReported": "The machine has not reported this copy yet.",
+  "backup.status.noInventory":
+    "The machine has not sent its inventory yet, so there is nothing to show for this copy. Backup commands are still sent to it.",
+  "backup.status.notListed":
+    "The machine's last inventory ($1) does not list this copy, looked up as $2. Backup commands are still sent to it.",
   "backup.state.ok": "Backed up",
   "backup.state.stale": "Stale",
   "backup.state.failing": "Failing",

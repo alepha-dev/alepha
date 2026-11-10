@@ -3973,6 +3973,10 @@ export default {
   "backup.status.notDeployed": "Cette copie n'a pas encore été déployée.",
   "backup.status.notReported":
     "La machine n'a pas encore rapporté cette copie.",
+  "backup.status.noInventory":
+    "La machine n'a pas encore envoyé son inventaire, il n'y a donc rien à afficher pour cette copie. Les commandes de sauvegarde lui sont quand même envoyées.",
+  "backup.status.notListed":
+    "Le dernier inventaire de la machine ($1) ne liste pas cette copie, cherchée sous le nom $2. Les commandes de sauvegarde lui sont quand même envoyées.",
   "backup.state.ok": "Sauvegardé",
   "backup.state.stale": "En retard",
   "backup.state.failing": "En échec",
