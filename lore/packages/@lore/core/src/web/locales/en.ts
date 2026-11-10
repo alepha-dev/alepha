@@ -627,6 +627,7 @@ export default {
 
   "quest.create.submit": "Create quest",
   "quest.create.submitAndAccept": "Create and accept",
+  "quest.create.moreOptions": "More create options",
   "quest.create.update": "Update quest",
   "quest.create.priority": "Priority",
   "quest.create.priority.helper": "How urgently this quest must be fulfilled",

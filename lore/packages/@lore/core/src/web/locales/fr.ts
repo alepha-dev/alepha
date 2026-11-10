@@ -552,6 +552,7 @@ export default {
 
   "quest.create.submit": "Créer la quête",
   "quest.create.submitAndAccept": "Créer et accepter",
+  "quest.create.moreOptions": "Plus d'options de création",
   "quest.create.update": "Modifier la quête",
   "quest.create.priority": "Priorité",
   "quest.create.priority.helper":

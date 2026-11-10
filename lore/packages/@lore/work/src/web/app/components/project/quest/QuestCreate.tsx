@@ -494,6 +494,9 @@ const QuestCreate = (props: QuestCreateProps) => {
               <Plus className="size-4" />
               {tr("quest.create.submit")}
             </Button>
+            {/* The chevron is named for what a click on it does, which is
+                open the menu. It used to carry the menu item's own label and
+                read as a button that creates and accepts. */}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -504,7 +507,7 @@ const QuestCreate = (props: QuestCreateProps) => {
                       !questApi.createQuest.can() ||
                       !questApi.acceptQuest.can()
                     }
-                    aria-label={tr("quest.create.submitAndAccept")}
+                    aria-label={tr("quest.create.moreOptions")}
                     className="border-primary-foreground/20 -ml-px rounded-l-none border-l px-2"
                   />
                 }
