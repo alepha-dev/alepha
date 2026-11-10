@@ -29,6 +29,12 @@ declare module "alepha" {
        * where an address belongs.
        */
       url?: string;
+      /**
+       * Where the deployed instance's `APP_SECRET` came from, and the
+       * deploy's warning, from a `done` ack: said on the deploy's log.
+       */
+      appSecretSource?: string;
+      warning?: string;
     };
   }
 }
@@ -45,6 +51,8 @@ export interface EstateCommandAck {
    * Where a deploy answers, on a `done` ack (#Q3155).
    */
   url?: string;
+  appSecretSource?: string;
+  warning?: string;
 }
 
 /**
@@ -314,6 +322,10 @@ export class EstateCommandService {
     await this.alepha.events.emit("estate:command:progressed", {
       command: updated,
       ...(ack.status === "done" && ack.url ? { url: ack.url } : {}),
+      ...(ack.status === "done" && ack.appSecretSource
+        ? { appSecretSource: ack.appSecretSource }
+        : {}),
+      ...(ack.status === "done" && ack.warning ? { warning: ack.warning } : {}),
     });
     return updated;
   }

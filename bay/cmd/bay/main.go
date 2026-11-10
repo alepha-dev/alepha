@@ -1341,6 +1341,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		"pruned":          out.Pruned,
 		"runtime":         out.Runtime,
 		"preDeployBackup": out.PreDeployBackup,
+		"appSecret":       out.AppSecret,
 	})
 }
 
@@ -1427,6 +1428,10 @@ type deployOutcome struct {
 	// something the build did not say, why. Reported to whoever deployed,
 	// because "it runs on Node 26" is a fact they may not have chosen.
 	Runtime *deployRuntime `json:"runtime,omitempty"`
+	// AppSecret is where the instance's key came from in this deploy: kept,
+	// snapshot, lore or minted; empty for a static site. A minted key over
+	// restored data is also a warning, in Restore["warning"].
+	AppSecret string `json:"appSecret,omitempty"`
 }
 
 // deployRuntime is the runtime part of a deploy's answer.
@@ -1616,6 +1621,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	pruned := s.pruneReleases(res.App, res.Previous)
 
 	outcome := &deployOutcome{Result: *res, Restore: restore, Pruned: pruned, PreDeployBackup: preDeploy}
+	outcome.AppSecret = s.recordSecretSource(res, restore)
 	if _, inContainers := s.runner.(containerRunner); inContainers && !res.App.Static {
 		if sel, err := s.runtimeSelection(res.App); err == nil {
 			outcome.Runtime = &deployRuntime{Image: sel.Ref, Warning: sel.Warning}
@@ -2398,6 +2404,17 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ scheduled backups are held after a failed restore: %s\n", a.BackupHold)
 		}
+		if st := a.AppSecret; st != nil && !a.Static {
+			lore := ""
+			if st.Lore != "" {
+				lore = ", Lore " + st.Lore + " at the last deploy"
+			}
+			fmt.Printf("  key      APP_SECRET %s by %s %s%s\n", st.Source, st.By, st.At, lore)
+			if st.Warning != "" {
+				problems++
+				fmt.Printf("           ⚠ %s\n", st.Warning)
+			}
+		}
 		// Named, not counted as a problem: an unhooked volume is a choice the
 		// stack's author made, and a status that always fails is one nobody
 		// reads. It is still said on every run.
@@ -2408,7 +2425,7 @@ func cmdStatus(args []string) error {
 		// someone reading a green status should know the shape of it before
 		// they need it, not after.
 		if a.Backups {
-			fmt.Printf("           .env is not backed up — secrets come from the deploy\n")
+			fmt.Printf("           .env is not backed up, APP_SECRET aside: the other secrets come from the deploy\n")
 			// Uploads are not in the backup set at all. An app still on local
 			// storage therefore has exactly one copy of them, on this disk, and
 			// a green backup line must not be read as covering that.

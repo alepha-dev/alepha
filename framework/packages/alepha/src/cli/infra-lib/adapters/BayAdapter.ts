@@ -868,6 +868,10 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
           throw this.explain(host, error);
         }
         url = this.deployedUrl(answer);
+        const source = this.appSecretSource(answer);
+        if (source) {
+          this.log.info(`APP_SECRET: ${source}`);
+        }
         const warning = this.restoreWarning(answer);
         if (warning) {
           this.log.warn(warning);
@@ -1030,6 +1034,22 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     try {
       const parsed = JSON.parse(answer);
       return typeof parsed?.url === "string" ? parsed.url : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Where the instance's `APP_SECRET` came from, out of what `bay deploy`
+   * printed: `kept`, `snapshot`, `lore` or `minted`. A recovered host that
+   * minted a new key over restored data signs every MFA user out, and Bay
+   * also says that as a warning; the source is printed on every deploy so a
+   * new key is never silent.
+   */
+  protected appSecretSource(answer: string): string | undefined {
+    try {
+      const source = JSON.parse(answer)?.appSecret;
+      return typeof source === "string" && source ? source : undefined;
     } catch {
       return undefined;
     }

@@ -144,6 +144,8 @@ func TestWireClientFramesEncode(t *testing.T) {
 		{"ack-deploy-done.json", func() Ack {
 			ack := NewAck("0b6d3f2e-7a41-4d9c-b2e5-1c8f9a7d6e54", "done", "", "")
 			ack.URL = "https://demo-production.bay.example.com/"
+			ack.AppSecretSource = "minted"
+			ack.Warning = "demo/production runs on a NEW APP_SECRET over data restored from a backup that carried none"
 			return ack
 		}()},
 		{"ack-failed.json", NewAck("3e9a1c7b-5d2f-4b8a-9c6e-7f1d2a3b4c5d", "failed", "verifying",

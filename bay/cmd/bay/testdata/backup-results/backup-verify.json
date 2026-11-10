@@ -1,5 +1,6 @@
 {
   "app": "demo/production",
+  "appSecret": "carried",
   "createdAt": "2026-11-02T14:49:15.355696383Z",
   "files": [
     {

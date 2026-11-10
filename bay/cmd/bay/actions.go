@@ -134,10 +134,11 @@ type actions struct {
 	// else - a CLI path with no connection has nothing to tell.
 	kick func()
 
-	// urls holds a finished deploy's address by command id, from the deploy
-	// to its terminal ack (#Q3155). A map rather than a fourth return value
-	// on every action, since only a deploy has one.
-	urls sync.Map
+	// extras holds what a finished deploy says beside its status, by command
+	// id, from the deploy to its terminal ack: its address (#Q3155), where
+	// its APP_SECRET came from and its warning. A map rather than a fourth
+	// return value on every action, since only a deploy has them.
+	extras sync.Map
 }
 
 func newActions(s *server) *actions {
@@ -178,6 +179,8 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		log.Info("lore command redelivered, re-acking the stored outcome", "status", prior.Status)
 		ack := connector.NewAck(cmd.ID, prior.Status, prior.Step, prior.Reason)
 		ack.URL = prior.URL
+		ack.AppSecretSource = prior.AppSecretSource
+		ack.Warning = connector.CutWarning(prior.Warning)
 		_ = send(ack)
 		return
 	}
@@ -289,16 +292,18 @@ moves the release, a backup moves lastBackupAt - and the alternative is a page
 that shows the old state for up to half an hour after the click that changed it.
 */
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
-	url := ""
-	if held, ok := a.urls.LoadAndDelete(id); ok && status == "done" {
-		url = held.(string)
+	extra := connector.Extra{}
+	if held, ok := a.extras.LoadAndDelete(id); ok && status == "done" {
+		extra = held.(connector.Extra)
 	}
-	out, err := a.outcomes.Finish(id, status, step, reason, url, time.Now())
+	out, err := a.outcomes.Finish(id, status, step, reason, extra, time.Now())
 	if err != nil {
 		a.s.log.Warn("could not persist a command outcome", "command", id, "err", err)
 	}
 	ack := connector.NewAck(id, out.Status, out.Step, out.Reason)
 	ack.URL = out.URL
+	ack.AppSecretSource = out.AppSecretSource
+	ack.Warning = connector.CutWarning(out.Warning)
 	if err := send(ack); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)
@@ -566,10 +571,15 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	// Before the terminal ack, which `finish` sends once this returns: Lore
 	// answers the escrow only while the command is sent or running.
 	a.escrowAppSecret(ctx, client, cfg, cmd, out.Result.App, lore)
+	extra := connector.Extra{AppSecretSource: out.AppSecret}
 	if domain := out.Result.App.Domain(); domain != "" {
 		// The address `bay deploy` prints, for the terminal ack (#Q3155).
-		a.urls.Store(cmd.ID, "https://"+domain+"/")
+		extra.URL = "https://" + domain + "/"
 	}
+	// The deploy's warning (an empty database, a key minted over restored
+	// data), which reached nobody on a Lore deploy before it rode the ack.
+	extra.Warning, _ = out.Restore["warning"].(string)
+	a.extras.Store(cmd.ID, extra)
 	a.pruneArtifacts(dir, keepArtifacts)
 	return "done", "", ""
 }
@@ -622,7 +632,18 @@ A send that fails is a warning, never a failed deploy: the app is already up,
 and the next deploy finds the hash still different and sends again.
 */
 func (a *actions) escrowAppSecret(ctx context.Context, client *http.Client, cfg connector.Config, cmd connector.Command, app state.App, lore loreSecret) {
-	if !lore.supported || app.Static {
+	if app.Static {
+		return
+	}
+	// What this deploy found, for `bay doctor` and `bay status`: Lore answers
+	// its hash only inside a deploy command, so it is recorded, not asked.
+	result := state.LoreSecretUnknown
+	defer func() {
+		if err := a.s.store.RecordLoreSecret(app.Key(), result, time.Now()); err != nil {
+			a.s.log.Error("could not record the Lore APP_SECRET comparison", "app", app.Key(), "err", err)
+		}
+	}()
+	if !lore.supported {
 		return
 	}
 	if current, ok := a.s.store.Get(app.Key()); ok && current.RestorePending != nil {
@@ -635,6 +656,7 @@ func (a *actions) escrowAppSecret(ctx context.Context, client *http.Client, cfg 
 		return
 	}
 	if connector.SHA256Hex(key) == lore.sha256 {
+		result = state.LoreSecretMatch
 		return
 	}
 	ans, supported, err := connector.PushAppSecret(ctx, client, cfg, cmd.ID, key)
@@ -644,9 +666,13 @@ func (a *actions) escrowAppSecret(ctx context.Context, client *http.Client, cfg 
 	case !supported:
 		a.s.log.Info("Lore has no APP_SECRET escrow for this command (an older Lore)", "app", app.Key(), "command", cmd.ID)
 	case ans.Replaced:
+		result = state.LoreSecretSent
 		a.s.log.Warn("Lore held another APP_SECRET for this copy and now holds the one this instance runs on", "app", app.Key(), "command", cmd.ID)
 	case ans.Stored:
+		result = state.LoreSecretSent
 		a.s.log.Info("APP_SECRET escrowed to Lore", "app", app.Key(), "command", cmd.ID)
+	default:
+		result = state.LoreSecretMatch
 	}
 }
 

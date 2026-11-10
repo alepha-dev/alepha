@@ -300,6 +300,7 @@ func (s *server) restoreInstance(ctx context.Context, app state.App, q neturl.Va
 	// the key its restored data was sealed with.
 	plan = s.applySecretPlan(app, plan)
 	rec.AppSecret = plan.outcome
+	s.recordRestoredSecret(app, &plan, src.key() == app.Key(), pending)
 	plan.say(resp)
 	// The data is back the moment the install succeeds: the backups the guards
 	// were protecting have done their job, whether or not the app boots on it.
@@ -407,6 +408,9 @@ func verifyResult(app string, report *backup.VerifyReport, err error) map[string
 		out["key"] = report.Key
 		out["createdAt"] = report.CreatedAt
 		out["files"] = report.Files
+		if report.AppSecret != "" {
+			out["appSecret"] = report.AppSecret
+		}
 	}
 	if err != nil {
 		out["error"] = err.Error()

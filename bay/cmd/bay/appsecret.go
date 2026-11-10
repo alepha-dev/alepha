@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/alepha-dev/bay/internal/backup"
 	"github.com/alepha-dev/bay/internal/deploy"
@@ -122,6 +123,73 @@ func (p secretPlan) say(resp map[string]any) {
 	if p.warning != "" {
 		resp["warning"] = joinWarnings(resp["warning"], p.warning)
 	}
+}
+
+/*
+recordSecretSource records on the instance where its key came from in this
+deploy, and answers it: the source provision reported, or `snapshot` when
+the auto-restore put the backup's key back.
+
+A key minted over data the auto-restore just brought back is a warning, not
+a log line: the 2026-11-10 recovery test reported "data identical" while
+every MFA user was locked out, because nothing said the key was new. It goes
+into the restore's warning, which `alepha deploy` prints and Lore shows, and
+stays on the instance, which `bay status` flags, until the next deploy.
+*/
+func (s *server) recordSecretSource(res *deploy.Result, restore map[string]any) string {
+	if res.SecretSource == "" {
+		return ""
+	}
+	source := res.SecretSource
+	if restore["appSecret"] == secretRestored {
+		source = state.SecretSnapshot
+	}
+	warning := ""
+	if _, restored := restore["restoredAt"]; restored && source == state.SecretMinted {
+		warning = mintedOverRestoreWarning(res.App.Key())
+		restore["warning"] = joinWarnings(restore["warning"], warning)
+		s.log.Warn("the instance runs on a NEW APP_SECRET over restored data", "app", res.App.Key())
+		s.emit("appsecret.minted", &res.App, map[string]any{"overRestoredData": true})
+	}
+	if err := s.store.SetAppSecretSource(res.App.Key(), source, "deploy", warning, time.Now()); err != nil {
+		s.log.Error("could not record where the APP_SECRET came from", "app", res.App.Key(), "err", err)
+	}
+	s.log.Info("APP_SECRET", "app", res.App.Key(), "source", source)
+	return source
+}
+
+/*
+recordRestoredSecret records what a restore did to the key: `snapshot` when
+it put the backup's key back. A late restore (the one that clears
+RestorePending) that brings data back from a backup carrying no key leaves
+the instance on the key minted while it ran empty, which is the same warning
+a deploy gives, said in the plan and kept on the instance.
+*/
+func (s *server) recordRestoredSecret(app state.App, plan *secretPlan, sameInstance, pending bool) {
+	now := time.Now()
+	if plan.outcome == secretRestored {
+		if err := s.store.SetAppSecretSource(app.Key(), state.SecretSnapshot, "restore", "", now); err != nil {
+			s.log.Error("could not record where the APP_SECRET came from", "app", app.Key(), "err", err)
+		}
+		return
+	}
+	minted := app.AppSecret != nil && app.AppSecret.Source == state.SecretMinted
+	if !sameInstance || !pending || !minted || (plan.outcome != secretAbsent && plan.outcome != secretMissing) {
+		return
+	}
+	warning := mintedOverRestoreWarning(app.Key())
+	plan.warning = joinWarnings(plan.warning, warning)
+	s.log.Warn("the instance runs on a NEW APP_SECRET over restored data", "app", app.Key())
+	if err := s.store.SetAppSecretSource(app.Key(), state.SecretMinted, "restore", warning, now); err != nil {
+		s.log.Error("could not record the APP_SECRET warning", "app", app.Key(), "err", err)
+	}
+}
+
+func mintedOverRestoreWarning(key string) string {
+	return fmt.Sprintf(
+		"%[1]s runs on a NEW APP_SECRET over data restored from a backup that carried none: "+
+			"MFA enrolled before will not open and links signed before will not verify. "+
+			"If the previous key is kept somewhere, `bay secret replace %[1]s APP_SECRET -` puts it back", key)
 }
 
 func joinWarnings(existing any, more string) string {
