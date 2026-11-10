@@ -513,6 +513,9 @@ describe("Alepha CLI E2E", () => {
       await writeFile(join(PROJECT_DIR, "probe.cjs"), probe);
 
       const result = await run("node probe.cjs", PROJECT_DIR);
+      // The scaffold `init` writes over this directory is verified later, and
+      // its lint would read a probe left behind.
+      await rm(join(PROJECT_DIR, "probe.cjs"));
       const report = JSON.parse(
         result.stdout.trim().split("\n").pop() as string,
       );
@@ -565,6 +568,7 @@ describe("Alepha CLI E2E", () => {
       );
 
       const result = await run("node bin-probe.cjs", PROJECT_DIR);
+      await rm(join(PROJECT_DIR, "bin-probe.cjs"));
       expect(result.stdout).toContain("ERR_PACKAGE_PATH_NOT_EXPORTED");
     });
   });
