@@ -86,32 +86,26 @@ const AccountProfile = (props: AccountProfileProps) => {
    * `updateMyProfile` is the same call that saves first and last name, so it
    * exists in every realm and its presence says nothing about usernames.
    *
-   * The realm's own `settings.username` is the switch, and `"none"` is the
-   * only value that hides the row: it is the one that means this realm has no
-   * such thing as a username, so there is nothing to show and nothing the user
-   * could set.
+   * The realm's own `settings.username` is the switch, and the row is hidden
+   * in the two modes where a person does not choose a username, the same rule
+   * `AuthRegister.tsx` applies:
    *
-   * Without this, a `"none"` realm did not merely render a pointless field:
-   * `?? ""` seeded an empty string into a column that is `.optional()` but
-   * `minLength: 3`, `FormModel` decodes its initial values on construction,
-   * and the whole page died at `useForm` with "Too small: expected string to
-   * have >=3 characters at /username" — before anything rendered. `apps/examples/shop`
-   * is such a realm, and `"none"` is also the framework default, so this is
-   * what any new app hits first.
-   *
-   * ⚠️ `AuthRegister.tsx` excludes `"email"` here as well, and this
-   * deliberately does not. In that mode `RegistrationService` derives the
-   * handle from the address and drops whatever the client sent, so the
-   * registration form is right to hide a field the user does not choose — but
-   * the account page is where an existing, already-derived username is shown,
-   * and Lore (github.com/alepha-dev/lore) runs exactly this mode. Whether
-   * editing it there should be
-   * possible at all is a real question (a rename desyncs it from the email
-   * that produced it, and `updateMyProfile` does not re-run the slugger), but
-   * it is a separate one from "this realm has no usernames", and answering it
-   * by quietly deleting the field is not the place to start.
+   * - `"none"`: the realm has no such thing as a username, so there is nothing
+   *   to show and nothing the user could set. Without this, `?? ""` seeded an
+   *   empty string into a column that is `.optional()` but `minLength: 3`,
+   *   `FormModel` decodes its initial values on construction, and the whole
+   *   page died at `useForm` with "Too small: expected string to have >=3
+   *   characters at /username" before anything rendered. `apps/examples/shop`
+   *   is such a realm, and `"none"` is also the framework default.
+   * - `"email"`: `RegistrationService` derives the handle from the address and
+   *   the person never chose it. Showing it as an editable row (it once did,
+   *   for Lore's sake) offered a rename that desyncs it from the email that
+   *   produced it, since `updateMyProfile` does not re-run the slugger, and
+   *   apps in that mode read the row as a stray field. Hidden, it is
+   *   also left out of the request, so the derived handle stays as it is.
    */
-  const hasUsername = props.realmConfig?.settings?.username !== "none";
+  const usernameMode = props.realmConfig?.settings?.username;
+  const hasUsername = usernameMode !== "none" && usernameMode !== "email";
 
   /**
    * Validated against the server's own body schema, so "3 to 30 characters"
