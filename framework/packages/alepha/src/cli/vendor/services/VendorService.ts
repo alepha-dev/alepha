@@ -138,12 +138,17 @@ export interface VendorLock {
  */
 export class VendorService {
   /**
-   * Parent directories of vendored packages on the remote, tried in order.
-   * The Alepha monorepo moved its packages from `packages/` to
-   * `framework/packages/`; a consumer's last-synced commit may predate the
-   * move, so a clone is read with whichever layout it has.
+   * Parent directories of vendored packages on the remote, tried in order,
+   * per package. The Alepha monorepo moved its packages from `packages/` to
+   * `framework/packages/`, and holds Lore's under `lore/packages/`
+   * (`@alepha/lore`); a consumer's last-synced commit may predate either, so
+   * each package is read from the first of these that has it.
    */
-  protected readonly remoteDirs = ["framework/packages", "packages"];
+  protected readonly remoteDirs = [
+    "framework/packages",
+    "lore/packages",
+    "packages",
+  ];
 
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
@@ -193,10 +198,8 @@ export class VendorService {
 
     try {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
-      const remoteDir = await this.resolveRemoteDir(tmpDir);
-
       for (const pkg of options.packages) {
-        const remotePkgDir = this.fs.join(remoteDir, pkg);
+        const remotePkgDir = await this.resolveRemotePackage(tmpDir, pkg);
         const localPkgDir = this.fs.join(options.root, options.dir, pkg);
 
         const remoteExists = await this.fs.exists(remotePkgDir);
@@ -259,18 +262,21 @@ export class VendorService {
   }
 
   /**
-   * The packages directory of a cloned remote: the first of `remoteDirs` that
-   * exists, or the first one when none does (every package then reads as
-   * missing from the remote).
+   * A package's directory in a cloned remote: under the first of
+   * `remoteDirs` that has it, or under the first one when none does (the
+   * package then reads as missing from the remote).
    */
-  protected async resolveRemoteDir(cloneDir: string): Promise<string> {
+  protected async resolveRemotePackage(
+    cloneDir: string,
+    pkg: string,
+  ): Promise<string> {
     for (const dir of this.remoteDirs) {
-      const candidate = this.fs.join(cloneDir, dir);
+      const candidate = this.fs.join(cloneDir, dir, pkg);
       if (await this.fs.exists(candidate)) {
         return candidate;
       }
     }
-    return this.fs.join(cloneDir, this.remoteDirs[0]);
+    return this.fs.join(cloneDir, this.remoteDirs[0], pkg);
   }
 
   /**
@@ -285,10 +291,8 @@ export class VendorService {
   ): Promise<VendorDiffResult> {
     const results: VendorPackageDiff[] = [];
     let totalChanges = 0;
-    const remoteDir = await this.resolveRemoteDir(tmpDir);
-
     for (const pkg of packages) {
-      const remotePkgDir = this.fs.join(remoteDir, pkg);
+      const remotePkgDir = await this.resolveRemotePackage(tmpDir, pkg);
       const localPkgDir = this.fs.join(root, dir, pkg);
 
       const remoteExists = await this.fs.exists(remotePkgDir);

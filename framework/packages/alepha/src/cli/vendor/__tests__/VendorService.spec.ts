@@ -145,6 +145,46 @@ describe("VendorService", () => {
       expect(await fs.exists("/project/packages/my-pkg/index.ts")).toBe(true);
     });
 
+    it("should read a package from lore/ beside the framework's", async ({
+      expect,
+    }) => {
+      const { service, fs } = createTestService(
+        Alepha.create()
+          .with({ provide: ShellProvider, use: MemoryShellProvider })
+          .inject(MemoryShellProvider),
+      );
+
+      await fs.mkdir("/tmp/test-clone/framework/packages/alepha", {
+        recursive: true,
+      });
+      await fs.writeFile(
+        "/tmp/test-clone/framework/packages/alepha/index.ts",
+        "export {}",
+      );
+      await fs.mkdir("/tmp/test-clone/lore/packages/@alepha/lore", {
+        recursive: true,
+      });
+      await fs.writeFile(
+        "/tmp/test-clone/lore/packages/@alepha/lore/index.ts",
+        "export {}",
+      );
+
+      const result = await service.sync({
+        root: "/project",
+        remote: "remote",
+        branch: "main",
+        dir: "packages",
+        packages: ["alepha", "@alepha/lore"],
+        force: true,
+      });
+
+      expect(result.synced).toEqual(["alepha", "@alepha/lore"]);
+      expect(result.errors).toEqual([]);
+      expect(await fs.exists("/project/packages/@alepha/lore/index.ts")).toBe(
+        true,
+      );
+    });
+
     it("should report errors for missing remote packages", async ({
       expect,
     }) => {
