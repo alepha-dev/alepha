@@ -2,7 +2,12 @@ import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { $action, NotFoundError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  NotFoundError,
+  okSchema,
+} from "alepha/server";
 
 import { type Project, projects } from "../entities/projects.ts";
 import { dashboardCardResourceSchema } from "../schemas/dashboardCardResourceSchema.ts";
@@ -11,11 +16,13 @@ import {
   type DashboardScope,
   dashboardScopeSchema,
 } from "../schemas/dashboardScopeSchema.ts";
+import { dashboardSummarySchema } from "../schemas/dashboardSummarySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { DashboardMetricRegistry } from "../services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "../services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "../services/DashboardSlotRegistry.ts";
 import { ProjectDashboardCardService } from "../services/ProjectDashboardCardService.ts";
+import { ProjectDashboardService } from "../services/ProjectDashboardService.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 
 /**
@@ -63,9 +70,25 @@ import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
  * their values when there are any, and otherwise the default board
  * `DashboardSlotRegistry` computes from the project's capabilities and data,
  * resolved live and never written (folio #F1364).
+ *
+ * ## A project holds several dashboards (#E127, #Q3299)
+ *
+ * Dashboards are listed, created, renamed and deleted here, writes under
+ * `project:update` as the cards' are. Every card route that is not keyed by
+ * a card id takes an optional `dashboardId` in its query, and none means the
+ * project's first: the routes keep their shape for a caller that knows one
+ * board. Updating and removing a card stay keyed by the card's id, which
+ * already names its dashboard. A dashboard of another project is a 404.
+ *
+ * **Only the first is computed.** The first dashboard, while it has no
+ * stored card, answers the computed board, and only it can be dormant.
+ * Any other with no card answers no card, which the page shows as the empty
+ * board. So Customize is refused anywhere else (nothing is computed there to
+ * copy), while Reset empties whichever dashboard it names.
  */
 export class ProjectDashboardController {
   protected readonly cards = $inject(ProjectDashboardCardService);
+  protected readonly dashboards = $inject(ProjectDashboardService);
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly registry = $inject(DashboardMetricRegistry);
   protected readonly slots = $inject(DashboardSlotRegistry);
@@ -87,6 +110,96 @@ export class ProjectDashboardController {
     $ownsProject({ requires, param: "projectId" });
 
   /**
+   * The dashboard a card route acts on; none means the project's first.
+   */
+  protected static readonly onDashboard = z.object({
+    dashboardId: z.integer().optional(),
+  });
+
+  /**
+   * This project's dashboards in creation order, which is their order. A
+   * project with no row lists its implicit first, with no id.
+   */
+  listProjectDashboards = $action({
+    use: [this.ownsProject("project:read")],
+    method: "GET",
+    path: "/projects/:projectId/dashboards",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ dashboards: z.array(dashboardSummarySchema) }),
+    },
+    handler: async ({ params }) => ({
+      dashboards: await this.dashboards.summaries(params.projectId),
+    }),
+  });
+
+  /**
+   * A new dashboard, after the project's last. It opens empty: only the
+   * first dashboard is computed.
+   */
+  createProjectDashboard = $action({
+    use: [this.ownsProject("project:update")],
+    method: "POST",
+    path: "/projects/:projectId/dashboards",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({ name: z.string().min(1).max(60) }),
+      response: dashboardSummarySchema,
+    },
+    handler: async ({ params, body }) =>
+      this.dashboards.toSummary(
+        await this.dashboards.create(params.projectId, body.name),
+        false,
+      ),
+  });
+
+  /**
+   * A new name, and with it a new slug: the dashboard's URL moves, and the
+   * old one is not kept. No `dashboardId` renames the first.
+   */
+  renameProjectDashboard = $action({
+    use: [this.ownsProject("project:update")],
+    method: "PATCH",
+    path: "/projects/:projectId/dashboard",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
+      body: z.object({ name: z.string().min(1).max(60) }),
+      response: dashboardSummarySchema,
+    },
+    handler: async ({ params, query, body }) => {
+      const row = await this.dashboards.rename(
+        params.projectId,
+        query.dashboardId,
+        body.name,
+      );
+      const first = await this.dashboards.first(params.projectId);
+      return this.dashboards.toSummary(row, first?.id === row.id);
+    },
+  });
+
+  /**
+   * Delete a dashboard and its cards. The last one cannot be deleted.
+   */
+  deleteProjectDashboard = $action({
+    use: [this.ownsProject("project:update")],
+    method: "DELETE",
+    path: "/projects/:projectId/dashboard",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
+      response: z.object({ ok: z.boolean(), deletedCards: z.integer() }),
+    },
+    handler: async ({ params, query }) => ({
+      ok: true,
+      deletedCards: await this.dashboards.remove(
+        params.projectId,
+        query.dashboardId,
+      ),
+    }),
+  });
+
+  /**
    * This project's cards, in grid order.
    */
   listProjectDashboardCards = $action({
@@ -95,12 +208,13 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard/cards",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
       response: z.object({
         cards: z.array(dashboardCardResourceSchema),
       }),
     },
-    handler: async ({ params }) => ({
-      cards: await this.cards.list(params.projectId),
+    handler: async ({ params, query }) => ({
+      cards: await this.cards.list(params.projectId, query.dashboardId),
     }),
   });
 
@@ -110,6 +224,7 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard/cards",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
       body: z.object({
         metric: z.string().min(1).max(64),
         scope: dashboardScopeSchema,
@@ -120,8 +235,8 @@ export class ProjectDashboardController {
       }),
       response: dashboardCardResourceSchema,
     },
-    handler: async ({ params, body, user }) =>
-      this.cards.add(params.projectId, undefined, {
+    handler: async ({ params, query, body, user }) =>
+      this.cards.add(params.projectId, query.dashboardId, {
         metric: body.metric,
         scope: await this.proveScope(params.projectId, body.scope, user),
         filters: body.filters,
@@ -187,12 +302,15 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard/cards/order",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
       body: z.object({ ids: z.array(z.integer()).max(100) }),
       response: z.object({ cards: z.array(dashboardCardResourceSchema) }),
     },
-    handler: async ({ params, body }) => {
-      await this.cards.reorder(params.projectId, undefined, body.ids);
-      return { cards: await this.cards.list(params.projectId) };
+    handler: async ({ params, query, body }) => {
+      await this.cards.reorder(params.projectId, query.dashboardId, body.ids);
+      return {
+        cards: await this.cards.list(params.projectId, query.dashboardId),
+      };
     },
   });
 
@@ -216,6 +334,7 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard/resolve",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
       body: z.object({
         cardIds: z.array(z.integer()).max(100).optional(),
       }),
@@ -228,9 +347,9 @@ export class ProjectDashboardController {
         refreshedAt: z.string(),
       }),
     },
-    handler: async ({ params, body, user }) => {
+    handler: async ({ params, query, body, user }) => {
       const project = await this.projectOf(params.projectId);
-      const all = await this.cards.list(params.projectId);
+      const all = await this.cards.list(params.projectId, query.dashboardId);
       const wanted = body.cardIds ? new Set(body.cardIds) : undefined;
       const cards = wanted ? all.filter((card) => wanted.has(card.id)) : all;
 
@@ -256,15 +375,25 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard/customize",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
       response: z.object({ cards: z.array(dashboardCardResourceSchema) }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, query, user }) => {
+      const target = await this.dashboards.target(
+        params.projectId,
+        query.dashboardId,
+      );
+      if (!target.first) {
+        throw new BadRequestError(
+          "Only the first dashboard has a computed board to customize",
+        );
+      }
       const project = await this.projectOf(params.projectId);
       const computed = await this.slots.compute(project, user);
       return {
         cards: await this.cards.copy(
           params.projectId,
-          undefined,
+          target.row?.id,
           computed.cards.map((card) => ({
             metric: card.metric,
             scope: card.scope,
@@ -279,8 +408,9 @@ export class ProjectDashboardController {
   });
 
   /**
-   * "Reset to default": delete every stored card, so every member sees the
-   * computed board again on their next load (#Q2660).
+   * "Reset to default": delete every stored card of the dashboard named, so
+   * every member sees the computed board again on their next load (#Q2660).
+   * On a dashboard that is not the first, that leaves it empty.
    */
   resetProjectDashboard = $action({
     use: [this.ownsProject("project:update")],
@@ -288,10 +418,11 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard/cards",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
       response: okSchema,
     },
-    handler: async ({ params }) => {
-      await this.cards.reset(params.projectId);
+    handler: async ({ params, query }) => {
+      await this.cards.reset(params.projectId, query.dashboardId);
       return { ok: true };
     },
   });
@@ -299,9 +430,9 @@ export class ProjectDashboardController {
   /**
    * The whole board in one request: what the page's loader calls.
    *
-   * ⚠️ **Stored cards win.** A project with at least one stored card is a
-   * customized board and gets exactly those, resolved. Only a project with
-   * none gets the computed board, so `computed` says which the reader is
+   * ⚠️ **Stored cards win.** A dashboard with at least one stored card is a
+   * customized board and gets exactly those, resolved. Only the FIRST
+   * dashboard with none gets the computed board (any other answers no card), so `computed` says which the reader is
    * looking at, and a computed board is read-only for everyone.
    *
    * One request per load, and one resolve inside it grouped by metric
@@ -319,8 +450,19 @@ export class ProjectDashboardController {
          * reader's preference, never stored on the board.
          */
         window: z.enum(["7", "14", "30"]).optional(),
+        /**
+         * The dashboard's slug (#Q3299), or `dashboard-<id>` for one with
+         * none. Absent means the first. An unknown slug is a 404.
+         */
+        dashboard: z.string().max(80).optional(),
       }),
       response: z.object({
+        /**
+         * The dashboard served, and every dashboard of the project for the
+         * selector: the page still loads in one request (folio #F1057).
+         */
+        dashboard: dashboardSummarySchema,
+        dashboards: z.array(dashboardSummarySchema),
         computed: z.boolean(),
         /**
          * When a dormant project last moved (#Q2662): no recorded write in
@@ -335,12 +477,20 @@ export class ProjectDashboardController {
     },
     handler: async ({ params, query, user }) => {
       const project = await this.projectOf(params.projectId);
-      const stored = await this.cards.list(params.projectId);
+      const target = await this.dashboards.targetBySlug(
+        params.projectId,
+        query.dashboard,
+      );
+      const stored = await this.cards.listOn(target);
       const refreshedAt = this.dateTime.now().toISOString();
       const windowDays = Number(query.window ?? 14);
+      const dashboard = this.dashboards.toSummary(target.row, target.first);
+      const dashboards = await this.dashboards.summaries(params.projectId);
 
-      if (stored.length > 0) {
+      if (stored.length > 0 || !target.first) {
         return {
+          dashboard,
+          dashboards,
           computed: false,
           cards: stored,
           values: await this.registry.resolveForProject(
@@ -368,6 +518,8 @@ export class ProjectDashboardController {
           dormant: true,
         });
         return {
+          dashboard,
+          dashboards,
           computed: true,
           dormantSince: last!.at,
           ...board,
@@ -376,7 +528,7 @@ export class ProjectDashboardController {
       }
 
       const board = await this.slots.compute(project, user, windowDays);
-      return { computed: true, ...board, refreshedAt };
+      return { dashboard, dashboards, computed: true, ...board, refreshedAt };
     },
   });
 
