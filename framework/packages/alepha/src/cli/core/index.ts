@@ -36,7 +36,10 @@ import { RootCommand } from "./commands/root.ts";
 import { TestCommand } from "./commands/test.ts";
 import { TypecheckCommand } from "./commands/typecheck.ts";
 import { VerifyCommand } from "./commands/verify.ts";
+import { NoBareErrorRule } from "./conventions/NoBareErrorRule.ts";
 import { NoDateNowRule } from "./conventions/NoDateNowRule.ts";
+import { NoErrorClassRule } from "./conventions/NoErrorClassRule.ts";
+import { NoZodImportRule } from "./conventions/NoZodImportRule.ts";
 import { AlephaCliExtensionProvider } from "./providers/AlephaCliExtensionProvider.ts";
 import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
@@ -95,7 +98,10 @@ export * from "./commands/test.ts";
 export * from "./commands/typecheck.ts";
 export * from "./commands/verify.ts";
 export * from "./conventions/ConventionRule.ts";
+export * from "./conventions/NoBareErrorRule.ts";
 export * from "./conventions/NoDateNowRule.ts";
+export * from "./conventions/NoErrorClassRule.ts";
+export * from "./conventions/NoZodImportRule.ts";
 export * from "./providers/AlephaCliExtensionProvider.ts";
 export * from "./providers/AppEntryProvider.ts";
 export * from "./providers/ViteBuildProvider.ts";
@@ -187,6 +193,9 @@ export const AlephaCliServices = $module({
     ConventionRegistry,
     ConventionRunner,
     NoDateNowRule,
+    NoBareErrorRule,
+    NoErrorClassRule,
+    NoZodImportRule,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
     // it is a command, and it is the thing nobody outside the CLI wants.

@@ -48,9 +48,9 @@ describe("alepha check", () => {
   });
 
   it("succeeds and says so on a clean tree, which it never boots", async () => {
-    // An entry that would throw if it were imported: `check` reads source.
+    // An entry that would end the process if it were imported: `check` reads source.
     const { cli, cmd, output } = await create({
-      "src/main.server.ts": 'throw new Error("booted");\n',
+      "src/main.server.ts": "process.exit(42);\n",
     });
 
     await cli.run(cmd.check, { root: "/app" });

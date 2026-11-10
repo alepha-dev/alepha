@@ -18,8 +18,14 @@ import {
  *   as in the repository's own check.
  * - `const { now } = Date` and `Date["now"]()` are not reported: the rule
  *   reads the plain call, which is the one written by accident.
+ * - `globalThis.Date.now()` IS reported: it is the same clock.
  * - Tests are out of scope (`*.spec.*`, `__tests__/`, `test/`, `e2e/`,
  *   `fixtures/`): a test may do what is convenient.
+ * - A `*.browser.ts(x)` entry point is NOT skipped. No case of a `Date.now()`
+ *   needed before the container exists was found in the framework or in
+ *   Lore when the rule was written, and a component has
+ *   `useInject(DateTimeProvider)`. One that turns up is exempted on its line
+ *   with its reason.
  */
 export class NoDateNowRule extends ConventionRule {
   public readonly id = "no-date-now";

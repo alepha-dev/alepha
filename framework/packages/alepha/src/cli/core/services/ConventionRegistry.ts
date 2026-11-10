@@ -1,7 +1,10 @@
 import { $inject } from "alepha";
 
 import type { ConventionRule } from "../conventions/ConventionRule.ts";
+import { NoBareErrorRule } from "../conventions/NoBareErrorRule.ts";
 import { NoDateNowRule } from "../conventions/NoDateNowRule.ts";
+import { NoErrorClassRule } from "../conventions/NoErrorClassRule.ts";
+import { NoZodImportRule } from "../conventions/NoZodImportRule.ts";
 
 /**
  * Every convention rule `alepha check` knows, in the order it lists them.
@@ -13,7 +16,12 @@ import { NoDateNowRule } from "../conventions/NoDateNowRule.ts";
  * registry, and so every reader of it, holds the subclass.
  */
 export class ConventionRegistry {
-  protected readonly rules: ConventionRule[] = [$inject(NoDateNowRule)];
+  protected readonly rules: ConventionRule[] = [
+    $inject(NoDateNowRule),
+    $inject(NoBareErrorRule),
+    $inject(NoErrorClassRule),
+    $inject(NoZodImportRule),
+  ];
 
   /**
    * Every registered rule.
