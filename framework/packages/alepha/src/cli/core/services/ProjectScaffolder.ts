@@ -37,6 +37,7 @@ import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
+import { ConventionRegistry } from "./ConventionRegistry.ts";
 import {
   type DependencyModes,
   PackageManagerUtils,
@@ -58,6 +59,7 @@ export class ProjectScaffolder {
   protected readonly shell = $inject(ShellProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly utils = $inject(AlephaCliUtils);
+  protected readonly conventions = $inject(ConventionRegistry);
 
   /**
    * Name given to the migration generated at init.
@@ -411,7 +413,14 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "AGENTS.md",
-      agentMd({ saas: options.saas }),
+      agentMd({
+        saas: options.saas,
+        conventions: this.conventions.list().map((rule) => ({
+          id: rule.id,
+          description: rule.description,
+          fix: rule.fix,
+        })),
+      }),
       options.force,
     );
   }

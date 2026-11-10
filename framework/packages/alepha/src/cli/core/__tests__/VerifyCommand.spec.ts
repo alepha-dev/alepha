@@ -1,7 +1,14 @@
 import { Alepha } from "alepha";
-import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { CliProvider } from "alepha/command";
+import {
+  FileSystemProvider,
+  MemoryFileSystemProvider,
+  MemoryShellProvider,
+  ShellProvider,
+} from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import { defineConfig } from "../../config/defineConfig.ts";
 import { VerifyCommand } from "../commands/verify.ts";
 
 class TestVerifyCommand extends VerifyCommand {
@@ -54,6 +61,48 @@ describe("VerifyCommand", () => {
       await fs.writeFile("/app/src/index.ts", "export {};");
 
       expect(await verify.testHasTests("/app")).toBe(false);
+    });
+  });
+
+  describe("the check step", () => {
+    const run = async (config?: Parameters<typeof defineConfig>[0]) => {
+      const alepha = Alepha.create({ env: { LOG_LEVEL: "silent" } })
+        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        .with({ provide: ShellProvider, use: MemoryShellProvider });
+      if (config) {
+        defineConfig(config)(alepha);
+      }
+      await alepha.inject(MemoryFileSystemProvider).mkdir("/app/src", {
+        recursive: true,
+      });
+      await alepha
+        .inject(CliProvider)
+        .run(alepha.inject(VerifyCommand).verify, { root: "/app" });
+      return alepha
+        .inject(MemoryShellProvider)
+        .calls.map((call) => call.command)
+        .filter((command) => /alepha (lint|check|typecheck)$/.test(command));
+    };
+
+    it("runs alepha check between lint and typecheck, with no check key", async () => {
+      expect(await run()).toEqual([
+        "alepha lint",
+        "alepha check",
+        "alepha typecheck",
+      ]);
+    });
+
+    it("runs it when the config tunes the rules", async () => {
+      expect(
+        await run({ check: { rules: { "no-module-code": "off" } } }),
+      ).toContain("alepha check");
+    });
+
+    it("skips it with check: false", async () => {
+      expect(await run({ check: false })).toEqual([
+        "alepha lint",
+        "alepha typecheck",
+      ]);
     });
   });
 });

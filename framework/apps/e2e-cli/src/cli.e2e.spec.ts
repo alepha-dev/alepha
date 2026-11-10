@@ -618,6 +618,40 @@ describe("Alepha CLI E2E", () => {
         "alepha.tgz",
       );
     });
+
+    it("passes alepha check as scaffolded", async () => {
+      const result = await run(`"${CLI}" check`, PROJECT_DIR);
+      expect(result.stdout + result.stderr).toContain("No convention finding");
+      expect(result.exitCode).toBe(0);
+    });
+
+    it("fails alepha verify at the check step on a planted Date.now()", async () => {
+      // Stops at `check`, before typecheck and build: the case costs a clean
+      // and a lint. The file is restored for the suites that follow.
+      const controller = join(
+        PROJECT_DIR,
+        "src/api/controllers/HelloController.ts",
+      );
+      const original = await readFile(controller, "utf-8");
+      await writeFile(
+        controller,
+        original.replace(
+          "export class HelloController {\n",
+          "export class HelloController {\n  startedAt = Date.now();\n",
+        ),
+      );
+      try {
+        const result = await run(`"${CLI}" verify`, PROJECT_DIR);
+        const output = result.stdout + result.stderr;
+        expect(result.exitCode).not.toBe(0);
+        expect(output).toContain(
+          "src/api/controllers/HelloController.ts:6  no-date-now",
+        );
+        expect(output).not.toContain("alepha typecheck");
+      } finally {
+        await writeFile(controller, original);
+      }
+    });
   });
 
   /**

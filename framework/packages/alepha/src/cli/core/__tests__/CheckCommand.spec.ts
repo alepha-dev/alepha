@@ -8,6 +8,7 @@ import {
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
+import { defineConfig } from "../../config/defineConfig.ts";
 import { CheckCommand } from "../commands/check.ts";
 
 describe("alepha check", () => {
@@ -24,6 +25,7 @@ describe("alepha check", () => {
       await fs.writeFile(absolute, content);
     }
     return {
+      alepha,
       cli: alepha.inject(CliProvider),
       cmd: alepha.inject(CheckCommand),
       output: alepha.inject(MemoryOutputProvider),
@@ -93,6 +95,75 @@ describe("alepha check", () => {
 
     await cli.run(cmd.check, { root: "/app", argv: "src/b" });
     expect(output.text).toBe("No convention finding in 1 file.");
+  });
+
+  describe("the ways out of a failure", () => {
+    it("names check: false when the config has no check key, as an upgraded app's does", async () => {
+      const { cli, cmd, output } = await create({
+        "src/a.ts": "Date.now();\n",
+      });
+
+      await expect(cli.run(cmd.check, { root: "/app" })).rejects.toThrow(
+        CommandError,
+      );
+      expect(output.text).toContain("// alepha-allow <rule>: <reason>");
+      expect(output.text).toContain('check: { rules: { "<rule>": "off" } }');
+      expect(output.text).toContain(
+        "`check: false` in alepha.config.ts removes the step from alepha verify",
+      );
+    });
+
+    it("leaves check: false out once the app configures check", async () => {
+      const { alepha, cli, cmd, output } = await create({
+        "src/a.ts": "Date.now();\n",
+      });
+      defineConfig({ check: { ignore: ["src/legacy/**"] } })(alepha);
+
+      await expect(cli.run(cmd.check, { root: "/app" })).rejects.toThrow(
+        CommandError,
+      );
+      expect(output.text).toContain("three ways out");
+      expect(output.text).not.toContain("check: false");
+    });
+  });
+
+  describe("--list", () => {
+    it("prints every registered rule with its description and fix", async () => {
+      const { cli, cmd, output } = await create({});
+
+      await cli.run(cmd.check, { root: "/app", argv: "--list" });
+
+      for (const id of [
+        "no-date-now",
+        "no-bare-error",
+        "no-error-class",
+        "no-zod-import",
+        "no-vi-mock",
+        "describe-it",
+        "no-module-code",
+        "no-window-dialog",
+      ]) {
+        expect(output.text).toContain(id);
+      }
+      expect(output.text).toContain("8 rules, every one on by default.");
+    });
+
+    it("prints the registry as data with --json, the config's state included", async () => {
+      const { alepha, cli, cmd, output } = await create({});
+      defineConfig({ check: { rules: { "no-module-code": "off" } } })(alepha);
+
+      await cli.run(cmd.check, { root: "/app", argv: "--list --json" });
+
+      const rules = JSON.parse(output.text);
+      expect(rules).toHaveLength(8);
+      expect(rules.find((r: any) => r.id === "no-module-code")).toEqual({
+        id: "no-module-code",
+        default: "on",
+        state: "off",
+        description: expect.any(String),
+        fix: expect.any(String),
+      });
+    });
   });
 
   it("refuses an unknown --rule, naming the valid ids", async () => {

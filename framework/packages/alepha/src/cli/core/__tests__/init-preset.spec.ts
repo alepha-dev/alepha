@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import { version } from "../alephaPackageJson.ts";
 import { InitCommand } from "../commands/init.ts";
+import { ConventionRunner } from "../services/ConventionRunner.ts";
 
 /**
  * `alepha init --preset=<name>`.
@@ -33,6 +34,7 @@ describe("alepha init --preset", () => {
       cmd: alepha.inject(InitCommand),
       json: alepha.inject(Json),
       shell: alepha.inject(MemoryShellProvider),
+      runner: alepha.inject(ConventionRunner),
     };
   };
 
@@ -447,5 +449,46 @@ describe("alepha init --preset", () => {
         cli.run(cmd.init, { argv: "--preset=saas", root: "/project" }),
       ).rejects.toThrow(/expo/i);
     });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // both presets
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe("the scaffold and alepha check", () => {
+    for (const preset of ["default", "saas"]) {
+      it(`scaffolds a tree that passes every convention rule: ${preset}`, async () => {
+        const { fs, cli, cmd, json, runner } = createTestEnv();
+        await setupProject(fs, json);
+
+        await cli.run(cmd.init, {
+          argv: `--preset=${preset}`,
+          root: "/project",
+        });
+
+        const report = await runner.run({ root: "/project" });
+        expect(report.files).toBeGreaterThan(0);
+        expect(report.findings).toEqual([]);
+      });
+
+      it(`writes the conventions into AGENTS.md, generated from the registry: ${preset}`, async () => {
+        const { fs, cli, cmd, json } = createTestEnv();
+        await setupProject(fs, json);
+
+        await cli.run(cmd.init, {
+          argv: `--preset=${preset}`,
+          root: "/project",
+        });
+
+        const agents = await readFile(fs, "/project/AGENTS.md");
+        expect(agents).toContain("## Conventions");
+        expect(agents).toContain("- `no-date-now`: ");
+        expect(agents).toContain("- `no-window-dialog`: ");
+        expect(agents).toContain("// alepha-allow <rule>: <reason>");
+        expect(agents).toContain("npx alepha check --list");
+        // Said once, by no-zod-import, not twice.
+        expect(agents).not.toContain("never `zod` directly");
+      });
+    }
   });
 });

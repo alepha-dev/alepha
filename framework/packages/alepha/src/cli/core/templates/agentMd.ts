@@ -6,7 +6,33 @@
  * the admin console in `AppRouter.ts`, does not find it, and writes a second
  * one.
  */
-export const agentMd = (opts: { saas?: boolean } = {}): string => {
+export const agentMd = (
+  opts: {
+    saas?: boolean;
+    /**
+     * The rules `alepha check` enforces, from `ConventionRegistry`: the
+     * section is generated, so it never names a rule that does not exist.
+     */
+    conventions?: Array<{ id: string; description: string; fix: string }>;
+  } = {},
+): string => {
+  const conventions = opts.conventions?.length
+    ? `## Conventions
+
+\`alepha check\` enforces these over the whole project, and \`alepha verify\`
+runs it between lint and typecheck. Each line is the rule id, what it refuses,
+and what to write instead:
+
+${opts.conventions.map((rule) => `- \`${rule.id}\`: ${rule.description} ${rule.fix}`).join("\n")}
+
+A line that is a genuine exception carries an exemption on the line above it,
+with its reason, which is mandatory: \`// alepha-allow <rule>: <reason>\`. This
+list was written by \`alepha init\`; \`npx alepha check --list\` prints the rules
+of the installed version. Run \`npx alepha check --json\` for the findings as data.
+
+`
+    : "";
+
   const saas = opts.saas
     ? `
 ## Identity
@@ -129,14 +155,14 @@ Generate one with \`openssl rand -hex 32\`.
 ## Rules
 
 - Always check \`node_modules/alepha/src/\` before suggesting npm packages
-- Use \`z\` from Alepha for schemas (\`import { z } from "alepha"\`), never \`zod\` directly
 - Use \`protected\` instead of \`private\` for class members
 - Import with file extensions: \`import { User } from "./User.ts"\`
 
-## Commands
+${conventions}## Commands
 
 \`\`\`bash
 alepha lint              # Format and lint
+alepha check             # Alepha's conventions (see Conventions)
 alepha typecheck         # Type checking
 alepha test              # Run tests
 alepha build             # Build

@@ -1,6 +1,8 @@
-import { $inject, AlephaError, z } from "alepha";
+import { $inject, Alepha, AlephaError, z } from "alepha";
 import { $command, CommandError, ConsoleOutputProvider } from "alepha/command";
 
+import { checkOptions } from "../atoms/checkOptions.ts";
+import { ConventionRegistry } from "../services/ConventionRegistry.ts";
 import {
   type ConventionFinding,
   type ConventionReport,
@@ -15,6 +17,8 @@ import {
  * loaded, as for every command, for its `check` key.
  */
 export class CheckCommand {
+  protected readonly alepha = $inject(Alepha);
+  protected readonly registry = $inject(ConventionRegistry);
   protected readonly runner = $inject(ConventionRunner);
   protected readonly output = $inject(ConsoleOutputProvider);
 
@@ -39,8 +43,19 @@ export class CheckCommand {
         .string()
         .describe("Run only this rule (comma-separated for several)")
         .optional(),
+      list: z
+        .boolean()
+        .describe(
+          "Print the rules this version knows (id, default, description, fix) instead of checking; with --json, as data",
+        )
+        .optional(),
     }),
     handler: async ({ root, args, flags }) => {
+      if (flags.list) {
+        this.printList(flags.json);
+        return;
+      }
+
       const rules = flags.rule
         ?.split(",")
         .map((it) => it.trim())
@@ -103,6 +118,59 @@ export class CheckCommand {
     lines.push(
       "",
       `${this.count(findings.length, "finding")} in ${this.count(touched, "file")} (${this.count(files, "file")} checked).`,
+      "",
+      ...this.waysOut(),
+    );
+    this.output.print(lines.join("\n"));
+  }
+
+  /**
+   * What to do about a finding. An app that upgraded meets `check` inside
+   * `alepha verify` with no warning, so when its config has no `check` key at
+   * all, the last line names the one that removes the step.
+   */
+  protected waysOut(): string[] {
+    const lines = [
+      "Each finding has three ways out:",
+      "  - fix it, as the line under it says;",
+      "  - exempt that one line, with the reason, on the line above it: // alepha-allow <rule>: <reason>;",
+      '  - turn one rule off in alepha.config.ts: check: { rules: { "<rule>": "off" } }.',
+    ];
+    if (this.alepha.store.get(checkOptions)?.enabled === undefined) {
+      lines.push(
+        "`check: false` in alepha.config.ts removes the step from alepha verify altogether.",
+      );
+    }
+    return lines;
+  }
+
+  /**
+   * `alepha check --list`: every rule this version knows, with its state in
+   * this app.
+   */
+  protected printList(json?: boolean): void {
+    const config = this.alepha.store.get(checkOptions);
+    const rules = this.registry.list().map((rule) => ({
+      id: rule.id,
+      default: "on" as const,
+      state: config?.rules?.[rule.id] ?? ("on" as const),
+      description: rule.description,
+      fix: rule.fix,
+    }));
+
+    if (json) {
+      this.output.print(JSON.stringify(rules, null, 2));
+      return;
+    }
+
+    const lines: string[] = [];
+    for (const rule of rules) {
+      const state = rule.state === "off" ? "  (off in alepha.config.ts)" : "";
+      lines.push(`${rule.id}${state}`, `  ${rule.description} ${rule.fix}`);
+    }
+    lines.push(
+      "",
+      `${this.count(rules.length, "rule")}, every one on by default. Exempt a line with // alepha-allow <rule>: <reason>.`,
     );
     this.output.print(lines.join("\n"));
   }

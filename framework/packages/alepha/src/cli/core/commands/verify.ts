@@ -1,13 +1,15 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
+import { checkOptions } from "../atoms/checkOptions.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 
 export class VerifyCommand {
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
+  protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
 
   /**
@@ -39,6 +41,8 @@ export class VerifyCommand {
    * This command runs the following checks in order:
    * - Clean the project
    * - Format and lint the code (oxlint then oxfmt, one pass)
+   * - Check the conventions (`alepha check`), unless the config says
+   *   `check: false`
    * - Type check the code
    * - Run tests (skipped when the project has no spec files)
    * - Check database migrations (always; returns cleanly with no database)
@@ -51,6 +55,14 @@ export class VerifyCommand {
     handler: async ({ root, run }) => {
       await run("alepha clean");
       await run("alepha lint");
+
+      // Between lint and typecheck: a convention finding is cheaper to read
+      // than a type error, and often explains one. On in every app, an
+      // upgraded one included, with no key to opt in: only `check: false`
+      // removes the step, and `alepha check` typed by hand still runs.
+      if (this.alepha.store.get(checkOptions)?.enabled !== false) {
+        await run("alepha check");
+      }
 
       await run("alepha typecheck");
 
