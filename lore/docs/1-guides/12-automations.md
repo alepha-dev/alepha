@@ -156,6 +156,12 @@ clear that review. Inspect the reason, fix it, Test again and explicitly enable
 as the original author. Revision conflicts require a fresh read, not a blind
 resend. Removing an author from the project pauses their rules.
 
+The author is told: a rule that pauses for review, or breaks, files one
+message in its author's inbox, linking to the rule. It is sent when the rule
+enters that state and not again while it stays there. A check that could not
+run (the database did not answer in time) is not a verdict on the rule: the
+rule stays as it was and is checked again a few minutes later.
+
 Automation-generated effects do not become new automation source events, so
 rules cannot chain into loops. Existing application validation, ordinary domain
 behavior, audits and notifications remain in force.
