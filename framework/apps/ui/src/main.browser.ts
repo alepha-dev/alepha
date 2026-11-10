@@ -1,3 +1,4 @@
+import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
 
 import { UiWeb } from "./web/index.ts";
@@ -16,7 +17,11 @@ const alepha = Alepha.create({
  * here fails at load and blanks the page. The browser does not need it - it
  * reads the action registry SSR seeded into the store and calls those actions
  * over HTTP, which is the same path any real Alepha app takes.
+ *
+ * `AlephaSigil` is the browser half of the reporting `main.server.ts` describes.
  */
-alepha.with(UiWeb);
+alepha //
+  .with(AlephaSigil)
+  .with(UiWeb);
 
 run(alepha);

@@ -1,3 +1,4 @@
+import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
 
 import { UiShowcase } from "./showcase/index.ts";
@@ -19,9 +20,17 @@ const alepha = Alepha.create({
  * at load with "does not provide an export named '$action'" and takes the whole
  * page with it. The browser never needs the controller: it resolves actions
  * through the registry and calls them over HTTP.
+ *
+ * `AlephaSigil` reports page views, Web Vitals and grouped errors to Lore, under
+ * the `ui/production` copy of the `alepha` project. Lore mints its `SIGIL_KEY`
+ * when it deploys the copy, because the module declares the key in the build
+ * manifest. It is inert without the key and outside production, so dev and the
+ * e2e suite send nothing. It sits in both entries: the browser half collects,
+ * this half forwards from `POST /api/sigil/ingest`, where the key stays.
  */
 alepha //
   .with(UiShowcase)
+  .with(AlephaSigil)
   .with(UiWeb);
 
 run(alepha);
