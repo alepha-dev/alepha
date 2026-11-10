@@ -6,8 +6,8 @@ import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
   useClient,
+  useInfiniteQuery,
   useInject,
-  useQuery,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -32,12 +32,6 @@ interface InboxRow {
 const PAGE_SIZE = 25;
 
 /**
- * One empty list, so a scope with no appended pages keeps the rows' identity
- * across renders.
- */
-const NO_ROWS: InboxRow[] = [];
-
-/**
  * Every message addressed to the viewer.
  *
  * ## ⚠️ One route, two entry points, one query param
@@ -60,7 +54,8 @@ const NO_ROWS: InboxRow[] = [];
  *
  * ## Paging is the controller's cursor
  *
- * Accumulated into one array which the table sorts and searches in memory.
+ * Every page loaded so far lives in one `useInfiniteQuery` entry, flattened
+ * into one array which the table sorts and searches in memory.
  * The list is append-heavy, which is exactly why the controller pages by
  * cursor rather than offset, and why "Load more" adds to what is on screen
  * instead of replacing it.
@@ -83,46 +78,40 @@ const ProjectInbox = () => {
   const scope = !allProjects && project ? `project:${project.id}` : undefined;
 
   /**
-   * The first page, a `useQuery` keyed on the scope (#E59, #Q2328): a scope
-   * switched while the previous one loads can no longer land its rows on the
-   * new one. A failed read toasts; it used to leave an empty table that read
-   * as "no messages".
+   * Every page read so far, one `useInfiniteQuery` keyed on the scope by the
+   * controller's cursor (#E59, #Q2328, #Q3362): a scope switched while the
+   * previous one loads can no longer land its rows on the new one, and a
+   * scope change starts again from the first page. A failed read toasts; it
+   * used to leave an empty table that read as "no messages".
    */
-  const firstPage = useQuery(
+  const inbox = useInfiniteQuery(
     {
       key: ["inbox", scope ?? "all"],
-      handler: () =>
-        api.listInbox({
-          query: { limit: PAGE_SIZE, ...(scope ? { scope } : {}) },
-        }),
-      onSuccess: (page) => {
-        // ⚠️ Only the all-projects read may speak for the bell, whose count
+      handler: async (_ctx, cursor: string | undefined) => {
+        const page = await api.listInbox({
+          query: {
+            limit: PAGE_SIZE,
+            ...(scope ? { scope } : {}),
+            ...(cursor ? { cursor } : {}),
+          },
+        });
+        // ⚠️ Only an all-projects read may speak for the bell, whose count
         // is cross-project. A filtered page's `unreadCount` is this
         // project's, so writing it into `inboxUnreadAtom` would understate
         // every other project's unread at once. The scoped branch used to
         // feed the rail's own badge, which went with the rail entry
         // (feedback #P2127), so it now updates nothing - the bell keeps the
-        // number the loader gave it until the next navigation, which is
-        // exactly what it did before on this page.
+        // number the loader gave it until the next navigation.
         if (!scope) {
           setUnreadEverywhere({ count: page.unreadCount });
         }
+        return page;
       },
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.nextCursor,
     },
     [api, scope],
   );
-
-  /**
-   * The pages "Load more" appended, for the scope they were read in. A scope
-   * change leaves them behind rather than clearing them in an effect: rows
-   * from another scope simply stop matching.
-   */
-  const [more, setMore] = useState<{
-    scope?: string;
-    items: InboxRow[];
-    cursor?: string;
-  }>({ items: [] });
-  const extra = more.scope === scope ? more.items : NO_ROWS;
 
   /**
    * What this screen has marked read and when, over whatever the server
@@ -134,45 +123,21 @@ const ProjectInbox = () => {
     all?: string;
   }>({ ids: {} });
 
-  const firstItems = firstPage.data?.items as InboxRow[] | undefined;
+  const items = useMemo(
+    () => inbox.pages.flatMap((page) => page.items as InboxRow[]),
+    [inbox.pages],
+  );
   // Memoised: the table runs in static-data mode and re-renders on the
   // array's identity.
   const rows = useMemo(
     () =>
-      [...(firstItems ?? []), ...extra].map((row) => {
+      items.map((row) => {
         const at = row.readAt ?? readMarks.ids[row.id] ?? readMarks.all;
         return at === row.readAt ? row : { ...row, readAt: at };
       }),
-    [firstItems, extra, readMarks],
+    [items, readMarks],
   );
-  const cursor = extra.length > 0 ? more.cursor : firstPage.data?.nextCursor;
-
-  const loadMoreAction = useAction<[after: string], void>(
-    {
-      handler: async (_ctx, after) => {
-        const page = await api.listInbox({
-          query: {
-            limit: PAGE_SIZE,
-            ...(scope ? { scope } : {}),
-            cursor: after,
-          },
-        });
-        setMore((current) => ({
-          scope,
-          items: [
-            ...(current.scope === scope ? current.items : []),
-            ...(page.items as InboxRow[]),
-          ],
-          cursor: page.nextCursor,
-        }));
-        if (!scope) {
-          setUnreadEverywhere({ count: page.unreadCount });
-        }
-      },
-    },
-    [api, scope],
-  );
-  const busy = firstPage.loading || loadMoreAction.loading;
+  const busy = inbox.loading || inbox.loadingMore;
 
   /**
    * Mark one row read, optimistically. Quiet on failure (`onError`): the row
@@ -361,13 +326,13 @@ const ProjectInbox = () => {
         }}
       />
 
-      {cursor && (
+      {inbox.hasMore && (
         <div className="flex justify-center pt-3">
           <Button
             variant="outlined"
             size="sm"
             disabled={busy}
-            onClick={() => void loadMoreAction.run(cursor)}
+            onClick={() => void inbox.loadMore()}
           >
             {tr("inbox.loadMore")}
           </Button>

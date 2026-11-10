@@ -1,12 +1,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { Alepha } from "alepha";
-import { AlephaDateTime } from "alepha/datetime";
+import { Alepha, TimeoutError } from "alepha";
+import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
+import { HttpError } from "alepha/server";
 import { describe, test, vi } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useAction } from "../hooks/useAction.ts";
 import { useQuery } from "../hooks/useQuery.ts";
-import { AlephaReact } from "../index.ts";
+import { AlephaReact, isRetryableError, queryOptionsAtom } from "../index.ts";
 import { QueryCache } from "../services/QueryCache.ts";
 
 describe("useQuery", () => {
@@ -401,6 +402,27 @@ describe("useQuery keyed cache", () => {
     expect(calls).toBe(2);
   });
 
+  test("an invalidation of a fresh entry sends one request, not two", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    const handler = vi.fn(async () => handler.mock.calls.length);
+    const { result } = renderHook(
+      () => useQuery({ key: ["fresh"], handler, staleTime: [1, "minute"] }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.data).toBe(1));
+
+    await act(async () => alepha.inject(QueryCache).invalidate(["fresh"]));
+    await waitFor(() => expect(result.current.data).toBe(2));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
   /**
    * The cache atom declared its record keys as `z.text()`, which caps at 255
    * characters, so a key that serialized past that failed every write with
@@ -649,5 +671,268 @@ describe("useQuery keyed cache", () => {
       pending[1]("after-write");
     });
     await waitFor(() => expect(late.result.current.data).toBe("after-write"));
+  });
+});
+
+describe("useQuery retry", () => {
+  const setup = async (configure?: (alepha: Alepha) => void) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    configure?.(alepha);
+    await alepha.start();
+    const dateTime = alepha.inject(DateTimeProvider);
+    dateTime.pause();
+    const errors: Error[] = [];
+    alepha.events.on("react:action:error", ({ error }) => {
+      errors.push(error);
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    return { alepha, dateTime, errors, wrapper };
+  };
+
+  const unavailable = () => new HttpError({ status: 503 }, { message: "down" });
+
+  test("tries a 503 three times by default, 1 s then 2 s apart", async ({
+    expect,
+  }) => {
+    const { dateTime, errors, wrapper } = await setup();
+    const handler = vi.fn(async () => {
+      throw unavailable();
+    });
+
+    const { result } = renderHook(() => useQuery({ handler }, []), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    expect(result.current.loading).toBe(true);
+    await act(() => dateTime.travel(1250));
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
+    expect(result.current.loading).toBe(true);
+    expect(result.current.error).toBe(undefined);
+    await act(() => dateTime.travel(2500));
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(3));
+
+    await waitFor(() => expect(result.current.error?.message).toBe("down"));
+    expect(result.current.loading).toBe(false);
+    expect(errors).toHaveLength(1);
+
+    await act(() => dateTime.travel(60_000));
+    expect(handler).toHaveBeenCalledTimes(3);
+  });
+
+  test("succeeds on a retry, with no error ever shown", async ({ expect }) => {
+    const { dateTime, errors, wrapper } = await setup();
+    let calls = 0;
+    const handler = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        throw new TypeError("Failed to fetch");
+      }
+      return "value";
+    });
+
+    const { result } = renderHook(() => useQuery({ handler }, []), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    await act(() => dateTime.travel(1250));
+    await waitFor(() => expect(result.current.data).toBe("value"));
+    expect(result.current.error).toBe(undefined);
+    expect(errors).toHaveLength(0);
+  });
+
+  test("retries a network failure, a 408, 502, 503, 504 and a TimeoutError", async ({
+    expect,
+  }) => {
+    for (const make of [
+      () => new TypeError("Failed to fetch"),
+      () => new HttpError({ status: 408 }, { message: "x" }),
+      () => new HttpError({ status: 502 }, { message: "x" }),
+      () => new HttpError({ status: 503 }, { message: "x" }),
+      () => new HttpError({ status: 504 }, { message: "x" }),
+      () => new TimeoutError({ timeout: 1000 }),
+    ]) {
+      expect(isRetryableError(make())).toBe(true);
+    }
+  });
+
+  test("never retries an abort, a 4xx, a 429, a 500 or a plain Error", async ({
+    expect,
+  }) => {
+    for (const make of [
+      () => new DOMException("aborted", "AbortError"),
+      () => new HttpError({ status: 400 }, { message: "x" }),
+      () => new HttpError({ status: 404 }, { message: "x" }),
+      () => new HttpError({ status: 429 }, { message: "x" }),
+      () => new HttpError({ status: 500 }, { message: "x" }),
+      () => new Error("boom"),
+      () => new TypeError("x is not a function"),
+    ]) {
+      expect(isRetryableError(make())).toBe(false);
+    }
+
+    const { errors, wrapper } = await setup();
+    const handler = vi.fn(async () => {
+      throw new HttpError({ status: 500 }, { message: "defect" });
+    });
+    const { result } = renderHook(() => useQuery({ handler }, []), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.error?.message).toBe("defect"));
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveLength(1);
+  });
+
+  test("retry: 0 on the query, or in the atom, fails at once", async ({
+    expect,
+  }) => {
+    {
+      const { wrapper } = await setup();
+      const handler = vi.fn(async () => {
+        throw unavailable();
+      });
+      const { result } = renderHook(() => useQuery({ handler, retry: 0 }, []), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.error).toBeDefined());
+      expect(handler).toHaveBeenCalledTimes(1);
+    }
+    {
+      const { wrapper } = await setup((alepha) =>
+        alepha.store.mut(queryOptionsAtom, (options) => ({
+          ...options,
+          retry: false as const,
+        })),
+      );
+      const handler = vi.fn(async () => {
+        throw unavailable();
+      });
+      const { result } = renderHook(() => useQuery({ handler }, []), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.error).toBeDefined());
+      expect(handler).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  test("the query's own retry wins over the atom, and a predicate decides each one", async ({
+    expect,
+  }) => {
+    const { dateTime, wrapper } = await setup((alepha) =>
+      alepha.store.mut(queryOptionsAtom, (options) => ({
+        ...options,
+        retry: 0,
+      })),
+    );
+    const seen: number[] = [];
+    const handler = vi.fn(async () => {
+      throw new HttpError({ status: 429 }, { message: "slow down" });
+    });
+    const { result } = renderHook(
+      () =>
+        useQuery(
+          {
+            handler,
+            retry: (error, attempt) => {
+              seen.push(attempt);
+              return attempt <= 1 && (error as HttpError).status === 429;
+            },
+          },
+          [],
+        ),
+      { wrapper },
+    );
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    await act(() => dateTime.travel(1250));
+    await waitFor(() => expect(result.current.error).toBeDefined());
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(seen).toEqual([1, 2]);
+  });
+
+  test("an unmount stops the backoff: no attempt and no timer after it", async ({
+    expect,
+  }) => {
+    const { dateTime, errors, wrapper } = await setup();
+    const handler = vi.fn(async () => {
+      throw unavailable();
+    });
+    const { unmount } = renderHook(() => useQuery({ handler }, []), {
+      wrapper,
+    });
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    unmount();
+    await act(() => dateTime.travel(60_000));
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveLength(0);
+    expect(
+      (dateTime as unknown as { timeouts: unknown[] }).timeouts,
+    ).toHaveLength(0);
+  });
+
+  test("refetch() during the backoff starts a fresh sequence", async ({
+    expect,
+  }) => {
+    const { dateTime, wrapper } = await setup();
+    let calls = 0;
+    const handler = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        throw unavailable();
+      }
+      return calls;
+    });
+    const { result } = renderHook(() => useQuery({ handler }, []), {
+      wrapper,
+    });
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await result.current.refetch();
+    });
+    expect(result.current.data).toBe(2);
+    await act(() => dateTime.travel(60_000));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  test("two components on one key share one sequence of attempts", async ({
+    expect,
+  }) => {
+    const { dateTime, errors, wrapper } = await setup();
+    const handler = vi.fn(async () => {
+      throw unavailable();
+    });
+    const useTwo = () => ({
+      a: useQuery({ key: ["shared"], handler }, []),
+      b: useQuery({ key: ["shared"], handler }, []),
+    });
+    const { result } = renderHook(useTwo, { wrapper });
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+    await act(() => dateTime.travel(1250));
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
+    await act(() => dateTime.travel(2500));
+    await waitFor(() => expect(result.current.a.error).toBeDefined());
+    await waitFor(() => expect(result.current.b.error).toBeDefined());
+    expect(handler).toHaveBeenCalledTimes(3);
+    expect(errors).toHaveLength(2);
+  });
+
+  test("useAction has no retry: a failing handler runs once", async ({
+    expect,
+  }) => {
+    const { dateTime, wrapper } = await setup();
+    const handler = vi.fn(async () => {
+      throw unavailable();
+    });
+    const { result } = renderHook(() => useAction({ handler }, []), {
+      wrapper,
+    });
+    await act(async () => {
+      await result.current.run();
+    });
+    await act(() => dateTime.travel(60_000));
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(result.current.error?.message).toBe("down");
   });
 });

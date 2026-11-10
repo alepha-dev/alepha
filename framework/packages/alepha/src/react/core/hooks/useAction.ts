@@ -503,8 +503,16 @@ export function useAction<Args extends any[], Result = void>(
     }
 
     // Set up interval
+    // A tick is skipped while the document is hidden: nobody reads the
+    // result, and a background tab polling all day is a cost with no
+    // reader. The poll resumes at its next tick once the page is visible.
     intervalRef.current = dateTimeProvider.createInterval(
-      () => runActionRef.current([] as any, { supersede: true }),
+      () => {
+        if (typeof document !== "undefined" && document.hidden) {
+          return;
+        }
+        return runActionRef.current([] as any, { supersede: true });
+      },
       runEveryMs,
       true,
     );
@@ -639,6 +647,9 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
   /**
    * If specified, the action will be executed periodically at the given interval.
    * The interval is specified as a DurationLike value (number in ms, Duration object, or [number, unit] tuple).
+   *
+   * A tick is skipped while the document is hidden (a background tab, a
+   * locked phone): the poll resumes at its next tick once the page is back.
    *
    * @example
    * ```tsx

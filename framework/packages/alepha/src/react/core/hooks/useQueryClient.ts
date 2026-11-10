@@ -80,8 +80,9 @@ export interface UseQueryClientReturn {
   get: <T>(key: unknown[]) => T | undefined;
 
   /**
-   * Drop every cached entry. Mostly useful on logout, where keeping another
-   * user's data in memory would be a leak.
+   * Drop every cached entry; mounted queries refetch. A change of signed-in
+   * user already empties the cache (`alepha/react/auth`), so a sign-out
+   * needs no call here.
    */
   clear: () => void;
 }

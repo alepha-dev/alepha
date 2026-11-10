@@ -1,5 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+import { isAbortError, isNetworkError } from "alepha/react";
 import type { ComponentType } from "react";
 
 /**
@@ -92,30 +93,7 @@ export class ReactBootHealth {
    * Read through the `cause` chain, since a client may wrap the failure.
    */
   public isNetworkError(error: unknown): boolean {
-    let current: unknown = error;
-    for (let depth = 0; current && depth < 5; depth++) {
-      if (typeof current !== "object") {
-        return false;
-      }
-      const it = current as {
-        name?: string;
-        message?: string;
-        cause?: unknown;
-      };
-      if (it.name === "AbortError") {
-        return true;
-      }
-      if (
-        it.name === "TypeError" &&
-        /failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(
-          it.message ?? "",
-        )
-      ) {
-        return true;
-      }
-      current = it.cause;
-    }
-    return false;
+    return isAbortError(error) || isNetworkError(error);
   }
 }
 

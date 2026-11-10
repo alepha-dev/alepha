@@ -10,7 +10,9 @@ import {
 } from "react";
 
 import { queryCacheAtom } from "../atoms/queryCacheAtom.ts";
+import { queryOptionsAtom } from "../atoms/queryOptionsAtom.ts";
 import { QueryCache } from "../services/QueryCache.ts";
+import { type QueryRetry, withRetry } from "../utils/queryRetry.ts";
 import type { ActionContext } from "./useAction.ts";
 import { useAction } from "./useAction.ts";
 import { useAlepha } from "./useAlepha.ts";
@@ -109,6 +111,16 @@ export function useQuery<Result>(
   // `keepPreviousData` can render it while the new key loads.
   const previousDataRef = useRef<Result | undefined>(undefined);
 
+  // Every attempt of one run, retries included. Read when the run starts, so
+  // a change of the atom or of the option applies from the next run.
+  const attempt = (context: ActionContext): Promise<Result> =>
+    withRetry(() => optionsRef.current.handler(context), {
+      retry:
+        optionsRef.current.retry ?? alepha.store.get(queryOptionsAtom).retry,
+      signal: context.signal,
+      dateTime,
+    });
+
   const cached = serializedKey
     ? (entry?.data as Result | undefined)
     : undefined;
@@ -123,7 +135,22 @@ export function useQuery<Result>(
   // A fresh cache hit means the initial fetch is skipped entirely — that is
   // the point of `staleTime`. Invalidation removes the entry, which flips
   // this back to true and re-runs the effect below.
-  const shouldRun = enabled && !isFresh;
+  //
+  // A key a sign-out dropped stays quiet while this query is mounted
+  // (`QueryCache.clear({ refetch: false })`): the page is being left.
+  const silenced =
+    serializedKey !== undefined && cache?.isSilenced(serializedKey) === true;
+  const shouldRun = enabled && !isFresh && !silenced;
+
+  // Whether this render opened the gate: `runOnInit` turning true makes
+  // `useAction` start a run by itself. An invalidation of a FRESH entry does
+  // exactly that, and the refetch below used to start a second run beside
+  // it, so every such invalidation sent its request twice.
+  const shouldRunRef = useRef(shouldRun);
+  const gateOpened = shouldRun && !shouldRunRef.current;
+  useEffect(() => {
+    shouldRunRef.current = shouldRun;
+  });
 
   const action = useAction<[], Result>(
     {
@@ -147,6 +174,12 @@ export function useQuery<Result>(
       // the write, so it never reaches the cache: the run asks again, under
       // the new generation. Before this, a first fetch in flight during an
       // `invalidate()` stored its pre-mutation result.
+      //
+      // Retries run inside the deduped request, under its signal: two
+      // components on one key share one sequence of attempts, and the
+      // backoff stops when the last of them has gone. `useAction` sees one
+      // run, so a failure reaches `error`, `onError` and the toast once,
+      // after the last attempt.
       handler: options.key
         ? async (context) => {
             const key = optionsRef.current.key!;
@@ -154,8 +187,7 @@ export function useQuery<Result>(
               const generation = cache!.generation(key);
               const result = await cache!.dedupe(
                 key,
-                async (signal) =>
-                  optionsRef.current.handler({ ...context, signal }),
+                (signal) => attempt({ ...context, signal }),
                 // Without the signal, a run that superseded another was handed
                 // back the promise it had just aborted, and the query settled
                 // empty. See `QueryCache.dedupe`.
@@ -170,7 +202,7 @@ export function useQuery<Result>(
               }
             }
           }
-        : options.handler,
+        : attempt,
       runOnInit: shouldRun,
       // A disabled query does not poll either. Passing `runEvery` through
       // regardless kept the timer running behind `enabled: !!id`, so the gate
@@ -195,6 +227,34 @@ export function useQuery<Result>(
     serializedKey ? [...deps, serializedKey] : deps,
   );
 
+  // Register with the cache while mounted, enabled and keyed, so a tab
+  // return or a reconnect can re-run this query without dropping its entry
+  // (`QueryCache.refetchMounted`). A keyless query never registers.
+  const errorRef = useRef<Error | undefined>(undefined);
+  errorRef.current = action.error;
+  const refetchRef = useRef(action.refetch);
+  refetchRef.current = action.refetch;
+  useEffect(() => {
+    if (!cache || !serializedKey || !enabled) {
+      return;
+    }
+    return cache.observe({
+      key: optionsRef.current.key!,
+      refetch: () => void refetchRef.current(),
+      failed: () => errorRef.current !== undefined,
+      options: () => {
+        const current = optionsRef.current;
+        return {
+          staleTime: current.staleTime
+            ? dateTime.duration(current.staleTime).asMilliseconds()
+            : 0,
+          refetchOnFocus: current.refetchOnFocus,
+          refetchOnReconnect: current.refetchOnReconnect,
+        };
+      },
+    });
+  }, [cache, serializedKey, enabled, dateTime]);
+
   const refetch = useCallback(async () => {
     const run = await action.refetch();
     return run.ok ? run.value : undefined;
@@ -215,11 +275,13 @@ export function useQuery<Result>(
     }
     if (hadEntryRef.current === serializedKey && entry === undefined) {
       hadEntryRef.current = undefined;
-      void action.refetch();
+      if (!cache?.isSilenced(serializedKey) && !gateOpened) {
+        void action.refetch();
+      }
       return;
     }
     hadEntryRef.current = entry !== undefined ? serializedKey : undefined;
-  }, [entry, serializedKey, enabled, action.refetch]);
+  }, [entry, serializedKey, enabled, action.refetch, cache, gateOpened]);
 
   const data = serializedKey
     ? (cached ??
@@ -273,8 +335,52 @@ export interface UseQueryOptions<Result> {
   /**
    * How long a cached entry stays fresh. While fresh, mounting the query
    * renders from cache without fetching. Defaults to `0` — always revalidate.
+   *
+   * Also a floor for eviction: an entry nobody reads is dropped `gcTime`
+   * after its last reader left (`alepha.react.query.options`, 5 minutes by
+   * default), and never before its `staleTime` has run out.
    */
   staleTime?: DurationLike;
+
+  /**
+   * Try a failed read again. A number is how many retries follow the first
+   * attempt, `false` or `0` turns them off, and a predicate
+   * `(error, attempt) => boolean` decides each one (`attempt` counts from 1).
+   *
+   * A number retries only what may succeed when sent again: no HTTP response
+   * (a network failure), or a 408, 502, 503 or 504, a `TimeoutError`
+   * included. An abort, another 4xx, a 429, a 500 or a plain `Error` fails at
+   * once. The waits are 1 s, then doubling, capped at 30 s, with jitter.
+   *
+   * `loading` stays `true` across the retries, and `error`, `onError` and the
+   * `react:action:error` event fire once, after the last attempt. An unmount,
+   * a dependency change, `refetch()` or `cancel()` stops them.
+   *
+   * Defaults to the `retry` field of `alepha.react.query.options`
+   * ({@link queryOptionsAtom}), which is `2`: 1 s, then 2 s.
+   */
+  retry?: QueryRetry;
+
+  /**
+   * Re-run this query when the browser comes back online, if its entry is
+   * stale or its last run failed. The entry is kept while it runs, so `data`
+   * stays rendered. Keyed queries only.
+   *
+   * Defaults to the `refetchOnReconnect` field of
+   * `alepha.react.query.options`, which is `true`.
+   */
+  refetchOnReconnect?: boolean;
+
+  /**
+   * Re-run this query when the page becomes visible again (a tab return, a
+   * phone unlocked), if its entry is stale. The entry is kept while it runs.
+   * Keyed queries only. With `staleTime` at its default of `0` every entry
+   * is stale, so set a `staleTime` to bound how often a tab return asks.
+   *
+   * Defaults to the `refetchOnFocus` field of `alepha.react.query.options`,
+   * which is `false`.
+   */
+  refetchOnFocus?: boolean;
 
   /**
    * Keep rendering the previous key's data while a new key loads, instead of
