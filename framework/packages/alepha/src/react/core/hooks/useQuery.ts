@@ -142,6 +142,16 @@ export function useQuery<Result>(
     serializedKey !== undefined && cache?.isSilenced(serializedKey) === true;
   const shouldRun = enabled && !isFresh && !silenced;
 
+  // Whether this render opened the gate: `runOnInit` turning true makes
+  // `useAction` start a run by itself. An invalidation of a FRESH entry does
+  // exactly that, and the refetch below used to start a second run beside
+  // it, so every such invalidation sent its request twice.
+  const shouldRunRef = useRef(shouldRun);
+  const gateOpened = shouldRun && !shouldRunRef.current;
+  useEffect(() => {
+    shouldRunRef.current = shouldRun;
+  });
+
   const action = useAction<[], Result>(
     {
       id: options.id,
@@ -265,13 +275,13 @@ export function useQuery<Result>(
     }
     if (hadEntryRef.current === serializedKey && entry === undefined) {
       hadEntryRef.current = undefined;
-      if (!cache?.isSilenced(serializedKey)) {
+      if (!cache?.isSilenced(serializedKey) && !gateOpened) {
         void action.refetch();
       }
       return;
     }
     hadEntryRef.current = entry !== undefined ? serializedKey : undefined;
-  }, [entry, serializedKey, enabled, action.refetch, cache]);
+  }, [entry, serializedKey, enabled, action.refetch, cache, gateOpened]);
 
   const data = serializedKey
     ? (cached ??

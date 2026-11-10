@@ -1,8 +1,8 @@
 import { Segmented, cn } from "@alepha/ui";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import {
-  useAction,
   useClient,
+  useInfiniteQuery,
   useQuery,
   useQueryClient,
   useStore,
@@ -16,7 +16,7 @@ import {
   Inbox,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
@@ -49,11 +49,18 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const feedbackApi = useClient<FeedbackController>();
 
   const [status, setStatus] = useState<StatusFilter>("pending");
-  const [items, setItems] = useState<FeedbackResource[]>(props.items ?? []);
-  const [hasMore, setHasMore] = useState(props.hasMore ?? false);
   const queries = useQueryClient();
-  const [activeId, setActiveId] = useState<number | null>(
-    props.items?.[0]?.id ?? null,
+  /**
+   * The card the reader opened. `undefined` follows the list: the first row,
+   * and again the first row whenever the list no longer holds the one that
+   * was open (a status switch, a triage). `null` is "none": Back closes the
+   * pane, and it stays closed until a card is clicked or the status changes.
+   *
+   * Derived at render rather than written after each load: the load handler
+   * used to pick it, and an effect doing so would fight the URL (#156).
+   */
+  const [activeId, setActiveId] = useState<number | null | undefined>(
+    undefined,
   );
 
   /**
@@ -104,96 +111,83 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   );
 
   /**
-   * The list for one status, as a `useAction` called through `refetch`, so a
-   * status picked while the previous one is still loading supersedes it
-   * rather than landing after it (the effect this replaced had no guard).
-   * The handler checks its signal before writing, since a superseded run
-   * still resumes after its await.
+   * The list for one status, every page loaded so far, one
+   * `useInfiniteQuery` keyed by project and status (#Q3362).
    *
-   * No loading indicator on purpose: the status switch refetches in ~300ms
-   * and a spinner next to the segmented control reads as flicker
-   * (feedback #11).
-   *
-   * An action rather than a keyed query because the rows are local state:
-   * "Show more" appends pages to them, and the route loader already hands the
-   * first pending page in.
+   * - **A status switch is a key change**, which supersedes a status still
+   *   loading, so a slow `pending` can no longer land over `accepted`.
+   *   `keepPreviousData` keeps the rows of the status being left on screen
+   *   until the new ones arrive: no loading indicator on purpose, the switch
+   *   refetches in ~300ms and a spinner next to the segmented control reads
+   *   as flicker (feedback #11).
+   * - **The route loader's first `pending` page seeds the entry**
+   *   (`initialData`), so mounting sends no list request; `staleTime` covers
+   *   that handoff, and a status picked again within it renders from cache.
+   * - **The offset is the number of rows loaded so far**, not a page counter:
+   *   the list is filtered by status, so a row triaged between two presses
+   *   shifts the window instead of leaving a gap. Rows are deduped by id
+   *   below, since the window can then overlap.
+   * - **A triage invalidates the list**, and the hook reloads the pages it
+   *   had, in order: a list scrolled to its third page keeps its depth
+   *   instead of falling back to the first ten rows.
    */
-  const reloadAction = useAction<[next: StatusFilter], void>(
+  const list = useInfiniteQuery(
     {
-      handler: async ({ signal }, next) => {
-        if (!project) return;
-        const res = await feedbackApi.listFeedback({
-          params: { projectId: project.id },
-          query: { status: next, limit: FEEDBACK_PAGE_SIZE },
-        });
-        if (signal.aborted) return;
-        setItems(res.items);
-        setHasMore(res.hasMore);
-        // Keep the open item when the reloaded list still holds it, and fall
-        // back to the first row when it does not.
-        //
-        // It used to select the first row unconditionally, which was the same
-        // thing while every reload was a status switch or a triage action -
-        // both move the item OUT of the list being loaded. An addressed item
-        // is the case that broke it: opening `?feedback=120` on an accepted
-        // item switches the filter to `accepted`, and this reload would have
-        // thrown the selection away the moment the list carrying it arrived.
-        setActiveId((current) =>
-          current != null && res.items.some((item) => item.id === current)
-            ? current
-            : (res.items[0]?.id ?? null),
-        );
-      },
-    },
-    [feedbackApi, project?.id],
-  );
-
-  /**
-   * Show another status: the filter, then the list for it.
-   */
-  const showStatus = (next: StatusFilter) => {
-    setStatus(next);
-    void reloadAction.refetch(next);
-  };
-
-  /**
-   * Append the next page. Deliberately not a `reload`: the selected card and
-   * the pages already on screen both survive, so pressing this never moves
-   * the detail pane out from under whoever is reading it.
-   *
-   * The offset is `items.length` rather than a page counter, so a row
-   * accepted or rejected between two presses shifts the window instead of
-   * leaving a gap — the list is filtered by status, and a triaged row leaves
-   * it.
-   */
-  const loadMoreAction = useAction<[], void>(
-    {
-      handler: async () => {
-        if (!project) return;
-        const res = await feedbackApi.listFeedback({
-          params: { projectId: project.id },
+      key: ["feedback-list", project?.id, status],
+      enabled: !!project,
+      initialData: props.items
+        ? {
+            pages: [{ items: props.items, hasMore: props.hasMore ?? false }],
+            pageParams: [0],
+          }
+        : undefined,
+      staleTime: [30, "seconds"],
+      keepPreviousData: true,
+      handler: (_ctx, offset: number) =>
+        feedbackApi.listFeedback({
+          params: { projectId: project?.id as number },
           query: {
             status,
             limit: FEEDBACK_PAGE_SIZE,
-            offset: items.length,
+            ...(offset > 0 ? { offset } : {}),
           },
-        });
-        // Keyed by id: the offset above can overlap when the set shifted
-        // under it, and a duplicate row would break React's keys as well as
-        // the eye.
-        setItems((current) => {
-          const seen = new Set(current.map((item) => item.id));
-          return [
-            ...current,
-            ...res.items.filter((item) => !seen.has(item.id)),
-          ];
-        });
-        setHasMore(res.hasMore);
-      },
+        }),
+      initialPageParam: 0,
+      getNextPageParam: (last, pages) =>
+        last.hasMore
+          ? pages.reduce((count, page) => count + page.items.length, 0)
+          : undefined,
     },
-    [feedbackApi, project?.id, status, items.length],
+    [feedbackApi, project?.id, status],
   );
-  const loadingMore = loadMoreAction.loading;
+
+  // Keyed by id: the offset above can overlap when the set shifted under it,
+  // and a duplicate row would break React's keys as well as the eye.
+  const items = useMemo(() => {
+    const seen = new Set<number>();
+    const rows: FeedbackResource[] = [];
+    for (const page of list.pages) {
+      for (const item of page.items) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          rows.push(item);
+        }
+      }
+    }
+    return rows;
+  }, [list.pages]);
+  const hasMore = list.hasMore;
+  const loadingMore = list.loadingMore;
+
+  /**
+   * Show another status. A closed pane opens again on the new list's first
+   * row; an open card stays open when the new list holds it, which is what
+   * an addressed item switching the filter to its own status needs.
+   */
+  const showStatus = (next: StatusFilter) => {
+    setActiveId((current) => (current === null ? undefined : current));
+    setStatus(next);
+  };
 
   /**
    * The addressed item when it is NOT in the list beside it, which is the
@@ -251,7 +245,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
       (addressedItem?.shortId === addressed ? addressedItem : undefined))
     : undefined;
   const active =
-    addressedActive ?? items.find((p) => p.id === activeId) ?? null;
+    addressedActive ??
+    (activeId === null
+      ? null
+      : (items.find((p) => p.id === activeId) ?? items[0] ?? null));
 
   /**
    * Write the selection into the URL, so the pane can be linked to, and comes
@@ -269,7 +266,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const onChanged = () => {
     address(undefined);
     queries.invalidate(["feedback-count", project?.id]);
-    void reloadAction.refetch(status);
+    queries.invalidate(["feedback-list", project?.id]);
   };
 
   return (
@@ -347,7 +344,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                     type="button"
                     data-testid="feedback-show-more"
                     disabled={loadingMore}
-                    onClick={() => void loadMoreAction.run()}
+                    onClick={() => void list.loadMore()}
                     className="text-muted-foreground hover:bg-hover hover:text-foreground border-border border-t px-3 py-3 text-sm font-medium transition-colors disabled:opacity-60"
                   >
                     {loadingMore

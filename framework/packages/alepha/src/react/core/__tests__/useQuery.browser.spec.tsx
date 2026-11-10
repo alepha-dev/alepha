@@ -402,6 +402,27 @@ describe("useQuery keyed cache", () => {
     expect(calls).toBe(2);
   });
 
+  test("an invalidation of a fresh entry sends one request, not two", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    const handler = vi.fn(async () => handler.mock.calls.length);
+    const { result } = renderHook(
+      () => useQuery({ key: ["fresh"], handler, staleTime: [1, "minute"] }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.data).toBe(1));
+
+    await act(async () => alepha.inject(QueryCache).invalidate(["fresh"]));
+    await waitFor(() => expect(result.current.data).toBe(2));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
   /**
    * The cache atom declared its record keys as `z.text()`, which caps at 255
    * characters, so a key that serialized past that failed every write with

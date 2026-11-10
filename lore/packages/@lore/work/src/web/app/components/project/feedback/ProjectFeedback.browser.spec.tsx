@@ -1,11 +1,11 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom } from "@lore/core/web";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
-import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaContext, AlephaReact, QueryCache } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
@@ -53,6 +53,11 @@ class FakeLinkProvider extends LinkProvider {
   listCalls: Array<{ status?: string; limit?: number; offset?: number }> = [];
   byShortIdCalls: number[] = [];
   countCalls = 0;
+  /**
+   * A status whose list answers only when released, to hold a read in
+   * flight while another status is picked.
+   */
+  held?: { status: string; release: Promise<void> };
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -63,6 +68,10 @@ class FakeLinkProvider extends LinkProvider {
         }) => {
           const query = config.query ?? {};
           this.listCalls.push(query);
+          const held = this.held;
+          if (held && held.status === query.status) {
+            await held.release;
+          }
           const rows =
             query.status === "pending"
               ? ALL
@@ -303,5 +312,83 @@ describe("ProjectFeedback - Show more", () => {
     );
     // And it came from the dedicated count, not from measuring a page.
     expect(alepha.inject(FakeLinkProvider).countCalls).toBeGreaterThan(0);
+  });
+
+  it("mounts on the loader's first page without asking for the list", async ({
+    expect,
+  }) => {
+    const alepha = await mount();
+    const rendered = view(alepha);
+    expect(titles(rendered.container as HTMLElement)).toHaveLength(
+      FEEDBACK_PAGE_SIZE,
+    );
+    await waitFor(() =>
+      expect(alepha.store.get(currentFeedbackCountAtom)?.count).toBe(TOTAL),
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(alepha.inject(FakeLinkProvider).listCalls).toEqual([]);
+  });
+
+  it("a status picked while another loads supersedes it", async ({
+    expect,
+  }) => {
+    const alepha = await mount();
+    const fake = alepha.inject(FakeLinkProvider);
+    const rendered = view(alepha);
+    const root = rendered.container as HTMLElement;
+    // No locale is loaded here, so a label renders as its key.
+    const segment = (label: string) =>
+      Array.from(root.querySelectorAll("button, [role=radio]")).find(
+        (el) => el.textContent?.trim() === label,
+      ) as HTMLElement | undefined;
+
+    let release: () => void = () => {};
+    fake.held = {
+      status: "rejected",
+      release: new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    };
+    await act(async () => segment("feedback.filter.rejected")?.click());
+    await waitFor(() =>
+      expect(fake.listCalls.some((call) => call.status === "rejected")).toBe(
+        true,
+      ),
+    );
+    await act(async () => segment("feedback.filter.accepted")?.click());
+    await waitFor(() =>
+      expect(titles(root)).toEqual([`Report number ${ACCEPTED.shortId}`]),
+    );
+
+    // The rejected list, empty, lands late and changes nothing.
+    await act(async () => release());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(titles(root)).toEqual([`Report number ${ACCEPTED.shortId}`]);
+  });
+
+  it("reloads the pages it had after a triage, instead of falling back to the first", async ({
+    expect,
+  }) => {
+    const alepha = await mount();
+    const fake = alepha.inject(FakeLinkProvider);
+    const rendered = view(alepha);
+    const root = rendered.container as HTMLElement;
+
+    (await rendered.findByTestId("feedback-show-more")).click();
+    await waitFor(() =>
+      expect(titles(root)).toHaveLength(FEEDBACK_PAGE_SIZE * 2),
+    );
+    fake.listCalls = [];
+
+    // What `onChanged` does after a triage.
+    await act(async () =>
+      alepha.inject(QueryCache).invalidate(["feedback-list"]),
+    );
+    await waitFor(() => expect(fake.listCalls).toHaveLength(2));
+    expect(fake.listCalls.map((call) => call.offset ?? 0)).toEqual([
+      0,
+      FEEDBACK_PAGE_SIZE,
+    ]);
+    expect(titles(root)).toHaveLength(FEEDBACK_PAGE_SIZE * 2);
   });
 });

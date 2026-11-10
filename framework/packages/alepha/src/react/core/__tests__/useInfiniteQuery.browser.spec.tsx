@@ -283,6 +283,80 @@ describe("useInfiniteQuery", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
+  it("initialData seeds the entry: mounting sends no request while it is fresh, and it is used once", async ({
+    expect,
+  }) => {
+    const { cache, wrapper } = await setup();
+    const handler = pagedApi(() => rows(6));
+    const seed = await handler(undefined, 0);
+    handler.mockClear();
+
+    const { result } = renderHook(
+      () =>
+        useInfiniteQuery(
+          {
+            ...byPage(handler),
+            initialData: { pages: [seed], pageParams: [0] },
+            staleTime: [1, "minute"],
+          },
+          [],
+        ),
+      { wrapper },
+    );
+    expect(result.current.pages).toEqual([seed]);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.hasMore).toBe(true);
+    await waitFor(() => expect(cache.get(["rows"])).toBeDefined());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    expect(handler).toHaveBeenCalledTimes(0);
+
+    await act(() => result.current.loadMore());
+    expect(handler.mock.calls.map((call) => call[1])).toEqual([1]);
+
+    // An invalidation reloads from the server, never from the seed.
+    handler.mockClear();
+    await act(async () => cache.invalidate(["rows"]));
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
+    expect(result.current.pages).toHaveLength(2);
+  });
+
+  it("keepPreviousData keeps the previous key's pages on screen while the new one loads", async ({
+    expect,
+  }) => {
+    const { wrapper } = await setup();
+    let release: (() => void) | undefined;
+    const handler = vi.fn(async (_ctx: unknown, page: number) => {
+      if (release === undefined && handler.mock.calls.length > 1) {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return createPagination(
+        rows(3).slice(page * 2, page * 2 + 3),
+        2,
+        page * 2,
+      );
+    });
+    const { result, rerender } = renderHook(
+      (props: { filter: string }) =>
+        useInfiniteQuery(
+          {
+            ...byPage(handler, ["rows", props.filter]),
+            keepPreviousData: true,
+          },
+          [props.filter],
+        ),
+      { wrapper, initialProps: { filter: "a" } },
+    );
+    await waitFor(() => expect(result.current.pages).toHaveLength(1));
+    rerender({ filter: "b" });
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
+    expect(result.current.pages).toHaveLength(1);
+    await act(async () => release?.());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.pages).toHaveLength(1);
+  });
+
   it("a failing loadMore() never rejects and reports the error", async ({
     expect,
   }) => {

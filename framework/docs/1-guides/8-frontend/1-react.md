@@ -494,6 +494,8 @@ const orders = pages.flatMap((page) => page.content);
 
 It returns `{ pages, loadMore, hasMore, loadingMore, loading, error, refetch }`. `loadMore()` never rejects, and sends nothing while one is in flight or when `hasMore` is false. `loadingMore` is `true` only during `loadMore()`, and `loading` stays `false` then, so the list does not fall back to its skeleton when the reader asks for more. A key change starts again from the first page.
 
+Pages a route loader already read seed the entry with `initialData: { pages: [page], pageParams: [0] }`: mounting then sends no request while the entry is fresh, so pair it with a `staleTime` that covers the handoff. `keepPreviousData` keeps the previous key's pages on screen while a new key (a filter, a status) loads.
+
 **A refetch reloads what is loaded.** After an invalidation, `refetch()`, a reconnect or a tab-return refetch, the pages loaded so far are read again in order, each from the fresh previous page, stopping early if the list got shorter, and the entry is written once at the end. A list with 20 pages loaded sends 20 requests each time: keep that in mind before invalidating a long list on every write.
 
 The cache entry is an `InfiniteQueryData<Page, Param>`, `{ pages, pageParams }`, so an optimistic write is a `setData` that maps over `pages`:

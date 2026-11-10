@@ -1,6 +1,12 @@
 import type { Async } from "alepha";
 import type { DurationLike } from "alepha/datetime";
-import { type DependencyList, useCallback, useMemo, useRef } from "react";
+import {
+  type DependencyList,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import { QueryCache } from "../services/QueryCache.ts";
 import type { QueryRetry } from "../utils/queryRetry.ts";
@@ -81,11 +87,35 @@ export function useInfiniteQuery<Page, Param>(
     undefined,
   );
 
+  // `initialData` is held back from the cache until the first commit: a
+  // write during render would notify every other reader of the cache in the
+  // middle of it. Until it lands, the query is disabled, so mounting sends
+  // nothing, and the pages render from the seed itself. Once written, the
+  // entry is as fresh as `staleTime` says, which is what covers the handoff
+  // from a route loader. Used once per hook, on the first key it mounts with.
+  const seedRef = useRef(
+    options.initialData && !cache.get(options.key)
+      ? { key: serializedKey, data: options.initialData }
+      : undefined,
+  );
+  const seeding = seedRef.current?.key === serializedKey;
+  useEffect(() => {
+    const seed = seedRef.current;
+    if (!seed) {
+      return;
+    }
+    seedRef.current = undefined;
+    if (!cache.get(optionsRef.current.key)) {
+      cache.set(optionsRef.current.key, seed.data);
+    }
+  }, [cache]);
+
   const query = useQuery<InfiniteQueryData<Page, Param>>(
     {
       key: options.key,
       id: options.id,
-      enabled: options.enabled,
+      enabled: options.enabled !== false && !seeding,
+      keepPreviousData: options.keepPreviousData,
       staleTime: options.staleTime,
       retry: options.retry,
       refetchOnFocus: options.refetchOnFocus,
@@ -121,10 +151,17 @@ export function useInfiniteQuery<Page, Param>(
     deps,
   );
 
-  const pages = query.data?.pages ?? EMPTY;
-  if (query.data) {
-    loadedRef.current = { key: serializedKey, count: query.data.pages.length };
+  // The entry of THIS key: with `keepPreviousData`, `query.data` may still be
+  // the previous key's while this one loads, and must not count as loaded
+  // here.
+  const own = cache.get(options.key)?.data as
+    | InfiniteQueryData<Page, Param>
+    | undefined;
+  if (own) {
+    loadedRef.current = { key: serializedKey, count: own.pages.length };
   }
+  const data = query.data ?? (seeding ? seedRef.current?.data : undefined);
+  const pages = data?.pages ?? EMPTY;
 
   const nextParam = (data: InfiniteQueryData<Page, Param> | undefined) => {
     const last = data?.pages[data.pages.length - 1];
@@ -132,8 +169,7 @@ export function useInfiniteQuery<Page, Param>(
       ? optionsRef.current.getNextPageParam(last, data.pages)
       : undefined;
   };
-  const hasMore =
-    query.data !== undefined && nextParam(query.data) !== undefined;
+  const hasMore = data !== undefined && nextParam(data) !== undefined;
 
   // One page more, appended to the entry read when it lands. `useAction`'s
   // `run()` drops a call while one is in flight, so a double press sends one
@@ -235,6 +271,21 @@ export interface UseInfiniteQueryOptions<Page, Param> {
    * See {@link UseQueryOptions.staleTime}.
    */
   staleTime?: DurationLike;
+
+  /**
+   * Pages already read elsewhere, a route loader's first page most often,
+   * written into the cache entry when the hook first mounts, if the key has
+   * none. Mounting then sends no request while the entry is fresh, so pass a
+   * `staleTime` that covers the handoff. Used once per hook, for the first
+   * key it mounts with: an invalidation or a key change never brings it back.
+   */
+  initialData?: InfiniteQueryData<Page, Param>;
+
+  /**
+   * Keep rendering the previous key's pages while a new key loads, instead of
+   * an empty list. See {@link UseQueryOptions.keepPreviousData}.
+   */
+  keepPreviousData?: boolean;
 
   /**
    * See {@link UseQueryOptions.enabled}.
