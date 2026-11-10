@@ -10,14 +10,8 @@
   },
   "creates": null,
   "dryRun": true,
-  "files": [
-    "app.db",
-    "queue/jobs.db"
-  ],
-  "replaces": [
-    "app.db",
-    "queue/jobs.db"
-  ],
+  "files": ["app.db", "queue/jobs.db"],
+  "replaces": ["app.db", "queue/jobs.db"],
   "warning": "demo/production keeps its current APP_SECRET, which is not the one this backup's data was sealed with",
   "wouldRestore": "apps/demo-production/db/20261102T144915Z/manifest.json"
 }

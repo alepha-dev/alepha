@@ -69,6 +69,7 @@ type SafeParsed =
 export class EstatePullController {
   public static readonly ARTIFACT_PATH = "/estates/commands/:id/artifact";
   public static readonly SECRETS_PATH = "/estates/commands/:id/secrets";
+  public static readonly APP_SECRET_PATH = "/estates/commands/:id/app-secret";
   public static readonly RESULT_PATH = "/estates/commands/:id/result";
 
   /**
@@ -320,6 +321,115 @@ export class EstatePullController {
       return set;
     },
   });
+
+  /**
+   * `GET /estates/commands/:id/app-secret`: what Lore holds of the
+   * `APP_SECRET` of the copy this `deploy` deploys.
+   *
+   * `{ sha256 }`, the hex SHA-256 of the stored key, or `{}` when Lore holds
+   * none; `value` beside it only with `?value=1`, which Bay asks for only for
+   * an instance that has no key of its own (a rebuilt host, a copy moved
+   * from another estate). A routine deploy carries a hash, never the key.
+   * The hash is computed from the opened seal at request time: no hash is
+   * stored, since a stored hash of an operator-typed key would be a second,
+   * weaker copy at rest.
+   *
+   * ⚠️ **Its own route, never a field of the secret set.** That set is a
+   * flat record Bay writes as a secrets file and runs through
+   * `refuseBayOwned`: `APP_SECRET` inside it fails the deploy of every Bay
+   * older than this route. A Bay that predates the route never calls it.
+   *
+   * The copy is found the way the secret set finds it: by estate and
+   * `(app, environment)`, ambiguity refused; a stack member by
+   * `payload.instanceId`, only when its deploy row carries this command. Any
+   * other command is refused like an unknown one. Same no-store and no-log
+   * rules as the secret set: the one log line names the command and whether a
+   * value went, never the value nor the hash.
+   */
+  pullAppSecret = $route({
+    method: "GET",
+    path: EstatePullController.APP_SECRET_PATH,
+    schema: {
+      params: z.object({ id: z.string().min(1).max(64) }),
+      query: z.object({ value: z.string().max(8).optional() }),
+      headers: z.object({ authorization: z.string().optional() }),
+      response: z.object({
+        sha256: z.string().optional(),
+        value: z.string().optional(),
+      }),
+    },
+    handler: async ({ params, query, headers, reply }) => {
+      const command = await this.resolve(params.id, headers.authorization);
+      reply.setHeader("cache-control", "no-store");
+      if (command.kind !== "deploy") {
+        throw this.refused();
+      }
+      const instanceId = await this.deployedCopy(command);
+      const key = instanceId
+        ? await this.secrets.openGenerated(instanceId)
+        : undefined;
+      const withValue = query.value === "1" && !!key;
+      this.log.debug("App secret pulled", {
+        commandId: command.id,
+        held: !!key,
+        value: withValue,
+      });
+      if (!key) {
+        return {};
+      }
+      const sha256 = await this.sha256(key);
+      return withValue ? { sha256, value: key } : { sha256 };
+    },
+  });
+
+  /**
+   * The copy a `deploy` command deploys, by the lookups the secret set uses.
+   * Undefined when no copy Lore knows matches; a refusal when the names
+   * match two (another project's copy would be the answer), or when a
+   * member's deploy row does not carry the command.
+   */
+  protected async deployedCopy(
+    command: EstateCommand,
+  ): Promise<string | undefined> {
+    if (command.payload.instanceId) {
+      const member = await this.stackDeploys.memberInstanceFor(command);
+      if (!member) {
+        throw this.refused();
+      }
+      return member;
+    }
+    const matches = await this.instances.findMany({
+      where: {
+        estateId: { eq: command.estateId },
+        app: { eq: command.payload.app },
+        env: { eq: command.payload.environment },
+      },
+    });
+    if (matches.length > 1) {
+      this.log.warn(
+        "App secret refused: the command names more than one copy",
+        {
+          commandId: command.id,
+          matches: matches.length,
+        },
+      );
+      throw this.refused();
+    }
+    return matches[0]?.id;
+  }
+
+  /**
+   * Hex SHA-256 of a key, the form Bay compares.
+   */
+  protected async sha256(value: string): Promise<string> {
+    const hash = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(value),
+    );
+    return Array.from(new Uint8Array(hash))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
 
   /**
    * `POST /estates/commands/:id/result`: the answer to a command whose

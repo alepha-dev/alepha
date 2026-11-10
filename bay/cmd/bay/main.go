@@ -1408,6 +1408,11 @@ type deployArtifactOptions struct {
 	// artifact pushed from the Lore console): it keeps the one the last
 	// deploy declared instead of reading its silence as "none".
 	KeepBackupPolicy bool
+	// AppSecretCandidate is the key Lore holds for this copy, pulled only
+	// for an instance with no key of its own and passed in memory, never
+	// through the secrets file. Used only when the instance has no key
+	// before this deploy (see deploy.Options.AppSecretCandidate).
+	AppSecretCandidate string
 }
 
 // deployOutcome is what a completed deploy has to say for itself.
@@ -1544,11 +1549,12 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		// same contract `backupManager` has.
 		// The instance's own key when it has one (`bay config s3:apps
 		// <name/env>`), so no other app's credential ever lands in its .env.
-		Storage:         s.store.StorageFor(key),
-		MigratedStorage: opts.MigratedStorage,
-		Secrets:         secrets,
-		StackVars:       stackVars,
-		BackupPolicy:    opts.BackupPolicy,
+		Storage:            s.store.StorageFor(key),
+		MigratedStorage:    opts.MigratedStorage,
+		Secrets:            secrets,
+		StackVars:          stackVars,
+		BackupPolicy:       opts.BackupPolicy,
+		AppSecretCandidate: opts.AppSecretCandidate,
 	}, s.store)
 	if err != nil {
 		if blueGreen {

@@ -104,6 +104,12 @@ type Options struct {
 	// the caller. Recorded on the instance as its app layer; nil drops any
 	// earlier declaration, because it describes this release.
 	BackupPolicy *backuppolicy.Policy
+	// AppSecretCandidate is a key to give the instance when it has none:
+	// the one Lore holds for this copy (a rebuilt host, or a copy moved from
+	// another estate). Never used over a key the instance already has, and
+	// never written anywhere but its `.env`. A key taken from it counts as
+	// fresh, like a minted one: a snapshot restored in the same deploy wins.
+	AppSecretCandidate string
 }
 
 // Result reports what was deployed.
@@ -466,7 +472,12 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 	// the key, because a key minted a second ago is "no key" to the
 	// auto-restore that follows (provision runs first, and writes it).
 	secretSource = SecretKept
-	if env["APP_SECRET"] == "" {
+	switch {
+	case env["APP_SECRET"] != "":
+	case opts.AppSecretCandidate != "":
+		env["APP_SECRET"] = opts.AppSecretCandidate
+		secretSource = SecretFromLore
+	default:
 		secret, err := randomHex(32)
 		if err != nil {
 			return "", false, "", "", err

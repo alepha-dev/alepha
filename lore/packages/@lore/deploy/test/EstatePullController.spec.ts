@@ -22,6 +22,7 @@ import {
   appInstances,
   appSecrets,
   artifacts,
+  deployments,
   estateCommands,
   type Estate,
   estates,
@@ -35,6 +36,7 @@ class Repos {
   commands = $repository(estateCommands);
   instances = $repository(appInstances);
   secrets = $repository(appSecrets);
+  deployments = $repository(deployments);
 }
 
 interface TestContext {
@@ -711,5 +713,193 @@ describe("EstatePullController, a command's result", () => {
     expect(await refusalOf(foreign)).toEqual(await refusalOf(unknown));
 
     expect((await pushResult(ctx, command.id, body)).status).toBe(401);
+  });
+});
+
+const pullAppSecret = (
+  ctx: TestContext,
+  commandId: string,
+  secret: string,
+  withValue = false,
+): Promise<Response> =>
+  fetch(
+    `${ctx.base}/estates/commands/${commandId}/app-secret${withValue ? "?value=1" : ""}`,
+    { headers: { authorization: `Bearer ${secret}` } },
+  );
+
+const sha256Hex = (value: string): string =>
+  createHash("sha256").update(value).digest("hex");
+
+/**
+ * The key a rebuilt Bay host takes back from Lore, on its own route and never
+ * inside the secret set, so a Bay older than the route keeps deploying.
+ */
+describe("EstatePullController, the app secret", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("answers nothing, never cacheable, for a copy Lore holds no key for", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+    const command = await sentDeploy(ctx, machine, artifact);
+
+    const res = await pullAppSecret(ctx, command.id, machine.secret, true);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await res.json()).toEqual({});
+  });
+
+  it("answers the hash on a routine deploy, and the key only when asked", async ({
+    expect,
+  }) => {
+    // A copy moved from a Cloudflare estate: its key was minted there, and
+    // is the one its sessions and sealed data were signed with.
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+    const instance = await movedToBay(ctx, project.id, machine);
+    const key = await ctx.alepha
+      .inject(AppSecretService)
+      .openGenerated(instance.id);
+    const command = await sentDeploy(ctx, machine, artifact);
+
+    const routine = await pullAppSecret(ctx, command.id, machine.secret);
+    expect(routine.status).toBe(200);
+    expect(await routine.json()).toEqual({ sha256: sha256Hex(key!) });
+
+    const rebuilt = await pullAppSecret(ctx, command.id, machine.secret, true);
+    expect(rebuilt.headers.get("cache-control")).toBe("no-store");
+    expect(await rebuilt.json()).toEqual({
+      sha256: sha256Hex(key!),
+      value: key,
+    });
+  });
+
+  it("leaves the secret set without APP_SECRET, unchanged", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+    await movedToBay(ctx, project.id, machine);
+    const command = await sentDeploy(ctx, machine, artifact);
+
+    const set = await (
+      await pull(ctx, "secrets", command.id, machine.secret)
+    ).json();
+
+    expect(set).not.toHaveProperty("APP_SECRET");
+  });
+
+  it("refuses when the estate carries two copies of the same name", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const one = await createTestProject(ctx.alepha);
+    const two = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, one.id, "1.0.0");
+    for (const project of [one, two]) {
+      await ctx.repos.instances.create({
+        projectId: project.id,
+        app: "my-app",
+        env: "production",
+        estateId: machine.estate.id,
+      });
+    }
+    const command = await sentDeploy(ctx, machine, artifact);
+
+    const res = await pullAppSecret(ctx, command.id, machine.secret, true);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses a command that is not a deploy, and another estate's deploy", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const other = await enrol(ctx, owner, "ovh-2");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+    await movedToBay(ctx, project.id, machine);
+    const logs = await sentLogs(ctx, machine);
+    const deploy = await sentDeploy(ctx, machine, artifact);
+
+    expect(
+      (await pullAppSecret(ctx, logs.id, machine.secret, true)).status,
+    ).toBe(404);
+    expect(
+      (await pullAppSecret(ctx, deploy.id, other.secret, true)).status,
+    ).toBe(404);
+  });
+
+  it("answers a stack member through payload.instanceId, only when its deploy row carries the command", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+    // A member's estate is its stack environment's, so the copy's own
+    // estate is empty and the name lookup could not find it.
+    const member = await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "my-app",
+      env: "production",
+    });
+    await ctx.alepha.inject(AppSecretService).ensureGenerated(member.id);
+    const key = await ctx.alepha
+      .inject(AppSecretService)
+      .openGenerated(member.id);
+    const deployFor = async () =>
+      ctx.commands.markSent(
+        await ctx.commands.enqueue(machine.estate, {
+          kind: "deploy",
+          payload: {
+            app: "my-app",
+            environment: "production",
+            instanceId: member.id,
+            artifact: {
+              id: artifact.id,
+              sha256: artifact.sha256,
+              size: artifact.size,
+            },
+          },
+        }),
+      );
+
+    const stray = await deployFor();
+    expect(
+      (await pullAppSecret(ctx, stray.id, machine.secret, true)).status,
+    ).toBe(404);
+
+    const carried = await deployFor();
+    await ctx.repos.deployments.create({
+      projectId: project.id,
+      instanceId: member.id,
+      app: "my-app",
+      tag: "1.0.0",
+      sha256: artifact.sha256,
+      status: "running",
+      commandId: carried.id,
+    });
+    const res = await pullAppSecret(ctx, carried.id, machine.secret, true);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ sha256: sha256Hex(key!), value: key });
   });
 });

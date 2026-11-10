@@ -469,6 +469,30 @@ export class AppSecretService {
   }
 
   /**
+   * The copy's {@link GENERATED_KEY}, opened, or undefined when it has none.
+   *
+   * ⚠️ **The second method that decrypts**, beside {@link open}, and like it
+   * reachable from no controller a person calls. Its one caller is the
+   * app-secret pull, which a Bay machine deploying this copy reads: the hash
+   * on every deploy, the value only for an instance that has no key. A row
+   * that fails to open is a refusal, never "none": a machine told "none"
+   * would mint a key and escrow it over this row.
+   */
+  public async openGenerated(instanceId: string): Promise<string | undefined> {
+    const row = await this.find(instanceId, AppSecretService.GENERATED_KEY);
+    if (!row) {
+      return undefined;
+    }
+    try {
+      return await this.seal.open(row.valueSealed, AppSecretService.PURPOSE);
+    } catch {
+      throw new BadRequestError(
+        `The stored ${AppSecretService.GENERATED_KEY} of this copy could not be opened, so Lore cannot say which key it holds.`,
+      );
+    }
+  }
+
+  /**
    * One row by name, or nothing.
    */
   protected async find(

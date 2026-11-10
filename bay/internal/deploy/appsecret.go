@@ -19,6 +19,9 @@ const (
 	// SecretSnapshot: the key came back from the instance's own backup, with
 	// its data.
 	SecretSnapshot = "snapshot"
+	// SecretFromLore: the instance had none, and took the one Lore holds for
+	// its copy.
+	SecretFromLore = "lore"
 )
 
 // ReadAppSecret is the instance's current APP_SECRET, "" when its `.env` holds

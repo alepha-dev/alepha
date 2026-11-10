@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/deploy"
+	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -537,6 +539,10 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	if err != nil {
 		return "failed", "deploying", "could not pull the secret set: " + err.Error()
 	}
+	candidate, _, err := a.appSecretCandidate(ctx, client, cfg, cmd)
+	if err != nil {
+		return "failed", "deploying", err.Error()
+	}
 	secretsFile, err := a.writeSecretsFile(secrets)
 	if err != nil {
 		return "failed", "deploying", err.Error()
@@ -550,7 +556,8 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
 		SecretsFile: secretsFile,
 		// A console deploy pushes an artifact, which carries no backup policy.
-		KeepBackupPolicy: true,
+		KeepBackupPolicy:   true,
+		AppSecretCandidate: candidate,
 	})
 	if derr != nil {
 		return "failed", "deploying", derr.Error()
@@ -562,6 +569,47 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	}
 	a.pruneArtifacts(dir, keepArtifacts)
 	return "done", "", ""
+}
+
+/*
+appSecretCandidate asks Lore for the APP_SECRET it holds for the copy this
+command deploys, before anything is provisioned.
+
+An instance with a key of its own asks for the hash only: Lore's key is never
+used over the instance's (a mismatch is reported back by the escrow, not
+fixed here). An instance without one asks for the value, which goes to the
+deploy as a candidate in memory, after the snapshot in precedence: a snapshot
+restored in the same deploy still replaces it.
+
+A 404 is an older Lore: no candidate, the deploy mints as before. Any other
+failure fails the deploy before it provisions, because a key minted over an
+answer Bay could not read would then replace Lore's row, the only copy of
+the real one.
+*/
+func (a *actions) appSecretCandidate(ctx context.Context, client *http.Client, cfg connector.Config, cmd connector.Command) (string, loreSecret, error) {
+	instance := filepath.Join(a.s.root, "apps", naming.Instance(instanceName(cmd), cmd.Environment))
+	current, err := deploy.ReadAppSecret(instance)
+	if err != nil {
+		return "", loreSecret{}, fmt.Errorf("could not read the instance's APP_SECRET: %w", err)
+	}
+	ans, supported, err := connector.PullAppSecret(ctx, client, cfg, cmd.ID, current == "")
+	if err != nil {
+		return "", loreSecret{}, fmt.Errorf("could not ask Lore for the app's APP_SECRET, so the deploy stops before minting one: %w", err)
+	}
+	lore := loreSecret{supported: supported, sha256: ans.SHA256}
+	if current != "" || ans.Value == "" {
+		return "", lore, nil
+	}
+	a.s.log.Info("the instance has no APP_SECRET; Lore holds one for this copy", "command", cmd.ID)
+	return ans.Value, lore, nil
+}
+
+// loreSecret is what a deploy learned of Lore's APP_SECRET for its copy:
+// whether Lore has the route, and the hash of what it holds ("" for none),
+// for the escrow that follows the deploy.
+type loreSecret struct {
+	supported bool
+	sha256    string
 }
 
 // keepArtifacts bounds the local cache under <root>/artifacts: enough for a

@@ -590,6 +590,22 @@ export class StackDeployService {
   async memberSecretsFor(
     command: EstateCommand,
   ): Promise<Record<string, string> | undefined> {
+    const instanceId = await this.memberInstanceFor(command);
+    if (!instanceId) {
+      return undefined;
+    }
+    return await this.appSecrets.open(instanceId, {
+      except: BAY_OWNED_SECRET_KEYS,
+    });
+  }
+
+  /**
+   * The stack member a `deploy` command deploys, by its `payload.instanceId`,
+   * and only when that instance's deploy row carries this command id: the
+   * one check that ties a machine's command to a member copy. Undefined for
+   * anything else, which callers refuse like an unknown command.
+   */
+  async memberInstanceFor(command: EstateCommand): Promise<string | undefined> {
     const instanceId = command.payload.instanceId;
     if (command.kind !== "deploy" || !instanceId) {
       return undefined;
@@ -597,12 +613,7 @@ export class StackDeployService {
     const row = await this.appDeployments.findOne({
       where: { commandId: { eq: command.id }, instanceId: { eq: instanceId } },
     });
-    if (!row) {
-      return undefined;
-    }
-    return await this.appSecrets.open(instanceId, {
-      except: BAY_OWNED_SECRET_KEYS,
-    });
+    return row ? instanceId : undefined;
   }
 
   /**
