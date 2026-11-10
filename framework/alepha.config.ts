@@ -25,11 +25,21 @@ export default defineConfig({
     //
     // Scopes match on the segment before `/`, so `api` covers `api/users` and
     // `react` covers `react/form`.
+    //
+    // A module or a published package born after the last edit is the missing
+    // entry this list fails on: `ai` shipped in 0.34 and reached no release
+    // note until 0.37, and `create-alepha` never had one (#Q3364). `alepha`
+    // itself is listed for a change written against the package as a whole,
+    // and for a scope that spells the module's full path, `alepha/cli`.
     changelog({
       types: ["feat", "fix"],
       scopes: [
+        // the packages a scope may name whole
+        "alepha",
+        "create-alepha",
         // alepha: modules
         "actor",
+        "ai",
         "api",
         "background",
         "bucket",
@@ -59,6 +69,7 @@ export default defineConfig({
         "testing",
         "topic",
         "tracing",
+        "vitals",
         "websocket",
         // alepha: api sub-modules, also written bare
         "analytics",
