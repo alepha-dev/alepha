@@ -621,7 +621,11 @@ const ProjectFeedbackRequest = () => {
                         {tr("feedback.request.forProject")}
                       </span>
                     </div>
-                    <ProjectIcon fileId={project.icon} className="size-8" />
+                    <ProjectIcon
+                      fileId={project.icon}
+                      title={project.title}
+                      className="size-8"
+                    />
                   </div>
                 )}
               </div>

@@ -653,6 +653,7 @@ export default {
     "The selection includes latest: deploys that name no tag fail until CI pushes it again.",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Settings",
+  "project.rail.label": "Projects",
 
   "quest.create.submit": "Create quest",
   "quest.create.submitAndAccept": "Create and accept",

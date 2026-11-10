@@ -21,6 +21,7 @@ import {
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectAiContextPublisher from "./ProjectAiContextPublisher.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
+import ProjectRail from "./ProjectRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import {
@@ -228,28 +229,34 @@ const ProjectView = () => {
           sit below a return. */}
       <ProjectViewNavPublisher nav={nav} />
       <ProjectAiContextPublisher project={project} />
-      <AppShell
-        embedded
-        fill
-        // `Layout` mounts the bar at the root, which is the only place it can
-        // see the transitions that enter and leave this shell. Leaving the
-        // default on would draw a second, identical one on top of it.
-        //
-        // No `actionErrorToaster={false}` beside it, although `Layout` mounts
-        // that listener at the root too: `embedded` already skips the shell's
-        // own `Toaster` and `ActionErrorToaster`, and the prop is ignored.
-        progress={false}
-        variant="inset"
-        // The page surface. Defined in `main.css` rather than inline because
-        // it needs a `.dark` variant: the mockup's dot is near-white, which is
-        // invisible over a light page.
-        mainClassName="lore-page-dots"
-        brand={<ProjectSwitcher />}
-        nav={nav}
-        breadcrumbs={breadcrumbs}
-        topbarActions={
-          <>
-            {/* Through `before`, not as a sibling: that puts the create
+      {/* A row: the project rail (#Q3366), then the shell. The shell is
+          `fill`, so its sidebar is anchored to this wrapper rather than to
+          the viewport and sits beside the rail instead of under it. */}
+      <div className="flex h-full min-h-0">
+        <ProjectRail />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <AppShell
+            embedded
+            fill
+            // `Layout` mounts the bar at the root, which is the only place it can
+            // see the transitions that enter and leave this shell. Leaving the
+            // default on would draw a second, identical one on top of it.
+            //
+            // No `actionErrorToaster={false}` beside it, although `Layout` mounts
+            // that listener at the root too: `embedded` already skips the shell's
+            // own `Toaster` and `ActionErrorToaster`, and the prop is ignored.
+            progress={false}
+            variant="inset"
+            // The page surface. Defined in `main.css` rather than inline because
+            // it needs a `.dark` variant: the mockup's dot is near-white, which is
+            // invisible over a light page.
+            mainClassName="lore-page-dots"
+            brand={<ProjectSwitcher />}
+            nav={nav}
+            breadcrumbs={breadcrumbs}
+            topbarActions={
+              <>
+                {/* Through `before`, not as a sibling: that puts the create
               button and the magnifier in the cluster's own flex row, so they
               take its `gap-1` rather than the `gap-2` `AppShell` puts between
               topbar actions, which left a wider gap after the "+" than
@@ -273,29 +280,29 @@ const ProjectView = () => {
 
               Last node, so the order reads create, search, repository,
               bell, account. */}
-            <HeaderActions
-              before={
-                <>
-                  <ProjectActionsCreateButton />
-                  <HeaderSearchButton />
-                  {/* ⚠️ Hidden below `sm`, like the three settings controls
+                <HeaderActions
+                  before={
+                    <>
+                      <ProjectActionsCreateButton />
+                      <HeaderSearchButton />
+                      {/* ⚠️ Hidden below `sm`, like the three settings controls
                       inside the cluster (feedback #P2144). It is the one of
                       the four that is safe to simply drop: an outbound link
                       to the project's repository, which a phone reader can
                       reach from the project's own settings. `contents` so
                       the button stays a direct child of the flex row and
                       keeps its gap. */}
-                  <span className="hidden sm:contents">
-                    <HeaderRepositoryButton />
-                  </span>
-                  <ProjectInboxButton />
-                </>
-              }
-            />
-          </>
-        }
-      >
-        {/* The "Quest list | Kanban board" rail used to sit here, as the
+                      <span className="hidden sm:contents">
+                        <HeaderRepositoryButton />
+                      </span>
+                      <ProjectInboxButton />
+                    </>
+                  }
+                />
+              </>
+            }
+          >
+            {/* The "Quest list | Kanban board" rail used to sit here, as the
           first child of the content area. It is gone: the sidebar carries
           Quests and Kanban as two entries and each page has its own route
           and breadcrumb, so the rail was a second way to do the same
@@ -309,17 +316,17 @@ const ProjectView = () => {
           is now the only way in, and Quests must keep landing on the list.
           Nothing may send a bare `/:projectSlug` to the board: the
           `defaultSurface` setting that once could is gone (feedback #2066). */}
-        <div className="flex h-full flex-col">
-          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-            <div
-              className={`flex min-h-0 flex-1 flex-col ${aside || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
-            >
-              {aside ? (
-                <div className="flex min-h-0 flex-1">
-                  {/* The module's pane (Work's quest log), which owns its
+            <div className="flex h-full flex-col">
+              <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+                <div
+                  className={`flex min-h-0 flex-1 flex-col ${aside || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
+                >
+                  {aside ? (
+                    <div className="flex min-h-0 flex-1">
+                      {/* The module's pane (Work's quest log), which owns its
                     width, collapse state and breakpoint. */}
-                  <aside.component />
-                  {/* The list owns its own scroll, so this wrapper must NOT
+                      <aside.component />
+                      {/* The list owns its own scroll, so this wrapper must NOT
                   also scroll — a nested `overflow-auto` here showed a spurious
                   scrollbar.
 
@@ -329,27 +336,29 @@ const ProjectView = () => {
                   cancelling it with a negative margin. Padding here would
                   inset that header and leave a gutter down both sides of a
                   page designed to be flush. */}
-                  <div
-                    className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
-                      fullWidth ? "" : "p-2"
-                    }`}
-                  >
-                    <NestedView />
-                  </div>
+                      <div
+                        className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+                          fullWidth ? "" : "p-2"
+                        }`}
+                      >
+                        <NestedView />
+                      </div>
+                    </div>
+                  ) : fullWidth ? (
+                    <div className="flex min-h-0 w-full flex-1 flex-col">
+                      <NestedView />
+                    </div>
+                  ) : (
+                    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
+                      <NestedView />
+                    </div>
+                  )}
                 </div>
-              ) : fullWidth ? (
-                <div className="flex min-h-0 w-full flex-1 flex-col">
-                  <NestedView />
-                </div>
-              ) : (
-                <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
-                  <NestedView />
-                </div>
-              )}
+              </div>
             </div>
-          </div>
+          </AppShell>
         </div>
-      </AppShell>
+      </div>
     </>
   );
 };
