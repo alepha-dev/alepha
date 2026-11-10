@@ -221,6 +221,55 @@ func PullAppSecret(ctx context.Context, client *http.Client, cfg Config, command
 	return ans, true, nil
 }
 
+// EscrowAnswer is what Lore did with an escrowed key.
+type EscrowAnswer struct {
+	Stored   bool `json:"stored"`
+	Replaced bool `json:"replaced"`
+}
+
+/*
+PushAppSecret sends the key the instance runs on to Lore, which stores it
+sealed as the copy's APP_SECRET row, so a rebuilt host gets it back. Its own
+route, inside the deploy command, never the command's result or ack: a
+result is stored as a file the owner reads.
+
+supported is false on a 404 (an older Lore, or a command Lore knows no copy
+for). The key is never put in an error.
+*/
+func PushAppSecret(ctx context.Context, client *http.Client, cfg Config, commandID, key string) (ans EscrowAnswer, supported bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	body, err := json.Marshal(map[string]string{"value": key})
+	if err != nil {
+		return ans, false, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, commandURL(cfg, commandID, "app-secret"), bytes.NewReader(body))
+	if err != nil {
+		return ans, false, err
+	}
+	req.Header.Set("Authorization", "Bearer "+cfg.Secret)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := client.Do(req)
+	if err != nil {
+		return ans, false, fmt.Errorf("escrow the app secret: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return ans, false, nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return ans, false, fmt.Errorf("escrow the app secret: the sink answered %d", res.StatusCode)
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 4<<10)).Decode(&ans); err != nil {
+		return EscrowAnswer{}, false, errors.New("escrow the app secret: the answer is not the JSON object Bay reads")
+	}
+	return ans, true, nil
+}
+
+// SHA256Hex is the hex SHA-256 Lore answers for a key, for the comparison
+// that decides whether to escrow.
+func SHA256Hex(s string) string { return sha256Hex(s) }
+
 func sha256Hex(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])

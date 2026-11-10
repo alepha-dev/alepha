@@ -539,7 +539,7 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	if err != nil {
 		return "failed", "deploying", "could not pull the secret set: " + err.Error()
 	}
-	candidate, _, err := a.appSecretCandidate(ctx, client, cfg, cmd)
+	candidate, lore, err := a.appSecretCandidate(ctx, client, cfg, cmd)
 	if err != nil {
 		return "failed", "deploying", err.Error()
 	}
@@ -563,6 +563,9 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 		return "failed", "deploying", derr.Error()
 	}
 	a.s.log.Info("lore deploy served", "command", cmd.ID, "release", out.Result.Release)
+	// Before the terminal ack, which `finish` sends once this returns: Lore
+	// answers the escrow only while the command is sent or running.
+	a.escrowAppSecret(ctx, client, cfg, cmd, out.Result.App, lore)
 	if domain := out.Result.App.Domain(); domain != "" {
 		// The address `bay deploy` prints, for the terminal ack (#Q3155).
 		a.urls.Store(cmd.ID, "https://"+domain+"/")
@@ -602,6 +605,49 @@ func (a *actions) appSecretCandidate(ctx context.Context, client *http.Client, c
 	}
 	a.s.log.Info("the instance has no APP_SECRET; Lore holds one for this copy", "command", cmd.ID)
 	return ans.Value, lore, nil
+}
+
+/*
+escrowAppSecret sends Lore the key the instance now runs on, when the hash
+Lore answered before the deploy is missing or differs, so Lore's row is the
+running key and a rebuilt host gets it back. Every instance deployed before
+this existed has a key Lore never saw: its first deploy sends it.
+
+Never while the instance is under RestorePending: its key may still be
+replaced by the restore that clears the hold, and Lore must not be given a
+key the snapshot is about to supersede. The deploy after the restore sends
+it.
+
+A send that fails is a warning, never a failed deploy: the app is already up,
+and the next deploy finds the hash still different and sends again.
+*/
+func (a *actions) escrowAppSecret(ctx context.Context, client *http.Client, cfg connector.Config, cmd connector.Command, app state.App, lore loreSecret) {
+	if !lore.supported || app.Static {
+		return
+	}
+	if current, ok := a.s.store.Get(app.Key()); ok && current.RestorePending != nil {
+		a.s.log.Info("APP_SECRET not escrowed to Lore while a restore is pending", "app", app.Key(), "command", cmd.ID)
+		return
+	}
+	key, err := deploy.ReadAppSecret(a.s.instanceDir(app))
+	if err != nil || key == "" {
+		a.s.log.Warn("could not read the instance's APP_SECRET to escrow it to Lore", "app", app.Key(), "err", err)
+		return
+	}
+	if connector.SHA256Hex(key) == lore.sha256 {
+		return
+	}
+	ans, supported, err := connector.PushAppSecret(ctx, client, cfg, cmd.ID, key)
+	switch {
+	case err != nil:
+		a.s.log.Warn("could not escrow the instance's APP_SECRET to Lore; the next deploy tries again", "app", app.Key(), "command", cmd.ID, "err", err)
+	case !supported:
+		a.s.log.Info("Lore has no APP_SECRET escrow for this command (an older Lore)", "app", app.Key(), "command", cmd.ID)
+	case ans.Replaced:
+		a.s.log.Warn("Lore held another APP_SECRET for this copy and now holds the one this instance runs on", "app", app.Key(), "command", cmd.ID)
+	case ans.Stored:
+		a.s.log.Info("APP_SECRET escrowed to Lore", "app", app.Key(), "command", cmd.ID)
+	}
 }
 
 // loreSecret is what a deploy learned of Lore's APP_SECRET for its copy:

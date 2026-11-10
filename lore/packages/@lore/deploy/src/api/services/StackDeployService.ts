@@ -600,6 +600,25 @@ export class StackDeployService {
   }
 
   /**
+   * Append a line to the log of the app deploy riding on this command, the
+   * row carrying its `commandId`. Nothing when there is none.
+   */
+  async noteOnDeploy(command: EstateCommand, text: string): Promise<void> {
+    const row = await this.appDeployments.findOne({
+      where: { commandId: { eq: command.id } },
+    });
+    if (!row) {
+      return;
+    }
+    await this.appDeployments.updateById(row.id, {
+      log: [
+        ...row.log,
+        { at: new Date(this.dateTime.nowMillis()).toISOString(), text },
+      ].slice(-200),
+    });
+  }
+
+  /**
    * The stack member a `deploy` command deploys, by its `payload.instanceId`,
    * and only when that instance's deploy row carries this command id: the
    * one check that ties a machine's command to a member copy. Undefined for

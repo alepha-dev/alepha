@@ -25,6 +25,8 @@ import {
   deployments,
   estateProjects,
   estates,
+  stackEnvironments,
+  stacks,
 } from "../src/schemas/index.ts";
 
 /**
@@ -48,6 +50,8 @@ class TestRows {
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
   public readonly deployments = $repository(deployments);
+  public readonly stacks = $repository(stacks);
+  public readonly stackEnvironments = $repository(stackEnvironments);
 }
 
 const setup = async () => {
@@ -541,6 +545,36 @@ describe("a deployed copy's environment", () => {
           /set by Bay, not here/,
         );
         expect((await list(w)).items).toEqual([]);
+      },
+    );
+
+    it.each(["APP_SECRET", "APP_NAME"])(
+      "refuses %s on a stack's app service, which runs on a Bay",
+      async (key) => {
+        // A member's estate is its stack environment's, so the copy carries
+        // none of its own. With Lore escrowing a Bay copy's key and handing
+        // it to a rebuilt host, a value typed here would become that host's
+        // key: refused, as on a copy deploying to a Bay estate.
+        const w = await world();
+        const rows = alepha.inject(TestRows);
+        const stack = await rows.stacks.create({
+          projectId: w.project.id,
+          name: "crm",
+        });
+        const env = await rows.stackEnvironments.create({
+          stackId: stack.id,
+          env: "production",
+        });
+        await rows.instances.updateById(w.instance.id, {
+          stackEnvironmentId: env.id,
+        });
+
+        await expect(set(w, key, "a-value-long-enough")).rejects.toThrow(
+          /set by Bay, not here/,
+        );
+        expect(
+          await alepha.inject(AppSecretService).reservedKeys(w.instance.id),
+        ).toContain(key);
       },
     );
 

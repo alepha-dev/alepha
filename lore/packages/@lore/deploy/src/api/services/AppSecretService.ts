@@ -172,16 +172,34 @@ export class AppSecretService {
    * estate. The server still refuses them itself; this is the preview.
    */
   public async reservedKeys(instanceId: string): Promise<string[]> {
-    const instance = await this.instances.findById(instanceId);
-    const estate = instance?.estateId
-      ? await this.estates.findById(instance.estateId)
-      : undefined;
     return [
       ...new Set([
         ...EXCLUDED_SECRET_KEYS,
-        ...(estate?.type === "bay" ? BAY_OWNED_SECRET_KEYS : []),
+        ...((await this.bayCopy(instanceId)) ? BAY_OWNED_SECRET_KEYS : []),
       ]),
     ].sort();
+  }
+
+  /**
+   * Whether this copy runs on a Bay: one deploying to a Bay estate, or a
+   * stack's app service, whose estate is its stack environment's (only a Bay
+   * runs stacks) and which carries none of its own. The slug names the
+   * estate when the copy has one, for the refusal to name it.
+   */
+  protected async bayCopy(
+    instanceId: string,
+  ): Promise<{ estate?: string } | undefined> {
+    const instance = await this.instances.findById(instanceId);
+    if (!instance) {
+      return undefined;
+    }
+    if (instance.stackEnvironmentId) {
+      return {};
+    }
+    const estate = instance.estateId
+      ? await this.estates.findById(instance.estateId)
+      : undefined;
+    return estate?.type === "bay" ? { estate: estate.slug } : undefined;
   }
 
   /**
@@ -493,6 +511,72 @@ export class AppSecretService {
   }
 
   /**
+   * Store the key a Bay machine runs this copy on, as its
+   * {@link GENERATED_KEY} row, sealed only.
+   *
+   * ⚠️ **The one caller allowed to write a Bay copy's key**, the escrow route
+   * a machine calls inside its own `deploy` command, which is why it does
+   * not pass `assertDeliverable`. Unlike {@link set} it never keeps a readable
+   * copy, whatever the build's manifest declares, and it leaves `updatedBy`
+   * empty: nobody typed it, the machine runs it.
+   *
+   * Answers whether it wrote, and whether it replaced a different key, which
+   * the caller says on the deploy's log: the value replaced is gone for good.
+   */
+  public async escrow(
+    instanceId: string,
+    value: string,
+  ): Promise<{ stored: boolean; replaced: boolean }> {
+    if (!value || /\s/.test(value)) {
+      throw new BadRequestError(
+        `The ${AppSecretService.GENERATED_KEY} a machine escrows is not empty and holds no whitespace.`,
+      );
+    }
+    if (value.length > AppSecretService.MAX_VALUE_LENGTH) {
+      throw new BadRequestError(
+        `The ${AppSecretService.GENERATED_KEY} a machine escrows is at most ${AppSecretService.MAX_VALUE_LENGTH} characters.`,
+      );
+    }
+    const values = {
+      valueSealed: await this.seal.seal(value, AppSecretService.PURPOSE),
+      value: null,
+      valuePrefix: this.mask(value),
+      keyVersion: CredentialSealService.KEY_VERSION,
+      updatedBy: null,
+    };
+    const existing = await this.find(
+      instanceId,
+      AppSecretService.GENERATED_KEY,
+    );
+    if (!existing) {
+      await this.rows.create({
+        instanceId,
+        key: AppSecretService.GENERATED_KEY,
+        valueSealed: values.valueSealed,
+        valuePrefix: values.valuePrefix,
+        keyVersion: values.keyVersion,
+      });
+      return { stored: true, replaced: false };
+    }
+    let held: string | undefined;
+    try {
+      held = await this.seal.open(
+        existing.valueSealed,
+        AppSecretService.PURPOSE,
+      );
+    } catch {
+      // A row that no longer opens holds no key anyone can use: the
+      // machine's replaces it, and that is a replacement worth saying.
+      held = undefined;
+    }
+    if (held === value && existing.value == null && !existing.updatedBy) {
+      return { stored: false, replaced: false };
+    }
+    await this.rows.updateById(existing.id, values as any);
+    return { stored: true, replaced: held !== value };
+  }
+
+  /**
    * One row by name, or nothing.
    */
   protected async find(
@@ -554,15 +638,24 @@ export class AppSecretService {
     if (!BAY_OWNED_SECRET_KEYS.has(key)) {
       return;
     }
-    const instance = await this.instances.findById(instanceId);
-    const estate = instance?.estateId
-      ? await this.estates.findById(instance.estateId)
-      : undefined;
-    if (estate?.type === "bay") {
+    const bay = await this.bayCopy(instanceId);
+    if (!bay) {
+      return;
+    }
+    const where = bay.estate
+      ? `This copy deploys to the Bay estate '${bay.estate}'`
+      : "This copy is a stack's app service, which runs on a Bay";
+    if (key === AppSecretService.GENERATED_KEY) {
+      // ⚠️ Not "never reaches the app" any more: Lore holds the machine's
+      // key, escrowed by Bay, and hands it to a rebuilt host. A value typed
+      // here would become that host's key, silently.
       throw new BadRequestError(
-        `${key} is set by Bay, not here. This copy deploys to the Bay estate '${estate.slug}', which writes ${key} into every instance itself, so a value stored here would never reach the app.`,
+        `${key} is set by Bay, not here. ${where}: Bay mints the key and Lore holds the one the machine runs on, so a rebuilt host gets it back. A value typed here would become the key of the next rebuilt host. To change it, run \`bay secret replace\` on the machine.`,
       );
     }
+    throw new BadRequestError(
+      `${key} is set by Bay, not here. ${where}, which writes ${key} into every instance itself, so a value stored here would never reach the app.`,
+    );
   }
 
   /**

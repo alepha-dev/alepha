@@ -220,6 +220,10 @@ type deploySink struct {
 	appSecretRaw string
 	// appSecretAsks is each query /app-secret was asked with.
 	appSecretAsks []string
+	// escrowed is each key PUT to /app-secret; escrowStatus, when set, is
+	// what that PUT answers instead.
+	escrowed     []string
+	escrowStatus int
 }
 
 func newDeploySink(t *testing.T, artifactPath string) *deploySink {
@@ -244,6 +248,17 @@ func newDeploySink(t *testing.T, artifactPath string) *deploySink {
 			_, _ = w.Write([]byte(s.secrets))
 		case strings.HasSuffix(r.URL.Path, "/registries") && s.registries != "":
 			_, _ = w.Write([]byte(s.registries))
+		case strings.HasSuffix(r.URL.Path, "/app-secret") && r.Method == http.MethodPut:
+			if s.escrowStatus != 0 {
+				w.WriteHeader(s.escrowStatus)
+				return
+			}
+			var body struct{ Value string }
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			s.escrowed = append(s.escrowed, body.Value)
+			replaced := s.appSecret != "" && s.appSecret != body.Value
+			s.appSecret = body.Value
+			_ = json.NewEncoder(w).Encode(map[string]bool{"stored": true, "replaced": replaced})
 		case strings.HasSuffix(r.URL.Path, "/app-secret"):
 			s.appSecretAsks = append(s.appSecretAsks, r.URL.RawQuery)
 			if s.appSecretStatus != 0 {

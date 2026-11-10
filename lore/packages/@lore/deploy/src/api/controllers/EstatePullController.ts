@@ -383,6 +383,60 @@ export class EstatePullController {
   });
 
   /**
+   * `PUT /estates/commands/:id/app-secret`: the key the machine runs this
+   * copy on, escrowed so a rebuilt host gets it back.
+   *
+   * Bay sends it once its deploy has succeeded and before its terminal ack
+   * (`resolve` answers only a command that is `sent` or `running`), and only
+   * when the hash it was answered is missing or differs. Its own route, never
+   * the command result nor the ack: a result is stored as a file the owner
+   * reads, and a key must never land there.
+   *
+   * Stored sealed only, through {@link AppSecretService.escrow}. A row that
+   * held a different key is overwritten and said, never silently: a line on
+   * this deploy's log in Lore, naming no value, and `replaced` in the answer,
+   * which Bay logs the same. The replaced value is gone for good, and a
+   * mismatch no move, restore or `bay secret replace` explains means
+   * something else wrote the row.
+   */
+  pushAppSecret = $route({
+    method: "PUT",
+    path: EstatePullController.APP_SECRET_PATH,
+    schema: {
+      params: z.object({ id: z.string().min(1).max(64) }),
+      headers: z.object({ authorization: z.string().optional() }),
+      body: z.object({
+        value: z.string().min(1).max(AppSecretService.MAX_VALUE_LENGTH),
+      }),
+      response: z.object({ stored: z.boolean(), replaced: z.boolean() }),
+    },
+    handler: async ({ params, headers, body }) => {
+      const command = await this.resolve(params.id, headers.authorization);
+      if (command.kind !== "deploy") {
+        throw this.refused();
+      }
+      const instanceId = await this.deployedCopy(command);
+      if (!instanceId) {
+        // No copy Lore knows: there is no row to hold the key on.
+        throw this.refused();
+      }
+      const result = await this.secrets.escrow(instanceId, body.value);
+      if (result.replaced) {
+        await this.stackDeploys.noteOnDeploy(
+          command,
+          "Lore held another APP_SECRET for this copy and now holds the one the machine runs on.",
+        );
+      }
+      this.log.info("App secret escrowed", {
+        commandId: command.id,
+        stored: result.stored,
+        replaced: result.replaced,
+      });
+      return result;
+    },
+  });
+
+  /**
    * The copy a `deploy` command deploys, by the lookups the secret set uses.
    * Undefined when no copy Lore knows matches; a refusal when the names
    * match two (another project's copy would be the answer), or when a
