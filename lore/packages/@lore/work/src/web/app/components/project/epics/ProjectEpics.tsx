@@ -814,6 +814,33 @@ const ProjectEpics = () => {
               );
             },
           },
+          // Whether the epic was reviewed, and how many times (#Q3311). The
+          // open questions count beside the title is silent both for an epic
+          // never reviewed and for one whose questions are all answered; this
+          // column tells them apart. Hidden by default, like "Depends on".
+          reviewCount: {
+            label: tr("epic.list.column.reviews"),
+            sortable: true,
+            defaultHidden: true,
+            className: "w-24",
+            cell: (epic) =>
+              (epic.reviewCount ?? 0) > 0 ? (
+                <span
+                  className="tabular-nums"
+                  data-testid={`epic-review-count-${epic.number}`}
+                >
+                  {epic.reviewCount}
+                </span>
+              ) : (
+                <span
+                  className="text-muted-foreground"
+                  title={tr("epic.list.neverReviewed")}
+                  data-testid={`epic-review-count-${epic.number}`}
+                >
+                  -
+                </span>
+              ),
+          },
           updatedAt: {
             label: tr("epic.list.column.updated"),
             sortable: true,
@@ -1048,7 +1075,7 @@ const ProjectEpics = () => {
 export default ProjectEpics;
 
 /**
- * Client-side sort over the full epic list. Supports the five sortable
+ * Client-side sort over the full epic list. Supports the six sortable
  * columns; anything else (including no sort at all) falls back to epic
  * number ascending, which is the order `getEpics` already returns and the
  * order the numbers themselves imply.
@@ -1105,6 +1132,14 @@ const sortEpics = (
         return depA !== undefined ? -1 : 1;
       }
       return (depA - depB) * dir || a.number - b.number;
+    }
+    if (field === "reviewCount") {
+      // Never reviewed counts as zero, so it leads ascending and trails
+      // descending: "which epics still need a review" is the ascending read.
+      return (
+        ((a.reviewCount ?? 0) - (b.reviewCount ?? 0)) * dir ||
+        a.number - b.number
+      );
     }
     if (field === "number") {
       return (a.number - b.number) * dir;

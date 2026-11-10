@@ -87,6 +87,13 @@ export const epicResourceSchema = epics.schema.extend({
    * without it (the roadmap picks its own keys) stays valid.
    */
   openQuestions: z.integer().optional(),
+  /**
+   * How many times this epic was reviewed (#Q3311): its `epic_reviews` rows.
+   * It is what tells an epic never reviewed from one whose questions are all
+   * answered, which `openQuestions` reads as the same zero. Optional for the
+   * reason `openQuestions` is.
+   */
+  reviewCount: z.integer().optional(),
 });
 
 export type EpicResource = Infer<typeof epicResourceSchema>;

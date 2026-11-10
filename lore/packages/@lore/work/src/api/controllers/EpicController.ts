@@ -193,7 +193,8 @@ export class EpicController {
       // (#Q2636).
       // The open review questions too (#E121), keyed on the project for the
       // same reason.
-      const [allEpics, progress, open] = await Promise.all([
+      // And how many times each was reviewed (#Q3311), the same way.
+      const [allEpics, progress, open, reviewed] = await Promise.all([
         this.epics.findMany({
           where: {
             projectId: { eq: params.projectId },
@@ -202,6 +203,7 @@ export class EpicController {
         }),
         this.epicProgress.computeProgressOfProject(params.projectId),
         this.reviews.countOpenQuestionsOfProject(params.projectId),
+        this.reviews.countReviewsOfProject(params.projectId),
       ]);
 
       // The `dependsOn` translation, batched for the same reason: one query
@@ -216,6 +218,7 @@ export class EpicController {
           progress.get(epic.id) ?? this.zeroProgress(),
           epic.dependsOn != null ? byId.get(epic.dependsOn) : undefined,
           open.get(epic.id) ?? 0,
+          reviewed.get(epic.id) ?? 0,
         ),
       );
     },
@@ -970,19 +973,22 @@ export class EpicController {
     // no quests, for which `aggregate()` returns no row at all.
     //
     // The two in one step (#Q2636): neither needs the other.
-    const [predecessor, progress, openQuestions] = await Promise.all([
-      epic.dependsOn != null
-        ? this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
-        : undefined,
-      this.computeProgressOf([epic.id]),
-      this.reviews.countOpenQuestions(epic.id),
-    ]);
+    const [predecessor, progress, openQuestions, reviewCount] =
+      await Promise.all([
+        epic.dependsOn != null
+          ? this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
+          : undefined,
+        this.computeProgressOf([epic.id]),
+        this.reviews.countOpenQuestions(epic.id),
+        this.reviews.countReviews(epic.id),
+      ]);
 
     return this.toEpicResource(
       epic,
       progress.get(epic.id) ?? this.zeroProgress(),
       predecessor,
       openQuestions,
+      reviewCount,
     );
   }
 
@@ -1004,6 +1010,7 @@ export class EpicController {
     progress: EpicProgress,
     predecessor?: Pick<Epic, "number" | "status">,
     openQuestions?: number,
+    reviewCount?: number,
   ): EpicResource {
     return {
       ...epic,
@@ -1012,6 +1019,7 @@ export class EpicController {
       dependsOnNumber: predecessor?.number,
       dependsOnStatus: predecessor?.status,
       openQuestions,
+      reviewCount,
     };
   }
 

@@ -324,6 +324,27 @@ export class EpicReviewService {
   }
 
   /**
+   * How many times each epic of a project was reviewed (#Q3311), in one
+   * grouped statement keyed on the project alone, like the open questions
+   * above. An epic never reviewed is absent from the map.
+   */
+  async countReviewsOfProject(projectId: number): Promise<Map<number, number>> {
+    const rows = await this.reviews.aggregate({
+      select: { epicId: true, id: { count: true } },
+      where: { projectId: { eq: projectId } },
+      groupBy: ["epicId"],
+    });
+    return new Map(rows.map((row) => [row.epicId, row.id.count]));
+  }
+
+  /**
+   * How many times one epic was reviewed.
+   */
+  async countReviews(epicId: number): Promise<number> {
+    return await this.reviews.count({ epicId: { eq: epicId } });
+  }
+
+  /**
    * Delete every review of an epic, items first. `EpicController.deleteEpic`
    * calls it before the epic goes, so nothing rests on the cascade.
    */

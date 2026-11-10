@@ -262,6 +262,65 @@ describe("ProjectEpics - the status filter", () => {
     ).toContain("Quiet epic");
   });
 
+  /**
+   * The Reviews column (#Q3311): off until asked for, and what tells an epic
+   * never reviewed from one whose questions are all answered.
+   */
+  it("offers a Reviews column, hidden by default, that counts and sorts", async () => {
+    const view = await mount(
+      [],
+      [
+        { ...epicOf(1, "Once", "draft"), reviewCount: 1, openQuestions: 0 },
+        { ...epicOf(2, "Never", "draft"), reviewCount: 0, openQuestions: 0 },
+        { ...epicOf(3, "Thrice", "ready"), reviewCount: 3, openQuestions: 0 },
+      ],
+    );
+    const headers = () =>
+      [...view.container.querySelectorAll("thead th")].map((th) =>
+        (th.textContent ?? "").trim(),
+      );
+    const titles = () =>
+      [...view.container.querySelectorAll("tbody tr a")]
+        .map((a) => a.textContent ?? "")
+        .filter((text) => text.startsWith("#E"));
+
+    expect(headers()).not.toContain("Reviews");
+    expect(screen.queryByTestId("epic-review-count-1")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle columns" }));
+    fireEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Reviews" }),
+    );
+    await waitFor(() => expect(headers()).toContain("Reviews"));
+
+    expect(screen.getByTestId("epic-review-count-1").textContent).toBe("1");
+    expect(screen.getByTestId("epic-review-count-3").textContent).toBe("3");
+    const never = screen.getByTestId("epic-review-count-2");
+    expect(never.textContent).toBe("-");
+    expect(never.getAttribute("title")).toBe("Never reviewed");
+
+    // Sorted: the never-reviewed epic leads ascending and trails descending.
+    const header = within(
+      view.container.querySelector("thead") as HTMLElement,
+    ).getByRole("button", { name: /Reviews/ });
+    fireEvent.click(header);
+    await waitFor(() =>
+      expect(titles().map((t) => t.split(" - ")[1])).toEqual([
+        "Never",
+        "Once",
+        "Thrice",
+      ]),
+    );
+    fireEvent.click(header);
+    await waitFor(() =>
+      expect(titles().map((t) => t.split(" - ")[1])).toEqual([
+        "Thrice",
+        "Once",
+        "Never",
+      ]),
+    );
+  });
+
   it("shows every status while nothing is selected", async () => {
     await mount();
 

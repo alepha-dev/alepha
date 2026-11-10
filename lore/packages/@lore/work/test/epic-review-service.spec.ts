@@ -329,6 +329,42 @@ describe("EpicReviewService", () => {
       expect(counts.has(other.id)).toBe(false);
       expect(counts.has(quiet.id)).toBe(false);
     });
+
+    it("counts the reviews per epic of a project, and the list carries them", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const twice = await createTestEpic(ctx.alepha, project);
+      const once = await createTestEpic(ctx.alepha, project);
+      const never = await createTestEpic(ctx.alepha, project);
+      // Another project's review must not leak into this one's counts.
+      const elsewhere = await createTestProject(ctx.alepha);
+      const foreign = await createTestEpic(ctx.alepha, elsewhere);
+      await ctx.service.create(twice, undefined, review());
+      await ctx.service.create(twice, undefined, review());
+      await ctx.service.create(once, undefined, review());
+      // Answered or not, a review was filed: the count is of reviews.
+      await ctx.service.answer(once, 1, undefined, { waive: true });
+      await ctx.service.create(foreign, undefined, review());
+
+      const counts = await ctx.service.countReviewsOfProject(project.id);
+      expect(counts.get(twice.id)).toBe(2);
+      expect(counts.get(once.id)).toBe(1);
+      expect(counts.has(never.id)).toBe(false);
+      expect(counts.has(foreign.id)).toBe(false);
+      expect(await ctx.service.countReviews(twice.id)).toBe(2);
+      expect(await ctx.service.countReviews(never.id)).toBe(0);
+
+      const listed = await ctx.alepha
+        .inject(EpicController)
+        .getEpics(
+          { params: { projectId: project.id } },
+          { user: ownerToken(project) },
+        );
+      expect(
+        Object.fromEntries(listed.map((row) => [row.id, row.reviewCount])),
+      ).toEqual({ [twice.id]: 2, [once.id]: 1, [never.id]: 0 });
+    });
   });
 
   describe("deleting an epic", () => {
