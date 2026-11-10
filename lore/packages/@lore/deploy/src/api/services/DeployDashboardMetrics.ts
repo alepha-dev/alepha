@@ -31,16 +31,6 @@ export class DeployDashboardMetrics {
           },
         },
       },
-      clause: (value) =>
-        (value.value ?? 0) > 0
-          ? {
-              key:
-                value.value === 1
-                  ? "dashboard.clause.openBlights.one"
-                  : "dashboard.clause.openBlights",
-              args: [String(value.value)],
-            }
-          : undefined,
       order: 60,
       /**
        * On project boards too since #Q2650: a project that watches its apps

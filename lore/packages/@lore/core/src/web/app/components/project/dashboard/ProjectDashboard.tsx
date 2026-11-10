@@ -26,7 +26,6 @@ import ProjectDashboardArchived from "./ProjectDashboardArchived.tsx";
 import ProjectDashboardDormant from "./ProjectDashboardDormant.tsx";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
-import ProjectDashboardHeadline from "./ProjectDashboardHeadline.tsx";
 import ProjectDashboardLoading from "./ProjectDashboardLoading.tsx";
 
 /**
@@ -500,13 +499,12 @@ const ProjectDashboard = () => {
           }}
           onReset={() => void resetAction.run()}
           busy={busy}
+          // The dormant line only. The computed board's headline sentence
+          // went with #Q3287: the tiles under it say the same thing.
           lead={
-            computed &&
-            (board.dormantSince ? (
+            computed && board.dormantSince ? (
               <ProjectDashboardDormant since={board.dormantSince} />
-            ) : (
-              <ProjectDashboardHeadline cards={shown} values={values} />
-            ))
+            ) : undefined
           }
         />
       )}

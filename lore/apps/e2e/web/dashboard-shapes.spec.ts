@@ -131,9 +131,8 @@ test.describe("Computed project board", () => {
       expect(shown).toContainEqual(["headline", "releaseOutlook"]);
       expect(shown.some(([slot]) => slot === "plan")).toBe(true);
       expect(shown.some(([slot]) => slot === "apps")).toBe(true);
-      await expect(page.getByTestId("dashboard-headline")).toContainText(
-        "0.1.0",
-      );
+      // No sentence above the tiles (#Q3287): the tiles are the message.
+      await expect(page.getByTestId("dashboard-headline")).toHaveCount(0);
     });
 
     let workProject = { id: 0, slug: "" };

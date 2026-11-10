@@ -9,8 +9,8 @@ import ProjectDashboardWindow from "./ProjectDashboardWindow.tsx";
 
 export interface ProjectDashboardHeaderProps {
   /**
-   * What opens the row, left of the controls: the computed board's headline
-   * or the dormant line. The page title is not repeated here, since the
+   * What opens the row, left of the controls: the dormant line of a computed
+   * board nothing has moved on. The page title is not repeated here, since the
    * breadcrumb already names the page.
    */
   lead?: ReactNode;
