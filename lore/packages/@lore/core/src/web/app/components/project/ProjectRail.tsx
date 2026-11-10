@@ -1,15 +1,24 @@
-import { Tooltip, TooltipContent, TooltipTrigger, cn } from "@alepha/ui";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  cn,
+} from "@alepha/ui";
 import { useAlepha, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { LayoutGrid } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { recentProjectsAtom } from "../../atoms/recentProjectsAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import { ProjectRailCard } from "./ProjectRailCard.tsx";
 import { projectRailOrder } from "./projectRailOrder.ts";
 import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
 
@@ -18,15 +27,16 @@ import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
  * (#Q3366). Desktop only; at phone width the switcher in the sidebar stays
  * the way to change project.
  *
- * Shown once the viewer has two projects to switch between. Up to ten, by
- * when this browser last opened each (`recentProjectsAtom`), then a link to
- * every project.
+ * Shown once the viewer has two projects to switch between. Up to ten, then
+ * a link to every project. Hovering an icon opens a card with the project's
+ * image, name and repository (#Q3370).
  *
- * ⚠️ **The order is read once, when the rail mounts, and never moves while
- * it is on screen.** Opening a project records it at once, but the icons only
- * take the new order on the next page load: a rail is used by position, and
- * an icon that jumps to the top as you click it sends the next click to the
- * wrong project.
+ * ⚠️ **Selecting a project never moves it.** A rail is used by position, so
+ * the order is the viewer's own and stays put (#Q3370; #Q3366 moved the last
+ * opened to the top on the next load, and the owner asked for it to stop).
+ * `recentProjectsAtom` holds the order as shown: the first time, the projects
+ * by last update; afterwards a project already on the rail keeps its slot, and
+ * one opened from outside it (All projects, a link) takes the last slot.
  */
 const ProjectRail = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -35,46 +45,41 @@ const ProjectRail = () => {
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
   const [opened] = useStore(recentProjectsAtom);
-  const [frozen] = useState(() => opened ?? []);
-
-  const projectId = project?.id;
-  useEffect(() => {
-    if (projectId === undefined) return;
-    const current = alepha.store.get(recentProjectsAtom) ?? [];
-    if (current[0] === projectId) return;
-    alepha.store.set(
-      recentProjectsAtom,
-      [projectId, ...current.filter((id) => id !== projectId)].slice(
-        0,
-        RECENT_PROJECTS_CAP,
-      ),
-    );
-  }, [alepha, projectId]);
 
   const projects = overview?.projects ?? [];
+  const shown = project
+    ? projectRailOrder(projects, opened ?? [], project.id, RECENT_PROJECTS_CAP)
+    : [];
+  const shownKey = shown.map((it) => it.id).join(",");
+
+  // Store the order as shown, so the next page load draws the same rail. A
+  // no-op when nothing changed, which is every visit to a project already on
+  // the rail.
+  useEffect(() => {
+    if (!shownKey) return;
+    const current = (alepha.store.get(recentProjectsAtom) ?? []).join(",");
+    if (current === shownKey) return;
+    alepha.store.set(recentProjectsAtom, shownKey.split(",").map(Number));
+  }, [alepha, shownKey]);
+
   const live = projects.filter((it) => !it.archivedAt);
   if (!project || live.length < 2) {
     return null;
   }
 
-  const shown = projectRailOrder(
-    projects,
-    frozen,
-    project.id,
-    RECENT_PROJECTS_CAP,
-  );
-
   return (
     <nav
       aria-label={tr("project.rail.label")}
       data-testid="project-rail"
-      className="hidden w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto py-2.5 md:flex"
+      className="hidden w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r py-2.5 md:flex"
     >
       {shown.map((it) => {
         const active = it.id === project.id;
         return (
-          <Tooltip key={it.id}>
-            <TooltipTrigger
+          <HoverCard key={it.id}>
+            <HoverCardTrigger
+              delay={150}
+              closeDelay={100}
               render={
                 <Link
                   href={router.path("project", {
@@ -107,9 +112,11 @@ const ProjectRail = () => {
                     : "rounded-2xl group-hover/rail:rounded-xl",
                 )}
               />
-            </TooltipTrigger>
-            <TooltipContent side="right">{it.title}</TooltipContent>
-          </Tooltip>
+            </HoverCardTrigger>
+            <HoverCardContent side="right" align="start" sideOffset={12}>
+              <ProjectRailCard project={it} />
+            </HoverCardContent>
+          </HoverCard>
         );
       })}
       <span aria-hidden className="bg-border my-0.5 h-px w-8 shrink-0" />

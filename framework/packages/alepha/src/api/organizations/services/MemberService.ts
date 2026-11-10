@@ -9,6 +9,7 @@ import {
 } from "../entities/organizationMembers.ts";
 import { organizationRelations } from "../relations/organizationRelations.ts";
 import type { OrganizationMemberResource } from "../schemas/organizationMemberResourceSchema.ts";
+import { RankService } from "./RankService.ts";
 
 export class MemberService {
   public static readonly OWNER = "owner";
@@ -84,7 +85,7 @@ export class MemberService {
   public async remove(
     organizationId: string,
     userId: string,
-    actor: Pick<UserAccountToken, "id">,
+    actor: Pick<UserAccountToken, "id" | "ownership">,
   ): Promise<void> {
     const member = await this.members.findOne({
       where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
@@ -93,6 +94,14 @@ export class MemberService {
     if (member.rank === MemberService.OWNER) {
       throw new ForbiddenError("The organization owner cannot be removed");
     }
+    // `member:manage` lets you remove somebody, never somebody ranked above
+    // you: their rank must hold nothing yours does not.
+    //
+    // ⚠️ Resolved here, not with `$inject`: `RankService` reads the policy
+    // provider, which reads this service, so a field would be a cycle.
+    await this.alepha
+      .inject(RankService)
+      .assertOutranks(organizationId, userId, actor);
     await this.members.deleteById(member.id);
     await this.alepha.events.emit("organization:member:removed", {
       organizationId,

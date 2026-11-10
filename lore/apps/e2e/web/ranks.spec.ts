@@ -327,6 +327,46 @@ test.describe("Ranks", () => {
     }
   });
 
+  test("a plain member who types the rank editor's URL gets no editor", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(180_000);
+
+    await registerAndVerify(
+      page,
+      `owner3-${Date.now()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const title = `Pm${Date.now()}`.slice(0, 20);
+    const { slug } = await createProjectViaWizard(page, title);
+
+    const c = await newUserContext(browser, baseURL!, "plain");
+    try {
+      await inviteWithRank(page, slug, c.email, /^member$/i);
+      await accept(c.page, title);
+
+      // The rail does not offer the page.
+      await c.page.goto(`/${slug}/settings/members`);
+      await c.page.waitForLoadState("networkidle");
+      expect(await railHrefs(c.page, slug)).not.toContain(
+        `/${slug}/settings/ranks`,
+      );
+
+      // ⚠️ The route itself is unguarded, so a typed URL renders the page.
+      // Every read behind it is `rank:manage` and answers 403; what must not
+      // be there is an affordance to create or save a rank.
+      await c.page.goto(`/${slug}/settings/ranks`);
+      await c.page.waitForLoadState("networkidle");
+      await expect(
+        c.page.getByRole("button", { name: "Create rank" }),
+      ).toHaveCount(0);
+    } finally {
+      await c.ctx.close();
+    }
+  });
+
   test("transferring ownership demotes the promoter, in one action", async ({
     page,
     browser,

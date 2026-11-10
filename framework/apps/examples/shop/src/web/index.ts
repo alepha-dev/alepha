@@ -1,3 +1,4 @@
+import { AlephaSigil } from "@alepha/lore/sigil";
 import { AccountRouter } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
@@ -25,11 +26,19 @@ import { ShopI18n } from "./ShopI18n.ts";
  * columns or a translations table, and that decision belongs to a shop with a
  * second market — see the note in `ShopI18n`.
  *
+ * `AlephaSigil` reports page views, Web Vitals and grouped errors to Lore, under
+ * the `shop/production` copy of the `alepha` project. Lore mints its
+ * `SIGIL_KEY` when it deploys the copy, because the module declares the key in
+ * the build manifest. It is inert without the key and outside production, so
+ * dev and the e2e suite send nothing. Imported here, it reaches both entries,
+ * which both register this module. It mounts the floating feedback button;
+ * `SIGIL_CONFIG={"feedbackButton":"hidden"}` drops it.
+ *
  * @module shop.web
  */
 export const ShopWeb = $module({
   name: "shop.web",
-  imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
+  imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi, AlephaSigil],
   atoms: [panierAtom],
   /*
    * `AuthRouter` is the whole sign-in surface: it mounts `/auth/login`,

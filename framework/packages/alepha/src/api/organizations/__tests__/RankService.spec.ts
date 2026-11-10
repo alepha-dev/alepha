@@ -458,4 +458,61 @@ describe("alepha/api/organizations - RankService", () => {
 
     expect(ranks.membershipReads).toBe(0);
   });
+
+  it("never lets a manager act on a rank or a member ranked above them", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const org = ctx.organization.id;
+    const manager = ["organization:read", "rank:manage", "member:manage"];
+    const senior = [...manager, "quest:write"];
+    for (const [key, permissions] of Object.entries({
+      manager,
+      senior,
+      spare: senior,
+      junior: ["organization:read"],
+    })) {
+      await ctx.ranks.save(org, { key, name: key, permissions }, ctx.owner);
+    }
+    await ctx.ranks.assign(org, ctx.member.id, "manager", ctx.owner);
+
+    const users = ctx.alepha.inject(RealmProvider).userRepository();
+    const seat = async (name: string, rank: string) => {
+      const user = await users.create({ username: name });
+      await ctx.members.add(org, user.id, rank, ctx.owner);
+      return user.id;
+    };
+    const above = await seat("rank-senior", "senior");
+    const below = await seat("rank-junior", "junior");
+
+    // Rewriting or deleting a rank acts on everyone holding it.
+    await expect(
+      ctx.ranks.save(
+        org,
+        { key: "senior", name: "senior", permissions: ["organization:read"] },
+        ctx.member,
+      ),
+    ).rejects.toThrow("holds permissions you do not");
+    await expect(ctx.ranks.delete(org, "spare", ctx.member)).rejects.toThrow(
+      "holds permissions you do not",
+    );
+
+    // The target rank is low enough; the member being moved is not.
+    await expect(
+      ctx.ranks.assign(org, above, "junior", ctx.member),
+    ).rejects.toThrow("holds permissions you do not");
+    await expect(ctx.members.remove(org, above, ctx.member)).rejects.toThrow(
+      "holds permissions you do not",
+    );
+
+    // Somebody inside the manager's own set is still theirs to manage.
+    await ctx.ranks.assign(org, below, "manager", ctx.member);
+    await ctx.members.remove(org, below, ctx.member);
+    expect(
+      (await ctx.members.list(org)).map((it) => it.userId),
+    ).not.toContain(below);
+    expect(
+      (await ctx.members.list(org)).find((it) => it.userId === above)?.rank,
+    ).toBe("senior");
+  });
 });

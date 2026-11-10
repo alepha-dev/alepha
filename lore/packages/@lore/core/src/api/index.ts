@@ -54,6 +54,7 @@ import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPoli
 import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
 import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
+import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
@@ -363,7 +364,7 @@ export const LoreCoreApi = $module({
       ...alepha.store.get(organizationConfigAtom),
       memberPermissions: LorePermissions.MEMBER_DEFAULT,
       floor: LorePermissions.FLOOR,
-      ownerOnly: LorePermissions.OWNER_ONLY,
+      ownerOnly: LoreRankBounds.NEVER_GRANTED,
     });
     alepha.store.set(filesOptions, {
       ...alepha.store.get(filesOptions),

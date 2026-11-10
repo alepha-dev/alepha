@@ -691,6 +691,25 @@ describe("changelog", () => {
     });
 
     /**
+     * #Q3368: GitHub renders raw HTML in the release body, so a subject's
+     * `<table>` opened a real table that swallowed the rest of the release.
+     * Escaped, no subject opens a tag; a code span is never touched.
+     */
+    test("escapes a subject's angle brackets, so it opens no HTML tag", async () => {
+      const output = await render([
+        "abc12345 feat(orm): one span per statement, named <verb> <table>",
+        "def45678 fix(cli): assets are asset.<hash>.<ext>, as in `<script>`",
+      ]);
+
+      expect(output).toContain(
+        "- **orm**: one span per statement, named \\<verb> \\<table> (`abc12345`)",
+      );
+      expect(output).toContain(
+        "- **cli**: assets are asset.\\<hash>.\\<ext>, as in `<script>` (`def45678`)",
+      );
+    });
+
+    /**
      * #Q2494: the output is the GitHub release body, where a raw `@file`
      * mentions the organization `file` and lists it under Contributors.
      * Only a code span stops that; a scoped package and an address are not

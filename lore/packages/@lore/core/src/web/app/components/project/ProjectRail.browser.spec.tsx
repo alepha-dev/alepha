@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -169,15 +169,39 @@ describe("ProjectRail", () => {
     expect(screen.getAllByTestId("project-monogram")[0].textContent).toBe("P1");
   });
 
-  it("records the current project as the last opened", async ({ expect }) => {
+  it("keeps the order when a project is selected", async ({ expect }) => {
     const app = await mount(
-      [row(1, "Lore", "2026-01-02"), row(2, "Club", "2026-01-01")],
-      2,
-      [1],
+      [
+        row(1, "Lore", "2026-01-03"),
+        row(2, "Club", "2026-01-02"),
+        row(3, "Acme", "2026-01-01"),
+      ],
+      1,
     );
 
-    expect(app.store.get(recentProjectsAtom)).toEqual([2, 1]);
-    // The rail itself keeps the order it mounted with.
-    expect(titles()).toEqual(["Lore", "Club"]);
+    // The first order is by update, and it is stored as shown.
+    expect(titles()).toEqual(["Lore", "Club", "Acme"]);
+    expect(app.store.get(recentProjectsAtom)).toEqual([1, 2, 3]);
+
+    // Selecting Acme moves nothing, now or on the next load.
+    act(() => {
+      app.store.set(currentProjectAtom, row(3, "Acme", "2026-01-01"));
+    });
+    expect(titles()).toEqual(["Lore", "Club", "Acme"]);
+    expect(app.store.get(recentProjectsAtom)).toEqual([1, 2, 3]);
+  });
+
+  it("gives a project opened from outside the rail the last slot", async ({
+    expect,
+  }) => {
+    const projects = Array.from({ length: 11 }, (_, i) =>
+      row(i + 1, `Project ${i + 1}`, `2026-01-${String(30 - i)}`),
+    );
+    const app = await mount(projects, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+    expect(titles().at(-1)).toBe("Project 11");
+    expect(app.store.get(recentProjectsAtom)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 11,
+    ]);
   });
 });

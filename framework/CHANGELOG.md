@@ -13,7 +13,7 @@
 - **tracing**: hand-written OTLP/HTTP JSON exporter for Node and Bun, configured by OTEL_EXPORTER_OTLP_ENDPOINT and \_HEADERS, batched and flushed on stop #E86 #Q2720 (`f2ae774b`)
 - **inspector,cli**: alepha mcp calls an action as a test user, in development only #E118 #Q3197 (`ce262e02`)
 - **cli,inspector**: alepha mcp tails and filters the logs, reads captured emails and SMS #E118 #Q3196 (`c5ac4652`)
-- **orm**: one span per statement, named <verb> <table> with OTel db.\* attributes, raw execute spanned as query; $cache and $lock acquire spans; instrumentation spans only inside a trace #E86 #Q2728 (`61d7c3e5`)
+- **orm**: one span per statement, named \<verb> \<table> with OTel db.\* attributes, raw execute spanned as query; $cache and $lock acquire spans; instrumentation spans only inside a trace #E86 #Q2728 (`61d7c3e5`)
 - **cli**: alepha mcp app_map and app_describe, over AppMapRenderer #E118 #Q3195 (`2f892dd0`)
 - **api**: root spans for $job runs, cron ticks, queue and topic messages; producers carry traceparent and consumers link to it; topic handlers get their own context #E86 #Q2727 (`a3290bca`)
 - **orm,inspector**: entity columns declare secret: true, and /metadata says which #E118 #Q3221 (`ef9eb2c8`)
@@ -44,7 +44,7 @@
 
 ### Bug Fixes
 
-- **cli**: the server build names imported assets asset.<hash>.<ext>, as the client build does #Q3356 (`4537f2cb`)
+- **cli**: the server build names imported assets asset.\<hash>.\<ext>, as the client build does #Q3356 (`4537f2cb`)
 - **cli**: a vendoring project builds @alepha/ui and typechecks without the vendored packages' own configs #Q3310 (`39418c1d`)
 - **ui**: the account page hides the username row in "email" realms, as the registration form does #Q3295 (`abed49fe`)
 - **ui**: Badge tint tones paint success, warning and danger from the signal tokens, so colour-blind mode repaints quest priority and status chips #Q3232 (`81abb7ef`)
