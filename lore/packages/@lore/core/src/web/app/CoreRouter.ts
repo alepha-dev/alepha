@@ -26,9 +26,9 @@ import ErrorPage from "./components/shared/ErrorPage.tsx";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
+import { canInProject } from "./services/projectRank.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
 import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
-import { canInProject } from "./services/projectRank.ts";
 import { ReportsSummaryMarkdown } from "./services/ReportsSummaryMarkdown.ts";
 import { ReportsUrlQuery } from "./services/ReportsUrlQuery.ts";
 
