@@ -75,7 +75,12 @@ const ProjectSwitcher = () => {
               />
             }
           >
-            <ProjectIcon fileId={project.icon} className="size-8 rounded-lg" />
+            <ProjectIcon
+              fileId={project.icon}
+              title={project.title}
+              seed={project.slug}
+              className="size-8 rounded-lg"
+            />
             <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
               <span className="truncate font-semibold">{project.title}</span>
             </div>
@@ -119,7 +124,12 @@ const ProjectSwitcher = () => {
                     />
                   }
                 >
-                  <ProjectIcon fileId={c.icon} className="size-6" />
+                  <ProjectIcon
+                    fileId={c.icon}
+                    title={c.title}
+                    seed={c.slug}
+                    className="size-6"
+                  />
                   <span className="flex-1 truncate">{c.title}</span>
                   {isActive && <Check className="size-4" />}
                 </DropdownMenuItem>

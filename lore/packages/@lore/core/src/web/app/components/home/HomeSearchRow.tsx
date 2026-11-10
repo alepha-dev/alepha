@@ -61,6 +61,8 @@ export const HomeSearchRow = (props: HomeSearchRowProps) => {
       {item.kind === "project" ? (
         <ProjectIcon
           fileId={item.project.icon}
+          title={item.project.title}
+          seed={item.project.slug}
           className="size-5 rounded-sm"
           alt=""
         />

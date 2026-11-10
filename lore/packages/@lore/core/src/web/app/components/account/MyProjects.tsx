@@ -120,6 +120,8 @@ const MyProjects = () => {
               >
                 <ProjectIcon
                   fileId={project.icon}
+                  title={project.title}
+                  seed={project.slug}
                   alt={project.title}
                   className="size-5 shrink-0"
                 />

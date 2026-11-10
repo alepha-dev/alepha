@@ -168,7 +168,11 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
               onClick={() => selectProject(project.id)}
               className={rowClass(selected)}
             >
-              <ProjectIcon fileId={project.icon} className="size-5 rounded" />
+              <ProjectIcon
+                fileId={project.icon}
+                title={project.title}
+                className="size-5 rounded"
+              />
               <span className="flex-1 truncate">{project.title}</span>
               {selected && <Check className="size-3.5" />}
             </button>

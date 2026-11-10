@@ -58,6 +58,8 @@ export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
       <div className="flex min-w-0 items-center gap-3">
         <ProjectIcon
           fileId={props.project.icon}
+          title={props.project.title}
+          seed={props.project.slug}
           className="size-8 shrink-0 rounded-md"
           alt={props.project.title}
         />
