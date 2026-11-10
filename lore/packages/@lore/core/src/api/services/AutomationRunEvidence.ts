@@ -19,6 +19,7 @@ import {
 } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
+import { AutomationAttentionNotifier } from "./AutomationAttentionNotifier.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import {
   AutomationCatalog,
@@ -47,6 +48,7 @@ export class AutomationRunEvidence {
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly access = $inject(AutomationAccess);
+  protected readonly attention = $inject(AutomationAttentionNotifier);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly terminal: AutomationRun["status"][] = [
     "succeeded",
@@ -415,6 +417,7 @@ export class AutomationRunEvidence {
         "paused",
         "An action outcome is unknown; author review is required",
         true,
+        { notifyAuthor: true },
       );
     return finished;
   }
@@ -506,6 +509,13 @@ export class AutomationRunEvidence {
     reason: string | undefined,
     requiresApproval: boolean,
     options: {
+      /**
+       * Tell the rule's author when this moves it into a state that needs
+       * them. Set by the two callers nobody is watching, the health check
+       * and a run's own conclusion; a transition the author makes by hand
+       * is answered on their screen.
+       */
+      notifyAuthor?: boolean;
       expectedVersion?: number;
       condition?: SQLLike;
       statements?: SQLLike[];
@@ -596,6 +606,8 @@ export class AutomationRunEvidence {
       await this.cache.invalidateTable("automation_runs");
       for (const table of options.changedTables ?? [])
         await this.cache.invalidateTable(table);
+      if (options.notifyAuthor)
+        await this.attention.moved(rule, { health, requiresApproval, reason });
       return true;
     });
   }

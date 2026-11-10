@@ -276,7 +276,14 @@ const AutomationOverviewPage = () => {
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium">{row.title}</span>
                 {(row.reason || row.redactionReason) && (
-                  <span className="text-muted-foreground text-xs">
+                  // Capped and clamped (#Q3267): the column is `w-full`, so
+                  // on a wide screen a long reason ran as one line of a
+                  // thousand pixels. Two lines of a readable measure here,
+                  // the whole sentence on hover and on the rule's own page.
+                  <span
+                    className="text-muted-foreground line-clamp-2 max-w-prose text-xs whitespace-normal"
+                    title={row.reason || row.redactionReason}
+                  >
                     {row.reason || row.redactionReason}
                   </span>
                 )}

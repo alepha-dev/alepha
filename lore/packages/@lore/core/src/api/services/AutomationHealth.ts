@@ -1,5 +1,6 @@
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { HttpError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
@@ -17,6 +18,13 @@ import { BestEffort } from "./BestEffort.ts";
 /**
  * Enable intent is explicit. Dependency recovery may restore health, while a
  * security review survives reconciliation and requires a valid author action.
+ *
+ * ⚠️ Only a REFUSAL is a verdict on a rule (#Q3267). `inspect` used to read
+ * every error its checks threw as "the author must review this rule", so a
+ * D1 timeout while reading the author paused a healthy rule, demanded an
+ * approval nobody could explain, and printed the timed-out SQL as the reason
+ * a member read. A failure to CHECK says nothing about the rule: it is
+ * rethrown, the rule stays as it was, and the next sweep asks again.
  */
 export class AutomationHealth {
   protected readonly database = $inject(AutomationDatabase);
@@ -36,7 +44,7 @@ export class AutomationHealth {
     rule: Automation,
     explicit = false,
   ): Promise<AutomationHealthDecision> {
-    if (rule.requiresApproval && !explicit)
+    if (rule.requiresApproval && !explicit && !this.pausedByFailure(rule))
       return {
         health: "paused",
         requiresApproval: true,
@@ -52,26 +60,68 @@ export class AutomationHealth {
       if (!explicit) this.variables.assertApproved(rule, values);
       return { health: "active", requiresApproval: false };
     } catch (error) {
-      return {
-        health:
-          error instanceof AutomationDependencyError ? "broken" : "paused",
-        requiresApproval: !(error instanceof AutomationDependencyError),
-        reason: (error instanceof Error
-          ? error.message
-          : "Automation validation failed"
-        ).slice(0, 1024),
-      };
+      if (error instanceof AutomationDependencyError)
+        return {
+          health: "broken",
+          requiresApproval: false,
+          reason: error.message.slice(0, 1024),
+        };
+      if (this.refusal(error))
+        return {
+          health: "paused",
+          requiresApproval: true,
+          reason: error.message.slice(0, 1024),
+        };
+      throw error;
     }
   }
+
+  /**
+   * Whether a check REFUSED the rule, as opposed to failing to run.
+   *
+   * Every refusal the checks above make is a 4xx `HttpError` (the author is
+   * gone or lost a permission, a variable changed hands or is no longer
+   * approved). Anything else is the check itself failing: a database
+   * timeout, a driver error, a bug.
+   */
+  protected refusal(error: unknown): error is HttpError {
+    return (
+      error instanceof HttpError && error.status >= 400 && error.status < 500
+    );
+  }
+
+  /**
+   * A rule the old `inspect` paused over a failure to check, recognised by
+   * the driver's sentence it stored as the reason.
+   *
+   * Such a rule was never refused, so its pause is not a security review and
+   * does not survive reconciliation: it is inspected again in full, which
+   * pauses it again, with a real reason, if it does need its author.
+   */
+  protected pausedByFailure(rule: Pick<Automation, "reason">): boolean {
+    return AutomationHealth.FAILURE_REASON.test(rule.reason ?? "");
+  }
+
+  /**
+   * What a database failure reads like once stored as a reason: the D1
+   * timeout's own prefix, a statement over quoted columns, or a driver's
+   * error code. Narrow on purpose: a reason it matches by accident loses its
+   * review, so it names what only a driver writes.
+   */
+  protected static readonly FAILURE_REASON =
+    /^D1 query timed out|\bselect\s+"|\bSQLITE_|\bD1_ERROR\b/i;
   public async reconcile(rule: Automation): Promise<void> {
     return this.database.primary(async () => {
+      // A check that could not run throws out of here, before anything is
+      // written: not even `healthCheckedAt`, so the sweep takes this rule
+      // first next time.
       const decision = await this.inspect(rule);
       await this.evidence.transition(
         rule.id,
         decision.health,
         decision.reason,
         decision.requiresApproval,
-        { expectedVersion: rule.version },
+        { expectedVersion: rule.version, notifyAuthor: true },
       );
       const latest = await this.persistence.rules.getById(rule.id);
       await this.persistence.rules.updateMany(

@@ -39,6 +39,7 @@ import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
+import { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
 import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
@@ -59,6 +60,7 @@ import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
 import { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";
 import { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
+import { AutomationAttentionNotifier } from "./services/AutomationAttentionNotifier.ts";
 import { AutomationAudience } from "./services/AutomationAudience.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
@@ -252,6 +254,8 @@ export const LoreCoreApi = $module({
     // notification classes share.
     LoreInboxNotifications,
     AutomationNotificationTemplates,
+    AutomationAttentionNotifications,
+    AutomationAttentionNotifier,
     NotificationHtmlEscaper,
     // Who is in a project, as one read, for everything that writes to
     // people. One question, not two.
@@ -549,6 +553,7 @@ export {
 
 export { AutomationNotifications } from "./services/AutomationNotifications.ts";
 export { AutomationNotificationOutbox } from "./services/AutomationNotificationOutbox.ts";
+export { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
 export { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 export { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
 

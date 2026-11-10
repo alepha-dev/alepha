@@ -1,4 +1,5 @@
 import {
+  AutomationAccess,
   AutomationAuthority,
   AutomationCatalog,
   AutomationDatabase,
@@ -7,12 +8,18 @@ import {
   AutomationPersistence,
   AutomationRunEvidence,
   AutomationVariables,
+  LoreInboxRecipientProvider,
   ProjectCapabilityController,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
+import { jobExecutionEntity } from "alepha/api/jobs";
 import { apiKeyEntity } from "alepha/api/keys";
+import {
+  NotificationInboxRecipientProvider,
+  notificationInboxEntity,
+} from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -34,8 +41,27 @@ class HealthCatalog extends AutomationCatalog {
 }
 class RestartedHealth extends AutomationHealth {}
 
+/**
+ * Reading the author fails the way a D1 timeout does while `failing` is set:
+ * an error that is no refusal, carrying the statement in its message.
+ */
+class FlakyAccess extends AutomationAccess {
+  public failing = false;
+  public override async author(
+    ...args: Parameters<AutomationAccess["author"]>
+  ) {
+    if (this.failing)
+      throw new AlephaError(
+        'D1 query timed out: select "id", "version" from "users" where "id" = ?',
+      );
+    return super.author(...args);
+  }
+}
+
 class HealthRepositories {
   public readonly keys = $repository(apiKeyEntity);
+  public readonly inbox = $repository(notificationInboxEntity);
+  public readonly executions = $repository(jobExecutionEntity);
 }
 
 describe("Automation enable intent and health", () => {
@@ -92,7 +118,15 @@ describe("Automation enable intent and health", () => {
   beforeEach(async () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "error" },
-    }).with({ provide: AutomationCatalog, use: HealthCatalog });
+    })
+      .with({ provide: AutomationCatalog, use: HealthCatalog })
+      .with({ provide: AutomationAccess, use: FlakyAccess })
+      // The app's own entry makes this substitution; without it a
+      // `lore-user:` contact resolves to nobody and the push is skipped.
+      .with({
+        provide: NotificationInboxRecipientProvider,
+        use: LoreInboxRecipientProvider,
+      });
     bootLore(alepha, ["api"]);
     health = alepha.inject(AutomationHealth);
     persistence = alepha.inject(AutomationPersistence);
@@ -203,6 +237,111 @@ describe("Automation enable intent and health", () => {
     alepha.inject(HealthCatalog).omitted = undefined;
     await health.project(project.id);
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
+  });
+  it("leaves a rule as it was when the check itself fails, and asks again on the next sweep", async ({
+    expect,
+  }) => {
+    const rule = await create();
+    const evidence = await persistence.runs.count({ projectId: project.id });
+    const access = alepha.inject(FlakyAccess);
+
+    access.failing = true;
+    await health.sweep();
+    await health.project(project.id);
+
+    const after = await persistence.rules.getById(rule.id);
+    expect(after).toMatchObject({
+      enabled: true,
+      health: "active",
+      requiresApproval: false,
+    });
+    expect(after.reason ?? null).toBeNull();
+    // Not stamped either, so the sweep takes it first next time.
+    expect(after.healthCheckedAt).toBe(rule.healthCheckedAt);
+    expect(await persistence.runs.count({ projectId: project.id })).toBe(
+      evidence,
+    );
+    expect(await alepha.inject(HealthRepositories).inbox.count()).toBe(0);
+
+    access.failing = false;
+    await health.sweep();
+    expect((await persistence.rules.getById(rule.id)).health).toBe("active");
+  });
+  it("lifts a pause an earlier failed check left behind, whose reason is a statement", async ({
+    expect,
+  }) => {
+    const rule = await create();
+    await persistence.rules.updateById(rule.id, {
+      health: "paused",
+      requiresApproval: true,
+      reason:
+        'D1 query timed out: select "id", "version", "createdAt" from "users" where "id" = ?',
+    });
+
+    await health.sweep();
+
+    expect(await persistence.rules.getById(rule.id)).toMatchObject({
+      health: "active",
+      requiresApproval: false,
+    });
+  });
+  it("tells the author once when their rule pauses for approval, and once when it breaks", async ({
+    expect,
+  }) => {
+    const rule = await create();
+    const rows = alepha.inject(HealthRepositories);
+    // The push is a job, drained in this process by the job layer's direct
+    // mode: wait for every execution to end before counting what arrived.
+    const messages = async () => {
+      const terminal = new Set(["ok", "error", "cancelled"]);
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const pending = (await rows.executions.findMany()).filter(
+          (row) => !terminal.has(String(row.status)),
+        );
+        if (pending.length === 0) break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      return (await rows.inbox.findMany({ orderBy: "createdAt" })).map(
+        (row) => row.title,
+      );
+    };
+    const key = await rows.keys.create({
+      userId: user.id,
+      name: "Scoped",
+      tokenHash: crypto.randomUUID(),
+      tokenPrefix: "test",
+      tokenSuffix: "test",
+      roles: ["user"],
+    });
+    await persistence.rules.updateById(rule.id, { authorKeyId: key.id });
+    await rows.keys.updateById(key.id, {
+      revokedAt: alepha.inject(DateTimeProvider).nowISOString(),
+    });
+
+    await health.project(project.id);
+    expect((await persistence.rules.getById(rule.id)).health).toBe("paused");
+    expect(await messages()).toEqual(["Rule is paused until you review it"]);
+
+    // Every later sweep finds the same paused rule, and says nothing.
+    await health.sweep();
+    await health.project(project.id);
+    expect(await messages()).toHaveLength(1);
+    const [message] = await rows.inbox.findMany();
+    expect(message).toMatchObject({
+      userId: user.id,
+      href: `/${project.slug}/automations/${rule.id}`,
+    });
+
+    // A second rule, healthy until what it depends on goes away.
+    const other = await create();
+    await capability("support", false);
+    expect((await persistence.rules.getById(other.id)).health).toBe("broken");
+    expect(await messages()).toEqual([
+      "Rule is paused until you review it",
+      "Rule is broken",
+    ]);
+    await health.sweep();
+    expect(await messages()).toHaveLength(2);
   });
   it("retains a security pause across capability loss and restoration until valid explicit enable", async ({
     expect,
