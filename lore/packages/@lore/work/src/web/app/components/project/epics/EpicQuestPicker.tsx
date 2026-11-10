@@ -1,4 +1,10 @@
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@alepha/ui";
+import {
+  Badge,
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@alepha/ui";
 import {
   Command,
   CommandEmpty,
@@ -14,6 +20,10 @@ import { useState } from "react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import {
+  QUEST_STATUS_LABEL_KEYS,
+  QUEST_STATUS_TONE,
+} from "../quest/questChips.ts";
 
 export interface EpicQuestPickerProps {
   projectId: number;
@@ -34,6 +44,11 @@ export interface EpicQuestPickerProps {
  * (possibly draft) epic still shows up — attaching moves it here, mirroring
  * `EpicController.attachQuest`, which reassigns `epicId` unconditionally
  * rather than refusing an already-attached quest.
+ *
+ * Each row wears its quest's status chip, and the quests still open come
+ * before the completed and shelved ones (#Q3307): a finished quest stays
+ * attachable, `attachQuest` allows it on a draft or ready epic, but it is no
+ * longer mistaken for work to do.
  */
 const EpicQuestPicker = (props: EpicQuestPickerProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -46,18 +61,26 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
   const quests =
     useQuery(
       {
-        key: ["quests", props.projectId, { includeDrafts: true }],
+        key: ["quests", props.projectId, { includeDrafts: true, picker: true }],
         enabled: open,
-        handler: async () =>
-          (
-            await questApi.getQuests({
+        handler: async () => {
+          // ⚠️ Two reads, each with its own 100 rows (`size` is capped at 100
+          // server-side), so a project's old completed quests cannot push the
+          // open ones out of the page: one read ordered by `-updatedAt` over
+          // every status did exactly that. A project with more than 100 of
+          // either kind still sees only the latest 100 of it, the limitation
+          // `QuestDependencyPicker` shares.
+          const page = (status: string) =>
+            questApi.getQuests({
               params: { projectId: props.projectId },
-              // `size` is capped at 100 server-side; for larger projects the
-              // combobox search narrows the list (same known limitation as
-              // `QuestDependencyPicker`).
-              query: { size: 100, includeDrafts: true },
-            })
-          ).content,
+              query: { size: 100, includeDrafts: true, status },
+            });
+          const [open, closed] = await Promise.all([
+            page("todo,in_progress,on_hold"),
+            page("completed,shelved"),
+          ]);
+          return [...open.content, ...closed.content];
+        },
         onError: () => {},
       },
       [questApi, props.projectId],
@@ -99,7 +122,15 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
                 <span className="text-muted-foreground shrink-0 font-mono text-xs">
                   {formatReference("quest", q.shortId)}
                 </span>
-                <span className="truncate">{q.title}</span>
+                <span className="min-w-0 flex-1 truncate">{q.title}</span>
+                <Badge
+                  variant="tint"
+                  tone={QUEST_STATUS_TONE[q.metadata.status]}
+                  className="shrink-0"
+                  data-testid={`epic-quest-picker-status-${q.shortId}`}
+                >
+                  {tr(QUEST_STATUS_LABEL_KEYS[q.metadata.status])}
+                </Badge>
               </CommandItem>
             )}
           </CommandList>

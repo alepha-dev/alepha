@@ -1893,3 +1893,81 @@ test.describe("Epics - the aside", () => {
     await expect(page.locator("aside dl")).toBeHidden();
   });
 });
+
+test.describe("Epics - the Attach quest picker", () => {
+  test("shows each quest's status and lists the open ones first", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `picker${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Pk${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
+
+    const post = (path: string, body?: unknown) =>
+      page.evaluate(
+        async ({ path, body }) => {
+          const r = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          });
+          if (!r.ok) throw new Error(`${path} ${r.status} ${await r.text()}`);
+          return r.json();
+        },
+        { path, body },
+      );
+    const newQuest = (title: string) =>
+      apiPost<{ id: number; shortId: number }>(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the picker",
+        area: "orm",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+      });
+
+    const epic = (await post(`/api/createEpic/${projectId}`, {
+      title: `Picker${t}`,
+    })) as { id: number; number: number };
+    const open = await newQuest(`Open${t}`);
+    const shelved = await newQuest(`Shelved${t}`);
+    const done = await newQuest(`Done${t}`);
+    await post(`/api/shelveQuest/${shelved.id}`, {});
+    // ⚠️ Completed LAST, so it is the most recently updated quest of the
+    // project: the single read ordered by `-updatedAt` listed it first.
+    await post(`/api/acceptQuest/${done.id}`);
+    await post(`/api/completeQuest/${done.id}`, {});
+
+    await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
+    await page
+      .getByRole("button", { name: "Attach quest" })
+      .click({ timeout: 15_000 });
+
+    const status = (shortId: number) =>
+      page.getByTestId(`epic-quest-picker-status-${shortId}`);
+    await expect(status(open.shortId)).toHaveText("To do");
+    await expect(status(done.shortId)).toHaveText("Completed");
+    await expect(status(shelved.shortId)).toHaveText("Shelved");
+
+    // The open quest sits above both closed ones.
+    const y = async (shortId: number) =>
+      (await status(shortId).boundingBox())!.y;
+    expect(await y(open.shortId)).toBeLessThan(await y(done.shortId));
+    expect(await y(open.shortId)).toBeLessThan(await y(shelved.shortId));
+
+    // A completed quest stays attachable while the epic is a draft.
+    await page.getByRole("option", { name: new RegExp(`Done${t}`) }).click();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: `Done${t}` }),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+});
