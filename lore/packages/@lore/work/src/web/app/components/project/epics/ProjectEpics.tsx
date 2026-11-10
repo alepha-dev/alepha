@@ -698,43 +698,51 @@ const ProjectEpics = () => {
             className: "w-full max-w-0 min-w-48",
             cell: (epic) => (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
-                {/* A real anchor inside a clickable row, so the browser owns
-                    cmd / shift / middle click, shows the URL on hover and
-                    offers "copy link address". `stopPropagation` because the
-                    row carries `onRowClick` too: without it a plain click
-                    navigates twice, once through each. No `hover:underline`
-                    - the row already highlights under the pointer, and the
-                    Quests table reads better for leaving the title still. */}
-                <Link
-                  href={router.path("projectEpic", {
-                    params: {
-                      projectSlug: router.state.params.projectSlug,
-                      epicNumber: String(epic.number),
-                    },
-                  })}
-                  onClick={(e) => e.stopPropagation()}
-                  className="truncate text-sm font-medium"
-                  title={`${formatReference("epic", epic.number)} - ${epic.title}`}
+                <div
+                  className="flex items-baseline gap-2"
+                  data-testid={`epic-title-line-${epic.number}`}
                 >
-                  {/* The number carries the title's own colour: it is part
-                      of the name, not an annotation on it. Only the
-                      separator is muted. */}
-                  {formatReference("epic", epic.number)}{" "}
-                  <span className="text-muted-foreground">-</span> {epic.title}
-                </Link>
-                {/* The review questions still open (#E121), while the plan
-                    is open: past ready they are a record, not a to-do. */}
-                {(epic.status === "draft" || epic.status === "ready") &&
-                (epic.openQuestions ?? 0) > 0 ? (
-                  <span
-                    className="text-warning-text truncate text-xs"
-                    data-testid={`epic-open-questions-${epic.number}`}
-                  >
-                    {tr("epic.list.openQuestions", {
-                      args: [String(epic.openQuestions)],
+                  {/* A real anchor inside a clickable row, so the browser owns
+                      cmd / shift / middle click, shows the URL on hover and
+                      offers "copy link address". `stopPropagation` because the
+                      row carries `onRowClick` too: without it a plain click
+                      navigates twice, once through each. No `hover:underline`
+                      - the row already highlights under the pointer, and the
+                      Quests table reads better for leaving the title still. */}
+                  <Link
+                    href={router.path("projectEpic", {
+                      params: {
+                        projectSlug: router.state.params.projectSlug,
+                        epicNumber: String(epic.number),
+                      },
                     })}
-                  </span>
-                ) : null}
+                    onClick={(e) => e.stopPropagation()}
+                    className="min-w-0 truncate text-sm font-medium"
+                    title={`${formatReference("epic", epic.number)} - ${epic.title}`}
+                  >
+                    {/* The number carries the title's own colour: it is part
+                        of the name, not an annotation on it. Only the
+                        separator is muted. */}
+                    {formatReference("epic", epic.number)}{" "}
+                    <span className="text-muted-foreground">-</span>{" "}
+                    {epic.title}
+                  </Link>
+                  {/* The review questions still open (#E121), while the plan
+                      is open: past ready they are a record, not a to-do. On
+                      the title's line, so the row is no taller for them, and
+                      `shrink-0` so the title truncates first (#Q3296). */}
+                  {(epic.status === "draft" || epic.status === "ready") &&
+                  (epic.openQuestions ?? 0) > 0 ? (
+                    <span
+                      className="text-warning-text ml-auto shrink-0 text-xs"
+                      data-testid={`epic-open-questions-${epic.number}`}
+                    >
+                      {tr("epic.list.openQuestions", {
+                        args: [String(epic.openQuestions)],
+                      })}
+                    </span>
+                  ) : null}
+                </div>
                 {epic.description ? (
                   <span className="text-muted-foreground truncate text-xs">
                     {epic.description}

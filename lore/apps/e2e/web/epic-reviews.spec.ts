@@ -83,6 +83,39 @@ test.describe("Epic reviews", () => {
     );
     expect(review.items.map((item) => item.number)).toEqual([1, 2, 3]);
 
+    await test.step("the list shows the open count on the title's line", async () => {
+      // A second epic, never reviewed: the row to measure against (#Q3296).
+      const plain = await call<{ number: number }>(
+        page,
+        "POST",
+        `/api/createEpic/${projectId}`,
+        { title: `Plain${t}` },
+      );
+      await page.goto(`/${slug}/epics`);
+      const count = page.getByTestId(`epic-open-questions-${epic.number}`);
+      await expect(count).toHaveText("2 review questions open", {
+        timeout: 15_000,
+      });
+      const reviewedRow = page.getByRole("row").filter({ has: count });
+      const plainRow = page
+        .getByRole("row")
+        .filter({ has: page.getByTestId(`epic-title-line-${plain.number}`) });
+      const [reviewedBox, plainBox, countBox, titleBox] = await Promise.all([
+        reviewedRow.boundingBox(),
+        plainRow.boundingBox(),
+        count.boundingBox(),
+        page
+          .getByTestId(`epic-title-line-${epic.number}`)
+          .getByRole("link")
+          .boundingBox(),
+      ]);
+      expect(reviewedBox!.height).toBe(plainBox!.height);
+      // Same line: the count starts right of the title and overlaps it in y.
+      expect(countBox!.x).toBeGreaterThanOrEqual(titleBox!.x + titleBox!.width);
+      expect(countBox!.y).toBeLessThan(titleBox!.y + titleBox!.height);
+      expect(countBox!.y + countBox!.height).toBeGreaterThan(titleBox!.y);
+    });
+
     await test.step("the Review tab lists the questions, numbered", async () => {
       await page.goto(`/${slug}/epics/${epic.number}?tab=review`);
       await expect(page.getByText("Open questions (2)")).toBeVisible({

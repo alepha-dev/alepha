@@ -247,6 +247,19 @@ describe("ProjectEpics - the status filter", () => {
     );
     expect(screen.queryByTestId("epic-open-questions-2")).toBeNull();
     expect(screen.queryByTestId("epic-open-questions-3")).toBeNull();
+
+    // On the title's own line, never a row of its own (#Q3296): the count and
+    // the title link share one parent, and the title is the one that shrinks.
+    const count = screen.getByTestId("epic-open-questions-1");
+    const line = screen.getByTestId("epic-title-line-1");
+    expect(count.parentElement).toBe(line);
+    const title = line.querySelector("a");
+    expect(title?.textContent).toContain("Draft epic");
+    expect(title?.className).toContain("truncate");
+    expect(count.className).toContain("shrink-0");
+    expect(
+      screen.getByTestId("epic-title-line-2").querySelector("a")?.textContent,
+    ).toContain("Quiet epic");
   });
 
   it("shows every status while nothing is selected", async () => {
