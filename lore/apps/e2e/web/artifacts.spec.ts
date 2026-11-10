@@ -119,3 +119,71 @@ test("opens a build from the table and reads what it declares", async ({
   await page.goto(`/${project.slug}/artifacts/my-app/9.9.9`);
   await expect(page.getByTestId("artifact-not-found")).toBeVisible();
 });
+
+/**
+ * The docs link under an empty artifact list follows its frame (#Q3266):
+ * centred under the centred sentence on the project page, left under the
+ * left-aligned one in an app's card. It sat hard left in both, which only a
+ * real layout can show.
+ */
+test("places the empty state's docs link where its sentence is, in both frames", async ({
+  page,
+}) => {
+  await registerAndVerify(
+    page,
+    `artifact-empty-${crypto.randomUUID()}@example.com`,
+    "GoodPassw0rd",
+  );
+  const project = await createProjectViaWizard(page, "Empty artifacts", {
+    capabilities: ["apps"],
+  });
+
+  /**
+   * The link and the sentence above it, as boxes. The sentence is measured
+   * by its TEXT (a range), not by its paragraph: the paragraph is as wide as
+   * the frame in both cases and would say nothing.
+   */
+  const boxes = async () => {
+    const link = page.getByTestId("artifacts-empty-docs");
+    await expect(link).toBeVisible({ timeout: 15_000 });
+    return link.evaluate((el) => {
+      const sentence = el.parentElement!.previousElementSibling!;
+      const range = document.createRange();
+      range.selectNodeContents(sentence);
+      const text = range.getBoundingClientRect();
+      const self = el.getBoundingClientRect();
+      const frame = sentence.getBoundingClientRect();
+      return {
+        linkLeft: self.left,
+        linkCentre: self.left + self.width / 2,
+        textLeft: text.left,
+        textCentre: text.left + text.width / 2,
+        frameLeft: frame.left,
+        frameCentre: frame.left + frame.width / 2,
+      };
+    });
+  };
+
+  await page.goto(`/${project.slug}/artifacts`);
+  const centred = await boxes();
+  expect(Math.abs(centred.linkCentre - centred.textCentre)).toBeLessThan(2);
+  expect(Math.abs(centred.linkCentre - centred.frameCentre)).toBeLessThan(2);
+  // Not vacuous: a link this narrow, centred, is well clear of the left edge.
+  expect(centred.linkLeft - centred.frameLeft).toBeGreaterThan(20);
+
+  const created = await page.evaluate(async (projectId) => {
+    const r = await fetch(`/api/projects/${projectId}/apps`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ app: "my-app", env: "production" }),
+    });
+    return r.ok;
+  }, project.id);
+  expect(created).toBe(true);
+
+  await page.goto(`/${project.slug}/apps/my-app/production/artifacts`);
+  const left = await boxes();
+  expect(Math.abs(left.linkLeft - left.textLeft)).toBeLessThan(2);
+  expect(Math.abs(left.linkLeft - left.frameLeft)).toBeLessThan(2);
+});

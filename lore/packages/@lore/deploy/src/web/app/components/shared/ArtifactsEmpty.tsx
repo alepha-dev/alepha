@@ -67,30 +67,42 @@ const ArtifactsEmpty = (props: ArtifactsEmptyProps) => {
      * under a left-aligned header, beside left-aligned loading and error
      * lines. So this declares neither and inherits both.
      *
-     * `items-start` had to go with `text-left` rather than instead of it: a
-     * flex column left-packs its children whatever the text alignment, which
-     * would have left the link hard left under a centred sentence.
+     * ⚠️ A plain block, not a flex column. A flex column left-packs its
+     * children whatever the text alignment, which is how the link ended up
+     * hard left under a centred sentence (#Q3266): the sentence, being text,
+     * inherited `text-center`, and the link, being a flex item, did not.
+     * Block children inherit alignment and nothing else decides it.
      */
-    <div className="flex flex-col gap-2 py-2">
+    <div className="py-2">
       {/*
         ⚠️ No `max-w-prose`. It is a width, not an alignment, and inside the
-        centred frame it is the one that breaks: a block with a max-width in a
-        flex column packs to the START, so the sentence would have been
+        centred frame it is the one that breaks: a block with a max-width
+        sits at the START of its line, so the sentence would have been
         centred inside a box sitting off to the left. The table's own empty
         state already caps its description at `max-w-xs`, and the card on the
         app tab is the width it should be.
       */}
       <p className="text-muted-foreground text-sm">{props.description}</p>
 
-      <OutboundLink
-        // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it
-        // resolves against Lore's own origin and 404s (feedback #P2142).
-        href={loreDocsUrl("guides-artifacts")}
-        className="text-sm underline underline-offset-4"
-        data-testid="artifacts-empty-docs"
-      >
-        {tr("artifacts.empty.docs")}
-      </OutboundLink>
+      {/*
+        In a paragraph of its own, which is what makes it follow the frame
+        (#Q3266). `OutboundLink` is `inline-flex`: as the direct child of a
+        flex column it was blockified into a full-width flex container, and a
+        flex container packs its children to the start whatever `text-align`
+        says. Inside a block it stays inline, and an inline box goes where the
+        inherited alignment puts it.
+      */}
+      <p className="mt-2">
+        <OutboundLink
+          // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it
+          // resolves against Lore's own origin and 404s (feedback #P2142).
+          href={loreDocsUrl("guides-artifacts")}
+          className="text-sm underline underline-offset-4"
+          data-testid="artifacts-empty-docs"
+        >
+          {tr("artifacts.empty.docs")}
+        </OutboundLink>
+      </p>
     </div>
   );
 };
