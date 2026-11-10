@@ -227,7 +227,7 @@ describe("useHead", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    // Mock isBrowser to return false
+    // alepha-allow no-vi-mock: isBrowser() reads `typeof window`, which jsdom always defines, and the container has no seam to declare a server render inside a browser spec
     vi.spyOn(alepha, "isBrowser").mockReturnValue(false);
 
     let headState: Head;

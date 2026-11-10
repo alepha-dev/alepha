@@ -1,4 +1,5 @@
 import { $atom, $inject, $store, type Infer, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
@@ -43,6 +44,7 @@ declare module "alepha" {
 export class LocalSmsProvider implements SmsProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly options = $store(localSmsOptions);
 
   protected get directory(): string {
@@ -62,7 +64,7 @@ export class LocalSmsProvider implements SmsProvider {
       // Ensure directory exists
       await this.fs.mkdir(this.directory, { recursive: true });
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const timestamp = this.dateTime.nowISOString().replace(/[:.]/g, "-");
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedPhone = recipient.replace(/[^0-9+]/g, "_");
         const filename = `${sanitizedPhone},${timestamp}.sms.json`;
@@ -90,7 +92,7 @@ export class LocalSmsProvider implements SmsProvider {
     return {
       to: options.to,
       message: options.message,
-      sentAt: new Date().toISOString(),
+      sentAt: this.dateTime.nowISOString(),
     };
   }
 }

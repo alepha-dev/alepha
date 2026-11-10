@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { SmsError } from "../errors/SmsError.ts";
 import {
@@ -8,15 +9,37 @@ import {
   localSmsOptions,
 } from "../providers/LocalSmsProvider.ts";
 
+/**
+ * A clock stopped at one instant, so a timestamp built into a filename is
+ * predictable.
+ */
+class StoppedClock extends DateTimeProvider {
+  public static readonly at = "2023-01-01T12:00:00.000Z";
+
+  protected override getCurrentDate() {
+    return this.of(StoppedClock.at);
+  }
+
+  public override nowISOString(): string {
+    return StoppedClock.at;
+  }
+
+  public override nowMillis(): number {
+    return this.of(StoppedClock.at).valueOf();
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 describe("LocalSmsProvider", () => {
   describe("send", () => {
     it("should successfully send SMS to local file", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -41,18 +64,16 @@ describe("LocalSmsProvider", () => {
     });
 
     it("should create proper filename with sanitized phone and timestamp", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
       await alepha.start();
-
-      // Mock Date to have predictable timestamp
-      const mockDate = new Date("2023-01-01T12:00:00.000Z");
-      vi.setSystemTime(mockDate);
 
       await provider.send({
         to: "+1 (234) 567-8900",
@@ -64,15 +85,15 @@ describe("LocalSmsProvider", () => {
         "node_modules/.alepha/sms",
         "+1__234__567_8900,2023-01-01T12-00-00-000Z.sms.json",
       ]);
-
-      vi.useRealTimers();
     });
 
     it("should sanitize special characters in phone number", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -90,17 +111,16 @@ describe("LocalSmsProvider", () => {
     });
 
     it("should create proper JSON content", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
       await alepha.start();
-
-      const mockDate = new Date("2023-01-01T12:00:00.000Z");
-      vi.setSystemTime(mockDate);
 
       await provider.send({
         to: "+1234567890",
@@ -111,15 +131,15 @@ describe("LocalSmsProvider", () => {
       expect(written.to).toBe("+1234567890");
       expect(written.message).toBe("Test message with content");
       expect(written.sentAt).toBe("2023-01-01T12:00:00.000Z");
-
-      vi.useRealTimers();
     });
 
     it("should throw SmsError when mkdir fails", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -143,10 +163,12 @@ describe("LocalSmsProvider", () => {
     });
 
     it("should throw SmsError when writeFile fails", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -170,10 +192,12 @@ describe("LocalSmsProvider", () => {
     });
 
     it("should handle non-Error exceptions", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -191,10 +215,12 @@ describe("LocalSmsProvider", () => {
     });
 
     it("should handle multiple recipients", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -211,10 +237,12 @@ describe("LocalSmsProvider", () => {
     });
 
     it("should use custom directory when provided", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       // Through the atom, which is how an app configures it. It used to be a
       // constructor argument, reachable only by subclassing the provider -
@@ -240,18 +268,17 @@ describe("LocalSmsProvider", () => {
     let provider: LocalSmsProvider;
 
     beforeEach(async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
       provider = alepha.inject(LocalSmsProvider);
       await alepha.start();
     });
 
     it("should create proper JSON structure", () => {
-      const mockDate = new Date("2023-01-01T12:00:00.000Z");
-      vi.setSystemTime(mockDate);
-
       const result = provider.createSmsJson({
         to: "+1234567890",
         message: "Test message",
@@ -260,8 +287,6 @@ describe("LocalSmsProvider", () => {
       expect(result.to).toBe("+1234567890");
       expect(result.message).toBe("Test message");
       expect(result.sentAt).toBe("2023-01-01T12:00:00.000Z");
-
-      vi.useRealTimers();
     });
 
     it("should handle multiline messages", () => {

@@ -1,4 +1,5 @@
 import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
@@ -40,6 +41,7 @@ declare module "alepha" {
 export class LocalEmailProvider implements EmailProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly options = $store(localEmailOptions);
 
   protected get directory(): string {
@@ -79,7 +81,7 @@ export class LocalEmailProvider implements EmailProvider {
     const messageId = crypto.randomUUID();
 
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const timestamp = this.dateTime.nowISOString().replace(/[:.]/g, "-");
       for (const recipient of Array.isArray(to) ? to : [to]) {
         const sanitizedEmail = recipient.replace(/[^a-zA-Z0-9@.-]/g, "_");
         const filename = `${sanitizedEmail},${timestamp}.eml.json`;
@@ -154,7 +156,7 @@ export class LocalEmailProvider implements EmailProvider {
       headers: options.headers,
       attachments: options.attachments,
       messageId: options.messageId,
-      sentAt: new Date().toISOString(),
+      sentAt: this.dateTime.nowISOString(),
     };
   }
 }

@@ -1,9 +1,11 @@
 import { $inject } from "alepha";
 
 import type { ConventionRule } from "../conventions/ConventionRule.ts";
+import { DescribeItRule } from "../conventions/DescribeItRule.ts";
 import { NoBareErrorRule } from "../conventions/NoBareErrorRule.ts";
 import { NoDateNowRule } from "../conventions/NoDateNowRule.ts";
 import { NoErrorClassRule } from "../conventions/NoErrorClassRule.ts";
+import { NoViMockRule } from "../conventions/NoViMockRule.ts";
 import { NoZodImportRule } from "../conventions/NoZodImportRule.ts";
 
 /**
@@ -21,6 +23,8 @@ export class ConventionRegistry {
     $inject(NoBareErrorRule),
     $inject(NoErrorClassRule),
     $inject(NoZodImportRule),
+    $inject(NoViMockRule),
+    $inject(DescribeItRule),
   ];
 
   /**

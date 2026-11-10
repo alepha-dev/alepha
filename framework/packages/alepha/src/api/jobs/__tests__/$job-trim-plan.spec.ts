@@ -65,6 +65,7 @@ describe("$job retention: the trim's query plan", () => {
     const { sqlite } = alepha.inject(DatabaseProvider) as unknown as {
       sqlite: DatabaseSync;
     };
+    // alepha-allow no-vi-mock: records the statements the real driver prepares, replacing nothing, so their query plans can be explained below
     const prepare = vi.spyOn(sqlite, "prepare");
     await (alepha.inject(JobProvider) as TestJobProvider).testTrimRingBuffers();
 

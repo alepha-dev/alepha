@@ -1,12 +1,33 @@
 import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { EmailError } from "../errors/EmailError.ts";
 import {
   LocalEmailProvider,
   localEmailOptions,
 } from "../providers/LocalEmailProvider.ts";
+
+/**
+ * A clock stopped at one instant, so a timestamp built into a filename is
+ * predictable.
+ */
+class StoppedClock extends DateTimeProvider {
+  public static readonly at = "2023-01-01T12:00:00.000Z";
+
+  protected override getCurrentDate() {
+    return this.of(StoppedClock.at);
+  }
+
+  public override nowISOString(): string {
+    return StoppedClock.at;
+  }
+
+  public override nowMillis(): number {
+    return this.of(StoppedClock.at).valueOf();
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -15,10 +36,12 @@ const DEFAULT_DIRECTORY = localEmailOptions.options.default.directory;
 describe("LocalEmailProvider", () => {
   describe("send", () => {
     it("should successfully send email to local file", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -45,10 +68,12 @@ describe("LocalEmailProvider", () => {
     });
 
     it("should create proper filename with sanitized email and timestamp", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -57,10 +82,6 @@ describe("LocalEmailProvider", () => {
       const to = "user+test@example.com";
       const subject = "Test Subject";
       const body = "<p>Test body</p>";
-
-      // Mock Date to have predictable timestamp
-      const mockDate = new Date("2023-01-01T12:00:00.000Z");
-      vi.setSystemTime(mockDate);
 
       await provider.send({
         to,
@@ -73,15 +94,15 @@ describe("LocalEmailProvider", () => {
         DEFAULT_DIRECTORY,
         "user_test@example.com,2023-01-01T12-00-00-000Z.eml.json",
       ]);
-
-      vi.useRealTimers();
     });
 
     it("should sanitize special characters in email address", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -104,17 +125,16 @@ describe("LocalEmailProvider", () => {
     });
 
     it("should create proper JSON content", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
       await alepha.start();
-
-      const mockDate = new Date("2023-01-01T12:00:00.000Z");
-      vi.setSystemTime(mockDate);
 
       const to = "test@example.com";
       const subject = "Test <Subject>";
@@ -132,15 +152,15 @@ describe("LocalEmailProvider", () => {
       expect(content.subject).toBe(subject);
       expect(content.body).toBe(body);
       expect(content.sentAt).toBe("2023-01-01T12:00:00.000Z");
-
-      vi.useRealTimers();
     });
 
     it("should throw EmailError when writeFile fails", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -170,10 +190,12 @@ describe("LocalEmailProvider", () => {
     });
 
     it("should handle non-Error exceptions", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -203,10 +225,12 @@ describe("LocalEmailProvider", () => {
     });
 
     it("should handle multiple recipients", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
 
       const provider = alepha.inject(LocalEmailProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
@@ -226,15 +250,14 @@ describe("LocalEmailProvider", () => {
 
   describe("createEmailJson", () => {
     it("should return structured email data with sentAt timestamp", async () => {
-      const alepha = Alepha.create().with({
-        provide: FileSystemProvider,
-        use: MemoryFileSystemProvider,
-      });
+      const alepha = Alepha.create()
+        .with({ provide: DateTimeProvider, use: StoppedClock })
+        .with({
+          provide: FileSystemProvider,
+          use: MemoryFileSystemProvider,
+        });
       const provider = alepha.inject(LocalEmailProvider);
       await alepha.start();
-
-      const mockDate = new Date("2023-01-01T12:00:00.000Z");
-      vi.setSystemTime(mockDate);
 
       const result = provider.createEmailJson({
         to: "test@example.com",
@@ -248,8 +271,6 @@ describe("LocalEmailProvider", () => {
         body: "<p>Test body</p>",
         sentAt: "2023-01-01T12:00:00.000Z",
       });
-
-      vi.useRealTimers();
     });
   });
 });

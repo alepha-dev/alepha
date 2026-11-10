@@ -1,5 +1,9 @@
 import { Alepha } from "alepha";
-import { describe, expect, it, vi } from "vitest";
+import {
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
+import { describe, expect, it } from "vitest";
 
 import { AlephaReactRouter } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
@@ -50,41 +54,44 @@ class Router {
  */
 describe("$page loader logs a refusal below error level", () => {
   const boot = async () => {
-    const alepha = Alepha.create().with(AlephaReactRouter).with(Router);
+    // At debug, so the line under test is kept, and into memory, where the
+    // assertions read it: a LOG_LEVEL alone would send it to the console.
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "debug" } })
+      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
+      .with(AlephaReactRouter)
+      .with(Router);
+    const destination = alepha.inject(MemoryDestinationProvider);
     await alepha.start();
     const pages = alepha.inject(ReactPageProvider);
-    const log = (pages as unknown as { log: Record<string, () => void> }).log;
-    return {
-      pages,
-      error: vi.spyOn(log, "error").mockImplementation(() => undefined),
-      debug: vi.spyOn(log, "debug").mockImplementation(() => undefined),
-    };
+    // The loader failure as logged, at whichever level it was.
+    const failures = (level: "ERROR" | "DEBUG") =>
+      destination.logs.filter(
+        (entry) =>
+          entry.level === level && entry.message === "Page loader has failed",
+      );
+    return { pages, failures };
   };
 
   it("logs a 4xx loader throw at debug", async () => {
-    const { pages, error, debug } = await boot();
+    const { pages, failures } = await boot();
 
     const state = stateFor("/refused");
     await pages.createLayers(pages.page("refused"), state);
 
-    expect(error).not.toHaveBeenCalled();
-    expect(debug).toHaveBeenCalledWith(
-      "Page loader has failed",
-      expect.any(Refusal),
-    );
+    expect(failures("ERROR")).toEqual([]);
+    expect(failures("DEBUG")).toHaveLength(1);
+    expect(failures("DEBUG")[0].data).toBeInstanceOf(Refusal);
     // The page still renders its refusal: the error reaches the layer.
     expect(state.layers.at(-1)?.error).toBeInstanceOf(Refusal);
   });
 
   it("still logs an error with no status at error level", async () => {
-    const { pages, error, debug } = await boot();
+    const { pages, failures } = await boot();
 
     await pages.createLayers(pages.page("broken"), stateFor("/broken"));
 
-    expect(debug).not.toHaveBeenCalled();
-    expect(error).toHaveBeenCalledWith(
-      "Page loader has failed",
-      expect.any(Broken),
-    );
+    expect(failures("DEBUG")).toEqual([]);
+    expect(failures("ERROR")).toHaveLength(1);
+    expect(failures("ERROR")[0].data).toBeInstanceOf(Broken);
   });
 });

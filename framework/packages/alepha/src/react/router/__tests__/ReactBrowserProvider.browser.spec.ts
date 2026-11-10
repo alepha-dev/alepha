@@ -89,6 +89,7 @@ describe("ReactBrowserProvider", () => {
     });
 
     it("should return undefined and log error on malformed JSON", () => {
+      // alepha-allow no-vi-mock: the provider reports malformed hydration JSON on console.error, outside any logger, and this case silences and counts that one call
       const consoleSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
