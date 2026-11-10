@@ -345,6 +345,18 @@ The current language code string.
 
 Array of all available language codes, derived from registered dictionaries.
 
+### dir
+
+The writing direction of the current language: `"rtl"` for a right-to-left language, `"ltr"` otherwise.
+
+```typescript
+const { dir } = useI18n();
+```
+
+The right-to-left languages are a fixed list (`ar`, `he`, `fa`, `ur`, `ps`, `sd`, `ug`, `yi`, `dv`, `ckb`), matched on the base language of the tag, so `ar-EG` is right-to-left. Anything else, a string that is not a language tag included, is `"ltr"`.
+
+`<html dir>` follows it, next to `<html lang>`: on the server for each request's language, and in the browser on a language switch. That is what makes Tailwind's `rtl:` variants match. An application that sets `htmlAttributes.dir` in its own `$head` keeps its value.
+
 ## Translate Component
 
 `<Translate>` (also exported as `<Tr>`) is `tr()` as JSX:

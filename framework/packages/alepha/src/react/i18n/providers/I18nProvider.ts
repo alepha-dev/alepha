@@ -12,6 +12,7 @@ import { $cookie } from "alepha/server/cookies";
 
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
 import type { DictionaryEntry } from "../primitives/$dictionary.ts";
+import { LangDirection } from "../services/LangDirection.ts";
 import { RequestLangResolver } from "../services/RequestLangResolver.ts";
 
 export class I18nProvider<
@@ -36,9 +37,16 @@ export class I18nProvider<
    * browser, so it has to be re-read every time the head is resolved. An
    * application that sets `htmlAttributes.lang` itself still wins: its own
    * `$head` registers after this one.
+   *
+   * `dir` is written beside it, always, `ltr` included (#Q3350): an Arabic
+   * page laid out left to right never matches Tailwind's `rtl:` variants, and
+   * a switch back to a left-to-right language has to clear the attribute's
+   * old value. It is derived from `lang`, so the page-cache variant on
+   * `lang` already covers it. An application's own `htmlAttributes.dir`
+   * wins the same way.
    */
   protected readonly htmlLang = $head(() => ({
-    htmlAttributes: { lang: this.lang },
+    htmlAttributes: { lang: this.lang, dir: this.dir },
   }));
 
   /**
@@ -491,6 +499,15 @@ export class I18nProvider<
 
   public get lang(): string {
     return this.alepha.store.get("alepha.react.i18n.lang") || this.fallbackLang;
+  }
+
+  /**
+   * The writing direction of the active language: `"rtl"` for Arabic,
+   * Hebrew, Persian, Urdu and the other right-to-left languages of
+   * {@link LangDirection}, region-qualified tags included, `"ltr"` otherwise.
+   */
+  public get dir(): "rtl" | "ltr" {
+    return LangDirection.of(this.lang);
   }
 
   /**

@@ -1,4 +1,6 @@
-import { Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
+import { $action, AlephaServer } from "alepha/server";
+import { AlephaServerCookies } from "alepha/server/cookies";
 import { describe, expect, it } from "vitest";
 
 import { HeadProvider } from "../../head/providers/HeadProvider.ts";
@@ -62,6 +64,108 @@ describe("i18n and the html lang attribute", () => {
     // Nothing resolved: `I18nProvider.lang` answers `fallbackLang`, and the
     // markup must say the same thing the render used.
     expect(head.resolveGlobalHead().htmlAttributes?.lang).toBe("en");
+  });
+
+  describe("dir (#Q3350)", () => {
+    class Rtl {
+      en = $dictionary({ lazy: async () => ({ default: { hello: "Hello" } }) });
+      ar = $dictionary({ lazy: async () => ({ default: { hello: "مرحبا" } }) });
+    }
+
+    it.each([
+      ["ar", "rtl"],
+      ["ar-EG", "rtl"],
+      ["he", "rtl"],
+      ["he_IL", "rtl"],
+      ["fa", "rtl"],
+      ["fa-IR", "rtl"],
+      ["ur", "rtl"],
+      ["ur-PK", "rtl"],
+      ["ckb", "rtl"],
+      ["en", "ltr"],
+      ["fr-CA", "ltr"],
+      ["arn", "ltr"],
+      ["garbage!!", "ltr"],
+      ["", "ltr"],
+    ])("is the direction of %s: %s", async (lang, dir) => {
+      const { alepha, i18n } = await create();
+      alepha.store.set("alepha.react.i18n.lang", lang);
+
+      expect(i18n.dir).toBe(dir);
+    });
+
+    it("is written beside lang, ltr included", async () => {
+      const { alepha, head } = await create();
+
+      expect(head.resolveGlobalHead().htmlAttributes).toMatchObject({
+        lang: "en",
+        dir: "ltr",
+      });
+
+      alepha.store.set("alepha.react.i18n.lang", "ar");
+      const state = { head: {}, layers: [] };
+      head.fillHead(state);
+      expect(state.head).toMatchObject({
+        htmlAttributes: { lang: "ar", dir: "rtl" },
+      });
+    });
+
+    it("is written for each request's language on the server", async () => {
+      class Server {
+        protected head = $inject(HeadProvider);
+
+        en = $dictionary({ lazy: async () => ({ default: {} }) });
+        ar = $dictionary({ lazy: async () => ({ default: {} }) });
+
+        probe = $action({
+          path: "/probe",
+          method: "GET",
+          schema: { response: z.text() },
+          handler: () =>
+            JSON.stringify(this.head.resolveGlobalHead().htmlAttributes),
+        });
+      }
+      const alepha = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerCookies)
+        .with(AlephaReactI18n)
+        .with(Server);
+      await alepha.start();
+      const server = alepha.inject(Server);
+      const probe = async (cookie: string) =>
+        JSON.parse(
+          (
+            await server.probe.fetch(
+              {},
+              { request: { headers: { cookie, "accept-language": "en" } } },
+            )
+          ).data,
+        );
+
+      const [ar, en] = await Promise.all([
+        probe("lang=%22ar%22"),
+        probe("lang=%22en%22"),
+      ]);
+      expect(ar).toMatchObject({ lang: "ar", dir: "rtl" });
+      expect(en).toMatchObject({ lang: "en", dir: "ltr" });
+    });
+
+    it("leaves an explicit htmlAttributes.dir alone", async () => {
+      const alepha = Alepha.create().with(AlephaReactI18n);
+      alepha.inject(Rtl);
+      const head = alepha.inject(HeadProvider);
+      head.global = [
+        ...(head.global ?? []),
+        { htmlAttributes: { dir: "ltr" } },
+      ];
+      await alepha.start();
+      alepha.store.set("alepha.react.i18n.lang", "ar");
+
+      expect(head.resolveGlobalHead().htmlAttributes).toMatchObject({
+        lang: "ar",
+        dir: "ltr",
+      });
+    });
   });
 
   it("should leave an explicit htmlAttributes.lang alone", async () => {
