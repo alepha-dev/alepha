@@ -232,8 +232,7 @@ const sweep = async (
         : status === 0 ||
             status === 401 ||
             status === 404 ||
-            (status === 400 &&
-              /validat|invalid|expected|parse/i.test(message))
+            (status === 400 && /validat|invalid|expected|parse/i.test(message))
           ? "inconclusive"
           : "passed";
 

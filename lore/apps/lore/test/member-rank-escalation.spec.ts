@@ -120,7 +120,10 @@ const setup = async () => {
   const rankOf = async (userId: string) =>
     (
       await repos.members.findOne({
-        where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
+        where: {
+          organizationId: { eq: organizationId },
+          userId: { eq: userId },
+        },
       })
     )?.rank ?? (undefined as string | null | undefined);
 
@@ -278,7 +281,10 @@ describe("delegated rank and member management", () => {
       expect(
         await ctx.statusOf(
           ctx.rankApi.assignOrganizationRank.fetch(
-            { params: { organizationId, userId: plain }, body: { key: "admin" } },
+            {
+              params: { organizationId, userId: plain },
+              body: { key: "admin" },
+            },
             ctx.as(steward),
           ),
         ),
@@ -297,7 +303,10 @@ describe("delegated rank and member management", () => {
       expect(
         await ctx.statusOf(
           ctx.rankApi.assignOrganizationRank.fetch(
-            { params: { organizationId, userId: plain }, body: { key: "owner" } },
+            {
+              params: { organizationId, userId: plain },
+              body: { key: "owner" },
+            },
             ctx.as(steward),
           ),
         ),
