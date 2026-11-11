@@ -76,7 +76,8 @@ const start = async (list = true) => {
   const hostname = alepha.inject(ServerProvider).hostname;
   return {
     alepha,
-    request: (path: string) => fetch(`${hostname}${path}`, { redirect: "manual" }),
+    request: (path: string) =>
+      fetch(`${hostname}${path}`, { redirect: "manual" }),
   };
 };
 

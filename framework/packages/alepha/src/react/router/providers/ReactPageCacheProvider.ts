@@ -622,11 +622,18 @@ export class ReactPageCacheProvider {
     if (this.invalidationMap) {
       return this.invalidationMap;
     }
+    // Page routers not created yet (#Q3405): no page was rendered, so no
+    // entry can be stale. Nothing is cached here, so the map is built once
+    // they exist.
+    const pageApi = this.alepha.inject(ReactPageProvider);
+    if (pageApi.pending) {
+      return new Map();
+    }
     const map = new Map<
       string,
       Array<{ route: PageRoute; params?: PageInvalidation["params"] }>
     >();
-    for (const route of this.alepha.inject(ReactPageProvider).getPages()) {
+    for (const route of pageApi.getPages()) {
       const cache = route.cache;
       if (!cache) {
         continue;

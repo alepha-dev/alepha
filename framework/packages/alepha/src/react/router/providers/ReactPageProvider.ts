@@ -108,6 +108,88 @@ export class ReactPageProvider {
   protected readonly configure = $hook({
     on: "configure",
     handler: () => {
+      // With page routers declared and not created (#Q3405), the tree waits
+      // for the first page request, which creates them and builds it whole.
+      this.deferredPages = this.hasDeclaredPages();
+      if (this.deferredPages) {
+        return;
+      }
+      this.buildTree();
+    },
+  });
+
+  /**
+   * Whether page routers are declared and not created yet: the tree is then
+   * built by {@link ensurePages}, on the first page request (#Q3405).
+   */
+  protected deferredPages = false;
+
+  /**
+   * Whether the page tree still waits for its routers (#Q3405). A reader that
+   * only needs pages already rendered (the page cache) asks this instead of
+   * building the tree: before the first page request, no page was rendered.
+   */
+  public get pending(): boolean {
+    return this.deferredPages;
+  }
+
+  /**
+   * Set while {@link ensurePages} rebuilds the tree after start, the one
+   * time {@link add} may run once the router is initialized.
+   */
+  protected rebuilding = false;
+
+  /**
+   * Called once the tree is built late, so the server can register the
+   * pages' routes (`ReactServerProvider`).
+   */
+  public onPagesBuilt?: () => void;
+
+  /**
+   * Whether the build list names page routers this process declared and has
+   * not created.
+   */
+  public hasDeclaredPages(): boolean {
+    const surface = this.alepha.surface;
+    if (!surface) {
+      return false;
+    }
+    return surface.pages.some((row) => !!this.alepha.declaredByKey(row.class));
+  }
+
+  /**
+   * Creates every declared page router and builds the page tree, once
+   * (#Q3405). The first page request calls it, and so does any reader of the
+   * tree after start (`router.path`, the sitemap), so a page whose router
+   * does not exist yet is never missing. A cron or an API request never
+   * reaches it.
+   */
+  public ensurePages(): void {
+    if (!this.deferredPages) {
+      return;
+    }
+    this.deferredPages = false;
+    const keys = new Set(
+      (this.alepha.surface?.pages ?? []).map((row) => row.class),
+    );
+    for (const key of keys) {
+      const service = this.alepha.declaredByKey(key);
+      if (service) {
+        this.alepha.inject(service);
+      }
+    }
+    this.rebuilding = true;
+    try {
+      this.pages.length = 0;
+      this.buildTree();
+    } finally {
+      this.rebuilding = false;
+    }
+    this.onPagesBuilt?.();
+  }
+
+  protected buildTree(): void {
+    {
       let hasNotFoundHandler = false;
       const pages = this.alepha.primitives($page);
 
@@ -151,16 +233,18 @@ export class ReactPageProvider {
           component: NotFoundPage,
         });
       }
-    },
-  });
+    }
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
 
   public getPages(): PageRoute[] {
+    this.ensurePages();
     return this.pages;
   }
 
   public getConcretePages(): ConcretePageRoute[] {
+    this.ensurePages();
     const pages: ConcretePageRoute[] = [];
     for (const page of this.pages) {
       if (page.children && page.children.length > 0) {
@@ -198,6 +282,7 @@ export class ReactPageProvider {
   }
 
   public page(name: string): PageRoute {
+    this.ensurePages();
     for (const page of this.pages) {
       if (page.name === name) {
         return page;
@@ -221,6 +306,7 @@ export class ReactPageProvider {
     name: string,
     routes: PageRouteEntry[] = this.pages,
   ): PageRoute | undefined {
+    this.ensurePages();
     for (const route of routes as PageRoute[]) {
       if (route.name === name) {
         return route;
@@ -1167,11 +1253,12 @@ export class ReactPageProvider {
    * composition `createMatch` hands the matcher.
    */
   public get routes(): readonly PageRoute[] {
+    this.ensurePages();
     return this.pages;
   }
 
   public add(entry: PageRouteEntry) {
-    if (this.alepha.isReady()) {
+    if (this.alepha.isReady() && !this.rebuilding) {
       throw new AlephaError("Router is already initialized");
     }
 

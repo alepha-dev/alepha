@@ -522,12 +522,7 @@ export class Alepha {
       return false;
     }
     const key = ContainerGraph.keyOf(service);
-    if (!surface.classes.some((it) => it.key === key && it.pure)) {
-      return false;
-    }
-    // Pages are created late by their own quest; until then a class holding
-    // one is created at boot, whatever else it holds.
-    return !surface.pages.some((it) => it.class === key);
+    return surface.classes.some((it) => it.key === key && it.pure);
   }
 
   /**
