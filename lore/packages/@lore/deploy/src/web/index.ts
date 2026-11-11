@@ -46,6 +46,7 @@ export const LoreDeployWeb = $module({
 
 export { ANALYTICS_DIMENSIONS, DeployRouter } from "./app/DeployRouter.ts";
 export { currentBlightCountAtom } from "./app/atoms/currentBlightCountAtom.ts";
+export { currentEstateAtom } from "./app/atoms/currentEstateAtom.ts";
 export { currentInstancesAtom } from "./app/atoms/currentInstancesAtom.ts";
 export { DeployShell } from "./app/shell/DeployShell.ts";
 

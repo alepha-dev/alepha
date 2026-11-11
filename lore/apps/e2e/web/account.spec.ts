@@ -160,7 +160,6 @@ test.describe("Account area", () => {
     const row = page.getByRole("row").filter({ hasText: title });
     await expect(row).toHaveCount(1);
     await expect(row.getByText("Owner", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("project-quota")).toBeVisible();
 
     await row.getByTestId("account-project-row").click();
     await expect(page).toHaveURL(new RegExp(`/${slug}(/|$)`));

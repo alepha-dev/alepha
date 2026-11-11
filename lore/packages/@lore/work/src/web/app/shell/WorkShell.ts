@@ -31,6 +31,7 @@ import {
   Workflow,
 } from "lucide-react";
 
+import { currentAreaAtom } from "../atoms/currentAreaAtom.ts";
 import { currentEpicAtom } from "../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../atoms/currentFeedbackCountAtom.ts";
@@ -319,6 +320,20 @@ export class WorkShell {
         ctx.routeName === "projectRelease" && ctx.params.releaseTag
           ? { label: String(ctx.params.releaseTag) }
           : undefined,
+    });
+
+    // An area's settings page ends its trail with the area's name (#Q3408),
+    // where it used to carry a "Back to areas" link: the Areas tab on the
+    // settings plate is the way back up.
+    this.shell.registerCrumb({
+      order: 45,
+      reads: [currentAreaAtom],
+      crumb: (ctx) => {
+        const area = ctx.get(currentAreaAtom);
+        return ctx.routeName === "projectSettingsArea" && area
+          ? { label: area.name }
+          : undefined;
+      },
     });
 
     this.shell.registerAside({

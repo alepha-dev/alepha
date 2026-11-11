@@ -119,8 +119,14 @@ describe("ButtonSettings", () => {
     expect(screen.getByRole("menuitemradio", { name: "Clair" })).toBeTruthy();
   });
 
-  it("draws the colour-blind toggle beside display mode when signed out", async () => {
+  it("leaves the colour-blind toggle out unless the app opts in", async () => {
     await mount({ signedIn: false });
+
+    expect(screen.queryByLabelText("Colour-blind mode")).toBeNull();
+  });
+
+  it("draws the colour-blind toggle beside display mode with vision", async () => {
+    await mount({ signedIn: false, props: { vision: true } });
 
     expect(screen.getByLabelText("Colour-blind mode")).toBeTruthy();
   });
@@ -142,7 +148,10 @@ describe("ButtonSettings", () => {
   });
 
   it("keeps the colour-blind button when placement is 'buttons'", async () => {
-    await mount({ signedIn: true, props: { placement: "buttons" } });
+    await mount({
+      signedIn: true,
+      props: { placement: "buttons", vision: true },
+    });
 
     const button = screen.getByLabelText("Colour-blind mode");
     await act(async () => fireEvent.click(button));
@@ -153,7 +162,7 @@ describe("ButtonSettings", () => {
   it("names the colour-blind button from labels", async () => {
     await mount({
       signedIn: false,
-      props: { labels: { vision: "Mode daltonien" } },
+      props: { vision: true, labels: { vision: "Mode daltonien" } },
     });
 
     expect(screen.getByLabelText("Mode daltonien")).toBeTruthy();

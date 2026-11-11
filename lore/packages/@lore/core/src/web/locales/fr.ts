@@ -66,7 +66,6 @@ export default {
     "Essayez un autre nom ou effacez le filtre d’état.",
   "automation.gallery.description":
     "Partez d'un modèle. Il est créé désactivé, pour le tester avant de l'activer.",
-  "automation.gallery.back": "Retour aux automatisations",
   "automation.enable": "Activer",
   "automation.disable": "Désactiver",
   "automation.delete": "Supprimer",
@@ -196,8 +195,27 @@ export default {
 
   "home.nav": "Accueil",
   "home.title": "Bienvenue dans l’aventure Lore",
-  "home.subtitle":
-    "Organisez votre travail sous forme de quêtes, invitez les personnes qui y participent, et gardez au même endroit les décisions et les notes qui vont avec.",
+  "home.welcome.title": "Il est temps de créer de grandes choses",
+  "home.welcome.subtitle":
+    "Planifiez le travail, gardez les décisions, livrez les applications. Un seul endroit pour celles et ceux qui le construisent.",
+  "home.pillar.plan.title": "Planifier",
+  "home.pillar.plan.description":
+    "Le travail à venir, réparti en épopées et en versions, sur un tableau et une feuille de route.",
+  "home.pillar.remember.title": "Se souvenir",
+  "home.pillar.remember.description":
+    "Un wiki de notes reliées, qui garde les décisions et leurs raisons.",
+  "home.pillar.ship.title": "Livrer",
+  "home.pillar.ship.description":
+    "Déployez vos applications, puis suivez leurs erreurs, leurs performances et leur disponibilité.",
+  "home.feature.agents.title": "Agents",
+  "home.feature.agents.description":
+    "Vos agents IA travaillent dans Lore via MCP et la CLI, avec vos permissions.",
+  "home.feature.automations.title": "Automatisations",
+  "home.feature.automations.description":
+    "Des règles qui agissent sur un événement, ou selon un calendrier.",
+  "home.feature.selfHost.title": "Auto-hébergement",
+  "home.feature.selfHost.description":
+    "Open source, et tourne partout à partir d’une seule image Docker.",
   "home.create-project": "Lancer un nouveau projet",
   "home.create-project.max": "Limite atteinte ($1)",
   "project.create.limit.title": "Vous avez atteint la limite de projets",
@@ -610,7 +628,7 @@ export default {
   "board.filter.noRelease": "Aucune",
   "board.filter.epic": "Épopée",
   "board.filter.allEpics": "Toutes les épopées",
-  "board.filter.noEpic": "Aucune épopée",
+  "board.filter.noEpic": "Aucune",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par une autre quête",
@@ -842,6 +860,8 @@ export default {
     "$1 devient propriétaire et vous devenez $2. Vous ne pourrez pas revenir en arrière : seul le nouveau propriétaire peut vous le rendre.",
 
   "project.settings.danger.title": "Zone à risques",
+  "project.settings.delete.blocked.title":
+    "Ce projet ne peut pas encore être détruit",
   "project.settings.actions.delete": "Détruire ce projet",
   "project.settings.actions.delete.helper":
     "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
@@ -1847,10 +1867,14 @@ export default {
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
   "account.projects.empty": "Vous ne faites partie d'aucun projet.",
-  "account.projects.quota": "$1 projets possédés sur $2",
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
   "account.projects.see-all": "Tous les projets",
+  "account.projects.filter.role": "Rôle",
+  "account.projects.filter.allRoles": "Tous les rôles",
+  "account.projects.filter.archived": "Archivés",
+  "account.projects.filter.active": "Non archivés",
+  "account.projects.filter.allStates": "Archivés ou non",
   "account.projects.archived": "Archivé",
 
   "area.detail.rename": "Renommer",
@@ -1873,7 +1897,6 @@ export default {
   "area.detail.stats.first": "Première quête",
   "area.detail.stats.last": "Dernière activité",
   "area.detail.stats.never": "Jamais",
-  "area.detail.back": "Retour aux domaines",
   "area.detail.quests.title": "Quêtes récentes",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
@@ -2357,16 +2380,21 @@ export default {
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
 
+  "estates.table.estate": "Domaine",
+  "estates.table.origin": "Origine",
+  "estates.table.status": "Statut",
+  "estates.table.deploys": "Déploiements",
+  "estates.table.lastSeen": "Vu",
+  "estates.origin.home": "Ce projet",
+  "estates.origin.all": "Toutes les origines",
+  "estates.origin.lent": "Prêté",
   "estates.project.title": "Domaines",
-  "estates.project.description":
-    "Où ce projet peut déployer. Un domaine est une machine ou un compte que quelqu'un possède et a prêté à ce projet.",
   "estates.project.empty":
-    "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
+    "Aucun domaine pour l'instant. Tant qu'aucun n'est ajouté, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
   "estates.project.notAllowed":
     "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
-  "estates.project.home": "appartient à ce projet",
   "estates.project.noHome": "aucun projet",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
@@ -2544,21 +2572,13 @@ export default {
   "bay.move.toast": "Déplacé vers $1",
   "bay.move.serverElsewhere":
     "Le serveur reste dans le compte cloud de la personne qui l'a provisionné, qui n'est pas membre du nouveau projet.",
-  "estates.home.title": "Domaines de ce projet",
-  "estates.home.description": "Ses membres les gèrent, chacun selon son rang.",
-  "estates.home.empty": "Ce projet n'est le propriétaire d'aucun domaine.",
-  "estates.home.lentHere": "Prêté à ce projet",
   "estates.home.notLentHere": "Pas prêté à ce projet",
   "estates.home.lentTo": "prêté à $1 autre(s) projet(s)",
   "estates.home.lend": "Prêter à ce projet",
-  "estates.borrowed.title": "Domaines prêtés à ce projet",
-  "estates.borrowed.description":
-    "Les domaines d'autres projets sur lesquels celui-ci peut déployer. Leur projet propriétaire les gère.",
   "estates.blocker.delete":
-    "Ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord, d'autres projets peuvent y déployer.",
+    "Ce projet est le propriétaire de $1. Déplacez ces domaines vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
   "estates.blocker.apps":
     "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
-  "bay.back": "Tous les domaines",
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
   "estates.online": "en ligne",
@@ -2567,7 +2587,6 @@ export default {
   "estates.offline": "hors ligne",
   "estates.deploys.allowed": "déploiements autorisés",
   "estates.deploys.statsOnly": "statistiques seulement",
-  "estates.lastSeen": "vu $1",
   "estates.neverSeen": "jamais connecté",
   "estates.add.title": "Ajouter un domaine à $1",
   "estates.add.description":

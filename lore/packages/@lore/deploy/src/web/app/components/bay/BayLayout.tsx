@@ -10,7 +10,6 @@ import {
   useRouterState,
 } from "alepha/react/router";
 import {
-  ArrowLeft,
   Gauge,
   Layers,
   type LucideIcon,
@@ -89,16 +88,6 @@ const BayLayout = () => {
       scroll={false}
       plate={
         <div className="flex flex-col gap-2 px-4 pt-3 pb-3 md:px-6">
-          <Link
-            href={router.path("projectSettingsEstates", {
-              params: { projectSlug },
-            })}
-            className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1 text-sm transition-colors"
-            data-testid="bay-back"
-          >
-            <ArrowLeft className="size-4" />
-            {tr("bay.back")}
-          </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold">{estate.slug}</h1>
             {estate.label && (

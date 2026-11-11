@@ -47,8 +47,8 @@ const ProjectSettingsDangerZoneSection = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const dialog = useDialog();
-  // What a module's server guard would refuse the delete on, said before the
-  // click (#Q3281). The hooks are called in a fixed order: the registry is
+  // What a module's server guard would refuse the delete on, said when the
+  // Delete button is clicked (#Q3281, #Q3410). The hooks are called in a fixed order: the registry is
   // frozen at first read.
   const blockers = useInject(ProjectBlockerRegistry).blockers();
   const blocking = blockers
@@ -123,6 +123,20 @@ const ProjectSettingsDangerZoneSection = () => {
     [projectApi, memberApi, alepha, router, project],
   );
 
+  // Clickable whatever blocks it (#Q3410): a blocker refuses in a dialog
+  // that names the estates and what to do, rather than as a line of red
+  // text and a greyed-out button on the settings page.
+  const openDelete = async () => {
+    if (blocking.length > 0) {
+      await dialog.alert({
+        title: tr("project.settings.delete.blocked.title"),
+        description: blocking.join(" "),
+      });
+      return;
+    }
+    setDeleteModalOpen(true);
+  };
+
   if (!project) {
     return null;
   }
@@ -171,22 +185,12 @@ const ProjectSettingsDangerZoneSection = () => {
                 <span className="text-muted-foreground text-xs">
                   {tr("project.settings.actions.delete.helper")}
                 </span>
-                {blocking.map((line) => (
-                  <span
-                    key={line}
-                    className="text-destructive text-xs"
-                    data-testid="project-delete-blocked"
-                  >
-                    {line}
-                  </span>
-                ))}
               </div>
               <div className="flex justify-start sm:justify-end">
                 <Button
                   variant="outlined"
                   intent="danger"
-                  disabled={blocking.length > 0}
-                  onClick={() => setDeleteModalOpen(true)}
+                  onClick={() => void openDelete()}
                 >
                   {tr("project.settings.actions.delete")}
                 </Button>

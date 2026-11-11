@@ -410,7 +410,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   });
 
   /**
-   * The Epic filter (#Q3270): optional, led by "No epic", several at once.
+   * The Epic filter (#Q3270): optional, led by "None" (#Q3415), several at once.
    */
   describe("the Epic filter", () => {
     const openAddMenu = (view: Awaited<ReturnType<typeof mount>>["view"]) =>
@@ -430,18 +430,18 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       });
     };
 
-    it("leads with No epic, then each epic by its number and title", async () => {
+    it("leads with None, then each epic by its number and title", async () => {
       const { view } = await mount();
 
       const options = await epicOptions(view);
 
       expect(options.map((option) => option.textContent)).toEqual([
-        expect.stringContaining("No epic"),
+        expect.stringContaining("None"),
         expect.stringContaining("#E7 - Epic Workflow"),
       ]);
     });
 
-    it("sends No epic and an epic as one list", async () => {
+    it("sends None and an epic as one list", async () => {
       const { view, links } = await mount();
 
       const [none, epic] = await epicOptions(view);
