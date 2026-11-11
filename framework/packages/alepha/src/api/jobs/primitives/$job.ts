@@ -56,11 +56,13 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
    * Records an intent; nothing is written until the handler resolves. Then,
    * in place of the success write, the row goes back to `scheduled` with the
    * new `scheduledAt` and payload, `attempt` reset to 0, the same `id` and
-   * `key`, and is dispatched delayed like a push with `delay`. A stage or
-   * iteration counter in the payload is what turns a multi-step process into
-   * one job switching on `payload.stage`, and a durable loop into a handler
-   * that reschedules itself until its limit.
+   * `key`, and is dispatched delayed like a push with `delay`. It is the
+   * tool for a durable loop over a changing payload (a poll that backs off,
+   * a handler that reschedules itself with `round + 1` until its limit). A
+   * fixed sequence with side effects is {@link JobSteps} instead.
    *
+   * - Every reschedule clears the run's steps: the next pass is a new
+   *   iteration and runs every `step.run` again.
    * - The write is guarded on `running`: a cancel that landed during the
    *   handler wins and the reschedule is dropped.
    * - A handler that throws after calling it takes the retry path on the
@@ -71,6 +73,66 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
    *   (the caller is waiting for an outcome).
    */
   reschedule: (options: JobRescheduleOptions<T>) => void;
+  /**
+   * Memoised steps: work this execution does once, even though its handler
+   * runs again from the top on every retry, crash recovery or wake-up. See
+   * {@link JobSteps}.
+   */
+  step: JobSteps;
+}
+
+/**
+ * The steps of one execution, recorded on its row.
+ *
+ * The handler runs from its first line on every pass (a retry, a crash
+ * recovered by the sweep, a wake-up after `sleep`); a step that already
+ * completed returns its stored result instead of running. Everything outside
+ * a step runs on every pass, which is what a guard such as "is this cart
+ * still recoverable?" wants.
+ *
+ * - Names identify steps: unique within a run, 1 to 64 characters of
+ *   lower-case kebab segments joined by dots. Name loop iterations
+ *   (`` step.run(`charge.${i}`, ...) ``).
+ * - Results are stored as JSON, in clear, and capped (`jobConfig`): a `Date`,
+ *   a `Map`, a class instance or a `bigint` is refused. Return an ISO string,
+ *   and never a secret.
+ * - The retry budget is per step: `retries: 3` is four tries of each step.
+ * - Not available in a cron job (push a queue job from the cron), in an
+ *   `inline` push, or inside a transaction (open it inside the step's
+ *   function).
+ * - Any `reschedule()` starts the steps over.
+ */
+export interface JobSteps {
+  /**
+   * Run `fn` once for this execution and return its result.
+   *
+   * When the execution already holds a result for `name`, it is returned
+   * and `fn` is not called. Otherwise `fn` runs, its result is written onto
+   * the row, and returned. A step that throws records nothing and takes the
+   * job's retry path; the retry skips the steps before it.
+   *
+   * At-least-once: a crash between `fn` finishing and its result being
+   * stored runs that one step again. Make the step idempotent, or pass an
+   * idempotency key to the service it calls.
+   */
+  run: <R>(name: string, fn: () => Async<R>) => Promise<R>;
+
+  /**
+   * Wait `duration` before the rest of the handler runs, durably.
+   *
+   * On the first pass the handler is unwound (the call throws a signal the
+   * job catches; never `catch` around it), then the row is parked as
+   * `scheduled` until the wake instant, like a delayed push: visible and
+   * cancellable in the admin, and no attempt is spent. On the pass after
+   * the wake instant the call returns at once, and the steps before it
+   * return their stored results.
+   */
+  sleep: (name: string, duration: DurationLike) => Promise<void>;
+
+  /**
+   * {@link sleep} until `date` instead of for a duration.
+   */
+  sleepUntil: (name: string, date: Date) => Promise<void>;
 }
 
 export interface JobRescheduleOptions<T extends ZType = ZType> {

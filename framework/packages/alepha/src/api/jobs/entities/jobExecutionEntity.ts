@@ -2,6 +2,8 @@ import { type Infer, z } from "alepha";
 import { logEntrySchema } from "alepha/logger";
 import { $entity, db } from "alepha/orm";
 
+import { jobStepSchema } from "../schemas/jobStepSchema.ts";
+
 /**
  * Job execution record.
  *
@@ -17,7 +19,8 @@ import { $entity, db } from "alepha/orm";
  * - terminal failure      → error (or row deleted, when the job does not record failures)
  * - retryable failure     → scheduled (with scheduledAt = now; sweep picks it up)
  * - delay                 → scheduled (with scheduledAt = now + delay)
- * - handler reschedule()  → scheduled (next scheduledAt and payload, attempt reset, same id and key)
+ * - handler reschedule()  → scheduled (next scheduledAt and payload, attempt reset, same id and key, steps cleared)
+ * - handler step.sleep()  → scheduled (scheduledAt = the wake instant, attempt reset, same id, key, payload and steps, plus the sleep's entry)
  * - sweep picks due ones  → pending
  * - cancel                → cancelled
  */
@@ -68,6 +71,15 @@ export const jobExecutionEntity = $entity({
      * written while a run is in progress.
      */
     logs: z.array(logEntrySchema).optional(),
+
+    /**
+     * The run's completed steps (`step.run`) and waits (`step.sleep`), keyed
+     * by step name. A step with an entry returns it on every later pass
+     * instead of running. Null or absent for a job that calls no `step.*`,
+     * and cleared by every `reschedule()`. Kept on a terminal row, results
+     * included, so the admin shows the run's timeline.
+     */
+    steps: z.record(z.text(), jobStepSchema).nullable().optional(),
 
     triggeredBy: z.text().optional(),
     triggeredByName: z.text().optional(),

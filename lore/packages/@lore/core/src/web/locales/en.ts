@@ -1990,7 +1990,6 @@ export default {
     "This copy has no estate yet, so there is nowhere to deploy it. Choose one on its Settings tab.",
   "app.deploy.noEstate.action": "Open Settings",
   "app.tab.environment": "Environment",
-  "app.tab.sigil": "Sigil",
   "app.environment": "Variables and secrets",
   "app.environment.description":
     "What this copy runs with. A variable (declared `secret: false` by the app) shows its value; a secret is encrypted and never shown again - replace one rather than read it. DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names are set by the deploy itself.",
@@ -2128,7 +2127,7 @@ export default {
   "app.dashboard.neverReported":
     "This app has not reported its configuration. Older releases send none, and one that has never reported has told us nothing either.",
   "app.dashboard.configHint":
-    "What the app sends is decided by SIGIL_CONFIG in its own deploy. When Lore deploys this copy, switch it on the Sigil tab.",
+    "What the app sends is decided by SIGIL_CONFIG in its own deploy. When Lore deploys this copy, switch it under Settings.",
   "app.dashboard.acceptsNothing": "Lore accepts nothing from this app",
   "app.artifacts": "Artifacts",
   "app.artifacts.loading": "Reading what this app has built…",

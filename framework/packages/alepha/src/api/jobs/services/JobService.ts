@@ -12,6 +12,8 @@ import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 import type { JobExecutionResource } from "../schemas/jobExecutionResourceSchema.ts";
 import type { JobExecutionRow } from "../schemas/jobExecutionRowSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
+import type { JobStep } from "../schemas/jobStepSchema.ts";
+import type { JobStepView } from "../schemas/jobStepViewSchema.ts";
 
 /**
  * Admin surface for the job system.
@@ -253,12 +255,51 @@ export class JobService {
   /**
    * Full execution detail (includes captured logs).
    */
-  public async getExecution(id: string) {
+  public async getExecution(id: string): Promise<JobExecutionResource> {
     const execution = await this.executions.findById(id);
     if (!execution) {
       throw new NotFoundError(`Execution not found: ${id}`);
     }
-    return this.toResource(execution);
+    const { steps, ...rest } = execution;
+    return {
+      ...this.toResource(rest),
+      steps: steps ? this.stepTimeline(steps) : undefined,
+    };
+  }
+
+  /**
+   * The longest result preview the timeline carries, in characters.
+   */
+  protected readonly stepPreviewMaxLength = 2048;
+
+  /**
+   * A run's `steps` record as the admin's timeline: one entry per step,
+   * ordered by when it was written, each result as an indented JSON preview
+   * cut at {@link stepPreviewMaxLength}. Behind `admin:job:read`, like the
+   * payload the same response carries whole.
+   */
+  protected stepTimeline(steps: Record<string, JobStep>): JobStepView[] {
+    return Object.entries(steps)
+      .map(([name, step]) => {
+        const hasResult = step.result !== undefined;
+        let resultPreview: string | undefined;
+        if (hasResult) {
+          const json = JSON.stringify(step.result, null, 2);
+          resultPreview =
+            json.length <= this.stepPreviewMaxLength
+              ? json
+              : `${json.slice(0, this.stepPreviewMaxLength - 3)}...`;
+        }
+        return {
+          name,
+          at: step.at,
+          ms: step.ms,
+          ...(step.until ? { until: step.until } : {}),
+          hasResult,
+          ...(resultPreview !== undefined ? { resultPreview } : {}),
+        };
+      })
+      .sort((a, b) => a.at.localeCompare(b.at) || a.name.localeCompare(b.name));
   }
 
   /**
@@ -281,7 +322,9 @@ export class JobService {
   }
 
   /**
-   * Retry a dead or cancelled execution by re-pushing with the original payload.
+   * Retry a dead or cancelled execution by re-pushing with the original
+   * payload. A run that recorded steps resumes: the new row starts with a
+   * copy of them, so the steps already completed are not run again.
    */
   public async retryExecution(
     id: string,
@@ -309,7 +352,21 @@ export class JobService {
       triggeredBy: context?.triggeredByName ?? context?.triggeredBy,
     });
 
-    if (execution.payload) {
+    if (execution.payload && execution.steps) {
+      // Resume: the new row carries the old one's steps, whole, so the steps
+      // it completed return their results and the run carries on at the one
+      // that failed. A sleep entry goes too, and parks the new row until its
+      // own wake instant if that is still ahead.
+      await this.jobProvider.pushRetry(
+        execution.jobName,
+        execution.payload,
+        {
+          triggeredBy: context?.triggeredBy,
+          triggeredByName: context?.triggeredByName,
+        },
+        execution.steps,
+      );
+    } else if (execution.payload) {
       await job.push(execution.payload, {
         triggeredBy: context?.triggeredBy,
         triggeredByName: context?.triggeredByName,

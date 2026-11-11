@@ -65,6 +65,18 @@ export const jobConfig = $atom({
     logMaxEntries: z
       .integer()
       .describe("Max log entries captured per execution."),
+    stepResultMaxBytes: z
+      .integer()
+      .min(1)
+      .describe(
+        "Largest result one `step.run` may record, in bytes of UTF-8 JSON. A larger result throws inside the handler, so the run takes its retry path with the error on the row. Results live on the execution row, and a D1 row is finite.",
+      ),
+    stepsMaxBytes: z
+      .integer()
+      .min(1)
+      .describe(
+        "Largest `steps` record one execution may hold, every step's entry together, in bytes of UTF-8 JSON. A step that would grow it past this throws inside the handler, like an oversized result.",
+      ),
     drainTimeout: z
       .integer()
       .describe("Max time (ms) to wait for in-flight jobs during shutdown."),
@@ -86,6 +98,8 @@ export const jobConfig = $atom({
     runTimeout: 1_800_000,
     retention: { errorDays: 30, maxRows: 1000 },
     logMaxEntries: 100,
+    stepResultMaxBytes: 64 * 1024,
+    stepsMaxBytes: 512 * 1024,
     drainTimeout: 30_000,
     directMaxConcurrency: 10,
   },

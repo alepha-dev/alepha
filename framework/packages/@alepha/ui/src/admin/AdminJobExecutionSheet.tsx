@@ -16,6 +16,7 @@ import {
 } from "../core/Sheet.tsx";
 import { Skeleton } from "../core/Skeleton.tsx";
 import { AdminJobExecutionLogs } from "./AdminJobExecutionLogs.tsx";
+import { AdminJobExecutionSteps } from "./AdminJobExecutionSteps.tsx";
 import { AdminJobsPayloadBody } from "./AdminJobsPayloadBody.tsx";
 import { AdminJobsStatusBadge } from "./AdminJobsStatusBadge.tsx";
 
@@ -34,8 +35,8 @@ export interface AdminJobExecutionSheetProps {
 }
 
 /**
- * One execution in a drawer: its overview, its error in full, its logs as
- * lines, and its payload.
+ * One execution in a drawer: its overview, its error in full, its steps when
+ * it recorded any, its logs as lines, and its payload.
  *
  * It reads `getExecution`, the one endpoint that returns the payload and the
  * logs a list row does not carry. While the run is pending, scheduled or
@@ -175,6 +176,19 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
                   <pre className="bg-danger/5 text-danger-text overflow-x-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
                     {execution.error}
                   </pre>
+                </section>
+              )}
+
+              {execution.steps && execution.steps.length > 0 && (
+                <section className="flex flex-col gap-2">
+                  <h3 className="text-sm font-semibold">
+                    {tr("admin.jobs.stepsTitle", { default: "Steps" })}
+                  </h3>
+                  <AdminJobExecutionSteps
+                    steps={execution.steps}
+                    status={execution.status}
+                    error={execution.error}
+                  />
                 </section>
               )}
 

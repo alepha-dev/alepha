@@ -10,7 +10,6 @@ export type AppTabRoute =
   | "appArtifacts"
   | "appDeploy"
   | "appEnvironment"
-  | "appSigil"
   | "appBackups"
   | "appSettings";
 
@@ -23,7 +22,6 @@ export type AppTabLabelKey =
   | "app.tab.artifacts"
   | "app.tab.deploy"
   | "app.tab.environment"
-  | "app.tab.sigil"
   | "app.tab.backups"
   | "app.tab.settings";
 
@@ -160,28 +158,28 @@ export const APP_TABS: AppTab[] = [
       !!instance.estateId || !!instance.stackEnvironmentId,
     option: "deploy",
   },
-  // After Environment, whose `SIGIL_CONFIG` it writes (#Q3103). It needs a
-  // sigil AND somewhere Lore deploys to: for a copy Lore only hears from,
-  // what the app sends is decided in its own deploy, which Lore cannot
-  // change. `deploy`, not `track`: it is a deploy setting.
-  {
-    route: "appSigil",
-    labelKey: "app.tab.sigil",
-    unlockedBy: (instance) =>
-      !!instance.sigil &&
-      (!!instance.estateId || !!instance.stackEnvironmentId),
-    option: "deploy",
-  },
-  // After Environment: what a deploy leaves behind. An estate only, never a
-  // stack environment: backups are Bay's, and a stack has no Bay instance.
+  // After Environment: what a deploy leaves behind. A Bay estate only:
+  // backups are Bay's, so a Cloudflare estate has none, and a stack
+  // environment has no Bay instance.
   {
     route: "appBackups",
     labelKey: "app.tab.backups",
-    unlockedBy: (instance) => !!instance.estateId,
+    unlockedBy: (instance) => instance.estate?.type === "bay",
     option: "deploy",
   },
   { route: "appSettings", labelKey: "app.tab.settings" },
 ];
+
+/**
+ * Whether Lore can configure what this copy's Sigil collects (#Q3103).
+ *
+ * It needs a sigil AND somewhere Lore deploys to: for a copy Lore only hears
+ * from, what the app sends is decided in its own deploy, which Lore cannot
+ * change. The Settings tab shows the Sigil features section on this, under
+ * the project's `apps.deploy` option, since it is a deploy setting.
+ */
+export const sigilConfigurable = (instance: AppInstanceResource): boolean =>
+  !!instance.sigil && (!!instance.estateId || !!instance.stackEnvironmentId);
 
 /**
  * Whether this instance's credential is allowed to collect one kind.

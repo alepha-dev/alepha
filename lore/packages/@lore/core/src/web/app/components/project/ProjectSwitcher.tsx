@@ -7,6 +7,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useIsMobile,
 } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -19,14 +20,53 @@ import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
 
+/**
+ * The top of the project sidebar.
+ *
+ * On desktop a plain title, the current project's icon and name: switching is
+ * the rail's job there (#Q3374), and a second switcher beside it was one too
+ * many. At phone width the rail is hidden, so the dropdown below stays the
+ * way to change project. `useIsMobile` breaks at 768px, the rail's `md`.
+ *
+ * ⚠️ One or the other, never both hidden by CSS: two copies of the title
+ * would make every `getByText(title)` in the e2e suite ambiguous. The server
+ * draws the desktop title; a phone swaps in the dropdown on hydration, while
+ * its sidebar is still the closed off-canvas sheet, so nothing flashes.
+ */
 const ProjectSwitcher = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
+  const isMobile = useIsMobile();
 
   if (!project) {
     return null;
+  }
+
+  if (!isMobile) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            data-testid="project-title"
+            render={<div />}
+            className="hover:text-foreground active:text-foreground cursor-default hover:bg-transparent active:bg-transparent"
+          >
+            <ProjectIcon
+              fileId={project.icon}
+              title={project.title}
+              seed={project.slug}
+              className="size-8 rounded-lg"
+            />
+            <span className="truncate font-semibold group-data-[collapsible=icon]:hidden">
+              {project.title}
+            </span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
   }
 
   const projects = overview?.projects ?? [];

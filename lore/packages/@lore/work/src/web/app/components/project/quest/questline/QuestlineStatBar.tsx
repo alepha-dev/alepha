@@ -68,7 +68,11 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
   }, [props.tracks]);
 
   return (
-    <div className="border-border bg-background/90 sticky top-0 z-10 flex flex-wrap items-center gap-x-3.5 gap-y-2 border-b px-6 py-3 backdrop-blur">
+    // `@container/statbar`: below 48rem of bar the state chips keep their
+    // dot and count and drop the word (still read by a screen reader and
+    // shown on hover), so the bar stays one line on a 1280px screen with the
+    // project rail beside it (#Q3374) instead of wrapping.
+    <div className="border-border bg-background/90 @container/statbar sticky top-0 z-10 flex flex-wrap items-center gap-x-3.5 gap-y-2 border-b px-6 py-3 backdrop-blur">
       <span className="text-muted-foreground text-xs">
         <b className="text-foreground font-mono text-xs font-medium">
           {summary.total}
@@ -81,13 +85,16 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
       {COUNTED.map((state) => (
         <span
           key={state}
+          title={tr(LABEL[state])}
           className="text-muted-foreground inline-flex items-center gap-1.5 text-xs"
         >
           <span className={`size-[7px] shrink-0 rounded-full ${DOT[state]}`} />
           <b className="text-foreground font-mono text-xs font-medium">
             {summary.states.get(state) ?? 0}
           </b>{" "}
-          {tr(LABEL[state])}
+          <span className="sr-only @3xl/statbar:not-sr-only">
+            {tr(LABEL[state])}
+          </span>
         </span>
       ))}
 

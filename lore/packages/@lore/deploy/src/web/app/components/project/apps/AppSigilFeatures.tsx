@@ -33,7 +33,7 @@ export interface AppSigilFeaturesProps {
  * The Overview's capabilities card is read-only on purpose: for an app Lore
  * only hears from, what it sends is decided in its own deploy, and a switch
  * the sink cannot honour is worse than none. A copy Lore DEPLOYS is the one
- * case where Lore holds that deploy, which is what the Sigil tab is gated on.
+ * case where Lore holds that deploy, which is what the Settings section is gated on.
  * The switches write the same `SIGIL_CONFIG` row the Environment tab lists,
  * through the same endpoint, so there is one source of truth and no second
  * path to keep in step.
