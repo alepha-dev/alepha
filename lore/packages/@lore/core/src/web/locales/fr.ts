@@ -3079,6 +3079,8 @@ export default {
   "questline.zoom.in": "Agrandir",
   "questline.zoom.out": "Réduire",
   "questline.zoom.fit": "Ajuster à la vue",
+  "questline.zoom.fullscreen": "Plein écran",
+  "questline.zoom.exitFullscreen": "Quitter le plein écran",
   "epic.description.title": "Description",
   "epic.description.empty": "Aucune description pour le moment.",
   "epic.folios.title": "Folios",

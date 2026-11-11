@@ -1,7 +1,14 @@
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ChevronDown, Maximize, Minus, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  Maximize,
+  Minimize,
+  Minus,
+  Plus,
+  Shrink,
+} from "lucide-react";
 import { useMemo } from "react";
 
 import type { AreaDotColor } from "../../../shared/areaColor.ts";
@@ -16,6 +23,11 @@ export interface QuestlineStatBarProps {
    * with the board it is scaling.
    */
   zoom: QuestlineStatBarZoom;
+  /**
+   * The full-screen toggle (#Q3450), from `useGraphFullscreen` on the view's
+   * root. Absent, the bar draws no toggle.
+   */
+  fullscreen?: { active: boolean; toggle: () => void };
 }
 
 /**
@@ -98,89 +110,116 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
         </span>
       ))}
 
-      {/* `ml-auto` rather than a flex-1 spacer: a spacer eats the free space
-          the rest of the bar needs to wrap into on a narrow panel. */}
-      {summary.areas.length > 0 && (
-        <Popover>
-          <PopoverTrigger
-            render={
-              <Button
-                variant="minimal"
-                size="sm"
-                className="text-muted-foreground ml-auto h-6 gap-1 px-2 text-[11.5px] font-normal"
-              />
-            }
-          >
-            <b className="text-foreground font-mono text-[11px] font-medium">
-              {summary.areas.length}
-            </b>
-            {tr(
-              summary.areas.length === 1
-                ? "questline.stat.area"
-                : "questline.stat.areas",
-            )}
-            <ChevronDown className="size-3 shrink-0" />
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            className="max-h-80 w-56 overflow-y-auto p-2"
-          >
-            <div className="flex flex-col gap-1">
-              {summary.areas.map(([area, count]) => (
-                <span
-                  key={area}
-                  className="text-muted-foreground flex items-center gap-2 text-[11.5px]"
-                >
+      {/* The controls, one cluster with one gap between every control
+          (#Q3450): the areas pill, zoom out, the level, zoom in, fit, full
+          screen. `ml-auto` rather than a flex-1 spacer: a spacer eats the
+          free space the rest of the bar needs to wrap into on a narrow
+          panel. */}
+      <div className="ml-auto flex items-center gap-1">
+        {summary.areas.length > 0 && (
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="minimal"
+                  size="sm"
+                  className="text-muted-foreground h-6 gap-1 px-2 text-[11.5px] font-normal"
+                />
+              }
+            >
+              <b className="text-foreground font-mono text-[11px] font-medium">
+                {summary.areas.length}
+              </b>
+              {tr(
+                summary.areas.length === 1
+                  ? "questline.stat.area"
+                  : "questline.stat.areas",
+              )}
+              <ChevronDown className="size-3 shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="max-h-80 w-56 overflow-y-auto p-2"
+            >
+              <div className="flex flex-col gap-1">
+                {summary.areas.map(([area, count]) => (
                   <span
-                    className={`size-[7px] shrink-0 rounded-full ${props.areaColor.dotClass(area)}`}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{area}</span>
-                  <b className="text-muted-foreground/70 font-mono text-[11px] font-normal">
-                    {count}
-                  </b>
-                </span>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
+                    key={area}
+                    className="text-muted-foreground flex items-center gap-2 text-[11.5px]"
+                  >
+                    <span
+                      className={`size-[7px] shrink-0 rounded-full ${props.areaColor.dotClass(area)}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{area}</span>
+                    <b className="text-muted-foreground/70 font-mono text-[11px] font-normal">
+                      {count}
+                    </b>
+                  </span>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
-      <span
-        role="group"
-        aria-label={tr("questline.zoom.label")}
-        className="inline-flex items-center gap-0.5"
-      >
-        <Button
-          variant="minimal"
-          size="icon-xs"
-          aria-label={tr("questline.zoom.out")}
-          onClick={props.zoom.onZoomOut}
-        >
-          <Minus />
-        </Button>
         <span
-          data-testid="questline-zoom-level"
-          className="text-muted-foreground w-10 text-center font-mono text-[11px] tabular-nums"
+          role="group"
+          aria-label={tr("questline.zoom.label")}
+          className="inline-flex items-center gap-1"
         >
-          {props.zoom.percent}%
+          <Button
+            variant="minimal"
+            size="icon-xs"
+            aria-label={tr("questline.zoom.out")}
+            onClick={props.zoom.onZoomOut}
+          >
+            <Minus />
+          </Button>
+          <span
+            data-testid="questline-zoom-level"
+            className="text-muted-foreground min-w-8 text-center font-mono text-[11px] tabular-nums"
+          >
+            {props.zoom.percent}%
+          </span>
+          <Button
+            variant="minimal"
+            size="icon-xs"
+            aria-label={tr("questline.zoom.in")}
+            onClick={props.zoom.onZoomIn}
+          >
+            <Plus />
+          </Button>
+          <Button
+            variant="minimal"
+            size="icon-xs"
+            aria-label={tr("questline.zoom.fit")}
+            title={tr("questline.zoom.fit")}
+            onClick={props.zoom.onReset}
+          >
+            <Shrink />
+          </Button>
+          {props.fullscreen && (
+            <Button
+              variant="minimal"
+              size="icon-xs"
+              data-testid="questline-fullscreen"
+              aria-pressed={props.fullscreen.active}
+              aria-label={
+                props.fullscreen.active
+                  ? tr("questline.zoom.exitFullscreen")
+                  : tr("questline.zoom.fullscreen")
+              }
+              title={
+                props.fullscreen.active
+                  ? tr("questline.zoom.exitFullscreen")
+                  : tr("questline.zoom.fullscreen")
+              }
+              onClick={props.fullscreen.toggle}
+            >
+              {props.fullscreen.active ? <Minimize /> : <Maximize />}
+            </Button>
+          )}
         </span>
-        <Button
-          variant="minimal"
-          size="icon-xs"
-          aria-label={tr("questline.zoom.in")}
-          onClick={props.zoom.onZoomIn}
-        >
-          <Plus />
-        </Button>
-        <Button
-          variant="minimal"
-          size="icon-xs"
-          aria-label={tr("questline.zoom.fit")}
-          onClick={props.zoom.onReset}
-        >
-          <Maximize />
-        </Button>
-      </span>
+      </div>
     </div>
   );
 };

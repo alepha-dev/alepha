@@ -2,13 +2,14 @@ import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import type { ReleaseContentQuest } from "../../../../../api/schemas/releaseContentQuestSchema.ts";
 import { currentAreasAtom } from "../../../atoms/currentAreasAtom.ts";
 import { AreaDotColor } from "../../shared/areaColor.ts";
 import type { QuestlineNode } from "../quest/questline/questlineLayout.ts";
 import QuestlineStatBar from "../quest/questline/QuestlineStatBar.tsx";
+import { useGraphFullscreen } from "../quest/questline/useGraphFullscreen.ts";
 import { useQuestlineViewport } from "../quest/questline/useQuestlineViewport.ts";
 import type { ReleaseContentsData } from "./ReleaseContents.tsx";
 import ReleaseFlowCluster from "./ReleaseFlowCluster.tsx";
@@ -47,6 +48,8 @@ const ReleaseFlow = (props: ReleaseFlowProps) => {
   const router = useRouter();
   const [areas] = useStore(currentAreasAtom);
   const viewport = useQuestlineViewport();
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useGraphFullscreen(fullscreenRef);
 
   const map = useMemo(
     () =>
@@ -87,7 +90,12 @@ const ReleaseFlow = (props: ReleaseFlowProps) => {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // The root is what full screen fills (#Q3450): bar and board together,
+    // on the page's background rather than the browser's black.
+    <div
+      ref={fullscreenRef}
+      className="bg-background flex min-h-0 flex-1 flex-col"
+    >
       <QuestlineStatBar
         tracks={tracks}
         areaColor={areaColor}
@@ -97,6 +105,7 @@ const ReleaseFlow = (props: ReleaseFlowProps) => {
           onZoomOut: viewport.zoomOut,
           onReset: viewport.reset,
         }}
+        fullscreen={fullscreen}
       />
 
       {/* The same frame as `Questline`: see the comment there for why it is
