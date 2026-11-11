@@ -38,11 +38,16 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 
 ### Providers
 
+- [`AuthenticatorDataParser`](/docs/reference-providers-authenticatordataparser) - Parses authenticator data: RP ID hash (32 bytes), flags (1), sign counter
+- [`Base64Url`](/docs/reference-providers-base64url) - Base64url (RFC 4648 section 5, no padding) to bytes and back, with `atob`
+- [`CborDecoder`](/docs/reference-providers-cbordecoder) - Decodes the CBOR subset WebAuthn uses (RFC 8949): unsigned and negative
+- [`CoseKey`](/docs/reference-providers-cosekey) - COSE public keys (RFC 9052, 9053) to JWK, and signature checks with that
 - [`EffectivePermissionsProvider`](/docs/reference-providers-effectivepermissionsprovider) - The caller's **effective** permission set, computed once, server-side.
 - [`JwtProvider`](/docs/reference-providers-jwtprovider) - Provides utilities for working with JSON Web Tokens (JWT).
 - [`OwnedResourceProvider`](/docs/reference-providers-ownedresourceprovider) - Reads the resource resolved by `$owns` for the current request.
 - [`PermissionRegistryProvider`](/docs/reference-providers-permissionregistryprovider) - Answers "does the caller hold this permission?" from the set the server sent
 - [`ResourceGateMemoProvider`](/docs/reference-providers-resourcegatememoprovider) - Request-scoped memo for the reads `$owns` performs to make its decision.
 - [`ResourceGrantsProvider`](/docs/reference-providers-resourcegrantsprovider) - The seam between `$owns` and whatever decides what a member may do
+- [`WebAuthnVerifier`](/docs/reference-providers-webauthnverifier) - Verifies WebAuthn registrations and assertions with `crypto.subtle` and
 - [`WebhookSigner`](/docs/reference-providers-webhooksigner) - Signs webhook requests the Standard Webhooks way
 - [`WebhookVerifier`](/docs/reference-providers-webhookverifier) - Verifies a Standard Webhooks request (https://www.standardwebhooks.com),

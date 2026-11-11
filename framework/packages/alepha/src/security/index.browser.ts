@@ -13,9 +13,11 @@ export * from "./providers/PermissionRegistryProvider.ts";
 // The grants seam is types plus a default that allows: no ORM, no server, and
 // the browser needs the type to typecheck an isomorphic `$owns({ requires })`.
 export * from "./providers/ResourceGrantsProvider.ts";
+export * from "./schemas/authenticationResponseJsonSchema.ts";
 export * from "./schemas/permissionCatalogueSchema.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";
+export * from "./schemas/registrationResponseJsonSchema.ts";
 export * from "./schemas/userAccountInfoSchema.ts";
 export * from "./schemas/userCredentialSchema.ts";
 
