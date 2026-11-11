@@ -84,7 +84,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
   const toast = useToast();
   const { user: currentUser } = useAuth();
   const router = useRouter<any>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const dialog = useDialog();
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshSignal, setRefreshSignal] = useState(0);
@@ -491,9 +491,14 @@ export const AdminUsers = (props: AdminUsersProps) => {
             label: tr("admin.users.colLastLogin", { default: "Last login" }),
             sortable: true,
             cell: (u) => (
-              <span className="text-muted-foreground text-xs">
-                {u.lastLoginAt ? l(u.lastLoginAt, { date: "fromNow" }) : "—"}
-              </span>
+              u.lastLoginAt ? (
+                <TimeAgo
+                  value={u.lastLoginAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">-</span>
+              )
             ),
           },
         })}

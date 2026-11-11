@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import TimeAgo from "../core/TimeAgo.tsx";
 import { Badge } from "../core/Badge.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { DataTable } from "../table/DataTable.tsx";
@@ -37,7 +38,7 @@ const POLL_MS = 30_000;
  */
 export const AdminJobs = () => {
   const client = useClient<AdminJobController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const toast = useToast();
   const retention = useJobRetentionLabels();
   const router = useRouter<any>();
@@ -218,11 +219,17 @@ export const AdminJobs = () => {
             sortable: true,
             sortValue: (j) => j.recent.lastRun ?? "",
             cell: (j) => (
-              <span className="text-muted-foreground text-xs">
-                {j.recent.lastRun
-                  ? l(j.recent.lastRun, { date: "fromNow" })
-                  : tr("admin.jobs.unknown", { default: "unknown" })}
-              </span>
+              // `TimeAgo`, which carries the exact date as its title (#Q3429).
+              j.recent.lastRun ? (
+                <TimeAgo
+                  value={j.recent.lastRun}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.jobs.unknown", { default: "unknown" })}
+                </span>
+              )
             ),
           },
           ok: {
