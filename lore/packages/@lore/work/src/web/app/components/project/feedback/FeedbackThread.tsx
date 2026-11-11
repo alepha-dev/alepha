@@ -48,6 +48,11 @@ export interface FeedbackThreadProps {
    * comment, because deleting is moderation.
    */
   isOwner?: boolean;
+  /**
+   * The item's reporter. Their comments stay plain text; everyone else's
+   * render as Markdown (#Q3451, see `FeedbackThreadBody`).
+   */
+  reporterUserId?: string;
 }
 
 /**
@@ -249,16 +254,26 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                   </button>
                 )}
               </div>
-              {/* Still plain text, deliberately: a reporter is an outsider
-                  and this body is shown to the project owner, the same
-                  reason a blight's fields are never rendered as markdown.
-                  The one exception is a resolved mention, which becomes an
-                  element rather than markup. */}
+              {/* The reporter's words stay plain text, deliberately: a
+                  reporter is an outsider and this body is shown to the
+                  project owner, the same reason a blight's fields are never
+                  rendered as markdown. A reply from the team or an agent
+                  renders as Markdown (#Q3451). */}
               {comment.body && (
                 <FeedbackThreadBody
                   body={comment.body}
                   members={members}
                   projectSlug={project?.slug}
+                  markdown={
+                    props.projectId !== undefined &&
+                    comment.authorId !== undefined &&
+                    comment.authorId !== props.reporterUserId
+                      ? {
+                          projectId: props.projectId,
+                          feedbackId: props.feedbackId,
+                        }
+                      : undefined
+                  }
                 />
               )}
               {comment.attachmentUrls && comment.attachmentUrls.length > 0 && (

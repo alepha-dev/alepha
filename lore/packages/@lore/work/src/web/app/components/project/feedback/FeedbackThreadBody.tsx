@@ -1,8 +1,15 @@
-import { mentionPattern, resolveMentionCapture } from "@lore/core/web";
+import {
+  LoreViewer,
+  mentionPattern,
+  resolveMentionCapture,
+} from "@lore/core/web";
 import { Link } from "alepha/react/router";
 import { Fragment, type ReactNode } from "react";
 
-import { protectedSegments } from "../quest/commentReferences.ts";
+import {
+  expandCommentReferences,
+  protectedSegments,
+} from "../quest/commentReferences.ts";
 
 export interface FeedbackThreadBodyProps {
   body: string;
@@ -13,6 +20,15 @@ export interface FeedbackThreadBodyProps {
    */
   members: Array<{ name: string }>;
   projectSlug?: string;
+  /**
+   * Render the body as Markdown (#Q3451), through the viewer quest comments
+   * use. Set for a reply from the team or an agent, never for the reporter's
+   * own words: see the component doc.
+   */
+  markdown?: {
+    projectId: number;
+    feedbackId: number;
+  };
 }
 
 /**
@@ -29,8 +45,33 @@ export interface FeedbackThreadBodyProps {
  *
  * The same four shapes the server holds out are held out here, from the same
  * regex, so a handle inside a code span neither links nor pings.
+ *
+ * ## Markdown for the team's replies (#Q3451)
+ *
+ * The posture above is about the REPORTER's words. A reply written by the
+ * project's own people, or by an agent working for them, is not outsider
+ * input: it renders as Markdown through `LoreViewer`, the quest comments'
+ * renderer (sanitized, no raw HTML), with `#Q12` and `@member` expanded the
+ * same way. `FeedbackThread` decides which is which from the comment's author
+ * against the item's reporter.
  */
 const FeedbackThreadBody = (props: FeedbackThreadBodyProps) => {
+  if (props.markdown) {
+    return (
+      <LoreViewer
+        element={{
+          kind: "feedback",
+          projectId: props.markdown.projectId,
+          projectSlug: props.projectSlug ?? "",
+          id: props.markdown.feedbackId,
+        }}
+        content={expandCommentReferences(props.body, {
+          projectSlug: props.projectSlug ?? "",
+          members: props.members,
+        })}
+      />
+    );
+  }
   return <p className="text-sm whitespace-pre-wrap">{renderSegments(props)}</p>;
 };
 

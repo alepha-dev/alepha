@@ -228,6 +228,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               <FeedbackThread
                 feedbackId={props.feedback.id}
                 projectId={props.feedback.projectId}
+                reporterUserId={props.feedback.reporterUserId}
                 currentUserId={currentUser?.id}
               />
             </div>
