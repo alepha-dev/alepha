@@ -626,8 +626,24 @@ export class ViteDevServerProvider {
     console.log();
 
     try {
-      await this.loadAlepha(false, filesToInvalidate);
-      await this.alepha?.start();
+      try {
+        await this.loadAlepha(false, filesToInvalidate);
+        await this.alepha?.start();
+      } catch (partialError) {
+        // Only a PARTIAL reload can fail on a stale module graph, and when it
+        // does the error names a symptom, never the cause. A file saved while
+        // a reload is still loading lets Vite invalidate modules mid-load, so
+        // a module file is evaluated twice: one `$module` then exists as two
+        // classes, its services point at the second, the entry registered the
+        // first, and the container registers the module again
+        // (`TOO_LATE_SUBSTITUTION`, a circular dependency, ...). A full reload
+        // cannot see that, so retry once with the whole graph before
+        // reporting anything; an error in the app fails this retry too.
+        if (wasInError) throw partialError;
+        this.hasError = true;
+        await this.loadAlepha(false);
+        await this.alepha?.start();
+      }
 
       this.currentError = null;
       if (sendReload || wasInError) {
