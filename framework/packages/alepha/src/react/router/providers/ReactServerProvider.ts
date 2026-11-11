@@ -20,6 +20,7 @@ import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
 import {
   type ServerHandler,
   ServerReply,
+  ServerHelmetProvider,
   type ServerRequest,
   ServerRouterProvider,
 } from "alepha/server";
@@ -97,6 +98,7 @@ export class ReactServerProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly deferred = $inject(ReactDeferred);
+  protected readonly helmet = $inject(ServerHelmetProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -120,6 +122,8 @@ export class ReactServerProvider {
   public readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
+      this.registerCspHashes();
+
       const pages = this.alepha.primitives($page);
 
       const ssrEnabled =
@@ -164,6 +168,22 @@ export class ReactServerProvider {
       this.log.info("SSR is disabled");
     },
   });
+
+  /**
+   * Allow the framework's constant inline scripts under the CSP by their
+   * SHA-256: the boot signal of a streamed page, and every inline script of a
+   * global `$head` given a literal object (the colour scheme boot of
+   * `alepha/react/ui` is one). Computed once, here, never per request.
+   *
+   * Registered whether the CSP is on or not: helmet sends them only when it
+   * is, and an app may turn it on after this hook.
+   */
+  protected registerCspHashes(): void {
+    this.helmet.addCspScriptHash(this.templateProvider.bootSignalScript);
+    for (const script of this.serverHeadProvider.constantInlineScripts()) {
+      this.helmet.addCspScriptHash(script);
+    }
+  }
 
   /**
    * Register all pages as server routes.

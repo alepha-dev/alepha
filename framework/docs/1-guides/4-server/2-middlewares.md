@@ -69,6 +69,38 @@ A header the handler already set is never overwritten. `Strict-Transport-Securit
 
 `contentSecurityPolicy` has three states. Omit it and no CSP header is sent. Pass `{}` (no `directives`) to send the built-in policy: `'self'` for scripts, forms, frames and images, `'none'` for objects, plus `upgrade-insecure-requests`. Pass `{ directives: {} }` to send no CSP header while leaving every other security header in place - an empty directive map is not a permissive policy, so it is dropped rather than sent empty.
 
+#### Content Security Policy
+
+The built-in policy is strict on scripts: `script-src 'self'`, with no `'unsafe-inline'` and no `'unsafe-eval'`. `style-src` keeps `'unsafe-inline'`, because React renders `style=""` attributes that no hash or nonce can cover.
+
+The framework writes a few inline scripts of its own, and adds what they need to the policy itself, so an app that turns the CSP on adds nothing for them:
+
+- **A hash for what is constant.** The colour scheme boot of `alepha/react/ui`, the boot signal of a streamed page, and every inline script of a global `$head` given a literal object are allowed by their SHA-256 in `script-src`. The hashes are computed once, at `configure`, and work everywhere the header goes: a cached page, a prerendered file, the `_headers` file a host applies to the files it serves ahead of the app.
+- A `$head` that sets a `type` other than JavaScript (`application/ld+json`, `application/json`) is a data block, which the CSP does not govern: it is not hashed.
+
+To add a source without restating the whole policy, register it with `ServerHelmetProvider`. It is appended to the effective policy, the built-in one or your own `directives`, and a directive the policy does not have is created from `default-src` first, so `frame-src` keeps the `'self'` it inherited:
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { ServerHelmetProvider } from "alepha/server";
+
+class Analytics {
+  protected readonly helmet = $inject(ServerHelmetProvider);
+
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      this.helmet.addCspSource("script-src", "https://cdn.example.com");
+      this.helmet.addCspSource("connect-src", "https://api.example.com");
+      // One constant inline script of your own, by its hash:
+      this.helmet.addCspScriptHash("window.dataLayer=[]");
+    },
+  });
+}
+```
+
+A directive is matched in kebab-case or camelCase (`scriptSrc` and `script-src` are one directive). Nothing registered is sent while the CSP is off. Register at `configure`: the header is built once and cached, and `alepha build` writes the same policy into `dist/public/_headers` when it configures the app (a prerendered page or a static site). One line of that file holds 2000 characters, about 30 script hashes beside the built-in policy; the build says how many sources a policy over the limit holds.
+
 ### Body Parser
 
 JSON, plain text and URL-encoded bodies are parsed for any route with a `body` schema, and a body over the limit answers 413 before the handler runs. Multipart has its own limits, below.

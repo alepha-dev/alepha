@@ -36,6 +36,14 @@ export class ReactServerTemplateProvider {
   protected readonly encoder = new TextEncoder();
 
   /**
+   * The body of the boot signal a streamed page with a deferred value writes
+   * right after its payload. Constant, so the CSP allows it by its hash
+   * (`ReactServerProvider` registers it with `ServerHelmetProvider`).
+   */
+  public readonly bootSignalScript =
+    'self.__alephaBoot=1;document.dispatchEvent(new Event("alepha:boot"))';
+
+  /**
    * Pre-encoded static HTML parts for zero-copy streaming.
    */
   protected readonly SLOTS = {
@@ -57,7 +65,7 @@ export class ReactServerTemplateProvider {
       '<script id="__ssr_private" type="application/json">',
     ),
     BOOT_SIGNAL: this.encoder.encode(
-      '<script>self.__alephaBoot=1;document.dispatchEvent(new Event("alepha:boot"))</script>',
+      `<script>${this.bootSignalScript}</script>`,
     ),
   } as const;
 
