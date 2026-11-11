@@ -15,6 +15,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { Check, ChevronsUpDown, Home, LayoutGrid, Plus } from "lucide-react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
@@ -38,6 +39,7 @@ const ProjectSwitcher = () => {
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
+  const [dock] = useStore(userDockAtom);
   const isMobile = useIsMobile();
 
   if (!project) {
@@ -72,7 +74,7 @@ const ProjectSwitcher = () => {
   const projects = overview?.projects ?? [];
   const canCreate = overview?.canCreate ?? true;
   const maxProjects = overview?.maxProjects;
-  // The ten most recently updated — NOT the first ten
+  // The rest, most recently updated first — NOT the first ten
   // alphabetically. This list used to be sorted by title, which is right for a
   // complete list (you scan it for a name you know) and wrong for a truncated
   // one: capping an alphabetical sort answers "which ten come first in the
@@ -84,15 +86,27 @@ const ProjectSwitcher = () => {
   const byRecency = projects
     .filter((it) => !it.archivedAt || it.id === project.id)
     .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
-  const recent = byRecency.slice(0, RECENT_PROJECTS_CAP);
+  // Pinned projects first, in dock order, then the rest by recency (#E139,
+  // #Q3441): the phone's switcher is the dock's stand-in, so it agrees with
+  // the dock. Every pin is listed, so the cap only trims the rest.
+  const byId = new Map(byRecency.map((it) => [it.id, it]));
+  const pinned = (dock ?? [])
+    .map((id) => byId.get(id))
+    .filter((it) => it !== undefined && !it.archivedAt)
+    .map((it) => it!);
+  const pinnedIds = new Set(pinned.map((it) => it.id));
+  const ordered = [
+    ...pinned,
+    ...byRecency.filter((it) => !pinnedIds.has(it.id)),
+  ];
+  const cap = Math.max(RECENT_PROJECTS_CAP, pinned.length);
+  const recent = ordered.slice(0, cap);
   // The project you are LOOKING AT has to be in the menu, or the switcher
-  // shows no checkmark and reads as though you are nowhere. `updatedAt` moves
-  // when a project is edited, not when it is visited, so an old project you
-  // are actively browsing genuinely can sit outside the top ten. Swap it in
-  // for the least-recent of them rather than appending, so the cap stays ten.
+  // shows no checkmark and reads as though you are nowhere. Swap it in for
+  // the last of the rest rather than appending, so the cap holds.
   if (!recent.some((it) => it.id === project.id)) {
     const current = byRecency.find((it) => it.id === project.id);
-    if (current) recent.splice(RECENT_PROJECTS_CAP - 1, 1, current);
+    if (current) recent.splice(cap - 1, 1, current);
   }
   const hasMore = projects.length > recent.length;
 
