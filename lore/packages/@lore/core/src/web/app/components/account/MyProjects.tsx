@@ -8,9 +8,13 @@ import { Link, useRouter } from "alepha/react/router";
 import { Archive, FolderKanban, Plus, UserRound } from "lucide-react";
 
 import type { ProjectOverviewResource } from "../../../../api/schemas/projectResourceSchema.ts";
+import { USER_DOCK_CAP } from "../../../../api/schemas/userDockCap.ts";
+import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailCard } from "../project/ProjectRailCard.tsx";
+import { useDock } from "../project/useDock.ts";
+import { MyProjectsPinSwitch } from "./MyProjectsPinSwitch.tsx";
 
 /**
  * Every project the signed-in user belongs to, owned or joined, as a
@@ -43,12 +47,23 @@ import { ProjectRailCard } from "../project/ProjectRailCard.tsx";
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
+  const [dock] = useStore(userDockAtom);
+  const dockActions = useDock();
   // Untyped on purpose: this navigates to a name or href a module
   // supplies at runtime (a registry entry, a search row), which core's
   // registered routers cannot name.
   const router = useRouter<any>();
 
   const projects = overview?.projects ?? [];
+  // The pins this page manages (#E139, #Q3440): which ones, never their
+  // order, which is changed on the dock. Counted against live, unarchived
+  // memberships, as the dock itself draws them.
+  const live = new Set(
+    projects.filter((it) => !it.archivedAt).map((it) => it.id),
+  );
+  const pinned = new Set((dock ?? []).filter((id) => live.has(id)));
+  const dockFull = pinned.size >= USER_DOCK_CAP;
+  const pinBusy = dockActions.pin.loading || dockActions.unpin.loading;
   /*
    * The quota, counted from the same rows the page already shows
    * (feedback #P2146). Both halves come from `getHomeOverview`, which since
@@ -115,6 +130,16 @@ const MyProjects = () => {
           (!values.archived ||
             (values.archived === "archived") === !!project.archivedAt)
         }
+        toolbar={
+          <span
+            className="text-muted-foreground text-xs tabular-nums"
+            data-testid="account-projects-pinned-count"
+          >
+            {tr("account.projects.pinned-count", {
+              args: [String(pinned.size), String(USER_DOCK_CAP)],
+            })}
+          </span>
+        }
         actions={
           overview?.canCreate
             ? [
@@ -166,6 +191,22 @@ const MyProjects = () => {
                       {tr("account.projects.archived")}
                     </Badge>
                   ) : null
+                }
+              />
+            ),
+          },
+          pinned: {
+            label: tr("account.projects.col.pinned"),
+            cell: (project) => (
+              <MyProjectsPinSwitch
+                project={project}
+                pinned={pinned.has(project.id)}
+                full={dockFull}
+                busy={pinBusy}
+                onChange={(next) =>
+                  void (next
+                    ? dockActions.pin.run(project.id)
+                    : dockActions.unpin.run(project.id))
                 }
               />
             ),

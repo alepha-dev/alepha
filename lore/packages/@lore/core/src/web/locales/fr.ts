@@ -1862,6 +1862,9 @@ export default {
   "account.projects.create": "Nouveau projet",
   "account.projects.col.project": "Projet",
   "account.projects.col.role": "Votre rôle",
+  "account.projects.col.pinned": "Épinglé",
+  "account.projects.pinned-count": "$1 / $2 épinglés",
+  "account.projects.pin": "Épingler $1 au dock",
   "account.projects.col.openQuests": "Quêtes ouvertes",
   "account.projects.col.lastActivity": "Dernière activité",
   "account.projects.description":

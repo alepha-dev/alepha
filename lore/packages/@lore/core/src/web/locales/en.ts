@@ -1873,6 +1873,9 @@ export default {
   "account.projects.create": "New project",
   "account.projects.col.project": "Project",
   "account.projects.col.role": "Your role",
+  "account.projects.col.pinned": "Pinned",
+  "account.projects.pinned-count": "$1 / $2 pinned",
+  "account.projects.pin": "Pin $1 to the dock",
   "account.projects.col.openQuests": "Open quests",
   "account.projects.col.lastActivity": "Last activity",
   "account.projects.description":
