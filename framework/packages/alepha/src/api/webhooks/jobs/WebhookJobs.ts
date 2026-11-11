@@ -10,6 +10,11 @@ export class WebhookJobs {
   protected readonly delivery = $inject(WebhookDeliveryService);
 
   /**
+   * The eight attempts of {@link deliver}: the first and seven retries.
+   */
+  public readonly maxAttempts = 8;
+
+  /**
    * Make one delivery's request, keyed by the delivery id.
    *
    * Eight attempts under the module's full jitter: each wait is uniform in
@@ -25,7 +30,7 @@ export class WebhookJobs {
     schema: z.object({ deliveryId: z.uuid() }),
     timeout: [30, "seconds"],
     retry: {
-      retries: 7,
+      retries: this.maxAttempts - 1,
       backoff: {
         initial: [2, "minutes"],
         factor: 4,
@@ -33,7 +38,10 @@ export class WebhookJobs {
       },
     },
     handler: async ({ payload, attempt }) => {
-      await this.delivery.deliver(payload.deliveryId, attempt);
+      await this.delivery.deliver(payload.deliveryId, {
+        attempt,
+        final: attempt >= this.maxAttempts,
+      });
     },
   });
 }

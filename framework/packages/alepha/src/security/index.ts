@@ -44,6 +44,7 @@ export * from "./providers/ResourceGateMemoProvider.ts";
 export * from "./providers/ResourceGrantsProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
+export * from "./providers/WebhookSigner.ts";
 export * from "./schemas/permissionCatalogueSchema.ts";
 export * from "./schemas/permissionSchema.ts";
 export * from "./schemas/roleSchema.ts";

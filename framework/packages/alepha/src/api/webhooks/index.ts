@@ -5,7 +5,10 @@ import { WebhookJobs } from "./jobs/WebhookJobs.ts";
 import { $webhook } from "./primitives/$webhook.ts";
 import { WebhookDeliveryService } from "./services/WebhookDeliveryService.ts";
 import { WebhookEndpointService } from "./services/WebhookEndpointService.ts";
+import { WebhookSecretService } from "./services/WebhookSecretService.ts";
 import { WebhookService } from "./services/WebhookService.ts";
+import { HttpWebhookTransport } from "./transports/HttpWebhookTransport.ts";
+import { WebhookTransport } from "./transports/WebhookTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -23,7 +26,42 @@ export * from "./schemas/webhookEnvelopeSchema.ts";
 export * from "./schemas/webhookSendOptionsSchema.ts";
 export * from "./services/WebhookDeliveryService.ts";
 export * from "./services/WebhookEndpointService.ts";
+export * from "./services/WebhookSecretService.ts";
 export * from "./services/WebhookService.ts";
+export * from "./transports/HttpWebhookTransport.ts";
+export * from "./transports/WebhookTransport.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * A delivery's receiver answered a 2xx. Emitted once per delivered
+     * delivery. Names the host, never the URL.
+     */
+    "webhooks:delivery:success": {
+      deliveryId: string;
+      endpointId: string;
+      eventType: string;
+      host: string;
+      attempt: number;
+    };
+    /**
+     * An attempt of a delivery failed: a non-2xx answer, no answer, or a
+     * secret that does not decrypt. Emitted on EVERY failed attempt;
+     * `final` says the delivery is now `failed` and will not be retried.
+     * Names the host, never the URL.
+     */
+    "webhooks:delivery:error": {
+      deliveryId: string;
+      endpointId: string;
+      eventType: string;
+      host: string;
+      attempt: number;
+      final: boolean;
+    };
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -49,9 +87,20 @@ export const AlephaApiWebhooks = $module({
   imports: [AlephaApiJobs],
   primitives: [$webhook],
   services: [
+    WebhookSecretService,
     WebhookEndpointService,
     WebhookDeliveryService,
     WebhookJobs,
     WebhookService,
   ],
+  variants: [HttpWebhookTransport],
+  register: (alepha) => {
+    // `optional`: an app (or a spec) that substituted the transport first
+    // keeps its own.
+    alepha.with({
+      optional: true,
+      provide: WebhookTransport,
+      use: HttpWebhookTransport,
+    });
+  },
 });

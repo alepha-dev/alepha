@@ -1,15 +1,17 @@
 import { $inject, AlephaError } from "alepha";
-import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
+import { webhookDeliveryEntity } from "../entities/webhookDeliveryEntity.ts";
 import {
   type WebhookEndpointEntity,
   webhookEndpointEntity,
 } from "../entities/webhookEndpointEntity.ts";
+import { WebhookJobs } from "../jobs/WebhookJobs.ts";
 import type { CreateWebhookEndpoint } from "../schemas/createWebhookEndpointSchema.ts";
 import type { WebhookEndpointResource } from "../schemas/webhookEndpointResourceSchema.ts";
 import type { WebhookEndpointWithSecret } from "../schemas/webhookEndpointWithSecretSchema.ts";
+import { WebhookSecretService } from "./WebhookSecretService.ts";
 
 /**
  * The write path of webhook endpoints, and the one place their secrets are
@@ -21,15 +23,10 @@ import type { WebhookEndpointWithSecret } from "../schemas/webhookEndpointWithSe
  */
 export class WebhookEndpointService {
   protected readonly log = $logger();
-  protected readonly crypto = $inject(CryptoProvider);
-  protected readonly secrets = $inject(SecretProvider);
+  protected readonly secrets = $inject(WebhookSecretService);
+  protected readonly jobs = $inject(WebhookJobs);
   protected readonly endpoints = $repository(webhookEndpointEntity);
-
-  /**
-   * How a signing secret begins, as the Standard Webhooks specification
-   * names it.
-   */
-  public readonly secretPrefix = "whsec_";
+  protected readonly deliveries = $repository(webhookDeliveryEntity);
 
   /**
    * Register an endpoint and return its signing secret, in clear, this once.
@@ -40,14 +37,14 @@ export class WebhookEndpointService {
   public async create(
     input: CreateWebhookEndpoint & { createdBy?: string },
   ): Promise<WebhookEndpointWithSecret> {
-    const secret = this.generateSecret();
+    const secret = this.secrets.generate();
     const row = await this.endpoints.create({
       url: input.url,
       description: input.description,
       events: this.normalizeEvents(input.events),
       scope: input.scope,
       createdBy: input.createdBy,
-      secret: await this.encryptSecret(secret),
+      secret: await this.secrets.encrypt(secret),
       secretPrefix: secret.slice(0, 10),
       status: "active",
     });
@@ -56,6 +53,42 @@ export class WebhookEndpointService {
       host: this.hostOf(row.url),
     });
     return { endpoint: this.toResource(row), secret };
+  }
+
+  /**
+   * Set a paused endpoint back to `active` and re-push one job per delivery
+   * still `pending` on it, each keyed by its delivery id and touched so the
+   * stuck-delivery purge leaves it alone.
+   *
+   * Events sent WHILE the endpoint was paused got no delivery (only active
+   * endpoints receive one) and are not replayed.
+   */
+  public async resume(id: string): Promise<WebhookEndpointResource> {
+    const row = await this.endpoints.getById(id);
+    if (row.status === "disabled") {
+      throw new AlephaError(
+        "A disabled webhook endpoint is enabled, not resumed",
+      );
+    }
+    const updated = await this.endpoints.updateById(id, { status: "active" });
+    const pending = await this.deliveries.findMany({
+      where: { endpointId: { eq: id }, status: { eq: "pending" } },
+    });
+    if (pending.length > 0) {
+      await this.deliveries.updateMany(
+        { endpointId: { eq: id }, status: { eq: "pending" } },
+        { error: null as any },
+      );
+      await this.jobs.deliver.pushMany(
+        pending.map((it) => ({ payload: { deliveryId: it.id }, key: it.id })),
+      );
+    }
+    this.log.info("Webhook endpoint resumed", {
+      endpointId: id,
+      host: this.hostOf(row.url),
+      redelivering: pending.length,
+    });
+    return this.toResource(updated);
   }
 
   /**
@@ -121,37 +154,6 @@ export class WebhookEndpointService {
     } catch {
       return "invalid-url";
     }
-  }
-
-  /**
-   * Decrypt a stored secret. Throws when it does not decrypt, which means
-   * `APP_SECRET` changed or was lost since the secret was written.
-   */
-  public async decryptSecret(encrypted: string): Promise<string> {
-    try {
-      return await this.crypto.decrypt(encrypted, this.secrets.secretKey);
-    } catch (error) {
-      throw new AlephaError(
-        "Webhook endpoint secret does not decrypt with the current APP_SECRET",
-        { cause: error },
-      );
-    }
-  }
-
-  protected encryptSecret(secret: string): Promise<string> {
-    return this.crypto.encrypt(secret, this.secrets.secretKey);
-  }
-
-  /**
-   * `whsec_` and 32 random bytes, base64: the Standard Webhooks shape, whose
-   * receivers base64-decode what follows the prefix to get the HMAC key.
-   */
-  protected generateSecret(): string {
-    const bytes = new Uint8Array(32);
-    globalThis.crypto.getRandomValues(bytes);
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return `${this.secretPrefix}${btoa(binary)}`;
   }
 
   protected normalizeEvents(events?: string[]): string[] {
