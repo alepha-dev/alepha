@@ -16,6 +16,7 @@ import {
   WebhookNotifications,
   webhookDeliveryEntity,
   webhookEndpointEntity,
+  webhookOptions,
 } from "alepha/api/webhooks";
 import { BackgroundTaskProvider } from "alepha/background";
 import { CryptoProvider } from "alepha/crypto";
@@ -154,7 +155,13 @@ describe("webhook endpoint health", () => {
   it("one bad day on an endpoint with weekly traffic does not disable it", async ({
     expect,
   }) => {
-    const { shop, time, transport, background } = await boot();
+    const { alepha, shop, time, transport, background } = await boot();
+    // The purge `travel()` fires compares the travelled clock with rows the
+    // database stamps with its own: keep it away from next week's row.
+    alepha.store.set(webhookOptions, {
+      ...alepha.store.get(webhookOptions)!,
+      stuckAfterHours: 24 * 365,
+    });
     const url = "https://weekly.example.app/hooks";
     transport.respondOnce(url, { status: 500 });
     const { endpoint, delivery } = await pendingDelivery(shop, url);
@@ -167,10 +174,7 @@ describe("webhook endpoint health", () => {
 
     await background.flush();
     await time.travel(7, "days");
-    // travel() fired the hourly purge: let it finish before the next event,
-    // whose row the database stamps with its own clock.
     await background.flush();
-    await new Promise((r) => setTimeout(r, 100));
     await shop.paid.send({ orderId: "next-week" });
     // Its own job delivers it, against a receiver that recovered.
     await waitFor(
