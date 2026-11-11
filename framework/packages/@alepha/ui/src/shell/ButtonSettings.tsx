@@ -36,6 +36,14 @@ export interface ButtonSettingsProps {
   placement?: "menu" | "buttons";
 
   /**
+   * Draw the colour-blind button (`ButtonVision`) among the settings
+   * buttons. Off by default: an application opts in.
+   *
+   * @default false
+   */
+  vision?: boolean;
+
+  /**
    * Extra menu items appended to the account dropdown, below Admin Panel and
    * above the settings. For an application-specific destination that belongs
    * with the account rather than in the page chrome.
@@ -113,7 +121,8 @@ export interface ButtonSettingsProps {
  * and display mode, wrapped around {@link ButtonUser}.
  *
  * Signed out, it draws icon buttons: language, theme, dark mode,
- * colour-blind mode (`ButtonVision`), sign in. Signed in, it draws ONE button, the avatar, and
+ * colour-blind mode (`ButtonVision`, only with `vision`), sign in. Signed in,
+ * it draws ONE button, the avatar, and
  * the settings move into its menu:
  *
  * ```
@@ -189,7 +198,9 @@ export const ButtonSettings = (props: ButtonSettingsProps) => {
           <ButtonLanguage variant={variant} label={labels.language} />
           <ButtonTheme variant={variant} label={labels.theme} />
           <ButtonDark variant={variant} label={labels.colorMode} />
-          <ButtonVision variant={variant} label={labels.vision} />
+          {props.vision && (
+            <ButtonVision variant={variant} label={labels.vision} />
+          )}
         </div>
       )}
       <ButtonUser
