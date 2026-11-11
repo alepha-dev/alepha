@@ -34,9 +34,11 @@ import type {
   JobPrimitiveOptions,
   JobRescheduleOptions,
   JobRetryBackoff,
+  JobSteps,
 } from "../primitives/$job.ts";
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
 import type { JobRetention } from "../schemas/jobRetentionSchema.ts";
+import type { JobStep } from "../schemas/jobStepSchema.ts";
 import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
 import type { JobDispatcher, JobDispatchOptions } from "./JobDispatcher.ts";
 import { JobQueueProvider } from "./JobQueueProvider.ts";
@@ -823,6 +825,10 @@ export class JobProvider {
                   now: startedAt,
                   signal,
                   executionId,
+                  step: this.refusedSteps(
+                    name,
+                    "a cron job has no steps, with or without 'retry'. Push a queue job from the cron for work that needs them",
+                  ),
                   reschedule: () => {
                     throw new AlephaError(
                       `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
@@ -1082,15 +1088,27 @@ export class JobProvider {
     executionId: string,
     registration: JobRuntimeRegistration,
     fence?: JobClaimFence,
+    /**
+     * The run's lease state, shared with its step writes: a renewal does
+     * not start while a step write is in flight, and a step write awaits the
+     * renewal in flight. See {@link writeStep}.
+     */
+    lease?: JobLeaseState,
   ): ReturnType<typeof setInterval> {
     const intervalMs = Math.max(
       250,
       Math.floor(this.crashThresholdMs(registration) / 3),
     );
     const timer = setInterval(() => {
+      // A step write refreshes `updatedAt` itself, and may be moving the
+      // fence's `attempt`: a renewal built now could miss and stop the
+      // heartbeat for good.
+      if (lease?.stepWriting) return;
       void (async () => {
+        const renewal = this.renewLease(executionId, fence);
+        if (lease) lease.renewing = renewal;
         try {
-          await this.renewLease(executionId, fence);
+          await renewal;
         } catch (error) {
           if (this.shouldStopHeartbeat(error)) {
             clearInterval(timer);
@@ -1100,6 +1118,8 @@ export class JobProvider {
             `Lease heartbeat failed for ${executionId}, will retry next tick`,
             { error },
           );
+        } finally {
+          if (lease?.renewing === renewal) lease.renewing = undefined;
         }
       })();
     }, intervalMs);
@@ -1464,6 +1484,198 @@ export class JobProvider {
     await this.dispatchDelayed(jobName, executionId, next.scheduledAt);
   }
 
+  // --- Steps -----------------------------------------------------------------------------------------------------
+
+  /**
+   * The shape a step name must have: lower-case kebab segments joined by
+   * dots (`capture`, `first-reminder`, `charge.3`), at most
+   * {@link maxStepNameLength} characters.
+   */
+  public readonly stepNamePattern =
+    /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$/;
+
+  public readonly maxStepNameLength = 64;
+
+  /**
+   * The `step` a run receives when it may not use steps at all: every
+   * method throws, naming why.
+   */
+  protected refusedSteps(jobName: string, reason: string): JobSteps {
+    const refuse = (): never => {
+      throw new AlephaError(`Job '${jobName}' called step.*: ${reason}.`);
+    };
+    return {
+      run: async () => refuse(),
+    };
+  }
+
+  /**
+   * The `step` of a pushed execution. See the contract folio of epic E123
+   * and {@link JobSteps}.
+   */
+  protected createSteps(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    run: JobStepRun,
+    abortController: AbortController,
+  ): JobSteps {
+    return {
+      run: (name, fn) =>
+        this.runStep(registration, executionId, run, abortController, name, fn),
+    };
+  }
+
+  /**
+   * The checks every `step.*` call makes before anything else, at call time:
+   * no transaction is open, the name is well formed and not yet used in this
+   * activation. Records the name as used.
+   */
+  protected assertStepCall(
+    registration: JobRuntimeRegistration,
+    run: JobStepRun,
+    name: string,
+  ): void {
+    const jobName = registration.name;
+    if (this.alepha.get("alepha.orm.tx")) {
+      throw new AlephaError(
+        `Job '${jobName}' called step '${name}' inside a transaction. The step's record would join it and roll back with a later throw, while the step's work stays done. Open the transaction inside the step's function instead, where it commits before the result is recorded.`,
+      );
+    }
+    if (run.inStep) {
+      throw new AlephaError(
+        `Job '${jobName}' called step '${name}' inside step '${run.inStep}'. Steps do not nest: call them one after another from the handler.`,
+      );
+    }
+    if (
+      typeof name !== "string" ||
+      name.length === 0 ||
+      name.length > this.maxStepNameLength ||
+      !this.stepNamePattern.test(name)
+    ) {
+      throw new AlephaError(
+        `Job '${jobName}' named a step '${name}'. A step name is 1 to ${this.maxStepNameLength} characters of lower-case kebab segments joined by dots (${this.stepNamePattern.source}), such as 'capture' or 'charge.3'.`,
+      );
+    }
+    if (run.used.has(name)) {
+      throw new AlephaError(
+        `Job '${jobName}' used the step name '${name}' twice in one run. A name identifies a step: name each iteration of a loop, as in step.run(\`charge.\${i}\`, ...).`,
+      );
+    }
+    run.used.add(name);
+  }
+
+  /**
+   * `step.run(name, fn)`: the stored result when the run already has one,
+   * otherwise run `fn`, record its result with one fenced write, and return
+   * it. A throwing `fn` records nothing.
+   */
+  protected async runStep<R>(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    run: JobStepRun,
+    abortController: AbortController,
+    name: string,
+    fn: () => R | Promise<R>,
+  ): Promise<R> {
+    this.assertStepCall(registration, run, name);
+    const existing = run.steps[name];
+    if (existing) {
+      if (existing.until !== undefined) {
+        throw new AlephaError(
+          `Job '${registration.name}' called step.run('${name}'), but this run recorded '${name}' as a sleep. One name, one kind of step.`,
+        );
+      }
+      return existing.result as R;
+    }
+
+    const startedMs = this.dt.nowMillis();
+    let result: R;
+    run.inStep = name;
+    try {
+      result = await fn();
+    } finally {
+      run.inStep = undefined;
+    }
+    const ms = Math.max(0, Math.round(this.dt.nowMillis() - startedMs));
+
+    const entry: JobStep = { at: this.dt.nowISOString(), ms };
+    if (result !== undefined) entry.result = result;
+    const steps = { ...run.steps, [name]: entry };
+    await this.writeStep(
+      registration,
+      executionId,
+      run,
+      abortController,
+      name,
+      steps,
+    );
+    this.log.debug(`step ${name} ok in ${ms}ms`, {
+      job: registration.name,
+      executionId,
+    });
+    return result;
+  }
+
+  /**
+   * Record a completed step: ONE fenced, status-guarded `UPDATE` of the
+   * whole `steps` object (never a JSON-path update, so the dialects agree),
+   * and `attempt: 1` when the row's attempt is not 1 already, which makes the
+   * retry budget per step. The run's fence and attempt follow the write.
+   *
+   * Serialised with the lease heartbeat: it waits for a renewal in flight,
+   * and no renewal starts while it is in flight, since a renewal fenced on
+   * the old `attempt` landing after it would stop the heartbeat for good.
+   *
+   * A missed guard ends the activation: the row is no longer this run's.
+   * When it was cancelled, the run's signal aborts so the handler takes the
+   * cancel path; otherwise (a newer claim holds it) the throw lands in a
+   * failure path whose fenced writes all miss, as they should.
+   */
+  protected async writeStep(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    run: JobStepRun,
+    abortController: AbortController,
+    name: string,
+    steps: Record<string, JobStep>,
+  ): Promise<void> {
+    run.lease.stepWriting = true;
+    try {
+      await run.lease.renewing?.catch(() => undefined);
+      const resetAttempt = run.attempt !== 1;
+      const written = await this.guardedUpdate(
+        executionId,
+        ["running"],
+        resetAttempt ? { steps, attempt: 1 } : { steps },
+        "step",
+        run.fence,
+      );
+      if (!written) {
+        const current = await this.executions
+          .findById(executionId)
+          .catch(() => undefined);
+        if (current?.status === "cancelled") {
+          if (!abortController.signal.aborted) {
+            abortController.abort(
+              new AbortedError(`Job execution ${executionId} cancelled`),
+            );
+          }
+          throw abortController.signal.reason;
+        }
+        throw new AlephaError(
+          `Job '${registration.name}' could not record step '${name}': execution ${executionId} is no longer held by this run (its lease went to a newer attempt, or it left 'running').`,
+        );
+      }
+      run.steps = steps;
+      if (resetAttempt) {
+        run.attempt = 1;
+        run.fence.attempt = 1;
+      }
+    } finally {
+      run.lease.stepWriting = false;
+    }
+  }
+
   // --- Cancel ----------------------------------------------------------------------------------------------------
 
   /**
@@ -1664,11 +1876,33 @@ export class JobProvider {
       attempt: execution.attempt,
       startedAt: execution.startedAt,
     };
+    // What this activation knows about its steps. `attempt` and the fence
+    // move when a step completes (the retry budget is per step).
+    const run: JobStepRun = {
+      attempt: execution.attempt,
+      fence,
+      steps: { ...execution.steps },
+      used: new Set(),
+      lease: { stepWriting: false },
+    };
     const leaseTimer = this.startLeaseHeartbeat(
       executionId,
       registration,
       fence,
+      run.lease,
     );
+    const step =
+      registration.kind === "cron"
+        ? this.refusedSteps(
+            jobName,
+            "a cron job has no steps, with or without 'retry'. Push a queue job from the cron for work that needs them",
+          )
+        : inline
+          ? this.refusedSteps(
+              jobName,
+              "an inline push runs once for a waiting caller. Push without 'inline' for work that needs steps",
+            )
+          : this.createSteps(registration, executionId, run, abortController);
 
     const now = this.dt.now();
 
@@ -1694,6 +1928,7 @@ export class JobProvider {
                     now,
                     signal,
                     executionId,
+                    step,
                     reschedule: (options) => {
                       if (inline) {
                         throw new AlephaError(
@@ -1841,7 +2076,8 @@ export class JobProvider {
             await this.handleFailure(
               executionId,
               registration,
-              execution.attempt,
+              // The run's current attempt: a completed step moved it to 1.
+              run.attempt,
               err,
               this.logBuffer.snapshot(),
               fence,
@@ -2899,4 +3135,42 @@ export class JobProvider {
 export interface JobClaimFence {
   attempt: number;
   startedAt?: string | null;
+}
+
+/**
+ * A run's lease state, shared by its heartbeat and its step writes so the
+ * two never race. See `JobProvider.writeStep`.
+ */
+export interface JobLeaseState {
+  stepWriting: boolean;
+  renewing?: Promise<void>;
+}
+
+/**
+ * What one activation of an execution knows about its steps.
+ */
+export interface JobStepRun {
+  /**
+   * The row's current attempt: what `claim()` wrote, then 1 once a step
+   * completed (the retry budget is per step).
+   */
+  attempt: number;
+  /**
+   * The claim's fence, the same object every write of the run passes. Its
+   * `attempt` moves with the row.
+   */
+  fence: JobClaimFence;
+  /**
+   * The row's steps, as written so far.
+   */
+  steps: Record<string, JobStep>;
+  /**
+   * Step names already called in this activation.
+   */
+  used: Set<string>;
+  /**
+   * The step whose function is running, while one is.
+   */
+  inStep?: string;
+  lease: JobLeaseState;
 }

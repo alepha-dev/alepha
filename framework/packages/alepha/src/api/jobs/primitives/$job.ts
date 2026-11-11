@@ -71,6 +71,49 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
    *   (the caller is waiting for an outcome).
    */
   reschedule: (options: JobRescheduleOptions<T>) => void;
+  /**
+   * Memoised steps: work this execution does once, even though its handler
+   * runs again from the top on every retry, crash recovery or wake-up. See
+   * {@link JobSteps}.
+   */
+  step: JobSteps;
+}
+
+/**
+ * The steps of one execution, recorded on its row.
+ *
+ * The handler runs from its first line on every pass (a retry, a crash
+ * recovered by the sweep, a wake-up after `sleep`); a step that already
+ * completed returns its stored result instead of running. Everything outside
+ * a step runs on every pass, which is what a guard such as "is this cart
+ * still recoverable?" wants.
+ *
+ * - Names identify steps: unique within a run, 1 to 64 characters of
+ *   lower-case kebab segments joined by dots. Name loop iterations
+ *   (`` step.run(`charge.${i}`, ...) ``).
+ * - Results are stored as JSON, in clear, and capped (`jobConfig`): a `Date`,
+ *   a `Map`, a class instance or a `bigint` is refused. Return an ISO string,
+ *   and never a secret.
+ * - The retry budget is per step: `retries: 3` is four tries of each step.
+ * - Not available in a cron job (push a queue job from the cron), in an
+ *   `inline` push, or inside a transaction (open it inside the step's
+ *   function).
+ * - Any `reschedule()` starts the steps over.
+ */
+export interface JobSteps {
+  /**
+   * Run `fn` once for this execution and return its result.
+   *
+   * When the execution already holds a result for `name`, it is returned
+   * and `fn` is not called. Otherwise `fn` runs, its result is written onto
+   * the row, and returned. A step that throws records nothing and takes the
+   * job's retry path; the retry skips the steps before it.
+   *
+   * At-least-once: a crash between `fn` finishing and its result being
+   * stored runs that one step again. Make the step idempotent, or pass an
+   * idempotency key to the service it calls.
+   */
+  run: <R>(name: string, fn: () => Async<R>) => Promise<R>;
 }
 
 export interface JobRescheduleOptions<T extends ZType = ZType> {
