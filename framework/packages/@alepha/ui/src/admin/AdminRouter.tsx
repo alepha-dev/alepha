@@ -11,6 +11,7 @@ import type {
   AdminSessionController,
   AdminUserController,
 } from "alepha/api/users";
+import type { AdminWebhookController } from "alepha/api/webhooks";
 import { I18nProvider, Translate } from "alepha/react/i18n";
 import { $client } from "alepha/server/links";
 import {
@@ -25,6 +26,7 @@ import {
   SlidersHorizontal,
   Timer,
   UsersIcon,
+  Webhook,
 } from "lucide-react";
 import { createElement } from "react";
 
@@ -34,7 +36,7 @@ import { AdminDashboardCountCard } from "./AdminDashboardCountCard.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 
 /**
- * The whole `/admin` surface, thirteen pages and their shell, mounted and wired.
+ * The whole `/admin` surface, fifteen pages and their shell, mounted and wired.
  *
  * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
  * them back to JSX.** This module is evaluated *eagerly* in the server graph:
@@ -141,20 +143,20 @@ import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
  * groups by their smallest member, so only an `order` of 1000 or more sinks a
  * page in among them.
  *
- * ### These thirteen route names are claimed globally
+ * ### These fifteen route names are claimed globally
  *
  * `dashboard`, `users`, `userDetail`, `sessions`, `keys`, `jobs`,
- * `jobDetail`, `notifications`, `audits`, `files`, `parameters`, `payments`
- * and `analytics` each carry an explicit `name:` so a future rename of the
+ * `jobDetail`, `notifications`, `audits`, `files`, `parameters`, `payments`,
+ * `webhooks`, `webhookDetail` and `analytics` each carry an explicit `name:` so a future rename of the
  * field itself (done for readability, without touching the string) never
  * silently changes the public route name — the same reason `AuthRouter`'s
  * pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
- * registers its own page named `files` (or any of the other twelve) either
+ * registers its own page named `files` (or any of the other fourteen) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
- * Treat these thirteen names as reserved when hanging pages off `layout`.
+ * Treat these fifteen names as reserved when hanging pages off `layout`.
  *
  * ### It needs `<DialogProvider>` and `<Toaster />` above it
  *
@@ -177,6 +179,7 @@ export class AdminRouter {
   protected readonly parameterApi = $client<AdminParameterController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
+  protected readonly webhookApi = $client<AdminWebhookController>();
 
   /**
    * The head of an admin page: `Admin - <Page>` in the browser tab, so an
@@ -525,6 +528,54 @@ export class AdminRouter {
       order: 1013,
     },
     lazy: () => import("./AdminPayments.tsx"),
+  });
+
+  /**
+   * The webhook endpoints and their health. `can` hides the entry when
+   * `AlephaApiWebhooks` is not registered: the permission alone is granted
+   * to a `*` admin over an API that does not exist.
+   */
+  webhooks = $pageNav({
+    parent: this.layout,
+    path: "/webhooks",
+    name: "webhooks",
+    head: this.adminHead("Webhooks", "admin.nav.webhooks"),
+    permission: "admin:webhook:read",
+    can: () => this.webhookApi.findWebhookEndpoints.can(),
+    nav: {
+      label: "Webhooks",
+      labelKey: "admin.nav.webhooks",
+      icon: createElement(Webhook),
+      group: "System",
+      groupKey: "admin.nav.group.system",
+      order: 1014,
+      keywords: ["endpoints", "deliveries", "integrations"],
+    },
+    lazy: () => import("./AdminWebhooks.tsx"),
+  });
+
+  /**
+   * One endpoint: its settings and its delivery log. `:endpointId`, not
+   * `:id`: param names are unique across the whole route table.
+   */
+  webhookDetail = $pageNav({
+    parent: this.layout,
+    path: "/webhooks/:endpointId",
+    name: "webhookDetail",
+    head: this.adminHead("Webhook endpoint", "admin.nav.webhookDetail"),
+    nav: {
+      hidden: true,
+      label: "Webhook endpoint",
+      labelKey: "admin.nav.webhookDetail",
+    },
+    permission: "admin:webhook:read",
+    can: () => this.webhookApi.getWebhookEndpoint.can(),
+    schema: {
+      params: z.object({
+        endpointId: z.uuid(),
+      }),
+    },
+    lazy: () => import("./AdminWebhookDetail.tsx"),
   });
 
   analytics = $pageNav({

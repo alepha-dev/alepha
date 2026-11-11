@@ -61,6 +61,7 @@ export class AppRouter {
       this.adminParameters,
       this.adminAnalytics,
       this.adminPayments,
+      this.adminWebhooks,
       this.adminAudits,
       this.apiExplorer,
     ],
@@ -449,6 +450,13 @@ export class AppRouter {
     static: true,
     head: { title: "Admin payments - Alepha UI" },
     lazy: () => import("./pages/pages/admin/Payments.tsx"),
+  });
+
+  adminWebhooks = $page({
+    path: "/pages/admin/webhooks",
+    static: true,
+    head: { title: "Admin webhooks - Alepha UI" },
+    lazy: () => import("./pages/pages/admin/Webhooks.tsx"),
   });
 
   adminAudits = $page({

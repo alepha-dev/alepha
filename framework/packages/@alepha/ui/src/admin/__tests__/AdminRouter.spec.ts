@@ -320,7 +320,7 @@ describe("AdminRouter", () => {
     const adminPages = alepha
       .primitives($page)
       .filter((page) => page.options.parent === admin.layout);
-    expect(adminPages).toHaveLength(13);
+    expect(adminPages).toHaveLength(15);
     for (const page of adminPages) {
       expect(titleOf(page)).toMatch(/^Admin - \S/);
     }
