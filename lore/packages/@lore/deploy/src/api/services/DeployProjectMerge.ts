@@ -155,6 +155,15 @@ export class DeployProjectMerge {
       }
       const owner = await this.estateService.ownerOf(context.targetProjectId);
       if (owner) {
+        // Filtered on the TARGET, after the move, on purpose: by the time it
+        // runs the source's homed estates belong to the target, and it
+        // repoints them all. The target's own estates are rewritten to the
+        // value they already hold, since `EstateAnchorHooks` keeps every
+        // homed estate's `owner_user_id` on its home project's owner, so only
+        // the moved ones change. `owner_user_id` is the cascade anchor
+        // (#Q3278), not a stale owner column. It stays a statement of the
+        // merge batch rather than an `estates.updateMany`, which would run at
+        // once, outside the batch, and break the merge's atomicity.
         statements.push(
           sql`UPDATE estates SET owner_user_id = ${owner} WHERE project_id = ${context.targetProjectId}`,
         );
