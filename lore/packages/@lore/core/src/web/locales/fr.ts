@@ -2357,16 +2357,21 @@ export default {
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
 
+  "estates.table.estate": "Domaine",
+  "estates.table.origin": "Origine",
+  "estates.table.status": "Statut",
+  "estates.table.deploys": "Déploiements",
+  "estates.table.lastSeen": "Vu",
+  "estates.origin.home": "Ce projet",
+  "estates.origin.all": "Toutes les origines",
+  "estates.origin.lent": "Prêté",
   "estates.project.title": "Domaines",
-  "estates.project.description":
-    "Où ce projet peut déployer. Un domaine est une machine ou un compte que quelqu'un possède et a prêté à ce projet.",
   "estates.project.empty":
-    "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
+    "Aucun domaine pour l'instant. Tant qu'aucun n'est ajouté, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
   "estates.project.notAllowed":
     "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
-  "estates.project.home": "appartient à ce projet",
   "estates.project.noHome": "aucun projet",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
@@ -2544,16 +2549,9 @@ export default {
   "bay.move.toast": "Déplacé vers $1",
   "bay.move.serverElsewhere":
     "Le serveur reste dans le compte cloud de la personne qui l'a provisionné, qui n'est pas membre du nouveau projet.",
-  "estates.home.title": "Domaines de ce projet",
-  "estates.home.description": "Ses membres les gèrent, chacun selon son rang.",
-  "estates.home.empty": "Ce projet n'est le propriétaire d'aucun domaine.",
-  "estates.home.lentHere": "Prêté à ce projet",
   "estates.home.notLentHere": "Pas prêté à ce projet",
   "estates.home.lentTo": "prêté à $1 autre(s) projet(s)",
   "estates.home.lend": "Prêter à ce projet",
-  "estates.borrowed.title": "Domaines prêtés à ce projet",
-  "estates.borrowed.description":
-    "Les domaines d'autres projets sur lesquels celui-ci peut déployer. Leur projet propriétaire les gère.",
   "estates.blocker.delete":
     "Ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord, d'autres projets peuvent y déployer.",
   "estates.blocker.apps":
@@ -2567,7 +2565,6 @@ export default {
   "estates.offline": "hors ligne",
   "estates.deploys.allowed": "déploiements autorisés",
   "estates.deploys.statsOnly": "statistiques seulement",
-  "estates.lastSeen": "vu $1",
   "estates.neverSeen": "jamais connecté",
   "estates.add.title": "Ajouter un domaine à $1",
   "estates.add.description":

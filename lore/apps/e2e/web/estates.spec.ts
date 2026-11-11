@@ -43,19 +43,23 @@ test.describe("Estates", () => {
     await page.goto(`/${project.slug}/settings/estates`);
     await page.waitForLoadState("networkidle");
     await expect(
-      page.getByText("This project is the home of no estate."),
+      page.getByText(
+        "No estate yet. Until one is added, this project has nowhere to deploy.",
+      ),
     ).toBeVisible({ timeout: 15_000 });
 
     await createEstateInProject(page, project.slug, "ovh-1");
     // The reveal is gone for good once dismissed: the column stores a hash.
     await expect(page.getByText(/est_[A-Za-z0-9_-]{16,}/)).toHaveCount(0);
 
-    const row = page.getByTestId("home-estate-row");
+    // One table (#Q3409): the row whose name cell is a home estate's.
+    const row = page
+      .locator("tbody tr")
+      .filter({ has: page.getByTestId("home-estate-row") });
     await expect(row).toHaveCount(1);
     await expect(row.getByText("offline", { exact: true })).toBeVisible();
-    await expect(
-      row.getByText("Lent to this project", { exact: false }),
-    ).toBeVisible();
+    // A home estate reads "This project", never "Lent to this project".
+    await expect(row.getByTestId("estate-origin")).toHaveText("This project");
 
     // A `bay` row opens its console, a page of the project (#E126).
     await row.getByRole("link", { name: "ovh-1", exact: true }).click();
@@ -104,7 +108,9 @@ test.describe("Estates", () => {
     });
     await expect(page.getByTestId("home-estate-row")).toHaveCount(0);
     await expect(
-      page.getByText("This project is the home of no estate."),
+      page.getByText(
+        "No estate yet. Until one is added, this project has nowhere to deploy.",
+      ),
     ).toBeVisible();
   });
 

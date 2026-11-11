@@ -1,0 +1,96 @@
+import type { I18n } from "@lore/core/web";
+import { useI18n } from "alepha/react/i18n";
+import { Link, useRouter } from "alepha/react/router";
+
+import type { ProjectEstateTableRow } from "./projectEstateTableRow.ts";
+
+export interface ProjectSettingsEstateNameCellProps {
+  row: ProjectEstateTableRow;
+  /**
+   * Opens a home `cloudflare` estate's drawer: it has no console page.
+   */
+  onOpen: (row: ProjectEstateTableRow) => void;
+}
+
+/**
+ * The estate's name, and where it leads (feedback #P2126).
+ *
+ * A `bay` estate opens its console, a page under its HOME project (#E126).
+ * That project answers 403 to anybody who is not a member there, so a
+ * borrowed estate is a link only when `can` says the reader may read it:
+ * otherwise a link would promise a page they cannot open. A home
+ * `cloudflare` estate opens its drawer; a borrowed one is plain text.
+ */
+const ProjectSettingsEstateNameCell = (
+  props: ProjectSettingsEstateNameCellProps,
+) => {
+  const { tr } = useI18n<I18n, "en">();
+  const router = useRouter();
+  const { owned, loan } = props.row;
+  const type = owned?.type ?? loan?.type;
+  const label = owned?.label ?? loan?.label;
+  const homeSlug =
+    props.row.origin === "home"
+      ? owned?.project?.slug
+      : loan?.can.includes("estate:read")
+        ? loan.home?.slug
+        : undefined;
+
+  const name =
+    type === "bay" && homeSlug ? (
+      // ⚠️ `projectSlug` explicitly: the router does not carry it over from
+      // this settings page, and a link without it renders the literal
+      // `:projectSlug` and goes nowhere.
+      <Link
+        href={router.path("bay", {
+          params: { projectSlug: homeSlug, estateSlug: props.row.slug },
+        })}
+        className="truncate hover:underline"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {props.row.slug}
+      </Link>
+    ) : props.row.origin === "home" ? (
+      <button
+        type="button"
+        className="truncate hover:underline"
+        onClick={() => props.onOpen(props.row)}
+        data-testid="home-estate-open"
+      >
+        {props.row.slug}
+      </button>
+    ) : (
+      <span className="truncate">{props.row.slug}</span>
+    );
+
+  // Who else deploys onto a home estate: its home project counts only when
+  // the estate is lent to it.
+  const elsewhere = owned
+    ? owned.projects.length - (props.row.loan ? 1 : 0)
+    : 0;
+
+  return (
+    <div
+      className="flex min-w-0 flex-col gap-0.5"
+      data-testid={
+        props.row.origin === "home" ? "home-estate-row" : "estate-row"
+      }
+    >
+      <span className="flex items-center gap-2 text-sm font-medium">
+        {name}
+        {label && (
+          <span className="text-muted-foreground truncate text-xs font-normal">
+            {label}
+          </span>
+        )}
+      </span>
+      {elsewhere > 0 && (
+        <span className="text-muted-foreground text-xs">
+          {tr("estates.home.lentTo", { args: [String(elsewhere)] })}
+        </span>
+      )}
+    </div>
+  );
+};
+
+export default ProjectSettingsEstateNameCell;

@@ -1,24 +1,19 @@
+import { Badge, TimeAgo, useDialog, useToast } from "@alepha/ui";
 import {
-  Button,
-  Card,
-  CardContent,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  useDialog,
-  useToast,
-  cn,
-} from "@alepha/ui";
-import { settingsCardEdge } from "@alepha/ui/settings";
+  DataTable,
+  type DataTableFilterFields,
+  type RowActionEntry,
+} from "@alepha/ui/table";
 import {
   currentProjectAtom,
   useRank,
   type I18n,
   TokenReveal,
 } from "@lore/core/web";
+import { z } from "alepha";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Plus } from "lucide-react";
+import { Flag, Link2, Plus, Server, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import type {
@@ -27,15 +22,23 @@ import type {
 } from "../../../../../api/controllers/ProjectEstateController.ts";
 import type { OwnedEstateResource } from "../../../../../api/schemas/ownedEstateResourceSchema.ts";
 import EstateDrawer from "../../estates/EstateDrawer.tsx";
-import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
+import type { ProjectEstateTableRow } from "./projectEstateTableRow.ts";
+import ProjectSettingsEstateNameCell from "./ProjectSettingsEstateNameCell.tsx";
 import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.tsx";
-import ProjectSettingsHomeEstateRow from "./ProjectSettingsHomeEstateRow.tsx";
+import ProjectSettingsEstateStatusCell from "./ProjectSettingsEstateStatusCell.tsx";
 
 /**
  * The project's estates (#E126): the ones it is the home of, which its
  * members manage by rank, and the ones it borrows, which it may only deploy
  * onto. Since estates left the account this is THE estates list: a `bay`
  * row opens its console under this project, a `cloudflare` row its drawer.
+ *
+ * One `DataTable` since #Q3409, where it used to be three stacked card lists
+ * (add, home, borrowed). Where an estate comes from is the Origin column and
+ * its filter, and "Add an estate" is the table's toolbar action. A home
+ * estate reads "This project", never "Lent to this project": that its home
+ * also lends it to itself is plumbing, shown only when it is NOT the case,
+ * since the project then cannot deploy onto it.
  *
  * "Add" lends one of the estates the caller can see here (or mints a new one,
  * homed and lent here in the same step), and "detach" withdraws a loan. Both need `estate:lend`
@@ -94,8 +97,29 @@ const ProjectSettingsEstatesPage = () => {
   // Resolved from the list rather than held as its own copy, so a switch
   // saved in the drawer redraws it from the same row the list shows.
   const open = (homeItems ?? []).find((item) => item.id === openId);
-  const lentIds = new Set((items ?? []).map((item) => item.id));
-  const borrowed = (items ?? []).filter((item) => !item.isHome);
+  const loans = new Map((items ?? []).map((item) => [item.id, item]));
+  // Home estates first, then the borrowed ones, as one list. `undefined`
+  // until both reads land, so the table shows its skeleton, not "empty".
+  const rows: ProjectEstateTableRow[] | undefined =
+    items === undefined || homeItems === undefined
+      ? undefined
+      : [
+          ...homeItems.map((owned) => ({
+            id: owned.id,
+            slug: owned.slug,
+            origin: "home" as const,
+            owned,
+            loan: loans.get(owned.id),
+          })),
+          ...items
+            .filter((loan) => !loan.isHome)
+            .map((loan) => ({
+              id: loan.id,
+              slug: loan.slug,
+              origin: "lent" as const,
+              loan,
+            })),
+        ];
 
   const lendAction = useAction<[estate: OwnedEstateResource], void>(
     {
@@ -138,118 +162,179 @@ const ProjectSettingsEstatesPage = () => {
 
   if (!project) return null;
 
+  const busy = lendAction.loading || detachAction.loading;
+
+  const rowActions = (
+    row: ProjectEstateTableRow,
+  ): RowActionEntry<ProjectEstateTableRow>[] => {
+    const actions: RowActionEntry<ProjectEstateTableRow>[] = [];
+    if (row.origin === "home" && !row.loan && canLend && row.owned) {
+      const owned = row.owned;
+      actions.push({
+        icon: Link2,
+        label: tr("estates.home.lend"),
+        disabled: () => busy,
+        onClick: () => void lendAction.run(owned),
+      });
+    }
+    // Either side of the loan may end it: `estate:lend` here, or in the
+    // estate's home project, which the server sends in `can`.
+    if (
+      row.origin === "lent" &&
+      row.loan &&
+      (canLend || row.loan.can.includes("estate:lend"))
+    ) {
+      const loan = row.loan;
+      actions.push({
+        icon: Unlink,
+        label: tr("estates.detach.action"),
+        destructive: true,
+        disabled: () => busy,
+        onClick: () => void detachAction.run(loan),
+      });
+    }
+    return actions;
+  };
+
+  // Where the estate comes from, the flag the old page drew as two lists.
+  // On the bar from the start, and on the Origin column's header.
+  const filterFields = {
+    origin: {
+      schema: z.enum(["home", "lent"]),
+      label: tr("estates.table.origin"),
+      icon: Flag,
+      mode: "default",
+      column: "origin",
+      optionLabel: (origin: "home" | "lent") =>
+        origin === "home"
+          ? tr("estates.origin.home")
+          : tr("estates.origin.lent"),
+      control: { clearLabel: tr("estates.origin.all") },
+    },
+  } satisfies DataTableFilterFields;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <span className="text-sm">{tr("estates.project.title")}</span>
-        <span className="text-muted-foreground text-xs">
-          {tr("estates.project.description")}
-        </span>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {freshSecret && (
+        <TokenReveal
+          token={freshSecret}
+          title={tr("estates.secret.title")}
+          copyLabel={tr("estates.secret.copy")}
+          doneLabel={tr("estates.secret.done")}
+          copiedMessage={tr("estates.toast.copied")}
+          onDismiss={() => setFreshSecret(undefined)}
+        />
+      )}
 
-        {freshSecret && (
-          <TokenReveal
-            token={freshSecret}
-            title={tr("estates.secret.title")}
-            copyLabel={tr("estates.secret.copy")}
-            doneLabel={tr("estates.secret.done")}
-            copiedMessage={tr("estates.toast.copied")}
-            onDismiss={() => setFreshSecret(undefined)}
-          />
-        )}
-
-        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
-          <CardContent className="flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                {tr("estates.project.add")}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {tr("estates.add.description")}
-              </span>
-            </div>
-            <div className="flex justify-start sm:justify-end">
-              {canLend ? (
-                <Button onClick={() => setAdding(true)}>
-                  <Plus className="size-4" />
-                  {tr("estates.project.add")}
-                </Button>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button disabled aria-label={tr("estates.project.add")} />
-                    }
-                  >
-                    <Plus className="size-4" />
-                    {tr("estates.project.add")}
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {tr("estates.project.notAllowed")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <span className="mt-4 text-sm" data-testid="home-estates-title">
-          {tr("estates.home.title")}
-        </span>
-        <span className="text-muted-foreground text-xs">
-          {tr("estates.home.description")}
-        </span>
-        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
-          {homeItems !== undefined && homeItems.length === 0 && (
-            <CardContent className="px-4 py-6">
-              <span className="text-muted-foreground text-sm">
-                {tr("estates.home.empty")}
-              </span>
-            </CardContent>
-          )}
-          {(homeItems ?? []).map((estate) => (
-            <ProjectSettingsHomeEstateRow
-              key={estate.id}
-              estate={estate}
-              lentHere={lentIds.has(estate.id)}
-              onOpen={(item) => setOpenId(item.id)}
-              {...(canLend
-                ? {
-                    onLend: (item: OwnedEstateResource) =>
-                      void lendAction.run(item),
-                  }
-                : {})}
-              busy={lendAction.loading || detachAction.loading}
-            />
-          ))}
-        </Card>
-
-        <span className="mt-4 text-sm" data-testid="borrowed-estates-title">
-          {tr("estates.borrowed.title")}
-        </span>
-        <span className="text-muted-foreground text-xs">
-          {tr("estates.borrowed.description")}
-        </span>
-        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
-          {items !== undefined && borrowed.length === 0 && (
-            <CardContent className="px-4 py-6">
-              <span className="text-muted-foreground text-sm">
-                {tr("estates.project.empty")}
-              </span>
-            </CardContent>
-          )}
-          {borrowed.map((estate) => (
-            <ProjectSettingsEstateRow
-              key={estate.id}
-              estate={estate}
-              // Either side of the loan may end it: `estate:lend` here, or in
-              // the estate's home project, which the server sends in `can`.
-              canDetach={canLend || estate.can.includes("estate:lend")}
-              onDetach={(item) => void detachAction.run(item)}
-              busy={detachAction.loading || lendAction.loading}
-            />
-          ))}
-        </Card>
-      </div>
+      {/* Drawn once both reads land: a static table handed `[]` would say
+          "no estate" for the moment it takes them to answer. */}
+      {rows !== undefined && (
+        <DataTable<ProjectEstateTableRow, typeof filterFields>
+          className="min-h-0 flex-1"
+          data={rows}
+          rowKey={(row) => row.id}
+          defaultSize={100}
+          // Disabled rather than hidden for a rank without `estate:lend`: the
+          // server refuses it anyway, and a missing button would leave them
+          // wondering how an estate gets here.
+          actions={[
+            {
+              icon: Plus,
+              label: tr("estates.project.add"),
+              primary: true,
+              disabled: !canLend,
+              onClick: () => setAdding(true),
+            },
+          ]}
+          filters={{ fields: filterFields }}
+          emptyState={{
+            icon: Server,
+            title: tr("estates.project.empty"),
+            description: canLend ? undefined : tr("estates.project.notAllowed"),
+          }}
+          rowActions={rowActions}
+          columns={{
+            slug: {
+              label: tr("estates.table.estate"),
+              sortable: true,
+              cell: (row) => (
+                <ProjectSettingsEstateNameCell
+                  row={row}
+                  onOpen={(item) => setOpenId(item.id)}
+                />
+              ),
+            },
+            origin: {
+              label: tr("estates.table.origin"),
+              sortable: true,
+              cell: (row) =>
+                row.origin === "home" ? (
+                  <Badge variant="secondary" data-testid="estate-origin">
+                    {tr("estates.origin.home")}
+                  </Badge>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Badge variant="outline" data-testid="estate-origin">
+                      {tr("estates.origin.lent")}
+                    </Badge>
+                    <span className="text-muted-foreground truncate text-xs">
+                      {tr("estates.project.lentBy", {
+                        args: [
+                          row.loan?.home?.title ?? tr("estates.project.noHome"),
+                        ],
+                      })}
+                    </span>
+                  </span>
+                ),
+            },
+            status: {
+              label: tr("estates.table.status"),
+              cell: (row) => <ProjectSettingsEstateStatusCell row={row} />,
+            },
+            deploys: {
+              label: tr("estates.table.deploys"),
+              cell: (row) => {
+                // A home estate its home does not lend to itself cannot take a
+                // deploy from here: the one case the lending is worth naming.
+                if (row.origin === "home" && !row.loan) {
+                  return (
+                    <span className="text-muted-foreground text-xs">
+                      {tr("estates.home.notLentHere")}
+                    </span>
+                  );
+                }
+                const estate = row.loan ?? row.owned;
+                return (
+                  <span className="text-muted-foreground text-xs">
+                    {estate?.deployAllowed
+                      ? tr("estates.deploys.allowed")
+                      : tr("estates.deploys.statsOnly")}
+                  </span>
+                );
+              },
+            },
+            lastSeenAt: {
+              label: tr("estates.table.lastSeen"),
+              sortable: true,
+              sortValue: (row) => (row.owned ?? row.loan)?.lastSeenAt ?? "",
+              cell: (row) => {
+                const estate = row.owned ?? row.loan;
+                if (estate?.type === "cloudflare") return null;
+                return estate?.lastSeenAt ? (
+                  <TimeAgo
+                    value={estate.lastSeenAt}
+                    className="text-muted-foreground text-xs"
+                  />
+                ) : (
+                  <span className="text-muted-foreground text-xs">
+                    {tr("estates.neverSeen")}
+                  </span>
+                );
+              },
+            },
+          }}
+        />
+      )}
 
       <EstateDrawer
         estate={open}

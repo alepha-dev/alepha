@@ -2363,15 +2363,20 @@ export default {
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
 
+  "estates.table.estate": "Estate",
+  "estates.table.origin": "Origin",
+  "estates.table.status": "Status",
+  "estates.table.deploys": "Deploys",
+  "estates.table.lastSeen": "Last seen",
+  "estates.origin.home": "This project",
+  "estates.origin.all": "All origins",
+  "estates.origin.lent": "Lent",
   "estates.project.title": "Estates",
-  "estates.project.description":
-    "Where this project can deploy. An estate is a machine or an account somebody owns and has lent to this project.",
   "estates.project.empty":
-    "No estate lent yet. Until one is, this project has nowhere to deploy.",
+    "No estate yet. Until one is added, this project has nowhere to deploy.",
   "estates.project.add": "Add an estate",
   "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
-  "estates.project.home": "belongs to this project",
   "estates.project.noHome": "no project",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
@@ -2546,16 +2551,9 @@ export default {
   "bay.move.toast": "Moved to $1",
   "bay.move.serverElsewhere":
     "The server it runs on stays in the cloud account of whoever provisioned it, who is not a member of the new project.",
-  "estates.home.title": "Estates of this project",
-  "estates.home.description": "Its members manage these, each by their rank.",
-  "estates.home.empty": "This project is the home of no estate.",
-  "estates.home.lentHere": "Lent to this project",
   "estates.home.notLentHere": "Not lent to this project",
   "estates.home.lentTo": "lent to $1 other project(s)",
   "estates.home.lend": "Lend to this project",
-  "estates.borrowed.title": "Estates lent to this project",
-  "estates.borrowed.description":
-    "Other projects' estates this one may deploy onto. Their home project manages them.",
   "estates.blocker.delete":
     "This project is the home of $1: move or delete them first, other projects may deploy onto them.",
   "estates.blocker.apps":
@@ -2569,7 +2567,6 @@ export default {
   "estates.offline": "offline",
   "estates.deploys.allowed": "deploys allowed",
   "estates.deploys.statsOnly": "stats only",
-  "estates.lastSeen": "last seen $1",
   "estates.neverSeen": "never connected",
   "estates.add.title": "Add an estate to $1",
   "estates.add.description":

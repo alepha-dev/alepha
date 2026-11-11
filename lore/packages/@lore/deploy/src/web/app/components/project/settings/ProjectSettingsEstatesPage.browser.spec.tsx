@@ -91,9 +91,9 @@ class Routes {
 }
 
 /**
- * The project's Estates tab (#Q3281) in two groups: the estates this project
- * is the home of, lent here or not, and the ones it only borrows, each
- * naming its home project.
+ * The project's Estates tab (#Q3281), one table since #Q3409: the estates
+ * this project is the home of and the ones it borrows share it, told apart by
+ * the Origin column, and a home estate never reads as lent.
  */
 describe("ProjectSettingsEstatesPage", () => {
   beforeAll(() => {
@@ -137,13 +137,26 @@ describe("ProjectSettingsEstatesPage", () => {
     await waitFor(() =>
       expect(screen.getAllByTestId("home-estate-row")).toHaveLength(2),
     );
-    const homeRows = screen.getAllByTestId("home-estate-row");
-    expect(homeRows[0]!.textContent).toContain("Lent to this project");
-    expect(homeRows[1]!.textContent).toContain("Not lent to this project");
-    // The borrowed group holds only the other project's estate.
-    const borrowed = screen.getAllByTestId("estate-row");
-    expect(borrowed).toHaveLength(1);
-    expect(borrowed[0]!.textContent).toContain("ovh-infra");
-    expect(borrowed[0]!.textContent).toContain("Infra");
+    // One table, three rows: two home estates, one borrowed.
+    const rows = [...document.querySelectorAll("tbody tr")];
+    expect(rows).toHaveLength(3);
+    const text = (slug: string) =>
+      rows.find((row) => row.textContent?.includes(slug))?.textContent ?? "";
+
+    // A home estate is "This project", lent to its home or not.
+    expect(text("ovh-home")).toContain("This project");
+    expect(text("ovh-home")).not.toContain("Lent");
+    // Only the one its home does not lend to itself says so, since the
+    // project cannot deploy onto it.
+    expect(text("spare")).toContain("Not lent to this project");
+    expect(text("ovh-home")).not.toContain("Not lent to this project");
+    // The borrowed one is flagged Lent and names its home project.
+    expect(screen.getAllByTestId("estate-row")).toHaveLength(1);
+    expect(text("ovh-infra")).toContain("Lent");
+    expect(text("ovh-infra")).toContain("lent by Infra");
+
+    // Add an estate is the table's toolbar action, and Origin a filter.
+    expect(screen.getByRole("button", { name: "Add an estate" })).toBeTruthy();
+    expect(screen.getAllByText("Origin").length).toBeGreaterThan(0);
   });
 });
