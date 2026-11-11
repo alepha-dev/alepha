@@ -181,7 +181,8 @@ await this.db.transactional(async () => {
   so inside a transaction it still runs before the commit. Call it after the
   commit.
 
-`pushMany()` follows the same rule, and so do delayed and keyed pushes.
+`pushMany()` follows the same rule, and so do delayed and keyed pushes. It is
+also what makes `$webhook`'s `send` an outbox: its deliveries are jobs.
 
 ### `key` dedups in-flight work, not completed work
 
