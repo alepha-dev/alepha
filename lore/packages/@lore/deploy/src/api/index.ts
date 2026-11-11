@@ -60,6 +60,7 @@ import { DeployAutomationReferences } from "./services/DeployAutomationReference
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployedBuildService } from "./services/DeployedBuildService.ts";
+import { DeployEstateHomeGuards } from "./services/DeployEstateHomeGuards.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
@@ -70,6 +71,7 @@ import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
+import { EstateAnchorHooks } from "./services/EstateAnchorHooks.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
 import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
@@ -137,6 +139,11 @@ export const LoreDeployApi = $module({
     DeployProjectMerge,
     // Frees the estates a deleted project held (#Q3169); nothing injects it.
     DeployProjectDeletion,
+    // Keeps a homed estate's cascade anchor on its project's owner (#Q3278).
+    EstateAnchorHooks,
+    // Refuses deleting a project, or turning Apps off, while it is the home of
+    // an estate (#Q3280); nothing injects it.
+    DeployEstateHomeGuards,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
     // The apps tiles of #E77 (#Q2657).

@@ -42,8 +42,9 @@ The installer writes the unit from the installation guide unless one exists,
 waits for `bay serve`, runs `bay connector set`, and never prints the secret.
 On a host already running Bay:
 
-1. In Lore, create an estate under `/account/estates`. The secret is shown
-   **once**.
+1. In Lore, create an estate in a project with Apps on: from its
+   **Settings ▸ Apps ▸ Estates**, or with `lore estate add <slug>`. The
+   estate belongs to that project. The secret is shown **once**.
 2. On the host, as root:
 
 ```bash
@@ -120,7 +121,8 @@ to a deploy whose instance has none, and the copy Lore holds of it, which the
 holder can replace: Lore says so on that deploy's log. It sends no command to
 the host.
 
-**Deploys are refused until the estate's owner allows them** on the estate, and
+**Deploys are refused until somebody who manages the estate allows them** (a
+member of its project whose rank grants `estate:update`), and
 the machine enforces that switch on its own side too. `stack-deploy` is held to
 the same switch: it runs containers of the bundle's choosing, so allowing
 deploys on an estate is trusting Lore with the host. A bundle goes through the
@@ -135,7 +137,9 @@ and base domain, which replace those set with `bay stack route`.
 
 ## The console
 
-Once the machine has said hello, `/account/estates/<estate>` in Lore shows:
+Once the machine has said hello, `/<project>/estates/<estate>` in Lore shows,
+to every member of the estate's project (acting on it takes `estate:update`
+there):
 
 - the host's memory, disk and load;
 - every instance with its state, release, memory, restarts and backup freshness;

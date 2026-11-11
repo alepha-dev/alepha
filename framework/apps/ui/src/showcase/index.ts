@@ -22,6 +22,8 @@ import { ShowcaseSessions } from "./admin/ShowcaseSessions.ts";
 import { ShowcaseSessionsController } from "./admin/ShowcaseSessionsController.ts";
 import { ShowcaseUsers } from "./admin/ShowcaseUsers.ts";
 import { ShowcaseUsersController } from "./admin/ShowcaseUsersController.ts";
+import { ShowcaseWebhooks } from "./admin/ShowcaseWebhooks.ts";
+import { ShowcaseWebhooksController } from "./admin/ShowcaseWebhooksController.ts";
 import { ShowcaseController } from "./ShowcaseController.ts";
 import { ShowcaseMembers } from "./ShowcaseMembers.ts";
 import { ShowcaseMfaController } from "./ShowcaseMfaController.ts";
@@ -70,6 +72,8 @@ export const UiShowcase = $module({
     ShowcaseAnalyticsController,
     ShowcasePayments,
     ShowcasePaymentsController,
+    ShowcaseWebhooks,
+    ShowcaseWebhooksController,
     ShowcaseIdentitiesController,
     ShowcaseMfaController,
     ShowcaseOrganizations,

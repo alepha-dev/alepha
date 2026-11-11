@@ -196,13 +196,78 @@ sequenceDiagram
   P-->>C: streamed body
 ```
 
-- Every incoming header is forwarded as is, `Cookie` and `Authorization`
-  included, except `Accept-Encoding`, forced to `identity` so the body comes
-  back uncompressed.
+- Every incoming header is forwarded as is, except the caller's credentials
+  (see [Credentials stay home](#credentials-stay-home)) and `Accept-Encoding`,
+  forced to `identity` so the body comes back uncompressed.
 - The request body is streamed upstream for every method but `GET`, `HEAD`
   and `OPTIONS`, and the response body is streamed back without buffering.
 - The upstream call carries the request's abort signal: a client that
   disconnects cancels it.
+- The upstream's `Set-Cookie` headers are copied to the client, every one of
+  them.
+
+### Credentials stay home
+
+By default a `$proxy` sends **neither `Cookie` nor `Authorization`** upstream.
+Both are removed from the outgoing request whoever wrote them: the browser, or
+the `Authorization` that `alepha/server/auth` derives from the session cookie
+before any handler runs. In front of a third-party API, the session's cookie
+could otherwise be replayed against the app, and its access token would leave
+in clear.
+
+`forward` lets them through, per header. It takes those two names and nothing
+else; any other value fails at boot.
+
+```typescript check
+import { $proxy } from "alepha/server/proxy";
+
+class Gateway {
+  // A service of the same system, authenticating the caller from the bearer.
+  orders = $proxy({
+    path: "/orders/*",
+    target: "https://orders.internal.example.com",
+    forward: ["authorization"],
+  });
+
+  // An upstream sharing the app's session.
+  legacy = $proxy({
+    path: "/legacy/*",
+    target: "https://legacy.example.com",
+    forward: ["cookie", "authorization"],
+  });
+}
+```
+
+The removal happens when the outgoing request is built, before
+`beforeRequest` runs: a hook that sets its own `Authorization`, such as a
+service token, keeps it, and a hook never sees a credential it did not put
+there. Header names are matched without regard to case.
+
+A `$remote({ proxy: true })` forwards `authorization` on its own, so the
+remote still authenticates the caller; `proxy: { forward: [...] }` overrides
+it.
+
+### Timeout
+
+```typescript check
+import { $proxy } from "alepha/server/proxy";
+
+class Gateway {
+  api = $proxy({
+    path: "/api/*",
+    target: "https://api.example.com",
+    timeout: [10, "seconds"],
+  });
+}
+```
+
+`timeout` bounds the time until the upstream sends its response headers. Past
+it the client gets a 503 (`TIMEOUT`, the status every Alepha timeout answers)
+and the upstream call is aborted. The streamed body is not bounded: a body
+still arriving after the deadline keeps streaming, and only the client leaving
+ends it. There is no default, since a long-polling upstream would be cut, and
+there is no retry: a transient upstream failure reaches the client as a 5xx
+and the client decides.
 
 ### Rewriting, and the two hooks
 
@@ -246,11 +311,50 @@ class Gateway {
 proxy a feature flag: point `/v2/*` at a new service and turn it off without
 removing the declaration.
 
+### WebSocket
+
+`websocket: true` forwards a WebSocket upgrade on the proxy's path family as
+well. It is off by default, so a proxy forwards nothing more than its HTTP
+requests until it asks.
+
+```typescript check
+import { $proxy } from "alepha/server/proxy";
+
+class Gateway {
+  live = $proxy({
+    path: "/live/*",
+    target: "https://stream.example.com",
+    websocket: true,
+    timeout: [5, "seconds"],
+    rewrite: (url) => {
+      url.pathname = url.pathname.replace("/live", "");
+    },
+  });
+}
+```
+
+The handshake goes to the upstream after `rewrite` (an `http` target is
+reached as `ws`, `https` as `wss`), frames are piped both ways, and either
+side closing closes the other. It follows the HTTP rules: no `Cookie` nor
+`Authorization` unless `forward` names them, `beforeRequest` sees the
+handshake after they left, and `timeout` bounds the wait for the upstream's
+answer (503 past it). With `forward: ["authorization"]`, the bearer derived
+from the session cookie travels, on Node as on workerd.
+
+| Runtime | Upgrade                                                                                                                                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node    | Answered on the HTTP server's `upgrade` event, beside `alepha/websocket` and under `alepha dev` (where it rides Vite's server, and Vite's HMR socket is untouched). `beforeRequest` receives the handshake's method, URL and headers only. |
+| workerd | The upstream's 101 goes back to the client as is.                                                                                                                                                                                          |
+| Bun     | Refused with 501 and a log line: Bun's server runs with no WebSocket handler.                                                                                                                                                              |
+
+A `$websocket` whose path falls under a websocket proxy's prefix is the
+proxy's: the proxy owns its whole path family.
+
 ### It is a proxy, so it is a hole
 
 Everything matching `path` leaves your process for another origin, carrying
-the client's headers (its cookies and bearer token included) unless
-`beforeRequest` removes them. Two habits are worth keeping:
+the client's headers (its cookies and bearer token too, once `forward` names
+them). Two habits are worth keeping:
 make `target` something you control rather than something derived from request
 input, and mount the proxy under a prefix narrow enough that you can say out
 loud what it covers.

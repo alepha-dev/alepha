@@ -1,7 +1,9 @@
 import {
   ROUTES_APP,
+  ROUTES_ESTATE,
   lazyPart,
   AccountDeletionRegistry,
+  ProjectBlockerRegistry,
   AgentPromptRegistry,
   DashboardPickerRegistry,
   ProjectShellRegistry,
@@ -16,11 +18,13 @@ import { $inject } from "alepha";
 import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
 
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
+import { currentEstateAtom } from "../atoms/currentEstateAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
+import { useHomeEstatesBlocker } from "../components/project/settings/useHomeEstatesBlocker.ts";
 import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
 
 /**
@@ -36,6 +40,7 @@ export class DeployShell {
   protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
+  protected readonly blockers = $inject(ProjectBlockerRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
 
   constructor() {
@@ -189,6 +194,27 @@ export class DeployShell {
       },
     });
 
+    // An estate's console ends its trail with the estate (#Q3408): "Project >
+    // Estates > ovh", "Estates" climbing back to the project's estates list.
+    // The console's tabs stay on its plate, not on this bar. It replaced an
+    // "All estates" link in the plate, which said what the crumb already did.
+    this.shell.registerCrumb({
+      order: 15,
+      reads: [currentEstateAtom],
+      crumb: (ctx) => {
+        const estate = ctx.get(currentEstateAtom);
+        return ROUTES_ESTATE.includes(ctx.routeName) && estate
+          ? {
+              label: estate.slug,
+              href: ctx.path("bayOverview", {
+                projectSlug: ctx.projectSlug,
+                estateSlug: estate.slug,
+              }),
+            }
+          : undefined;
+      },
+    });
+
     // ⚠️ Instances are palette rows from the atom, not from the sidebar. They
     // used to BE sidebar children; #1771 collapsed that group to one entry,
     // and dropping the children would have dropped every app out of the
@@ -253,6 +279,14 @@ export class DeployShell {
       key: "owned-estates",
       order: 20,
       useLine: useOwnedEstatesDeletionLine,
+    });
+
+    // A project that is the home of an estate is not deleted and keeps Apps
+    // (#Q3280); the page says so before the click (#Q3281).
+    this.blockers.register({
+      key: "home-estates",
+      order: 20,
+      useLine: useHomeEstatesBlocker,
     });
 
     this.reports.register({

@@ -41,6 +41,7 @@
     "./invoicing": "./src/invoicing/index.ts",
     "./notifications": "./src/notifications/index.ts",
     "./settlement": "./src/settlement/index.ts",
+    "./webhooks": "./src/webhooks/index.ts",
     "./recovery": "./src/recovery/index.ts",
     "./admin": "./src/admin/index.ts",
     "./lib/*": "./src/lib/*.ts",
@@ -81,6 +82,10 @@
       "./settlement": {
         "types": "./dist/settlement/index.d.ts",
         "default": "./dist/settlement/index.js"
+      },
+      "./webhooks": {
+        "types": "./dist/webhooks/index.d.ts",
+        "default": "./dist/webhooks/index.js"
       },
       "./recovery": {
         "types": "./dist/recovery/index.d.ts",

@@ -79,7 +79,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsKnowledge",
   "projectSettingsApps",
   // The bay console's rail - BayLayout.tsx, plus the instance page the Apps
-  // entry stays lit for and the drawer's "Open console" link.
+  // entry stays lit for; a page of the estate's home project since #E126.
   "bay",
   "bayOverview",
   "bayApps",
@@ -102,7 +102,7 @@ const NAV_ROUTE_NAMES = [
   "register",
   "projectCreate",
   "projectFeedbackRequest",
-  // The shared /account area (@alepha/ui AccountRouter) plus Lore's own three
+  // The shared /account area (@alepha/ui AccountRouter) plus Lore's own
   // pages inside it. `myFeedback` kept its pre-migration name on purpose —
   // see WorkAccountRouter.
   "account",
@@ -110,7 +110,6 @@ const NAV_ROUTE_NAMES = [
   "accountConnections",
   "accountInvitations",
   "accountProjects",
-  "accountEstates",
   "myFeedback",
 ];
 
@@ -266,6 +265,19 @@ describe("the route table", () => {
     expect(clashes).toEqual([]);
   });
 
+  it("puts an estate's console under its home project", ({ expect }) => {
+    // #E126: estates belong to a project and have no account page.
+    const params = { projectSlug: "demo", estateSlug: "ovh-1" };
+
+    expect(router.path("bay", { params })).toBe("/demo/estates/ovh-1");
+    expect(router.path("baySettings", { params })).toBe(
+      "/demo/estates/ovh-1/settings",
+    );
+    expect(router.path("bayApp", { params: { ...params, app, env } })).toBe(
+      `/demo/estates/ovh-1/apps/${app}/${env}`,
+    );
+  });
+
   it("resolves every name the navs pass as a plain string", ({ expect }) => {
     // A superset of the params any of these routes declares, so a surviving
     // `:segment` in the result means the route's shape changed — not that this
@@ -281,7 +293,7 @@ describe("the route table", () => {
       areaId: 1,
       analyticsDimension: "path",
       monitorId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
-      estateId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
+      estateSlug: "ovh-1",
     };
 
     for (const name of NAV_ROUTE_NAMES) {

@@ -261,7 +261,7 @@ curl -sSL https://alepha.dev/bay/install.sh \
 `lore estate add <slug> --allow-deploys --output json` prints the secret for a script, and
 `lore estate wait <slug>` blocks until the machine is online. Step 5 is still yours.
 
-By hand, on a host already running Bay: create an **estate** under `/account/estates` on Lore. The
+By hand, on a host already running Bay: create an **estate** in a project's **Settings ▸ Apps ▸ Estates** on Lore. The
 secret is shown once. Then, on the host, as root:
 
 ```bash
@@ -332,7 +332,7 @@ uploads what it did (revision, plan, digests) to `/estates/commands/<id>/outcome
 
 ### After enrolment: the console
 
-Once the machine has said hello, `/account/estates/<estate>` in Lore is what an operator reads: the host's
+Once the machine has said hello, `/<project>/estates/<estate>` in Lore is what an operator reads: the host's
 memory, disk and load, every instance with its state, release, memory, restarts and backup
 freshness, and the commands anyone has queued with what came back. Its Apps table also answers the
 one question this host cannot answer alone - an instance Lore expects here that the machine did not

@@ -1,3 +1,4 @@
+import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
@@ -15,9 +16,10 @@ export const ESTATE_TYPES = ["bay", "cloudflare"] as const;
 export type EstateType = (typeof ESTATE_TYPES)[number];
 
 /**
- * An **estate** is a deploy destination owned by a user and lent to projects.
+ * An **estate** is a deploy destination that belongs to a project, its home,
+ * and is lent to the projects that may deploy onto it (epic #E126).
  *
- * ## This concept changed meaning twice and spelling once
+ * ## This concept changed meaning three times and spelling once
  *
  * The migration history holds `outposts`, `outpost_apps` and `outpost_events`,
  * created on 2026-08-02 and dropped on 2026-08-06 (folios #64 and #65). Those
@@ -30,30 +32,46 @@ export type EstateType = (typeof ESTATE_TYPES)[number];
  * machine dials OUT to Lore and holds a websocket open, and the capability
  * ceiling is the closed action vocabulary (`restart`, `deploy`), not the
  * channel. Folio #1154 then made outposts Lore-scope and admin-only, and
- * folio #1194 reversed that on 2026-09-04 and renamed them estates: owned by
- * a user, lent to projects, never an instance resource an admin registers.
+ * folio #1194 reversed that on 2026-09-04 and renamed them estates, owned by
+ * a user. Epic #E126 (folio #F1468) moved them from the user to a project on
+ * 2026-11-11: who acts on an estate is a matter of rank in its home project.
  *
  * Folio #64 warned that `SigilIngestController` and its sibling were "one
  * grep apart and will be confused otherwise". The same holds here: a sigil
  * is an app's telemetry credential, an estate is a machine's deploy
  * credential, and neither is the other.
  *
- * ## Ownership is personal, usage is lent
+ * ## Home and loan are two facts
  *
- * `ownerUserId` is the owner and there is no `projectId`: the lending join
- * (`estate_projects`, #1837) carries which projects may deploy through it.
- * A deploy never names the estate on the wire: it resolves server-side from
- * an app instance, which resolves from a project (folio #96's `targetId`
- * warning, back in force under user-scope).
+ * `projectId` is the home: the project whose members manage the estate, each
+ * by their rank. The lending join (`estate_projects`, #1837) is which projects
+ * may deploy through it. The home usually holds a loan too, and need not. A
+ * deploy never names the estate on the wire: it resolves server-side from an
+ * app instance, which resolves from a project (folio #96's `targetId`
+ * warning).
  *
- * ## The rows that will reference this table
+ * An estate with no home (`projectId` NULL) is one the migration of #Q3278
+ * could not place safely, or one an older Worker created inside the
+ * migrate-before-deploy window. Nobody but the instance admin reaches it, and
+ * the admin assigns it a home.
+ *
+ * ## `ownerUserId` is an anchor, not an owner
+ *
+ * It cannot go: it is a NOT NULL cascade foreign key, and dropping or
+ * relaxing it is a table rebuild, refused on a table with nine children
+ * (`migration-safety.spec.ts`). So it stays as the user whose deletion would
+ * cascade to the row, and it is never read for access. A homed estate's
+ * anchor is its home project's owner, who cannot delete their account while
+ * they own a live project; `EstateAnchorHooks` repoints it on an ownership
+ * transfer and before a user is deleted. An estate with no home keeps the
+ * anchor of whoever created it, and still goes with that account.
+ *
+ * ## The rows that reference this table
  *
  * `app_instances.estateId` (#1767) is `.optional()` INSIDE
- * `db.ref(...)` with `onDelete: "set null"`. Deleting a user account cascades
- * to their estates, and that cascade must not be blockable by other people's
- * projects: `restrict` would fail the account deletion at the database and
- * `cascade` would delete deploy targets. `set null` is the one shape that fits
- * the rules in `EstateService`.
+ * `db.ref(...)` with `onDelete: "set null"`: an estate that goes, with its
+ * anchor's account or by a delete, must not be blockable by the projects that
+ * borrowed it, and must not delete their deploy targets.
  *
  * `deployments` (epic #1, #1201) carries a denormalised `(estateSlug,
  * estateType)` snapshot beside a soft `estateId`, so history outlives the row.
@@ -64,14 +82,33 @@ export const estates = $entity({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
+    /**
+     * The cascade anchor, never read for access: see the entity's doc.
+     */
     ownerUserId: db.ref(z.uuid(), () => users.cols.id, {
       onDelete: "cascade",
+    }),
+    /**
+     * The home project, whose members manage the estate by their rank. Null
+     * for an estate the admin has yet to assign. `restrict`, and never
+     * reached in practice: projects are soft-deleted, and a guard refuses to
+     * delete a project that is the home of an estate.
+     */
+    projectId: db.ref(z.integer().optional(), () => projects.cols.id, {
+      onDelete: "restrict",
+    }),
+    /**
+     * Who added or provisioned the estate, for display only: a provisioned
+     * server lives in that person's cloud account.
+     */
+    createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
     }),
     type: z.enum(ESTATE_TYPES).meta({ mode: "text" }),
     /**
      * The identifier a person types and `bay connector show` prints. Unique
-     * per owner and never writable after creation, because a config may
-     * record it. Two owners may both have `ovh-1`.
+     * per home project and never writable after creation, because a config
+     * may record it. Two projects may both have `ovh-1`.
      */
     slug: z.string().min(1).max(64),
     /**
@@ -244,7 +281,7 @@ export const estates = $entity({
     statsAt: z.string().optional(),
   }),
   indexes: [
-    { columns: ["ownerUserId", "slug"], unique: true },
+    { columns: ["projectId", "slug"], unique: true },
     // The handshake resolves a secret by its hash and by nothing else.
     { columns: ["secretHash"], unique: true },
     // The enrolment exchange resolves its secret the same way.

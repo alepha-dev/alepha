@@ -66,7 +66,6 @@ export default {
     "Essayez un autre nom ou effacez le filtre d’état.",
   "automation.gallery.description":
     "Partez d'un modèle. Il est créé désactivé, pour le tester avant de l'activer.",
-  "automation.gallery.back": "Retour aux automatisations",
   "automation.enable": "Activer",
   "automation.disable": "Désactiver",
   "automation.delete": "Supprimer",
@@ -629,7 +628,7 @@ export default {
   "board.filter.noRelease": "Aucune",
   "board.filter.epic": "Épopée",
   "board.filter.allEpics": "Toutes les épopées",
-  "board.filter.noEpic": "Aucune épopée",
+  "board.filter.noEpic": "Aucune",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par une autre quête",
@@ -861,6 +860,8 @@ export default {
     "$1 devient propriétaire et vous devenez $2. Vous ne pourrez pas revenir en arrière : seul le nouveau propriétaire peut vous le rendre.",
 
   "project.settings.danger.title": "Zone à risques",
+  "project.settings.delete.blocked.title":
+    "Ce projet ne peut pas encore être détruit",
   "project.settings.actions.delete": "Détruire ce projet",
   "project.settings.actions.delete.helper":
     "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
@@ -1866,10 +1867,14 @@ export default {
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
   "account.projects.empty": "Vous ne faites partie d'aucun projet.",
-  "account.projects.quota": "$1 projets possédés sur $2",
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
   "account.projects.see-all": "Tous les projets",
+  "account.projects.filter.role": "Rôle",
+  "account.projects.filter.allRoles": "Tous les rôles",
+  "account.projects.filter.archived": "Archivés",
+  "account.projects.filter.active": "Non archivés",
+  "account.projects.filter.allStates": "Archivés ou non",
   "account.projects.archived": "Archivé",
 
   "area.detail.rename": "Renommer",
@@ -1892,7 +1897,6 @@ export default {
   "area.detail.stats.first": "Première quête",
   "area.detail.stats.last": "Dernière activité",
   "area.detail.stats.never": "Jamais",
-  "area.detail.back": "Retour aux domaines",
   "area.detail.quests.title": "Quêtes récentes",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
@@ -2376,15 +2380,22 @@ export default {
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
 
+  "estates.table.estate": "Domaine",
+  "estates.table.origin": "Origine",
+  "estates.table.status": "Statut",
+  "estates.table.deploys": "Déploiements",
+  "estates.table.lastSeen": "Vu",
+  "estates.origin.home": "Ce projet",
+  "estates.origin.all": "Toutes les origines",
+  "estates.origin.lent": "Prêté",
   "estates.project.title": "Domaines",
-  "estates.project.description":
-    "Où ce projet peut déployer. Un domaine est une machine ou un compte que quelqu'un possède et a prêté à ce projet.",
   "estates.project.empty":
-    "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
+    "Aucun domaine pour l'instant. Tant qu'aucun n'est ajouté, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
   "estates.project.notAllowed":
     "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
+  "estates.project.noHome": "aucun projet",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
   "bay.nav.commands": "Commandes",
@@ -2536,12 +2547,38 @@ export default {
   "bay.commands.col.reason": "Issue",
   "bay.commands.byNobody": "-",
   "bay.commands.result": "Ouvrir le résultat stocké",
-  "account.estates.inventory": "$1 application(s), communiqué $2",
-  "account.estates.inventory.none": "rien de communiqué",
   "bay.settings.rotate.warning":
     "La rotation révoque le secret actuel immédiatement. La machine est refusée à sa prochaine connexion et reste hors ligne jusqu'à ce que vous relanciez `bay connector set` dessus avec le nouveau.",
-  "bay.open": "Ouvrir la console",
-  "bay.back": "Tous les domaines",
+  "bay.home": "Appartient à $1",
+  "bay.settings.home":
+    "Appartient à $1, dont les membres le gèrent, chacun selon son rang",
+  "bay.settings.addedBy": "Ajouté par $1",
+  "bay.settings.provisionedBy":
+    "Provisionné par $1, dont le compte cloud détient le serveur",
+  "bay.settings.readOnly":
+    "Vous pouvez consulter ce domaine : ce qui y tourne, les commandes envoyées, son CPU et sa mémoire.",
+  "bay.settings.readOnly.how":
+    "Le modifier demande estate:update dans $1, le déplacer ou le supprimer estate:delete. Le propriétaire du projet les accorde par un rang.",
+  "bay.move.action": "Déplacer vers un autre projet",
+  "bay.move.title": "Déplacer $1 vers un autre projet",
+  "bay.move.project": "Projet",
+  "bay.move.none": "Aucun autre projet où vous pouvez créer un domaine.",
+  "bay.move.taken":
+    "Ce projet a déjà un domaine nommé $1, et un slug ne change jamais.",
+  "bay.move.keeps":
+    "Son slug, sa machine, son secret et ses commandes restent tels quels.",
+  "bay.move.loans": "Toujours prêté à : $1",
+  "bay.move.submit": "Déplacer",
+  "bay.move.toast": "Déplacé vers $1",
+  "bay.move.serverElsewhere":
+    "Le serveur reste dans le compte cloud de la personne qui l'a provisionné, qui n'est pas membre du nouveau projet.",
+  "estates.home.notLentHere": "Pas prêté à ce projet",
+  "estates.home.lentTo": "prêté à $1 autre(s) projet(s)",
+  "estates.home.lend": "Prêter à ce projet",
+  "estates.blocker.delete":
+    "Ce projet est le propriétaire de $1. Déplacez ces domaines vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
+  "estates.blocker.apps":
+    "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
   "estates.online": "en ligne",
@@ -2550,7 +2587,6 @@ export default {
   "estates.offline": "hors ligne",
   "estates.deploys.allowed": "déploiements autorisés",
   "estates.deploys.statsOnly": "statistiques seulement",
-  "estates.lastSeen": "vu $1",
   "estates.neverSeen": "jamais connecté",
   "estates.add.title": "Ajouter un domaine à $1",
   "estates.add.description":
@@ -2617,17 +2653,6 @@ export default {
   "estates.toast.detached": "Domaine retiré",
   "estates.toast.copied": "Secret copié",
 
-  "account.estates.col.kind": "Type",
-  "account.estates.col.estate": "Domaine",
-  "account.estates.col.status": "Statut",
-  "account.estates.col.lentTo": "Prêté à",
-  "account.estates.col.created": "Créé",
-  "account.estates.lentTo": "$1 projet(s)",
-  "account.estates.create": "Créer un domaine",
-  "account.estates.create.description":
-    "Son secret est affiché une seule fois, à la création. Il ne peut pas être récupéré ensuite, seulement renouvelé.",
-  "account.estates.create.submit": "Créer",
-  "account.estates.new": "Nouveau domaine",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1 % · mémoire $2 %",
   "account.estates.gauge.none": "pas encore de statistiques",
@@ -2658,13 +2683,12 @@ export default {
   "account.estates.delete.confirmProvisioned":
     "Ce domaine tourne sur le serveur $1, acheté par lore estate provision chez $2. Le supprimer ici ne détruit pas ce serveur : il continue de tourner, et d'être facturé. Pour le détruire avec son IP et son disque, lancez plutôt lore estate delete $3 --yes.",
   "account.estates.delete.confirm": "Supprimer",
-  "account.estates.toast.created": "Domaine créé",
   "account.estates.toast.rotated": "Secret changé",
   "account.estates.toast.deleted": "Domaine supprimé",
   "account.delete.estates.one":
-    "1 domaine que vous possédez sera également supprimé et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
+    "1 domaine qui n'appartient à aucun projet est encore rattaché à votre compte : il sera supprimé avec lui et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
   "account.delete.estates.many":
-    "$1 domaines que vous possédez seront également supprimés et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
+    "$1 domaines qui n'appartiennent à aucun projet sont encore rattachés à votre compte : ils seront supprimés avec lui et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
@@ -3534,11 +3558,14 @@ export default {
   "permission.quality.read": "Lire la couverture et les totaux de tests",
   "permission.quality.push": "Enregistrer la couverture et les totaux de tests",
   "permission.group.estate": "Hébergements",
-  "permission.estate.read": "Voir les hébergements prêtés au projet",
-  "permission.estate.update": "Modifier un hébergement",
+  "permission.estate.read":
+    "Voir les hébergements du projet et leur console, et ceux qui lui sont prêtés",
+  "permission.estate.update":
+    "Modifier un hébergement du projet : ses réglages, son secret, son jeton, ses commandes et ses journaux",
   "permission.estate.lend": "Prêter un hébergement au projet, et le reprendre",
-  "permission.estate.create": "Créer un hébergement",
-  "permission.estate.delete": "Supprimer un hébergement",
+  "permission.estate.create": "Ajouter un hébergement au projet",
+  "permission.estate.delete":
+    "Supprimer un hébergement du projet, ou le déplacer vers un autre",
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",

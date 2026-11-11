@@ -3,13 +3,12 @@ import { appNameSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, BadRequestError, NotFoundError } from "alepha/server";
 
 import type { AppInstance } from "../entities/appInstances.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateEvents } from "../entities/estateEvents.ts";
-import type { Estate } from "../entities/estates.ts";
+import { type Estate, estates } from "../entities/estates.ts";
 import { appBackupViewSchema } from "../schemas/appBackupViewSchema.ts";
 import {
   BACKUP_KINDS_REFUSED_OFFLINE,
@@ -49,6 +48,7 @@ export class BackupController {
   protected readonly bay = $inject(BayRemovalService);
   protected readonly files = $inject(FileService);
   protected readonly rows = $repository(estateCommands);
+  protected readonly estateRows = $repository(estates);
 
   protected writeGate = () =>
     $ownsProject({
@@ -62,7 +62,13 @@ export class BackupController {
 
   /** What the machine reported happening, newest first. */
   listEstateEvents = $action({
-    use: [$secure({ permissions: ["estate:read"] })],
+    use: [
+      $ownsProject({
+        repository: () => this.estateRows,
+        param: "estateId",
+        requires: "estate:read",
+      }),
+    ],
     method: "GET",
     path: "/estates/:estateId/events",
     schema: {
@@ -75,8 +81,7 @@ export class BackupController {
       response: z.object({ items: z.array(estateEvents.schema) }),
     },
     handler: async ({ params, query, user }) => {
-      const estate = await this.estateService.loadOwned(params.estateId, user);
-      return { items: await this.events.list(estate.id, query) };
+      return { items: await this.events.list(params.estateId, query) };
     },
   });
 
@@ -151,14 +156,14 @@ export class BackupController {
       );
       if ("from" in body && body.from) {
         throw new BadRequestError(
-          "Restoring from another instance is reserved to the estate's owner.",
+          "Restoring from another instance is reserved to the estate's console, under estate:update in its home project.",
         );
       }
-      // Bay's operator layer is the estate owner's: a project declares its
+      // Bay's operator layer belongs to the estate's home project: a project declares its
       // policy with the deploy (`bay({ backup })`), bounded as the app layer.
       if (body.kind === "backup-policy") {
         throw new BadRequestError(
-          "Overriding the backup policy is reserved to the estate's owner: declare it in alepha.config.ts and deploy.",
+          "Overriding the backup policy is reserved to the estate's home project: declare it in alepha.config.ts and deploy.",
         );
       }
       const { estate, machineApp } = await this.requireTarget(instance);

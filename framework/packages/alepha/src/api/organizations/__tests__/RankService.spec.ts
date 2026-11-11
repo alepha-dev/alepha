@@ -39,10 +39,16 @@ class Permissions {
 class CountingRankService extends RankService {
   public definitionReads = 0;
   public membershipReads = 0;
+  public memberListReads = 0;
 
   protected override loadDefinitions(organizationId: string) {
     this.definitionReads += 1;
     return super.loadDefinitions(organizationId);
+  }
+
+  protected override loadMembers(organizationId: string) {
+    this.memberListReads += 1;
+    return super.loadMembers(organizationId);
   }
 
   protected override loadMembership(organizationId: string, userId: string) {
@@ -514,5 +520,63 @@ describe("alepha/api/organizations - RankService", () => {
     expect(
       (await ctx.members.list(org)).find((it) => it.userId === above)?.rank,
     ).toBe("senior");
+  });
+
+  it("lists the members whose rank grants a permission, in two reads", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ countDefinitions: true });
+    const ranks = ctx.ranks as CountingRankService;
+    const org = ctx.organization.id;
+    const users = ctx.alepha.inject(RealmProvider).userRepository();
+    const writer = await users.create({ username: "rank-writer" });
+    const reader = await users.create({ username: "rank-reader" });
+    const ghost = await users.create({ username: "rank-ghost" });
+    await ranks.save(
+      org,
+      {
+        key: "writer",
+        name: "Writer",
+        permissions: ["organization:read", "quest:write"],
+      },
+      ctx.owner,
+    );
+    await ranks.save(
+      org,
+      {
+        key: "reader",
+        name: "Reader",
+        permissions: ["organization:read", "member:read"],
+      },
+      ctx.owner,
+    );
+    await ctx.members.add(org, writer.id, "writer", ctx.owner);
+    await ctx.members.add(org, reader.id, "reader", ctx.owner);
+    // A rank key with no definition: the gate gives it nothing, so this
+    // member must not be told about what they could not fix.
+    await ctx.members.add(org, ghost.id, "vanished", ctx.owner);
+
+    let holders: string[] = [];
+    await ctx.alepha.context.run(async () => {
+      ctx.alepha.context.set(
+        ResourceGateMemoProvider.KEY,
+        new Map<string, Promise<unknown>>(),
+      );
+      ranks.definitionReads = 0;
+      ranks.membershipReads = 0;
+      holders = await ranks.holdersOf(org, "quest:write");
+    });
+
+    expect(holders.sort()).toEqual([ctx.owner.id, writer.id].sort());
+    expect(ranks.memberListReads).toBe(1);
+    expect(ranks.definitionReads).toBe(1);
+    expect(ranks.membershipReads).toBe(0);
+
+    // The default member rank holds the floor, and a member with no rank
+    // holds the default one; the unknown key still holds nothing.
+    expect((await ranks.holdersOf(org, "organization:read")).sort()).toEqual(
+      [ctx.owner.id, ctx.member.id, writer.id, reader.id].sort(),
+    );
+    expect(await ranks.holdersOf(org, "estate:update")).toEqual([ctx.owner.id]);
   });
 });

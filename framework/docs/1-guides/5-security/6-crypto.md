@@ -124,7 +124,9 @@ something injects it, so an app that signs nothing never needs one.
   regenerated with a warning; a directory that is missing or not writable
   stops the boot with an error saying so.
 - **Rotating it invalidates** every session token, signed cookie and signed
-  link issued with the old value.
+  link issued with the old value, and makes every webhook endpoint secret
+  unreadable: those endpoints are disabled until their secret is rotated (see
+  the [webhooks guide](/docs/guides-features-webhooks#secrets)).
 
 `APP_SECRET_FILE` is what lets a self-hosted image start with a plain
 `docker run`: point it at a mounted volume and each install mints its own

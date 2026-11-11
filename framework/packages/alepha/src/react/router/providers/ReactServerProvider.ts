@@ -175,6 +175,8 @@ export class ReactServerProvider {
     // Cache ServerLinksProvider check at startup
     this.hasServerLinksProvider = this.alepha.has(ServerLinksProvider);
 
+    this.registerBrowserEnvRoute();
+
     for (const page of this.pageApi.getPages()) {
       if (page.component || page.lazy || page.redirect) {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
@@ -249,6 +251,38 @@ export class ReactServerProvider {
         }
       }
     }
+  }
+
+  /**
+   * `GET /config.js`: the `browser: true` keys of the env, as the runtime
+   * holds them, for a page that was prerendered at build time and so carries
+   * no value of its own (`ReactServerTemplateProvider.browserEnvHead`).
+   * Registered only when the app declares such a key. Never cached for long:
+   * the file is the environment, and changes with it.
+   */
+  protected registerBrowserEnvRoute(): void {
+    if (this.alepha.browserEnvKeys().length === 0) {
+      return;
+    }
+    this.serverRouterProvider.createRoute({
+      method: "GET",
+      path: "/config.js",
+      handler: (request) => {
+        request.reply.headers["content-type"] =
+          "text/javascript; charset=utf-8";
+        request.reply.headers["cache-control"] =
+          "public, max-age=0, must-revalidate";
+        return this.browserEnvScript(this.alepha.browserEnv());
+      },
+    });
+  }
+
+  /**
+   * The body of a `config.js`: one global holding `values`. The static build
+   * writes the same line (`BuildStaticTask`), and so may a host's entrypoint.
+   */
+  public browserEnvScript(values: Record<string, string>): string {
+    return `globalThis.${Alepha.BROWSER_ENV_GLOBAL} = ${JSON.stringify(values).replace(/</g, "\\u003c")};\n`;
   }
 
   /**

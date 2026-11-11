@@ -104,8 +104,11 @@ export const AiChatDock = (props: AiChatDockProps) => {
       data-testid="ai-chat-dock"
       aria-label={tr("ai.chat.title", { default: "Assistant" })}
       style={{ width }}
+      // `bg-background`, the token of the page an inset `AppShell` draws, so
+      // the docked chat reads as a second pane of the same surface rather
+      // than a lighter card beside it (#Q3372).
       className={cn(
-        "bg-card text-card-foreground relative flex flex-col overflow-hidden rounded-xl border text-sm shadow-sm",
+        "bg-background text-foreground relative flex flex-col overflow-hidden rounded-xl border text-sm shadow-sm",
         target.slot
           ? // In the layout's column: a card the page narrows for, kept in
             // view when the page itself scrolls.

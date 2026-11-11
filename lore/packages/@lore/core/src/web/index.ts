@@ -126,6 +126,7 @@ export {
 } from "./app/components/project/capabilityNav.ts";
 export {
   ROUTES_APP,
+  ROUTES_ESTATE,
   ROUTES_FULL_WIDTH,
   ROUTES_WITH_QUEST_LOG,
   SECTION_HREF_ROUTES,
@@ -220,6 +221,11 @@ export {
   renderPromptTemplate,
 } from "./app/prompts/renderPromptTemplate.ts";
 export { AccountDeletionRegistry } from "./app/registries/AccountDeletionRegistry.ts";
+export {
+  type ProjectBlocker,
+  type ProjectBlockedAct,
+  ProjectBlockerRegistry,
+} from "./app/registries/ProjectBlockerRegistry.ts";
 export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
 export {
   type DashboardPickerContext,

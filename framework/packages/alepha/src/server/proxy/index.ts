@@ -6,6 +6,17 @@ import { ServerProxyProvider } from "./providers/ServerProxyProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "alepha" {
+  interface State {
+    /**
+     * The path prefixes whose WebSocket upgrades a `$proxy` owns.
+     */
+    "alepha.server.proxy.upgradePaths"?: string[];
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export * from "./primitives/$proxy.ts";
 export * from "./providers/ServerProxyProvider.ts";
 

@@ -1,15 +1,16 @@
 import { Badge, TimeAgo } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
-import { DataTable } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import { z } from "alepha";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { FolderKanban, Plus } from "lucide-react";
+import { Archive, FolderKanban, Plus, UserRound } from "lucide-react";
 
 import type { ProjectOverviewResource } from "../../../../api/schemas/projectResourceSchema.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import { ProjectRailCard } from "../project/ProjectRailCard.tsx";
 
 /**
  * Every project the signed-in user belongs to, owned or joined, as a
@@ -31,7 +32,13 @@ import { ProjectIcon } from "../shared/ProjectIcon.tsx";
  * ⚠️ A boolean rather than the rank's name, on purpose: rank names are
  * per-project user data, so two projects can both have an "Admin" that means
  * different things. Ownership is the one fact that compares across projects,
- * and it is the fact this page already needs for the quota beside it.
+ * which is why it is the Role filter.
+ *
+ * #Q3412 took the "N of 100 projects owned" counter out of the toolbar and
+ * put filters there instead: a title search, Role (owner or member) and
+ * Archived. Archived projects are hidden on load (`initialValues`): they
+ * left the switcher, Spotlight and Home (#Q2601), and this page is where
+ * they are found again, by asking for them.
  */
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -52,15 +59,39 @@ const MyProjects = () => {
    * ⚠️ Counted from `owner`, not from `projects.length`: this page lists
    * every project you belong to, and the quota is only on the ones you own.
    */
-  const owned = projects.filter((project) => project.owner).length;
-  const maxProjects = overview?.maxProjects;
+  const filterFields = {
+    search: { preset: "search" },
+    role: {
+      schema: z.enum(["owner", "member"]),
+      label: tr("account.projects.filter.role"),
+      icon: UserRound,
+      mode: "default",
+      column: "owner",
+      optionLabel: (role: "owner" | "member") =>
+        role === "owner"
+          ? tr("account.projects.owner")
+          : tr("account.projects.member"),
+      control: { clearLabel: tr("account.projects.filter.allRoles") },
+    },
+    archived: {
+      schema: z.enum(["active", "archived"]),
+      label: tr("account.projects.filter.archived"),
+      icon: Archive,
+      mode: "default",
+      optionLabel: (state: "active" | "archived") =>
+        state === "active"
+          ? tr("account.projects.filter.active")
+          : tr("account.projects.archived"),
+      control: { clearLabel: tr("account.projects.filter.allStates") },
+    },
+  } satisfies DataTableFilterFields;
 
   const projectPath = (project: ProjectOverviewResource) =>
     router.path("project", { params: { projectSlug: project.slug } });
 
   return (
     <AccountPage variant="table">
-      <DataTable<ProjectOverviewResource>
+      <DataTable<ProjectOverviewResource, typeof filterFields>
         className="min-h-0 flex-1"
         data={projects}
         persistenceKey="lor.account.projects"
@@ -69,24 +100,20 @@ const MyProjects = () => {
         defaultSize={100}
         defaultSort={{ field: "lastActivityAt", direction: "desc" }}
         onRowClick={(project) => void router.push(projectPath(project))}
-        /*
-          ⚠️ Shown whenever there is a limit, not only near it. A counter that
-          appears at the ceiling is a counter nobody has seen when they were
-          deciding whether to start something - which is the moment it is
-          for. `maxProjects` is always sent, so the guard is for a page
-          rendered before the overview lands.
-        */
-        toolbar={
-          maxProjects !== undefined ? (
-            <span
-              className="text-muted-foreground text-sm"
-              data-testid="project-quota"
-            >
-              {tr("account.projects.quota", {
-                args: [String(owned), String(maxProjects)],
-              })}
-            </span>
-          ) : undefined
+        filters={{
+          fields: filterFields,
+          initialValues: { archived: "active" },
+        }}
+        // The filter keys are not fields of the row, so they are matched
+        // here rather than by the table's field-by-field default.
+        filter={(project, values) =>
+          (!values.search ||
+            project.title
+              .toLowerCase()
+              .includes(values.search.toLowerCase())) &&
+          (!values.role || (values.role === "owner") === project.owner) &&
+          (!values.archived ||
+            (values.archived === "archived") === !!project.archivedAt)
         }
         actions={
           overview?.canCreate
@@ -110,38 +137,37 @@ const MyProjects = () => {
             label: tr("account.projects.col.project"),
             sortable: true,
             cell: (project) => (
-              // A real link, so the project opens in a new tab on a
-              // middle-click; the row click is the same destination.
-              <Link
-                href={projectPath(project)}
-                data-testid="account-project-row"
-                className="flex min-w-0 items-center gap-2 hover:underline"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <ProjectIcon
-                  fileId={project.icon}
-                  title={project.title}
-                  seed={project.slug}
-                  alt={project.title}
-                  className="size-5 shrink-0"
-                />
-                <span className="truncate text-sm font-medium">
-                  {project.title}
-                </span>
-                {/*
-                  Archived projects leave the switcher, Spotlight and Home
-                  (#Q2601); this page is where they stay, so it says which.
-                */}
-                {project.archivedAt ? (
-                  <Badge
-                    variant="secondary"
-                    className="shrink-0"
-                    data-testid="account-project-archived"
+              // The rail's hover card, compact (#Q3411): image, title and
+              // repository, so the list and the rail show a project alike.
+              <ProjectRailCard
+                compact
+                project={project}
+                title={
+                  // A real link, so the project opens in a new tab on a
+                  // middle-click; the row click is the same destination.
+                  <Link
+                    href={projectPath(project)}
+                    data-testid="account-project-row"
+                    className="hover:underline"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    {tr("account.projects.archived")}
-                  </Badge>
-                ) : null}
-              </Link>
+                    {project.title}
+                  </Link>
+                }
+                badge={
+                  // Archived projects leave the switcher, Spotlight and Home
+                  // (#Q2601); this page is where they stay, so it says which.
+                  project.archivedAt ? (
+                    <Badge
+                      variant="secondary"
+                      className="shrink-0"
+                      data-testid="account-project-archived"
+                    >
+                      {tr("account.projects.archived")}
+                    </Badge>
+                  ) : null
+                }
+              />
             ),
           },
           owner: {

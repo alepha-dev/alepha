@@ -148,6 +148,8 @@ Actions behind `$secure` are pruned from an anonymous response, and are listed u
 
 Alepha does not and will not generate API clients. The type-safe path is `import type`, and for consumers outside TypeScript the answer is `alepha/server/swagger`, which serves an OpenAPI document that a dedicated codegen tool can read. That is a standing principle, not a gap waiting to be filled.
 
+The reverse case, an Alepha app calling an API that is not Alepha, has a recipe of its own: a service over `HttpClient` with a schema per response, a `$proxy`, and a test double. See [In Front of a Third-Party API](/docs/guides-server-third-party-api).
+
 ## Virtual Actions
 
 Each property on a `$client` proxy returns a `VirtualAction` with these methods:
@@ -282,7 +284,9 @@ payments = $remote({
 // Remote endpoints are now accessible via this server
 ```
 
-This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API. A proxied request never carries the `serviceAccount`: it forwards the caller's request as is, so the remote authenticates the caller.
+This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API. A proxied request never carries the `serviceAccount`: it forwards the caller's request, so the remote authenticates the caller.
+
+A plain `$proxy` sends neither `Cookie` nor `Authorization` upstream unless its `forward` option names them ([Credentials stay home](/docs/guides-server-static-and-proxy#credentials-stay-home)). A `$remote` proxy forwards `authorization` by itself, never the cookie; `proxy: { forward: [] }` sends neither, and `proxy: { forward: ["cookie", "authorization"] }` sends both.
 
 `proxy` also accepts an object form - `proxy: { noInternal: true }` makes the remote reachable only through the proxy, not via internal `$client` calls - and `$remote` takes a `name` to label the link (defaults to the class member's name).
 

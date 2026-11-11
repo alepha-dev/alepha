@@ -2,7 +2,6 @@ import { Button } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
 
 import type { AreaController } from "../../../../../api/controllers/AreaController.ts";
 import type { AreaDetail } from "../../../../../api/schemas/areaResourceSchema.ts";
@@ -21,18 +20,9 @@ export interface ProjectSettingsAreaHeaderProps {
 const ProjectSettingsAreaHeader = (props: ProjectSettingsAreaHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
   const canManage = useClient<AreaController>().renameArea.can();
-  const router = useRouter();
 
   return (
     <div className="flex flex-col gap-2">
-      <Link
-        href={router.path("projectSettingsAreas", {
-          params: { projectSlug: router.state.params.projectSlug },
-        })}
-        className="text-muted-foreground text-xs"
-      >
-        {tr("area.detail.back")}
-      </Link>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{props.area.name}</h2>
         {/* Rename, merge and delete are all `area:manage`. A rank without it

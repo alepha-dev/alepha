@@ -14,6 +14,7 @@ export * from "./providers/ServerStaticProvider.ts";
 export * from "./services/DiskStaticFileSource.ts";
 export * from "./services/EmbeddedStaticFileSource.ts";
 export * from "./services/HeadersFileReader.ts";
+export * from "./services/StaticSiteServer.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

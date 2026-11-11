@@ -23,6 +23,7 @@ import {
   ProjectEstateController,
 } from "../src/api/index.ts";
 import { estateProjects, estates } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import {
   createTestMemberByProjectId,
   createTestProject,
@@ -104,7 +105,7 @@ const mintEstate = async (
   ctx: TestContext,
   user: UserAccountToken,
   slug: string,
-) => ctx.estates.createEstate({ body: { slug } }, { user });
+) => createTestEstate(ctx.alepha, user, { slug });
 
 describe("ProjectEstateController, lending", () => {
   let ctx: TestContext;
@@ -117,7 +118,7 @@ describe("ProjectEstateController, lending", () => {
     await ctx.alepha.stop();
   });
 
-  it("lends an estate only when the caller owns both the estate and the project", async ({
+  it("lends an estate only with estate:lend in the borrowing project and in its home", async ({
     expect,
   }) => {
     const ada = await createUser(ctx, "ada");
@@ -132,11 +133,12 @@ describe("ProjectEstateController, lending", () => {
       { user: ada },
     );
     expect(lent.slug).toBe("ovh-1");
-    expect(lent.owner).toEqual({ id: ada.id, name: "ada" });
+    expect(lent.home?.id).toBe(mine.projectId);
+    expect(lent.isHome).toBe(false);
     expect(lent).not.toHaveProperty("secretPrefix");
 
-    // A member who owns an estate cannot lend it into a project they do not
-    // own: attaching changes what the project deploys to.
+    // A plain member of the borrowing project cannot lend into it, even an
+    // estate of their own project: attaching changes what it deploys to.
     await expect(
       ctx.controller.attachEstate(
         { params, body: { estateId: hers.id } },
@@ -144,14 +146,14 @@ describe("ProjectEstateController, lending", () => {
       ),
     ).rejects.toThrow(ForbiddenError);
 
-    // The project owner cannot lend somebody else's estate, and learns
-    // nothing from trying: the id alone does not confirm it exists.
+    // The borrowing project's owner cannot lend an estate of a project they
+    // are not in: the home's rank is asked too.
     await expect(
       ctx.controller.attachEstate(
         { params, body: { estateId: hers.id } },
         { user: ada },
       ),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("is whoever holds estate:lend, not only the project owner", async ({
@@ -193,7 +195,12 @@ describe("ProjectEstateController, lending", () => {
       { params: { ...params, estateId: adas.id } },
       { user: grace },
     );
-    expect(await ctx.repos.grants.count({ estateId: { eq: adas.id } })).toBe(0);
+    expect(
+      await ctx.repos.grants.count({
+        estateId: { eq: adas.id },
+        projectId: { eq: project.id },
+      }),
+    ).toBe(0);
   });
 
   it("refuses lending the same estate twice", async ({ expect }) => {
@@ -227,7 +234,8 @@ describe("ProjectEstateController, lending", () => {
 
     expect(minted.secret!.startsWith("est_")).toBe(true);
     expect(minted.slug).toBe("ovh-2");
-    expect(minted.owner.id).toBe(ada.id);
+    expect(minted.isHome).toBe(true);
+    expect(minted.home?.id).toBe(project.id);
 
     const held = await ctx.controller.listProjectEstates(
       { params: { projectId: project.id } },
@@ -235,7 +243,7 @@ describe("ProjectEstateController, lending", () => {
     );
     expect(held.items.map((item) => item.id)).toEqual([minted.id]);
 
-    // It is the owner's estate like any other: on the account page too.
+    // Homed in the project, and on the account page of its members.
     const own = await ctx.estates.listMyEstates({}, { user: ada });
     expect(own.items.map((item) => item.id)).toEqual([minted.id]);
   });
@@ -252,7 +260,7 @@ describe("ProjectEstateController, what a member may learn", () => {
     await ctx.alepha.stop();
   });
 
-  it("shows a member what the project holds, and nothing of the owner's other estates", async ({
+  it("shows a member what the project holds, and nothing of the home's other estates", async ({
     expect,
   }) => {
     const ada = await createUser(ctx, "ada");
@@ -272,11 +280,13 @@ describe("ProjectEstateController, what a member may learn", () => {
       { user: grace },
     );
     expect(seen.items.map((item) => item.slug)).toEqual(["ovh-1"]);
-    expect(seen.items[0].owner.name).toBe("ada");
+    expect(seen.items[0].home?.id).toBe(lent.projectId);
+    // Not a member of the home: the console is not theirs to open.
+    expect(seen.items[0].can).toEqual([]);
     expect(seen.items[0]).not.toHaveProperty("secretPrefix");
     expect(seen.items[0]).not.toHaveProperty("secretHash");
 
-    // The picker is the caller's own list: grace sees hers, never ada's.
+    // The picker is the estates of the caller's projects: hers, never ada's.
     const pick = await ctx.estates.listMyEstates({}, { user: grace });
     expect(pick.items.map((item) => item.id)).toEqual([hers.id]);
 
@@ -421,18 +431,25 @@ describe("ProjectEstateController, detaching", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("counts the projects an owner's estates are lent to", async ({
+  it("counts the estates with no home an account takes with it, and their loans", async ({
     expect,
   }) => {
     const ada = await createUser(ctx, "ada");
     const first = await createProject(ctx, ada);
     const second = await createProject(ctx, ada);
-    const mine = await mintEstate(ctx, ada, "ovh-1");
+    // Homed: outlives the account, not counted.
+    await mintEstate(ctx, ada, "ovh-1");
+    const loose = await ctx.repos.estates.create({
+      ownerUserId: ada.id,
+      createdBy: ada.id,
+      type: "bay",
+      slug: "loose",
+    });
     for (const project of [first, second]) {
-      await ctx.controller.attachEstate(
-        { params: { projectId: project.id }, body: { estateId: mine.id } },
-        { user: ada },
-      );
+      await ctx.repos.grants.create({
+        estateId: loose.id,
+        projectId: project.id,
+      });
     }
 
     expect(await ctx.service.countOwned(ada.id)).toEqual({

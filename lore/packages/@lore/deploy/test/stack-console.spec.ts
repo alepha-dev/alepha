@@ -5,12 +5,12 @@ import type { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  EstateController,
   EstateInventoryService,
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";
 import { estateInventoryFrameSchema } from "../src/api/schemas/estateInventoryFrameSchema.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import {
   bootStackSpec,
   createEnvironment,
@@ -45,18 +45,14 @@ describe("the stack console", () => {
 
   const arrange = async () => {
     const w = await stackWorld(alepha);
-    const minted = (
-      await alepha
-        .inject(EstateController)
-        .createEstate.fetch(
-          { body: { slug: `bay-${crypto.randomUUID().slice(0, 6)}` } },
-          { user: w.user },
-        )
-    ).data;
-    await w.rows.grants.create({
-      estateId: minted.id,
-      projectId: w.project.id,
-    });
+    const minted = await createTestEstate(
+      alepha,
+      w.user,
+      { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
+      {
+        projectId: w.project.id,
+      },
+    );
     const stack = await createStack(alepha, w, {
       name: "umami",
       estateId: minted.id,

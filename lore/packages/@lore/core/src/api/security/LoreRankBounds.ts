@@ -43,16 +43,12 @@ export class LoreRankBounds {
    * A ceiling permission belongs to the project and is withheld from every
    * rank, so a reader is right to look for it and right to find it locked.
    * These belong to no project: there is no project to hold a rank in when
-   * one is created, and an estate is owned by a USER and merely lent - so
-   * creating, editing and deleting one happen on the owner's own account
-   * page, outside every project scope. A locked row for one of them would be
-   * answering a question nobody asked on this page.
+   * one is created. A locked row for one of them would be answering a
+   * question nobody asked on this page. (An estate's create, update and
+   * delete were here until #E126 homed estates in a project.)
    */
   public static readonly OUT_OF_SCOPE: string[] = [
     "project:create",
-    "estate:create",
-    "estate:update",
-    "estate:delete",
     // The organization behind a project is plumbing Lore never shows: it is
     // created with the project, renamed with it, and its deletion is refused
     // outright (`LoreOrganizationPolicyProvider`). The framework still

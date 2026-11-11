@@ -8,11 +8,7 @@ import {
 } from "@lore/core/web";
 import { LoreDeployApi } from "@lore/deploy/api";
 import { LoreDeployMcp } from "@lore/deploy/mcp";
-import {
-  DeployAccountRouter,
-  DeployRouter,
-  LoreDeployWeb,
-} from "@lore/deploy/web";
+import { DeployRouter, LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeApi } from "@lore/knowledge/api";
 import { LoreKnowledgeMcp } from "@lore/knowledge/mcp";
 import { KnowledgeRouter, LoreKnowledgeWeb } from "@lore/knowledge/web";
@@ -83,7 +79,6 @@ export const bootLore = (
     alepha.inject(DeployRouter);
     alepha.inject(LoreAccountRouter);
     alepha.inject(WorkAccountRouter);
-    alepha.inject(DeployAccountRouter);
   }
   return alepha;
 };

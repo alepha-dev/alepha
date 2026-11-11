@@ -82,6 +82,13 @@ export interface OpenApiDocument {
     schemas?: Record<string, any>;
     securitySchemes?: Record<string, any>;
   };
+  /**
+   * The outbound webhook events the app sends, one path item each, keyed by
+   * event name. An extension key: the document is OpenAPI 3.0, where the
+   * `webhooks` field does not exist. Present only when the app declares a
+   * `$webhook`.
+   */
+  "x-webhooks"?: Record<string, any>;
 }
 
 export interface OpenApiOperation {

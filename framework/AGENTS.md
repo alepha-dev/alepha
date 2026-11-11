@@ -144,7 +144,7 @@ expect(fs.wasWritten("/path/file.ts")).toBe(true); // also wasWrittenMatching, w
 expect(alepha.inject(MemoryShellProvider).wasCalled("yarn install")).toBe(true);
 ```
 
-- Memory providers exist for file system, shell, queue, topic, lock, SMS, file storage and cache.
+- Memory providers exist for file system, shell, queue, topic, lock, SMS, file storage, cache and the outbound HTTP client (`MemoryHttpClient`, substituted for `HttpClient`).
 - To reach a protected method, subclass it in the spec: `class TestCliProvider extends CliProvider { public testParseFlags = this.parseFlags.bind(this); }`.
 - CLI commands: `await alepha.inject(CliProvider).run(cmd.init, { argv: "--react", root: "/project" })`.
 

@@ -45,12 +45,16 @@ test.describe("Account area", () => {
       "Invitations",
       "Feedback",
       "Notifications",
-      "Estates",
     ]) {
       await expect(
         sidebar.getByRole("link", { name: label, exact: true }),
       ).toBeVisible();
     }
+    // Estates belong to a project since #E126: the account has no page for
+    // them.
+    await expect(
+      sidebar.getByRole("link", { name: "Estates", exact: true }),
+    ).toHaveCount(0);
 
     // The sidebar's header reads "Account" behind a back arrow, the way home.
     await expect(page.getByTestId("lore-account-brand")).toHaveText("Account");
@@ -128,7 +132,6 @@ test.describe("Account area", () => {
       ["/account/invitations", "Invitations"],
       ["/account/feedback", "Feedback"],
       ["/account/notifications", "Notifications"],
-      ["/account/estates", "Estates"],
     ];
 
     for (const [path, label] of expected) {
@@ -157,7 +160,6 @@ test.describe("Account area", () => {
     const row = page.getByRole("row").filter({ hasText: title });
     await expect(row).toHaveCount(1);
     await expect(row.getByText("Owner", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("project-quota")).toBeVisible();
 
     await row.getByTestId("account-project-row").click();
     await expect(page).toHaveURL(new RegExp(`/${slug}(/|$)`));

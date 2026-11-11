@@ -8,6 +8,7 @@ import { imageOptions } from "../atoms/imageOptions.ts";
 import type { BuildManifest } from "../schemas/buildManifest.ts";
 import { BuildManifestReader } from "../services/BuildManifestReader.ts";
 import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
+import { StaticImageBundler } from "../services/StaticImageBundler.ts";
 import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 
 /**
@@ -49,6 +50,7 @@ export class ImageCommand {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly builder = $inject(DockerImageBuilder);
   protected readonly compiler = $inject(WorkspaceCompiler);
+  protected readonly staticBundler = $inject(StaticImageBundler);
   protected readonly options = $store(imageOptions);
   protected readonly build = $store(buildOptions);
 
@@ -137,9 +139,11 @@ export class ImageCommand {
       const manifest = await this.readManifest(root);
       const runtime = this.primaryRuntime(manifest);
 
-      if (runtime === "static") {
+      // A static site runs Alepha's own static server, bundled into dist/:
+      // the artifact itself holds no server code.
+      if (runtime === "static" && flags.compile) {
         throw new AlephaError(
-          "This artifact is a static site: it runs no process, so there is nothing for an image to start. Serve `dist/public` from any static host.",
+          "`--compile` needs a bun slice, and a static artifact has none: its image runs Alepha's static server on node or bun. Drop `--compile`.",
         );
       }
       if (runtime === "workerd") {
@@ -173,6 +177,13 @@ export class ImageCommand {
       const compiled = flags.compile
         ? await this.compileFirst(root, flags.compile, run, platforms)
         : undefined;
+
+      if (runtime === "static") {
+        await run({
+          name: `bundle the static server → ${distDir}/${StaticImageBundler.ENTRY}`,
+          handler: () => this.staticBundler.bundle(root, distDir),
+        });
+      }
 
       await this.builder.run({
         root,

@@ -404,6 +404,19 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const url = new URL(request.url || "/", "http://localhost");
     const path = url.pathname;
 
+    // A `$proxy({ websocket: true })` owns its path family, a `$websocket`
+    // under it included: its own `upgrade` listener answers, so leave the
+    // socket alone. Read by name, so this module never imports the proxy's.
+    const proxied =
+      (this.alepha.store.get("alepha.server.proxy.upgradePaths" as never) as
+        | string[]
+        | undefined) ?? [];
+    if (
+      proxied.some((prefix) => path.startsWith(prefix) || `${path}/` === prefix)
+    ) {
+      return false;
+    }
+
     const endpoint = this.endpoints.get(path);
     const roomEndpoint = this.roomEndpoints.get(path);
     if (!endpoint && !roomEndpoint) {

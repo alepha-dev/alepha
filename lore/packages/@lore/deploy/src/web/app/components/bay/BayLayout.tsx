@@ -10,7 +10,6 @@ import {
   useRouterState,
 } from "alepha/react/router";
 import {
-  ArrowLeft,
   Gauge,
   Layers,
   type LucideIcon,
@@ -22,27 +21,32 @@ import { useMemo } from "react";
 import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
 
 /**
- * The console for one `bay` estate, as a detail page inside the account
- * shell (#E68): a header saying which machine this is and whether it is
- * connected, a bar of tabs, and the tab under them.
+ * The console for one `bay` estate, a page of its home project (#E126): a
+ * header saying which machine this is and whether it is connected, a bar of
+ * tabs, and the tab under them.
  *
- * The sidebar stays the account's, with Estates lit, so the way back to the
- * list is both the sidebar entry and the back link here. The tabs are
+ * The way back is the link to the project's Settings ▸ Apps ▸ Estates list,
+ * where every estate of the project is. The tabs are
  * `PlateLayout`'s bar of LINKS, one route each, never a tablist: a tab is its
  * own URL, so middle-click, copy-link and the back button all work. Each tab
  * picks its own frame (`AccountPage`): Apps and Commands are tables that
  * fill the area, the others are columns of cards.
  *
  * ⚠️ **This is not a permission boundary.** Every route in this tree
- * resolves through `EstateService.loadOwned`, which answers 404 for anyone
- * but the owner. This decides what to draw.
+ * resolves through the home project's gate, which refuses anyone who is not
+ * a member there; what a member may do is their rank's, carried as `can`.
+ * This decides what to draw.
  */
 const BayLayout = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
   const routerState = useRouterState();
   const [estate] = useStore(currentEstateAtom);
-  const estateId = estate?.id;
+  const estateSlug = estate?.slug;
+  // ⚠️ Passed explicitly on every link: the console is a page of its HOME
+  // project, and a link that leaves `projectSlug` to the router renders the
+  // literal `:projectSlug` from a page that does not carry it.
+  const projectSlug = estate?.project?.slug ?? "";
   // The instance page lives under Apps, so that tab stays lit while one is
   // open.
   const active =
@@ -50,20 +54,22 @@ const BayLayout = () => {
 
   /*
     Resolved hrefs: this subtree is parameterised
-    (`/account/estates/:estateId/...`), and a route PATTERN handed to a link
+    (`/:projectSlug/estates/:estateSlug/...`), and a route PATTERN handed to a link
     renders perfectly while going nowhere.
   */
   const tabs = useMemo(
     () =>
-      estateId
+      estateSlug
         ? TABS.map((tab) => ({
             key: tab.route,
             label: tr(tab.labelKey),
             icon: tab.icon,
-            href: router.path(tab.route, { params: { estateId } }),
+            href: router.path(tab.route, {
+              params: { projectSlug, estateSlug },
+            }),
           }))
         : [],
-    [estateId, router, tr],
+    [projectSlug, estateSlug, router, tr],
   );
 
   if (!estate) {
@@ -82,14 +88,6 @@ const BayLayout = () => {
       scroll={false}
       plate={
         <div className="flex flex-col gap-2 px-4 pt-3 pb-3 md:px-6">
-          <Link
-            href={router.path("accountEstates")}
-            className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1 text-sm transition-colors"
-            data-testid="bay-back"
-          >
-            <ArrowLeft className="size-4" />
-            {tr("bay.back")}
-          </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold">{estate.slug}</h1>
             {estate.label && (
@@ -100,6 +98,26 @@ const BayLayout = () => {
             <Badge variant={estate.online ? "default" : "outline"}>
               {estate.online ? tr("estates.online") : tr("estates.offline")}
             </Badge>
+            {/* The home project, whose members manage the estate (#E126). */}
+            {estate.project && (
+              <span
+                className="text-muted-foreground text-sm"
+                data-testid="bay-home"
+              >
+                {estate.project.slug ? (
+                  <Link
+                    href={router.path("projectSettingsEstates", {
+                      params: { projectSlug: estate.project.slug },
+                    })}
+                    className="hover:text-foreground underline-offset-4 hover:underline"
+                  >
+                    {tr("bay.home", { args: [estate.project.title] })}
+                  </Link>
+                ) : (
+                  tr("bay.home", { args: [estate.project.title] })
+                )}
+              </span>
+            )}
           </div>
         </div>
       }

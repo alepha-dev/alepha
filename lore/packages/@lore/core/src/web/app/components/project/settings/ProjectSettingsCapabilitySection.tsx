@@ -1,8 +1,11 @@
 import { Switch } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { ProjectBlockerRegistry } from "../../../registries/ProjectBlockerRegistry.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { useCapabilityOption, useCapabilityToggle } from "./useCapability.ts";
@@ -47,6 +50,16 @@ const ProjectSettingsCapabilitySection = (
   const { tr } = useI18n<I18n, "en">();
   const descriptor = capabilityRegistry.get(props.capability);
   const master = useCapabilityToggle(props.capability);
+  const [project] = useStore(currentProjectAtom);
+  // What a module's server guard would refuse turning this off on, said
+  // before the click (#Q3281). Called in a fixed order: the registry is
+  // frozen at first read.
+  const blocking = useInject(ProjectBlockerRegistry)
+    .blockers()
+    .map((blocker) =>
+      blocker.useLine(project?.id ?? 0, { capabilityOff: props.capability }),
+    )
+    .filter((line): line is string => !!line);
 
   const options = (props.options ?? descriptor.options.map((it) => it.key))
     .map((key) => descriptor.options.find((it) => it.key === key))
@@ -70,13 +83,22 @@ const ProjectSettingsCapabilitySection = (
       {showMaster && (
         <SettingsRow
           label={tr(descriptor.labelKey)}
-          description={tr(descriptor.descriptionKey)}
+          description={
+            master.enabled && blocking.length > 0
+              ? `${tr(descriptor.descriptionKey)} ${blocking.join(" ")}`
+              : tr(descriptor.descriptionKey)
+          }
         >
           <Switch
             // Disabled rather than hidden: a switch that vanished for a
             // member would leave them wondering what turns the capability
-            // on. `capability:manage` is owner-only structurally.
-            disabled={!master.canToggle || master.busy}
+            // on. `capability:manage` is owner-only structurally. Held on
+            // while a module says what turning it off would strand.
+            disabled={
+              !master.canToggle ||
+              master.busy ||
+              (master.enabled && blocking.length > 0)
+            }
             checked={master.enabled}
             onCheckedChange={(value) => {
               void master.toggle(value);

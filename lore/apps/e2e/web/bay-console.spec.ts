@@ -8,6 +8,7 @@ import WebSocket from "ws";
 import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
+  createEstateInProject,
   createProjectViaWizard,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -56,41 +57,6 @@ const FIXTURE = resolve(
 
 const inventoryFrame = (): Record<string, unknown> =>
   JSON.parse(readFileSync(join(FIXTURE, "inventory.json"), "utf8"));
-
-/**
- * Base UI leaves `pointer-events: none` on `<body>` after a dialog closes,
- * and the next click then lands on nothing. Same helper `estates.spec.ts`
- * carries, for the same reason.
- */
-const releasePointerEvents = async (page: Page): Promise<void> => {
-  await page.evaluate(() => {
-    document.body.style.pointerEvents = "";
-  });
-};
-
-/**
- * Create an estate and keep its secret.
- *
- * The reveal dialog is the only moment the cleartext exists - the column
- * stores a hash - so it is read here rather than looked up later.
- */
-const createEstateAndReadSecret = async (
-  page: Page,
-  slug: string,
-): Promise<string> => {
-  await page.goto("/account/estates");
-  await page.waitForLoadState("networkidle");
-  await page.getByTestId("estate-create-open").click();
-  await page.getByTestId("estate-create-slug").fill(slug);
-  await page.getByTestId("estate-create-submit").click();
-
-  const reveal = page.getByTestId("my-estate-secret-dialog");
-  await expect(reveal).toBeVisible({ timeout: 15_000 });
-  const secret = await reveal.getByText(/est_[A-Za-z0-9_-]{16,}/).innerText();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await releasePointerEvents(page);
-  return secret.trim();
-};
 
 /**
  * Call one `$action` by NAME, over the page's own session.
@@ -191,38 +157,29 @@ test.describe("The Bay console", () => {
       "GoodPassw0rd",
     );
 
-    const secret = await createEstateAndReadSecret(page, "ovh-console");
-
-    // The row routes to the console for a `bay` estate rather than opening
-    // the drawer, and the URL is where the id comes from: nothing on the
-    // page prints it, and reading it here proves that routing at the same
-    // time.
-    await page.getByTestId("my-estate-row").click();
-    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
-      timeout: 15_000,
-    });
-    const estateId = new URL(page.url()).pathname.split("/")[3];
-    expect(estateId).toBeTruthy();
-
-    // Both sides of the reconciliation. The estate is lent to the project
-    // first: `AppService.setEstate` refuses a reference the project has no
-    // grant for, which is validation of the reference and not of the caller.
     // ⚠️ Apps asked for explicitly. The wizard's own defaults are Work and
-    // Knowledge, and creating an app instance is refused on a project without
-    // the Apps capability - the console's whole subject is one, so the spec
-    // has to say the project does that.
+    // Knowledge, and an estate belongs to a project with Apps on (#E126):
+    // created first, so the estate is created in it, and lent to it in the
+    // same step. Creating an app instance is refused without Apps too.
     const project = await createProjectViaWizard(page, "Bay Console", {
       capabilities: ["apps"],
     });
-    await apiCall(
+    const { id: estateId, secret } = await createEstateInProject(
       page,
-      "attachEstate",
-      "POST",
-      { projectId: project.id },
-      {
-        estateId,
-      },
+      project.slug,
+      "ovh-console",
     );
+
+    // The project's estates list routes a `bay` row to its console, under
+    // the project (#E126): estates have no account page.
+    await page.getByRole("link", { name: "ovh-console", exact: true }).click();
+    await page.waitForURL(`**/${project.slug}/estates/ovh-console`, {
+      timeout: 15_000,
+    });
+
+    // Both sides of the reconciliation. The estate was lent to its home
+    // project when it was created there: `AppService.setEstate` refuses a
+    // reference the project has no grant for.
     for (const app of ["lore", "ghost"]) {
       await apiCall(
         page,
@@ -246,7 +203,7 @@ test.describe("The Bay console", () => {
     await pushInventory(baseURL ?? "", secret, inventoryFrame());
 
     // -- Overview -----------------------------------------------------------
-    await page.goto(`/account/estates/${estateId}`);
+    await page.goto(`/${project.slug}/estates/ovh-console`);
     await page.waitForLoadState("networkidle");
 
     // The gauges come from the frame's host block, and the units are the
@@ -279,7 +236,7 @@ test.describe("The Bay console", () => {
       .getByTestId("bay-tabs")
       .getByRole("link", { name: "Apps", exact: true })
       .click();
-    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}\/apps/, {
+    await page.waitForURL(`**/${project.slug}/estates/ovh-console/apps`, {
       timeout: 15_000,
     });
 
@@ -330,9 +287,9 @@ test.describe("The Bay console", () => {
      * app NAME links out to that project's own app page; the row itself opens
      * this console's instance page. Asserting the link by href rather than by
      * following it, because the value is the trap: `router.path` merges the
-     * current route's params by name, and this route holds `estateId` and
-     * nothing else - so an implicit `projectSlug` renders the literal
-     * `:projectSlug` and the link goes nowhere.
+     * current route's params by name, and this route holds the HOME
+     * project's `projectSlug` - so a copy of a borrowing project would link
+     * into the wrong project unless its own slug is passed explicitly.
      */
     await expect(
       page.getByRole("link", { name: "lore", exact: true }).first(),
@@ -345,7 +302,7 @@ test.describe("The Bay console", () => {
     // that link. Any other cell reaches `onRowClick`.
     await page.getByText("r-2026-09-06-1").click();
     await page.waitForURL(
-      /\/account\/estates\/[0-9a-f-]{36}\/apps\/lore\/production/,
+      `**/${project.slug}/estates/ovh-console/apps/lore/production`,
       {
         timeout: 15_000,
       },
@@ -382,7 +339,7 @@ test.describe("The Bay console", () => {
     await page.getByTestId("bay-action-restart").click();
     await queued;
 
-    await page.goto(`/account/estates/${estateId}/commands`);
+    await page.goto(`/${project.slug}/estates/ovh-console/commands`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("restart", { exact: true })).toBeVisible({
       timeout: 20_000,
@@ -396,7 +353,7 @@ test.describe("The Bay console", () => {
       .getByTestId("bay-tabs")
       .getByRole("link", { name: "Settings", exact: true })
       .click();
-    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}\/settings/, {
+    await page.waitForURL(`**/${project.slug}/estates/ovh-console/settings`, {
       timeout: 15_000,
     });
     const loan = page

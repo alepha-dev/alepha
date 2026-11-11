@@ -5,12 +5,12 @@ import { ESTATE_TYPES } from "../entities/estates.ts";
 /**
  * An estate as a project's members see it: enough to pick it as a deploy
  * destination and to see whether the machine behind it is up, and nothing
- * that belongs to its owner alone.
+ * that belongs to its home project alone.
  *
  * No `secretPrefix`, no switches beyond `deployAllowed` (which decides
- * whether the project can deploy through it at all), and the owner named the
- * way the rest of the app names people, because two owners may both have an
- * estate called `ovh-1` and a member has to tell them apart.
+ * whether the project can deploy through it at all), and its home project
+ * named, because two projects may both have an estate called `ovh-1` and a
+ * member has to tell them apart.
  *
  * Built by hand rather than derived from the entity on purpose: a field
  * added to `estates` must be a decision to show here, not a default.
@@ -47,19 +47,26 @@ export const lentEstateResourceSchema = z.object({
   providerServerType: z.string().optional(),
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),
-  owner: z.object({ id: z.uuid(), name: z.string() }),
   /**
-   * Whether the person reading this row owns the estate.
-   *
-   * ⚠️ Server-computed rather than left to the browser, even though `owner.id`
-   * is right there and could be compared against the session. The Bay console
-   * is owner-only and `EstateService.loadOwned` answers **404** to anybody
-   * else, so this flag decides whether a link resolves or dead-ends - and a
-   * rule that decides that belongs where the rule itself is enforced. It also
-   * replaces the id comparison the settings page was already doing for the
-   * Detach button, so there is one answer rather than two.
+   * The estate's home project, whose members manage it (#E126). Absent for
+   * an estate with no home, which the admin has yet to assign.
    */
-  ownedByViewer: z.boolean(),
+  home: z
+    .object({ id: z.integer(), title: z.string(), slug: z.string().optional() })
+    .optional(),
+  /**
+   * Whether the project this row is listed for is the estate's home, or
+   * only borrows it.
+   */
+  isHome: z.boolean(),
+  /**
+   * The reader's effective estate permissions in the HOME project,
+   * server-computed. Empty for a member of a borrowing project who is not a
+   * member of the home: the console answers them 403, so a page links to it
+   * only when this holds `estate:read`, and offers Detach on the home side
+   * only when it holds `estate:lend`.
+   */
+  can: z.array(z.string()),
   lentAt: z.string(),
 });
 

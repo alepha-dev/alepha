@@ -412,19 +412,8 @@ test.describe("Home (switcher cap)", () => {
     // badge at all would still pass a bare row count.
     await expect(page.getByText("Owner").first()).toBeVisible();
 
-    /*
-     * Feedback #P2146: the quota was only ever shown as a refusal, so a
-     * reader met the number at the moment it stopped them.
-     *
-     * ⚠️ Eleven OWNED, and this account owns all eleven - which is exactly
-     * why the assertion names the number rather than just the element: a
-     * counter reading `projects.length` would also say 11 here and would be
-     * wrong the moment somebody is invited to a project they do not own.
-     * The limit is 100 since #Q2013.
-     */
-    await expect(page.getByTestId("project-quota")).toHaveText(
-      "11 of 100 projects owned",
-    );
+    // No quota counter since #Q3412: the toolbar holds filters instead.
+    await expect(page.getByTestId("project-quota")).toHaveCount(0);
 
     // The rail caps, and always keeps the project you are looking at.
     // `firstSlug` is the LEAST recently updated of the eleven (it was created

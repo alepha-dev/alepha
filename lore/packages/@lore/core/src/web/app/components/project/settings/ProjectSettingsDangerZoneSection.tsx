@@ -15,7 +15,13 @@ import {
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import type { MemberController } from "alepha/api/organizations";
-import { useAction, useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
@@ -23,6 +29,7 @@ import { useState } from "react";
 import type { ProjectController } from "../../../../../api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
+import { ProjectBlockerRegistry } from "../../../registries/ProjectBlockerRegistry.ts";
 import { setCurrentProject } from "../../../services/currentProjectWrite.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { mergeIntoProjectOverview } from "../../../services/projectOverviewWrite.ts";
@@ -40,6 +47,13 @@ const ProjectSettingsDangerZoneSection = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const dialog = useDialog();
+  // What a module's server guard would refuse the delete on, said when the
+  // Delete button is clicked (#Q3281, #Q3410). The hooks are called in a fixed order: the registry is
+  // frozen at first read.
+  const blockers = useInject(ProjectBlockerRegistry).blockers();
+  const blocking = blockers
+    .map((blocker) => blocker.useLine(project?.id ?? 0, "delete"))
+    .filter((line): line is string => !!line);
 
   // A refused delete or leave (an owned project, a server error) leaves the
   // dialog open, and the root `ActionErrorToaster` says why. The overview
@@ -109,6 +123,20 @@ const ProjectSettingsDangerZoneSection = () => {
     [projectApi, memberApi, alepha, router, project],
   );
 
+  // Clickable whatever blocks it (#Q3410): a blocker refuses in a dialog
+  // that names the estates and what to do, rather than as a line of red
+  // text and a greyed-out button on the settings page.
+  const openDelete = async () => {
+    if (blocking.length > 0) {
+      await dialog.alert({
+        title: tr("project.settings.delete.blocked.title"),
+        description: blocking.join(" "),
+      });
+      return;
+    }
+    setDeleteModalOpen(true);
+  };
+
   if (!project) {
     return null;
   }
@@ -162,7 +190,7 @@ const ProjectSettingsDangerZoneSection = () => {
                 <Button
                   variant="outlined"
                   intent="danger"
-                  onClick={() => setDeleteModalOpen(true)}
+                  onClick={() => void openDelete()}
                 >
                   {tr("project.settings.actions.delete")}
                 </Button>

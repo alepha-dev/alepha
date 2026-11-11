@@ -32,6 +32,7 @@ import type {
   ResponseKind,
   ServerRequest,
   ServerRequestConfig,
+  ServerResponse,
   ServerRoute,
   ServerRouteInput,
   ServerRouteMatcher,
@@ -397,6 +398,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       // once, rather than asking every handler and every adapter to remember.
       body: NULL_BODY_STATUSES.has(status) ? undefined : (reply.body as any),
     };
+    if (reply.native) {
+      (response as ServerResponse).native = reply.native;
+    }
 
     payload.response = response;
     const done = this.alepha.events.dispatch(

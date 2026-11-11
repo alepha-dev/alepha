@@ -4,9 +4,10 @@ import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
-import { estates } from "../entities/estates.ts";
+import { type Estate, estates } from "../entities/estates.ts";
 import { EstateNotifications } from "../notifications/EstateNotifications.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
+import { EstateService } from "../services/EstateService.ts";
 
 /**
  * Every night, every Cloudflare token is asked again whether it still works.
@@ -53,6 +54,7 @@ export class EstateCredentialJobs {
   protected readonly users = $repository(users);
   protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly notifications = $inject(EstateNotifications);
+  protected readonly service = $inject(EstateService);
 
   /**
    * The fan-out. Reads ids and pushes; it contacts nothing itself.
@@ -145,45 +147,60 @@ export class EstateCredentialJobs {
         return;
       }
       if (wasValid) {
-        await this.notifyOwner(estate.ownerUserId, estate.slug, check.message);
+        await this.notifyManagers(estate, check.message);
       }
     },
   });
 
   /**
-   * Emails the owner, or says why it could not.
+   * Emails every member of the estate's home project whose rank grants
+   * `estate:update` (#Q3279), the people who can replace the token, or the
+   * anchor of an estate with no home; says so when nobody can be reached.
    *
    * `push()` only enqueues an outbox row, so a delivery that fails later can
    * never break the sweep; that is the same pipeline `QuestJobs.questReminder`
    * uses, with its retries and its receipt. Without SMTP the mail lands under
    * `DATA_DIR/emails` through `LocalEmailProvider`, and the outbox row plus
-   * its receipt are the record either way.
+   * its receipt are the record either way. One recipient's failed push costs
+   * no other recipient theirs.
    */
-  protected async notifyOwner(
-    ownerUserId: string,
-    slug: string,
+  protected async notifyManagers(
+    estate: Estate,
     reason: string,
   ): Promise<void> {
-    const owner = await this.users.findOne({
-      where: { id: { eq: ownerUserId } },
-    });
-    if (!owner?.email) {
-      // An owner mid-deletion, or one who never had an address. The row
-      // still carries the failure and the drawer still shows it.
-      this.log.warn("An estate credential went invalid with no owner to tell", {
-        slug,
+    const recipients = await this.service.recipientsOf(estate);
+    const people = recipients.length
+      ? await this.users.findMany({ where: { id: { inArray: recipients } } })
+      : [];
+    const reachable = people.filter((person) => !!person.email);
+    if (reachable.length === 0) {
+      // Everybody mid-deletion, or nobody with an address. The row still
+      // carries the failure and the drawer still shows it.
+      this.log.warn("An estate credential went invalid with nobody to tell", {
+        slug: estate.slug,
       });
       return;
     }
 
     const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
-    await this.notifications.credentialInvalid.push({
-      contact: owner.email,
-      variables: {
-        estateSlug: slug,
-        reason,
-        estatesUrl: `${baseUrl}/account/estates`,
-      },
-    });
+    const path = await this.service.pagePath(estate);
+    for (const person of reachable) {
+      try {
+        await this.notifications.credentialInvalid.push({
+          contact: person.email!,
+          variables: {
+            estateSlug: estate.slug,
+            reason,
+            estatesUrl: `${baseUrl}${path}`,
+            homeless: estate.projectId == null,
+          },
+        });
+      } catch (error) {
+        this.log.warn("Could not tell somebody an estate credential failed", {
+          slug: estate.slug,
+          error,
+        });
+      }
+    }
   }
 }

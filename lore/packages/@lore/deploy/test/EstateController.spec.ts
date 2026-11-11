@@ -9,7 +9,7 @@ import {
   AlephaServer,
   BadRequestError,
   ConflictError,
-  NotFoundError,
+  ForbiddenError,
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -30,6 +30,7 @@ import {
   createEstateBodySchema,
   type EstateServerFrame,
 } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 import { MemoryCloudflareProbeService } from "../src/testing/index.ts";
 
@@ -115,7 +116,7 @@ const createEstate = async (
   ctx: TestContext,
   user: UserAccountToken,
   slug: string,
-) => ctx.controller.createEstate({ body: { slug } }, { user });
+) => createTestEstate(ctx.alepha, user, { slug });
 
 /**
  * A real Cloudflare token shape: the marker, 40 alphanumerics and an 8-hex
@@ -132,17 +133,12 @@ const createCloudflare = async (
   slug: string,
   token = CF_TOKEN,
 ) =>
-  ctx.controller.createEstate(
-    {
-      body: {
-        type: "cloudflare",
-        slug,
-        accountId: CF_ACCOUNT,
-        token,
-      },
-    },
-    { user },
-  );
+  await createTestEstate(ctx.alepha, user, {
+    type: "cloudflare",
+    slug,
+    accountId: CF_ACCOUNT,
+    token,
+  });
 
 describe("EstateController, the credential", () => {
   let ctx: TestContext;
@@ -352,21 +348,19 @@ describe("EstateController, the credential", () => {
     ).toBe(replacement);
   });
 
-  it("answers 404 when somebody else replaces the token", async ({
-    expect,
-  }) => {
+  it("answers 403 when a non-member replaces the token", async ({ expect }) => {
     const owner = await createUser(ctx);
     const stranger = await createUser(ctx);
     const created = await createCloudflare(ctx, owner, "cf-1");
 
-    // The owner filter is the whole access rule: a non-owner learns nothing
-    // an unknown id would not have told them.
+    // The home project's membership is the gate (#Q3279): a stranger is
+    // refused, and an estate id is a UUID, so nothing can be enumerated.
     await expect(
       ctx.controller.replaceEstateCredential(
         { params: { estateId: created.id }, body: { token: CF_TOKEN } },
         { user: stranger },
       ),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("refuses to rotate a cloudflare estate, and names the replace route", async ({
@@ -481,14 +475,21 @@ describe("EstateController, the slug", () => {
     await ctx.alepha.stop();
   });
 
-  it("keeps slugs unique per owner, not across owners", async ({ expect }) => {
+  it("keeps slugs unique per home project, not across projects", async ({
+    expect,
+  }) => {
     const ada = await createUser(ctx);
     const grace = await createUser(ctx);
 
-    await createEstate(ctx, ada, "ovh-1");
-    await expect(createEstate(ctx, ada, "ovh-1")).rejects.toThrow(
-      ConflictError,
-    );
+    const first = await createEstate(ctx, ada, "ovh-1");
+    await expect(
+      createTestEstate(
+        ctx.alepha,
+        ada,
+        { slug: "ovh-1" },
+        { projectId: first.projectId },
+      ),
+    ).rejects.toThrow(ConflictError);
 
     const theirs = await createEstate(ctx, grace, "ovh-1");
     expect(theirs.slug).toBe("ovh-1");
@@ -541,7 +542,7 @@ describe("EstateController, ownership and switches", () => {
     await ctx.alepha.stop();
   });
 
-  it("answers a non-owner as if the estate did not exist", async ({
+  it("refuses a non-member of the home project on every act", async ({
     expect,
   }) => {
     const ada = await createUser(ctx);
@@ -551,22 +552,22 @@ describe("EstateController, ownership and switches", () => {
 
     await expect(
       ctx.controller.getEstate({ params }, { user: grace }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
     await expect(
       ctx.controller.updateEstate(
         { params, body: { deployAllowed: true } },
         { user: grace },
       ),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
     await expect(
       ctx.controller.rotateEstate({ params }, { user: grace }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
     await expect(
       ctx.controller.deleteEstate({ params }, { user: grace }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
     await expect(
       ctx.controller.getEstateInventory({ params }, { user: grace }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
 
     const theirs = await ctx.controller.listMyEstates({}, { user: grace });
     expect(theirs.items).toEqual([]);
@@ -637,15 +638,22 @@ describe("EstateController, ownership and switches", () => {
     );
   });
 
-  it("counts what an account deletion would take with it", async ({
+  it("counts only the estates with no home an account deletion would take", async ({
     expect,
   }) => {
     const user = await createUser(ctx);
+    // Homed: it outlives the account, so it is not counted.
     await createEstate(ctx, user, "ovh-1");
-    await createEstate(ctx, user, "ovh-2");
+    // No home, anchored on the account: it goes with it.
+    await ctx.repos.estates.create({
+      ownerUserId: user.id,
+      createdBy: user.id,
+      type: "bay",
+      slug: "loose",
+    });
 
     expect(await ctx.controller.countMyEstates({}, { user })).toEqual({
-      estates: 2,
+      estates: 1,
       projects: 0,
     });
   });
@@ -740,14 +748,14 @@ describe("EstateController, the owner's list", () => {
     await ctx.alepha.stop();
   });
 
-  it("names the projects each estate is lent to, and nobody else's estates", async ({
+  it("names each estate's home, its loans and what the caller may do, and nobody else's estates", async ({
     expect,
   }) => {
     const alice = await createUser(ctx);
     const bob = await createUser(ctx);
     const project = await createTestProject(ctx.alepha, { title: "Shop" });
     const lent = await createEstate(ctx, alice, "ovh-1");
-    await createEstate(ctx, alice, "ovh-2");
+    const other = await createEstate(ctx, alice, "ovh-2");
     await createEstate(ctx, bob, "hetzner");
     await ctx.repos.grants.create({
       estateId: lent.id,
@@ -759,13 +767,32 @@ describe("EstateController, the owner's list", () => {
     expect(items.map((item) => item.slug).sort()).toEqual(["ovh-1", "ovh-2"]);
 
     const withLoan = items.find((item) => item.id === lent.id);
-    expect(withLoan?.projects).toHaveLength(1);
-    expect(withLoan?.projects[0]).toMatchObject({
+    expect(withLoan?.project?.id).toBe(lent.projectId);
+    expect(withLoan?.creator?.id).toBe(alice.id);
+    // The home's owner holds every estate permission there.
+    expect(withLoan?.can).toEqual(
+      expect.arrayContaining([
+        "estate:read",
+        "estate:update",
+        "estate:delete",
+        "estate:lend",
+      ]),
+    );
+    // Lent to its home when created, then to the shop.
+    expect(withLoan?.projects.map((loan) => loan.id)).toEqual([
+      lent.projectId,
+      project.id,
+    ]);
+    expect(withLoan?.projects[1]).toMatchObject({
       id: project.id,
       title: "Shop",
       slug: project.slug,
     });
-    expect(items.find((item) => item.slug === "ovh-2")?.projects).toEqual([]);
+    expect(
+      items
+        .find((item) => item.slug === "ovh-2")
+        ?.projects.map((loan) => loan.id),
+    ).toEqual([other.projectId]);
     // The secret never crosses, loans or not.
     for (const item of items) {
       expect(Object.keys(item)).not.toContain("secretHash");
@@ -850,9 +877,7 @@ describe("EstateController, refresh", () => {
     expect(transport.pushed).toEqual([{ type: "query" }]);
   });
 
-  it("answers a non-owner as if the estate did not exist", async ({
-    expect,
-  }) => {
+  it("refuses a non-member of the home project", async ({ expect }) => {
     const ada = await createUser(ctx);
     const grace = await createUser(ctx);
     const minted = await createEstate(ctx, ada, "ovh-refresh-mine");
@@ -862,7 +887,7 @@ describe("EstateController, refresh", () => {
         { params: { estateId: minted.id } },
         { user: grace },
       ),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
     expect(transport.pushed).toEqual([]);
   });
 });

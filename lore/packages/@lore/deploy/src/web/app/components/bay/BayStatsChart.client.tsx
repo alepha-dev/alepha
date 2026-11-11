@@ -89,7 +89,10 @@ const BayStatsChart = () => {
             <a
               className="text-sm underline-offset-4 hover:underline"
               href={router.path("baySettings", {
-                params: { estateId: estate.id },
+                params: {
+                  projectSlug: estate.project?.slug ?? "",
+                  estateSlug: estate.slug,
+                },
               })}
             >
               {tr("bay.chart.off.link")}

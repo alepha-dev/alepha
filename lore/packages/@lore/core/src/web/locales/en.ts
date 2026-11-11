@@ -61,7 +61,6 @@ export default {
     "Try another name or clear the state filter.",
   "automation.gallery.description":
     "Start from a preset. It is created disabled, so you can test it before turning it on.",
-  "automation.gallery.back": "Back to automations",
   "automation.enable": "Enable",
   "automation.disable": "Disable",
   "automation.delete": "Delete",
@@ -481,7 +480,7 @@ export default {
   "board.filter.noRelease": "None",
   "board.filter.epic": "Epic",
   "board.filter.allEpics": "All epics",
-  "board.filter.noEpic": "No epic",
+  "board.filter.noEpic": "None",
   "board.table.epic": "Epic",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by another quest",
@@ -876,6 +875,7 @@ export default {
     "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
 
   "project.settings.danger.title": "Danger Zone",
+  "project.settings.delete.blocked.title": "This project cannot be deleted yet",
   "project.settings.actions.delete": "Delete this project",
   "project.settings.actions.delete.helper":
     "Sometimes retreat is the only option. All quests and progress will be lost forever.",
@@ -1878,10 +1878,14 @@ export default {
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
   "account.projects.empty": "You are not part of any project yet.",
-  "account.projects.quota": "$1 of $2 projects owned",
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.see-all": "All projects",
+  "account.projects.filter.role": "Role",
+  "account.projects.filter.allRoles": "All roles",
+  "account.projects.filter.archived": "Archived",
+  "account.projects.filter.active": "Not archived",
+  "account.projects.filter.allStates": "Archived or not",
   "account.projects.archived": "Archived",
 
   "area.detail.rename": "Rename",
@@ -1905,7 +1909,6 @@ export default {
   "area.detail.stats.first": "First quest",
   "area.detail.stats.last": "Last activity",
   "area.detail.stats.never": "Never",
-  "area.detail.back": "Back to areas",
   "area.detail.quests.title": "Recent quests",
 
   "error.title": "Oh no! Something went wrong.",
@@ -2382,14 +2385,21 @@ export default {
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
 
+  "estates.table.estate": "Estate",
+  "estates.table.origin": "Origin",
+  "estates.table.status": "Status",
+  "estates.table.deploys": "Deploys",
+  "estates.table.lastSeen": "Last seen",
+  "estates.origin.home": "This project",
+  "estates.origin.all": "All origins",
+  "estates.origin.lent": "Lent",
   "estates.project.title": "Estates",
-  "estates.project.description":
-    "Where this project can deploy. An estate is a machine or an account somebody owns and has lent to this project.",
   "estates.project.empty":
-    "No estate lent yet. Until one is, this project has nowhere to deploy.",
+    "No estate yet. Until one is added, this project has nowhere to deploy.",
   "estates.project.add": "Add an estate",
   "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
+  "estates.project.noHome": "no project",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
   "bay.nav.commands": "Commands",
@@ -2538,12 +2548,38 @@ export default {
   "bay.commands.col.reason": "Outcome",
   "bay.commands.byNobody": "-",
   "bay.commands.result": "Open the stored result",
-  "account.estates.inventory": "$1 app(s), reported $2",
-  "account.estates.inventory.none": "nothing reported",
   "bay.settings.rotate.warning":
     "Rotating revokes the current secret immediately. The machine is refused on its next dial and stays offline until you run `bay connector set` on it again with the new one.",
-  "bay.open": "Open console",
-  "bay.back": "All estates",
+  "bay.home": "Belongs to $1",
+  "bay.settings.home":
+    "Belongs to $1, whose members manage it, each by their rank",
+  "bay.settings.addedBy": "Added by $1",
+  "bay.settings.provisionedBy":
+    "Provisioned by $1, whose cloud account holds the server",
+  "bay.settings.readOnly":
+    "You can look at this estate: what runs on it, the commands sent to it, its CPU and memory.",
+  "bay.settings.readOnly.how":
+    "Changing it needs estate:update in $1, moving or deleting it estate:delete. The project's owner grants them with a rank.",
+  "bay.move.action": "Move to another project",
+  "bay.move.title": "Move $1 to another project",
+  "bay.move.project": "Project",
+  "bay.move.none": "There is no other project you can create an estate in.",
+  "bay.move.taken":
+    "That project already has an estate named $1, and a slug never changes.",
+  "bay.move.keeps":
+    "Its slug, its machine, its secret and its commands stay as they are.",
+  "bay.move.loans": "Still lent to: $1",
+  "bay.move.submit": "Move",
+  "bay.move.toast": "Moved to $1",
+  "bay.move.serverElsewhere":
+    "The server it runs on stays in the cloud account of whoever provisioned it, who is not a member of the new project.",
+  "estates.home.notLentHere": "Not lent to this project",
+  "estates.home.lentTo": "lent to $1 other project(s)",
+  "estates.home.lend": "Lend to this project",
+  "estates.blocker.delete":
+    "This project is the home of $1. Move these estates to another project or delete them first: other projects may deploy onto them.",
+  "estates.blocker.apps":
+    "Apps stays on while this project is the home of $1: move or delete them first.",
   "bay.settings.loans.col.project": "Project",
   "bay.settings.loans.col.lentAt": "Lent",
   "estates.online": "online",
@@ -2552,7 +2588,6 @@ export default {
   "estates.offline": "offline",
   "estates.deploys.allowed": "deploys allowed",
   "estates.deploys.statsOnly": "stats only",
-  "estates.lastSeen": "last seen $1",
   "estates.neverSeen": "never connected",
   "estates.add.title": "Add an estate to $1",
   "estates.add.description":
@@ -2619,17 +2654,6 @@ export default {
   "estates.toast.detached": "Estate detached",
   "estates.toast.copied": "Secret copied",
 
-  "account.estates.col.kind": "Kind",
-  "account.estates.col.estate": "Estate",
-  "account.estates.col.status": "Status",
-  "account.estates.col.lentTo": "Lent to",
-  "account.estates.col.created": "Created",
-  "account.estates.lentTo": "$1 project(s)",
-  "account.estates.create": "Create an estate",
-  "account.estates.create.description":
-    "Its secret is shown once, at creation. It cannot be recovered afterwards, only rotated.",
-  "account.estates.create.submit": "Create",
-  "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1% · memory $2%",
   "account.estates.gauge.none": "no stats yet",
@@ -2659,13 +2683,12 @@ export default {
   "account.estates.delete.confirmProvisioned":
     "This estate runs on server $1, which lore estate provision bought on $2. Deleting it here does not terminate that server: it keeps running, and billing. To terminate it with its IP and its disk, run lore estate delete $3 --yes instead.",
   "account.estates.delete.confirm": "Delete",
-  "account.estates.toast.created": "Estate created",
   "account.estates.toast.rotated": "Secret rotated",
   "account.estates.toast.deleted": "Estate deleted",
   "account.delete.estates.one":
-    "1 estate you own will also be deleted and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
+    "1 estate that belongs to no project is still tied to your account: it will be deleted with it and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
   "account.delete.estates.many":
-    "$1 estates you own will also be deleted and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
+    "$1 estates that belong to no project are still tied to your account: they will be deleted with it and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
 
   "feedback.list.showMore": "Show more",
   "feedback.list.loadingMore": "Loading…",
@@ -3532,11 +3555,14 @@ export default {
   "permission.quality.read": "Read coverage and test totals",
   "permission.quality.push": "Record coverage and test totals",
   "permission.group.estate": "Estates",
-  "permission.estate.read": "See the estates lent to the project",
-  "permission.estate.update": "Edit an estate",
+  "permission.estate.read":
+    "See the project's estates and their consoles, and the estates lent to it",
+  "permission.estate.update":
+    "Change an estate of the project: its switches, secret, token, commands and logs",
   "permission.estate.lend": "Lend an estate to the project, and take it back",
-  "permission.estate.create": "Create an estate",
-  "permission.estate.delete": "Delete an estate",
+  "permission.estate.create": "Add an estate to the project",
+  "permission.estate.delete":
+    "Delete an estate of the project, or move it to another",
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",

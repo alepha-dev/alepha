@@ -1,15 +1,17 @@
-import { LoreAudits } from "@lore/core/api";
+import {
+  LoreAudits,
+  ProjectPermissions,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject } from "alepha";
+import { organizationMembers, RankService } from "alepha/api/organizations";
+import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import {
-  BadRequestError,
-  ConflictError,
-  HttpError,
-  NotFoundError,
-} from "alepha/server";
+import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
@@ -42,10 +44,12 @@ import { EstateTokenService } from "./EstateTokenService.ts";
  * counts as online, what may be read off it, how one is minted, and what
  * stands in the way of deleting it.
  *
- * The rules here are the ones folio #1194 fixed on 2026-09-04, and the
- * owner's controller, the project-side lending (#1837), the admin backstop
- * (#1838) and the app instances that point at an estate (#1767) all read them
- * from here rather than restating them.
+ * The rules here are the ones folio #1194 fixed on 2026-09-04, as epic #E126
+ * changed them: an estate belongs to its home project, and who may act on it
+ * is a rank there. The estate controller, the project-side lending (#1837),
+ * the admin backstop (#1838) and the app instances that point at an estate
+ * (#1767) all read them from here rather than restating them. Access itself
+ * is not here: every estate action goes through `$ownsProject` on the row.
  */
 export class EstateService {
   protected readonly estates = $repository(estates);
@@ -54,6 +58,11 @@ export class EstateService {
   protected readonly stacks = $repository(stacks);
   protected readonly stackEnvironments = $repository(stackEnvironments);
   protected readonly projects = $repository(projects);
+  protected readonly members = $repository(organizationMembers);
+  protected readonly users = $repository(users);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
+  protected readonly permissions = $inject(ProjectPermissions);
+  protected readonly ranks = $inject(RankService);
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly inventories = $inject(EstateInventoryService);
   protected readonly seal = $inject(CredentialSealService);
@@ -133,7 +142,8 @@ export class EstateService {
   }
 
   /**
-   * Projects a row into what its owner may see.
+   * Projects a row into what a member of its home project may see. The home
+   * project and the caller's `can` are added by {@link present}.
    *
    * No credential crosses, of either kind: `estateResourceSchema` is a
    * `pick` allowlist and parsing strips everything outside it, so a column
@@ -142,6 +152,7 @@ export class EstateService {
    */
   toResource(estate: Estate): EstateResource {
     return estateResourceSchema.parse({
+      can: [],
       ...estate,
       online: this.isOnline(estate),
       overdue: this.isOverdue(estate),
@@ -151,25 +162,33 @@ export class EstateService {
   }
 
   /**
-   * Mints a `bay` estate for its owner, and hands back the only cleartext
-   * copy of its secret that will ever exist.
+   * Mints a `bay` estate in its home project, and hands back the only
+   * cleartext copy of its secret that will ever exist.
    *
-   * One path for the account page and for "create it from inside a project"
-   * (#1837), so the two cannot disagree about normalisation, uniqueness or
-   * the audit row. `(ownerUserId, slug)` is unique: the `findOne` in
-   * {@link claimSlug} names the clash in a message the owner reads, and the
-   * `DbConflictError` catch covers the window between that read and the
-   * insert. The index guarantees integrity; the check explains it.
+   * One path for every entry point (the project's Settings, `lore estate
+   * add`, `lore estate provision`), so they cannot disagree about
+   * normalisation, uniqueness or the audit row. `(projectId, slug)` is
+   * unique: the `findOne` in {@link claimSlug} names the clash in a message
+   * the caller reads, and the `DbConflictError` catch covers the window
+   * between that read and the insert. The index guarantees integrity; the
+   * check explains it.
+   *
+   * `ownerUserId` is the cascade anchor, the home project's owner, and
+   * `createdBy` the caller (#Q3278).
    */
   async createBay(
     user: UserAccountToken,
+    projectId: number,
     input: { slug: string; label?: string },
   ): Promise<{ estate: Estate; secret: string }> {
-    const slug = await this.claimSlug(user.id, input.slug);
+    const slug = await this.claimSlug(projectId, input.slug);
+    const anchor = await this.anchorOf(projectId);
     const minted = await this.tokens.mint();
     try {
       const estate = await this.estates.create({
-        ownerUserId: user.id,
+        ownerUserId: anchor,
+        projectId,
+        createdBy: user.id,
         type: "bay",
         slug,
         label: input.label?.trim() || undefined,
@@ -181,6 +200,7 @@ export class EstateService {
       // longer than the rest, see `LoreAudits`.
       await this.audits.estate.logSuccess("create", {
         ...this.audits.actor(user),
+        ...this.audits.scope(projectId),
         resourceType: "estate",
         resourceId: estate.id,
         description: estate.slug,
@@ -189,7 +209,7 @@ export class EstateService {
       return { estate, secret: minted.secret };
     } catch (error) {
       if (error instanceof DbConflictError) {
-        throw new ConflictError(await this.explainConflict(user.id, slug));
+        throw new ConflictError(await this.explainConflict(projectId, slug));
       }
       throw error;
     }
@@ -218,14 +238,18 @@ export class EstateService {
    */
   async createCloudflare(
     user: UserAccountToken,
+    projectId: number,
     input: { slug: string; label?: string; accountId: string; token: string },
   ): Promise<{ estate: Estate }> {
-    const slug = await this.claimSlug(user.id, input.slug);
+    const slug = await this.claimSlug(projectId, input.slug);
+    const anchor = await this.anchorOf(projectId);
     const check = await this.assertCredential(input);
 
     try {
       const estate = await this.estates.create({
-        ownerUserId: user.id,
+        ownerUserId: anchor,
+        projectId,
+        createdBy: user.id,
         type: "cloudflare",
         slug,
         label: input.label?.trim() || undefined,
@@ -244,6 +268,7 @@ export class EstateService {
 
       await this.audits.estate.logSuccess("create", {
         ...this.audits.actor(user),
+        ...this.audits.scope(projectId),
         resourceType: "estate",
         resourceId: estate.id,
         description: estate.slug,
@@ -252,7 +277,7 @@ export class EstateService {
       return { estate };
     } catch (error) {
       if (error instanceof DbConflictError) {
-        throw new ConflictError(await this.explainConflict(user.id, slug));
+        throw new ConflictError(await this.explainConflict(projectId, slug));
       }
       throw error;
     }
@@ -374,24 +399,6 @@ export class EstateService {
   }
 
   /**
-   * Loads an estate the caller owns, or answers as if it did not exist.
-   *
-   * The owner filter is the whole access rule: a non-owner gets the same 404
-   * an unknown id gets, so nothing about another user's estates can be
-   * learned by guessing ids. There is no per-estate role to check beyond
-   * this; the project is the permission boundary, not the estate.
-   */
-  async loadOwned(estateId: string, user: UserAccountToken): Promise<Estate> {
-    const estate = await this.estates.findOne({
-      where: { id: { eq: estateId }, ownerUserId: { eq: user.id } },
-    });
-    if (!estate) {
-      throw new NotFoundError("Estate not found");
-    }
-    return estate;
-  }
-
-  /**
    * Refuses to delete an estate, or detach it from a project, while an app
    * instance, a stack or a stack environment points at it.
    *
@@ -409,9 +416,11 @@ export class EstateService {
    * and repoint it. Capped so a project with fifty instances does not answer
    * with a paragraph.
    *
-   * The one deliberate exception is a user account deletion, which cascades
-   * through `estates.ownerUserId` without passing here: account deletion
-   * must not be blockable by other people's projects.
+   * The one deliberate exception is the deletion of the account an estate
+   * with no home is anchored on, which cascades through `estates.ownerUserId`
+   * without passing here: account deletion must not be blockable by other
+   * people's projects. A homed estate's anchor is its project's owner, who
+   * cannot delete their account while they own it.
    */
   async assertUnreferenced(
     estateId: string,
@@ -528,22 +537,22 @@ export class EstateService {
   }
 
   /**
-   * What an account deletion takes with it, for the confirmation dialog:
-   * the estates the account owns, and how many projects lose a deploy
-   * destination when they go.
-   */
-  /**
-   * The owner's list with the projects each estate is lent to (#1838).
+   * The list with the projects each estate is lent to (#1838), its home
+   * project, who added it, and what the caller may do with it.
    *
-   * Two queries for the whole list, never one per row. A project deleted
+   * A few queries for the whole list, never one per row. A project deleted
    * since the loan is left out by the repository's own soft-delete filter,
    * and its grant is left alone: the row cascades when the project is
-   * really gone, and until then the loan is not the owner's to see.
+   * really gone.
    */
-  async withLoans(owned: Estate[]): Promise<OwnedEstateResource[]> {
+  async withLoans(
+    owned: Estate[],
+    user: UserAccountToken,
+  ): Promise<OwnedEstateResource[]> {
     if (owned.length === 0) {
       return [];
     }
+    const presented = await this.present(owned, user);
     const estateIds = owned.map((estate) => estate.id);
     const grants = await this.grants.findMany({
       where: { estateId: { inArray: estateIds } },
@@ -561,8 +570,8 @@ export class EstateService {
       : [];
     const named = new Map(rows.map((project) => [project.id, project]));
 
-    return owned.map((estate) => ({
-      ...this.toResource(estate),
+    return owned.map((estate, index) => ({
+      ...presented[index]!,
       ...(summaries.has(estate.id)
         ? { inventory: summaries.get(estate.id) }
         : {}),
@@ -584,11 +593,17 @@ export class EstateService {
     }));
   }
 
+  /**
+   * What an account deletion takes with it, for the confirmation dialog: the
+   * estates with no home anchored on the account, which go with it, and how
+   * many projects lose a deploy destination when they go. A homed estate
+   * outlives the account, so it is not counted.
+   */
   async countOwned(
     userId: string,
   ): Promise<{ estates: number; projects: number }> {
     const owned = await this.estates.findMany({
-      where: { ownerUserId: { eq: userId } },
+      where: { ownerUserId: { eq: userId }, projectId: { isNull: true } },
     });
     if (owned.length === 0) {
       return { estates: 0, projects: 0 };
@@ -603,36 +618,284 @@ export class EstateService {
   }
 
   /**
-   * Normalises a slug and proves it is free for this owner.
+   * Normalises a slug and proves it is free in this home project.
    */
-  protected async claimSlug(ownerUserId: string, raw: string): Promise<string> {
+  async claimSlug(projectId: number, raw: string): Promise<string> {
     const slug = this.normalizeSlug(raw);
     const clash = await this.estates.findOne({
-      where: { ownerUserId: { eq: ownerUserId }, slug: { eq: slug } },
+      where: { projectId: { eq: projectId }, slug: { eq: slug } },
     });
     if (clash) {
-      throw new ConflictError(`You already have an estate named "${slug}"`);
+      throw new ConflictError(await this.slugTaken(projectId, slug));
     }
     return slug;
+  }
+
+  protected async slugTaken(projectId: number, slug: string): Promise<string> {
+    const project = await this.projects.findById(projectId);
+    return `${project?.title ?? "This project"} already has an estate named "${slug}"`;
   }
 
   /**
    * Works out which unique index refused the insert, and says so.
    *
-   * `estates` carries two: `(ownerUserId, slug)` and `secretHash`. The first
-   * says "you already have this estate", the second says "try again and you
-   * will get a different secret", and answering the first to the second case
-   * would send an owner looking for an estate that does not exist.
+   * `estates` carries two: `(projectId, slug)` and `secretHash`. The first
+   * says "the project already has this estate", the second says "try again
+   * and you will get a different secret", and answering the first to the
+   * second case would send somebody looking for an estate that does not
+   * exist.
    */
   protected async explainConflict(
-    ownerUserId: string,
+    projectId: number,
     slug: string,
   ): Promise<string> {
     const clash = await this.estates.findOne({
-      where: { ownerUserId: { eq: ownerUserId }, slug: { eq: slug } },
+      where: { projectId: { eq: projectId }, slug: { eq: slug } },
     });
     return clash
-      ? `You already have an estate named "${slug}"`
+      ? this.slugTaken(projectId, slug)
       : "Could not mint a unique secret for this estate, retry.";
+  }
+
+  /**
+   * Give an estate a new home project, for a move by its managers or an
+   * assign by the instance admin (#Q3280). The caller has gated who may;
+   * this holds what must be true of the target and of the row.
+   *
+   * - The target must have Apps on, or the estate could be managed through
+   *   no page there.
+   * - `(projectId, slug)` is unique, and the slug is never rewritten: a
+   *   machine's config may record it. A collision is refused.
+   * - Loans, the secret, the credential, the command queue, the inventory
+   *   and the stats series stay on the row: the machine notices nothing.
+   * - `projectId` and the `ownerUserId` anchor change in ONE statement whose
+   *   WHERE names the home being left, so there is no half-moved state and
+   *   two movers cannot both win.
+   */
+  async rehome(
+    estate: Estate,
+    targetProjectId: number,
+  ): Promise<{ estate: Estate; from?: number }> {
+    if (estate.projectId === targetProjectId) {
+      throw new BadRequestError("The estate is already in this project");
+    }
+    const target = await this.projects.findById(targetProjectId);
+    if (!target) {
+      throw new BadRequestError("No such project");
+    }
+    const capabilities =
+      await this.projectSecurity.capabilitiesOf(targetProjectId);
+    if (!("apps" in capabilities)) {
+      throw new BadRequestError(
+        `${target.title} does not have Apps on, so nobody could manage the estate there. Turn Apps on first.`,
+      );
+    }
+    const clash = await this.estates.findOne({
+      where: { projectId: { eq: targetProjectId }, slug: { eq: estate.slug } },
+    });
+    if (clash) {
+      throw new ConflictError(
+        `${target.title} already has an estate named "${estate.slug}", and a slug never changes`,
+      );
+    }
+    const anchor = await this.anchorOf(targetProjectId);
+    const moved = await this.estates.updateMany(
+      {
+        id: { eq: estate.id },
+        projectId:
+          estate.projectId == null
+            ? { isNull: true }
+            : { eq: estate.projectId },
+      },
+      { projectId: targetProjectId, ownerUserId: anchor },
+    );
+    if (moved.length === 0) {
+      throw new ConflictError(
+        "The estate changed project meanwhile; read it again",
+      );
+    }
+    return {
+      estate: await this.estates.getById(estate.id),
+      ...(estate.projectId == null ? {} : { from: estate.projectId }),
+    };
+  }
+
+  /**
+   * The projects an estate is lent to, oldest loan first, by name.
+   */
+  async loansOf(
+    estateId: string,
+  ): Promise<Array<{ id: number; title: string; slug?: string }>> {
+    const grants = await this.grants.findMany({
+      where: { estateId: { eq: estateId } },
+      orderBy: [{ column: "createdAt", direction: "asc" }],
+    });
+    if (grants.length === 0) {
+      return [];
+    }
+    const rows = await this.projects.findMany({
+      where: { id: { inArray: grants.map((grant) => grant.projectId) } },
+      columns: ["id", "title", "slug"],
+    });
+    return grants.flatMap((grant) => {
+      const project = rows.find((row) => row.id === grant.projectId);
+      return project
+        ? [
+            {
+              id: project.id,
+              title: project.title,
+              ...(project.slug ? { slug: project.slug } : {}),
+            },
+          ]
+        : [];
+    });
+  }
+
+  /**
+   * The user id of a project's owner: the cascade anchor of an estate homed
+   * there (#Q3278). Refused for a project with no owner, which cannot hold
+   * an estate that must outlive its creator.
+   */
+  async anchorOf(projectId: number): Promise<string> {
+    const owner = await this.ownerOf(projectId);
+    if (!owner) {
+      throw new BadRequestError("This project has no owner to hold an estate");
+    }
+    return owner;
+  }
+
+  /**
+   * The user id of a project's owner, or undefined for a project with none.
+   */
+  async ownerOf(projectId: number): Promise<string | undefined> {
+    const project = await this.projects.findById(projectId);
+    if (!project?.organizationId) return undefined;
+    const owner = await this.members.findOne({
+      where: {
+        organizationId: { eq: project.organizationId },
+        rank: { eq: "owner" },
+      },
+    });
+    return owner?.userId;
+  }
+
+  /**
+   * The caller's effective estate permissions in a project (application AND
+   * rank AND capability), through `ProjectPermissions`, the one place that
+   * computes them. Empty for somebody who is not a member.
+   */
+  async estatePermissionsIn(
+    projectId: number,
+    user: UserAccountToken,
+  ): Promise<string[]> {
+    const organizationId =
+      await this.projectSecurity.organizationIdOf(projectId);
+    const member = await this.members.findOne({
+      where: {
+        organizationId: { eq: organizationId },
+        userId: { eq: user.id },
+      },
+    });
+    if (!member && user.ownership !== false) {
+      return [];
+    }
+    const { permissions } = await this.permissions.of(
+      projectId,
+      user,
+      member ?? undefined,
+    );
+    return permissions.filter((permission) => permission.startsWith("estate:"));
+  }
+
+  /**
+   * Rows as resources, each with its home project, who added it, and the
+   * caller's `can` in that project. One read of the projects and one of the
+   * creators for the whole list; the permissions are computed once per home
+   * project.
+   */
+  async present(
+    rows: Estate[],
+    user: UserAccountToken,
+  ): Promise<EstateResource[]> {
+    const projectIds = [
+      ...new Set(
+        rows.flatMap((row) => (row.projectId == null ? [] : [row.projectId])),
+      ),
+    ];
+    const creatorIds = [
+      ...new Set(rows.flatMap((row) => (row.createdBy ? [row.createdBy] : []))),
+    ];
+    const [homes, creators] = await Promise.all([
+      projectIds.length
+        ? this.projects.findMany({
+            where: { id: { inArray: projectIds } },
+            columns: ["id", "title", "slug"],
+          })
+        : [],
+      creatorIds.length
+        ? this.users.findMany({ where: { id: { inArray: creatorIds } } })
+        : [],
+    ]);
+    const can = new Map<number, string[]>();
+    for (const projectId of projectIds) {
+      can.set(projectId, await this.estatePermissionsIn(projectId, user));
+    }
+    return rows.map((row) => {
+      const home = homes.find((project) => project.id === row.projectId);
+      const creator = creators.find((it) => it.id === row.createdBy);
+      return {
+        ...this.toResource(row),
+        ...(home
+          ? {
+              project: {
+                id: home.id,
+                title: home.title,
+                ...(home.slug ? { slug: home.slug } : {}),
+              },
+            }
+          : {}),
+        ...(creator
+          ? { creator: { id: creator.id, name: displayName(creator) } }
+          : {}),
+        can: row.projectId == null ? [] : (can.get(row.projectId) ?? []),
+      };
+    });
+  }
+
+  /**
+   * The page a message about this estate links to, as a path from the app's
+   * root: a `bay` estate's console under its home project, a `cloudflare`
+   * one's row in that project's estates list (it has no console), and the
+   * admin's estates page for an estate with no home, the only place it can be
+   * opened. Estates have no account page since #E126.
+   */
+  async pagePath(estate: Estate): Promise<string> {
+    const home =
+      estate.projectId == null
+        ? undefined
+        : await this.projects.findById(estate.projectId);
+    if (!home?.slug) {
+      return "/admin/estates";
+    }
+    return estate.type === "bay"
+      ? `/${home.slug}/estates/${estate.slug}`
+      : `/${home.slug}/settings/estates`;
+  }
+
+  /**
+   * Who is told when something about an estate needs fixing (a credential
+   * failing, a server overdue): every member of its home project whose rank
+   * grants `estate:update`, the owner always among them. An estate with no
+   * home tells its anchor, the person who created it, until the admin
+   * assigns it.
+   */
+  async recipientsOf(estate: Estate): Promise<string[]> {
+    if (estate.projectId == null) {
+      return [estate.ownerUserId];
+    }
+    const organizationId = await this.projectSecurity.organizationIdOf(
+      estate.projectId,
+    );
+    return this.ranks.holdersOf(organizationId, "estate:update");
   }
 }

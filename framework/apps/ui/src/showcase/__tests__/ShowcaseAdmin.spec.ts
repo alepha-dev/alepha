@@ -48,6 +48,7 @@ const REQUIRED: Record<string, string[]> = {
   AdminSessions: ["findSessions", "deleteSession", "deleteSessions"],
   AdminAnalytics: ["listDatasets", "queryDataset"],
   AdminPayments: ["listIntents"],
+  AdminWebhooks: ["findWebhookEndpoints", "getWebhookEvents"],
   AdminNotifications: [
     "findNotifications",
     "listNotificationTemplates",
@@ -90,6 +91,7 @@ const LISTINGS = [
   "findFiles",
   "findNotifications",
   "listIntents",
+  "findWebhookEndpoints",
 ] as const;
 
 describe("showcase admin fixtures", () => {

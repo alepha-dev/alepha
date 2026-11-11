@@ -11,6 +11,14 @@ export class ServerReply {
   public body?: any;
 
   /**
+   * A native `Response` the web adapter (workerd) hands back as is, past
+   * every serializer: a `$proxy` sets it to the upstream's 101 carrying its
+   * `webSocket`, which no status, header and body copy can rebuild. The
+   * Node adapter never reads it.
+   */
+  public native?: Response;
+
+  /**
    * Redirect to a given URL with optional status code (default 302).
    */
   public redirect(url: string, status: number = 302): void {

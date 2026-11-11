@@ -10,6 +10,7 @@ import type { ImageOptions } from "../atoms/imageOptions.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
 import { BuildSlices } from "./BuildSlices.ts";
 import { SbomBuilder } from "./SbomBuilder.ts";
+import { StaticImageBundler } from "./StaticImageBundler.ts";
 
 /**
  * Everything `alepha image` hands the builder: what was built, where, and how
@@ -29,9 +30,10 @@ export interface ImageContext {
 
   /**
    * The PRIMARY slice, whose entry wrapper the image runs. Same rule as the
-   * manifest and every deployer: the first declared runtime.
+   * manifest and every deployer: the first declared runtime. `static` for a
+   * static site, whose image runs the bundled static server.
    */
-  runtime: BuildRuntime;
+  runtime: BuildRuntime | "static";
 
   /**
    * The author's `image:` configuration.
@@ -263,7 +265,11 @@ export class DockerImageBuilder {
       ctx.image.from ??
       (ctx.runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
     const dockerCommand =
-      ctx.image.command ?? (ctx.runtime === "bun" ? "bun" : "node");
+      ctx.image.command ??
+      (ctx.runtime === "bun" ||
+      (ctx.runtime === "static" && dockerFrom.includes("bun"))
+        ? "bun"
+        : "node");
 
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");
     const owned = await this.fs.exists(dockerfile);
@@ -301,7 +307,7 @@ export class DockerImageBuilder {
           standard: {
             image: dockerFrom,
             command: dockerCommand,
-            entry: this.slices.entryFileName(ctx.runtime),
+            entry: this.entryOf(ctx),
           },
           hasMigrations: migrationsCopied,
           hasSbom: await this.fs.exists(
@@ -364,8 +370,18 @@ export class DockerImageBuilder {
   protected dockerfileHeaderFacts(ctx: ImageContext): Record<string, string> {
     return {
       runtime: ctx.runtime,
-      entry: ctx.compile ?? this.slices.entryFileName(ctx.runtime),
+      entry: ctx.compile ?? this.entryOf(ctx),
     };
+  }
+
+  /**
+   * The file the image's `CMD` runs: the primary slice's entry, or for a
+   * static site the static server `alepha image` bundled beside `public/`.
+   */
+  protected entryOf(ctx: ImageContext): string {
+    return ctx.runtime === "static"
+      ? StaticImageBundler.ENTRY
+      : this.slices.entryFileName(ctx.runtime);
   }
 
   /**
@@ -727,7 +743,13 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
    */
   protected runtimeLabel(ctx: ImageContext): Record<string, string> {
     // Same resolution BuildManifestTask uses, so the label and the
-    // manifest cannot disagree about one build.
+    // manifest cannot disagree about one build. A static site's image runs
+    // the static server on node or bun: the label names that process.
+    if (ctx.runtime === "static") {
+      const command =
+        ctx.image.command ?? (ctx.image.from?.includes("bun") ? "bun" : "node");
+      return { "dev.alepha.runtime": command === "bun" ? "bun" : "node" };
+    }
     return { "dev.alepha.runtime": ctx.runtime };
   }
 

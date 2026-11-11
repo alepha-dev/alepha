@@ -9,7 +9,7 @@ alepha image --tag
 
 `manifest.json` requires `manifestVersion: 2`. Rebuild an older artifact before deploying it. Lore, Bay and other artifact consumers must accept this major; additive fields do not change it.
 
-`alepha image` reads `manifest.json` from `build.output.dist` (default `dist/`) and packages the first declared runtime slice. Building needs an image name: `image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
+`alepha image` reads `manifest.json` from `build.output.dist` (default `dist/`) and packages the first declared runtime slice. Building needs an image name: `image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd primary slice is refused because it cannot start a container process; a static one gets an image of its own (see [A static site](#a-static-site)). The docker CLI is required; this command belongs to a local machine or CI runner.
 
 ## Dockerfile ownership
 
@@ -120,6 +120,40 @@ alepha image --compile --tag
 This compiles the Bun slice first, then packages the binary on `gcr.io/distroless/cc-debian12` by default. `--compile my-app` names the binary. The base determines the Linux Bun target triple: a Bun binary needs libc and supporting libraries, so `scratch` and `distroless/static` are refused. A compiled image runs as `65532:65532` by default, owns `/app` and every `image.volumes` path, and needs no shell to do it; `image.user: "root"` opts back. It boots with a read-only root file system when `DATA_DIR` points at a declared volume (see [Non-root by default](/docs/cli-commands-image#non-root-by-default)). A compiled Dockerfile generated before this ran as root: regenerate it, and check the app writes nowhere else. Runtime dependencies must be bundled, and `image.install` is ignored in this mode.
 
 For a binary without an image, use [alepha compile](/docs/cli-commands-compile). For the complete image contract, see [alepha image](/docs/cli-commands-image).
+
+## A static site
+
+A `runtime: ["static"]` artifact holds no server code, and its image still
+needs a process. `alepha image` bundles one into `dist/static-server.mjs`:
+Alepha's own static server (`StaticSiteServer` from `alepha/server/static`),
+with nothing of the app in it. The generated Dockerfile runs it like a node
+slice: `node:24-alpine` (or `bun` on a Bun base), as uid `1000`, on
+`SERVER_PORT` (`3000`), with the same healthcheck on `/health`. `image.from`,
+`image.user`, `image.env` and the labels apply as they do to any image;
+`--compile` is refused, since a static artifact has no bun slice.
+
+The server answers as Cloudflare and Bay do for the same files:
+
+- `/about` from `about.html` (the prerender writes pages flat), then
+  `about/index.html`;
+- any other path without an extension from `200.html` with status 200, the SPA
+  shell;
+- anything else, a missing `.js` included, from `404.html` with status 404;
+- the `_headers` rules on every response, and the `.br` copy when the client
+  accepts it.
+
+When the build lists `browser` keys in `manifest.json`, `/config.js` is
+answered from the container's environment for those keys, and only those: one
+image, many environments, with no entrypoint rewriting a file
+(see [One Build, Many Environments](/docs/guides-deployment-static#one-build-many-environments)).
+
+```bash
+alepha build --runtime static
+alepha image --tag=myorg/site:1.0.0
+docker run -p 8080:3000 -e API_URL=https://api.example.com myorg/site:1.0.0
+```
+
+The same rules are a `$serve` option, `site: true`, off by default.
 
 ## Running
 

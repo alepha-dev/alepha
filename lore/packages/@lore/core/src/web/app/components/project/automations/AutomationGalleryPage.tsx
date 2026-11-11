@@ -1,7 +1,6 @@
 import { Button } from "@alepha/ui";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
 import {
   ArrowLeft,
   Bug,
@@ -35,7 +34,6 @@ const AutomationGalleryPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const labels = useAutomationLabels();
   const [selected, setSelected] = useState<AutomationPresetDescriptor>();
-  const router = useRouter();
   const catalogue = useQuery(
     {
       key: ["automation-catalog", project?.id],
@@ -76,10 +74,6 @@ const AutomationGalleryPage = () => {
     tr(`automation.preset.${preset.key}.description`, {
       default: preset.description,
     });
-  const toList = () =>
-    router.push("projectAutomations", {
-      params: { projectSlug: project.slug },
-    });
   if (selected)
     return (
       <AutomationPage
@@ -104,12 +98,6 @@ const AutomationGalleryPage = () => {
     <AutomationPage
       title={tr("automation.new")}
       description={tr("automation.gallery.description")}
-      actions={
-        <Button variant="minimal" onClick={toList}>
-          <ArrowLeft className="size-4" />
-          {tr("automation.gallery.back")}
-        </Button>
-      }
     >
       {catalogue.loading && !catalogue.data && (
         <p className="text-muted-foreground text-sm">

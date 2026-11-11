@@ -191,7 +191,9 @@ describe("the Lore CLI command surface", () => {
         "unlend",
         "update",
         "rotate",
+        "move",
         "delete",
+        "assign",
       ],
       registry: ["add", "list", "remove"],
       stack: [

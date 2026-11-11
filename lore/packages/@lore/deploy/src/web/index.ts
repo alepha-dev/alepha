@@ -4,7 +4,6 @@ import { $module } from "alepha";
 import { DeployAppsDashboardMetrics } from "../api/services/DeployAppsDashboardMetrics.ts";
 import { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";
 import { QualityNumericCatalog } from "../api/services/QualityNumericCatalog.ts";
-import { DeployAccountRouter } from "./app/components/account/DeployAccountRouter.ts";
 import { DeployRouter } from "./app/DeployRouter.ts";
 import { DeployProjectLoader } from "./app/loaders/DeployProjectLoader.ts";
 import { DeployShell } from "./app/shell/DeployShell.ts";
@@ -31,11 +30,10 @@ export const LoreDeployWeb = $module({
     // with this module, and injecting it anywhere (a spec, a component
     // importing it from the barrel) would then register the whole module.
     //
-    // The pages; Deploy's account page; its part of opening a project and
+    // The pages; its part of opening a project and
     // of the project shell, on core's registries, which nothing else would
     // construct; and its dashboard metrics' declarative half.
     alepha.inject(DeployRouter);
-    alepha.inject(DeployAccountRouter);
     alepha.inject(DeployProjectLoader);
     alepha.inject(DeployShell);
     alepha.inject(DeployDashboardMetrics);
@@ -48,8 +46,8 @@ export const LoreDeployWeb = $module({
 
 export { ANALYTICS_DIMENSIONS, DeployRouter } from "./app/DeployRouter.ts";
 export { currentBlightCountAtom } from "./app/atoms/currentBlightCountAtom.ts";
+export { currentEstateAtom } from "./app/atoms/currentEstateAtom.ts";
 export { currentInstancesAtom } from "./app/atoms/currentInstancesAtom.ts";
-export { DeployAccountRouter } from "./app/components/account/DeployAccountRouter.ts";
 export { DeployShell } from "./app/shell/DeployShell.ts";
 
 /**
@@ -58,6 +56,5 @@ export { DeployShell } from "./app/shell/DeployShell.ts";
 declare module "alepha/react/router" {
   interface Routers {
     loreDeploy: DeployRouter;
-    loreDeployAccount: DeployAccountRouter;
   }
 }

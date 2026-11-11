@@ -53,8 +53,8 @@ const variants = <T extends NonNullable<Parameters<typeof z.object>[0]>>(
       ...target,
       kind: z.literal("restore"),
       ...pointFields,
-      // Another instance's data (`<app>/<env>`). Only the estate's owner may
-      // ask. On a shared Bay a project member must never reach another
+      // Another instance's data (`<app>/<env>`). Only the estate's console may
+      // ask, under estate:update in its home project. On a shared Bay a project member must never reach another
       // project's backups, and an unknown key would be stripped silently,
       // restoring the caller's own data instead: so the body keeps the field
       // and the project controller refuses it outright.

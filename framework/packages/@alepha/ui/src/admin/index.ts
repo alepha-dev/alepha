@@ -48,5 +48,7 @@ export {
   AdminUserDetail,
   type AdminUserDetailProps,
 } from "./AdminUserDetail.tsx";
+export { AdminWebhookDetail } from "./AdminWebhookDetail.tsx";
+export { AdminWebhooks } from "./AdminWebhooks.tsx";
 export { AdminUsers, type AdminUsersProps } from "./AdminUsers.tsx";
 export { useConfirmedAction } from "./useConfirmedAction.tsx";

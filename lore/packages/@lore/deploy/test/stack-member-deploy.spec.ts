@@ -12,10 +12,10 @@ import {
   DeployController,
   DeployService,
   EstateCommandService,
-  EstateController,
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 import {
   bootStackSpec,
@@ -64,19 +64,15 @@ describe("an app deploy inside a stack", () => {
 
   const arrange = async (options: { applied?: boolean } = {}) => {
     const w = await stackWorld(alepha);
-    const minted = (
-      await alepha
-        .inject(EstateController)
-        .createEstate.fetch(
-          { body: { slug: `bay-${crypto.randomUUID().slice(0, 6)}` } },
-          { user: w.user },
-        )
-    ).data;
+    const minted = await createTestEstate(
+      alepha,
+      w.user,
+      { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
+      {
+        projectId: w.project.id,
+      },
+    );
     await w.rows.estates.updateById(minted.id, { deployAllowed: true });
-    await w.rows.grants.create({
-      estateId: minted.id,
-      projectId: w.project.id,
-    });
     const stack = await createStack(alepha, w, {
       name: "crm",
       estateId: minted.id,

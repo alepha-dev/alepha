@@ -27,10 +27,9 @@ export interface EstateCreateFieldsProps {
 /**
  * The fields a new estate needs, by type.
  *
- * Shared by `/account/estates` and by the create-and-lend path inside a
- * project, so the two cannot ask for different things: they post the same
- * discriminated body to the same service, and a field one dialog forgets is
- * a refusal the other never sees.
+ * Used by the create-and-lend path of a project's estates list, and kept a
+ * component of its own so any other place that creates an estate asks for
+ * the same thing: the same discriminated body to the same service.
  *
  * ⚠️ `bay` is selected by default, which is what keeps `estates.spec.ts` (it
  * fills the slug and submits, nothing else) and the Bay install guide

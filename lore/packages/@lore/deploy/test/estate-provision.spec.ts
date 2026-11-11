@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { EstateController, LoreDeployApi } from "../src/api/index.ts";
 import { EstateCost } from "../src/api/schemas/EstateCost.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
@@ -53,10 +54,9 @@ describe("estate provision record", () => {
     expect,
   }) => {
     const owner = await user("owner@example.com");
-    const minted = await controller.createEstate(
-      { body: { slug: "small-skilled-pie" } },
-      { user: owner },
-    );
+    const minted = await createTestEstate(alepha, owner, {
+      slug: "small-skilled-pie",
+    });
     const recorded = await controller.recordEstateProvision(
       {
         params: { estateId: minted.id },
@@ -90,10 +90,7 @@ describe("estate provision record", () => {
   }) => {
     const owner = await user("owner@example.com");
     const stranger = await user("stranger@example.com");
-    const minted = await controller.createEstate(
-      { body: { slug: "pie" } },
-      { user: owner },
-    );
+    const minted = await createTestEstate(alepha, owner, { slug: "pie" });
     await expect(
       controller.recordEstateProvision(
         {

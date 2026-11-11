@@ -183,6 +183,21 @@ Rank definitions are cached for 30 seconds. Assignments are not: the membership
 row is read for each authorization decision, so a demotion or removal applies
 on the next request.
 
+To find who can act, rather than whether one user can, call
+`RankService.holdersOf(organizationId, permission)`. It returns the user ids of
+the members whose rank grants the permission, the owner always among them,
+from one read of the members and one of the rank definitions:
+
+```typescript
+const ranks = alepha.inject(RankService);
+const recipients = await ranks.holdersOf(organizationId, "invoice:approve");
+```
+
+A member with no rank holds the default `member` rank, and a member whose rank
+key has no definition holds nothing, as the gate answers. The method reads the
+rank only: an application that also narrows permissions by a feature switch
+applies that on top.
+
 `OrganizationRankController` provides the permission catalogue, rank list,
 save, delete, and assignment actions under
 `/organizations/:organizationId/ranks`. These actions use the same policy as

@@ -5,9 +5,11 @@ import { useI18n } from "alepha/react/i18n";
 import type { EstateController } from "../../../../api/controllers/EstateController.ts";
 
 /**
- * The account-deletion line for the estates this account owns, which go
- * with it (`estates.ownerUserId` cascades, its secret revoked, and every
- * project it was lent to loses a deploy destination, #1838), registered by
+ * The account-deletion line for the estates with no home project anchored on
+ * this account, which go with it (`estates.ownerUserId` cascades, its secret
+ * revoked, and every project it was lent to loses a deploy destination,
+ * #1838). A homed estate outlives the account and is not counted (#E126).
+ * Registered by
  * `DeployShell` on core's `AccountDeletionRegistry` (#E75, #Q2624).
  */
 export const useOwnedEstatesDeletionLine = (): string | undefined => {

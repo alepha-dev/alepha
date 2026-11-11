@@ -205,35 +205,35 @@ See [Telemetry](/lore/docs/guides-telemetry).
 See [Deploying an app](/lore/docs/guides-deploying),
 [Artifacts](/lore/docs/guides-artifacts) and [Stacks](/lore/docs/guides-stacks).
 
-| Tool              | What it does                                                                            |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `artifact_list`   | What a project has built, one entry per tag.                                            |
-| `artifact_get`    | One tag's builds, with their digests.                                                   |
-| `deploy_start`    | Deploy a stored build onto a copy. Nothing is built, and an omitted tag means `latest`. |
-| `deploy_status`   | Where a run got to, and the tail of its log.                                            |
-| `deploy_rollback` | Point a copy back at an earlier build. Refuses once if migrations have landed since.    |
-| `stack_list`      | Every stack with its environments.                                                      |
-| `stack_get`       | One stack: services and newest deploys.                                                 |
-| `stack_deploy`    | Deploy a revision, or one app service alone.                                            |
-| `stack_rollback`  | Deploy an earlier revision again.                                                       |
-| `stack_logs`      | Ask for a service's logs, then read them.                                               |
-| `estate_stats`    | One of your estates' CPU and memory: the current reading and one mean per day.          |
+| Tool              | What it does                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `artifact_list`   | What a project has built, one entry per tag.                                                                                                |
+| `artifact_get`    | One tag's builds, with their digests.                                                                                                       |
+| `deploy_start`    | Deploy a stored build onto a copy. Nothing is built, and an omitted tag means `latest`.                                                     |
+| `deploy_status`   | Where a run got to, and the tail of its log.                                                                                                |
+| `deploy_rollback` | Point a copy back at an earlier build. Refuses once if migrations have landed since.                                                        |
+| `stack_list`      | Every stack with its environments.                                                                                                          |
+| `stack_get`       | One stack: services and newest deploys.                                                                                                     |
+| `stack_deploy`    | Deploy a revision, or one app service alone.                                                                                                |
+| `stack_rollback`  | Deploy an earlier revision again.                                                                                                           |
+| `stack_logs`      | Ask for a service's logs, then read them.                                                                                                   |
+| `estate_stats`    | An estate's CPU and memory: the current reading and one mean per day. `project` / `project_name` narrow the slug, `home` picks between two. |
 
 ## What has no tool
 
 Some of Lore is not reachable over MCP. Reach for the page or the CLI instead:
 
-| Surface                                                          | Where it is                                                    |
-| ---------------------------------------------------------------- | -------------------------------------------------------------- |
-| [Estates](/lore/docs/guides-estates) and their secrets           | No tool but `estate_stats`, which reads: no tool acts on one.  |
-| [Healthchecks](/lore/docs/guides-healthchecks)                   | The Uptime page. An outage shows up in `blight_list`.          |
-| [Notifications](/lore/docs/guides-notifications)                 | The bell. A comment naming someone reaches them.               |
-| Deleting a blight                                                | The Blights page.                                              |
-| Blight ignore rules                                              | **Settings ▸ Apps**.                                           |
-| Deleting a feedback report                                       | The Feedback page.                                             |
-| Pushing a build                                                  | CI, with `lore artifacts push`. There is deliberately no tool. |
-| Creating a stack, uploading a revision, its variables and routes | `lore stack`, and the Stacks page.                             |
-| Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                       |
-| Members, ranks, capabilities and project settings                | The project's Settings.                                        |
-| The dashboard and Reports                                        | The project's pages.                                           |
-| API keys and account settings                                    | Your account, from a signed-in session.                        |
+| Surface                                                          | Where it is                                                                              |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [Estates](/lore/docs/guides-estates) and their secrets           | No tool but `estate_stats`, which reads: no tool creates, moves, assigns or deletes one. |
+| [Healthchecks](/lore/docs/guides-healthchecks)                   | The Uptime page. An outage shows up in `blight_list`.                                    |
+| [Notifications](/lore/docs/guides-notifications)                 | The bell. A comment naming someone reaches them.                                         |
+| Deleting a blight                                                | The Blights page.                                                                        |
+| Blight ignore rules                                              | **Settings ▸ Apps**.                                                                     |
+| Deleting a feedback report                                       | The Feedback page.                                                                       |
+| Pushing a build                                                  | CI, with `lore artifacts push`. There is deliberately no tool.                           |
+| Creating a stack, uploading a revision, its variables and routes | `lore stack`, and the Stacks page.                                                       |
+| Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                                                 |
+| Members, ranks, capabilities and project settings                | The project's Settings.                                                                  |
+| The dashboard and Reports                                        | The project's pages.                                                                     |
+| API keys and account settings                                    | Your account, from a signed-in session.                                                  |

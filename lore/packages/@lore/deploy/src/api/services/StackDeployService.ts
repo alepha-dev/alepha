@@ -166,7 +166,7 @@ export class StackDeployService {
       : undefined;
     if (!estate || !grant) {
       throw new NotFoundError(
-        `The estate ${where} deploys to is no longer lent to this project. Ask its owner to lend it again.`,
+        `The estate ${where} deploys to is no longer lent to this project. Ask its home project to lend it again.`,
       );
     }
     if (estate.type !== "bay") {
@@ -176,7 +176,7 @@ export class StackDeployService {
     }
     if (!estate.deployAllowed) {
       throw new BadRequestError(
-        `The estate '${estate.slug}' does not accept deploys. Its owner can turn that on from their Estates page.`,
+        `The estate '${estate.slug}' does not accept deploys. Somebody with estate:update in its home project can turn that on from its console.`,
       );
     }
 

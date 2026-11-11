@@ -61,6 +61,20 @@ export const ROUTES_APP = new Set([
  * rail. `projectViewRoutes.spec.ts` walks the router and fails when a page
  * under `projectSettings` is missing from the label table this feeds.
  */
+/**
+ * An estate's console and its tabs, a page of its home project since #E126
+ * (`DeployRouter.bay`). They read "Estates" in the crumb and climb back to
+ * the project's estates list, where every estate of the project is.
+ */
+export const ROUTES_ESTATE = [
+  "bay",
+  "bayOverview",
+  "bayApps",
+  "bayApp",
+  "bayCommands",
+  "baySettings",
+];
+
 const ROUTES_SETTINGS = [
   "projectSettings",
   "projectSettingsBanner",
@@ -85,6 +99,8 @@ export const ROUTES_FULL_WIDTH = new Set([
   // the space they are given.
   "projectStacks",
   "projectStackEnvironment",
+  // An estate's console (#E126): a plate over route tabs, as an app's is.
+  ...ROUTES_ESTATE,
   // The project's landing page since #Q2104. Full width because it is a grid
   // that lays its own columns out from the space it is given (`auto-fill` over
   // a container query), and a centred 1024px column would both cap the tiles
@@ -191,6 +207,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectStacks"
   | "projectReleases"
   | "projectAutomations"
+  | "projectSettingsEstates"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
@@ -221,6 +238,9 @@ export const SECTION_HREF_ROUTES: Record<
   appBackups: "projectApps",
   appEnvironment: "projectApps",
   appSettings: "projectApps",
+  ...Object.fromEntries(
+    ROUTES_ESTATE.map((route) => [route, "projectSettingsEstates" as const]),
+  ),
 };
 
 export const SECTION_LABEL_KEYS: Record<string, string> = {
@@ -302,5 +322,8 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   appSettings: "project.menu.apps",
   ...Object.fromEntries(
     ROUTES_SETTINGS.map((route) => [route, "project.menu.settings"]),
+  ),
+  ...Object.fromEntries(
+    ROUTES_ESTATE.map((route) => [route, "estates.project.title"]),
   ),
 };

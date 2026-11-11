@@ -111,6 +111,9 @@ export class RemotePrimitiveProvider {
       this.proxyProvider.createProxy({
         path: `${this.serverApi.prefix}/${name}/*`,
         target: url,
+        // The remote authenticates the caller, so its bearer travels (the
+        // `$proxy` default sends none). `proxy: { forward }` overrides it.
+        forward: ["authorization"],
         rewrite: (url) => {
           url.pathname = url.pathname.replace(
             `${this.serverApi.prefix}/${name}`,
