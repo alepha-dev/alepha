@@ -282,7 +282,9 @@ payments = $remote({
 // Remote endpoints are now accessible via this server
 ```
 
-This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API. A proxied request never carries the `serviceAccount`: it forwards the caller's request as is, so the remote authenticates the caller.
+This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API. A proxied request never carries the `serviceAccount`: it forwards the caller's request, so the remote authenticates the caller.
+
+A plain `$proxy` sends neither `Cookie` nor `Authorization` upstream unless its `forward` option names them ([Credentials stay home](/docs/guides-server-static-and-proxy#credentials-stay-home)). A `$remote` proxy forwards `authorization` by itself, never the cookie; `proxy: { forward: [] }` sends neither, and `proxy: { forward: ["cookie", "authorization"] }` sends both.
 
 `proxy` also accepts an object form - `proxy: { noInternal: true }` makes the remote reachable only through the proxy, not via internal `$client` calls - and `$remote` takes a `name` to label the link (defaults to the class member's name).
 

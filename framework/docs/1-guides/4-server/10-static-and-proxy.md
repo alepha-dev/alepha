@@ -196,13 +196,78 @@ sequenceDiagram
   P-->>C: streamed body
 ```
 
-- Every incoming header is forwarded as is, `Cookie` and `Authorization`
-  included, except `Accept-Encoding`, forced to `identity` so the body comes
-  back uncompressed.
+- Every incoming header is forwarded as is, except the caller's credentials
+  (see [Credentials stay home](#credentials-stay-home)) and `Accept-Encoding`,
+  forced to `identity` so the body comes back uncompressed.
 - The request body is streamed upstream for every method but `GET`, `HEAD`
   and `OPTIONS`, and the response body is streamed back without buffering.
 - The upstream call carries the request's abort signal: a client that
   disconnects cancels it.
+- The upstream's `Set-Cookie` headers are copied to the client, every one of
+  them.
+
+### Credentials stay home
+
+By default a `$proxy` sends **neither `Cookie` nor `Authorization`** upstream.
+Both are removed from the outgoing request whoever wrote them: the browser, or
+the `Authorization` that `alepha/server/auth` derives from the session cookie
+before any handler runs. In front of a third-party API, the session's cookie
+could otherwise be replayed against the app, and its access token would leave
+in clear.
+
+`forward` lets them through, per header. It takes those two names and nothing
+else; any other value fails at boot.
+
+```typescript check
+import { $proxy } from "alepha/server/proxy";
+
+class Gateway {
+  // A service of the same system, authenticating the caller from the bearer.
+  orders = $proxy({
+    path: "/orders/*",
+    target: "https://orders.internal.example.com",
+    forward: ["authorization"],
+  });
+
+  // An upstream sharing the app's session.
+  legacy = $proxy({
+    path: "/legacy/*",
+    target: "https://legacy.example.com",
+    forward: ["cookie", "authorization"],
+  });
+}
+```
+
+The removal happens when the outgoing request is built, before
+`beforeRequest` runs: a hook that sets its own `Authorization`, such as a
+service token, keeps it, and a hook never sees a credential it did not put
+there. Header names are matched without regard to case.
+
+A `$remote({ proxy: true })` forwards `authorization` on its own, so the
+remote still authenticates the caller; `proxy: { forward: [...] }` overrides
+it.
+
+### Timeout
+
+```typescript check
+import { $proxy } from "alepha/server/proxy";
+
+class Gateway {
+  api = $proxy({
+    path: "/api/*",
+    target: "https://api.example.com",
+    timeout: [10, "seconds"],
+  });
+}
+```
+
+`timeout` bounds the time until the upstream sends its response headers. Past
+it the client gets a 503 (`TIMEOUT`, the status every Alepha timeout answers)
+and the upstream call is aborted. The streamed body is not bounded: a body
+still arriving after the deadline keeps streaming, and only the client leaving
+ends it. There is no default, since a long-polling upstream would be cut, and
+there is no retry: a transient upstream failure reaches the client as a 5xx
+and the client decides.
 
 ### Rewriting, and the two hooks
 
@@ -249,8 +314,8 @@ removing the declaration.
 ### It is a proxy, so it is a hole
 
 Everything matching `path` leaves your process for another origin, carrying
-the client's headers (its cookies and bearer token included) unless
-`beforeRequest` removes them. Two habits are worth keeping:
+the client's headers (its cookies and bearer token too, once `forward` names
+them). Two habits are worth keeping:
 make `target` something you control rather than something derived from request
 input, and mount the proxy under a prefix narrow enough that you can say out
 loud what it covers.

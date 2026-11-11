@@ -25,14 +25,16 @@ services behind a single endpoint.
 
 ## Options
 
-| Option          | Type                       | Required | Description                                                     |
-| --------------- | -------------------------- | -------- | --------------------------------------------------------------- |
-| `path`          | `string`                   | Yes      | Path pattern to match for proxying requests                     |
-| `target`        | `string \| (() => string)` | Yes      | Target URL to which matching requests should be forwarded       |
-| `disabled`      | `boolean`                  | No       | Whether this proxy is disabled                                  |
-| `beforeRequest` | `Object`                   | No       | Hook called before forwarding the request to the target server  |
-| `afterResponse` | `Object`                   | No       | Hook called after receiving the response from the target server |
-| `rewrite`       | `Object`                   | No       | Function to rewrite the URL before sending to the target server |
+| Option          | Type                         | Required | Description                                                        |
+| --------------- | ---------------------------- | -------- | ------------------------------------------------------------------ |
+| `path`          | `string`                     | Yes      | Path pattern to match for proxying requests                        |
+| `target`        | `string \| (() => string)`   | Yes      | Target URL to which matching requests should be forwarded          |
+| `disabled`      | `boolean`                    | No       | Whether this proxy is disabled                                     |
+| `beforeRequest` | `Object`                     | No       | Hook called before forwarding the request to the target server     |
+| `afterResponse` | `Object`                     | No       | Hook called after receiving the response from the target server    |
+| `rewrite`       | `Object`                     | No       | Function to rewrite the URL before sending to the target server    |
+| `forward`       | `ProxyForwardedCredential[]` | No       | The caller's credentials to send upstream                          |
+| `timeout`       | `DurationLike \| false`      | No       | How long the upstream may take to answer with its response headers |
 
 ## Examples
 

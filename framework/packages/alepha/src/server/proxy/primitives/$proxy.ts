@@ -1,4 +1,5 @@
 import { type Async, createPrimitive, Primitive } from "alepha";
+import type { DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import type { ServerRequest } from "alepha/server";
 
@@ -215,9 +216,47 @@ export type ProxyPrimitiveOptions = {
    */
   rewrite?: (url: URL) => void;
 
-  // TODO: Add retry functionality
-  // retry?: RetryOptions;
+  /**
+   * The caller's credentials to send upstream. None by default.
+   *
+   * A proxy removes `Cookie` and `Authorization` from the outgoing request,
+   * whoever wrote them: the browser, or the `Authorization` that
+   * `alepha/server/auth` derives from the session cookie. The session's
+   * cookie and its access token stay with the app. Name a header here to
+   * let it through:
+   *
+   * - `["authorization"]`: the upstream authenticates the caller from the
+   *   bearer, as a service of the same system does;
+   * - `["cookie", "authorization"]`: both, for an upstream that shares the
+   *   app's session.
+   *
+   * The removal runs when the outgoing request is built, before
+   * `beforeRequest`, so a hook setting its own `Authorization` (a service
+   * token) is untouched. Every other request header is forwarded, and the
+   * upstream's `Set-Cookie` is still copied to the client.
+   *
+   * @example ["authorization"]
+   */
+  forward?: ProxyForwardedCredential[];
+
+  /**
+   * How long the upstream may take to answer with its response headers.
+   * Past it the client gets a 503 (`TimeoutError`) and the upstream call
+   * is aborted.
+   *
+   * The streamed body is not bounded: a body still arriving after the
+   * deadline keeps streaming, and the client leaving still ends it. No
+   * default, since a long-polling upstream would be cut.
+   *
+   * @example [10, "seconds"]
+   */
+  timeout?: DurationLike | false;
 };
+
+/**
+ * A request credential a `$proxy` may forward: see its `forward` option.
+ */
+export type ProxyForwardedCredential = "cookie" | "authorization";
 
 export class ProxyPrimitive extends Primitive<ProxyPrimitiveOptions> {}
 

@@ -1,6 +1,7 @@
 import { ReadableStream as WebStream } from "node:stream/web";
 
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   routeMethods,
@@ -9,12 +10,26 @@ import {
   ServerRouterProvider,
 } from "alepha/server";
 
-import { $proxy, type ProxyPrimitiveOptions } from "../primitives/$proxy.ts";
+import {
+  $proxy,
+  type ProxyForwardedCredential,
+  type ProxyPrimitiveOptions,
+} from "../primitives/$proxy.ts";
 
 export class ServerProxyProvider {
   protected readonly log = $logger();
   protected readonly routerProvider = $inject(ServerRouterProvider);
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * The request headers that carry the caller's credentials, removed from
+   * every proxied request unless the proxy's `forward` names them.
+   */
+  protected readonly credentials: readonly ProxyForwardedCredential[] = [
+    "cookie",
+    "authorization",
+  ];
 
   protected readonly configure = $hook({
     on: "configure",
@@ -31,6 +46,8 @@ export class ServerProxyProvider {
     }
 
     const path = options.path;
+
+    this.checkForward(options.forward);
 
     if (!path.endsWith("/*")) {
       throw new AlephaError("Proxy path should end with '/*'");
@@ -76,7 +93,7 @@ export class ServerProxyProvider {
         url: url.toString(),
         method: request.method,
         headers: {
-          ...request.headers,
+          ...this.forwardedHeaders(request.headers, options.forward),
           "accept-encoding": "identity", // ignore compression
         },
         body: this.getRawRequestBody(request),
@@ -103,7 +120,7 @@ export class ServerProxyProvider {
       // subrequest through that Worker (same-zone subrequests to a host
       // served by another Worker's route would bypass it and 522). Node's
       // fetch ignores the unknown field.
-      const response = await fetch(requestInit.url, requestInit);
+      const response = await this.send(requestInit, options.timeout);
 
       request.reply.status = response.status;
       request.reply.headers = Object.fromEntries(response.headers.entries());
@@ -128,6 +145,67 @@ export class ServerProxyProvider {
         await options.afterResponse(request, response);
       }
     };
+  }
+
+  /**
+   * Refuse a `forward` naming anything but the two credentials: a typo
+   * would otherwise forward nothing, silently.
+   */
+  protected checkForward(forward: readonly string[] | undefined): void {
+    for (const name of forward ?? []) {
+      if (!this.credentials.includes(name as ProxyForwardedCredential)) {
+        throw new AlephaError(
+          `$proxy forward accepts "cookie" and "authorization" only, not "${name}"`,
+        );
+      }
+    }
+  }
+
+  /**
+   * The request's headers without the credentials `forward` does not name.
+   * Names are matched without regard to case.
+   */
+  public forwardedHeaders(
+    headers: Record<string, unknown>,
+    forward: readonly ProxyForwardedCredential[] = [],
+  ): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const [name, value] of Object.entries(headers)) {
+      const lower = name.toLowerCase();
+      if (
+        this.credentials.includes(lower as ProxyForwardedCredential) &&
+        !forward.includes(lower as ProxyForwardedCredential)
+      ) {
+        continue;
+      }
+      out[name] = value;
+    }
+    return out;
+  }
+
+  /**
+   * Send the upstream request, its headers bounded by `timeout` when there
+   * is one. The deadline aborts the call only while it waits for the
+   * headers: once they are in, the body streams for as long as the client
+   * stays.
+   */
+  protected send(
+    requestInit: RequestInit & { url: string },
+    timeout: ProxyPrimitiveOptions["timeout"],
+  ): Promise<Response> {
+    if (!timeout) {
+      return fetch(requestInit.url, requestInit);
+    }
+    const client = requestInit.signal ?? undefined;
+    return this.dateTime.deadline(
+      (signal) =>
+        fetch(requestInit.url, {
+          ...requestInit,
+          signal: client ? AbortSignal.any([client, signal]) : signal,
+        }),
+      timeout,
+      { ambient: false },
+    );
   }
 
   protected getRawRequestBody(req: ServerRequest): ReadableStream | undefined {
