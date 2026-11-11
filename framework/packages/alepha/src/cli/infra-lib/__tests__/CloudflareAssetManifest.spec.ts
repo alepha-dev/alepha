@@ -133,4 +133,25 @@ describe("the Cloudflare asset manifest", () => {
       expectedKey(await manifest.digest(bytes("hello")), "html"),
     );
   });
+
+  describe("base64 for the upload (#Q3382)", () => {
+    class Fallback extends CloudflareAssetManifest {
+      public fallback(bytes: Uint8Array): string {
+        return this.base64Fallback(bytes);
+      }
+    }
+
+    it("is standard base64, natively and on the fallback, past the chunk size", ({
+      expect,
+    }) => {
+      const fallback = new Fallback();
+      for (const length of [0, 1, 2, 3, 0x8000 + 1, 100_000]) {
+        const body = new Uint8Array(length).map((_, i) => (i * 31) & 0xff);
+        const expected = Buffer.from(body).toString("base64");
+
+        expect(manifest.base64(body), `native ${length}`).toBe(expected);
+        expect(fallback.fallback(body), `fallback ${length}`).toBe(expected);
+      }
+    });
+  });
 });

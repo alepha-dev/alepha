@@ -249,12 +249,27 @@ export class CloudflareAssetManifest {
   }
 
   /**
-   * Standard base64 of raw bytes, without `Buffer`.
+   * Standard base64 of raw bytes, without `Buffer`: what a Workers asset
+   * upload sends, once per uploaded body.
    *
-   * `btoa` is defined in workerd and in Node, and takes a binary string, so
-   * the bytes are widened one chunk at a time.
+   * ⚠️ **`Uint8Array.prototype.toBase64` when the runtime has it** (#Q3382).
+   * Native, and ~60x faster than widening the bytes to a binary string for
+   * `btoa`: 27 ms against 1,644 ms over the docs site's assets (folio
+   * #F1484). workerd has it at Lore's compatibility date (2026-11-03), and
+   * Node 26 has it. {@link base64Fallback} serves a runtime without it.
    */
   public base64(bytes: Uint8Array): string {
+    const native = (bytes as Uint8Array & { toBase64?: () => string }).toBase64;
+    return typeof native === "function"
+      ? native.call(bytes)
+      : this.base64Fallback(bytes);
+  }
+
+  /**
+   * `btoa` over the bytes widened to a binary string, one chunk at a time:
+   * `btoa` is defined in workerd and in Node, and takes a binary string.
+   */
+  protected base64Fallback(bytes: Uint8Array): string {
     let binary = "";
     for (
       let i = 0;
