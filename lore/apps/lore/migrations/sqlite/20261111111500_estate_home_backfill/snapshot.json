@@ -2,9 +2,7 @@
   "version": "7",
   "dialect": "sqlite",
   "id": "4d5e2487-e5a1-4f7c-a775-f1ca7510bfc2",
-  "prevIds": [
-    "03b07145-d11b-4e9c-a506-1b15e27ba8c4"
-  ],
+  "prevIds": ["03b07145-d11b-4e9c-a506-1b15e27ba8c4"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -14545,13 +14543,9 @@
     {
       "table": "analytics_estate_stats_raw",
       "name": "fk_analytics_estate_stats_raw_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14560,13 +14554,9 @@
     {
       "table": "analytics_estate_stats_rolled",
       "name": "fk_analytics_estate_stats_rolled_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14575,13 +14565,9 @@
     {
       "table": "analytics_sigil_errors_raw",
       "name": "fk_analytics_sigil_errors_raw_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14590,13 +14576,9 @@
     {
       "table": "analytics_sigil_errors_rolled",
       "name": "fk_analytics_sigil_errors_rolled_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14605,13 +14587,9 @@
     {
       "table": "analytics_sigil_views_raw",
       "name": "fk_analytics_sigil_views_raw_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14620,13 +14598,9 @@
     {
       "table": "analytics_sigil_views_rolled",
       "name": "fk_analytics_sigil_views_rolled_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14635,13 +14609,9 @@
     {
       "table": "analytics_sigil_vitals_raw",
       "name": "fk_analytics_sigil_vitals_raw_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14650,13 +14620,9 @@
     {
       "table": "analytics_sigil_vitals_rolled",
       "name": "fk_analytics_sigil_vitals_rolled_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14665,13 +14631,9 @@
     {
       "table": "analytics_uptime_probes_raw",
       "name": "fk_analytics_uptime_probes_raw_monitor_id_monitors_id_fk",
-      "columns": [
-        "monitor_id"
-      ],
+      "columns": ["monitor_id"],
       "tableTo": "monitors",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14680,13 +14642,9 @@
     {
       "table": "analytics_uptime_probes_rolled",
       "name": "fk_analytics_uptime_probes_rolled_monitor_id_monitors_id_fk",
-      "columns": [
-        "monitor_id"
-      ],
+      "columns": ["monitor_id"],
       "tableTo": "monitors",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14695,13 +14653,9 @@
     {
       "table": "app_instances",
       "name": "fk_app_instances_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14710,13 +14664,9 @@
     {
       "table": "app_instances",
       "name": "fk_app_instances_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -14725,13 +14675,9 @@
     {
       "table": "app_instances",
       "name": "fk_app_instances_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -14740,13 +14686,9 @@
     {
       "table": "app_instances",
       "name": "fk_app_instances_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -14755,13 +14697,9 @@
     {
       "table": "app_instances",
       "name": "fk_app_instances_stack_environment_id_stack_environments_id_fk",
-      "columns": [
-        "stack_environment_id"
-      ],
+      "columns": ["stack_environment_id"],
       "tableTo": "stack_environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -14770,13 +14708,9 @@
     {
       "table": "app_secrets",
       "name": "fk_app_secrets_instance_id_app_instances_id_fk",
-      "columns": [
-        "instance_id"
-      ],
+      "columns": ["instance_id"],
       "tableTo": "app_instances",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14785,13 +14719,9 @@
     {
       "table": "areas",
       "name": "fk_areas_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14800,13 +14730,9 @@
     {
       "table": "artifacts",
       "name": "fk_artifacts_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14815,13 +14741,9 @@
     {
       "table": "automation_adoptions",
       "name": "fk_automation_adoptions_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14830,13 +14752,9 @@
     {
       "table": "automation_adoptions",
       "name": "fk_automation_adoptions_automation_id_automations_id_fk",
-      "columns": [
-        "automation_id"
-      ],
+      "columns": ["automation_id"],
       "tableTo": "automations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -14845,13 +14763,9 @@
     {
       "table": "automation_adoptions",
       "name": "fk_automation_adoptions_author_user_id_users_id_fk",
-      "columns": [
-        "author_user_id"
-      ],
+      "columns": ["author_user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -14860,13 +14774,9 @@
     {
       "table": "automation_events",
       "name": "fk_automation_events_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14875,13 +14785,9 @@
     {
       "table": "automation_receipts",
       "name": "fk_automation_receipts_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14890,13 +14796,9 @@
     {
       "table": "automation_receipts",
       "name": "fk_automation_receipts_automation_id_automations_id_fk",
-      "columns": [
-        "automation_id"
-      ],
+      "columns": ["automation_id"],
       "tableTo": "automations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -14905,13 +14807,9 @@
     {
       "table": "automation_runs",
       "name": "fk_automation_runs_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14920,13 +14818,9 @@
     {
       "table": "automation_runs",
       "name": "fk_automation_runs_automation_id_automations_id_fk",
-      "columns": [
-        "automation_id"
-      ],
+      "columns": ["automation_id"],
       "tableTo": "automations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -14935,13 +14829,9 @@
     {
       "table": "automation_variables",
       "name": "fk_automation_variables_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14950,13 +14840,9 @@
     {
       "table": "automations",
       "name": "fk_automations_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14965,13 +14851,9 @@
     {
       "table": "automations",
       "name": "fk_automations_author_user_id_users_id_fk",
-      "columns": [
-        "author_user_id"
-      ],
+      "columns": ["author_user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -14980,13 +14862,9 @@
     {
       "table": "blight_ignore_rules",
       "name": "fk_blight_ignore_rules_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -14995,13 +14873,9 @@
     {
       "table": "blight_ignore_rules",
       "name": "fk_blight_ignore_rules_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15010,13 +14884,9 @@
     {
       "table": "blights",
       "name": "fk_blights_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15025,13 +14895,9 @@
     {
       "table": "blights",
       "name": "fk_blights_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15040,13 +14906,9 @@
     {
       "table": "dashboard_cards",
       "name": "fk_dashboard_cards_user_id_users_id_fk",
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15055,13 +14917,9 @@
     {
       "table": "dashboard_settings",
       "name": "fk_dashboard_settings_user_id_users_id_fk",
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15070,13 +14928,9 @@
     {
       "table": "deployments",
       "name": "fk_deployments_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15085,13 +14939,9 @@
     {
       "table": "deployments",
       "name": "fk_deployments_instance_id_app_instances_id_fk",
-      "columns": [
-        "instance_id"
-      ],
+      "columns": ["instance_id"],
       "tableTo": "app_instances",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15100,13 +14950,9 @@
     {
       "table": "epic_review_items",
       "name": "fk_epic_review_items_review_id_epic_reviews_id_fk",
-      "columns": [
-        "review_id"
-      ],
+      "columns": ["review_id"],
       "tableTo": "epic_reviews",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15115,13 +14961,9 @@
     {
       "table": "epic_review_items",
       "name": "fk_epic_review_items_epic_id_epics_id_fk",
-      "columns": [
-        "epic_id"
-      ],
+      "columns": ["epic_id"],
       "tableTo": "epics",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15130,13 +14972,9 @@
     {
       "table": "epic_review_items",
       "name": "fk_epic_review_items_answered_by_users_id_fk",
-      "columns": [
-        "answered_by"
-      ],
+      "columns": ["answered_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15145,13 +14983,9 @@
     {
       "table": "epic_review_items",
       "name": "fk_epic_review_items_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15160,13 +14994,9 @@
     {
       "table": "epic_reviews",
       "name": "fk_epic_reviews_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15175,13 +15005,9 @@
     {
       "table": "epic_reviews",
       "name": "fk_epic_reviews_epic_id_epics_id_fk",
-      "columns": [
-        "epic_id"
-      ],
+      "columns": ["epic_id"],
       "tableTo": "epics",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15190,13 +15016,9 @@
     {
       "table": "epic_reviews",
       "name": "fk_epic_reviews_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15205,13 +15027,9 @@
     {
       "table": "epics",
       "name": "fk_epics_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15220,13 +15038,9 @@
     {
       "table": "epics",
       "name": "fk_epics_release_id_releases_id_fk",
-      "columns": [
-        "release_id"
-      ],
+      "columns": ["release_id"],
       "tableTo": "releases",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15235,13 +15049,9 @@
     {
       "table": "epics",
       "name": "fk_epics_depends_on_epics_id_fk",
-      "columns": [
-        "depends_on"
-      ],
+      "columns": ["depends_on"],
       "tableTo": "epics",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15250,13 +15060,9 @@
     {
       "table": "estate_commands",
       "name": "fk_estate_commands_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15265,13 +15071,9 @@
     {
       "table": "estate_commands",
       "name": "fk_estate_commands_requested_by_users_id_fk",
-      "columns": [
-        "requested_by"
-      ],
+      "columns": ["requested_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15280,13 +15082,9 @@
     {
       "table": "estate_events",
       "name": "fk_estate_events_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15295,13 +15093,9 @@
     {
       "table": "estate_inventories",
       "name": "fk_estate_inventories_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15310,13 +15104,9 @@
     {
       "table": "estate_projects",
       "name": "fk_estate_projects_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15325,13 +15115,9 @@
     {
       "table": "estate_projects",
       "name": "fk_estate_projects_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15340,13 +15126,9 @@
     {
       "table": "estate_projects",
       "name": "fk_estate_projects_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15355,13 +15137,9 @@
     {
       "table": "estates",
       "name": "fk_estates_owner_user_id_users_id_fk",
-      "columns": [
-        "owner_user_id"
-      ],
+      "columns": ["owner_user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15370,13 +15148,9 @@
     {
       "table": "estates",
       "name": "fk_estates_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -15385,13 +15159,9 @@
     {
       "table": "estates",
       "name": "fk_estates_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15400,13 +15170,9 @@
     {
       "table": "feedback",
       "name": "fk_petitions_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15415,13 +15181,9 @@
     {
       "table": "feedback",
       "name": "fk_petitions_reporter_user_id_users_id_fk",
-      "columns": [
-        "reporter_user_id"
-      ],
+      "columns": ["reporter_user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15430,13 +15192,9 @@
     {
       "table": "feedback",
       "name": "fk_feedback_triaged_by_users_id_fk",
-      "columns": [
-        "triaged_by"
-      ],
+      "columns": ["triaged_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15445,13 +15203,9 @@
     {
       "table": "feedback_comments",
       "name": "fk_feedback_comments_feedback_id_feedback_id_fk",
-      "columns": [
-        "feedback_id"
-      ],
+      "columns": ["feedback_id"],
       "tableTo": "feedback",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15460,13 +15214,9 @@
     {
       "table": "feedback_comments",
       "name": "fk_feedback_comments_author_id_users_id_fk",
-      "columns": [
-        "author_id"
-      ],
+      "columns": ["author_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15475,13 +15225,9 @@
     {
       "table": "folio_blobs",
       "name": "fk_archive_blobs_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15490,13 +15236,9 @@
     {
       "table": "folio_blobs",
       "name": "fk_folio_blobs_folio_id_folios_id_fk",
-      "columns": [
-        "folio_id"
-      ],
+      "columns": ["folio_id"],
       "tableTo": "folios",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15505,13 +15247,9 @@
     {
       "table": "folio_directories",
       "name": "fk_archive_directories_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15520,13 +15258,9 @@
     {
       "table": "folio_directories",
       "name": "fk_archive_directories_parent_id_archive_directories_id_fk",
-      "columns": [
-        "parent_id"
-      ],
+      "columns": ["parent_id"],
       "tableTo": "folio_directories",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15535,13 +15269,9 @@
     {
       "table": "folio_revisions",
       "name": "fk_folio_revisions_folio_id_folios_id_fk",
-      "columns": [
-        "folio_id"
-      ],
+      "columns": ["folio_id"],
       "tableTo": "folios",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15550,13 +15280,9 @@
     {
       "table": "folio_revisions",
       "name": "fk_folio_revisions_by_user_id_users_id_fk",
-      "columns": [
-        "by_user_id"
-      ],
+      "columns": ["by_user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15565,13 +15291,9 @@
     {
       "table": "folios",
       "name": "fk_folios_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15580,13 +15302,9 @@
     {
       "table": "folios",
       "name": "fk_folios_directory_id_archive_directories_id_fk",
-      "columns": [
-        "directory_id"
-      ],
+      "columns": ["directory_id"],
       "tableTo": "folio_directories",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15595,13 +15313,9 @@
     {
       "table": "identities",
       "name": "fk_identities_user_id_users_id_fk",
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15610,13 +15324,9 @@
     {
       "table": "monitor_heartbeats",
       "name": "fk_monitor_heartbeats_monitor_id_monitors_id_fk",
-      "columns": [
-        "monitor_id"
-      ],
+      "columns": ["monitor_id"],
       "tableTo": "monitors",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15625,13 +15335,9 @@
     {
       "table": "monitor_incidents",
       "name": "fk_monitor_incidents_monitor_id_monitors_id_fk",
-      "columns": [
-        "monitor_id"
-      ],
+      "columns": ["monitor_id"],
       "tableTo": "monitors",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15640,13 +15346,9 @@
     {
       "table": "monitors",
       "name": "fk_monitors_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15655,13 +15357,9 @@
     {
       "table": "notification_preferences",
       "name": "fk_notification_preferences_user_id_users_id_fk",
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15670,13 +15368,9 @@
     {
       "table": "organization_invitations",
       "name": "fk_organization_invitations_organization_id_organizations_id_fk",
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15685,13 +15379,9 @@
     {
       "table": "organization_members",
       "name": "fk_organization_members_organization_id_organizations_id_fk",
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15700,13 +15390,9 @@
     {
       "table": "organization_members",
       "name": "fk_organization_members_user_id_users_id_fk",
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15715,13 +15401,9 @@
     {
       "table": "organization_ranks",
       "name": "fk_organization_ranks_organization_id_organizations_id_fk",
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15730,13 +15412,9 @@
     {
       "table": "project_capabilities",
       "name": "fk_project_capabilities_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15745,13 +15423,9 @@
     {
       "table": "project_dashboard_cards",
       "name": "fk_project_dashboard_cards_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15760,13 +15434,9 @@
     {
       "table": "project_dashboard_cards",
       "name": "fk_project_dashboard_cards_dashboard_id_project_dashboards_id_fk",
-      "columns": [
-        "dashboard_id"
-      ],
+      "columns": ["dashboard_id"],
       "tableTo": "project_dashboards",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15775,13 +15445,9 @@
     {
       "table": "project_dashboards",
       "name": "fk_project_dashboards_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15790,13 +15456,9 @@
     {
       "table": "project_prompts",
       "name": "fk_project_prompts_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15805,13 +15467,9 @@
     {
       "table": "projects",
       "name": "fk_projects_organization_id_organizations_id_fk",
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "RESTRICT",
       "nameExplicit": false,
@@ -15820,13 +15478,9 @@
     {
       "table": "quality_runs",
       "name": "fk_quality_runs_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15835,13 +15489,9 @@
     {
       "table": "quest_comments",
       "name": "fk_quest_comments_quest_id_quests_id_fk",
-      "columns": [
-        "quest_id"
-      ],
+      "columns": ["quest_id"],
       "tableTo": "quests",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15850,13 +15500,9 @@
     {
       "table": "quest_comments",
       "name": "fk_quest_comments_author_id_users_id_fk",
-      "columns": [
-        "author_id"
-      ],
+      "columns": ["author_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15865,13 +15511,9 @@
     {
       "table": "quest_flow_daily",
       "name": "fk_quest_flow_daily_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15880,13 +15522,9 @@
     {
       "table": "quests",
       "name": "fk_quests_shelved_by_users_id_fk",
-      "columns": [
-        "shelved_by"
-      ],
+      "columns": ["shelved_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15895,13 +15533,9 @@
     {
       "table": "quests",
       "name": "fk_quests_held_by_users_id_fk",
-      "columns": [
-        "held_by"
-      ],
+      "columns": ["held_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15910,13 +15544,9 @@
     {
       "table": "quests",
       "name": "fk_quests_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15925,13 +15555,9 @@
     {
       "table": "quests",
       "name": "fk_quests_chapter_id_chapters_id_fk",
-      "columns": [
-        "release_id"
-      ],
+      "columns": ["release_id"],
       "tableTo": "releases",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15940,13 +15566,9 @@
     {
       "table": "quests",
       "name": "fk_quests_petition_id_petitions_id_fk",
-      "columns": [
-        "feedback_id"
-      ],
+      "columns": ["feedback_id"],
       "tableTo": "feedback",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15955,13 +15577,9 @@
     {
       "table": "quests",
       "name": "fk_quests_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -15970,13 +15588,9 @@
     {
       "table": "quests",
       "name": "fk_quests_accepted_by_users_id_fk",
-      "columns": [
-        "accepted_by"
-      ],
+      "columns": ["accepted_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -15985,13 +15599,9 @@
     {
       "table": "quests",
       "name": "fk_quests_completed_by_users_id_fk",
-      "columns": [
-        "completed_by"
-      ],
+      "columns": ["completed_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16000,13 +15610,9 @@
     {
       "table": "quests",
       "name": "fk_quests_depends_on_quests_id_fk",
-      "columns": [
-        "depends_on"
-      ],
+      "columns": ["depends_on"],
       "tableTo": "quests",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16015,13 +15621,9 @@
     {
       "table": "quests",
       "name": "fk_quests_epic_id_epics_id_fk",
-      "columns": [
-        "epic_id"
-      ],
+      "columns": ["epic_id"],
       "tableTo": "epics",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16030,13 +15632,9 @@
     {
       "table": "registry_credentials",
       "name": "fk_registry_credentials_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16045,13 +15643,9 @@
     {
       "table": "releases",
       "name": "fk_chapters_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16060,13 +15654,9 @@
     {
       "table": "sessions",
       "name": "fk_sessions_user_id_users_id_fk",
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16075,13 +15665,9 @@
     {
       "table": "sigil_error_groups",
       "name": "fk_sigil_error_groups_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16090,13 +15676,9 @@
     {
       "table": "sigil_uniques_daily",
       "name": "fk_sigil_uniques_daily_sigil_id_sigils_id_fk",
-      "columns": [
-        "sigil_id"
-      ],
+      "columns": ["sigil_id"],
       "tableTo": "sigils",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16105,13 +15687,9 @@
     {
       "table": "sigils",
       "name": "fk_sigils_campaign_id_campaigns_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16120,13 +15698,9 @@
     {
       "table": "sigils",
       "name": "fk_sigils_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16135,13 +15709,9 @@
     {
       "table": "stack_deployments",
       "name": "fk_stack_deployments_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16150,13 +15720,9 @@
     {
       "table": "stack_deployments",
       "name": "fk_stack_deployments_environment_id_stack_environments_id_fk",
-      "columns": [
-        "environment_id"
-      ],
+      "columns": ["environment_id"],
       "tableTo": "stack_environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16165,13 +15731,9 @@
     {
       "table": "stack_environment_routes",
       "name": "fk_stack_environment_routes_environment_id_stack_environments_id_fk",
-      "columns": [
-        "environment_id"
-      ],
+      "columns": ["environment_id"],
       "tableTo": "stack_environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16180,13 +15742,9 @@
     {
       "table": "stack_environments",
       "name": "fk_stack_environments_stack_id_stacks_id_fk",
-      "columns": [
-        "stack_id"
-      ],
+      "columns": ["stack_id"],
       "tableTo": "stacks",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16195,13 +15753,9 @@
     {
       "table": "stack_environments",
       "name": "fk_stack_environments_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16210,13 +15764,9 @@
     {
       "table": "stack_revisions",
       "name": "fk_stack_revisions_stack_id_stacks_id_fk",
-      "columns": [
-        "stack_id"
-      ],
+      "columns": ["stack_id"],
       "tableTo": "stacks",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16225,13 +15775,9 @@
     {
       "table": "stack_revisions",
       "name": "fk_stack_revisions_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16240,13 +15786,9 @@
     {
       "table": "stack_variables",
       "name": "fk_stack_variables_environment_id_stack_environments_id_fk",
-      "columns": [
-        "environment_id"
-      ],
+      "columns": ["environment_id"],
       "tableTo": "stack_environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16255,13 +15797,9 @@
     {
       "table": "stacks",
       "name": "fk_stacks_project_id_projects_id_fk",
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -16270,13 +15808,9 @@
     {
       "table": "stacks",
       "name": "fk_stacks_estate_id_estates_id_fk",
-      "columns": [
-        "estate_id"
-      ],
+      "columns": ["estate_id"],
       "tableTo": "estates",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16285,13 +15819,9 @@
     {
       "table": "stacks",
       "name": "fk_stacks_created_by_users_id_fk",
-      "columns": [
-        "created_by"
-      ],
+      "columns": ["created_by"],
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -16300,702 +15830,546 @@
     {
       "table": "ai_conversations",
       "name": "ai_conversations_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "ai_messages",
       "name": "ai_messages_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "alepha_sequences",
       "name": "alepha_sequences_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "analytics_prune_floors",
       "name": "analytics_prune_floors_pk",
-      "columns": [
-        "dataset"
-      ],
+      "columns": ["dataset"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "api_keys",
       "name": "api_keys_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "app_instances",
       "name": "app_instances_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "app_secrets",
       "name": "app_secrets_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "areas",
       "name": "areas_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "artifacts",
       "name": "artifacts_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "audits",
       "name": "audits_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "automation_adoptions",
       "name": "automation_adoptions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "automation_events",
       "name": "automation_events_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "automation_receipts",
       "name": "automation_receipts_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "automation_runs",
       "name": "automation_runs_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "automation_variables",
       "name": "automation_variables_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "automations",
       "name": "automations_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "blight_ignore_rules",
       "name": "blight_ignore_rules_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "blights",
       "name": "blights_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "cache_entries",
       "name": "cache_entries_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "dashboard_cards",
       "name": "dashboard_cards_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "dashboard_settings",
       "name": "dashboard_settings_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "deployments",
       "name": "deployments_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "epic_review_items",
       "name": "epic_review_items_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "epic_reviews",
       "name": "epic_reviews_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "epics",
       "name": "epics_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "estate_commands",
       "name": "estate_commands_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "estate_events",
       "name": "estate_events_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "estate_inventories",
       "name": "estate_inventories_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "estate_projects",
       "name": "estate_projects_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "estates",
       "name": "estates_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "feedback",
       "name": "petitions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "feedback_comments",
       "name": "feedback_comments_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "files",
       "name": "files_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folio_blobs",
       "name": "archive_blobs_pk",
-      "columns": [
-        "file_id"
-      ],
+      "columns": ["file_id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folio_directories",
       "name": "archive_directories_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folio_links",
       "name": "folio_links_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folio_names",
       "name": "archive_names_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folio_revisions",
       "name": "folio_revisions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "folios",
       "name": "folios_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "identities",
       "name": "identities_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "job_cron_claims",
       "name": "job_cron_claims_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "job_executions",
       "name": "job_executions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "monitor_heartbeats",
       "name": "monitor_heartbeats_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "monitor_incidents",
       "name": "monitor_incidents_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "monitors",
       "name": "monitors_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "notification_deliveries",
       "name": "notification_deliveries_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "notification_inbox",
       "name": "notification_inbox_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "notification_preferences",
       "name": "notification_preferences_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "notification_suppressions",
       "name": "notification_suppressions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "oauth_clients",
       "name": "oauth_clients_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "organization_invitations",
       "name": "organization_invitations_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "organization_members",
       "name": "organization_members_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "organization_ranks",
       "name": "organization_ranks_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "organizations",
       "name": "organizations_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "parameters",
       "name": "parameters_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "project_capabilities",
       "name": "project_capabilities_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "project_dashboard_cards",
       "name": "project_dashboard_cards_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "project_dashboards",
       "name": "project_dashboards_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "project_prompts",
       "name": "project_prompts_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "projects",
       "name": "campaigns_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "quality_runs",
       "name": "quality_runs_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "quest_comments",
       "name": "quest_comments_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "quest_flow_daily",
       "name": "quest_flow_daily_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "quests",
       "name": "quests_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "registry_credentials",
       "name": "registry_credentials_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "releases",
       "name": "chapters_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "sessions",
       "name": "sessions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "sigil_error_groups",
       "name": "sigil_error_groups_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "sigil_uniques_daily",
       "name": "sigil_uniques_daily_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "sigils",
       "name": "sigils_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "stack_deployments",
       "name": "stack_deployments_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "stack_environment_routes",
       "name": "stack_environment_routes_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "stack_environments",
       "name": "stack_environments_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "stack_revisions",
       "name": "stack_revisions_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "stack_variables",
       "name": "stack_variables_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "stacks",
       "name": "stacks_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "users",
       "name": "users_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
       "table": "verification",
       "name": "verification_pk",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
