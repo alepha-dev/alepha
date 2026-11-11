@@ -12,7 +12,6 @@ import { Link, useRouter } from "alepha/react/router";
 import { Home, LayoutGrid, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
-  type MouseEvent,
   type ReactNode,
   useEffect,
   useId,
@@ -68,7 +67,7 @@ const ProjectRail = () => {
     { id: number; before: number[] } | undefined
   >(undefined);
   const [announcement, setAnnouncement] = useState("");
-  // Set by a pointer drop, read by the click the same pointerup fires.
+  // Set while a pointer drag runs, read by the click its pointerup fires.
   const dropped = useRef(false);
   const sensors = useSensors(
     // Without a distance a plain click would start a drag, and a click must
@@ -86,6 +85,19 @@ const ProjectRail = () => {
     .filter((it) => it !== undefined && !it.archivedAt)
     .map((it) => it!);
   const ids = pinned.map((it) => it.id);
+
+  // The click a drop ends with must not follow the link it was released
+  // on. dnd-kit stops that click's propagation at `document`, so no React
+  // handler ever hears it, but it does not prevent its default: the anchor
+  // then navigates natively, reloading the page and dropping the save in
+  // flight. Prevented here, from `window`, which the event reaches first.
+  useEffect(() => {
+    const swallow = (event: MouseEvent) => {
+      if (dropped.current) event.preventDefault();
+    };
+    window.addEventListener("click", swallow, true);
+    return () => window.removeEventListener("click", swallow, true);
+  }, []);
 
   // The keyboard move re-renders the list, which can take focus off the icon
   // being moved: give it back.
@@ -111,27 +123,25 @@ const ProjectRail = () => {
   const full = ids.length >= USER_DOCK_CAP;
   const busy = actions.pin.loading || actions.unpin.loading;
 
-  const onDragEnd = (event: DragEndEvent) => {
-    setDragging(false);
+  // A drop's click is held from the moment a drag starts until the next
+  // press: the pointerup that drops an icon also clicks the link under it.
+  const onDragStart = () => {
+    setDragging(true);
     dropped.current = true;
-    // The click fires right after the pointerup that ended the drag; past
-    // this frame, clicks are clicks again.
-    setTimeout(() => {
-      dropped.current = false;
-    }, 0);
+  };
+
+  const settle = () => {
+    setDragging(false);
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    settle();
     const from = ids.indexOf(Number(event.active.id));
     const to = event.over ? ids.indexOf(Number(event.over.id)) : -1;
     if (from < 0 || to < 0 || from === to) return;
     const next = [...ids];
     next.splice(to, 0, ...next.splice(from, 1));
     void actions.move(next);
-  };
-
-  const onClickCapture = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (dropped.current) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
   };
 
   const onKeyDown =
@@ -204,13 +214,18 @@ const ProjectRail = () => {
       <DndContext
         id={dndId}
         sensors={sensors}
-        onDragStart={() => setDragging(true)}
-        onDragCancel={() => setDragging(false)}
+        onDragStart={onDragStart}
+        onDragCancel={settle}
         onDragEnd={onDragEnd}
       >
         <div
           ref={pinsRef}
           data-testid="project-rail-pins"
+          // A new press is a new gesture: a click is a click again. Capture,
+          // so it runs before the icon's own drag listener.
+          onPointerDownCapture={() => {
+            dropped.current = false;
+          }}
           // `px` leaves room for the marker and the ring, which an
           // `overflow` container would otherwise clip.
           className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-y-auto px-3 py-1"
@@ -223,7 +238,6 @@ const ProjectRail = () => {
               dragging={dragging}
               picked={picked?.id === it.id}
               onKeyDown={onKeyDown(it.id)}
-              onClickCapture={onClickCapture}
               describedBy={hintId}
               menu={
                 <ProjectRailMenu

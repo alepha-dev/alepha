@@ -34,6 +34,8 @@ export const MyProjectsPinSwitch = (props: MyProjectsPinSwitchProps) => {
       checked={props.pinned}
       disabled={props.busy || blocked}
       onCheckedChange={props.onChange}
+      // The row opens the project on a click: a switch is not that click.
+      onClick={(event) => event.stopPropagation()}
       aria-label={tr("account.projects.pin", { args: [props.project.title] })}
       data-testid="account-project-pin"
       data-project-id={props.project.id}

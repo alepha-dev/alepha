@@ -11,7 +11,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Link, useRouter } from "alepha/react/router";
 import {
   type KeyboardEvent,
-  type MouseEvent,
+  type PointerEventHandler,
   type ReactNode,
   useEffect,
   useRef,
@@ -48,11 +48,6 @@ export interface ProjectRailItemProps {
    */
   picked?: boolean;
   onKeyDown?: (event: KeyboardEvent<HTMLAnchorElement>) => void;
-  /**
-   * Swallows the click a pointer drag ends with, so a drop does not also
-   * open the project.
-   */
-  onClickCapture?: (event: MouseEvent<HTMLAnchorElement>) => void;
   /**
    * Describes the keyboard reorder to a screen reader.
    */
@@ -95,8 +90,9 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
   }, [active]);
 
   return (
-    // The wrapper carries dnd-kit's refs and pointer listeners: `Link`
-    // forwards no ref. Only the listeners, not `attributes`: the link is the
+    // The wrapper carries dnd-kit's refs and pointer listener: `Link`
+    // forwards no ref. Only the pointer listener, not `attributes` nor the
+    // keyboard one: the link is the
     // focusable element, and the keyboard reorder is the rail's own.
     <div
       ref={(node) => {
@@ -104,7 +100,16 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
         setDragRef(node);
         setDropRef(node);
       }}
-      {...(sortable ? listeners : {})}
+      // In the capture phase: the context-menu and hover-card triggers
+      // inside handle `pointerdown` themselves, and a bubbling listener here
+      // never heard it, so no drag ever started.
+      onPointerDownCapture={
+        sortable
+          ? (listeners?.onPointerDown as
+              | PointerEventHandler<HTMLDivElement>
+              | undefined)
+          : undefined
+      }
       data-testid="project-rail-slot"
       style={{
         transform: CSS.Translate.toString(transform),
@@ -145,7 +150,6 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
                   data-project-id={project.id}
                   draggable={false}
                   onKeyDown={props.onKeyDown}
-                  onClickCapture={props.onClickCapture}
                   className={cn(
                     "group/rail relative flex shrink-0 rounded-2xl",
                     props.temporary && "opacity-50 hover:opacity-100",
