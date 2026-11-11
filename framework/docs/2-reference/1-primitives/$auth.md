@@ -37,14 +37,17 @@ class AuthProviders {
     },
   });
 
-  // External OIDC provider
+  // External OIDC provider: no user table, the provider's tokens are the
+  // session. The callback is served at `/oauth/callback`.
   keycloak = $auth({
     oidc: {
-      issuer: "https://auth.example.com",
+      issuer: "https://auth.example.com/realms/acme",
       clientId: "my-app",
       clientSecret: "secret",
-      redirectUri: "/auth/callback",
     },
   });
+
+  // Verifies the provider's tokens, from its discovery.
+  keycloakIssuer = $issuer({ oidc: () => this.keycloak });
 }
 ```

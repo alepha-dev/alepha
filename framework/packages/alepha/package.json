@@ -505,6 +505,11 @@
       "import": "./src/testing/faker/index.ts",
       "default": "./src/testing/faker/index.ts"
     },
+    "./testing/oidc": {
+      "types": "./src/testing/oidc/index.ts",
+      "import": "./src/testing/oidc/index.ts",
+      "default": "./src/testing/oidc/index.ts"
+    },
     "./testing/playwright": {
       "types": "./src/testing/playwright/index.ts",
       "import": "./src/testing/playwright/index.ts",
@@ -1020,6 +1025,11 @@
         "types": "./dist/testing/faker/index.d.ts",
         "import": "./dist/testing/faker/index.js",
         "default": "./dist/testing/faker/index.js"
+      },
+      "./testing/oidc": {
+        "types": "./dist/testing/oidc/index.d.ts",
+        "import": "./dist/testing/oidc/index.js",
+        "default": "./dist/testing/oidc/index.js"
       },
       "./testing/playwright": {
         "types": "./dist/testing/playwright/index.d.ts",

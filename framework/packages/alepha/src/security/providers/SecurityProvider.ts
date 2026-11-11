@@ -21,6 +21,10 @@ import type {
   JWTPayload,
   JWTVerifyOptions,
 } from "../interfaces/Jose.ts";
+import type {
+  OidcIssuerSource,
+  TokenExpectation,
+} from "../interfaces/OidcIssuerSource.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import type { PermissionCatalogue } from "../schemas/permissionCatalogueSchema.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
@@ -121,10 +125,12 @@ export class SecurityProvider {
       for (const realm of this.realms) {
         if (realm.signing) {
           await this.jwt.setSigningKey(realm.name, realm.signing);
+        } else if (realm.oidc) {
+          this.jwt.setOidcKeyLoader(realm.name, realm.oidc, realm.expect);
         } else if (realm.secret) {
           const secret =
             typeof realm.secret === "function" ? realm.secret() : realm.secret;
-          this.jwt.setKeyLoader(realm.name, secret);
+          this.jwt.setKeyLoader(realm.name, secret, realm.expect);
         }
 
         // Register default JWT resolver for realms without resolvers
@@ -632,10 +638,15 @@ export class SecurityProvider {
       typeof payload.given_name === "string" ? payload.given_name : undefined;
     const lastName =
       typeof payload.family_name === "string" ? payload.family_name : undefined;
-    const credential = realmName
+    // A realm this process signs for only: an external IdP's `client_id`
+    // (RFC 9068 makes it a required claim of a JWT access token) is not an
+    // OAuth grant of ours, and reading it as one turned every person signed
+    // in through it into a machine credential.
+    const ownRealm = !!realmName && this.jwt.isTokenIssuer(realmName);
+    const credential = ownRealm
       ? this.getCredentialFromPayload(payload, realmName)
       : undefined;
-    const permissionScope = realmName
+    const permissionScope = ownRealm
       ? this.getPermissionScopeFromPayload(payload)
       : undefined;
     const rolesFromSystem = this.getRoles(realmName);
@@ -1630,6 +1641,19 @@ export interface Realm {
    * Can be also a JWKS URL.
    */
   secret?: string | JSONWebKeySet | (() => string);
+
+  /**
+   * A federated realm fed by an OIDC provider's discovery: its keys, its
+   * expected issuer and its client id are read on the first token verified.
+   * Takes precedence over `secret`.
+   */
+  oidc?: () => OidcIssuerSource;
+
+  /**
+   * What a federated realm's tokens must carry beyond a valid signature.
+   * With `oidc`, overrides what discovery gives.
+   */
+  expect?: TokenExpectation;
 
   /**
    * Asymmetric signing config. When set, this realm signs its tokens with an

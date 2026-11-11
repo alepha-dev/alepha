@@ -1,0 +1,53 @@
+{
+  "realm": "acme",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Anyone who can sign in"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "acme-web",
+      "name": "OIDC example",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "rootUrl": "http://localhost:3316",
+      "redirectUris": ["http://localhost:3316/oauth/callback"],
+      "webOrigins": ["http://localhost:3316"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3316/*",
+        "backchannel.logout.url": "http://host.docker.internal:3316/oauth/backchannel-logout?provider=keycloak",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "frontchannelLogout": false
+    }
+  ],
+  "users": [
+    {
+      "username": "ada",
+      "enabled": true,
+      "email": "ada@example.com",
+      "emailVerified": true,
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ada",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user", "default-roles-acme"]
+    }
+  ]
+}
