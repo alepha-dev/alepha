@@ -27,6 +27,10 @@ import type {
   JWTVerifyResult,
   KeyObject,
 } from "../interfaces/Jose.ts";
+import type {
+  OidcIssuerSource,
+  TokenExpectation,
+} from "../interfaces/OidcIssuerSource.ts";
 
 /**
  * Provides utilities for working with JSON Web Tokens (JWT).
@@ -136,16 +140,27 @@ export class JwtProvider {
   /**
    * Adds a key loader to the embedded keystore.
    *
+   * `expect` is what a federated realm's tokens must carry beyond a valid
+   * signature: an issuer, an audience. A JWKS realm registered without an
+   * expected issuer warns once, here: it accepts any token its keys verify.
+   *
    * @param name
    * @param secretKeyOrJwks
+   * @param expect
    */
-  public setKeyLoader(name: string, secretKeyOrJwks: string | JSONWebKeySet) {
+  public setKeyLoader(
+    name: string,
+    secretKeyOrJwks: string | JSONWebKeySet,
+    expect?: TokenExpectation,
+  ) {
     if (typeof secretKeyOrJwks === "object") {
       this.log.debug(`will verify JWTs from key '${name}' with JWKS object`);
       this.keystore.push({
         name,
         keyLoader: createLocalJWKSet(secretKeyOrJwks),
+        ...this.expectation(expect),
       });
+      this.warnWithoutIssuer(name, expect);
     } else if (this.isSecretKey(secretKeyOrJwks)) {
       const secretKey = this.encoder.encode(secretKeyOrJwks);
       this.log.debug(`will verify JWTs from issuer '${name}' with secret key`);
@@ -164,8 +179,111 @@ export class JwtProvider {
       this.keystore.push({
         name,
         keyLoader: createRemoteJWKSet(new URL(secretKeyOrJwks)),
+        ...this.expectation(expect),
       });
+      this.warnWithoutIssuer(name, expect);
     }
+  }
+
+  /**
+   * Adds a federated realm fed by an OIDC provider's discovery.
+   *
+   * Nothing is fetched here: a relying party must boot while its provider is
+   * unreachable. The first token verified runs discovery, which gives the
+   * expected issuer and the JWKS url, and one remote JWKS is built from it
+   * and kept. A failed discovery refuses that token and is not remembered,
+   * so the next one tries again (`getOAuth` keeps its initializer until it
+   * succeeds).
+   *
+   * The token must carry the discovered issuer, and name the client in `aud`
+   * or else in `azp`. `overrides` replaces either default.
+   */
+  public setOidcKeyLoader(
+    name: string,
+    source: () => OidcIssuerSource,
+    overrides?: TokenExpectation,
+  ): void {
+    let remote: KeyLoader | undefined;
+
+    const metadata = async () => {
+      const oauth = await source().getOAuth();
+      if (!oauth) {
+        throw new AlephaError(
+          `The OIDC provider of issuer '${name}' has no discovery`,
+        );
+      }
+      return oauth.serverMetadata();
+    };
+
+    this.log.debug(
+      `will verify JWTs from issuer '${name}' with OIDC discovery`,
+    );
+
+    this.keystore.push({
+      name,
+      keyLoader: async (header, token) => {
+        if (!remote) {
+          const { jwks_uri } = await metadata();
+          if (!jwks_uri) {
+            throw new AlephaError(
+              `The OIDC provider of issuer '${name}' advertises no jwks_uri`,
+            );
+          }
+          remote = createRemoteJWKSet(new URL(jwks_uri)) as KeyLoader;
+        }
+        return remote(header, token);
+      },
+      expected: async () => {
+        const { issuer } = await metadata();
+        const { clientId } = source();
+        return {
+          issuer: overrides?.issuer ?? issuer,
+          audience: overrides?.audience ?? clientId,
+          clientId,
+        };
+      },
+    });
+  }
+
+  protected expectation(
+    expect?: TokenExpectation,
+  ): Pick<KeyLoaderHolder, "expected"> {
+    if (!expect?.issuer && !expect?.audience) {
+      return {};
+    }
+    return { expected: () => Promise.resolve(expect) };
+  }
+
+  protected warnWithoutIssuer(name: string, expect?: TokenExpectation): void {
+    if (!expect?.issuer) {
+      this.log.warn(
+        `Issuer '${name}' verifies tokens against a JWKS with no expected issuer: any token those keys verify is accepted. Set issuer and audience on its $issuer, or use $issuer({ oidc }).`,
+      );
+    }
+  }
+
+  /**
+   * The client check of a federated token: `aud` carries one of the expected
+   * audiences, or, failing that, `azp` names the client.
+   */
+  public matchesExpectedClient(
+    payload: { aud?: string | string[]; azp?: unknown },
+    expected: TokenExpectation,
+  ): boolean {
+    const audiences =
+      expected.audience === undefined ? [] : [expected.audience].flat();
+    const client =
+      expected.clientId ?? (audiences.length === 1 ? audiences[0] : undefined);
+    if (audiences.length === 0 && !client) {
+      return true;
+    }
+
+    const aud = payload.aud === undefined ? [] : [payload.aud].flat();
+    if (audiences.some((it) => aud.includes(it))) {
+      return true;
+    }
+
+    return !!client && payload.azp === client;
   }
 
   /**
@@ -251,14 +369,26 @@ export class JwtProvider {
       });
 
       try {
+        // A federated realm's expectations: resolved per token, since an OIDC
+        // realm knows its issuer only after discovery.
+        const expected = await it.expected?.();
+
         const verified = {
           keyName: it.name,
-          result: await jwtVerify(token, it.keyLoader, {
+          result: await jwtVerify<ExtendedJWTPayload>(token, it.keyLoader, {
             currentDate: this.dateTimeProvider.now().toDate(),
             ...(it.algorithms ? { algorithms: it.algorithms } : {}),
+            ...(expected?.issuer ? { issuer: expected.issuer } : {}),
             ...options,
           }),
         };
+
+        if (
+          expected &&
+          !this.matchesExpectedClient(verified.result.payload, expected)
+        ) {
+          throw new InvalidTokenError("Token was issued to another client");
+        }
 
         this.log.trace("Token verified successfully", {
           keyName: verified.keyName,
@@ -267,6 +397,10 @@ export class JwtProvider {
         return verified;
       } catch (error) {
         this.log.trace("Token verification has failed", error);
+
+        if (error instanceof InvalidTokenError) {
+          throw error;
+        }
 
         if (error instanceof JWTExpired) {
           throw new InvalidTokenError("Token expired", { cause: error });
@@ -360,6 +494,12 @@ export interface KeyLoaderHolder {
    * IdP chooses its own algorithm (RS256/ES256/…) and may rotate it.
    */
   algorithms?: string[];
+  /**
+   * What a token must carry beyond a valid signature, for a federated realm:
+   * resolved on each verification, because an OIDC realm learns its issuer
+   * from discovery.
+   */
+  expected?: () => Promise<TokenExpectation>;
 }
 
 export interface SignerHolder {

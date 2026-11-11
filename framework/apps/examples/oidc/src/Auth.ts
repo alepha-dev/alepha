@@ -34,10 +34,13 @@ export class Auth {
 
   /**
    * Verifies the provider's access tokens, on every request that carries
-   * one: the session cookie's, or a bearer token.
+   * one: the session cookie's, or a bearer token. Fed by the provider's
+   * discovery, on the first token: its keys, its issuer (`iss`) and the
+   * client (`aud`, else `azp`), so a token minted for another client of the
+   * same realm is refused.
    */
   public readonly issuer = $issuer({
     name: "keycloak",
-    jwks: () => `${this.env.OIDC_ISSUER}/protocol/openid-connect/certs`,
+    oidc: () => this.keycloak,
   });
 }

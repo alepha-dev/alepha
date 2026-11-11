@@ -309,12 +309,21 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     return undefined;
   }
 
-  public get jwks_uri(): string {
-    const jwks = this.oauth?.serverMetadata().jwks_uri;
-    if (!jwks) {
-      throw new AlephaError("No JWKS URI available for the auth provider");
+  /**
+   * The client id this app is registered under at the provider. What a
+   * federated `$issuer({ oidc: () => this.provider })` expects in a token's
+   * `aud`, or else its `azp`.
+   */
+  public get clientId(): string {
+    if ("oidc" in this.options) {
+      return this.options.oidc.clientId;
     }
-    return jwks;
+    if ("oauth" in this.options) {
+      return this.options.oauth.clientId;
+    }
+    throw new AlephaError(
+      `Auth provider '${this.name}' is not an OAuth2 or OIDC client`,
+    );
   }
 
   public get scope(): string | undefined {

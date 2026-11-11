@@ -67,11 +67,39 @@ issuer = $issuer({
 });
 ```
 
-An **external** issuer verifies tokens from an external provider (Auth0, Keycloak, etc.) using JWKS:
+An **external** issuer verifies tokens from an identity provider it does not
+hold the keys of (Keycloak, Auth0, Entra ID). It has two forms.
+
+The `oidc` form points at the `$auth` that signs users in, and reads
+everything from the provider's discovery: the keys, the issuer every token
+must carry, and the client id:
+
+```typescript
+class Auth {
+  keycloak = $auth({
+    oidc: {
+      issuer: "https://idp.example.com/realms/acme",
+      clientId: "acme-web",
+    },
+  });
+
+  issuer = $issuer({ oidc: () => this.keycloak });
+}
+```
+
+Discovery runs on the first token verified, never at boot, so the app starts
+while its provider is unreachable; a token that arrives before discovery
+succeeds is refused, and the next one tries again. `issuer` or `audience`
+written beside `oidc` replaces the discovered value, for an IdP that puts an
+API identifier in `aud`.
+
+The `jwks` form takes the key set and the expectations by hand:
 
 ```typescript
 issuer = $issuer({
   jwks: () => "https://your-tenant.auth0.com/.well-known/jwks.json",
+  issuer: "https://your-tenant.auth0.com/",
+  audience: "my-app",
   profile: (payload) => ({
     id: payload.sub,
     email: payload.email,
@@ -79,6 +107,16 @@ issuer = $issuer({
   }),
 });
 ```
+
+Either way a token passes only when its `iss` is the expected issuer and its
+`aud` carries the audience, or, failing that, its `azp` names the client:
+Keycloak's default access token says `aud: "account"` and `azp: "<client>"`.
+On a shared realm every client's tokens are signed with the same keys, so
+without this check a token minted for another client would authenticate. A
+`jwks` issuer with no `issuer` warns once at start.
+
+A federated token's `client_id` and `permission_scope` claims are not read:
+they mark a grant of an Alepha realm, and an IdP's token is a person's.
 
 ### Token Lifecycle
 
