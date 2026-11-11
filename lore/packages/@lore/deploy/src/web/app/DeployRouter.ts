@@ -1,4 +1,3 @@
-import { AccountRouter } from "@alepha/ui/account";
 import { reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
@@ -13,14 +12,13 @@ import {
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
-import { $secure } from "alepha/security";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
-import type { EstateController } from "../../api/controllers/EstateController.ts";
+import type { ProjectEstateController } from "../../api/controllers/ProjectEstateController.ts";
 import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
@@ -63,30 +61,31 @@ export class DeployRouter {
   reportsUrl = $inject(ReportsUrlQuery);
   reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
-  estateApi = $client<EstateController>();
+  lendingApi = $client<ProjectEstateController>();
   router = $inject(ReactRouter);
-  account = $inject(AccountRouter);
   /**
    * The console for one `bay` estate: what is running on the machine, what it
    * costs, and the buttons that act on it.
    *
-   * ⚠️ **Inside the account shell, at `/account/estates/:estateId`** (#E68).
-   * An estate belongs to a user, not a project, so its console is a detail
-   * page under the account's Estates entry, the way `/admin/users/:id` sits
-   * under Users. Every route here carries `nav: { hidden: true }`: none is a
-   * sidebar entry, and `isActivePath`'s prefix match keeps "Estates" lit on
-   * all of them. The route NAMES kept, only the paths moved, and `/bay/:id`
-   * was removed with no redirect (pre-v1).
+   * ⚠️ **Under its home project, at `/:projectSlug/estates/:estateSlug`.**
+   * An estate belongs to a project since #E126, so its console is a project
+   * page, the way an app copy's is, and there is no account page for estates
+   * any more. It was `/account/estates/:estateId`, removed with no redirect
+   * (pre-v1). Every route here carries `nav: { hidden: true }`: the entry
+   * point is the project's Settings ▸ Apps ▸ Estates list.
    *
-   * `/account/estates` is under the account's root, so it never meets the
-   * machine-facing `/estates` pull routes at the application root.
+   * The param is the slug: a slug is unique per home project, so the pair
+   * names one estate. A project an estate is only lent to never shows it
+   * under its own slug: its rows link to the console under the home, which
+   * answers 403 to anyone who is not a member there.
    *
-   * The param is the uuid, not the slug: a slug is unique per OWNER, and the
-   * URL has to name one estate among everyone's.
+   * ⚠️ `:estateSlug`, never `:slug` or `:id`: one param name per tree
+   * position, the trap `projectApp` documents.
    */
-  bay = $page({
-    parent: this.account.layout,
-    nav: { hidden: true, label: "Estate" },
+  bay = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "bay",
+    path: "/estates/:estateSlug",
     children: () => [
       this.bayOverview,
       this.bayApps,
@@ -94,29 +93,26 @@ export class DeployRouter {
       this.bayCommands,
       this.baySettings,
     ],
-    name: "bay",
-    path: "/estates/:estateId",
-    // Owner-only, and the 404 comes from the server: `getEstate` goes through
-    // `EstateService.loadOwned`, which answers 404 for anyone else, so a
-    // non-owner gets a real not-found for the whole subtree rather than an
-    // empty console.
-    use: [$secure()],
-    schema: { params: z.object({ estateId: z.string() }) },
-    head: (props) => {
+    schema: { params: z.object({ estateSlug: z.string() }) },
+    head: (props, previous) => {
       const estate = (props as { estate?: { slug?: string } } | undefined)
         ?.estate;
-      return { title: this.account.accountTitle(estate?.slug ?? "Estate") };
+      return {
+        title: `${previous?.title ?? ""} › ${estate?.slug ?? "Estate"}`,
+      };
     },
     lazy: () => import("./components/bay/BayLayout.tsx"),
     loader: async ({ params }) => {
-      // A mistyped or stale URL is a page that does not exist. Without this
-      // the id failed `getEstate`'s UUID schema inside the request encode
-      // and rendered as a server error, logged as a blight (#Q2939).
-      if (!z.uuid().safeParse(params.estateId).success) {
-        throw new NotFoundError("Estate not found");
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
       }
-      const estate = await this.estateApi.getEstate({
-        params: { estateId: params.estateId },
+      // The refusal comes from the server: `getHomeEstate` goes through this
+      // project's gate, which answers 403 to a non-member and 404 to a slug
+      // this project is not the home of, so a stranger gets a real refusal
+      // for the whole subtree rather than an empty console.
+      const estate = await this.lendingApi.getHomeEstate({
+        params: { projectId: project.id, estateSlug: params.estateSlug },
       });
       this.alepha.store.set(currentEstateAtom, estate);
       return { estate };

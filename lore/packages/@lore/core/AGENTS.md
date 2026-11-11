@@ -319,6 +319,12 @@ back: it was removed, and its column was dropped with #E74.
   ownership can be transferred: `organization_members.rank === "owner"` is
   the one answer, and the creator column is history. The old `members` table
   was dropped with #E74.
+- **Estates belong to a project** (#E126): `estates.projectId` is the home,
+  and every estate action is `$ownsProject` on the estate row, so
+  `estate:create`, `estate:update` and `estate:delete` are ordinary project
+  permissions in `OWNER_TODAY` (they were application-scope in
+  `LoreRankBounds.OUT_OF_SCOPE` while an estate was a user's). The Admin
+  preset carries them, Member holds `estate:read` only.
 - **Two acts are owner-only structurally** and are never grantable to a rank:
   `project:delete` and `capability:manage`. One permission is never removable:
   `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
@@ -355,7 +361,7 @@ the effective set, filled by `getProjectBySlug`, and `canInProject` answers
 that spreads a plain project resource hides every rank-gated control on the
 page, the whole sidebar included, until the next navigation.
 
-**One mechanism now, and six documented exceptions.**
+**One mechanism now, and a few documented exceptions.**
 `$ownsProject` (below) is middleware in a `use:` array; it cannot be
 forgotten the way a missing line in a handler can, it runs before the
 handler on every transport including MCP, and it hands the rows it read to
@@ -372,7 +378,8 @@ a `use:` entry cannot serve it. Grep for that marker before adding a seventh:
 - `FeedbackController`'s `ensureOwner` / `ensureMember` - called from handlers, on a project resolved from a feedback row.
 - `ProjectTools`'s project resolver - MCP, and it turns the gate's 403 into a 404 on purpose.
 - `ProjectController.getProjectBySlug` - `$owns` keys on a primary key, and a slug is not one.
-- `EstateCommandController`'s deploy branch - membership on the artifact's project, conditional, while the action's own gate is the estate's owner.
+- `EstateCommandController`'s deploy branch - membership on the artifact's project, conditional, while the action's own gate is the estate's home project.
+- `ProjectEstateController.attachEstate` / `detachEstate` and `EstateController.moveEstate` - the second project of a loan or a move (`estate:lend` in the estate's home, `estate:create` in the target, either side for a detach), a project the path does not name (#E126).
 
 `DashboardScopeService` names `assertMember` and calls neither: a card scoped
 to several projects has no single project to gate on, so it proves each id

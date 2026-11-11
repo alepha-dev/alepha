@@ -55,8 +55,8 @@ const CF_TOKEN = `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`;
 /**
  * The create-and-lend half of the same form.
  *
- * It shares `EstateCreateFields` with `/account/estates`, so what is pinned
- * here is what only this dialog owns: that the type reaches the ONE call
+ * The fields are `EstateCreateFields`'s, so what is pinned here is what only
+ * this dialog owns: that the type reaches the ONE call
  * that creates and lends, and that the trust sentence names what is really
  * being granted. A Cloudflare account is not "a machine", and the sentence
  * sits above the button that grants it.

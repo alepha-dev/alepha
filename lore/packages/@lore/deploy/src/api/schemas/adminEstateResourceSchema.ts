@@ -5,8 +5,9 @@ import { ESTATE_TYPES } from "../entities/estates.ts";
 /**
  * One row of the instance-wide estates list in the admin shell (#1838).
  *
- * The backstop for an estate whose owner is gone or unresponsive: enough to
- * find it, see whether a machine is still behind it, and delete it. Built by
+ * The backstop for an estate with no home, or one whose project is gone:
+ * enough to find it, see whether a machine is still behind it, and assign
+ * it a home or delete it. Built by
  * hand rather than derived from the entity, for the reason the lent view is:
  * a field added to `estates` must be a decision to show here, not a default.
  *
@@ -27,13 +28,18 @@ export const adminEstateResourceSchema = z.object({
    * somebody else's estate needs; the token itself never crosses (#1629).
    */
   accountId: z.string().optional(),
-  ownerUserId: z.uuid(),
   /**
-   * Display name for `ownerUserId`, resolved for the page being displayed.
-   * Optional because the owner may be mid-deletion; the id stays so the row
-   * can link to the user regardless.
+   * The home project (#E126), absent for an estate with no home: the rows
+   * the admin assigns.
    */
-  ownerName: z.string().optional(),
+  project: z
+    .object({ id: z.integer(), title: z.string(), slug: z.string().optional() })
+    .optional(),
+  /**
+   * Who added it, by name, so an estate with no home says whose it was.
+   * Absent when that account is gone.
+   */
+  creator: z.object({ id: z.uuid(), name: z.string() }).optional(),
   online: z.boolean(),
   /**
    * Cloudflare only. Shown instead of the online badge, which means nothing
@@ -44,9 +50,16 @@ export const adminEstateResourceSchema = z.object({
   lastSeenAt: z.string().optional(),
   createdAt: z.datetime(),
   /**
-   * Projects this estate is lent to, counted for the page only.
+   * The projects this estate is lent to, by name, oldest loan first: where
+   * an estate with no home is normally assigned.
    */
-  projectCount: z.integer(),
+  loans: z.array(
+    z.object({
+      id: z.integer(),
+      title: z.string(),
+      slug: z.string().optional(),
+    }),
+  ),
 });
 
 export type AdminEstateResource = Infer<typeof adminEstateResourceSchema>;

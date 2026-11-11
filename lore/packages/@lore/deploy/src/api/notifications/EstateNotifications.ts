@@ -22,7 +22,7 @@ export class EstateNotifications {
   public readonly credentialInvalid = $notification({
     category: "estates",
     description:
-      "Sent to an estate's owner when the nightly check finds that its Cloudflare token has stopped working. Deploys through the estate are refused until the token is replaced.",
+      "Sent to the people who manage an estate when the nightly check finds that its Cloudflare token has stopped working. Deploys through the estate are refused until the token is replaced.",
     email: {
       subject: "A deploy credential stopped working",
       body: (it) => {
@@ -30,10 +30,10 @@ export class EstateNotifications {
         const reason = this.html.escape(it.reason);
         const estatesUrl = encodeURI(it.estatesUrl);
         return `
-        <h1>${slug} — the Cloudflare token stopped working</h1>
+        <h1>${slug}: the Cloudflare token stopped working</h1>
         <p>Lore re-checks every Cloudflare estate once a night. Tonight, <strong>${slug}</strong> did not pass:</p>
         <p><em>${reason}</em></p>
-        <p>Deploys through this estate are refused until you replace the token. Mint a new one at Cloudflare with the same permissions, then open the estate and use <strong>Replace token</strong>.</p>
+        <p>Deploys through this estate are refused until you replace the token. Mint a new one at Cloudflare with the same permissions, then open the estate and use <strong>Replace token</strong>.</p>${it.homeless ? "<p>This estate belongs to no project yet: until an instance admin assigns it one, only you are told, and nobody but an admin can open it.</p>" : ""}
         <p>
           <a href="${estatesUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
             Open my estates
@@ -46,6 +46,11 @@ export class EstateNotifications {
       estateSlug: z.string(),
       reason: z.string(),
       estatesUrl: z.string(),
+      /**
+       * The estate has no home project yet (#E126), so the message says an
+       * admin assigns it.
+       */
+      homeless: z.boolean().optional(),
     }),
   });
 
@@ -58,7 +63,7 @@ export class EstateNotifications {
   public readonly overdue = $notification({
     category: "estates",
     description:
-      "Sent once to an estate's owner when a throwaway estate is past the TTL it was given. Nothing is stopped or deleted.",
+      "Sent once to the people who manage an estate when a throwaway estate is past the TTL it was given. Nothing is stopped or deleted.",
     email: {
       subject: (it) => `${it.estateSlug} is past its expiry`,
       body: (it) => {
@@ -67,7 +72,7 @@ export class EstateNotifications {
         return `
         <h1>${slug} was meant to be gone by now</h1>
         <p>This estate was given a time to live, and it expired at ${this.html.escape(it.expiresAt)}. Lore stops nothing and deletes nothing: the server is still running, and still billing, until you delete it.</p>
-        <p>Delete it with <code>lore estate delete ${slug}</code>, then delete the server with its provider. Or extend it with <code>lore estate update ${slug} --ttl 2h</code>.</p>
+        <p>Delete it with <code>lore estate delete ${slug}</code>, then delete the server with its provider. Or extend it with <code>lore estate update ${slug} --ttl 2h</code>.</p>${it.homeless ? "<p>This estate belongs to no project yet: until an instance admin assigns it one, only you are told, and nobody but an admin can open it.</p>" : ""}
         <p>
           <a href="${estatesUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
             Open my estates
@@ -80,6 +85,10 @@ export class EstateNotifications {
       estateSlug: z.string(),
       expiresAt: z.string(),
       estatesUrl: z.string(),
+      /**
+       * The estate has no home project yet (#E126).
+       */
+      homeless: z.boolean().optional(),
     }),
   });
 
@@ -90,7 +99,7 @@ export class EstateNotifications {
     name: "lore:estate:overdue",
     category: "estates",
     description:
-      "Filed in the owner's header bell when a throwaway estate is past its TTL. Links to the account's estates.",
+      "Filed in the header bell of the people who manage an estate when a throwaway estate is past its TTL. Links to the account's estates.",
     schema: z.object({ estateSlug: z.text(), href: z.text() }),
     inbox: {
       title: (it) => `${it.estateSlug} is past its expiry`,

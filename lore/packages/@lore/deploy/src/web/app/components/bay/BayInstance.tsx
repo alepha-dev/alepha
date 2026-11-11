@@ -1,9 +1,11 @@
 import { Badge, Card, CardContent, formatBytes } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import type { I18n } from "@lore/core/web";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 
+import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
 import BayActions from "./BayActions.tsx";
 import BayBackups from "./BayBackups.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
@@ -41,6 +43,10 @@ const BayInstance = () => {
   const router = useRouter();
   const routerState = useRouterState();
   const { estate, data, refetch } = useBayInventory();
+  const [openEstate] = useStore(currentEstateAtom);
+  // Asking for a tail, reading one, and the backup verbs all need
+  // `estate:update` in the home project (#Q3279).
+  const canTail = openEstate?.can.includes("estate:update") ?? false;
 
   const app = String(routerState.params?.app ?? "");
   const env = String(routerState.params?.env ?? "");
@@ -74,8 +80,8 @@ const BayInstance = () => {
             <h2 className="text-lg font-semibold">{`${app}/${env}`}</h2>
             <BayStateBadge state={state} />
             {row.project?.slug && (
-              // ⚠️ `projectSlug` explicitly: this route holds `estateId`, and
-              // the router merges the current params by name.
+              // ⚠️ `projectSlug` explicitly: this route holds the HOME
+              // project's, and the copy may belong to a borrowing project.
               <a
                 className="text-sm underline-offset-4 hover:underline"
                 href={router.path("app", {
@@ -255,7 +261,7 @@ const BayInstance = () => {
         </Card>
       )}
 
-      {reported?.backups && (
+      {reported?.backups && canTail && (
         <BayBackups
           app={app}
           env={env}
@@ -264,7 +270,8 @@ const BayInstance = () => {
         />
       )}
 
-      <BayLogTail app={app} env={env} />
+      {/* Asking for a tail and reading one need `estate:update` (#Q3279). */}
+      {canTail && <BayLogTail app={app} env={env} />}
     </AccountPage>
   );
 };

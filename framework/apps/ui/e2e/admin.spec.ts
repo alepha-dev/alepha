@@ -31,6 +31,11 @@ const PAGES = [
   { path: "parameters", heading: "Admin: parameters", content: "Limits" },
   { path: "analytics", heading: "Admin: analytics", content: "pageviews" },
   { path: "payments", heading: "Admin: payments", content: "pi_showcase" },
+  {
+    path: "webhooks",
+    heading: "Admin: webhooks",
+    content: "fulfilment.example.app",
+  },
   { path: "audits", heading: "Admin: audit log", content: "user:login" },
 ] as const;
 

@@ -186,7 +186,8 @@ nothing is revealed afterwards either.
 
 Once a night Lore asks Cloudflare again about every Cloudflare estate. If a
 token has stopped passing, the estate shows as **credential invalid** with the
-reason, and its owner gets one email. So a token revoked or narrowed at
+reason, and every member of its project whose rank grants `estate:update` gets
+one email. So a token revoked or narrowed at
 Cloudflare is reported within a day, rather than by the first deploy that fails.
 
 The **Check again** button in the estate's drawer does the same thing on demand,

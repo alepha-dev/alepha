@@ -44,3 +44,5 @@ Complete authentication and authorization system with JWT, RBAC, and multi-issue
 - [`PermissionRegistryProvider`](/docs/reference-providers-permissionregistryprovider) - Answers "does the caller hold this permission?" from the set the server sent
 - [`ResourceGateMemoProvider`](/docs/reference-providers-resourcegatememoprovider) - Request-scoped memo for the reads `$owns` performs to make its decision.
 - [`ResourceGrantsProvider`](/docs/reference-providers-resourcegrantsprovider) - The seam between `$owns` and whatever decides what a member may do
+- [`WebhookSigner`](/docs/reference-providers-webhooksigner) - Signs webhook requests the Standard Webhooks way
+- [`WebhookVerifier`](/docs/reference-providers-webhookverifier) - Verifies a Standard Webhooks request (https://www.standardwebhooks.com),

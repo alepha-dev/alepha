@@ -27,6 +27,7 @@ import {
   type Estate,
   estates,
 } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
@@ -111,7 +112,7 @@ const enrol = async (
   user: UserAccountToken,
   slug: string,
 ): Promise<Machine> => {
-  const minted = await ctx.estateApi.createEstate({ body: { slug } }, { user });
+  const minted = await createTestEstate(ctx.alepha, user, { slug });
   await ctx.repos.estates.updateById(minted.id, { deployAllowed: true });
   return {
     estate: await ctx.repos.estates.getOne({

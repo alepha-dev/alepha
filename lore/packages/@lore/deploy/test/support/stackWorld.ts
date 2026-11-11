@@ -115,6 +115,9 @@ export const lentBayEstate = async (
 ) => {
   const estate = await w.rows.estates.create({
     ownerUserId: w.user.id,
+    // Homed in the world's project, which its user owns (#E126).
+    projectId: w.project.id,
+    createdBy: w.user.id,
     slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
     type: "bay",
     deployAllowed: options.deployAllowed ?? true,

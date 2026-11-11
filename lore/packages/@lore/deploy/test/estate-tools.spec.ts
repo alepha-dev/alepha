@@ -9,12 +9,13 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  EstateController,
   EstateStatsService,
   LoreDeployApi,
+  ProjectEstateController,
 } from "../src/api/index.ts";
 import { EstateTools, LoreDeployMcp } from "../src/mcp/index.ts";
 import { estates } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 class EstateRepositories {
@@ -69,9 +70,7 @@ describe("estate MCP tools", () => {
 
   const arrange = async () => {
     const owner = await newUser();
-    const minted = await alepha
-      .inject(EstateController)
-      .createEstate({ body: { slug: "vps-ovh" } }, { user: owner });
+    const minted = await createTestEstate(alepha, owner, { slug: "vps-ovh" });
     const repo = repos.estates;
     await repo.updateById(minted.id, { collectSeries: true });
     const row = await repo.getOne({ where: { id: { eq: minted.id } } });
@@ -108,14 +107,41 @@ describe("estate MCP tools", () => {
     });
   });
 
-  it("knows no estate of another owner, by the same answer as a missing one", async ({
+  it("knows no estate of a project the caller is not in, by the same answer as a missing one", async ({
     expect,
   }) => {
     await arrange();
     const stranger = await newUser();
 
     await expect(stats(stranger, { estate: "vps-ovh" })).rejects.toThrow(
-      "You own no estate named vps-ovh",
+      "No estate named vps-ovh that you can read",
     );
+  });
+
+  it("refuses a slug two readable estates share, and home picks one", async ({
+    expect,
+  }) => {
+    const { owner } = await arrange();
+    // A second project of the same owner, with its own vps-ovh: a slug is
+    // unique per home project (#E126).
+    const second = await createTestEstate(alepha, owner, { slug: "vps-ovh" });
+    const home = await alepha
+      .inject(ProjectEstateController)
+      .listHomeEstates(
+        { params: { projectId: second.projectId } },
+        { user: owner },
+      );
+    const homeSlug = home.items[0]!.project!.slug!;
+
+    await expect(stats(owner, { estate: "vps-ovh" })).rejects.toThrow(
+      /Several estates are named vps-ovh.*Pass home/,
+    );
+    const picked = await stats(owner, { estate: "vps-ovh", home: homeSlug });
+    expect(picked.collecting).toBe(false);
+    const narrowed = await stats(owner, {
+      estate: "vps-ovh",
+      project: second.projectId,
+    });
+    expect(narrowed.collecting).toBe(false);
   });
 });

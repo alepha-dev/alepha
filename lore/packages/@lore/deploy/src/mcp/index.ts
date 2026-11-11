@@ -29,7 +29,7 @@ export const LoreDeployMcp = $module({
     InsightsTools,
     // Stacks for agents (#Q2697).
     StackTools,
-    // An estate's stats, read-only and owner-only (#Q3047).
+    // An estate's stats, read-only, for the members of its home project (#Q3047).
     EstateTools,
   ],
 });

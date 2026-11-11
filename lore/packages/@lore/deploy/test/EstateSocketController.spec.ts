@@ -26,6 +26,7 @@ import {
   estates,
   type EstateStatsFrame,
 } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
@@ -189,10 +190,7 @@ const mint = async (
   owner: UserAccountToken,
   slug: string,
 ) => {
-  const minted = await ctx.estateApi.createEstate(
-    { body: { slug } },
-    { user: owner },
-  );
+  const minted = await createTestEstate(ctx.alepha, owner, { slug });
   // A bay create always mints. The response type allows an absent secret
   // because a cloudflare create mints nothing (#1629), and this whole spec
   // is about the machine that dials in with one.

@@ -326,7 +326,9 @@ export interface JobPrimitiveOptions<
    * **Call it after the commit, not inside a transaction.** An email cannot be
    * rolled back, so sending inside a transaction that later fails means
    * mailing a code for a row that no longer exists. `inline` buys ordering
-   * (the caller learns before it commits), not transactionality.
+   * (the caller learns before it commits), not transactionality. Unlike every
+   * other push, which waits for the commit, an inline push inside a
+   * transaction still runs its handler before the commit.
    *
    * Declared here it is the job's default; {@link PushOptions.inline} overrides
    * it per call, which is the form most callers want - see there for why.
@@ -424,6 +426,23 @@ export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
 
   /**
    * Push a single payload to the queue (queue-mode only).
+   *
+   * Inside a transaction the execution row is written in it, and the job is
+   * dispatched once the OUTERMOST transaction has committed: a rollback
+   * leaves no row and never runs the handler, a commit runs it right after,
+   * outside the caller's transaction. Outside a transaction, and on a driver
+   * without one (D1), it is dispatched at once.
+   *
+   * An `inline` push is the exception: it runs the handler in the caller, so
+   * inside a transaction it still runs before the commit.
+   *
+   * @example
+   * ```ts
+   * await this.db.transactional(async () => {
+   *   const order = await this.orders.create(input);
+   *   await this.confirmation.push({ orderId: order.id }); // runs after COMMIT
+   * });
+   * ```
    */
   public async push(payload: Infer<T>, options?: PushOptions): Promise<string> {
     return this.jobProvider.push(this.name, payload, options);
@@ -432,6 +451,9 @@ export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
   /**
    * Push multiple payloads at once (queue-mode only).
    * Batched INSERT + batched queue send when supported.
+   *
+   * Inside a transaction the rows are written in it and dispatched after the
+   * outermost commit, as with {@link push}; a rollback discards them all.
    */
   public async pushMany(items: Array<PushManyItem<T>>): Promise<string[]> {
     return this.jobProvider.pushMany(this.name, items);

@@ -25,16 +25,20 @@ import type {
   LentEstateResource,
   ProjectEstateController,
 } from "../../../../../api/controllers/ProjectEstateController.ts";
+import type { OwnedEstateResource } from "../../../../../api/schemas/ownedEstateResourceSchema.ts";
+import EstateDrawer from "../../estates/EstateDrawer.tsx";
 import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.tsx";
+import ProjectSettingsHomeEstateRow from "./ProjectSettingsHomeEstateRow.tsx";
 
 /**
- * Where this project can deploy: the estates that have been lent to it.
+ * The project's estates (#E126): the ones it is the home of, which its
+ * members manage by rank, and the ones it borrows, which it may only deploy
+ * onto. Since estates left the account this is THE estates list: a `bay`
+ * row opens its console under this project, a `cloudflare` row its drawer.
  *
- * An estate belongs to a user, not to the project, so this page never
- * creates or deletes one on its own account. It lends and withdraws: "add"
- * picks one of the caller's own estates (or mints a new one and lends it in
- * the same step), and "detach" withdraws the loan. Both need `estate:lend`
+ * "Add" lends one of the estates the caller can see here (or mints a new one,
+ * homed and lent here in the same step), and "detach" withdraws a loan. Both need `estate:lend`
  * server-side; the button is disabled here for a rank without it, with a
  * tooltip, a UX hint rather than a second authorization boundary.
  *
@@ -54,6 +58,7 @@ const ProjectSettingsEstatesPage = () => {
 
   const [items, setItems] = useState<LentEstateResource[] | undefined>();
   const [adding, setAdding] = useState(false);
+  const [openId, setOpenId] = useState<string | undefined>();
   /**
    * The one moment a freshly minted secret is readable. Cleared as soon as
    * it is dismissed; nothing can show it again.
@@ -72,6 +77,40 @@ const ProjectSettingsEstatesPage = () => {
       onSuccess: (res) => setItems(res.items),
     },
     [api, project?.id],
+  );
+
+  // The estates this project is the home of (#E126), lent here or not: the
+  // ones its members manage. The list above it is what it may deploy onto.
+  const home = useQuery(
+    {
+      enabled: project !== undefined,
+      key: ["project-home-estates", project?.id],
+      handler: () =>
+        api.listHomeEstates({ params: { projectId: project?.id as number } }),
+    },
+    [api, project?.id],
+  );
+  const homeItems = home.data?.items;
+  // Resolved from the list rather than held as its own copy, so a switch
+  // saved in the drawer redraws it from the same row the list shows.
+  const open = (homeItems ?? []).find((item) => item.id === openId);
+  const lentIds = new Set((items ?? []).map((item) => item.id));
+  const borrowed = (items ?? []).filter((item) => !item.isHome);
+
+  const lendAction = useAction<[estate: OwnedEstateResource], void>(
+    {
+      handler: async (_ctx, estate) => {
+        if (!project) return;
+        const lent = await api.attachEstate({
+          params: { projectId: project.id },
+          body: { estateId: estate.id },
+        });
+        setItems((current) => [lent, ...(current ?? [])]);
+        await home.refetch();
+        toaster.success(tr("estates.toast.attached"));
+      },
+    },
+    [api, project, home, toaster, tr],
   );
 
   const detachAction = useAction<[estate: LentEstateResource], void>(
@@ -151,30 +190,84 @@ const ProjectSettingsEstatesPage = () => {
               )}
             </div>
           </CardContent>
+        </Card>
 
-          {items !== undefined && items.length === 0 && (
+        <span className="mt-4 text-sm" data-testid="home-estates-title">
+          {tr("estates.home.title")}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          {tr("estates.home.description")}
+        </span>
+        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
+          {homeItems !== undefined && homeItems.length === 0 && (
+            <CardContent className="px-4 py-6">
+              <span className="text-muted-foreground text-sm">
+                {tr("estates.home.empty")}
+              </span>
+            </CardContent>
+          )}
+          {(homeItems ?? []).map((estate) => (
+            <ProjectSettingsHomeEstateRow
+              key={estate.id}
+              estate={estate}
+              lentHere={lentIds.has(estate.id)}
+              onOpen={(item) => setOpenId(item.id)}
+              {...(canLend
+                ? {
+                    onLend: (item: OwnedEstateResource) =>
+                      void lendAction.run(item),
+                  }
+                : {})}
+              busy={lendAction.loading || detachAction.loading}
+            />
+          ))}
+        </Card>
+
+        <span className="mt-4 text-sm" data-testid="borrowed-estates-title">
+          {tr("estates.borrowed.title")}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          {tr("estates.borrowed.description")}
+        </span>
+        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
+          {items !== undefined && borrowed.length === 0 && (
             <CardContent className="px-4 py-6">
               <span className="text-muted-foreground text-sm">
                 {tr("estates.project.empty")}
               </span>
             </CardContent>
           )}
-          {(items ?? []).map((estate) => (
+          {borrowed.map((estate) => (
             <ProjectSettingsEstateRow
               key={estate.id}
               estate={estate}
-              // ⚠️ `ownedByViewer`, not a comparison of `estate.owner.id`
-              // against the session. The server answers that question now,
-              // once, and the row's console link reads the same flag - so the
-              // two cannot come to disagree about who owns a machine. It is
-              // also what retired `useAuth` from this page.
-              canDetach={canLend || estate.ownedByViewer}
+              // Either side of the loan may end it: `estate:lend` here, or in
+              // the estate's home project, which the server sends in `can`.
+              canDetach={canLend || estate.can.includes("estate:lend")}
               onDetach={(item) => void detachAction.run(item)}
-              busy={detachAction.loading}
+              busy={detachAction.loading || lendAction.loading}
             />
           ))}
         </Card>
       </div>
+
+      <EstateDrawer
+        estate={open}
+        onOpenChange={(next) => {
+          if (!next) setOpenId(undefined);
+        }}
+        // The rows are the query's, so a write re-reads them rather than
+        // patching a copy; the borrowed list is untouched by these writes.
+        onChanged={() => void home.refetch()}
+        onDeleted={(id) => {
+          setOpenId(undefined);
+          setItems((current) =>
+            (current ?? []).filter((item) => item.id !== id),
+          );
+          void home.refetch();
+        }}
+        onSecret={setFreshSecret}
+      />
 
       <ProjectSettingsEstatesAddDialog
         open={adding}
@@ -182,6 +275,8 @@ const ProjectSettingsEstatesPage = () => {
         held={items ?? []}
         onAttached={(estate, secret) => {
           setItems((current) => [estate, ...(current ?? [])]);
+          // A new estate is created here, its home: the group above shows it.
+          void home.refetch();
           if (secret) setFreshSecret(secret);
         }}
       />

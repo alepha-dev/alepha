@@ -1,11 +1,12 @@
 import { Button, useDialog, useToast } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
-import { useAction, useClient } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { isHttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
 
 import type { EstateController } from "../../../../api/controllers/EstateController.ts";
+import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
 import type { BayInstanceRow } from "./bayInstanceRow.ts";
 import { bayProcessState } from "./bayInstanceRow.ts";
 import { useBayCommand } from "./useBayCommand.ts";
@@ -77,6 +78,13 @@ const BayActions = (props: BayActionsProps) => {
     },
     [estateApi, estate, refetch, toaster, tr],
   );
+
+  // Every verb here is `estate:update` in the home project (#Q3279): a
+  // reader who may only look is offered none of them.
+  const [openEstate] = useStore(currentEstateAtom);
+  if (!openEstate?.can.includes("estate:update")) {
+    return null;
+  }
 
   if (!estate) {
     return null;

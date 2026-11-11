@@ -7,11 +7,14 @@ import {
 } from "@alepha/ui/table";
 import type { AdminEstateController } from "@lore/deploy/api";
 import type { AdminEstateResource } from "@lore/deploy/schemas";
+import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Trash2 } from "lucide-react";
-import { useCallback } from "react";
+import { FolderInput, Home, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+
+import AdminEstateAssignDialog from "./AdminEstateAssignDialog.tsx";
 
 /**
  * Instance-wide estates list, mounted into the shared admin shell by
@@ -35,7 +38,17 @@ export const AdminEstates = () => {
       placeholder: "Search estates…",
       control: { inputProps: { "aria-label": "Search estates by slug" } },
     },
+    // The estates the migration could not place (#E126): the ones to assign.
+    home: {
+      schema: z.array(z.string()),
+      label: "Home",
+      icon: Home,
+      items: [{ value: "none", label: "No home" }],
+      control: { clearLabel: "Any home" },
+    },
   } satisfies DataTableFilterFields;
+  const [assigning, setAssigning] = useState<AdminEstateResource>();
+  const refreshRef = useRef<() => void>(() => {});
 
   const fetcher = useCallback(
     async (params: {
@@ -50,6 +63,7 @@ export const AdminEstates = () => {
           size: params.size,
           sort: params.sort,
           search: params.filters?.search || undefined,
+          ...(params.filters?.home?.includes("none") ? { homeless: true } : {}),
         },
       });
     },
@@ -82,6 +96,17 @@ export const AdminEstates = () => {
         filters={{ fields: filterFields }}
         rowActions={(estate) => [
           {
+            label: "Assign to project",
+            icon: FolderInput,
+            onClick: (
+              _estate: AdminEstateResource,
+              { refresh }: { refresh: () => void },
+            ) => {
+              refreshRef.current = refresh;
+              setAssigning(estate);
+            },
+          },
+          {
             label: "Delete estate",
             icon: Trash2,
             destructive: true,
@@ -110,24 +135,32 @@ export const AdminEstates = () => {
             label: "Type",
             cell: (estate) => <Badge variant="outline">{estate.type}</Badge>,
           },
-          ownerUserId: {
-            label: "Owner",
+          project: {
+            label: "Project",
+            cell: (estate) =>
+              estate.project ? (
+                <span>{estate.project.title}</span>
+              ) : (
+                <Badge variant="destructive">No home</Badge>
+              ),
+          },
+          creator: {
+            label: "Created by",
             /*
              * A real `<a href>` rather than a click handler, so the row keeps
              * cmd-click and "copy link address", like the projects table.
              */
-            cell: (estate) => (
-              <Link
-                href={`/admin/users/${estate.ownerUserId}`}
-                className="hover:text-foreground underline-offset-4 hover:underline"
-              >
-                {estate.ownerName ?? (
-                  <code className="text-muted-foreground text-xs">
-                    {estate.ownerUserId.slice(0, 8)}
-                  </code>
-                )}
-              </Link>
-            ),
+            cell: (estate) =>
+              estate.creator ? (
+                <Link
+                  href={`/admin/users/${estate.creator.id}`}
+                  className="hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  {estate.creator.name}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground text-xs">unknown</span>
+              ),
           },
           online: {
             label: "State",
@@ -159,10 +192,14 @@ export const AdminEstates = () => {
               </span>
             ),
           },
-          projectCount: {
+          loans: {
             label: "Lent to",
             cell: (estate) => (
-              <span className="tabular-nums">{estate.projectCount}</span>
+              <span className="text-xs">
+                {estate.loans.length
+                  ? estate.loans.map((project) => project.title).join(", ")
+                  : "none"}
+              </span>
             ),
           },
           lastSeenAt: {
@@ -185,6 +222,14 @@ export const AdminEstates = () => {
             ),
           },
         }}
+      />
+      <AdminEstateAssignDialog
+        key={assigning?.id ?? "none"}
+        estate={assigning}
+        onOpenChange={(open) => {
+          if (!open) setAssigning(undefined);
+        }}
+        onAssigned={() => refreshRef.current()}
       />
     </AdminPage>
   );

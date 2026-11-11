@@ -26,12 +26,12 @@ Lore when the list stops being fixed.
 
 ## The pieces
 
-| Thing            | What it is                                                                             |
-| ---------------- | -------------------------------------------------------------------------------------- |
-| **Estate**       | A Bay machine or Cloudflare account you lend to a project. Yours, not the project's.   |
-| **App instance** | One deployed copy, named by a pair: an app and an environment. `acme` in `production`. |
-| **Artifact**     | A build somebody pushed, named by a tag. Immutable, except `latest`.                   |
-| **Deployment**   | One run of "put these bytes on that copy", with its log.                               |
+| Thing            | What it is                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| **Estate**       | A Bay machine or Cloudflare account. It belongs to a project and is lent to the ones that deploy onto it. |
+| **App instance** | One deployed copy, named by a pair: an app and an environment. `acme` in `production`.                    |
+| **Artifact**     | A build somebody pushed, named by a tag. Immutable, except `latest`.                                      |
+| **Deployment**   | One run of "put these bytes on that copy", with its log.                                                  |
 
 A new app can start on this path: `npm create alepha my-app -- --infra lore`
 (or `alepha init --infra lore`) writes `lore({ project })` into
@@ -49,16 +49,18 @@ If you had already lent an estate to this project before deploys existed, the
 switch is already on: an owner who lent a cloud account was not asked to go
 looking for a second switch.
 
-## 2. Lend an estate
+## 2. Add or borrow an estate
 
-Open **Settings → Apps → Estates** and add one. A Cloudflare estate needs an account id
+Open **Settings → Apps → Estates** and add one, which belongs to this project
+and is lent to it, or borrow one another project lends here. A Cloudflare estate needs an account id
 and an API token, and Lore checks the token against that account before the
 estate exists - see [The Cloudflare token](/lore/docs/guides-cloudflare-token) for which
 permissions it needs and why the obvious template is not the right one.
 
-An estate belongs to **you**, not to the project. Lending it to a project lets
-that project deploy into it; withdrawing the loan stops that, and Lore refuses
-to withdraw one while a copy still points at it.
+An estate belongs to a project, its home, whose members manage it by their
+rank. Lending it to another project lets that project deploy into it;
+withdrawing the loan stops that, and Lore refuses to withdraw one while a copy
+still points at it. See [Estates](/lore/docs/guides-estates).
 
 ## 3. Name the copy
 
@@ -363,8 +365,8 @@ the person running the command is often not the person who can fix it.
 | `Several estates are lent to this project …`                 | Create the copy with `lore apps instance create --estate <slug>`, or choose its estate on the Apps page, then deploy.  |
 | `lore() takes no estate …`                                   | Remove `estate` from `alepha.config.ts`; the copy's estate is set in Lore.                                             |
 | `… is no longer lent to this project`                        | Ask its owner to lend it again.                                                                                        |
-| `… does not accept deploys`                                  | Its owner turns that on from their Estates page.                                                                       |
-| `… does not have a usable Cloudflare credential`             | Its owner checks the token from their Estates page.                                                                    |
+| `… does not accept deploys`                                  | Somebody with `estate:update` in its home project turns that on from its console.                                      |
+| `… does not have a usable Cloudflare credential`             | Somebody with `estate:update` in its home project checks the token from its console.                                   |
 | `… has no artifact tagged '…'`                               | Push one, or deploy a tag that exists.                                                                                 |
 | `… has no \`workerd\` build`                                 | Build for that runtime: the message names the exact command.                                                           |
 | `Another copy in this Cloudflare account is already named …` | Another copy already uses that name: point this copy at another estate, or rename the project before its first deploy. |

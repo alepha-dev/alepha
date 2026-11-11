@@ -2371,6 +2371,8 @@ export default {
   "estates.project.add": "Add an estate",
   "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
+  "estates.project.home": "belongs to this project",
+  "estates.project.noHome": "no project",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
   "bay.nav.commands": "Commands",
@@ -2519,11 +2521,45 @@ export default {
   "bay.commands.col.reason": "Outcome",
   "bay.commands.byNobody": "-",
   "bay.commands.result": "Open the stored result",
-  "account.estates.inventory": "$1 app(s), reported $2",
-  "account.estates.inventory.none": "nothing reported",
   "bay.settings.rotate.warning":
     "Rotating revokes the current secret immediately. The machine is refused on its next dial and stays offline until you run `bay connector set` on it again with the new one.",
-  "bay.open": "Open console",
+  "bay.home": "Belongs to $1",
+  "bay.settings.home":
+    "Belongs to $1, whose members manage it, each by their rank",
+  "bay.settings.addedBy": "Added by $1",
+  "bay.settings.provisionedBy":
+    "Provisioned by $1, whose cloud account holds the server",
+  "bay.settings.readOnly":
+    "You can look at this estate: what runs on it, the commands sent to it, its CPU and memory.",
+  "bay.settings.readOnly.how":
+    "Changing it needs estate:update in $1, moving or deleting it estate:delete. The project's owner grants them with a rank.",
+  "bay.move.action": "Move to another project",
+  "bay.move.title": "Move $1 to another project",
+  "bay.move.project": "Project",
+  "bay.move.none": "There is no other project you can create an estate in.",
+  "bay.move.taken":
+    "That project already has an estate named $1, and a slug never changes.",
+  "bay.move.keeps":
+    "Its slug, its machine, its secret and its commands stay as they are.",
+  "bay.move.loans": "Still lent to: $1",
+  "bay.move.submit": "Move",
+  "bay.move.toast": "Moved to $1",
+  "bay.move.serverElsewhere":
+    "The server it runs on stays in the cloud account of whoever provisioned it, who is not a member of the new project.",
+  "estates.home.title": "Estates of this project",
+  "estates.home.description": "Its members manage these, each by their rank.",
+  "estates.home.empty": "This project is the home of no estate.",
+  "estates.home.lentHere": "Lent to this project",
+  "estates.home.notLentHere": "Not lent to this project",
+  "estates.home.lentTo": "lent to $1 other project(s)",
+  "estates.home.lend": "Lend to this project",
+  "estates.borrowed.title": "Estates lent to this project",
+  "estates.borrowed.description":
+    "Other projects' estates this one may deploy onto. Their home project manages them.",
+  "estates.blocker.delete":
+    "This project is the home of $1: move or delete them first, other projects may deploy onto them.",
+  "estates.blocker.apps":
+    "Apps stays on while this project is the home of $1: move or delete them first.",
   "bay.back": "All estates",
   "bay.settings.loans.col.project": "Project",
   "bay.settings.loans.col.lentAt": "Lent",
@@ -2600,17 +2636,6 @@ export default {
   "estates.toast.detached": "Estate detached",
   "estates.toast.copied": "Secret copied",
 
-  "account.estates.col.kind": "Kind",
-  "account.estates.col.estate": "Estate",
-  "account.estates.col.status": "Status",
-  "account.estates.col.lentTo": "Lent to",
-  "account.estates.col.created": "Created",
-  "account.estates.lentTo": "$1 project(s)",
-  "account.estates.create": "Create an estate",
-  "account.estates.create.description":
-    "Its secret is shown once, at creation. It cannot be recovered afterwards, only rotated.",
-  "account.estates.create.submit": "Create",
-  "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1% · memory $2%",
   "account.estates.gauge.none": "no stats yet",
@@ -2640,13 +2665,12 @@ export default {
   "account.estates.delete.confirmProvisioned":
     "This estate runs on server $1, which lore estate provision bought on $2. Deleting it here does not terminate that server: it keeps running, and billing. To terminate it with its IP and its disk, run lore estate delete $3 --yes instead.",
   "account.estates.delete.confirm": "Delete",
-  "account.estates.toast.created": "Estate created",
   "account.estates.toast.rotated": "Secret rotated",
   "account.estates.toast.deleted": "Estate deleted",
   "account.delete.estates.one":
-    "1 estate you own will also be deleted and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
+    "1 estate that belongs to no project is still tied to your account: it will be deleted with it and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
   "account.delete.estates.many":
-    "$1 estates you own will also be deleted and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
+    "$1 estates that belong to no project are still tied to your account: they will be deleted with it and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
 
   "feedback.list.showMore": "Show more",
   "feedback.list.loadingMore": "Loading…",
@@ -3513,11 +3537,14 @@ export default {
   "permission.quality.read": "Read coverage and test totals",
   "permission.quality.push": "Record coverage and test totals",
   "permission.group.estate": "Estates",
-  "permission.estate.read": "See the estates lent to the project",
-  "permission.estate.update": "Edit an estate",
+  "permission.estate.read":
+    "See the project's estates and their consoles, and the estates lent to it",
+  "permission.estate.update":
+    "Change an estate of the project: its switches, secret, token, commands and logs",
   "permission.estate.lend": "Lend an estate to the project, and take it back",
-  "permission.estate.create": "Create an estate",
-  "permission.estate.delete": "Delete an estate",
+  "permission.estate.create": "Add an estate to the project",
+  "permission.estate.delete":
+    "Delete an estate of the project, or move it to another",
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",

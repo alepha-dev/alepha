@@ -1,141 +1,67 @@
-import type { Page } from "@playwright/test";
-
 import { expect, test } from "./_fixtures.ts";
 import {
+  confirmDialog,
+  createEstateInProject,
+  createProjectViaWizard,
   newUserContext,
   registerAndVerify,
   signInAsAdmin,
 } from "./_helpers.ts";
 
 /**
- * Estates, end to end, from the owner's account page (#1838): create one and
- * see its secret exactly once, open the console the row leads to, flip a
- * switch and watch the account page follow the server's answer, and delete it
- * through a dialog that says what deleting does not do. Then the admin
- * backstop: every estate on the instance, and no credential.
+ * Estates, end to end, from the project that is their home (#1838, #E126):
+ * create one in the project's Settings ▸ Apps ▸ Estates and see its secret
+ * exactly once, open the console its row leads to, under the project, flip a
+ * switch and see it stored, and delete it through a dialog that says what
+ * deleting does not do. Then the admin backstop: every estate on the
+ * instance, and no credential.
  *
- * ⚠️ This file is the ACCOUNT page and the estate's lifecycle. What the
- * console draws once a machine has reported is `bay-console.spec.ts`, which
- * plays a machine over the real socket; nothing connects here, which is why
- * the console shows its never-connected state.
- *
- * The connector's own side is #1624's container test and #1628's
- * end-to-end.
+ * ⚠️ Estates have no account page since #E126: they belong to a project, and
+ * the project's estates list is where they are. What the console draws once
+ * a machine has reported is `bay-console.spec.ts`, which plays a machine
+ * over the real socket; nothing connects here, which is why the console
+ * shows its never-connected state.
  *
  * Every `$action` call the SPA makes goes through `POST /api/_batch`, so
  * nothing here waits on a named response: the assertions are on rendered
  * state, which only changes once the server has answered.
  */
-
-/**
- * Base UI leaves `pointer-events: none` on `<body>` after a dialog closes, and
- * the next click then lands on nothing until React happens to re-render.
- */
-const releasePointerEvents = async (page: Page): Promise<void> => {
-  await page.evaluate(() => {
-    document.body.style.pointerEvents = "";
-  });
-};
-
-const confirmDialog = async (page: Page, label: string): Promise<void> => {
-  const dialog = page.locator('[role="alertdialog"], [role="dialog"]').last();
-  await expect(dialog).toBeVisible({ timeout: 10_000 });
-  await dialog.getByRole("button", { name: label, exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 10_000 });
-  await releasePointerEvents(page);
-};
-
-/**
- * Create an estate from the account page and dismiss the one-time secret.
- */
-const createEstate = async (page: Page, slug: string): Promise<void> => {
-  await page.goto("/account/estates");
-  await page.waitForLoadState("networkidle");
-  // Creation is behind a dialog since #1862: the inline card was always
-  // present, above every estate, so the page opened on the form for the
-  // thing you do least often.
-  await page.getByTestId("estate-create-open").click();
-  await page.getByTestId("estate-create-slug").fill(slug);
-  await page.getByTestId("estate-create-submit").click();
-
-  // The only moment the cleartext secret exists. Shown in a dialog that
-  // stays open until dismissed, then gone for good - the page it used to sit
-  // on re-renders on every switch below it, and the column stores a hash.
-  // The long match is the token; the row shows a short masked prefix of the
-  // same shape, which must still be there once the dialog is gone.
-  const reveal = page.getByTestId("my-estate-secret-dialog");
-  await expect(reveal).toBeVisible({ timeout: 15_000 });
-  await expect(reveal.getByText(/est_[A-Za-z0-9_-]{16,}/)).toBeVisible();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(page.getByText(/est_[A-Za-z0-9_-]{16,}/)).toHaveCount(0);
-  await releasePointerEvents(page);
-};
-
 test.describe("Estates", () => {
-  test("an owner creates an estate, opens its console, flips a switch, and deletes it", async ({
+  test("an owner creates an estate in a project, opens its console there, flips a switch, and deletes it", async ({
     page,
   }) => {
     test.setTimeout(120_000);
     const email = `estate-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
+    // An estate belongs to a project with Apps on (#E126).
+    const project = await createProjectViaWizard(
+      page,
+      `Est${Date.now()}`.slice(0, 20),
+      { capabilities: ["apps"] },
+    );
 
-    await page.goto("/account/estates");
+    await page.goto(`/${project.slug}/settings/estates`);
     await page.waitForLoadState("networkidle");
-    /*
-     * ⚠️ With no estates the card is STILL there and the create row is its
-     * only row (feedback #P2140). It used to be no card at all and a lone
-     * secondary button floating below where one would have been, which is
-     * what the report was about - so the assertion is that the button sits
-     * inside a card, not merely that it exists.
-     *
-     * The paragraph this replaced told a reader who holds no secret to run
-     * `bay connector set`. The command is not lost: the secret dialog
-     * carries it in full, with its arguments, at the one moment it can be
-     * followed.
-     */
-    await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
-    // The table's empty state names the act its toolbar button performs.
-    await expect(page.getByText("Create an estate")).toBeVisible();
-    await expect(page.getByTestId("estate-create-open")).toBeVisible();
+    await expect(
+      page.getByText("This project is the home of no estate."),
+    ).toBeVisible({ timeout: 15_000 });
 
-    await createEstate(page, "ovh-1");
+    await createEstateInProject(page, project.slug, "ovh-1");
+    // The reveal is gone for good once dismissed: the column stores a hash.
+    await expect(page.getByText(/est_[A-Za-z0-9_-]{16,}/)).toHaveCount(0);
 
-    // The ROW carries the four facts worth a glance since #1862; everything
-    // else is behind it.
-    // A table row since #E68; the test id sits on its estate cell.
-    const row = page
-      .getByRole("row")
-      .filter({ has: page.getByTestId("my-estate-row") });
+    const row = page.getByTestId("home-estate-row");
     await expect(row).toHaveCount(1);
-    await expect(row.getByTestId("my-estate-slug")).toHaveText("ovh-1");
     await expect(row.getByText("offline", { exact: true })).toBeVisible();
-    await expect(row.getByText("stats only", { exact: true })).toBeVisible();
-    // The masked prefix names the credential; the credential itself is gone.
-    await expect(row.getByText(/secret est_/)).toBeVisible();
+    await expect(
+      row.getByText("Lent to this project", { exact: false }),
+    ).toBeVisible();
 
-    /*
-     * ⚠️ A `bay` row opens its CONSOLE, not the drawer (#E37). The switches,
-     * the loans, the commands and both destructive actions moved to
-     * `/account/estates/:estateId/settings` (#E68) when the machine got pages of its own, and
-     * the restart form that used to sit in the drawer went with them: a verb
-     * belongs on the instance it names, not on a free-text pair of fields.
-     *
-     * `MyEstateDrawer` still exists and is still the `cloudflare` path, which
-     * `MyEstates.browser.spec.tsx` covers - `createEstate` refuses any type
-     * but `bay`, so there is no such estate to make here.
-     */
-    await row.click();
-    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
+    // A `bay` row opens its console, a page of the project (#E126).
+    await row.getByRole("link", { name: "ovh-1", exact: true }).click();
+    await page.waitForURL(`**/${project.slug}/estates/ovh-1`, {
       timeout: 15_000,
     });
-    await expect(page.getByTestId("my-estate-drawer")).toHaveCount(0);
-    await expect(page.getByText("ovh-1").first()).toBeVisible();
-    // A detail page inside the account shell (#E68): the sidebar keeps
-    // Estates as its one lit entry, never Profile, whose `/account` is a
-    // prefix of every path here too.
-    await expect(
-      page.locator('[data-slot="sidebar"] a[aria-current="page"]'),
-    ).toHaveText("Estates");
     // Nothing has ever connected, so the console says so rather than drawing
     // empty gauges.
     await expect(
@@ -147,7 +73,7 @@ test.describe("Estates", () => {
       .getByTestId("bay-tabs")
       .getByRole("link", { name: "Settings", exact: true })
       .click();
-    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}\/settings/, {
+    await page.waitForURL(`**/${project.slug}/estates/ovh-1/settings`, {
       timeout: 15_000,
     });
     await page.getByTestId("bay-settings-deploys").click();
@@ -156,38 +82,30 @@ test.describe("Estates", () => {
       "true",
       { timeout: 15_000 },
     );
-
-    // Read back from the account page, which re-fetches: the badge there is
-    // the stored row rather than this page's optimistic copy.
-    await page.goto("/account/estates");
+    // Read back from a fresh load: the stored row, not this page's copy.
+    await page.reload();
     await page.waitForLoadState("networkidle");
-    const reloadedRow = page
-      .getByRole("row")
-      .filter({ has: page.getByTestId("my-estate-row") });
-    await expect(
-      reloadedRow.getByText("deploys allowed", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByTestId("bay-settings-deploys")).toHaveAttribute(
+      "aria-checked",
+      "true",
+      { timeout: 15_000 },
+    );
 
-    // Delete says what it does NOT do, then takes the row with it and lands
-    // back here, because the console cannot stay open over an estate that no
-    // longer exists.
-    await reloadedRow.click();
-    await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
-      timeout: 15_000,
-    });
-    await page
-      .getByTestId("bay-tabs")
-      .getByRole("link", { name: "Settings", exact: true })
-      .click();
+    // Delete says what it does NOT do, then lands back on the project's
+    // estates list, because the console cannot stay open over an estate
+    // that no longer exists.
     await page.getByTestId("bay-settings-delete").click();
     const dialog = page.locator('[role="alertdialog"], [role="dialog"]').last();
     await expect(dialog).toContainText("Nothing is undeployed");
     await expect(dialog).toContainText("not revoked at Cloudflare");
     await confirmDialog(page, "Delete");
-    await page.waitForURL(/\/account\/estates/, { timeout: 15_000 });
-    await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
-    // And back to the empty table.
-    await expect(page.getByText("Create an estate")).toBeVisible();
+    await page.waitForURL(`**/${project.slug}/settings/estates`, {
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId("home-estate-row")).toHaveCount(0);
+    await expect(
+      page.getByText("This project is the home of no estate."),
+    ).toBeVisible();
   });
 
   test("the admin list shows every estate on the instance, and no credential", async ({
@@ -199,7 +117,12 @@ test.describe("Estates", () => {
 
     // The owner enrols in their own context; the admin looks from another.
     const owner = await newUserContext(browser, baseURL ?? "", "estate-owner");
-    await createEstate(owner.page, "hetzner");
+    const project = await createProjectViaWizard(
+      owner.page,
+      `Adm${Date.now()}`.slice(0, 20),
+      { capabilities: ["apps"] },
+    );
+    await createEstateInProject(owner.page, project.slug, "hetzner");
     await owner.ctx.close();
 
     await signInAsAdmin(page);

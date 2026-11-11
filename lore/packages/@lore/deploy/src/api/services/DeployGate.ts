@@ -97,17 +97,17 @@ export class DeployGate {
     });
     if (!grant) {
       throw new NotFoundError(
-        `The estate '${estate.slug}' is no longer lent to this project, so it cannot deploy there. Ask its owner to lend it again.`,
+        `The estate '${estate.slug}' is no longer lent to this project, so it cannot deploy there. Ask its home project to lend it again.`,
       );
     }
 
     if (!estate.deployAllowed) {
       // ⚠️ The message names WHOSE estate it is, because the person deploying
       // is often not the person who can flip this. A Cloudflare estate is
-      // created with it on; a Bay machine is stats-only until its owner says
+      // created with it on; a Bay machine is stats-only until its home project says
       // otherwise, so this is the clause that routinely fires there.
       throw new BadRequestError(
-        `The estate '${estate.slug}' does not accept deploys. Its owner can turn that on from their Estates page.`,
+        `The estate '${estate.slug}' does not accept deploys. Somebody with estate:update in its home project can turn that on from its console.`,
       );
     }
 
@@ -117,7 +117,7 @@ export class DeployGate {
     // credential.
     if (this.cloudflare.credentialStatus(estate) === "invalid") {
       throw new BadRequestError(
-        `The estate '${estate.slug}' does not have a usable Cloudflare credential. Its owner can check it from their Estates page.`,
+        `The estate '${estate.slug}' does not have a usable Cloudflare credential. Somebody with estate:update in its home project can check it from its console.`,
       );
     }
 

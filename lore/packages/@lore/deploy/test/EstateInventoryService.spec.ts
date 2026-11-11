@@ -17,6 +17,7 @@ import {
   estates,
   type EstateInventoryFrame,
 } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class InventoryRepositories {
@@ -66,7 +67,7 @@ const createEstate = async (
 ): Promise<{ estate: Estate; user: UserAccountToken }> => {
   const created = await ctx.entities.users.create({});
   const user: UserAccountToken = { id: created.id, roles: ["user"] };
-  const minted = await ctx.estateApi.createEstate({ body: { slug } }, { user });
+  const minted = await createTestEstate(ctx.alepha, user, { slug });
   return {
     estate: await ctx.repos.estates.getOne({
       where: { id: { eq: minted.id } },

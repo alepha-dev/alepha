@@ -48,7 +48,15 @@ describe("lore estate lend and unlend", () => {
       {
         estates: {
           listMyEstates: async () => ({
-            items: [{ id: "est-1", slug: "small-skilled-pie" }],
+            items: [
+              {
+                id: "est-1",
+                slug: "small-skilled-pie",
+                project: { id: 3, title: "Infra", slug: "infra" },
+                can: ["estate:read", "estate:lend"],
+                projects: [],
+              },
+            ],
           }),
         },
       },
@@ -63,6 +71,17 @@ describe("lore estate lend and unlend", () => {
           calls.push({ name: "detach", request });
           return { ok: true };
         },
+        listProjectEstates: async () => ({
+          items: [
+            {
+              id: "est-1",
+              slug: "small-skilled-pie",
+              home: { id: 3, title: "Infra", slug: "infra" },
+              isHome: false,
+              can: [],
+            },
+          ],
+        }),
       },
     });
     const run = async (cmd: "lend" | "unlend", argv: string) => {
@@ -71,7 +90,7 @@ describe("lore estate lend and unlend", () => {
     return { run, printed, calls };
   };
 
-  it("lends one of your estates to a project and says how to deploy there", async ({
+  it("lends an estate to a project and says how to deploy there", async ({
     expect,
   }) => {
     const { run, printed, calls } = create();
@@ -99,10 +118,10 @@ describe("lore estate lend and unlend", () => {
     ]);
   });
 
-  it("refuses an estate you do not own", async ({ expect }) => {
+  it("refuses an estate the caller may not lend", async ({ expect }) => {
     const { run, calls } = create();
     await expect(run("lend", "other --project hello-world")).rejects.toThrow(
-      "You own no estate named other",
+      "No estate named other that you can lend",
     );
     expect(calls).toEqual([]);
   });
@@ -151,5 +170,36 @@ describe("lore estate lend and unlend", () => {
     expect(
       await deployer.destinationOf(7, { id: "i" } as never),
     ).toBeUndefined();
+  });
+
+  it("refuses a slug two lent estates share, naming their home projects", ({
+    expect,
+  }) => {
+    expect(() =>
+      LoreEstateChoice.pick(
+        [
+          { id: "a", slug: "ovh-1", home: { slug: "infra", title: "Infra" } },
+          { id: "b", slug: "ovh-1", home: { slug: "shop", title: "Shop" } },
+        ],
+        "ovh-1",
+        "hello/production",
+      ),
+    ).toThrow("from infra and shop");
+  });
+
+  it("lends the one estate --home names when two share a slug", async ({
+    expect,
+  }) => {
+    const { run, calls } = create();
+    await run("lend", "small-skilled-pie --project hello-world --home infra");
+    expect(calls).toEqual([
+      {
+        name: "attach",
+        request: { params: { projectId: 7 }, body: { estateId: "est-1" } },
+      },
+    ]);
+    await expect(
+      run("lend", "small-skilled-pie --project hello-world --home elsewhere"),
+    ).rejects.toThrow("in elsewhere");
   });
 });

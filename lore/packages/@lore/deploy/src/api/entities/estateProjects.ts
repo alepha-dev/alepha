@@ -8,7 +8,7 @@ import { estates } from "./estates.ts";
 /**
  * The lending: which projects may deploy through which estate.
  *
- * An estate is owned by a user (`estates.ownerUserId`) and USED by projects,
+ * An estate belongs to its home project (`estates.projectId`) and is USED by projects,
  * and this row is the grant. It is deliberately a bare join: no role, no
  * per-member allowlist, no "owner only" flag. The project is the permission
  * boundary, and whoever can deploy in a project can deploy through whatever

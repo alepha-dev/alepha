@@ -335,6 +335,11 @@ export const NAV: NavGroup[] = [
             description: "Payment intents.",
           },
           {
+            href: "/pages/admin/webhooks",
+            label: "Webhooks",
+            description: "Webhook endpoints and their health.",
+          },
+          {
             href: "/pages/admin/audits",
             label: "Audit log",
             description: "The audit trail.",

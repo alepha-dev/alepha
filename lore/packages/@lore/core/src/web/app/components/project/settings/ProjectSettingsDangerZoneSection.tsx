@@ -15,7 +15,13 @@ import {
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import type { MemberController } from "alepha/api/organizations";
-import { useAction, useAlepha, useClient, useStore } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
@@ -23,6 +29,7 @@ import { useState } from "react";
 import type { ProjectController } from "../../../../../api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
+import { ProjectBlockerRegistry } from "../../../registries/ProjectBlockerRegistry.ts";
 import { setCurrentProject } from "../../../services/currentProjectWrite.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { mergeIntoProjectOverview } from "../../../services/projectOverviewWrite.ts";
@@ -40,6 +47,13 @@ const ProjectSettingsDangerZoneSection = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const dialog = useDialog();
+  // What a module's server guard would refuse the delete on, said before the
+  // click (#Q3281). The hooks are called in a fixed order: the registry is
+  // frozen at first read.
+  const blockers = useInject(ProjectBlockerRegistry).blockers();
+  const blocking = blockers
+    .map((blocker) => blocker.useLine(project?.id ?? 0, "delete"))
+    .filter((line): line is string => !!line);
 
   // A refused delete or leave (an owned project, a server error) leaves the
   // dialog open, and the root `ActionErrorToaster` says why. The overview
@@ -157,11 +171,21 @@ const ProjectSettingsDangerZoneSection = () => {
                 <span className="text-muted-foreground text-xs">
                   {tr("project.settings.actions.delete.helper")}
                 </span>
+                {blocking.map((line) => (
+                  <span
+                    key={line}
+                    className="text-destructive text-xs"
+                    data-testid="project-delete-blocked"
+                  >
+                    {line}
+                  </span>
+                ))}
               </div>
               <div className="flex justify-start sm:justify-end">
                 <Button
                   variant="outlined"
                   intent="danger"
+                  disabled={blocking.length > 0}
                   onClick={() => setDeleteModalOpen(true)}
                 >
                   {tr("project.settings.actions.delete")}

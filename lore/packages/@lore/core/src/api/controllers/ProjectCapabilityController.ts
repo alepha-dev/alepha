@@ -10,6 +10,7 @@ import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { AutomationHealth } from "../services/AutomationHealth.ts";
 import { BestEffort } from "../services/BestEffort.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectCapabilityGuards } from "../services/ProjectCapabilityGuards.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -38,6 +39,7 @@ export class ProjectCapabilityController {
   protected readonly projectMapper = $inject(ProjectResourceMapper);
   protected readonly audits = $inject(LoreAudits);
   protected readonly projectPermissions = $inject(ProjectPermissions);
+  protected readonly capabilityGuards = $inject(ProjectCapabilityGuards);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -172,6 +174,11 @@ export class ProjectCapabilityController {
 
       if (!body.enabled) {
         if (existing) {
+          // A module may refuse, before the row goes (#Q3280).
+          await this.capabilityGuards.assertCanTurnOff(
+            params.projectId,
+            params.key,
+          );
           await this.security.capabilities.deleteById(existing.id);
         }
       } else {

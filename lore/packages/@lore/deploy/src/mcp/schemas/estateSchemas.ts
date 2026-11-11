@@ -1,16 +1,24 @@
+import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 // -----------------------------------------------------------------------------
 // estate_stats
 // -----------------------------------------------------------------------------
 
-export const estateStatsParamsSchema = z.object({
+export const estateStatsParamsSchema = projectParamsSchema.extend({
   estate: z
     .string()
     .min(1)
     .max(64)
     .describe(
-      "The estate's slug (`ovh`, `vps-ovh`). One of YOUR estates: only an estate's owner reads its stats, and a slug is unique per owner.",
+      "The estate's slug (`ovh`, `vps-ovh`), among the estates you can read: those of the projects where your rank grants estate:read. With a project, narrowed to that project's own estates and the ones it borrows.",
+    ),
+  home: z
+    .string()
+    .max(100)
+    .optional()
+    .describe(
+      "The estate's home project, by slug or title, when two estates you can read share the slug. A slug is unique per home project.",
     ),
   since: z
     .string()
@@ -35,7 +43,7 @@ export const estateStatsResultSchema = z.object({
   collecting: z
     .boolean()
     .describe(
-      "Whether the daily series is being recorded. Off by default; the owner turns it on from the estate page. Off with no points is the common case, not an error.",
+      "Whether the daily series is being recorded. Off by default; somebody with estate:update in its home project turns it on from the estate page. Off with no points is the common case, not an error.",
     ),
   estimated: z
     .boolean()

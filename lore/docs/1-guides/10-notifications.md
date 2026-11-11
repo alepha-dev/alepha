@@ -6,17 +6,21 @@ clear the inbox, and which messages you can turn off.
 
 ## What reaches the inbox
 
-| Message                     | Sent to                                                    | Inbox | Email |
-| --------------------------- | ---------------------------------------------------------- | ----- | ----- |
-| A mention                   | A member named with `@name` in a quest or feedback comment | Yes   | Yes   |
-| A release published         | Every member of the project                                | Yes   | Yes   |
-| A report accepted, rejected | The person who [filed it](/lore/docs/guides-feedback)      | Yes   | Yes   |
-| A report answered           | The person who filed it                                    | Yes   | Yes   |
-| An automation's message     | The rule's recipient, on the channel the rule names        | Yes   | Yes   |
-| A quest reminder            | Whoever accepted the quest                                 | No    | Yes   |
-| A project invitation        | The person invited                                         | Yes   | Yes   |
-| A healthcheck alert         | The [monitor's recipients](/lore/docs/guides-healthchecks) | No    | Yes   |
-| A Cloudflare token failing  | The estate's owner                                         | No    | Yes   |
+| Message                     | Sent to                                                                                      | Inbox | Email |
+| --------------------------- | -------------------------------------------------------------------------------------------- | ----- | ----- |
+| A mention                   | A member named with `@name` in a quest or feedback comment                                   | Yes   | Yes   |
+| A release published         | Every member of the project                                                                  | Yes   | Yes   |
+| A report accepted, rejected | The person who [filed it](/lore/docs/guides-feedback)                                        | Yes   | Yes   |
+| A report answered           | The person who filed it                                                                      | Yes   | Yes   |
+| An automation's message     | The rule's recipient, on the channel the rule names                                          | Yes   | Yes   |
+| A quest reminder            | Whoever accepted the quest                                                                   | No    | Yes   |
+| A project invitation        | The person invited                                                                           | Yes   | Yes   |
+| A healthcheck alert         | The [monitor's recipients](/lore/docs/guides-healthchecks)                                   | No    | Yes   |
+| A Cloudflare token failing  | Every member of the estate's project whose rank grants `estate:update`, the owner among them | No    | Yes   |
+| A throwaway estate overdue  | The same people                                                                              | Yes   | Yes   |
+
+An estate that belongs to no project yet tells the person who created it, until
+an instance admin assigns it a home (see [Estates](/lore/docs/guides-estates)).
 
 Lore's own messages skip your own actions: a report you triage yourself sends you
 nothing. An automation has no such rule, so it can tell you about something you

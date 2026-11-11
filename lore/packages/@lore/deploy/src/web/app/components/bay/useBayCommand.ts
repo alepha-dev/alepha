@@ -2,7 +2,6 @@ import { useAction, useClient } from "alepha/react";
 import { useState } from "react";
 
 import type { EstateCommandController } from "../../../../api/controllers/EstateCommandController.ts";
-import type { Estate } from "../../../../api/entities/estates.ts";
 import type { EstateCommandResource } from "../../../../api/schemas/estateCommandResourceSchema.ts";
 
 /**
@@ -41,7 +40,7 @@ export interface BayCommandBody {
  * machine for the verbs that refuse) is the server's sentence, shown as it is
  * by the root `ActionErrorToaster`.
  */
-export const useBayCommand = (estate: Estate | undefined) => {
+export const useBayCommand = (estate: { id: string } | undefined) => {
   const commandApi = useClient<EstateCommandController>();
   const [command, setCommand] = useState<EstateCommandResource | undefined>();
 

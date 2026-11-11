@@ -171,7 +171,7 @@ export class EstateCommandService {
       !estate.deployAllowed
     ) {
       throw new ForbiddenError(
-        `Estate "${estate.slug}" does not accept deploys; its owner has to allow them first`,
+        `Estate "${estate.slug}" does not accept deploys; its home project has to allow them first`,
       );
     }
     const writes =
@@ -179,7 +179,7 @@ export class EstateCommandService {
       (kind === "restore" && !payload?.restore?.dryRun);
     if (writes && !estate.deployAllowed) {
       throw new ForbiddenError(
-        `Estate "${estate.slug}" does not accept changes to its apps; its owner has to allow deploys first`,
+        `Estate "${estate.slug}" does not accept changes to its apps; its home project has to allow deploys first`,
       );
     }
     if (kind === "restore" && !payload?.restore?.dryRun) {
@@ -195,7 +195,7 @@ export class EstateCommandService {
    * Queue a command for an estate and push it if the machine is connected.
    *
    * `deploy` is refused here, server-side, while the estate's `deployAllowed`
-   * switch is off: a freshly enrolled machine is stats-only until its owner
+   * switch is off: a freshly enrolled machine is stats-only until its home project
    * says otherwise. The connector refuses too (#1622), from the `welcome`
    * frame, so a Lore-side bug cannot turn a stats-only machine into a deploy
    * target either.

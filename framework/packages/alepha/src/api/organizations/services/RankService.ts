@@ -148,6 +148,43 @@ export class RankService {
     return this.grants(permissions, permission);
   }
 
+  /**
+   * List the user ids of the members whose rank grants a permission in an
+   * organization: the people to tell when something only they can fix goes
+   * wrong.
+   *
+   * The owner is always among them, since the built-in owner rank grants
+   * `*`. A member with no rank holds the default member rank; a member whose
+   * rank key has no definition holds nothing and is left out, as `can`
+   * answers for them. It reads the organization's members once and its rank
+   * definitions once (cached), never once per member.
+   *
+   * The answer is the rank's alone: an application that also narrows a
+   * permission by a feature switch applies that on top.
+   */
+  public async holdersOf(
+    organizationId: string,
+    permission: string,
+  ): Promise<string[]> {
+    const [rows, ranks]: [
+      Array<{ userId: string; rank?: string | null }>,
+      Rank[],
+    ] = await Promise.all([
+      this.loadMembers(organizationId),
+      this.ranksOf(organizationId),
+    ]);
+    const granting = new Set(
+      ranks
+        .filter((rank) =>
+          this.grants(this.withFloor(rank.permissions), permission),
+        )
+        .map((rank) => rank.key),
+    );
+    return rows
+      .filter((row) => granting.has(row.rank ?? "member"))
+      .map((row) => row.userId);
+  }
+
   public async assert(
     organizationId: string,
     permission: string,
@@ -447,6 +484,13 @@ export class RankService {
         organizationId: { eq: organizationId },
         userId: { eq: userId },
       },
+    });
+  }
+
+  protected loadMembers(organizationId: string) {
+    return this.members.findMany({
+      where: { organizationId: { eq: organizationId } },
+      columns: ["userId", "rank"],
     });
   }
 

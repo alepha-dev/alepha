@@ -30,7 +30,7 @@ export const estateInventorySummarySchema = z.object({
 export type EstateInventorySummary = Infer<typeof estateInventorySummarySchema>;
 
 /**
- * An estate as its owner lists it: the resource plus the projects it is
+ * An estate as a member of its home project lists it: the resource plus the projects it is
  * lent to (#1838), and what the machine last reported.
  *
  * The loans are the one fact about an estate the owner's page needs that the

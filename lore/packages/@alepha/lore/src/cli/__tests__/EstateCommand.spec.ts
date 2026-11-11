@@ -24,6 +24,21 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  * secret; deploys stay off unless asked for. `stats` (#Q3047) reads one of
  * the caller's own estates by slug.
  */
+/**
+ * An estate of project `hello` (id 7), as its owner lists it (#E126).
+ */
+const HOMED = {
+  id: "e1",
+  slug: "vps-ovh",
+  type: "bay",
+  cpuPercent: 34.4,
+  memoryPercent: 61.6,
+  statsAt: "2026-11-02T10:00:00Z",
+  project: { id: 7, title: "Hello", slug: "hello" },
+  can: ["estate:read", "estate:update", "estate:delete", "estate:lend"],
+  projects: [{ id: 7, title: "Hello", slug: "hello", lentAt: "x" }],
+};
+
 describe("lore estate", () => {
   const create = (onlineAfter = 0) => {
     const alepha = Alepha.create({
@@ -84,18 +99,15 @@ describe("lore estate", () => {
         calls.push({ name: "delete", request });
         return { ok: true };
       },
-      listMyEstates: async () => ({
-        items: [
-          {
-            id: "e1",
-            slug: "vps-ovh",
-            type: "bay",
-            cpuPercent: 34.4,
-            memoryPercent: 61.6,
-            statsAt: "2026-11-02T10:00:00Z",
-          },
-        ],
-      }),
+      moveEstate: async (request: unknown) => {
+        calls.push({ name: "move", request });
+        return {
+          estate: { id: "e1", slug: "vps-ovh" },
+          loans: [{ id: 7, title: "Hello", slug: "hello" }],
+          serverElsewhere: false,
+        };
+      },
+      listMyEstates: async () => ({ items: [HOMED] }),
       getEstateStats: async (request: unknown) => {
         calls.push({ name: "stats", request });
         return {
@@ -114,7 +126,11 @@ describe("lore estate", () => {
     };
     Object.assign(
       alepha.inject(LoreEstateResolver) as unknown as Record<string, unknown>,
-      { estates },
+      {
+        estates,
+        // The estates project `hello` (id 7) is the home of (#E126).
+        lending: { listHomeEstates: async () => ({ items: [HOMED] }) },
+      },
     );
     Object.assign(command as unknown as Record<string, unknown>, {
       lending: {
@@ -134,11 +150,23 @@ describe("lore estate", () => {
               lastSeenAt: "2026-10-25T10:00:00Z",
               cpuPercent: 34.4,
               memoryPercent: 61.6,
+              home: { id: 7, title: "Hello", slug: "hello" },
+              isHome: true,
+              can: ["estate:read"],
             },
           ],
         }),
       },
       estates,
+      admin: {
+        assignEstate: async (request: unknown) => {
+          calls.push({ name: "assign", request });
+          return {
+            project: { id: 7, title: "Hello", slug: "hello" },
+            loans: [],
+          };
+        },
+      },
     });
     const run = async (
       sub:
@@ -149,6 +177,8 @@ describe("lore estate", () => {
         | "stats"
         | "update"
         | "rotate"
+        | "move"
+        | "assign"
         | "delete",
       argv: string,
     ) => {
@@ -233,18 +263,18 @@ describe("lore estate", () => {
     expect(out).toContain("2026-11-01  CPU  20%  RAM  55%  288 samples");
   });
 
-  it("refuses an estate the caller does not own, and reads nothing", async ({
+  it("refuses an estate the caller cannot read, and reads nothing", async ({
     expect,
   }) => {
     const { run, calls } = create();
     await expect(run("stats", "someone-elses")).rejects.toThrow(
-      "You own no estate named someone-elses",
+      "No estate named someone-elses that you can read",
     );
     expect(calls).toEqual([]);
   });
 
   describe("delete (#Q3131)", () => {
-    it("deletes one of the caller's own estates with --yes and says nothing on the machine stopped", async ({
+    it("deletes an estate of the project with --yes and says nothing on the machine stopped", async ({
       expect,
     }) => {
       const { run, printed, calls } = create();
@@ -276,17 +306,19 @@ describe("lore estate", () => {
       expect(calls).toEqual([]);
     });
 
-    it("refuses an estate the caller does not own", async ({ expect }) => {
+    it("refuses an estate the project is not the home of", async ({
+      expect,
+    }) => {
       const { run, calls } = create();
       await expect(run("delete", "someone-elses --yes")).rejects.toThrow(
-        "You own no estate named someone-elses",
+        "is the home of no estate named someone-elses",
       );
       expect(calls).toEqual([]);
     });
   });
 
   describe("get and wait (#Q3133)", () => {
-    it("reads one of the caller's estates and says plainly when it never connected", async ({
+    it("reads an estate and says plainly when it never connected", async ({
       expect,
     }) => {
       const { run, printed } = create();
@@ -408,5 +440,51 @@ describe("lore estate", () => {
         "write a number and m, h or d",
       );
     });
+  });
+
+  describe("move and assign (#Q3282)", () => {
+    it("moves an estate of the project with --yes and prints the loans that stay", async ({
+      expect,
+    }) => {
+      const { run, printed, calls } = create();
+      await run("move", "vps-ovh --to hello --yes");
+      expect(calls).toEqual([
+        {
+          name: "move",
+          request: { params: { estateId: "e1" }, body: { projectId: 7 } },
+        },
+      ]);
+      expect(printed.join("\n")).toContain("Still lent to: hello.");
+    });
+
+    it("refuses to move without --yes when there is no terminal", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await expect(run("move", "vps-ovh --to hello")).rejects.toThrow(
+        "Pass --yes",
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it("assigns an estate by id, for an admin", async ({ expect }) => {
+      const { run, printed, calls } = create();
+      await run("assign", "e9 --to hello");
+      expect(calls).toEqual([
+        {
+          name: "assign",
+          request: { params: { id: "e9" }, body: { projectId: 7 } },
+        },
+      ]);
+      expect(printed.join("\n")).toContain("now belongs to hello");
+    });
+  });
+
+  it("says whether the project is an estate's home or borrows it", async ({
+    expect,
+  }) => {
+    const { run, printed } = create();
+    await run("list", "");
+    expect(printed.join("\n")).toContain("bay, home");
   });
 });

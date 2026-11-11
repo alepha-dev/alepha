@@ -14,6 +14,7 @@ import {
   EstateController,
 } from "../src/api/index.ts";
 import { estateProjects, estates } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class EstateRepositories {
@@ -83,18 +84,15 @@ describe("AdminEstateController", () => {
     await ctx.alepha.stop();
   });
 
-  it("lists every estate on the instance, masked, with its owner and loan count", async ({
+  it("lists every estate on the instance, masked, with its home, its creator and its loans", async ({
     expect,
   }) => {
     const alice = await createUser(ctx, "alice");
     const bob = await createUser(ctx, "bob");
     const project = await createTestProject(ctx.alepha);
-    const mine = await ctx.owner.createEstate(
-      { body: { slug: "ovh-1" } },
-      { user: alice },
-    );
-    await ctx.owner.createEstate({ body: { slug: "ovh-2" } }, { user: alice });
-    await ctx.owner.createEstate({ body: { slug: "hetzner" } }, { user: bob });
+    const mine = await createTestEstate(ctx.alepha, alice, { slug: "ovh-1" });
+    await createTestEstate(ctx.alepha, alice, { slug: "ovh-2" });
+    await createTestEstate(ctx.alepha, bob, { slug: "hetzner" });
     await ctx.repos.grants.create({
       estateId: mine.id,
       projectId: project.id,
@@ -111,12 +109,16 @@ describe("AdminEstateController", () => {
     expect(row).toMatchObject({
       slug: "ovh-1",
       type: "bay",
-      ownerUserId: alice.id,
-      ownerName: "alice",
+      project: { id: mine.projectId },
+      creator: { id: alice.id, name: "alice" },
       online: false,
       deployAllowed: false,
-      projectCount: 1,
     });
+    // Lent to its home when created, then to the other project.
+    expect(row?.loans.map((loan) => loan.id)).toEqual([
+      mine.projectId,
+      project.id,
+    ]);
     expect(row?.secretPrefix).toBe(mine.secretPrefix);
     // The masking rule has no exception for the admin role: no hash and no
     // secret on any row, ever.
@@ -125,17 +127,45 @@ describe("AdminEstateController", () => {
       expect(Object.keys(item)).not.toContain("secret");
     }
     expect(
-      result.content.find((item) => item.slug === "hetzner")?.projectCount,
-    ).toBe(0);
+      result.content.find((item) => item.slug === "hetzner")?.loans,
+    ).toHaveLength(1);
+  });
+
+  it("filters the estates with no home, naming their creator and their loans", async ({
+    expect,
+  }) => {
+    const dan = await createUser(ctx, "dan");
+    const project = await createTestProject(ctx.alepha);
+    await createTestEstate(ctx.alepha, dan, { slug: "homed" });
+    // What the migration leaves for an estate lent only to somebody else's
+    // project: no home, anchored on its creator.
+    const loose = await ctx.repos.estates.create({
+      ownerUserId: dan.id,
+      createdBy: dan.id,
+      type: "bay",
+      slug: "loose",
+    });
+    await ctx.repos.grants.create({
+      estateId: loose.id,
+      projectId: project.id,
+    });
+
+    const result = await ctx.admin.findEstates(
+      { query: { ...page, homeless: true } },
+      { user: adminToken() },
+    );
+    expect(result.content.map((item) => item.slug)).toEqual(["loose"]);
+    expect(result.content[0]).toMatchObject({
+      creator: { id: dan.id, name: "dan" },
+      loans: [{ id: project.id }],
+    });
+    expect(result.content[0]).not.toHaveProperty("project");
   });
 
   it("narrows by slug", async ({ expect }) => {
     const alice = await createUser(ctx, "alice");
-    await ctx.owner.createEstate({ body: { slug: "ovh-1" } }, { user: alice });
-    await ctx.owner.createEstate(
-      { body: { slug: "hetzner" } },
-      { user: alice },
-    );
+    await createTestEstate(ctx.alepha, alice, { slug: "ovh-1" });
+    await createTestEstate(ctx.alepha, alice, { slug: "hetzner" });
 
     const result = await ctx.admin.findEstates(
       { query: { ...page, search: "hetz" } },
@@ -148,7 +178,7 @@ describe("AdminEstateController", () => {
     expect,
   }) => {
     const alice = await createUser(ctx, "alice");
-    await ctx.owner.createEstate({ body: { slug: "ovh-1" } }, { user: alice });
+    await createTestEstate(ctx.alepha, alice, { slug: "ovh-1" });
 
     await expect(
       ctx.admin.findEstates({ query: page }, { user: alice }),
@@ -159,10 +189,7 @@ describe("AdminEstateController", () => {
     expect,
   }) => {
     const alice = await createUser(ctx, "alice");
-    const minted = await ctx.owner.createEstate(
-      { body: { slug: "ovh-1" } },
-      { user: alice },
-    );
+    const minted = await createTestEstate(ctx.alepha, alice, { slug: "ovh-1" });
     expect(await ctx.tokens.verify(minted.secret)).toBeDefined();
 
     await ctx.admin.adminDeleteEstate(

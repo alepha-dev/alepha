@@ -602,6 +602,7 @@ test.describe("the admin sidebar", () => {
       "/admin/notifications Notifications",
       "/admin/files Fichiers",
       "/admin/payments Paiements",
+      "/admin/webhooks Webhooks",
       "/admin/parameters Paramètres",
     ]);
   });

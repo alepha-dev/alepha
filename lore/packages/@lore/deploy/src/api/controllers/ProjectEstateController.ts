@@ -4,12 +4,10 @@ import {
   ProjectSecurityService,
 } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
-import { displayName } from "@lore/core/web";
-import { $inject, type Infer, z } from "alepha";
+import { $inject, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
-import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { $secure, type UserAccountToken } from "alepha/security";
 import {
   $action,
   ConflictError,
@@ -27,46 +25,45 @@ import {
   type MintedLentEstate,
   mintedLentEstateSchema,
 } from "../schemas/lentEstateResourceSchema.ts";
+import { ownedEstateResourceSchema } from "../schemas/ownedEstateResourceSchema.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
 
 export type { LentEstateResource, MintedLentEstate };
 
-type UserRow = Infer<typeof users.schema>;
-
 /**
  * The lending, from the project's side: which estates this project may
  * deploy through, and who may change that.
  *
+ * An estate has a home project, whose members manage it by their rank, and
+ * loans, the projects that may deploy onto it (epic #E126). The two are
+ * different facts: the home usually holds a loan too, and need not.
+ *
  * ## The trust statement this controller enforces
  *
  * Attaching is a grant, and a bigger one than it looks: whoever can deploy in
- * the project can then run code inside the estate owner's account, with that
- * account's storage and secrets bound to it. So attaching needs both hats on
- * one caller: `estate:lend` on the project (it changes what the project can
- * deploy to) and `loadOwned` on the estate (it exposes the owner's account).
- * A plain member with an estate of their own cannot lend it: `estate:lend` is
- * on nobody by default, so widening that is a rank carrying it, and folio
- * #1198 records the owner's decision to start narrow.
+ * the borrowing project can then run code on the machine, or inside the
+ * Cloudflare account, with its storage and secrets bound to it. So attaching
+ * needs `estate:lend` on both sides: in the borrowing project (it changes
+ * what the project can deploy to) and in the estate's home project (it
+ * exposes the home's machine). One check when they are the same project.
+ * `estate:lend` is on nobody by default, so widening that is a rank carrying
+ * it, and folio #1198 records the owner's decision to start narrow.
  *
- * Detaching takes either side: a rank with `estate:lend` is giving up a
- * capability, the estate owner is withdrawing a loan. Both are legitimate and
- * neither undeploys anything.
+ * Detaching takes either side: the borrower is giving up a capability, the
+ * home is withdrawing a loan. Both are legitimate and neither undeploys
+ * anything.
  *
  * ## What a member may learn
  *
- * A member sees THAT the project holds an estate called `ovh-1`, who owns it,
- * and whether the machine is up. They cannot enumerate the owner's other
- * estates, or discover estates lent to projects they are not in: the only
- * list here is per project and member-gated, and the "add existing" picker
- * is the caller's own list (`EstateController.listMyEstates`), never anyone
- * else's.
+ * A member of a borrowing project sees THAT the project holds an estate
+ * called `ovh-1`, which project it belongs to, and whether the machine is up;
+ * its console answers them 403 unless they are a member of the home too.
  */
 export class ProjectEstateController {
   protected readonly estates = $repository(estates);
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
-  protected readonly users = $repository(users);
   protected readonly ranks = $inject(RankService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly service = $inject(EstateService);
@@ -74,9 +71,12 @@ export class ProjectEstateController {
   protected readonly audits = $inject(LoreAudits);
 
   /**
-   * Every estate lent to this project, newest loan first. Member-readable,
+   * Every estate this project may deploy onto, newest loan first: the deploy
+   * targets the app, stack and artifact pickers offer. Member-readable,
    * because "where can this project deploy" is a question every member may
-   * ask, and nothing in the answer belongs to the owner alone.
+   * ask. Each row names its home project and says whether that is this one;
+   * an estate homed here and not lent here is not a deploy target, and is in
+   * {@link listHomeEstates}.
    */
   listProjectEstates = $action({
     use: [$ownsProject({ requires: "estate:read", param: "projectId" })],
@@ -87,12 +87,63 @@ export class ProjectEstateController {
       response: z.object({ items: z.array(lentEstateResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      return { items: await this.lentTo(params.projectId, user.id) };
+      return { items: await this.lentTo(params.projectId, user) };
     },
   });
 
   /**
-   * Lend one of the caller's own estates to this project.
+   * Every estate this project is the home of, lent to it or not, newest
+   * first, with its loans and what the caller may do with it.
+   */
+  listHomeEstates = $action({
+    use: [$ownsProject({ requires: "estate:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/estates/home",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ items: z.array(ownedEstateResourceSchema) }),
+    },
+    handler: async ({ params, user }) => {
+      const rows = await this.estates.findMany({
+        where: { projectId: { eq: params.projectId } },
+        orderBy: [{ column: "createdAt", direction: "desc" }],
+      });
+      return { items: await this.service.withLoans(rows, user) };
+    },
+  });
+
+  /**
+   * One estate of this project, by its slug: what the console at
+   * `/:projectSlug/estates/:estateSlug` opens. A slug is unique per home
+   * project (#E126), so the pair names one estate. An estate only lent here
+   * is not found: its console lives under its own home.
+   */
+  getHomeEstate = $action({
+    use: [$ownsProject({ requires: "estate:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/estates/home/:estateSlug",
+    schema: {
+      params: z.object({ projectId: z.integer(), estateSlug: z.string() }),
+      response: ownedEstateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const row = await this.estates.findOne({
+        where: {
+          projectId: { eq: params.projectId },
+          slug: { eq: params.estateSlug },
+        },
+      });
+      if (!row) {
+        throw new NotFoundError("Estate not found");
+      }
+      const [owned] = await this.service.withLoans([row], user);
+      return owned!;
+    },
+  });
+
+  /**
+   * Lend an estate to this project. Takes `estate:lend` here (the gate) and
+   * in the estate's home project.
    */
   attachEstate = $action({
     use: [
@@ -109,25 +160,38 @@ export class ProjectEstateController {
       response: lentEstateResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      // 404 for an estate the caller does not own, like every other read of
-      // somebody else's estate: the id alone must not confirm it exists.
-      const estate = await this.service.loadOwned(body.estateId, user);
+      const estate = await this.estates.findById(body.estateId);
+      if (!estate || estate.projectId == null) {
+        throw new NotFoundError("Estate not found");
+      }
+      if (estate.projectId !== params.projectId) {
+        // ⚠️ ranks: imperative. The second half of the trust statement: the
+        // home's rank, asked of a project the path does not name.
+        await this.ranks.assert(
+          await this.projectSecurity.organizationIdOf(estate.projectId),
+          "estate:lend",
+          user,
+        );
+      }
       return this.lend(params.projectId, estate, user);
     },
   });
 
   /**
-   * Create a new estate and lend it in one step, without leaving the
-   * project. Same creation path as the account page, so the two cannot
-   * disagree, and the same body (`createEstateBodySchema`): a bay estate
-   * hands its secret back exactly once, a cloudflare estate hands back
-   * nothing because the owner already holds the token.
+   * Create an estate in this project, its home, and lend it here in the same
+   * step: the one way an estate comes to exist (#Q3279). `estate:create`,
+   * with the Apps capability on, since an estate homed in a project without
+   * it could be managed through no page. The body is
+   * `createEstateBodySchema`: a bay estate hands its secret back exactly
+   * once, a cloudflare estate hands back nothing because the caller already
+   * holds the token.
    */
   createProjectEstate = $action({
     use: [
       $ownsProject({
-        requires: "estate:lend",
+        requires: "estate:create",
         param: "projectId",
+        capability: { key: "apps", action: "create an estate" },
       }),
     ],
     method: "POST",
@@ -139,10 +203,18 @@ export class ProjectEstateController {
     },
     handler: async ({ params, body, user }) => {
       if (body.type === "cloudflare") {
-        const { estate } = await this.service.createCloudflare(user, body);
+        const { estate } = await this.service.createCloudflare(
+          user,
+          params.projectId,
+          body,
+        );
         return this.lend(params.projectId, estate, user);
       }
-      const { estate, secret } = await this.service.createBay(user, body);
+      const { estate, secret } = await this.service.createBay(
+        user,
+        params.projectId,
+        body,
+      );
       return { ...(await this.lend(params.projectId, estate, user)), secret };
     },
   });
@@ -174,18 +246,23 @@ export class ProjectEstateController {
         where: { id: { eq: params.estateId } },
       });
       // ⚠️ ranks: imperative, and an OR a middleware cannot express: either
-      // side of the loan may end it. The project half is a rank question now
-      // rather than `project.createdBy === user.id` - `createdBy` records who
-      // created a row and is never an authorization input again.
+      // side of the loan may end it, the borrower or the home.
       const mayLend = await this.ranks.can(
         await this.projectSecurity.organizationIdOf(params.projectId),
         "estate:lend",
         user,
       );
-      const estateOwner = estate.ownerUserId === user.id;
-      if (!mayLend && !estateOwner) {
+      const homeMayLend =
+        !mayLend && estate.projectId != null
+          ? await this.ranks.can(
+              await this.projectSecurity.organizationIdOf(estate.projectId),
+              "estate:lend",
+              user,
+            )
+          : false;
+      if (!mayLend && !homeMayLend) {
         throw new ForbiddenError(
-          "Detaching an estate needs estate:lend, or owning the estate",
+          "Detaching an estate needs estate:lend in this project or in the estate's home project",
         );
       }
 
@@ -211,7 +288,7 @@ export class ProjectEstateController {
   protected async lend(
     projectId: number,
     estate: Estate,
-    user: { id: string; email?: string; realm?: string },
+    user: UserAccountToken,
   ): Promise<LentEstateResource> {
     const existing = await this.grants.findOne({
       where: { projectId: { eq: projectId }, estateId: { eq: estate.id } },
@@ -236,15 +313,17 @@ export class ProjectEstateController {
       description: estate.slug,
     });
 
-    const owner = await this.users.findOne({
-      where: { id: { eq: estate.ownerUserId } },
-    });
-    return this.toLent(estate, String(grant.createdAt), owner, user.id);
+    const [lent] = await this.toLent(
+      [{ estate, lentAt: String(grant.createdAt) }],
+      projectId,
+      user,
+    );
+    return lent!;
   }
 
   protected async lentTo(
     projectId: number,
-    viewerId: string,
+    user: UserAccountToken,
   ): Promise<LentEstateResource[]> {
     const grants = await this.grants.findMany({
       where: { projectId: { eq: projectId } },
@@ -256,60 +335,76 @@ export class ProjectEstateController {
     const rows = await this.estates.findMany({
       where: { id: { inArray: grants.map((grant) => grant.estateId) } },
     });
-    const owners = await this.users.findMany({
-      where: {
-        id: { inArray: [...new Set(rows.map((row) => row.ownerUserId))] },
-      },
-    });
-    return grants.flatMap((grant) => {
-      const estate = rows.find((row) => row.id === grant.estateId);
-      if (!estate) {
-        return [];
-      }
-      return [
-        this.toLent(
-          estate,
-          String(grant.createdAt),
-          owners.find((owner) => owner.id === estate.ownerUserId),
-          viewerId,
-        ),
-      ];
-    });
+    return this.toLent(
+      grants.flatMap((grant) => {
+        const estate = rows.find((row) => row.id === grant.estateId);
+        return estate ? [{ estate, lentAt: String(grant.createdAt) }] : [];
+      }),
+      projectId,
+      user,
+    );
   }
 
   /**
-   * What a member may see of an estate: built field by field, so a column
-   * added to `estates` has to be a decision to show it here.
+   * What a member of the borrowing project may see of an estate: built field
+   * by field, so a column added to `estates` has to be a decision to show it
+   * here. One read of the home projects for the whole list, and the reader's
+   * permissions computed once per home.
    */
-  protected toLent(
-    estate: Estate,
-    lentAt: string,
-    owner: UserRow | undefined,
-    viewerId: string,
-  ): LentEstateResource {
-    return {
-      id: estate.id,
-      slug: estate.slug,
-      label: estate.label ?? undefined,
-      type: estate.type,
-      online: this.service.isOnline(estate),
-      deployAllowed: estate.deployAllowed,
-      acceptedRuntimes: this.service.acceptedRuntimes(estate.type),
-      credentialStatus: this.cloudflare.credentialStatus(estate),
-      lastSeenAt: estate.lastSeenAt ?? undefined,
-      expiresAt: estate.expiresAt ?? undefined,
-      overdue: this.service.isOverdue(estate),
-      publicIp: estate.publicIp ?? undefined,
-      provider: estate.provider ?? undefined,
-      providerServerType: estate.providerServerType ?? undefined,
-      cpuPercent: estate.cpuPercent ?? undefined,
-      memoryPercent: estate.memoryPercent ?? undefined,
-      owner: { id: estate.ownerUserId, name: displayName(owner, "Unknown") },
-      // The one place this comparison happens. See the field's own note: the
-      // Bay console 404s for anybody else, so this decides whether a link
-      // resolves.
-      ownedByViewer: estate.ownerUserId === viewerId,
-      lentAt,
-    };
+  protected async toLent(
+    loans: Array<{ estate: Estate; lentAt: string }>,
+    projectId: number,
+    user: UserAccountToken,
+  ): Promise<LentEstateResource[]> {
+    const homeIds = [
+      ...new Set(
+        loans.flatMap(({ estate }) =>
+          estate.projectId == null ? [] : [estate.projectId],
+        ),
+      ),
+    ];
+    const homes = homeIds.length
+      ? await this.projects.findMany({
+          where: { id: { inArray: homeIds } },
+          columns: ["id", "title", "slug"],
+        })
+      : [];
+    const can = new Map<number, string[]>();
+    for (const homeId of homeIds) {
+      can.set(homeId, await this.service.estatePermissionsIn(homeId, user));
+    }
+    return loans.map(({ estate, lentAt }) => {
+      const home = homes.find((project) => project.id === estate.projectId);
+      return {
+        id: estate.id,
+        slug: estate.slug,
+        label: estate.label ?? undefined,
+        type: estate.type,
+        online: this.service.isOnline(estate),
+        deployAllowed: estate.deployAllowed,
+        acceptedRuntimes: this.service.acceptedRuntimes(estate.type),
+        credentialStatus: this.cloudflare.credentialStatus(estate),
+        lastSeenAt: estate.lastSeenAt ?? undefined,
+        expiresAt: estate.expiresAt ?? undefined,
+        overdue: this.service.isOverdue(estate),
+        publicIp: estate.publicIp ?? undefined,
+        provider: estate.provider ?? undefined,
+        providerServerType: estate.providerServerType ?? undefined,
+        cpuPercent: estate.cpuPercent ?? undefined,
+        memoryPercent: estate.memoryPercent ?? undefined,
+        ...(home
+          ? {
+              home: {
+                id: home.id,
+                title: home.title,
+                ...(home.slug ? { slug: home.slug } : {}),
+              },
+            }
+          : {}),
+        isHome: estate.projectId === projectId,
+        can: estate.projectId == null ? [] : (can.get(estate.projectId) ?? []),
+        lentAt,
+      };
+    });
   }
 }

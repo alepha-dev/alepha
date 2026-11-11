@@ -396,7 +396,7 @@ export class AppService {
    * Points this instance at an estate the project has been LENT, or clears it.
    *
    * ⚠️ Validated against `estate_projects` and never against `estates`. An
-   * estate is owned by a user and lent to a project (folio #1194); resolving
+   * estate belongs to its home project and is lent to others (folio #1194, epic #E126); resolving
    * the id against the estates table directly would let a project point at an
    * estate it was never given, which is folio #96's `targetId` hole wearing a
    * foreign key. The 404 rather than a 403 is deliberate too: a project that
