@@ -543,6 +543,12 @@ export class ServerProvider {
       .handler(request)
       .catch(this.handleInternalError);
 
+    // A native Response (a proxied WebSocket's 101) goes back untouched.
+    if ("native" in response && response.native) {
+      ev.res = response.native;
+      return;
+    }
+
     if (headFallback) {
       const { status, headers } = await this.stripBody(response);
       ev.res = new Response(null, {

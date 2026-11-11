@@ -264,6 +264,10 @@ export interface ServerResponse {
     | NodeWebStream;
   headers: Record<string, string>;
   status: number;
+  /**
+   * See `ServerReply.native`.
+   */
+  native?: Response;
 }
 
 export type ServerRouteRequestHandler = (

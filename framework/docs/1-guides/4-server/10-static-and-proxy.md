@@ -311,6 +311,45 @@ class Gateway {
 proxy a feature flag: point `/v2/*` at a new service and turn it off without
 removing the declaration.
 
+### WebSocket
+
+`websocket: true` forwards a WebSocket upgrade on the proxy's path family as
+well. It is off by default, so a proxy forwards nothing more than its HTTP
+requests until it asks.
+
+```typescript check
+import { $proxy } from "alepha/server/proxy";
+
+class Gateway {
+  live = $proxy({
+    path: "/live/*",
+    target: "https://stream.example.com",
+    websocket: true,
+    timeout: [5, "seconds"],
+    rewrite: (url) => {
+      url.pathname = url.pathname.replace("/live", "");
+    },
+  });
+}
+```
+
+The handshake goes to the upstream after `rewrite` (an `http` target is
+reached as `ws`, `https` as `wss`), frames are piped both ways, and either
+side closing closes the other. It follows the HTTP rules: no `Cookie` nor
+`Authorization` unless `forward` names them, `beforeRequest` sees the
+handshake after they left, and `timeout` bounds the wait for the upstream's
+answer (503 past it). With `forward: ["authorization"]`, the bearer derived
+from the session cookie travels, on Node as on workerd.
+
+| Runtime | Upgrade                                                                                                                                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node    | Answered on the HTTP server's `upgrade` event, beside `alepha/websocket` and under `alepha dev` (where it rides Vite's server, and Vite's HMR socket is untouched). `beforeRequest` receives the handshake's method, URL and headers only. |
+| workerd | The upstream's 101 goes back to the client as is.                                                                                                                                                                                          |
+| Bun     | Refused with 501 and a log line: Bun's server runs with no WebSocket handler.                                                                                                                                                              |
+
+A `$websocket` whose path falls under a websocket proxy's prefix is the
+proxy's: the proxy owns its whole path family.
+
 ### It is a proxy, so it is a hole
 
 Everything matching `path` leaves your process for another origin, carrying

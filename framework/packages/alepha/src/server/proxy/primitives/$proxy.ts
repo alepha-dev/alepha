@@ -251,6 +251,25 @@ export type ProxyPrimitiveOptions = {
    * @example [10, "seconds"]
    */
   timeout?: DurationLike | false;
+
+  /**
+   * Forward a WebSocket upgrade on this path to `target`, frames piped both
+   * ways, either side closing the other. Off by default.
+   *
+   * - **Node**: the handshake goes upstream with `node:http`; `alepha dev`
+   *   included, where Vite owns the server.
+   * - **workerd**: the upstream's 101 goes back to the client as is.
+   * - **Bun**: refused with 501, Bun's server running no WebSocket handler.
+   *
+   * The handshake follows the HTTP rules: `rewrite`, then `forward` (no
+   * `Cookie` nor `Authorization` unless named), then `beforeRequest`, and
+   * `timeout` bounds the wait for the upstream's answer. On Node,
+   * `beforeRequest` receives the handshake's method, URL and headers only:
+   * an upgrade never becomes a routed request there.
+   *
+   * A `$websocket` path under this proxy's prefix is the proxy's.
+   */
+  websocket?: boolean;
 };
 
 /**
