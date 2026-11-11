@@ -63,7 +63,10 @@ const boot = async (
         ? {
             ...surface,
             classes: [{ key: "QuestApi", pure: true }],
-            actions: surface.actions.map((it) => ({ ...it, class: "QuestApi" })),
+            actions: surface.actions.map((it) => ({
+              ...it,
+              class: "QuestApi",
+            })),
           }
         : surface,
     );
