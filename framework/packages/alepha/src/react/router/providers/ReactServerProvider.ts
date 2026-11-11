@@ -849,6 +849,14 @@ export class ReactServerProvider {
           return;
         }
       }
+      // A rendered response asks for its CSP nonce now, before the headers
+      // leave: on a streamed page they leave before the loaders run, so
+      // whether the page will need one cannot be waited for. A hit (above)
+      // asks for none, and keeps the static header.
+      const nonce = this.helmet.cspNonce(serverRequest);
+      if (nonce) {
+        this.alepha.store.set("alepha.react.router.nonce", nonce);
+      }
       const sink = cached && recorder ? new PageCacheSink() : undefined;
       const outcome = cached
         ? this.pageCache.refused.has(cached.key) && dev
@@ -1093,6 +1101,23 @@ export class ReactServerProvider {
 
     const parts = sink.parts();
 
+    // A nonce never enters shared bytes (#Q3318): a hit would replay it to
+    // another visitor under a header that does not allow it, or hand a valid
+    // nonce to whatever markup was stored with it. A page whose React stream
+    // suspended, or whose head has an inline script no hash covers, is
+    // rendered on every request instead.
+    const nonce = this.alepha.store.getUntracked("alepha.react.router.nonce");
+    if (nonce && (parts.head.includes(nonce) || parts.tail.includes(nonce))) {
+      this.log.debug(
+        `Page "${route.name}" was not cached: its markup carries the request's CSP nonce`,
+        { key: plan.key },
+      );
+      if (!this.alepha.isProduction() && !reply.headers["x-alepha-cache"]) {
+        reply.headers["x-alepha-cache"] = "bypass; reason=csp-nonce";
+      }
+      return;
+    }
+
     // Outside production, the read tracker gets a second opinion before the
     // first write: the same page rendered for nobody must be byte for byte
     // the same. A difference is personal data that reached the markup through
@@ -1151,7 +1176,7 @@ export class ReactServerProvider {
     );
 
     const anonymous = html.replace(
-      /<script id="__ssr_private" type="application\/json">[\s\S]*?<\/script>/,
+      /<script id="__ssr_private" type="application\/json"[^>]*>[\s\S]*?<\/script>/,
       "",
     );
     if (anonymous === shared) {
@@ -1183,6 +1208,9 @@ export class ReactServerProvider {
     "server-timing",
     "x-alepha-cache",
     "date",
+    // Helmet's, per response: a hit carries the static policy, never the
+    // nonce of the response it was stored from.
+    "content-security-policy",
   ]);
 
   // ---------------------------------------------------------------------------
@@ -1354,6 +1382,10 @@ export class ReactServerProvider {
 
     const element = this.pageApi.root(state);
     this.alepha.store.set("alepha.react.router.state", state);
+    this.alepha.store.set(
+      "alepha.react.router.streamed",
+      options.streamed === true,
+    );
 
     // Loaded here rather than imported at the top so the renderer stays off the
     // cold-start path — and loaded BEFORE the stream opens, because the error
@@ -1366,6 +1398,9 @@ export class ReactServerProvider {
       // stops the render (#E85). The page cache's anonymous re-render runs in
       // an isolated context, where this is the app signal instead.
       signal: this.alepha.context.signal,
+      // React's own streaming scripts (`$RC`, `$RB`...) change with the page:
+      // only the request's nonce can allow them.
+      nonce: this.alepha.store.getUntracked("alepha.react.router.nonce"),
       bootstrapScriptContent:
         deferred && options.streamed
           ? this.templateProvider.shellMarker

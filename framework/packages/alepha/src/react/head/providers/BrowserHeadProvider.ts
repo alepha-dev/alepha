@@ -242,6 +242,7 @@ export class BrowserHeadProvider {
     if (typeof script === "string") {
       if (this.findInlineScriptByContent(document, script)) return;
       const el = document.createElement("script");
+      this.applyNonce(document, el);
       el.textContent = script;
       document.head.appendChild(el);
       return;
@@ -269,9 +270,29 @@ export class BrowserHeadProvider {
       }
     }
     if (content) {
+      this.applyNonce(document, el);
       el.textContent = content;
     }
     document.head.appendChild(el);
+  }
+
+  /**
+   * Give an inline script the document's CSP nonce, when the server sent
+   * one: a head script a client navigation inserts is checked against the
+   * policy of the document, and only that nonce (or its hash) allows it.
+   *
+   * The server writes the nonce on `#__ssr_private` of every rendered page.
+   * A browser hides the attribute's value once parsed, so it is read from the
+   * `nonce` property. A page answered from the page cache has none, and
+   * there only the hashed scripts run.
+   */
+  protected applyNonce(document: Document, el: HTMLScriptElement): void {
+    const nonce = (
+      document.querySelector("script[nonce]") as HTMLScriptElement | null
+    )?.nonce;
+    if (nonce) {
+      el.nonce = nonce;
+    }
   }
 
   /**
