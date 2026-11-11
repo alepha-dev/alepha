@@ -35,6 +35,12 @@ import { type HttpClientLink, LinkProvider } from "./LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
 export class ServerLinksProvider {
+  /**
+   * Stable id, so a container loaded in another module graph (the build's)
+   * can reach this provider by name.
+   */
+  public static readonly id: string = "alepha.server.links.ServerLinksProvider";
+
   protected readonly serverApi = $store(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly linkProvider = $inject(LinkProvider);
@@ -684,7 +690,7 @@ export class ServerLinksProvider {
    * any caller who may see the action, and another middleware declaring the
    * flag must not publish whatever else its options hold.
    */
-  protected securedOptions(
+  public securedOptions(
     middlewares: MiddlewareMetadata[],
   ): boolean | SecureOptions | undefined {
     const guard = middlewares.find(

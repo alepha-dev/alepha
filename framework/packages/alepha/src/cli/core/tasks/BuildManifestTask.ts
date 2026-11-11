@@ -381,6 +381,7 @@ export class BuildManifestTask extends BuildTask {
       browser: browserKeys.length > 0 ? browserKeys.sort() : undefined,
       inspect: ctx.options.inspect ? true : undefined,
       optionsHash: this.freshness.optionsHash(ctx.options),
+      surface: ctx.surface as unknown as BuildManifest["surface"],
       // Only what a Worker deploy reads, and only when there is a Worker slice
       // to deploy: a node-only artifact carries no Cloudflare noise.
       cloudflare: runtimes.some((slice) => slice.runtime === "workerd")

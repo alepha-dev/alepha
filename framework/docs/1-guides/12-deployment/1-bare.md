@@ -77,6 +77,20 @@ A build with several runtimes has one `index.<runtime>.js` and one `server/<runt
 
 If no React frontend is present, only the server slice is built.
 
+### What the app is made of
+
+`alepha build` loads your app once, without starting it, and lists what it is made of: every class holding an `$action`, a `$route`, a `$page` or an MCP tool, and every such primitive with what a reader needs to find it (name, method, path without the API prefix, the class holding it). The list is written to `manifest.json` as `surface`, and the same list is baked into every server slice.
+
+The build also prints how many of those classes are **pure controllers**, and names each one that is not, with the reason:
+
+```txt
+119 of 131 controllers are pure
+  acme.api:QuestController: holds a $storage
+  acme.api:FileController: injected by UploadService
+```
+
+A pure controller holds actions, pages or tools and nothing that acts at boot (no `$hook`, no `$job`, no `$storage`, ...), and nothing but other pure controllers injects it. The report is informative only: it never fails a build. A class is named by its module and its class name (`acme.api:QuestController`), or by its class name alone when no module lists it.
+
 Database migrations stay in your project's `migrations/` directory, outside `dist/`. In production the app applies them itself at boot, reading `migrations/<provider>/` relative to the directory it starts in, so run `node dist` from the project root, or copy `migrations/` next to wherever it starts ([`alepha image`](/docs/guides-deployment-docker) copies them into the image for you). An app that declares entities but finds no migrations refuses to boot rather than fail on its first query; set `DATABASE_SYNC=false` if the schema is managed outside the app. `alepha db migrations apply` applies them ahead of a deploy instead. See [Migrations](/docs/guides-persistence-migrations).
 
 ## Static File Headers

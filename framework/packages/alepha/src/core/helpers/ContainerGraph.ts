@@ -1,3 +1,5 @@
+import { MODULE } from "alepha/internal";
+
 import type { Service } from "../interfaces/Service.ts";
 import type { Primitive } from "./primitive.ts";
 
@@ -386,6 +388,17 @@ export class ContainerGraph {
   }
 
   // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * A class's name in the build list (#Q3401): `module.name:ClassName`, or
+   * the class name alone when no module lists it. Computed the same way on
+   * the build's container and on the runtime's, so the two agree on a class
+   * without sharing a reference.
+   */
+  public static keyOf(service: Service): string {
+    const module = (service as { [MODULE]?: { name?: string } })[MODULE];
+    return module?.name ? `${module.name}:${service.name}` : service.name;
+  }
 
   /**
    * The side a primitive kind declares, `boot` when it declares none.

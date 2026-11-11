@@ -402,7 +402,12 @@ export class DeployRunner {
         `This artifact carries no readable ${ArtifactTarReader.MANIFEST_PATH}, so there is nothing to say what it binds.`,
       );
     }
-    if (this.canonical(archived) !== this.canonical(recorded)) {
+    // The column never holds `surface` (see `ArtifactService.serialise`), so
+    // the archive's copy is compared without it.
+    if (
+      this.canonical(this.withoutSurface(archived)) !==
+      this.canonical(this.withoutSurface(recorded))
+    ) {
       throw new BadRequestError(
         `${artifact.app} ${artifact.tag}: the manifest recorded at push does not match the ${ArtifactTarReader.MANIFEST_PATH} inside the archive. Push the build again.`,
       );
@@ -413,6 +418,17 @@ export class DeployRunner {
    * JSON with every object's keys sorted, so two serialisations of one
    * document compare equal.
    */
+  /**
+   * The manifest without its build list, which the column does not store.
+   */
+  protected withoutSurface(value: unknown): unknown {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const { surface: _surface, ...rest } = value as Record<string, unknown>;
+      return rest;
+    }
+    return value;
+  }
+
   protected canonical(value: unknown): string {
     return JSON.stringify(value, (_key, entry: unknown) =>
       entry && typeof entry === "object" && !Array.isArray(entry)

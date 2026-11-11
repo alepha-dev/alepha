@@ -23,6 +23,7 @@ export * from "./helpers/jsonSchemaToZod.ts";
 export * from "./helpers/ContainerGraph.ts";
 export * from "./helpers/primitive.ts";
 export * from "./interfaces/AlephaMeta.ts";
+export * from "./interfaces/AppSurface.ts";
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/LoggerInterface.ts";
 export * from "./interfaces/Run.ts";

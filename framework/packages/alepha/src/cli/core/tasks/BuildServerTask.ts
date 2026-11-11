@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { isAbsolute, join } from "node:path";
 
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError, type AppSurface } from "alepha";
 import type { ActorHostDeclaration } from "alepha/actor";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -138,6 +138,7 @@ export class BuildServerTask extends BuildTask {
             silent: !isCI,
             alepha: ctx.alepha,
             meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
+            surface: ctx.surface,
             allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
             ssr,
             inspect: this.inspects(ctx, runtime),
@@ -252,6 +253,12 @@ export class BuildServerTask extends BuildTask {
      */
     meta?: Record<string, string>;
     /**
+     * The build list (#Q3401), baked in as `__ALEPHA_SURFACE__` so the
+     * runtime reads it before any module registers. Absent, the app creates
+     * every class at boot.
+     */
+    surface?: AppSurface;
+    /**
      * Source paths whose preload key may resolve to no chunks without failing
      * the build.
      */
@@ -360,6 +367,11 @@ export class BuildServerTask extends BuildTask {
         // record on `ctx.meta`, so `alepha.meta` reads the same answer in the
         // browser as it does on the server.
         ...opts.meta,
+        ...(opts.surface
+          ? {
+              __ALEPHA_SURFACE__: JSON.stringify(JSON.stringify(opts.surface)),
+            }
+          : {}),
       },
       resolve: {
         dedupe: [
