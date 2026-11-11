@@ -189,6 +189,25 @@ export class PasskeyService {
   }
 
   /**
+   * Whether the user holds a passkey usable here: what a pending second
+   * factor offers as `passkey` on its challenge.
+   */
+  public async hasUsablePasskey(
+    userId: string,
+    realm: string | undefined,
+    url: URL,
+  ): Promise<boolean> {
+    const settings = await this.settings(realm);
+    if (settings.passkeys !== "optional") {
+      return false;
+    }
+    const rp = this.relyingParty(settings, this.realmName(realm), url);
+    return (await this.passkeysOf(userId, realm)).some((row) =>
+      this.isUsable(row, settings, rp.rpId),
+    );
+  }
+
+  /**
    * The user's identities that are a way to sign in: every row but the
    * TOTP enrolment, with passkeys counted only while usable. Shared by the
    * passkey removal and `MyIdentityController.unlinkMyIdentity`, so "the

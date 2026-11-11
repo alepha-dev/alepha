@@ -407,6 +407,11 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       requireUserVerification: context.requireUserVerification,
     });
 
+  // A passkey is one more way to clear a step TOTP or an email code raised:
+  // it never raises one (`secondFactor` above does not look at passkeys).
+  realm.hasPasskey = (user, context) =>
+    passkeyService.hasUsablePasskey(user.id, realm.name, context.url);
+
   realm.verifyPasskey = async (credential, context) => {
     const { user, userVerified } = await sessionService.loginWithPasskey(
       credential,

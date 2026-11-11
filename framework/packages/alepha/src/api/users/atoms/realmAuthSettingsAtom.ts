@@ -32,8 +32,14 @@ const usernameFieldRequirement = (description: string) =>
  *
  * - `"disabled"`: the method is not offered at all.
  * - `"optional"`: users may enroll, and are challenged once they have.
- * - `"required"`: every user must clear this factor, and is pushed through
- *   enrollment after their first successful password login if they have not.
+ * - `"required"`: the same, and the app's UI should push an unenrolled user
+ *   through enrollment. It is not enforced at login: an account with nothing
+ *   enrolled has no factor to be challenged on, and signs in on its password
+ *   alone. `settings.mfa` in the realm config says the policy and
+ *   `GET /users/me/mfa` (`totp.enabled`) whether this user meets it.
+ *
+ * A passkey is not an enrollment in any of these: it may clear a step TOTP
+ * or an email code raised, and raises none by itself.
  */
 export type SecondFactorRequirement = "disabled" | "optional" | "required";
 
@@ -178,8 +184,9 @@ export const realmAuthSettingsAtom = $atom({
     mfa: z.object({
       totp: secondFactorRequirement(
         "Authenticator-app codes (TOTP, RFC 6238). 'optional' lets a user " +
-          "enroll from their account page; 'required' forces enrollment " +
-          "after the first successful password login.",
+          "enroll from their account page; 'required' asks the app's UI to " +
+          "send an unenrolled user to enrollment, and is not enforced at " +
+          "login. A passkey is not an enrollment.",
       ),
       emailCode: secondFactorRequirement(
         "One-time codes sent by email. Needs `features.notifications` and a " +

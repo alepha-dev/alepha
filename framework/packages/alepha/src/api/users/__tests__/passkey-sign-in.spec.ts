@@ -41,7 +41,7 @@ describe.each(drivers)(
       const { user } = await enrolled(h);
       const visitor = h.anonymous();
 
-      const options = await visitor.call("POST", "/_auth/passkey/options");
+      const options = await visitor.call("POST", "/_auth/passkey/options", {});
       expect(options.status).toBe(200);
       expect(options.body.allowCredentials).toEqual([]);
       expect(options.body.userVerification).toBe("preferred");
@@ -71,7 +71,7 @@ describe.each(drivers)(
       const h = await boot();
       await enrolled(h);
       const visitor = h.anonymous();
-      const options = await visitor.call("POST", "/_auth/passkey/options");
+      const options = await visitor.call("POST", "/_auth/passkey/options", {});
       const credential = await h.device.get(options.body);
       expect(
         (await visitor.call("POST", "/_auth/passkey/verify", { credential }))
@@ -84,7 +84,7 @@ describe.each(drivers)(
       expect(replay.status).toBe(401);
       expect(replay.body.name).toBe("INVALID_PASSKEY");
 
-      await visitor.call("POST", "/_auth/passkey/options");
+      await visitor.call("POST", "/_auth/passkey/options", {});
       const again = await visitor.call("POST", "/_auth/passkey/verify", {
         credential,
       });
@@ -289,7 +289,7 @@ describe.each(drivers)(
       const h = await boot({ passkeys: "disabled" });
       const options = await h
         .anonymous()
-        .call("POST", "/_auth/passkey/options");
+        .call("POST", "/_auth/passkey/options", {});
       expect(options.status).toBe(401);
       expect(options.body.name).toBe("INVALID_PASSKEY");
     });

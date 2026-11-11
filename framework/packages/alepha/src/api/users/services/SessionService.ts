@@ -23,6 +23,7 @@ import type { UserEntity } from "../entities/users.ts";
 import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { MfaService } from "./MfaService.ts";
 import { PasskeyService } from "./PasskeyService.ts";
 import { UsernameSlugger } from "./UsernameSlugger.ts";
 import { UserService } from "./UserService.ts";
@@ -58,6 +59,7 @@ export class SessionService {
   });
   protected readonly usernameSlugger = $inject(UsernameSlugger);
   protected readonly passkeyService = $inject(PasskeyService);
+  protected readonly mfaService = $inject(MfaService);
   protected readonly userService = $inject(UserService);
 
   protected userAudits(realmName?: string) {
@@ -257,12 +259,24 @@ export class SessionService {
       url: URL;
       userId?: string;
       requireUserVerification?: boolean;
+      /**
+       * Clearing a pending second factor: the user's second-factor budget
+       * applies instead of `login:ip`, and the audit is `auth.mfa_verify`.
+       */
+      secondFactor?: boolean;
     },
     userRealmName?: string,
   ): Promise<{ user: UserEntity; userVerified: boolean }> {
     const realm = this.realmProvider.getRealm(userRealmName);
     const settings = await realm.getSettings();
     const { loginRateLimit } = settings;
+    if (context.secondFactor) {
+      return this.clearSecondFactorWithPasskey(
+        credential,
+        { ...context, userId: context.userId! },
+        userRealmName,
+      );
+    }
     const request = this.alepha.store.get("alepha.http.request");
     const ip = request
       ? await this.loginIp.consume({
@@ -340,6 +354,71 @@ export class SessionService {
         realm.name,
         userRealmName,
       );
+      throw new InvalidPasskeyError();
+    }
+  }
+
+  /**
+   * A passkey clearing the second factor a password login raised. The
+   * per-user `mfa` budget of `MfaService` is taken before the check and
+   * given back on success; the assertion must be user-verified and from the
+   * pending user's own passkey. Audited as `auth.mfa_verify`, factor
+   * `passkey`.
+   */
+  protected async clearSecondFactorWithPasskey(
+    credential: AuthenticationResponseJson,
+    context: { challenge: string; url: URL; userId: string },
+    userRealmName?: string,
+  ): Promise<{ user: UserEntity; userVerified: boolean }> {
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const attempt = await this.mfaService.takeAttempt(
+      context.userId,
+      userRealmName,
+    );
+    if (!attempt.allowed) {
+      throw new InvalidPasskeyError();
+    }
+    try {
+      if ((settings.passkeys ?? "disabled") !== "optional") {
+        throw new InvalidPasskeyError(
+          "Passkeys are not available on this realm",
+        );
+      }
+      const { user, userVerified } = await this.passkeyService.authenticate(
+        credential,
+        {
+          realm: userRealmName,
+          challenge: context.challenge,
+          rp: this.passkeyService.relyingParty(
+            settings,
+            realm.name,
+            context.url,
+          ),
+          requireUserVerification: true,
+          userId: context.userId,
+        },
+      );
+      await attempt.refund();
+      await this.sessionAudits(userRealmName)?.auth.log("mfa_verify", {
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: user.id,
+        description: "Second factor cleared with a passkey",
+        metadata: { factor: "passkey" },
+      });
+      return { user, userVerified };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.log.warn("Passkey second factor refused", { reason });
+      await this.sessionAudits(userRealmName)?.auth.log("mfa_verify", {
+        userId: context.userId,
+        userRealm: realm.name,
+        success: false,
+        description: "Passkey second factor refused",
+        metadata: { factor: "passkey", reason },
+      });
       throw new InvalidPasskeyError();
     }
   }

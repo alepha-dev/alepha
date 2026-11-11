@@ -252,7 +252,11 @@ export class PasskeyBrowser {
     device = this.harness.device,
     query = "",
   ): Promise<{ status: number; body: any }> {
-    const options = await this.call("POST", `/_auth/passkey/options${query}`);
+    const options = await this.call(
+      "POST",
+      `/_auth/passkey/options${query}`,
+      {},
+    );
     if (options.status !== 200) {
       return options;
     }

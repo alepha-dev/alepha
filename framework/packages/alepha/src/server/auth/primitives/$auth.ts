@@ -634,6 +634,11 @@ export interface PasskeySignInContext {
    * Refuse an assertion without the user-verified flag.
    */
   requireUserVerification?: boolean;
+  /**
+   * The ceremony clears a pending second factor rather than signing in:
+   * the second-factor budget applies, not the login one.
+   */
+  secondFactor?: boolean;
 }
 
 /**
@@ -662,6 +667,12 @@ export interface WithPasskeyFn {
     credential: AuthenticationResponseJson,
     context: PasskeySignInContext & { challenge: string },
   ) => Async<{ user: UserAccount; userVerified: boolean }>;
+
+  /**
+   * Whether this user holds a passkey that may clear a pending second
+   * factor here. Asked only after the password checked out.
+   */
+  hasPasskey?: (user: UserAccount, context: { url: URL }) => Async<boolean>;
 }
 
 export interface WithSecondFactorFn {
