@@ -201,7 +201,21 @@ Memory, several once `REDIS_URL` is set, Durable Objects on workerd) belong to t
 
 That gap is why this is not opt-in. A supervisor or load balancer starting your app cannot ask it to expose a readiness endpoint; without one, the best it can do is open a TCP connection, which succeeds while the app is still building its database. It then sends traffic the app cannot serve. Alepha exposes `/health` universally so the caller can tell _listening_ from _working_.
 
-Put your reverse proxy in front of it: `/health` describes your internals and belongs on loopback, not on the public host. [Bay](https://alepha.dev/bay) returns 404 for it on the public interface.
+#### Liveness and readiness
+
+An orchestrator asks two questions apart, and `AlephaServer` answers both:
+
+| Path      | Answers 200                          | Answers 503                                          |
+| --------- | ------------------------------------ | ---------------------------------------------------- |
+| `/livez`  | as soon as the listener is bound     | never                                                |
+| `/readyz` | once the app is ready                | while it starts, and from the moment `stop()` begins |
+| `/health` | once the app is ready (as `/readyz`) | while it starts                                      |
+
+Point a **liveness** probe at `/livez`, never at `/health`: a probe that gets 503 while migrations run restarts the process in a loop. Point a **readiness** probe at `/readyz`. The listener binds before every other start hook, so `/livez` answers through the whole start.
+
+`/readyz` turns 503 as soon as `stop()` begins (`alepha.isStopping()` is true from then until the stop is over), so the orchestrator stops sending new traffic. The framework adds no drain delay of its own: the listener closes when its own stop hook runs, so connections are drained by the orchestrator's wait before it sends SIGTERM (a `preStop` in Kubernetes).
+
+Put your reverse proxy in front of all of them: they describe your internals and belong on loopback, not on the public host. [Bay](https://alepha.dev/bay) returns 404 for `/health`, `/healthz`, `/livez`, `/readyz` and `/metrics` on the public interface.
 
 <!-- docs-check-ignore: migration note about a removed symbol -->
 

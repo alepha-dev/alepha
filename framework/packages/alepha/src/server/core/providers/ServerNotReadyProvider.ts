@@ -1,6 +1,7 @@
 import { $hook, $inject, Alepha } from "alepha";
 
 import { HttpError } from "../errors/HttpError.ts";
+import { ServerHealthProvider } from "./ServerHealthProvider.ts";
 
 /**
  * On every request, this provider checks if the server is ready.
@@ -15,8 +16,13 @@ export class ServerNotReadyProvider {
   public readonly onRequest = $hook({
     on: "server:request:before",
     priority: "first",
-    handler: ({ request: { reply } }) => {
+    handler: ({ request: { reply, url } }) => {
       if (this.alepha.isReady()) {
+        return;
+      }
+      // Liveness answers whatever the lifecycle: a liveness probe sent a 503
+      // while migrations run would restart the pod in a loop.
+      if (url.pathname === ServerHealthProvider.LIVENESS_PATH) {
         return;
       }
 
