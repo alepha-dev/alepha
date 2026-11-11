@@ -198,6 +198,7 @@ export class DeployRunner {
         fs,
         DeployRunner.ROOT,
         request.artifact.projectId,
+        (path) => this.isForeignSlice(path),
       );
       await this.registry.line(
         deployment,
@@ -272,6 +273,30 @@ export class DeployRunner {
       throw error;
     }
   }
+
+  /**
+   * Whether a path belongs to a server slice a Cloudflare deploy never runs
+   * (#Q3383): `server/node/`, `server/bun/` and their `index.<runtime>.js`.
+   *
+   * ⚠️ Left out of the memory filesystem, not out of the walk: a
+   * multi-runtime artifact carries a node slice of tens of megabytes beside
+   * the workerd one, and writing it into the isolate cost memory for files no
+   * step reads. Only runtimes Cloudflare cannot run are named, so a slice
+   * this list does not know is still written.
+   */
+  protected isForeignSlice(path: string): boolean {
+    const relative = path.slice(DeployRunner.ROOT.length + 1);
+    return DeployRunner.FOREIGN_RUNTIMES.some(
+      (runtime) =>
+        relative.startsWith(`server/${runtime}/`) ||
+        relative === `index.${runtime}.js`,
+    );
+  }
+
+  /**
+   * The runtimes whose slices a Cloudflare deploy leaves out.
+   */
+  protected static readonly FOREIGN_RUNTIMES = ["node", "bun"];
 
   /**
    * Keep the artifact's own Worker entry, when it ships one.

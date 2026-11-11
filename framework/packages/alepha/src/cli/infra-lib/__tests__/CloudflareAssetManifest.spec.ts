@@ -134,6 +134,26 @@ describe("the Cloudflare asset manifest", () => {
     );
   });
 
+  it("digests the same with crypto.subtle, for a runtime with no node:crypto (#Q3383)", async ({
+    expect,
+  }) => {
+    class SubtleOnly extends CloudflareAssetManifest {
+      protected override syncHasher() {
+        return null;
+      }
+    }
+    const subtle = new SubtleOnly();
+
+    for (const text of ["", "abc", "x".repeat(100_000)]) {
+      expect(await subtle.digest(bytes(text))).toBe(
+        await manifest.digest(bytes(text)),
+      );
+    }
+    expect(await subtle.cloudflareKey("a".repeat(64), "a.js")).toBe(
+      await manifest.cloudflareKey("a".repeat(64), "a.js"),
+    );
+  });
+
   describe("base64 for the upload (#Q3382)", () => {
     class Fallback extends CloudflareAssetManifest {
       public fallback(bytes: Uint8Array): string {

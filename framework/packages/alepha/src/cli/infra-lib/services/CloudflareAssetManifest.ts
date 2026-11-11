@@ -1,4 +1,11 @@
 /**
+ * The slice of `node:crypto`'s `createHash` the digest uses.
+ */
+export type NodeCreateHash = (algorithm: string) => {
+  update(bytes: Uint8Array | string): { digest(encoding: "hex"): string };
+};
+
+/**
  * One entry of the manifest Cloudflare answers an upload session for.
  */
 export interface CloudflareAssetEntry {
@@ -284,12 +291,48 @@ export class CloudflareAssetManifest {
    * is derived with.
    */
   protected async sha256(bytes: Uint8Array): Promise<string> {
+    const hasher = this.syncHasher();
+    if (hasher) {
+      return hasher("sha256").update(bytes).digest("hex");
+    }
     return this.hex(
       new Uint8Array(
         await crypto.subtle.digest("SHA-256", bytes as BufferSource),
       ),
     );
   }
+
+  /**
+   * `node:crypto`'s `createHash`, when the runtime hands it out through
+   * `process.getBuiltinModule` (Node 22+, Bun), else `null`.
+   *
+   * ⚠️ **Why not `crypto.subtle` everywhere:** on Node every `subtle.digest`
+   * is a hop to the thread pool, so a deploy hashing 3,167 docs assets took
+   * 4.5 s of wall time against ~40 ms of actual hashing. `createHash` is
+   * synchronous and as native. Reached at runtime rather than imported,
+   * because a static `node:crypto` import may not reach a workerd entry
+   * (`workerdEntryGraph.spec.ts`); where it is absent, `subtle` answers.
+   */
+  protected syncHasher(): NodeCreateHash | null {
+    if (CloudflareAssetManifest.createHash === undefined) {
+      const getBuiltinModule = (
+        globalThis as {
+          process?: { getBuiltinModule?: (id: string) => unknown };
+        }
+      ).process?.getBuiltinModule;
+      const mod =
+        typeof getBuiltinModule === "function"
+          ? (getBuiltinModule("node:crypto") as
+              | { createHash?: NodeCreateHash }
+              | undefined)
+          : undefined;
+      CloudflareAssetManifest.createHash =
+        typeof mod?.createHash === "function" ? mod.createHash : null;
+    }
+    return CloudflareAssetManifest.createHash;
+  }
+
+  protected static createHash: NodeCreateHash | null | undefined;
 
   protected hex(bytes: Uint8Array): string {
     let out = "";

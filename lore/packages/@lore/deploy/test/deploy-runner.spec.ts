@@ -14,6 +14,7 @@ import {
   DeployAssetCache,
   DeployRunner,
 } from "../src/api/index.ts";
+import { DeployFileSystemProvider } from "../src/api/services/DeployFileSystemProvider.ts";
 import { gzip, type TarEntry, tar } from "../src/testing/index.ts";
 
 /**
@@ -123,6 +124,7 @@ describe("deploying an artifact from inside the Worker", () => {
   ) => {
     const calls: string[] = [];
     const sent: string[] = [];
+    const containers: Alepha[] = [];
     let uploaded: {
       scriptName?: string;
       bindings?: any[];
@@ -197,6 +199,7 @@ describe("deploying an artifact from inside the Worker", () => {
       artifactStream: async () => new Blob([bytes as BlobPart]).stream(),
       container: () => {
         const child = container();
+        containers.push(child);
         Object.assign(
           child.inject(WorkerCloudflareAdapter) as unknown as Record<
             string,
@@ -208,7 +211,14 @@ describe("deploying an artifact from inside the Worker", () => {
       },
     });
 
-    return { runner, calls, sent, uploaded: () => uploaded };
+    return {
+      runner,
+      calls,
+      sent,
+      uploaded: () => uploaded,
+      // The deploy's own filesystem, to say what the unpack wrote.
+      files: () => containers[0]!.inject(DeployFileSystemProvider),
+    };
   };
 
   const request = (over: Record<string, unknown> = {}) => ({
@@ -404,6 +414,28 @@ describe("deploying an artifact from inside the Worker", () => {
       _headers: headers,
       _redirects: redirects,
     });
+  });
+
+  it("leaves the node slice out of the isolate, and keeps the workerd one (#Q3383)", async ({
+    expect,
+  }) => {
+    const { runner, files } = await withFakeCloudflare(
+      await packed(
+        {},
+        {
+          "index.node.js": "node entry",
+          "server/node/chunk.js": "x".repeat(10_000),
+          "server/workerd/chunk.js": "export const a = 1;",
+        },
+      ),
+    );
+
+    await runner.run(request() as never);
+
+    expect(await files().exists("/deploy/server/node/chunk.js")).toBe(false);
+    expect(await files().exists("/deploy/index.node.js")).toBe(false);
+    expect(await files().exists("/deploy/server/workerd/chunk.js")).toBe(true);
+    expect(await files().exists("/deploy/index.workerd.js")).toBe(true);
   });
 
   describe("the asset list pushed with the build (#Q3381)", () => {

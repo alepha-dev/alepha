@@ -115,6 +115,7 @@ export class DeployAssetCache {
     fs: MemoryFileSystemProvider,
     root: string,
     projectId?: number,
+    leaveOut?: (path: string) => boolean,
   ): Promise<DeployAssetCacheEntry> {
     // The project's pushed list first, then one a deploy computed.
     const cached =
@@ -138,10 +139,13 @@ export class DeployAssetCache {
     let count = 0;
     let yieldedAt = this.clock.nowMillis();
     const unpacked = await this.reader.extract(source, fs, root, {
-      skip: (path) => path.startsWith(assets),
+      // ⚠️ `leaveOut` is the caller's: a slice this deploy never runs is
+      // walked past like an asset, and never written (#Q3383).
+      skip: (path) => path.startsWith(assets) || Boolean(leaveOut?.(path)),
       onSkipped: cached
         ? undefined
         : async (path, body) => {
+            if (!path.startsWith(assets)) return;
             const key = this.hashes.key(path.slice(assets.length));
             if (this.hashes.isConfigFile(key)) {
               const field = this.hashes.configField(key);
