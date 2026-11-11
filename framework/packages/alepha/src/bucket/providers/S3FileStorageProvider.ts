@@ -12,7 +12,7 @@ import {
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { FileDetector, FileSystemProvider } from "alepha/system";
-import { S3mini } from "s3mini";
+import { S3mini, type UploadPart } from "s3mini";
 
 import { FileNotFoundError } from "../errors/FileNotFoundError.ts";
 import { MultipartChunker } from "../helpers/MultipartChunker.ts";
@@ -105,7 +105,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
   protected readonly fileSystem = $inject(FileSystemProvider);
   protected readonly fileDetector = $inject(FileDetector);
   protected readonly crypto = $inject(CryptoProvider);
-  protected client?: S3Client;
+  protected client?: S3mini;
 
   /**
    * Key prefix, so several apps can share one bucket.
@@ -118,7 +118,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     return this.env.S3_KEY_PREFIX || this.alepha.name;
   }
 
-  protected getClient(): S3Client {
+  protected getClient(): S3mini {
     if (!this.client) {
       const endpoint = this.env.S3_ENDPOINT.replace(/\/+$/, "");
       this.client = new S3mini({
@@ -238,7 +238,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
    * otherwise, and nobody ever does.
    */
   protected async uploadStreamed(
-    client: S3Client,
+    client: S3mini,
     key: string,
     file: FileLike,
   ): Promise<void> {
@@ -268,7 +268,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
       file.type || "application/octet-stream",
     );
 
-    const uploaded: S3UploadedPart[] = [];
+    const uploaded: UploadPart[] = [];
 
     try {
       uploaded.push(await client.uploadPart(key, uploadId, head, 1));
@@ -415,48 +415,4 @@ export class S3FileStorageProvider implements FileStorageProvider {
       }
     }
   }
-}
-
-/**
- * The part of the `s3mini` client this provider calls.
- *
- * `s3mini` is bundled into `alepha`, so a consumer has no `s3mini` for a
- * declaration file to import from: `client` and `getClient()` are typed by
- * this instead, which an `S3mini` instance satisfies.
- */
-export interface S3Client {
-  putObject(
-    key: string,
-    data: Uint8Array,
-    fileType?: string,
-    ssecHeaders?: undefined,
-    additionalHeaders?: Record<`x-amz-${string}`, string>,
-    contentLength?: number,
-  ): Promise<Response>;
-  getObjectResponse(key: string): Promise<Response | null>;
-  objectExists(key: string): Promise<boolean | null>;
-  deleteObject(key: string): Promise<boolean>;
-  deleteObjects(keys: string[]): Promise<boolean[]>;
-  listObjects(
-    delimiter?: string,
-    prefix?: string,
-  ): Promise<Array<{ Key: string }> | null>;
-  getMultipartUploadId(key: string, fileType?: string): Promise<string>;
-  uploadPart(
-    key: string,
-    uploadId: string,
-    data: Uint8Array,
-    partNumber: number,
-  ): Promise<S3UploadedPart>;
-  completeMultipartUpload(
-    key: string,
-    uploadId: string,
-    parts: S3UploadedPart[],
-  ): Promise<unknown>;
-  abortMultipartUpload(key: string, uploadId: string): Promise<unknown>;
-}
-
-export interface S3UploadedPart {
-  partNumber: number;
-  etag: string;
 }
