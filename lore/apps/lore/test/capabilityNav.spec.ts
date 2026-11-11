@@ -120,6 +120,17 @@ describe("the sidebar, derived from capabilities", () => {
     ]);
   });
 
+  it("lights the Dashboard entry on every dashboard of the project", ({
+    expect,
+  }) => {
+    // A named dashboard is the same page (#Q3300): the entry stays lit
+    // there, and nowhere else.
+    const entry = CORE_NAV.find((it) => it.route === "projectDashboard")!;
+    expect(entry.activeOn?.("projectDashboard")).toBe(true);
+    expect(entry.activeOn?.("projectDashboardNamed")).toBe(true);
+    expect(entry.activeOn?.("projectActivity")).toBe(false);
+  });
+
   it("offers no Notifications entry, at any capability set", ({ expect }) => {
     // ⚠️ Absent from the RAIL, not from the app (feedback #P2127): the header
     // bell is the only door, and two badged controls for one page, one of

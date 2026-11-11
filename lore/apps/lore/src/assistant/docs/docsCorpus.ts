@@ -275,19 +275,25 @@ export const docsCorpus: DocsSection[] = [
     guide: "The project dashboard",
     section: "The board belongs to the project, not to you",
     url: "https://alepha.dev/lore/docs/guides-project-dashboard#the-board-belongs-to-the-project-not-to-you",
-    text: 'This is the first thing to know, because it is the thing people are surprised\nby. There is one board per project and everybody in the project sees the same\none. Add a card and it appears for your colleagues; remove one and it goes for\nthem too.\n\nThat is deliberate. A private board about a shared project is a preference\nrather than a view of the project, and "look at the dashboard" has to mean\nsomething between two people.\n\n**There is no personal layout.** If two of you want different cards, the board\nholds both. Ten tiles is not a crowd.',
+    text: 'This is the first thing to know, because it is the thing people are surprised\nby. There is one board per project and everybody in the project sees the same\none. Add a card and it appears for your colleagues; remove one and it goes for\nthem too.\n\nThat is deliberate. A private board about a shared project is a preference\nrather than a view of the project, and "look at the dashboard" has to mean\nsomething between two people.\n\n**There is no personal layout.** If two of you want different cards, the board\nholds both, or the project holds a second dashboard.',
   },
   {
     guide: "The project dashboard",
-    section: "It opens empty, and you fill it",
-    url: "https://alepha.dev/lore/docs/guides-project-dashboard#it-opens-empty-and-you-fill-it",
-    text: "A new project's board has nothing on it. That is not a bug, not a loading\nstate, and not a project that is misconfigured.\n\nNothing seeds it because the cards worth having need a target only you can\nchoose: an epic card needs an epic, a release card needs a release, a tag card\nneeds a tag. A board of two cards nobody picked is not better than a board of\nnone.\n\nUse **Add card**, pick a metric, and point it at the thing you care about.",
+    section: "Several dashboards",
+    url: "https://alepha.dev/lore/docs/guides-project-dashboard#several-dashboards",
+    text: "A project can hold several dashboards: one for the work, one for the apps, one\nfor a release. The selector on the left of the dashboard header names the one\nyou are looking at and lists the others; pick one to open it.\n\nEach dashboard has its own link. The first one is the project itself\n(`/acme`), and every other is under it by name (`/acme/dashboards/apps`), so a\nlink you paste to a colleague opens the same dashboard for them. Renaming a\ndashboard changes its link, and the old one stops working.\n\nFrom the same menu, **New dashboard** creates one after the last, **Rename\ndashboard** renames the one on screen, and **Delete dashboard** deletes it with\nits cards, for everyone. The last dashboard cannot be deleted. The order is the\norder they were created in: the first one stays the page the project opens on\nuntil it is deleted, and the next then takes its place.\n\nThe first dashboard nobody named shows as **Dashboard**, in each reader's own\nlanguage.",
+  },
+  {
+    guide: "The project dashboard",
+    section: "The first dashboard is computed until you customize it",
+    url: "https://alepha.dev/lore/docs/guides-project-dashboard#the-first-dashboard-is-computed-until-you-customize-it",
+    text: "The first dashboard of a project with no card of its own is **computed**: Lore\nbuilds it on every load from what the project does, its capabilities and its\ndata, and writes nothing. What needs you, your own work, the flow of quests,\nthe plan, the apps and the folios each get a place when there is something to\nshow, and a tile with nothing to say stays out. A project with no recorded\nwrite in 90 days shows one line saying since when it has been quiet, under the\nheader, and what it shipped last.\n\nA computed board is read-only for everyone. To change it, use **Customize**:\nit copies the tiles you see into cards of the dashboard's own, once, and from\nthen on the dashboard is yours to edit. **Add card** on a customized dashboard\nadds one: pick a metric and point it at the thing you care about.\n\n**Only the first dashboard is computed.** Any other dashboard opens empty, and\nyou fill it with **Add card**.",
   },
   {
     guide: "The project dashboard",
     section: "Who may change it",
     url: "https://alepha.dev/lore/docs/guides-project-dashboard#who-may-change-it",
-    text: "Editing the board needs the **`project:update`** permission.\n\nIn the ranks a project is created with, that means the **owner** and anyone\nwith the **Admin** rank. A **Contributor** or a **Viewer** reads the board and\ncannot change it: no Add button, no card menu, no dragging.\n\nIf you want Contributors curating the board in your project, tick\n`project:update` for that rank in **Settings ▸ Members ▸ Ranks**. It is a checkbox in\nyour own rank matrix rather than something Lore decides for you.",
+    text: "Editing the board needs the **`project:update`** permission.\n\nIn the ranks a project is created with, that means the **owner** and anyone\nwith the **Admin** rank. A **Contributor** or a **Viewer** reads the board and\ncannot change it: no Add button, no card menu, no dragging.\n\nThe same permission creates, renames and deletes dashboards. A member without\nit sees every dashboard in the selector and none of those entries.\n\nIf you want Contributors curating the board in your project, tick\n`project:update` for that rank in **Settings ▸ Members ▸ Ranks**. It is a checkbox in\nyour own rank matrix rather than something Lore decides for you.",
   },
   {
     guide: "The project dashboard",
@@ -297,9 +303,9 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "The project dashboard",
-    section: "There is no Reset",
-    url: "https://alepha.dev/lore/docs/guides-project-dashboard#there-is-no-reset",
-    text: "Not on a project board and not on your own. A board this small has no layout\nworth an undo, and on a shared one a Reset button is one person discarding\neverybody's configuration in a click.\n\nRemove cards one at a time. That is also how they got there.",
+    section: "Reset to default",
+    url: "https://alepha.dev/lore/docs/guides-project-dashboard#reset-to-default",
+    text: "A customized first dashboard has **Reset to default** in its menu. It deletes\nevery card on it, for everyone, and the dashboard is computed again on the\nnext load. Lore asks before it does.\n\nReset exists on the first dashboard only, since it is the only one with a\ndefault to return to. Another dashboard is emptied card by card, or deleted.",
   },
   {
     guide: "The project dashboard",

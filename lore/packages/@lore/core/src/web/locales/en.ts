@@ -3071,6 +3071,24 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
   "project.dashboard.empty.docs": "How project dashboards work",
+  // Several dashboards per project, and the selector (#Q3300).
+  "project.dashboards.selector": "Switch dashboard",
+  "project.dashboards.create": "New dashboard",
+  "project.dashboards.name": "Name",
+  "project.dashboards.name.invalid": "A name is 1 to 60 characters.",
+  "project.dashboards.create.confirm": "Create",
+  "project.dashboards.rename": "Rename dashboard",
+  "project.dashboards.rename.description":
+    "Its link changes with its name, and a link to the old one stops working.",
+  "project.dashboards.rename.confirm": "Rename",
+  "project.dashboards.delete": "Delete dashboard",
+  "project.dashboards.delete.confirm": "Delete this dashboard?",
+  "project.dashboards.delete.none":
+    "It has no card. It is deleted for everyone in the project.",
+  "project.dashboards.delete.one":
+    "Its card is deleted with it, for everyone in the project.",
+  "project.dashboards.delete.many":
+    "Its $1 cards are deleted with it, for everyone in the project.",
   "project.dashboard.card.delete.shared":
     "The board belongs to the project, so this removes the card for everyone in it.",
   "dashboard.card.seeAll": "See all",

@@ -3071,6 +3071,24 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "Ce projet ne fait encore rien qu'une carte puisse compter. Activez une capacite dans les parametres et le tableau aura de quoi afficher.",
   "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
+  // Several dashboards per project, and the selector (#Q3300).
+  "project.dashboards.selector": "Changer de tableau de bord",
+  "project.dashboards.create": "Nouveau tableau de bord",
+  "project.dashboards.name": "Nom",
+  "project.dashboards.name.invalid": "Un nom compte de 1 à 60 caractères.",
+  "project.dashboards.create.confirm": "Créer",
+  "project.dashboards.rename": "Renommer le tableau de bord",
+  "project.dashboards.rename.description":
+    "Son lien change avec son nom, et un lien vers l'ancien ne fonctionne plus.",
+  "project.dashboards.rename.confirm": "Renommer",
+  "project.dashboards.delete": "Supprimer le tableau de bord",
+  "project.dashboards.delete.confirm": "Supprimer ce tableau de bord ?",
+  "project.dashboards.delete.none":
+    "Il n'a aucune carte. Il est supprimé pour tout le monde dans le projet.",
+  "project.dashboards.delete.one":
+    "Sa carte est supprimée avec lui, pour tout le monde dans le projet.",
+  "project.dashboards.delete.many":
+    "Ses $1 cartes sont supprimées avec lui, pour tout le monde dans le projet.",
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.card.seeAll": "Tout voir",

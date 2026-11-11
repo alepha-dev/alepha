@@ -17,19 +17,45 @@ rather than a view of the project, and "look at the dashboard" has to mean
 something between two people.
 
 **There is no personal layout.** If two of you want different cards, the board
-holds both. Ten tiles is not a crowd.
+holds both, or the project holds a second dashboard.
 
-## It opens empty, and you fill it
+## Several dashboards
 
-A new project's board has nothing on it. That is not a bug, not a loading
-state, and not a project that is misconfigured.
+A project can hold several dashboards: one for the work, one for the apps, one
+for a release. The selector on the left of the dashboard header names the one
+you are looking at and lists the others; pick one to open it.
 
-Nothing seeds it because the cards worth having need a target only you can
-choose: an epic card needs an epic, a release card needs a release, a tag card
-needs a tag. A board of two cards nobody picked is not better than a board of
-none.
+Each dashboard has its own link. The first one is the project itself
+(`/acme`), and every other is under it by name (`/acme/dashboards/apps`), so a
+link you paste to a colleague opens the same dashboard for them. Renaming a
+dashboard changes its link, and the old one stops working.
 
-Use **Add card**, pick a metric, and point it at the thing you care about.
+From the same menu, **New dashboard** creates one after the last, **Rename
+dashboard** renames the one on screen, and **Delete dashboard** deletes it with
+its cards, for everyone. The last dashboard cannot be deleted. The order is the
+order they were created in: the first one stays the page the project opens on
+until it is deleted, and the next then takes its place.
+
+The first dashboard nobody named shows as **Dashboard**, in each reader's own
+language.
+
+## The first dashboard is computed until you customize it
+
+The first dashboard of a project with no card of its own is **computed**: Lore
+builds it on every load from what the project does, its capabilities and its
+data, and writes nothing. What needs you, your own work, the flow of quests,
+the plan, the apps and the folios each get a place when there is something to
+show, and a tile with nothing to say stays out. A project with no recorded
+write in 90 days shows one line saying since when it has been quiet, under the
+header, and what it shipped last.
+
+A computed board is read-only for everyone. To change it, use **Customize**:
+it copies the tiles you see into cards of the dashboard's own, once, and from
+then on the dashboard is yours to edit. **Add card** on a customized dashboard
+adds one: pick a metric and point it at the thing you care about.
+
+**Only the first dashboard is computed.** Any other dashboard opens empty, and
+you fill it with **Add card**.
 
 ## Who may change it
 
@@ -38,6 +64,9 @@ Editing the board needs the **`project:update`** permission.
 In the ranks a project is created with, that means the **owner** and anyone
 with the **Admin** rank. A **Contributor** or a **Viewer** reads the board and
 cannot change it: no Add button, no card menu, no dragging.
+
+The same permission creates, renames and deletes dashboards. A member without
+it sees every dashboard in the selector and none of those entries.
 
 If you want Contributors curating the board in your project, tick
 `project:update` for that rank in **Settings ▸ Members ▸ Ranks**. It is a checkbox in
@@ -138,13 +167,14 @@ card. Both are done by definition, so the number is settled rather than stale,
 and the card says which. To point it somewhere else, use **Change scope** in
 the card's menu.
 
-## There is no Reset
+## Reset to default
 
-Not on a project board and not on your own. A board this small has no layout
-worth an undo, and on a shared one a Reset button is one person discarding
-everybody's configuration in a click.
+A customized first dashboard has **Reset to default** in its menu. It deletes
+every card on it, for everyone, and the dashboard is computed again on the
+next load. Lore asks before it does.
 
-Remove cards one at a time. That is also how they got there.
+Reset exists on the first dashboard only, since it is the only one with a
+default to return to. Another dashboard is emptied card by card, or deleted.
 
 ## Where Activity went
 

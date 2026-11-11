@@ -196,6 +196,156 @@ test.describe("Project dashboard", () => {
   });
 
   /**
+   * Several dashboards per project (#E127, #Q3300): the selector on the left
+   * of the header switches by navigating, and creates, renames and deletes
+   * one. Only a real navigation proves the URL is the dashboard's, which is
+   * what makes a pasted link open the same board for somebody else.
+   */
+  test("switches, creates, renames and deletes dashboards from the selector", async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `pdsel${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `PDS${t}`.slice(0, 20),
+    );
+    // A held quest, so the first dashboard's computed board is not empty and
+    // the page has its header bar.
+    const parked = await apiPost<{ id: number }>(page, "createQuest", {
+      projectId,
+      title: `Held${t}`,
+      description: "seeded",
+      area: "Main",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+    const holdUrl = (await apiPath(page, "holdQuest")).replace(
+      ":id",
+      String(parked.id),
+    );
+    await page.evaluate(async (url) => {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reason: "waiting" }),
+      });
+      if (!r.ok) throw new Error(`hold ${r.status} ${await r.text()}`);
+    }, holdUrl);
+
+    const items = page.getByTestId("dashboard-selector-item");
+
+    await test.step("the first dashboard nobody named reads Dashboard", async () => {
+      await page.goto(`/${slug}`);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByTestId("dashboard-selector-current")).toHaveText(
+        "Dashboard",
+        { timeout: 15_000 },
+      );
+    });
+
+    await test.step("a new dashboard opens empty, at its own URL", async () => {
+      await page.getByTestId("dashboard-selector").click();
+      await page.getByTestId("dashboard-create").click();
+      await page.getByRole("textbox").fill("Apps");
+      await page.getByRole("button", { name: "Create" }).click();
+      await expect(page).toHaveURL(new RegExp(`/${slug}/dashboards/apps$`), {
+        timeout: 15_000,
+      });
+      // Empty, and only the first is computed, but the bar stays: the project
+      // has two dashboards and this is the way back.
+      await expect(page.getByTestId("dashboard-empty")).toBeVisible();
+      await expect(page.getByTestId("dashboard-selector-current")).toHaveText(
+        "Apps",
+      );
+      await expect(page.getByTestId("dashboard-customize")).toHaveCount(0);
+    });
+
+    await test.step("a card added here lands on this dashboard, and a reload keeps it", async () => {
+      await page.getByTestId("dashboard-add").first().click();
+      await page
+        .locator(
+          '[data-testid="dashboard-catalogue-row"][data-metric="heldQuests"]',
+        )
+        .click();
+      const saved = page.waitForResponse(
+        (r) => r.url().includes("/api/") && r.request().method() === "POST",
+        { timeout: 15_000 },
+      );
+      await page.getByTestId("dashboard-catalogue-save").click();
+      expect((await saved).ok()).toBe(true);
+      await expect(page.getByTestId("dashboard-card")).toHaveCount(1, {
+        timeout: 15_000,
+      });
+
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByTestId("dashboard-card")).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(page.getByTestId("dashboard-selector-current")).toHaveText(
+        "Apps",
+      );
+    });
+
+    await test.step("the selector switches back to the first, at the project root", async () => {
+      await page.getByTestId("dashboard-selector").click();
+      await expect(items).toHaveCount(2);
+      await items.filter({ hasText: "Dashboard" }).click();
+      await expect(page).toHaveURL(new RegExp(`/${slug}/?$`), {
+        timeout: 15_000,
+      });
+      // The first is still computed: the card added to Apps is not here.
+      await expect(page.getByTestId("dashboard-customize")).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("a rename moves the link, and the old one is gone", async () => {
+      await page.goto(`/${slug}/dashboards/apps`);
+      await page.waitForLoadState("networkidle");
+      await page.getByTestId("dashboard-selector").click();
+      await page.getByTestId("dashboard-rename").click();
+      await page.getByRole("textbox").fill("Shop");
+      await page.getByRole("button", { name: "Rename" }).click();
+      await expect(page).toHaveURL(new RegExp(`/${slug}/dashboards/shop$`), {
+        timeout: 15_000,
+      });
+      await expect(page.getByTestId("dashboard-card")).toHaveCount(1);
+
+      await page.goto(`/${slug}/dashboards/apps`);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText("Page not found")).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("a delete names its cards and lands on the first", async () => {
+      await page.goto(`/${slug}/dashboards/shop`);
+      await page.waitForLoadState("networkidle");
+      await page.getByTestId("dashboard-selector").click();
+      await page.getByTestId("dashboard-delete").click();
+      await expect(
+        page.getByText(
+          "Its card is deleted with it, for everyone in the project.",
+        ),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Delete dashboard" }).click();
+      await expect(page).toHaveURL(new RegExp(`/${slug}/?$`), {
+        timeout: 15_000,
+      });
+      await page.getByTestId("dashboard-selector").click();
+      await expect(items).toHaveCount(1);
+      // The last one cannot be deleted, so it is not offered.
+      await expect(page.getByTestId("dashboard-delete")).toHaveCount(0);
+    });
+  });
+
+  /**
    * ⚠️ The common case, not the corner one. `project:update` is what curates
    * the board, and `ProjectRankPresets.CONTRIBUTOR` does not carry it - so
    * this is what most members see.
@@ -241,6 +391,21 @@ test.describe("Project dashboard", () => {
         await expect(page.getByTestId("dashboard-card")).toHaveCount(1, {
           timeout: 15_000,
         });
+
+        // A second dashboard, for the pasted link below (#Q3300).
+        const appsUrl = (await apiPath(page, "createProjectDashboard")).replace(
+          ":projectId",
+          String(projectId),
+        );
+        await page.evaluate(async (url) => {
+          const r = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ name: "Apps" }),
+          });
+          if (!r.ok) throw new Error(`create ${r.status} ${await r.text()}`);
+        }, appsUrl);
 
         await page.goto(`/${slug}/settings/members`);
         await page.waitForLoadState("domcontentloaded");
@@ -331,6 +496,33 @@ test.describe("Project dashboard", () => {
             '[data-testid="dashboard-card"][draggable="true"]',
           ),
         ).toHaveCount(0);
+      });
+
+      await test.step("the reader lists the dashboards and creates none", async () => {
+        await reader.page.getByTestId("dashboard-selector").click();
+        await expect(
+          reader.page.getByTestId("dashboard-selector-item"),
+        ).toHaveCount(2);
+        await expect(reader.page.getByTestId("dashboard-create")).toHaveCount(
+          0,
+        );
+        await expect(reader.page.getByTestId("dashboard-rename")).toHaveCount(
+          0,
+        );
+        await expect(reader.page.getByTestId("dashboard-delete")).toHaveCount(
+          0,
+        );
+        await reader.page.keyboard.press("Escape");
+      });
+
+      await test.step("a pasted link opens the same dashboard for the reader", async () => {
+        await reader.page.goto(`/${slug}/dashboards/apps`);
+        await reader.page.waitForLoadState("networkidle");
+        await expect(
+          reader.page.getByTestId("dashboard-selector-current"),
+        ).toHaveText("Apps", { timeout: 15_000 });
+        await expect(reader.page.getByTestId("dashboard-empty")).toBeVisible();
+        await expect(reader.page.getByTestId("dashboard-add")).toHaveCount(0);
       });
     } finally {
       await reader.ctx.close();

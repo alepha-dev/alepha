@@ -91,6 +91,8 @@ export const ROUTES_FULL_WIDTH = new Set([
   // a container query), and a centred 1024px column would both cap the tiles
   // and leave the project background down either side of the page you open on.
   "projectDashboard",
+  // The same page, on a named dashboard (#Q3300).
+  "projectDashboardNamed",
   // Full width because it is a feed of one column of rows plus a filter bar,
   // and a centred column would leave the background down both sides. It moved
   // to `/activity` with the same treatment; the entry is keyed by route NAME,
@@ -232,6 +234,8 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // `SECTION_HREF_ROUTES` above: an href there would link the page to itself.
   // Same reading as `projectActivity` and `projectInbox` below.
   projectDashboard: "project.menu.dashboard",
+  // The same leaf on a named dashboard (#Q3300), inert for the same reason.
+  projectDashboardNamed: "project.menu.dashboard",
   // Deliberately absent from `SECTION_HREF_ROUTES` above: Activity is a
   // leaf with no detail route under it, so its crumb is the open page and
   // stays inert, the same reading as `projectQuests` on the list itself.

@@ -7,6 +7,7 @@ import {
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { useMemo, useState } from "react";
 
 import type { ProjectDashboardController } from "../../../../../api/controllers/ProjectDashboardController.ts";
@@ -27,6 +28,15 @@ import ProjectDashboardDormant from "./ProjectDashboardDormant.tsx";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
 import ProjectDashboardLoading from "./ProjectDashboardLoading.tsx";
+import ProjectDashboardSelector from "./ProjectDashboardSelector.tsx";
+
+export interface ProjectDashboardProps {
+  /**
+   * The dashboard slug the route named, `""` (or absent) for `/:project`,
+   * the first. Handed down by both route loaders (#Q3300).
+   */
+  dashboardKey?: string;
+}
 
 /**
  * A project's board: where you land when you open the project.
@@ -56,6 +66,13 @@ import ProjectDashboardLoading from "./ProjectDashboardLoading.tsx";
  * most projects and possibly forever on a Knowledge-only one. The empty state
  * is written as the ordinary case rather than as a fallback at the bottom.
  *
+ * ## Several dashboards, one page (#E127, #Q3300)
+ *
+ * `/:project` and `/:project/dashboards/:dashboardSlug` both render this
+ * page. The selector on the left of the header switches by navigating, and
+ * every card write names the dashboard on screen; Customize and Reset to
+ * default exist on the first only, the one dashboard with a default.
+ *
  * ## One resolve, no polling
  *
  * The route loader fills the card list so the grid lays out with the right
@@ -65,9 +82,11 @@ import ProjectDashboardLoading from "./ProjectDashboardLoading.tsx";
  * #1057), 4,009 identical `/api/_batch` requests from one browser tab in 51
  * minutes.
  */
-const ProjectDashboard = () => {
+const ProjectDashboard = (props: ProjectDashboardProps) => {
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
+  const router = useRouter();
+  const dashboardKey = props.dashboardKey ?? "";
   const dialog = useDialog();
   const rank = useRank();
   const catalog = useInject(DashboardMetricCatalog);
@@ -79,11 +98,26 @@ const ProjectDashboard = () => {
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
   /**
-   * Edit mode as the reader set it. See `editMode` below for what it gates.
+   * Edit mode as the reader set it, for the dashboard it was set on: another
+   * dashboard opens out of it. See `editMode` below for what it gates.
    */
-  const [editOn, setEditOn] = useState(false);
+  const [editFor, setEditFor] = useState<string | undefined>();
+  const editOn = editFor === dashboardKey;
+  const setEditOn = (on: boolean | ((on: boolean) => boolean)) =>
+    setEditFor((was) => {
+      const next = typeof on === "function" ? on(was === dashboardKey) : on;
+      return next ? dashboardKey : undefined;
+    });
 
   const projectId = project?.id;
+  /**
+   * Whether the atom holds THIS board: this project's, and the dashboard
+   * the route names. The atom outlives one page, so another project's or
+   * another dashboard's list would otherwise paint for a frame on the way in.
+   */
+  const mine =
+    board.projectId === projectId &&
+    (board.dashboardKey ?? "") === dashboardKey;
   /**
    * ⚠️ **Never enforcement.** The server refuses the same writes whatever
    * this hides; what it buys is a board that does not advertise controls the
@@ -112,18 +146,32 @@ const ProjectDashboard = () => {
   );
 
   /**
-   * The cards this atom holds, but only if they belong to the open project.
-   *
-   * The atom outlives one page, so a stale project's list would otherwise
-   * paint for a frame on the way in.
+   * The cards this atom holds, but only if they belong to the open board
+   * (see {@link mine}).
    */
-  const cards = board.projectId === projectId ? board.cards : [];
+  const cards = mine ? board.cards : [];
   /**
    * The computed default board (#Q2652): read-only for everyone, no card
    * menu, no drag. Curation starts from Customize.
    */
-  const computed = board.projectId === projectId && !!board.computed;
-  const values = board.projectId === projectId ? board.values : undefined;
+  const computed = mine && !!board.computed;
+  const values = mine ? board.values : undefined;
+  const dashboards = mine ? (board.dashboards ?? []) : [];
+  const dashboard = mine ? board.dashboard : undefined;
+  /**
+   * The project's first dashboard, the one with a default (#Q3300). An
+   * unanswered read counts as the first: it is what `/:project` shows.
+   */
+  const first = dashboard?.first ?? true;
+
+  /**
+   * The dashboard every write names, read from the store at call time: the
+   * first's row may have been created by the write before this one.
+   */
+  const onDashboard = () => {
+    const held = alepha.store.get(projectDashboardAtom);
+    return { dashboardId: held.dashboard?.id };
+  };
   /**
    * Whether the board is being curated: the card menus (on hover, the way
    * Cloudflare's dashboards show them) and drag, and the tiles that have
@@ -165,11 +213,17 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const board = await boardApi.getProjectDashboard({
           params: { projectId },
-          query: { window: alepha.store.get(dashboardWindowAtom).days },
+          query: {
+            window: alepha.store.get(dashboardWindowAtom).days,
+            dashboard: dashboardKey || undefined,
+          },
         });
         if (signal.aborted) return;
         alepha.store.set(projectDashboardAtom, {
           projectId,
+          dashboardKey,
+          dashboard: board.dashboard,
+          dashboards: board.dashboards,
           computed: board.computed,
           dormantSince: board.dormantSince,
           cards: board.cards,
@@ -182,21 +236,24 @@ const ProjectDashboard = () => {
       onError: () => {
         if (!projectId) return;
         const held = alepha.store.get(projectDashboardAtom);
+        const same =
+          held.projectId === projectId &&
+          (held.dashboardKey ?? "") === dashboardKey;
         alepha.store.set(projectDashboardAtom, {
+          ...(same ? held : {}),
           projectId,
-          computed: held.projectId === projectId ? held.computed : undefined,
-          cards: held.projectId === projectId ? held.cards : [],
+          dashboardKey,
+          computed: same ? held.computed : undefined,
+          cards: same ? held.cards : [],
           values: [],
         });
       },
       // Only when the route loader did not fill the store for this project.
       // Never for an archived project: it has no board to load (#Q2662).
       runOnInit:
-        !!projectId &&
-        !project?.archivedAt &&
-        (board.projectId !== projectId || !board.values),
+        !!projectId && !project?.archivedAt && (!mine || !board.values),
     },
-    [alepha, boardApi, projectId],
+    [alepha, boardApi, projectId, dashboardKey],
   );
 
   /**
@@ -232,6 +289,7 @@ const ProjectDashboard = () => {
     alepha.store.set(projectDashboardAtom, {
       ...alepha.store.get(projectDashboardAtom),
       projectId,
+      dashboardKey,
       cards: next,
     });
     void loadAction.refetch();
@@ -243,7 +301,11 @@ const ProjectDashboard = () => {
    */
   const currentCards = () => {
     const held = alepha.store.get(projectDashboardAtom);
-    return held.projectId === projectId && !held.computed ? held.cards : [];
+    return held.projectId === projectId &&
+      (held.dashboardKey ?? "") === dashboardKey &&
+      !held.computed
+      ? held.cards
+      : [];
   };
 
   const reorderAction = useAction<[ids: number[]], void>(
@@ -262,6 +324,7 @@ const ProjectDashboard = () => {
         });
         await boardApi.reorderProjectDashboardCards({
           params: { projectId },
+          query: onDashboard(),
           body: { ids },
         });
       },
@@ -300,6 +363,7 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const made = await boardApi.addProjectDashboardCard({
           params: { projectId },
+          query: onDashboard(),
           body: {
             metric: card.metric,
             scope: card.scope,
@@ -327,6 +391,7 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const made = await boardApi.addProjectDashboardCard({
           params: { projectId },
+          query: onDashboard(),
           body: input,
         });
         setCatalogueOpen(false);
@@ -390,6 +455,7 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const made = await boardApi.customizeProjectDashboard({
           params: { projectId },
+          query: onDashboard(),
         });
         alepha.store.set(projectDashboardAtom, {
           ...alepha.store.get(projectDashboardAtom),
@@ -418,7 +484,10 @@ const ProjectDashboard = () => {
           destructive: true,
         });
         if (!confirmed) return;
-        await boardApi.resetProjectDashboard({ params: { projectId } });
+        await boardApi.resetProjectDashboard({
+          params: { projectId },
+          query: onDashboard(),
+        });
         setEditOn(false);
         await loadAction.refetch();
       },
@@ -427,9 +496,146 @@ const ProjectDashboard = () => {
   );
 
   /**
+   * A dashboard's name, asked for in a dialog. `null` when cancelled.
+   */
+  const askName = (options: {
+    title: string;
+    description?: string;
+    defaultValue?: string;
+    confirmLabel: string;
+  }) =>
+    dialog.prompt({
+      ...options,
+      label: tr("project.dashboards.name"),
+      validate: (value) => {
+        const length = value.trim().length;
+        return length >= 1 && length <= 60
+          ? null
+          : tr("project.dashboards.name.invalid");
+      },
+    });
+
+  /**
+   * The URL of a dashboard: `/:project` for the first, its slug otherwise.
+   */
+  const goTo = async (target?: {
+    slug?: string;
+    id?: number;
+    first: boolean;
+  }) => {
+    const projectSlug = project?.slug ?? "";
+    if (!target || target.first) {
+      await router.push("projectDashboard", { params: { projectSlug } });
+      return;
+    }
+    await router.push("projectDashboardNamed", {
+      params: {
+        projectSlug,
+        dashboardSlug: target.slug ?? `dashboard-${target.id}`,
+      },
+    });
+  };
+
+  /**
+   * A new dashboard, then the reader lands on it: it opens empty.
+   */
+  const createAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!projectId) return;
+        const name = await askName({
+          title: tr("project.dashboards.create"),
+          confirmLabel: tr("project.dashboards.create.confirm"),
+        });
+        if (name === null) return;
+        const made = await boardApi.createProjectDashboard({
+          params: { projectId },
+          body: { name: name.trim() },
+        });
+        await goTo(made);
+      },
+    },
+    [alepha, boardApi, dialog, projectId, project?.slug, tr],
+  );
+
+  /**
+   * A new name moves the dashboard's link, and the dialog says so.
+   */
+  const renameAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!projectId) return;
+        const name = await askName({
+          title: tr("project.dashboards.rename"),
+          description: tr("project.dashboards.rename.description"),
+          defaultValue: dashboard?.name ?? "",
+          confirmLabel: tr("project.dashboards.rename.confirm"),
+        });
+        if (name === null) return;
+        const renamed = await boardApi.renameProjectDashboard({
+          params: { projectId },
+          query: onDashboard(),
+          body: { name: name.trim() },
+        });
+        if (renamed.first) {
+          // The first stays at `/:project`: only the names change.
+          await loadAction.refetch();
+          return;
+        }
+        await goTo(renamed);
+      },
+    },
+    [alepha, boardApi, dialog, projectId, project?.slug, dashboard, tr],
+  );
+
+  /**
+   * Delete the dashboard on screen and its cards, then land on the first.
+   * The confirmation names how many cards go with it.
+   */
+  const deleteAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!projectId) return;
+        const count = currentCards().length;
+        const confirmed = await dialog.confirm({
+          title: tr("project.dashboards.delete.confirm"),
+          description:
+            count === 0
+              ? tr("project.dashboards.delete.none")
+              : count === 1
+                ? tr("project.dashboards.delete.one")
+                : tr("project.dashboards.delete.many", {
+                    args: [String(count)],
+                  }),
+          confirmLabel: tr("project.dashboards.delete"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await boardApi.deleteProjectDashboard({
+          params: { projectId },
+          query: onDashboard(),
+        });
+        if (first) {
+          // The first moved on: `/:project` now shows the next one, and the
+          // route is already `/:project`, so the read is all that is left.
+          if (dashboardKey === "") {
+            await loadAction.refetch();
+            return;
+          }
+        }
+        await goTo();
+      },
+    },
+    [alepha, boardApi, dialog, projectId, project?.slug, first, tr],
+  );
+
+  /**
    * Every card control waits while a write runs (#E59 rule 10).
    */
   const busy =
+    createAction.loading ||
+    renameAction.loading ||
+    deleteAction.loading ||
     removeAction.loading ||
     duplicateAction.loading ||
     addAction.loading ||
@@ -450,7 +656,7 @@ const ProjectDashboard = () => {
   // ⚠️ Only once the atom holds THIS project's board: before the first read
   // lands `cards` is `[]` too, and treating that as empty flashed the
   // centred Add card on every open. That state is `loading`.
-  const loading = board.projectId !== projectId;
+  const loading = !mine;
   const empty = !loading && cards.length === 0;
 
   // An archived project has no board (#Q2662): a notice and a link to what
@@ -474,7 +680,10 @@ const ProjectDashboard = () => {
     );
   }
 
-  const boardReady = !loading && !empty;
+  // The bar, with its selector, also renders on an empty dashboard when the
+  // project has more than one (#Q3300): without it a new, empty dashboard
+  // would have no way back. A single empty board keeps the header-less page.
+  const boardReady = !loading && (!empty || dashboards.length > 1);
 
   // ⚠️ The page scrolls itself: a full-width route sits in an
   // `overflow-hidden` wrapper (`ROUTES_FULL_WIDTH` in `ProjectView`), so
@@ -487,6 +696,7 @@ const ProjectDashboard = () => {
       {boardReady && (
         <ProjectDashboardHeader
           canEdit={canEdit}
+          first={first}
           computed={computed}
           editing={editMode}
           onToggleEditing={() => setEditOn((on) => !on)}
@@ -499,14 +709,26 @@ const ProjectDashboard = () => {
           }}
           onReset={() => void resetAction.run()}
           busy={busy}
-          // The dormant line only. The computed board's headline sentence
-          // went with #Q3287: the tiles under it say the same thing.
           lead={
-            computed && board.dormantSince ? (
-              <ProjectDashboardDormant since={board.dormantSince} />
-            ) : undefined
+            <ProjectDashboardSelector
+              projectSlug={project?.slug ?? ""}
+              dashboards={dashboards}
+              current={dashboard}
+              canEdit={canEdit}
+              onCreate={() => void createAction.run()}
+              onRename={() => void renameAction.run()}
+              onDelete={() => void deleteAction.run()}
+              busy={busy}
+            />
           }
         />
+      )}
+      {/* The dormant line, on a line of its own under the bar: the selector
+          took the bar's left (#Q3300). */}
+      {boardReady && computed && board.dormantSince && (
+        <div className="shrink-0 border-b px-4 py-2">
+          <ProjectDashboardDormant since={board.dormantSince} />
+        </div>
       )}
       <div
         data-testid="dashboard-page"

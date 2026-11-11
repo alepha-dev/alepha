@@ -380,39 +380,88 @@ export class CoreRouter {
       title: `${previous?.title ?? ""} › Dashboard`,
     }),
     lazy: () => import("./components/project/dashboard/ProjectDashboard.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      // An archived project has no board to read (#Q2662): the page renders
-      // its notice, and nothing redirects.
-      if (project.archivedAt) {
-        this.alepha.store.set(projectDashboardAtom, {
-          projectId: project.id,
-          cards: [],
-          values: [],
-        });
-        return;
-      }
-      // The whole board, values included, in the one request a load makes:
-      // stored cards when there are any, else the computed default (#Q2652).
-      const board = await this.projectDashboardApi
-        .getProjectDashboard({
-          params: { projectId: project.id },
-          query: { window: this.alepha.store.get(dashboardWindowAtom).days },
-        })
-        .catch(() => undefined);
+    loader: async () => this.loadDashboard(""),
+  });
+
+  /**
+   * One named dashboard of the project (#E127, #Q3300), on the same page as
+   * the root. `/:project` stays the first dashboard; this answers every
+   * dashboard by its slug, the first's included, so a link opens the same
+   * board for another member.
+   *
+   * The param is `dashboardSlug`, not `slug`, for the reason `projectEpic`'s
+   * `epicNumber` gives: route params must be unique across the table.
+   *
+   * ⚠️ Nothing redirects, here either: the first dashboard named by its slug
+   * renders, it is not sent to the root (see {@link projectDashboard}).
+   */
+  projectDashboardNamed = $pageProject({
+    path: "/dashboards/:dashboardSlug",
+    schema: {
+      params: z.object({ dashboardSlug: z.string() }),
+    },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Dashboard`,
+    }),
+    lazy: () => import("./components/project/dashboard/ProjectDashboard.tsx"),
+    loader: async ({ params }) => this.loadDashboard(params.dashboardSlug),
+  });
+
+  /**
+   * The loader both dashboard routes share: the whole board, values
+   * included, and the project's dashboards, in the one request a load makes.
+   *
+   * An unknown slug is the 404 page. A read that fails for any other reason
+   * costs a board and not the route, as it always has: this is the page the
+   * project opens on.
+   */
+  protected async loadDashboard(
+    dashboardKey: string,
+  ): Promise<{ dashboardKey: string }> {
+    const project = this.alepha.store.get(currentProjectAtom);
+    if (!project) {
+      throw new NotFoundError("Project not found");
+    }
+    // An archived project has no board to read (#Q2662): the page renders
+    // its notice, and nothing redirects.
+    if (project.archivedAt) {
       this.alepha.store.set(projectDashboardAtom, {
         projectId: project.id,
-        computed: board?.computed,
-        dormantSince: board?.dormantSince,
-        cards: board?.cards ?? [],
-        values: board?.values,
-        refreshedAt: board?.refreshedAt,
+        dashboardKey,
+        cards: [],
+        values: [],
       });
-    },
-  });
+      return { dashboardKey };
+    }
+    // Stored cards when there are any, else the computed default (#Q2652)
+    // on the first dashboard.
+    const board = await this.projectDashboardApi
+      .getProjectDashboard({
+        params: { projectId: project.id },
+        query: {
+          window: this.alepha.store.get(dashboardWindowAtom).days,
+          dashboard: dashboardKey || undefined,
+        },
+      })
+      .catch((error: unknown) => {
+        if (dashboardKey && isHttpError(error, 404)) {
+          throw new NotFoundError("Dashboard not found");
+        }
+        return undefined;
+      });
+    this.alepha.store.set(projectDashboardAtom, {
+      projectId: project.id,
+      dashboardKey,
+      dashboard: board?.dashboard,
+      dashboards: board?.dashboards,
+      computed: board?.computed,
+      dormantSince: board?.dormantSince,
+      cards: board?.cards ?? [],
+      values: board?.values,
+      refreshedAt: board?.refreshedAt,
+    });
+    return { dashboardKey };
+  }
 
   /**
    * What moved in this project: every recorded write, newest first.

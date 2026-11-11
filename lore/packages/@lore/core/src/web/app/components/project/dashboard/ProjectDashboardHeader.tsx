@@ -9,11 +9,17 @@ import ProjectDashboardWindow from "./ProjectDashboardWindow.tsx";
 
 export interface ProjectDashboardHeaderProps {
   /**
-   * What opens the row, left of the controls: the dormant line of a computed
-   * board nothing has moved on. The page title is not repeated here, since the
-   * breadcrumb already names the page.
+   * What opens the row, left of the controls: the dashboard selector
+   * (#Q3300). The dormant line sits under the bar, not here. The page title
+   * is not repeated, since the breadcrumb already names the page.
    */
   lead?: ReactNode;
+  /**
+   * Whether this is the project's first dashboard, the only one with a
+   * default: Customize and "Reset to default" are offered there alone
+   * (#Q3300), since the Reset confirmation promises the computed board.
+   */
+  first?: boolean;
   /**
    * Whether the viewer may curate the board. Absent means the Add button is
    * not rendered at all, rather than rendered disabled.
@@ -55,7 +61,7 @@ export interface ProjectDashboardHeaderProps {
 /**
  * The project board's own header, drawn as a chrome bar: the same muted band,
  * border and bevel as a `DataTable`'s toolbar, so the board opens like every
- * list in the app. The opening line on the left; the window, Add card,
+ * list in the app. The dashboard selector on the left; the window, Add card,
  * Edit / Save and the menu on the right.
  *
  * ⚠️ **Not `DashboardHeader`.** That one greets the account by name, which is
@@ -83,7 +89,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       </div>
       {/* The computed board is not stored, so it is not edited: it is
           customized, which copies it, once (#Q2660). */}
-      {props.canEdit && props.computed && (
+      {props.canEdit && props.first !== false && props.computed && (
         <Button
           variant="outlined"
           onClick={props.onCustomize}
@@ -127,7 +133,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           {tr(props.editing ? "dashboard.save" : "dashboard.edit")}
         </Button>
       )}
-      {props.canEdit && !props.computed && (
+      {props.canEdit && props.first !== false && !props.computed && (
         <ProjectDashboardMenu onReset={props.onReset} busy={props.busy} />
       )}
     </div>

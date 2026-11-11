@@ -128,6 +128,9 @@ export const CORE_NAV: CapabilityNavEntry[] = [
     // so gating either would be a check that can never fail.
     route: "projectDashboard",
     labelKey: "project.menu.dashboard",
+    // Lit on every dashboard of the project, not only the first (#Q3300).
+    activeOn: (name) =>
+      name === "projectDashboard" || name === "projectDashboardNamed",
     icon: Gauge,
     group: "activity",
     order: 10,

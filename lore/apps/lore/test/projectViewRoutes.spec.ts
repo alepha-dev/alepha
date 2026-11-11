@@ -115,6 +115,14 @@ describe("projectViewRoutes", () => {
     // The route this quest added, named explicitly: a loop over whatever the
     // router happens to hold would still pass if the dashboard vanished.
     expect(names).toContain("projectDashboard");
+    // A named dashboard renders the same page (#Q3300): full width, and the
+    // same inert crumb.
+    expect(names).toContain("projectDashboardNamed");
+    expect(ROUTES_FULL_WIDTH.has("projectDashboardNamed")).toBe(true);
+    expect(SECTION_LABEL_KEYS.projectDashboardNamed).toBe(
+      "project.menu.dashboard",
+    );
+    expect(SECTION_HREF_ROUTES.projectDashboardNamed).toBeUndefined();
 
     /**
      * A shell contributes no crumb of its own; its leaves do. `ProjectView`
