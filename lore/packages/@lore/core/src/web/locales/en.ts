@@ -857,6 +857,7 @@ export default {
     "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
 
   "project.settings.danger.title": "Danger Zone",
+  "project.settings.delete.blocked.title": "This project cannot be deleted yet",
   "project.settings.actions.delete": "Delete this project",
   "project.settings.actions.delete.helper":
     "Sometimes retreat is the only option. All quests and progress will be lost forever.",
@@ -2555,7 +2556,7 @@ export default {
   "estates.home.lentTo": "lent to $1 other project(s)",
   "estates.home.lend": "Lend to this project",
   "estates.blocker.delete":
-    "This project is the home of $1: move or delete them first, other projects may deploy onto them.",
+    "This project is the home of $1. Move these estates to another project or delete them first: other projects may deploy onto them.",
   "estates.blocker.apps":
     "Apps stays on while this project is the home of $1: move or delete them first.",
   "bay.back": "All estates",

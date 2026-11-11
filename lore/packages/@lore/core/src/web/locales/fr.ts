@@ -842,6 +842,7 @@ export default {
     "$1 devient propriétaire et vous devenez $2. Vous ne pourrez pas revenir en arrière : seul le nouveau propriétaire peut vous le rendre.",
 
   "project.settings.danger.title": "Zone à risques",
+  "project.settings.delete.blocked.title": "Ce projet ne peut pas encore être détruit",
   "project.settings.actions.delete": "Détruire ce projet",
   "project.settings.actions.delete.helper":
     "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
@@ -2553,7 +2554,7 @@ export default {
   "estates.home.lentTo": "prêté à $1 autre(s) projet(s)",
   "estates.home.lend": "Prêter à ce projet",
   "estates.blocker.delete":
-    "Ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord, d'autres projets peuvent y déployer.",
+    "Ce projet est le propriétaire de $1. Déplacez ces domaines vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
   "estates.blocker.apps":
     "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
   "bay.back": "Tous les domaines",

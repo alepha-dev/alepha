@@ -5,6 +5,7 @@ import {
   createProjectViaWizard,
   newUserContext,
   registerAndVerify,
+  releasePointerEvents,
   signInAsAdmin,
 } from "./_helpers.ts";
 
@@ -60,6 +61,24 @@ test.describe("Estates", () => {
     await expect(row.getByText("offline", { exact: true })).toBeVisible();
     // A home estate reads "This project", never "Lent to this project".
     await expect(row.getByTestId("estate-origin")).toHaveText("This project");
+
+    // Its home cannot be deleted while it is: Delete stays clickable and
+    // refuses in a dialog naming the estate (#Q3410).
+    await page.goto(`/${project.slug}/settings`);
+    await page.waitForLoadState("networkidle");
+    const deleteButton = page.getByRole("button", {
+      name: "Delete this project",
+      exact: true,
+    });
+    await expect(deleteButton).toBeEnabled({ timeout: 15_000 });
+    await deleteButton.click();
+    const blocked = page.getByRole("alertdialog");
+    await expect(blocked).toContainText("This project cannot be deleted yet");
+    await expect(blocked).toContainText("This project is the home of ovh-1");
+    await blocked.getByRole("button", { name: "OK", exact: true }).click();
+    await releasePointerEvents(page);
+    await page.goto(`/${project.slug}/settings/estates`);
+    await page.waitForLoadState("networkidle");
 
     // A `bay` row opens its console, a page of the project (#E126).
     await row.getByRole("link", { name: "ovh-1", exact: true }).click();
