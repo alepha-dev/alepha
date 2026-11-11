@@ -22,7 +22,11 @@ describe("CloudflareProvisionClient known resources", () => {
       new Response(JSON.stringify({ success: true, result, errors: [] }));
     const missing = () =>
       new Response(
-        JSON.stringify({ success: false, result: null, errors: [{ message: "not found" }] }),
+        JSON.stringify({
+          success: false,
+          result: null,
+          errors: [{ message: "not found" }],
+        }),
         { status: 404 },
       );
 
@@ -40,12 +44,15 @@ describe("CloudflareProvisionClient known resources", () => {
         const found = state.d1?.find((it) => it.uuid === match![1]);
         return found ? ok(found) : missing();
       }
-      if (path === "/d1/database" && method === "GET") return ok(state.d1 ?? []);
+      if (path === "/d1/database" && method === "GET")
+        return ok(state.d1 ?? []);
       if (path === "/d1/database" && method === "POST") {
         return ok({ uuid: "created", name: body.name });
       }
       if ((match = /^\/r2\/buckets\/([^/]+)$/.exec(path))) {
-        return state.buckets?.includes(match[1]!) ? ok({ name: match[1] }) : missing();
+        return state.buckets?.includes(match[1]!)
+          ? ok({ name: match[1] })
+          : missing();
       }
       if (path === "/r2/buckets" && method === "POST") return ok({});
       if ((match = /^\/storage\/kv\/namespaces\/([^/]+)$/.exec(path))) {
@@ -153,7 +160,9 @@ describe("CloudflareProvisionClient known resources", () => {
   }) => {
     const known = capture({ kv: [{ id: "kv-1", title: "acme-production" }] });
     try {
-      expect((await known.api.ensureKV("acme-production", { knownId: "kv-1" })).id).toBe("kv-1");
+      expect(
+        (await known.api.ensureKV("acme-production", { knownId: "kv-1" })).id,
+      ).toBe("kv-1");
     } finally {
       known.restore();
     }
@@ -161,7 +170,9 @@ describe("CloudflareProvisionClient known resources", () => {
 
     const gone = capture({ kv: [] });
     try {
-      expect((await gone.api.ensureKV("acme-production", { knownId: "kv-1" })).id).toBe("created");
+      expect(
+        (await gone.api.ensureKV("acme-production", { knownId: "kv-1" })).id,
+      ).toBe("created");
     } finally {
       gone.restore();
     }
