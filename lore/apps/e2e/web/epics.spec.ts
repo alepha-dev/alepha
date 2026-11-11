@@ -669,8 +669,14 @@ test.describe("Epics — the questline", () => {
     await test.step("the header counts what the board is showing", async () => {
       // Two roots are ready; the two behind the fork are waiting on it.
       await expect(page.getByText("4", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("2 ready")).toBeVisible();
-      await expect(page.getByText("2 waiting")).toBeVisible();
+      // By the chip's title: below 48rem of bar the word is screen-reader
+      // only, so the visible text is the count alone (#Q3374).
+      await expect(page.getByTitle("Ready", { exact: true })).toContainText(
+        "2",
+      );
+      await expect(page.getByTitle("Waiting", { exact: true })).toContainText(
+        "2",
+      );
     });
 
     await test.step("the zoom control moves the map, and fit brings it back", async () => {

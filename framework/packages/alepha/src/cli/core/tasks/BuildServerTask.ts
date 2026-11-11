@@ -16,6 +16,7 @@ import {
   type PreloadTable,
   PreloadTableBuilder,
 } from "../services/PreloadTableBuilder.ts";
+import { SbomBuilder } from "../services/SbomBuilder.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildClientTask } from "./BuildClientTask.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -58,6 +59,7 @@ export class BuildServerTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
+  protected readonly sbom = $inject(SbomBuilder);
   protected readonly preloadTable = $inject(PreloadTableBuilder);
   protected readonly slices = $inject(BuildSlices);
 
@@ -139,6 +141,7 @@ export class BuildServerTask extends BuildTask {
             allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
             ssr,
             inspect: this.inspects(ctx, runtime),
+            sbom: !!ctx.options.sbom,
           });
           ssr ??= built.ssr;
           if (runtime === this.slices.primary(runtimes)) {
@@ -257,6 +260,10 @@ export class BuildServerTask extends BuildTask {
      * Bundle `alepha/inspector` and register it before the app starts.
      */
     inspect?: boolean;
+    /**
+     * Record what this slice emitted for `dist/sbom.cdx.json`.
+     */
+    sbom?: boolean;
   }): Promise<{ entryFile: string; externals: string[]; ssr?: SsrManifest }> {
     const serverDir = this.slices.serverDir(opts.runtime);
     const conditions: string[] = [];
@@ -280,6 +287,10 @@ export class BuildServerTask extends BuildTask {
 
     if (conditions.includes("workerd")) {
       plugins.push(this.workerdCreateRequirePlugin());
+    }
+
+    if (opts.sbom) {
+      plugins.push(this.sbom.plugin());
     }
 
     if (opts.stats) {

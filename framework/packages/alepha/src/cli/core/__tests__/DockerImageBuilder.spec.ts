@@ -313,6 +313,234 @@ describe("DockerImageBuilder", () => {
     });
   });
 
+  describe("attestations and --push", () => {
+    const build = async (
+      overrides: Partial<ImageContext>,
+      setup?: (fs: MemoryFileSystemProvider) => Promise<void>,
+    ) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+      await setup?.(fs);
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { tag: "ghcr.io/o/app" },
+          { build: true, ...overrides },
+        ),
+      );
+      const call = shell.calls.find((it) => it.argv?.[0] === "docker");
+      return { argv: call?.argv ?? [], fs };
+    };
+
+    it("stays the plain docker build of today when nothing is asked for", async () => {
+      const { argv } = await build({});
+      expect(argv.slice(0, 2)).toEqual(["docker", "build"]);
+      expect(argv.join(" ")).not.toMatch(/--sbom|--provenance|--push|--load/);
+    });
+
+    it("runs docker buildx build with both attestations, loaded locally", async () => {
+      const { argv } = await build({ sbom: true, provenance: true });
+      expect(argv.slice(0, 3)).toEqual(["docker", "buildx", "build"]);
+      expect(argv).toContain("--sbom=true");
+      expect(argv).toContain("--provenance=mode=max");
+      expect(argv).toContain("--load");
+      expect(argv).not.toContain("--push");
+      expect(argv.at(-1)).toBe("dist");
+    });
+
+    it("builds and pushes in one step with push, attestations or not", async () => {
+      const { argv } = await build({ push: true });
+      expect(argv.slice(0, 3)).toEqual(["docker", "buildx", "build"]);
+      expect(argv).toContain("--push");
+      expect(argv).not.toContain("--load");
+      expect(argv).not.toContain("--sbom=true");
+    });
+
+    it("copies the SBOM into the compiled image, which copies the binary only", async () => {
+      const { fs } = await build(
+        { runtime: "bun", compile: "app", sbom: true, push: true },
+        async (memory) => {
+          await memory.writeFile("/project/dist/sbom.cdx.json", "{}");
+        },
+      );
+      expect(readDockerfile(fs)).toMatch(
+        /^COPY --chown=65532:65532 sbom\.cdx\.json \.$/m,
+      );
+    });
+
+    it("writes no SBOM line when the build wrote none", async () => {
+      const { fs } = await build({ runtime: "bun", compile: "app" });
+      expect(readDockerfile(fs)).not.toContain("sbom.cdx.json");
+    });
+
+    it("builds for the platforms asked for with docker buildx build --platform", async () => {
+      const { argv } = await build({
+        platforms: ["linux/amd64", "linux/arm64"],
+        push: true,
+      });
+      expect(argv.slice(0, 3)).toEqual(["docker", "buildx", "build"]);
+      const at = argv.indexOf("--platform");
+      expect(argv[at + 1]).toBe("linux/amd64,linux/arm64");
+    });
+
+    it("keeps the compiled Dockerfile of today with one platform", async () => {
+      const { fs } = await build({
+        runtime: "bun",
+        compile: "app",
+        platforms: ["linux/amd64"],
+      });
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toMatch(/^COPY --chown=65532:65532 app \.$/m);
+      expect(dockerfile).not.toContain("TARGETARCH");
+    });
+
+    it("picks the binary with TARGETARCH in one stage with several", async () => {
+      const { fs } = await build({
+        runtime: "bun",
+        compile: "app",
+        platforms: ["linux/amd64", "linux/arm64"],
+        push: true,
+      });
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain(
+        "ARG TARGETARCH\nCOPY --chown=65532:65532 app-${TARGETARCH} app\n",
+      );
+      expect(dockerfile.match(/^FROM /gm)).toHaveLength(1);
+      expect(dockerfile).toContain('ENTRYPOINT ["/app/app"]');
+    });
+
+    describe("preflight", () => {
+      const classic = '[["Backing Filesystem","extfs"]]';
+      const containerd = '[["driver-type","io.containerd.snapshotter.v1"]]';
+      const info = "docker info --format {{json .DriverStatus}}";
+
+      it("refuses image.sbom with no dist/sbom.cdx.json, naming build.sbom", async () => {
+        const { task } = createTestEnv();
+        await expect(
+          task.preflight({
+            root: "/project",
+            distDir: "dist",
+            sbom: true,
+            push: true,
+          }),
+        ).rejects.toThrow(/build\.sbom/);
+      });
+
+      it("refuses an attestation the classic image store cannot keep, naming --push", async () => {
+        const { fs, shell, task } = createTestEnv();
+        await fs.writeFile("/project/dist/sbom.cdx.json", "{}");
+        shell.outputs.set(info, classic);
+        await expect(
+          task.preflight({ root: "/project", distDir: "dist", sbom: true }),
+        ).rejects.toThrow(/--push.*containerd image store/s);
+      });
+
+      it("lets it through on the containerd image store", async () => {
+        const { shell, task } = createTestEnv();
+        shell.outputs.set(info, containerd);
+        await task.preflight({
+          root: "/project",
+          distDir: "dist",
+          provenance: true,
+        });
+      });
+
+      it("refuses a multi-platform result the classic store cannot load, naming --push", async () => {
+        const { shell, task } = createTestEnv();
+        shell.outputs.set(info, classic);
+        await expect(
+          task.preflight({
+            root: "/project",
+            distDir: "dist",
+            platforms: ["linux/amd64", "linux/arm64"],
+          }),
+        ).rejects.toThrow(/multi-platform.*--push/s);
+        // One platform loads like any image.
+        await task.preflight({
+          root: "/project",
+          distDir: "dist",
+          platforms: ["linux/amd64"],
+        });
+      });
+
+      it("asks the daemon nothing when the image is pushed", async () => {
+        const { shell, task } = createTestEnv();
+        await task.preflight({
+          root: "/project",
+          distDir: "dist",
+          provenance: true,
+          push: true,
+        });
+        expect(shell.wasCalledMatching(/docker info/)).toBe(false);
+      });
+    });
+  });
+
+  describe("HEALTHCHECK", () => {
+    const write = async (
+      image: ImageOptions = {},
+      overrides: Partial<ImageContext> = {},
+    ) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+      await task.run(createCtx(fs, shell, image, overrides));
+      return readDockerfile(fs);
+    };
+
+    it("probes /health with node's own fetch, on SERVER_PORT read at run time", async () => {
+      const dockerfile = await write();
+      const line = dockerfile.match(/^HEALTHCHECK .*\n  CMD (.*)$/m);
+      expect(line).not.toBeNull();
+      const argv = JSON.parse(line![1]);
+      expect(argv[0]).toBe("node");
+      expect(argv[1]).toBe("-e");
+      expect(argv[2]).toContain("fetch('http://127.0.0.1:'");
+      expect(argv[2]).toContain("process.env.SERVER_PORT||3000");
+      expect(argv[2]).toContain("/health");
+      // No binary the base might lack.
+      expect(dockerfile).not.toMatch(/wget|curl/);
+    });
+
+    it("probes with bun on the bun variant", async () => {
+      const dockerfile = await write({}, { runtime: "bun" });
+      expect(dockerfile).toMatch(/^ {2}CMD \["bun", "-e", "fetch\(/m);
+    });
+
+    it("sets every timing, with a start period and a one-second start interval", async () => {
+      const dockerfile = await write();
+      const flags = dockerfile.match(/^HEALTHCHECK (.*) \\$/m)?.[1] ?? "";
+      expect(flags).toContain("--interval=30s");
+      expect(flags).toContain("--timeout=5s");
+      expect(flags).toContain("--retries=3");
+      expect(flags).toContain("--start-period=60s");
+      expect(flags).toContain("--start-interval=1s");
+    });
+
+    it("sits right above CMD, after USER", async () => {
+      const dockerfile = await write();
+      const user = dockerfile.indexOf("USER 1000");
+      const health = dockerfile.indexOf("HEALTHCHECK");
+      const cmd = dockerfile.indexOf('CMD ["node", "index.node.js"]');
+      expect(user).toBeLessThan(health);
+      expect(health).toBeLessThan(cmd);
+    });
+
+    it("writes none for a custom image.command, and says why", async () => {
+      const dockerfile = await write({ command: "deno" });
+      expect(dockerfile).not.toMatch(/^HEALTHCHECK/m);
+      expect(dockerfile).toContain(
+        "# No HEALTHCHECK: `image.command` is `deno`",
+      );
+    });
+
+    it("writes none in the compiled variant, and says why", async () => {
+      const dockerfile = await write({}, { runtime: "bun", compile: "app" });
+      expect(dockerfile).not.toMatch(/^HEALTHCHECK/m);
+      expect(dockerfile).toContain("# No HEALTHCHECK: the distroless base");
+    });
+  });
+
   describe("compile mode", () => {
     // ⚠️ The binary's NAME, on the flags, not a `compile` build option.
     // `--compile` left `buildOptions` for `alepha compile`; all the Dockerfile
@@ -331,7 +559,7 @@ describe("DockerImageBuilder", () => {
       await task.run(createCtx(fs, shell, compileOptions, compiled("notepad")));
 
       const dockerfile = readDockerfile(fs);
-      expect(dockerfile).toMatch(/^COPY notepad \.$/m);
+      expect(dockerfile).toMatch(/^COPY --chown=65532:65532 notepad \.$/m);
       expect(dockerfile).toContain('ENTRYPOINT ["/app/notepad"]');
     });
 
@@ -394,7 +622,10 @@ describe("DockerImageBuilder", () => {
         false,
       );
       expect(
-        fs.wasWrittenMatching("/project/Dockerfile", /^COPY app \.$/m),
+        fs.wasWrittenMatching(
+          "/project/Dockerfile",
+          /^COPY --chown=65532:65532 app \.$/m,
+        ),
       ).toBe(true);
       expect(
         fs.wasWrittenMatching(
@@ -433,18 +664,57 @@ describe("DockerImageBuilder", () => {
       ).toBe(false);
     });
 
-    it("stays root, and says why in the generated file", async () => {
+    it("runs as 65532:65532 by default, and owns /app and the binary", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(createCtx(fs, shell, compileOptions, compiled()));
 
       const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toMatch(/^USER 65532:65532$/m);
+      // `/app` comes from the empty directory, BEFORE `WORKDIR`, which would
+      // otherwise create it owned by root.
+      const app = dockerfile.indexOf(
+        "COPY --chown=65532:65532 .alepha-empty /app",
+      );
+      expect(app).toBeGreaterThan(-1);
+      expect(app).toBeLessThan(dockerfile.indexOf("WORKDIR /app"));
+      expect(dockerfile).toMatch(/^COPY --chown=65532:65532 app \.$/m);
+      // Still no shell needed anywhere.
+      expect(dockerfile).not.toMatch(/^RUN /m);
+    });
+
+    it("creates the empty directory in dist/, generated file or not", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+      await fs.writeFile("/project/Dockerfile", "FROM scratch\n");
+
+      await task.run(createCtx(fs, shell, compileOptions, compiled()));
+
+      expect(await fs.exists("/project/dist/.alepha-empty")).toBe(true);
+    });
+
+    it("opts back into root with image.user, and copies with no --chown", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { ...compileOptions, user: "root", volumes: ["/data"] },
+          compiled(),
+        ),
+      );
+
+      const dockerfile = readDockerfile(fs);
       expect(dockerfile).not.toMatch(/^USER /m);
+      expect(dockerfile).not.toContain("--chown");
+      expect(dockerfile).not.toContain(".alepha-empty");
       expect(dockerfile).toContain("# Runs as root:");
     });
 
-    it("emits ENV and VOLUME, but no chown, when a volume is declared", async () => {
+    it("prepares each declared volume with a chowned copy, before VOLUME and with no RUN", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
@@ -463,8 +733,12 @@ describe("DockerImageBuilder", () => {
 
       const dockerfile = readDockerfile(fs);
       expect(dockerfile).toContain('ENV DATA_DIR="/data"');
-      expect(dockerfile).toContain('VOLUME ["/data"]');
-      // No shell in distroless: nothing can prepare the directory.
+      const prep = dockerfile.indexOf(
+        'COPY --chown=65532:65532 [".alepha-empty","/data"]',
+      );
+      expect(prep).toBeGreaterThan(-1);
+      expect(prep).toBeLessThan(dockerfile.indexOf('VOLUME ["/data"]'));
+      // No shell in distroless, and nothing to emulate on a foreign platform.
       expect(dockerfile).not.toMatch(/^RUN /m);
     });
 
@@ -495,7 +769,7 @@ describe("DockerImageBuilder", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/Dockerfile",
-          /COPY migrations \.\/migrations/,
+          /COPY --chown=65532:65532 migrations \.\/migrations/,
         ),
       ).toBe(true);
     });

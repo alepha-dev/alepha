@@ -21,6 +21,10 @@
 #   4. A fresh volume produces a DIFFERENT secret, so the key is per-install
 #      rather than baked into a public image.
 #   5. The process is not root.
+#   6. Docker reports the container `healthy`, from the image's own
+#      HEALTHCHECK, on the first boot and after the restart (#Q3363): compose
+#      and Bay read that status as readiness.
+#   7. `sbom.cdx.json` ships in the image and is not served.
 #
 # The secret itself is never read out of the container or matched against a
 # log line: the assertions are on observable behaviour, which is what actually
@@ -86,6 +90,22 @@ wait_for_version() {
   fail "/version did not answer within 90s"
 }
 
+# The image's own HEALTHCHECK, as Docker reports it. Its start interval is one
+# second, so `healthy` follows a boot within seconds; 60 leaves room for the
+# migrations of a first boot on a slow runner.
+wait_for_healthy() {
+  local name="$1" i status
+  for i in $(seq 1 60); do
+    status="$(docker inspect -f '{{.State.Health.Status}}' "$name" 2>/dev/null || true)"
+    if [ "$status" = "healthy" ]; then
+      return 0
+    fi
+    sleep 1
+  done
+  docker inspect -f '{{json .State.Health}}' "$name" >&2 || true
+  fail "container '${name}' is '${status}', not healthy, 60s after boot"
+}
+
 # Whether a container's log holds a line, read in full before it is matched.
 #
 # Never `docker logs … | grep -q` in this file: under `pipefail`, grep exits on
@@ -129,6 +149,19 @@ VERSION="$(curl -fsS "${BASE}/version" | json_field version)"
 [ "$VERSION" = "$EXPECTED_VERSION" ] ||
   fail "/version reported '${VERSION}', expected '${EXPECTED_VERSION}'"
 ok "boots on a port and a volume, /version → ${VERSION}"
+
+wait_for_healthy "$FIRST"
+ok "Docker reports it healthy, from the image's HEALTHCHECK"
+
+# The SBOM ships in the image for the scanner and for whoever asks, at the
+# root of the app, outside what the server serves.
+docker exec "$FIRST" test -s /app/sbom.cdx.json ||
+  fail "/app/sbom.cdx.json is missing from the image"
+# By its body, not its status: a page router may answer any path with 200.
+SBOM_BODY="$(curl -s "${BASE}/sbom.cdx.json")"
+[[ "$SBOM_BODY" != *'"bomFormat"'* ]] ||
+  fail "/sbom.cdx.json is served: it must stay outside public/"
+ok "the image holds /app/sbom.cdx.json, and the server does not serve it"
 
 # ── 2. Not root ─────────────────────────────────────────────────────────────
 UID_IN_CONTAINER="$(docker exec "$FIRST" id -u | tr -d '\r')"
@@ -174,6 +207,9 @@ docker rm -f "$FIRST" >/dev/null
 start "$RESTARTED" "$VOLUME_MAIN"
 wait_for_version "$RESTARTED"
 ok "a second container on the same volume boots (migrations replay cleanly)"
+
+wait_for_healthy "$RESTARTED"
+ok "healthy again after the restart"
 
 USER_AFTER="$(curl -fsS -b "$COOKIES" "${BASE}/_auth/userinfo" \
   | python3 -c 'import json,sys;print((json.load(sys.stdin).get("user") or {}).get("email",""))')"

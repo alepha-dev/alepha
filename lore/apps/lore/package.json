@@ -16,6 +16,7 @@
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
     "build:docker": "alepha build && alepha image --tag",
+    "image:release": "alepha image --push",
     "deploy": "alepha deploy -e production",
     "fonts": "node scripts/fetch-fonts.ts",
     "inventory": "node --import tsx --import ./scripts/css-stub.mjs scripts/print-app-inventory.ts",

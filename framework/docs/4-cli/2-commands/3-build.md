@@ -77,7 +77,8 @@ dist/
 │   ├── chunk.def456.js
 │   └── favicon.svg
 ├── manifest.json       # what the build declared; `alepha pack` requires it
-└── package.json        # `main` points at the primary slice
+├── package.json        # `main` points at the primary slice
+└── sbom.cdx.json       # with `build.sbom`: what the bundles contain
 ```
 
 ⚠️ **The slices are namespaced, and that is load-bearing.** Two runtimes built into one `server/` do not collide - their content hashes differ - so both sets would simply sit there, and the wrangler `server/*.js` glob would sweep the Node chunks into the Worker upload: a Worker twice the size it needs, or a Node chunk importing a node builtin and a refused deploy.
@@ -272,7 +273,7 @@ export default defineConfig({
 });
 ```
 
-Build options include `stats`, `inspect` and `runtime`, plus the sections below. Binary compilation and container packaging belong to `alepha compile` and `alepha image`; configure images under top-level `image`, not `build`.
+Build options include `stats`, `inspect`, `runtime` and `sbom`, plus the sections below. Binary compilation and container packaging belong to `alepha compile` and `alepha image`; configure images under top-level `image`, not `build`.
 
 | Section      | Description                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -281,6 +282,22 @@ Build options include `stats`, `inspect` and `runtime`, plus the sections below.
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
 | `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
 | `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |
+
+## Software Bill of Materials
+
+`build.sbom: true` writes `dist/sbom.cdx.json`, a [CycloneDX](https://cyclonedx.org) 1.6 JSON document of what the build bundled:
+
+```typescript check filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: { sbom: true },
+});
+```
+
+The server slices bundle their npm dependencies, so nothing else in `dist/`, and nothing a scanner finds in an image built from it, names them. The document is built from the bundler's module graph, not from the lockfile: every package a module of the client bundle or of a server slice came from, plus the externals `dist/package.json` declares. A package the build never reached, such as a test runner, is not listed. Each component carries its `name`, `version`, `purl` (`pkg:npm/...`) and the `license` its `package.json` declares; the app itself is `metadata.component`, named like the manifest's `project`. A package marked `private` is the app's own code (a workspace package) and is left out.
+
+The file sits at the root of `dist/`, outside `public/`, so it is never served. `alepha pack` archives it, `alepha compile` leaves it in place, and [alepha image](/docs/cli-commands-image) copies it into the image.
 
 ## Client-Side Optimization
 

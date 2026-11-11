@@ -26,4 +26,7 @@ VOLUME ["/data"]
 
 USER 1000
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=60s --start-interval=1s \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.SERVER_PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+
 CMD ["node", "index.node.js"]

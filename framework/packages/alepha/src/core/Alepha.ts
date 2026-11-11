@@ -316,6 +316,12 @@ export class Alepha {
   protected ready = false;
 
   /**
+   * True from the moment `stop()` begins until it is over. See
+   * {@link isStopping}.
+   */
+  protected stopping = false;
+
+  /**
    * In-flight startup promise returned by boot().
    *
    * Concurrent callers of start() share this same promise. Cleared on
@@ -582,6 +588,19 @@ export class Alepha {
    */
   public isReady(): boolean {
     return this.ready;
+  }
+
+  /**
+   * True from the moment `stop()` begins, when the app signal is aborted,
+   * until every stop hook has run.
+   *
+   * `isReady()` stays true through the whole stop, so nothing could tell
+   * "stopping" from "serving" before this: a readiness probe (`/readyz`)
+   * answers 503 as soon as this is true, so an orchestrator stops routing
+   * to an instance that is shutting down.
+   */
+  public isStopping(): boolean {
+    return this.stopping;
   }
 
   /**
@@ -948,6 +967,7 @@ export class Alepha {
 
     // The app signal aborts as stop begins (#E85). Units of work do not
     // compose with it: their owners drain, then abort at their own deadline.
+    this.stopping = true;
     this.context.abortApp(new AbortedError("App stopping"));
 
     // Every stop hook runs, even after one throws: stopping at the first
@@ -974,6 +994,7 @@ export class Alepha {
       if (timer) clearTimeout(timer);
       this.started = false;
       this.ready = false;
+      this.stopping = false;
       this.startPromise = undefined;
       this.startedAt = 0;
     }

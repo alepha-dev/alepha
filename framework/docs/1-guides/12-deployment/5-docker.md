@@ -30,7 +30,7 @@ alepha image --tag=myorg/app:v2   # complete tag override
 
 Every form but the last needs `image.tag` in the config.
 
-The artifact has an `index.<runtime>.js` wrapper, `server/<runtime>/` chunks, `public/` assets, its manifest and package metadata. Migrations are copied into the image context when present. There is no generated Dockerfile inside `dist/`.
+The artifact has an `index.<runtime>.js` wrapper, `server/<runtime>/` chunks, `public/` assets, its manifest and package metadata, and with `build.sbom` a CycloneDX SBOM of what the bundles contain (`sbom.cdx.json`, see [Software Bill of Materials](/docs/cli-commands-build#software-bill-of-materials)). Migrations are copied into the image context when present. There is no generated Dockerfile inside `dist/`.
 
 ## Configuration
 
@@ -57,22 +57,58 @@ export default defineConfig({
 });
 ```
 
-| Setting         | Meaning                                                  |
-| --------------- | -------------------------------------------------------- |
-| `image.from`    | Base image (default `node:24-alpine`, `oven/bun:alpine`) |
-| `image.command` | Server command (default `node` or `bun`)                 |
-| `image.install` | Extra packages for the generated standard image          |
-| `image.env`     | Baked defaults, overridden by runtime environment values |
-| `image.volumes` | Volume mount points                                      |
-| `image.user`    | Container user override (standard default: uid 1000)     |
-| `image.tag`     | Default image name                                       |
-| `image.args`    | Docker build arguments as a string array                 |
-| `image.oci`     | Write the OCI labels below                               |
-| `image.labels`  | `source`, `title`, `description`, `licenses`             |
+| Setting            | Meaning                                                  |
+| ------------------ | -------------------------------------------------------- |
+| `image.from`       | Base image (default `node:24-alpine`, `oven/bun:alpine`) |
+| `image.command`    | Server command (default `node` or `bun`)                 |
+| `image.install`    | Extra packages for the generated standard image          |
+| `image.env`        | Baked defaults, overridden by runtime environment values |
+| `image.volumes`    | Volume mount points                                      |
+| `image.user`       | Container user (default 1000, 65532:65532 compiled)      |
+| `image.tag`        | Default image name                                       |
+| `image.platforms`  | Platforms to build for, e.g. `["linux/amd64"]`           |
+| `image.args`       | Docker build arguments as a string array                 |
+| `image.sbom`       | Attach an SBOM attestation (needs `build.sbom`)          |
+| `image.provenance` | Attach a `mode=max` provenance attestation               |
+| `image.oci`        | Write the OCI labels below                               |
+| `image.labels`     | `source`, `title`, `description`, `licenses`             |
 
 With `oci: true`, each `image.labels` field becomes an `org.opencontainers.image.*` `LABEL` line in the generated Dockerfile (`source` is what links a GHCR package to its repository), and `alepha image` adds `revision` (the git commit), `created` and `version` (from the tag) at build time. Without `oci`, `image.labels` is ignored. The generated Dockerfile always labels the image `dev.alepha.runtime`, naming the slice it runs.
 
 The generated standard image uses a Node or Bun base and installs runtime dependencies only when the artifact declares them. Each declared volume is prepared before its `VOLUME` line. Named volumes inherit those permissions; bind mounts retain the host directory's permissions. Baked values are public image defaults, so deliver secrets at runtime.
+
+## Another architecture
+
+Laptops are often arm64 and clusters amd64. Name the platform, so the image (and a compiled binary inside it) is built for where it runs:
+
+```bash
+alepha image --platform linux/amd64 --tag
+alepha image --platform linux/amd64,linux/arm64 --push --tag=1.4.0   # a multi-arch index
+```
+
+A multi-platform image is pushed as it is built (`--push`), unless the local daemon uses the containerd image store. Building for a platform other than the host's runs the Dockerfile's `RUN` lines under emulation, which needs binfmt handlers on Linux: `docker run --privileged --rm tonistiigi/binfmt --install all`. See [Platforms](/docs/cli-commands-image#platforms).
+
+## SBOM and provenance
+
+For software delivered as an image, buyers and the EU Cyber Resilience Act ask for a machine-readable SBOM. Turn on the build's own list, then attach attestations as the image is pushed:
+
+```typescript check filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: { sbom: true },
+  image: { tag: "ghcr.io/myorg/myapp", sbom: true, provenance: true },
+});
+```
+
+```bash
+alepha build
+alepha image --push --tag=1.4.0
+```
+
+The image carries `/app/sbom.cdx.json` (CycloneDX, what the bundles contain), and its index carries an SPDX SBOM attestation, which lists those packages too, and a SLSA provenance. Read them back with `docker buildx imagetools inspect ghcr.io/myorg/myapp:1.4.0 --format '{{json .SBOM}}'` (or `.Provenance`). Without `--push`, attestations need the containerd image store; `alepha image` says so before it builds.
+
+⚠️ Provenance is recorded in `mode=max`, which includes the build arguments: never pass a secret as `--build-arg` in `image.args`. Signing the image (cosign) is a step of your CI, after the push. See [Evidence: SBOM and provenance](/docs/cli-commands-image#evidence-sbom-and-provenance).
 
 ## Compiled image
 
@@ -81,7 +117,7 @@ alepha build --runtime bun
 alepha image --compile --tag
 ```
 
-This compiles the Bun slice first, then packages the binary on `gcr.io/distroless/cc-debian12` by default. `--compile my-app` names the binary. The base determines the Linux Bun target triple: a Bun binary needs libc and supporting libraries, so `scratch` and `distroless/static` are refused. A compiled image has no default user; set `image.user` when needed. Runtime dependencies must be bundled, and `image.install` is ignored in this mode.
+This compiles the Bun slice first, then packages the binary on `gcr.io/distroless/cc-debian12` by default. `--compile my-app` names the binary. The base determines the Linux Bun target triple: a Bun binary needs libc and supporting libraries, so `scratch` and `distroless/static` are refused. A compiled image runs as `65532:65532` by default, owns `/app` and every `image.volumes` path, and needs no shell to do it; `image.user: "root"` opts back. It boots with a read-only root file system when `DATA_DIR` points at a declared volume (see [Non-root by default](/docs/cli-commands-image#non-root-by-default)). A compiled Dockerfile generated before this ran as root: regenerate it, and check the app writes nowhere else. Runtime dependencies must be bundled, and `image.install` is ignored in this mode.
 
 For a binary without an image, use [alepha compile](/docs/cli-commands-compile). For the complete image contract, see [alepha image](/docs/cli-commands-image).
 
@@ -91,6 +127,10 @@ For a binary without an image, use [alepha compile](/docs/cli-commands-compile).
 docker run -p 3000:3000 --env-file .env.production ghcr.io/myorg/myapp:latest
 ```
 
-The generated image sets `SERVER_HOST=0.0.0.0`; supply `SERVER_PORT` to change the listening port. Both standard and compiled apps serve their client assets and apply the artifact's `_headers` file. See [Static File Headers](/docs/guides-deployment-headers).
+The generated image sets `SERVER_HOST=0.0.0.0`; supply `SERVER_PORT` to change the listening port.
+
+The standard image declares a `HEALTHCHECK` on `/health`, probed with the runtime's own `fetch` on `SERVER_PORT`, so `docker ps` shows `healthy` once the app is ready, compose can wait for it with `depends_on: condition: service_healthy`, and Bay reads it as readiness. The compiled image has none: nothing in it can run a probe. A Dockerfile generated before this was added has no `HEALTHCHECK` either: delete it and run `alepha image --dockerfile` to regenerate it. See [Health](/docs/cli-commands-image#health). Both standard and compiled apps serve their client assets and apply the artifact's `_headers` file. See [Static File Headers](/docs/guides-deployment-headers).
+
+To run the image on Kubernetes (probes, shutdown, a read-only root file system), see [Kubernetes](/docs/guides-deployment-kubernetes).
 
 Container images are an artifact format. [alepha deploy](/docs/cli-plugins-infra) drives configured infrastructure adapters; it does not turn a Docker image into an implicit provider deployment.

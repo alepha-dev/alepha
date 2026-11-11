@@ -1239,6 +1239,18 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Self-Hosting",
+    section: "Health",
+    url: "https://alepha.dev/lore/docs/guides-self-hosting#health",
+    text: "The image declares a `HEALTHCHECK` on `/health`, which answers 503 until Lore has migrated its database and is ready. `docker ps` shows the container `healthy` a few seconds after it starts, and compose can wait for it:\n\n```yaml\nservices:\n  lore:\n    image: ghcr.io/alepha-dev/lore\n    volumes: [lore:/data]\n  proxy:\n    image: nginx\n    depends_on:\n      lore:\n        condition: service_healthy\nvolumes:\n  lore:\n```",
+  },
+  {
+    guide: "Self-Hosting",
+    section: "What the Image Contains",
+    url: "https://alepha.dev/lore/docs/guides-self-hosting#what-the-image-contains",
+    text: "Each release of the image carries its evidence, for a security review or an SBOM requirement:\n\n- **An SBOM attestation** (SPDX) listing the base image's packages and the npm packages bundled into Lore, and the build's own CycloneDX list inside the image at `/app/sbom.cdx.json`.\n- **A provenance attestation** (SLSA), recording how and from which commit the image was built.\n\nRead them from the registry, without pulling the image:\n\n```bash\ndocker buildx imagetools inspect ghcr.io/alepha-dev/lore:latest --format '{{json .SBOM}}'\ndocker buildx imagetools inspect ghcr.io/alepha-dev/lore:latest --format '{{json .Provenance}}'\n```\n\nThe image is built for `linux/amd64`.",
+  },
+  {
+    guide: "Self-Hosting",
     section: "Behind a Reverse Proxy",
     url: "https://alepha.dev/lore/docs/guides-self-hosting#behind-a-reverse-proxy",
     text: "The container serves plain HTTP. Put HTTPS in front of it for anything reachable from the internet: secure cookies and OAuth redirects both need it.\n\nThe proxy has to forward the original host and protocol, or Lore builds its links against the proxy's own view and OAuth callbacks land nowhere:\n\n```nginx\nlocation / {\n    proxy_pass http://127.0.0.1:3000;\n    proxy_set_header Host              $host;\n    proxy_set_header X-Forwarded-Proto $scheme;\n    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;\n}\n```",

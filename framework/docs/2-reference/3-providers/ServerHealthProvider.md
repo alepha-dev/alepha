@@ -8,7 +8,18 @@ import { ServerHealthProvider } from "alepha/server";
 
 ## Overview
 
-Registers `GET /health` and `GET /healthz`.
+Registers `GET /health` and `GET /healthz`, and the two probes an
+orchestrator asks for separately: `GET /livez` and `GET /readyz`.
+
+- `/health` and `/healthz` are readiness in practice: they answer 503 until
+  the app is ready (`ServerNotReadyProvider`), 200 with `ready: true` after.
+- `/livez` answers 200 as soon as the listener is bound, whatever the
+  lifecycle: the process is alive. A liveness probe pointed at `/health`
+  restarts a pod whose migrations are slow, in a loop.
+- `/readyz` answers 503 until the app is ready, 200 after, and 503 again
+  from the moment `stop()` begins (`Alepha.isStopping()`), so traffic moves
+  away from an instance that is shutting down. Draining before the stop is
+  the orchestrator's (a `preStop` wait): the framework adds no delay.
 
 Part of `AlephaServer` rather than opt-in, because the thing that consumes it
 cannot ask for it. A supervisor starting an app has no way to know whether
