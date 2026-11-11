@@ -766,6 +766,73 @@ describe("a deployment", () => {
       ]);
     });
 
+    /**
+     * One D1 write per line (#Q3384): the run's log is kept in memory after
+     * `started`, so a line no longer reads the row first. Each line is still
+     * written as it happens, so a run killed mid-deploy shows how far it got.
+     */
+    it("writes each line at once, without reading the row again", async ({
+      expect,
+    }) => {
+      const { project, instance } = await world();
+      const rows = alepha.inject(TestRows).deployments;
+      const row = await rows.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      });
+      const registry = alepha.inject(DeployRegistry);
+      await registry.started(row.id);
+      await registry.line(row.id, "Fetching");
+
+      // Written already: a run killed here still shows its last phase.
+      expect((await rows.findById(row.id))?.log.at(-1)?.text).toMatch(
+        /Fetching$/,
+      );
+
+      // A write behind the run's back is not read again: the next line is
+      // appended to what the run itself holds.
+      await rows.updateById(row.id, { log: [] });
+      await registry.line(row.id, "Unpacking");
+
+      expect(
+        (await rows.findById(row.id))?.log.map((it) =>
+          it.text.replace(/^\+\S+ /, ""),
+        ),
+      ).toEqual([
+        expect.stringMatching(/^Started after/),
+        "Fetching",
+        "Unpacking",
+      ]);
+    });
+
+    it("forgets the run at its terminal state", async ({ expect }) => {
+      const { project, instance } = await world();
+      const rows = alepha.inject(TestRows).deployments;
+      const row = await rows.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      });
+      const registry = alepha.inject(DeployRegistry);
+      await registry.started(row.id);
+      await registry.succeeded(row.id, {});
+      await rows.updateById(row.id, { log: [] });
+
+      // Read afresh after the run ended, so nothing stale is written back.
+      await registry.line(row.id, "after");
+
+      expect((await rows.findById(row.id))?.log.map((it) => it.text)).toEqual([
+        expect.stringMatching(/after$/),
+      ]);
+    });
+
     it("never throws, so a lost line cannot fail a deploy", async ({
       expect,
     }) => {
