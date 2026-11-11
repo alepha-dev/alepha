@@ -26,12 +26,33 @@ export class ProjectDeletionService {
   protected readonly projects = $repository(projects);
   protected readonly organizationMembers = $repository(organizationMembers);
   protected readonly steps: ProjectDeletionStep[] = [];
+  protected readonly guards: ProjectDeletionGuard[] = [];
 
   /**
    * Register what a module deletes when a project goes, in `order`.
    */
   public registerStep(step: ProjectDeletionStep): void {
     this.steps.push(step);
+  }
+
+  /**
+   * Register a refusal that runs before anything is written: before the slug
+   * is freed and before every step, for every caller (#Q3280). A module that
+   * must keep a project alive while it holds something others depend on (an
+   * estate other projects deploy onto) throws from `check`.
+   */
+  public registerGuard(guard: ProjectDeletionGuard): void {
+    this.guards.push(guard);
+  }
+
+  /**
+   * Run every guard, and nothing else: what `deleteProject` does first, for
+   * a caller that wants to know before it asks.
+   */
+  public async assertDeletable(projectId: number): Promise<void> {
+    for (const guard of this.guards) {
+      await guard.check(projectId);
+    }
   }
 
   /**
@@ -52,6 +73,9 @@ export class ProjectDeletionService {
     projectId: number,
     options: { force?: boolean } = {},
   ): Promise<{ id: number; title: string } | undefined> {
+    // ⚠️ First, before the slug is freed: a refusal after that point would
+    // leave a live project with no slug and half its rows deleted.
+    await this.assertDeletable(projectId);
     const project = await this.projects.findById(projectId);
     const steps = [...this.steps].sort((a, b) => a.order - b.order);
     const context = { force: options.force === true };
@@ -120,4 +144,16 @@ export interface ProjectDeletionStep {
    * only soft-deletes it, and nothing cascades.
    */
   run: (projectId: number, options: { force: boolean }) => Promise<void>;
+}
+
+/**
+ * A module's refusal to let a project be deleted, run before anything is
+ * written.
+ */
+export interface ProjectDeletionGuard {
+  /**
+   * Names the guard, `deploy` or `work`.
+   */
+  name: string;
+  check: (projectId: number) => Promise<void>;
 }

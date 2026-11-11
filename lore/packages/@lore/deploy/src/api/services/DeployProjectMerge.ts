@@ -6,14 +6,19 @@ import {
   type ProjectMergeStepPlan,
   type ProjectMergeTable,
   ProjectMergeTables,
+  ProjectSecurityService,
 } from "@lore/core/api";
 import { $inject } from "alepha";
-import type { SQLLike } from "alepha/orm";
+import { $repository, sql, type SQLLike } from "alepha/orm";
+
+import { estates } from "../entities/estates.ts";
+import { EstateService } from "./EstateService.ts";
 
 /**
  * Deploy's step of a project merge, registered on core's
  * `ProjectMergeService` (#E94, #Q2782): every deployed copy, sigil, blight,
- * artifact, stack and monitor moves into the target project.
+ * artifact, stack, monitor and estate homed there moves into the target
+ * project.
  *
  * Only the tables keyed by the project move: everything below them
  * (a sigil's analytics and error groups, an instance's secrets, a stack's
@@ -31,6 +36,9 @@ import type { SQLLike } from "alepha/orm";
 export class DeployProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly tables = $inject(ProjectMergeTables);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
+  protected readonly estateService = $inject(EstateService);
+  protected readonly estates = $repository(estates);
 
   protected static readonly moved: ProjectMergeTable[] = [
     {
@@ -122,6 +130,35 @@ export class DeployProjectMerge {
       changed.push(...result.changed);
       conflicts.push(...result.conflicts);
       statements.push(...result.statements);
+    }
+    // The estates the source is the home of follow it (#Q3280): their cascade
+    // anchor becomes the target's owner, in a statement after the move, and
+    // a target with Apps off is a conflict, since nobody could manage them
+    // there. Refused in the plan, so nothing is written.
+    const homed = await this.estates.findMany({
+      where: { projectId: { eq: context.sourceProjectId } },
+      columns: ["id", "slug"],
+    });
+    if (homed.length > 0) {
+      const capabilities = await this.projectSecurity.capabilitiesOf(
+        context.targetProjectId,
+      );
+      if (!("apps" in capabilities)) {
+        for (const estate of homed) {
+          conflicts.push({
+            kind: "estate",
+            key: `${estate.slug} (Apps is off in the target)`,
+            sourceId: estate.id,
+            targetId: context.targetProjectId,
+          });
+        }
+      }
+      const owner = await this.estateService.ownerOf(context.targetProjectId);
+      if (owner) {
+        statements.push(
+          sql`UPDATE estates SET owner_user_id = ${owner} WHERE project_id = ${context.targetProjectId}`,
+        );
+      }
     }
     return {
       moved,

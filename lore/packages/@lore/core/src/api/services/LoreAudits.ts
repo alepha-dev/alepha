@@ -320,7 +320,18 @@ export class LoreAudits {
   readonly estate = $audit({
     type: "estate",
     description: "Deploy destinations and their credentials",
-    actions: ["create", "update", "rotate", "delete", "attach", "detach"],
+    actions: [
+      "create",
+      "update",
+      "rotate",
+      "delete",
+      "attach",
+      "detach",
+      // An estate changing home project, by its managers or by the admin
+      // (#Q3280).
+      "move",
+      "assign",
+    ],
     retentionDays: 730,
   });
 

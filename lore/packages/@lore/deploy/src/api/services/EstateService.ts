@@ -658,6 +658,100 @@ export class EstateService {
   }
 
   /**
+   * Give an estate a new home project, for a move by its managers or an
+   * assign by the instance admin (#Q3280). The caller has gated who may;
+   * this holds what must be true of the target and of the row.
+   *
+   * - The target must have Apps on, or the estate could be managed through
+   *   no page there.
+   * - `(projectId, slug)` is unique, and the slug is never rewritten: a
+   *   machine's config may record it. A collision is refused.
+   * - Loans, the secret, the credential, the command queue, the inventory
+   *   and the stats series stay on the row: the machine notices nothing.
+   * - `projectId` and the `ownerUserId` anchor change in ONE statement whose
+   *   WHERE names the home being left, so there is no half-moved state and
+   *   two movers cannot both win.
+   */
+  async rehome(
+    estate: Estate,
+    targetProjectId: number,
+  ): Promise<{ estate: Estate; from?: number }> {
+    if (estate.projectId === targetProjectId) {
+      throw new BadRequestError("The estate is already in this project");
+    }
+    const target = await this.projects.findById(targetProjectId);
+    if (!target) {
+      throw new BadRequestError("No such project");
+    }
+    const capabilities =
+      await this.projectSecurity.capabilitiesOf(targetProjectId);
+    if (!("apps" in capabilities)) {
+      throw new BadRequestError(
+        `${target.title} does not have Apps on, so nobody could manage the estate there. Turn Apps on first.`,
+      );
+    }
+    const clash = await this.estates.findOne({
+      where: { projectId: { eq: targetProjectId }, slug: { eq: estate.slug } },
+    });
+    if (clash) {
+      throw new ConflictError(
+        `${target.title} already has an estate named "${estate.slug}", and a slug never changes`,
+      );
+    }
+    const anchor = await this.anchorOf(targetProjectId);
+    const moved = await this.estates.updateMany(
+      {
+        id: { eq: estate.id },
+        projectId:
+          estate.projectId == null
+            ? { isNull: true }
+            : { eq: estate.projectId },
+      },
+      { projectId: targetProjectId, ownerUserId: anchor },
+    );
+    if (moved.length === 0) {
+      throw new ConflictError(
+        "The estate changed project meanwhile; read it again",
+      );
+    }
+    return {
+      estate: await this.estates.getById(estate.id),
+      ...(estate.projectId == null ? {} : { from: estate.projectId }),
+    };
+  }
+
+  /**
+   * The projects an estate is lent to, oldest loan first, by name.
+   */
+  async loansOf(
+    estateId: string,
+  ): Promise<Array<{ id: number; title: string; slug?: string }>> {
+    const grants = await this.grants.findMany({
+      where: { estateId: { eq: estateId } },
+      orderBy: [{ column: "createdAt", direction: "asc" }],
+    });
+    if (grants.length === 0) {
+      return [];
+    }
+    const rows = await this.projects.findMany({
+      where: { id: { inArray: grants.map((grant) => grant.projectId) } },
+      columns: ["id", "title", "slug"],
+    });
+    return grants.flatMap((grant) => {
+      const project = rows.find((row) => row.id === grant.projectId);
+      return project
+        ? [
+            {
+              id: project.id,
+              title: project.title,
+              ...(project.slug ? { slug: project.slug } : {}),
+            },
+          ]
+        : [];
+    });
+  }
+
+  /**
    * The user id of a project's owner: the cascade anchor of an estate homed
    * there (#Q3278). Refused for a project with no owner, which cannot hold
    * an estate that must outlive its creator.

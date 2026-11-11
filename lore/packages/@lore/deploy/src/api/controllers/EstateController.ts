@@ -1,7 +1,11 @@
-import { $ownsProject, LoreAudits } from "@lore/core/api";
+import {
+  $ownsProject,
+  LoreAudits,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
-import { organizationMembers } from "alepha/api/organizations";
+import { organizationMembers, RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $rateLimit } from "alepha/rate-limit";
@@ -19,6 +23,7 @@ import {
   type EstateInventoryResource,
   estateInventoryResourceSchema,
 } from "../schemas/estateInventoryResourceSchema.ts";
+import { estateMoveResultSchema } from "../schemas/estateMoveResultSchema.ts";
 import { estateProvisionBodySchema } from "../schemas/estateProvisionBodySchema.ts";
 import {
   type EstateResource,
@@ -80,6 +85,8 @@ export class EstateController {
   protected readonly owned = $inject(OwnedResourceProvider);
   protected readonly projects = $repository(projects);
   protected readonly members = $repository(organizationMembers);
+  protected readonly ranks = $inject(RankService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
 
   /**
    * The gate on one estate, by its home project's rank. A write names the
@@ -648,6 +655,65 @@ export class EstateController {
       }
 
       return this.presentOne(await this.reread(estate.id), user);
+    },
+  });
+
+  /**
+   * Move an estate to another project (#Q3280): `estate:delete` in the home
+   * it leaves (the gate) and `estate:create` in the target. The rules of the
+   * target and of the row are `EstateService.rehome`'s; the loans are not
+   * touched, and the answer lists them, so the mover knows what still
+   * deploys there.
+   */
+  moveEstate = $action({
+    use: [this.ownsEstate("estate:delete", true)],
+    method: "POST",
+    path: "/estates/:estateId/move",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      body: z.object({ projectId: z.integer() }),
+      response: estateMoveResultSchema,
+    },
+    handler: async ({ body, user }) => {
+      const estate = this.estate();
+      // ⚠️ ranks: imperative. The target is a project the path does not name.
+      await this.ranks.assert(
+        await this.projectSecurity.organizationIdOf(body.projectId),
+        "estate:create",
+        user,
+      );
+      const { estate: moved, from } = await this.service.rehome(
+        estate,
+        body.projectId,
+      );
+      for (const projectId of [from, body.projectId]) {
+        if (projectId === undefined) continue;
+        await this.audits.estate.logSuccess("move", {
+          ...this.audits.actor(user),
+          ...this.audits.scope(projectId),
+          severity: "warning",
+          resourceType: "estate",
+          resourceId: estate.id,
+          description: estate.slug,
+          metadata: { from: from ?? null, to: body.projectId },
+        });
+      }
+      const serverElsewhere =
+        !!moved.provider &&
+        !!moved.createdBy &&
+        !(await this.members.findOne({
+          where: {
+            organizationId: {
+              eq: await this.projectSecurity.organizationIdOf(body.projectId),
+            },
+            userId: { eq: moved.createdBy },
+          },
+        }));
+      return {
+        estate: await this.presentOne(moved, user),
+        loans: await this.service.loansOf(estate.id),
+        serverElsewhere,
+      };
     },
   });
 

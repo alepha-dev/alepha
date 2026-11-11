@@ -441,7 +441,14 @@ export { FileAccessRegistry } from "./services/FileAccessRegistry.ts";
 export { LoreAuditService } from "./services/LoreAuditService.ts";
 export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
-export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
+export {
+  type ProjectDeletionGuard,
+  ProjectDeletionService,
+} from "./services/ProjectDeletionService.ts";
+export {
+  type ProjectCapabilityGuard,
+  ProjectCapabilityGuards,
+} from "./services/ProjectCapabilityGuards.ts";
 export {
   ActivityChannel,
   type ActivityChannelValue,

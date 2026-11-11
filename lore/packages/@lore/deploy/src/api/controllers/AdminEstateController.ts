@@ -24,7 +24,8 @@ import { EstateService } from "../services/EstateService.ts";
  * surface. There is no admin attach, rotate or switch here, and no read of
  * a credential: the masking rule has no exception for the admin role.
  *
- * Gated on `admin:estate:read` and `admin:estate:delete`, the
+ * Gated on `admin:estate:read`, `admin:estate:update` (assign) and
+ * `admin:estate:delete`, the
  * `admin:<thing>:<verb>` shape `AdminProjectController` uses.
  */
 export class AdminEstateController {
@@ -151,6 +152,68 @@ export class AdminEstateController {
               }),
           };
         }),
+      };
+    },
+  });
+
+  /**
+   * Assign an estate a home project (#Q3280): for an estate the migration
+   * could not place, normally to the project it is lent to, and as a
+   * backstop for any estate. Same rules on the target as a move (Apps on, no
+   * slug collision, the anchor set to the project's owner), and the loans
+   * are untouched. Still no credential crosses: the answer is the new home
+   * and the loans.
+   */
+  public readonly assignEstate = $action({
+    path: `${this.url}/:id/assign`,
+    method: "POST",
+    group: this.group,
+    use: [$secure({ permissions: ["admin:estate:update"] })],
+    description: "Give an estate a home project, its loans untouched",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ projectId: z.integer() }),
+      response: z.object({
+        project: z.object({
+          id: z.integer(),
+          title: z.string(),
+          slug: z.string().optional(),
+        }),
+        loans: z.array(
+          z.object({
+            id: z.integer(),
+            title: z.string(),
+            slug: z.string().optional(),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ params, body, user }) => {
+      const estate = await this.estates.findById(params.id);
+      if (!estate) {
+        throw new NotFoundError("Estate not found");
+      }
+      const { from } = await this.service.rehome(estate, body.projectId);
+      for (const projectId of [from, body.projectId]) {
+        if (projectId === undefined) continue;
+        await this.audits.estate.logSuccess("assign", {
+          ...this.audits.actor(user),
+          ...this.audits.scope(projectId),
+          severity: "warning",
+          resourceType: "estate",
+          resourceId: estate.id,
+          description: estate.slug,
+          metadata: { admin: true, from: from ?? null, to: body.projectId },
+        });
+      }
+      const project = await this.projects.getById(body.projectId);
+      return {
+        project: {
+          id: project.id,
+          title: project.title,
+          ...(project.slug ? { slug: project.slug } : {}),
+        },
+        loans: await this.service.loansOf(estate.id),
       };
     },
   });
