@@ -20,7 +20,7 @@ import type {
   JSONWebKeySet,
   JWTPayload,
   JWTVerifyOptions,
-} from "../interfaces/Jose.ts";
+} from "jose";
 import type {
   OidcIssuerSource,
   TokenExpectation,

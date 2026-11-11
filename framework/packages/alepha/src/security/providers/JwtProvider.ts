@@ -26,7 +26,7 @@ import type {
   JWTVerifyOptions,
   JWTVerifyResult,
   KeyObject,
-} from "../interfaces/Jose.ts";
+} from "jose";
 import type {
   OidcIssuerSource,
   TokenExpectation,

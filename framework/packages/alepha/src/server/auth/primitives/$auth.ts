@@ -293,17 +293,17 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-  protected oauthConfig?: OAuthClientConfiguration;
-  protected oauthInitializer?: () => Promise<OAuthClientConfiguration>;
+  protected oauthConfig?: Configuration;
+  protected oauthInitializer?: () => Promise<Configuration>;
 
-  public get oauth(): OAuthClientConfiguration | undefined {
+  public get oauth(): Configuration | undefined {
     return this.oauthConfig;
   }
 
   /**
    * Get the OAuth2/OIDC configuration, initializing lazily if needed (serverless mode).
    */
-  public async getOAuth(): Promise<OAuthClientConfiguration | undefined> {
+  public async getOAuth(): Promise<Configuration | undefined> {
     if (this.oauthConfig) {
       return this.oauthConfig;
     }
@@ -414,7 +414,7 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
       try {
         return {
           ...this.tokenNormalizer.normalize(
-            await refreshTokenGrant(oauth as Configuration, refreshToken),
+            await refreshTokenGrant(oauth, refreshToken),
           ),
           issued_at: this.dateTimeProvider.now().unix(),
         };
@@ -629,23 +629,4 @@ export interface WithSecondFactorFn {
     method: SecondFactorMethod,
     code: string,
   ) => Async<boolean>;
-}
-
-/**
- * The OAuth2/OIDC client configuration of an auth provider, as the public API
- * sees it.
- *
- * It is an `openid-client` `Configuration` at runtime. openid-client is
- * bundled into `alepha`, so a consumer has no `openid-client` for a
- * declaration file to import from: the members name this instead, and the
- * framework casts it back where it calls openid-client.
- */
-export interface OAuthClientConfiguration {
-  serverMetadata(): {
-    issuer: string;
-    jwks_uri?: string;
-    end_session_endpoint?: string;
-    revocation_endpoint?: string;
-    supportsPKCE(method?: string): boolean;
-  };
 }

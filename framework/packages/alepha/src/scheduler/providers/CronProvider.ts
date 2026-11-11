@@ -2,7 +2,7 @@ import { $hook, $inject, AbortedError, Alepha, AlephaError } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { Tracer } from "alepha/tracing";
-import { parseCronExpression } from "cron-schedule";
+import { type Cron, parseCronExpression } from "cron-schedule";
 
 /**
  * The single registry of cron expressions in the container.
@@ -146,7 +146,7 @@ export class CronProvider {
    * Validates that the name is unused and the expression parses.
    * Shared by the Node and Workerd `createCronJob` implementations.
    */
-  protected parseCronJob(name: string, expression: string): CronSchedule {
+  protected parseCronJob(name: string, expression: string): Cron {
     if (this.cronJobs.some((job) => job.name === name)) {
       throw new AlephaError(`Cron job '${name}' is already registered`);
     }
@@ -307,7 +307,7 @@ export interface CronJob {
   name: string;
   expression: string;
   handler: (context: { now: DateTime }) => Promise<void>;
-  cron: CronSchedule;
+  cron: Cron;
   loop: boolean;
   running?: boolean;
   executing?: boolean;
@@ -320,16 +320,4 @@ export interface CronJob {
    * The running tick's signal, aborted when the task stops.
    */
   tick?: AbortController;
-}
-
-/**
- * The part of a parsed `cron-schedule` expression the providers call.
- *
- * `cron-schedule` is bundled into `alepha`, so a consumer has no
- * `cron-schedule` for a declaration file to import from: `CronJob.cron` is
- * typed by this instead, which its `Cron` satisfies.
- */
-export interface CronSchedule {
-  getNextDates(amount: number, startDate?: Date): Date[];
-  matchDate(date: Date): boolean;
 }
