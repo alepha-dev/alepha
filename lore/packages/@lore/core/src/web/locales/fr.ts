@@ -1976,7 +1976,6 @@ export default {
     "Cette copie n\u2019a pas encore de domaine, donc il n\u2019y a nulle part où la déployer. Choisissez-en un dans son onglet Paramètres.",
   "app.deploy.noEstate.action": "Ouvrir les paramètres",
   "app.tab.environment": "Environnement",
-  "app.tab.sigil": "Sigil",
   "app.environment": "Variables et secrets",
   "app.environment.description":
     "Ce avec quoi cette copie tourne. Une variable (déclarée `secret: false` par l'app) affiche sa valeur ; un secret est chiffré et n'est plus jamais affiché - remplacez-le plutôt que de le lire. DATABASE_URL, R2_BUCKET_NAME et les noms CLOUDFLARE_* sont définis par le déploiement lui-même.",
@@ -2113,7 +2112,7 @@ export default {
   "app.dashboard.neverReported":
     "Cette app n'a pas déclaré sa configuration. Les anciennes versions n'en envoient pas, et une app qui n'a jamais rapporté ne nous a rien dit non plus.",
   "app.dashboard.configHint":
-    "Ce que l'app envoie est décidé par SIGIL_CONFIG dans son propre déploiement. Quand Lore déploie cette copie, réglez-le dans l'onglet Sigil.",
+    "Ce que l'app envoie est décidé par SIGIL_CONFIG dans son propre déploiement. Quand Lore déploie cette copie, réglez-le dans les Paramètres.",
   "app.dashboard.acceptsNothing": "Lore n'accepte rien de cette app",
   "app.artifacts": "Artefacts",
   "app.artifacts.loading": "Lecture de ce que cette app a construit…",
