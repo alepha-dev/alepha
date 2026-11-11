@@ -26,7 +26,7 @@ export const imageOptions = $atom({
      *
      * @default "node:24-alpine" for node runtime
      * @default "oven/bun:alpine" for bun runtime
-     * @default "gcr.io/distroless/static-debian12" in `compile` mode
+     * @default "gcr.io/distroless/cc-debian12" in `compile` mode
      */
     from: z.string().optional(),
 
@@ -74,9 +74,11 @@ export const imageOptions = $atom({
     /**
      * Mount points declared as `VOLUME` in the generated image.
      *
-     * In the standard variant each directory is created and chowned to
-     * the container user before its `VOLUME` line, so a **named** volume
-     * inherits a writable directory. A **bind mount** does not follow
+     * Each directory is created owned by the container user before its
+     * `VOLUME` line, so a **named** volume inherits a writable directory:
+     * with `RUN mkdir && chown` in the standard variant, and in `compile`
+     * mode, whose base has no shell, by copying an empty directory with
+     * `COPY --chown`. A **bind mount** does not follow
      * this: the host directory's ownership wins, and the host has to
      * grant access itself.
      *
@@ -94,11 +96,11 @@ export const imageOptions = $atom({
      *
      * Pass `"root"` to opt back into running as root.
      *
-     * Compile mode has no default: the distroless base has no shell, so
-     * a declared volume cannot be prepared at build time. Set this
-     * explicitly there if the image needs a non-root user.
+     * `compile` mode defaults to `65532:65532`, distroless's `nonroot`
+     * given as a number so it works on any `from`. `/app`, the binary and
+     * every `volumes` path are owned by that user.
      *
-     * @default "1000" (standard variant only)
+     * @default "1000", or "65532:65532" in `compile` mode
      */
     user: z.string().optional(),
 

@@ -79,7 +79,32 @@ It needs an interpreter, `libstdc++` and `libgcc`. Put it on a base that has non
 
 So `alepha image` derives the triple from the base rather than inheriting whatever the host would default to, and **refuses a base with no libc** (`scratch`, `distroless/static`) rather than building one, because no triple fixes it.
 
-The compiled variant stays root: the base has no shell, so a declared volume cannot be prepared at build time.
+### Non-root by default
+
+The compiled image runs as `65532:65532`, distroless's `nonroot` given as a number so it holds on any `image.from`. `image.user` overrides it, and `"root"` opts back.
+
+The base has no shell, so the standard variant's `RUN mkdir && chown` cannot prepare a volume there. `alepha image` creates an empty directory in `dist/` (`.alepha-empty`) and the generated file copies it with `--chown` onto `/app` and onto every `image.volumes` path, before its `VOLUME` line. A named volume takes the ownership of that directory, so it starts writable, and the file needs no `RUN` at all. A hand-run `docker build` of the generated file needs that directory too: `alepha image --dockerfile` creates it.
+
+⚠️ **Breaking for a compiled image that wrote as root.** A regenerated Dockerfile runs as `65532`, so a write anywhere but `/app` and the declared volumes fails. A Dockerfile you already own is reused untouched, so nothing changes until you delete it and regenerate.
+
+### A read-only root file system
+
+With `--read-only` (or `readOnlyRootFilesystem: true` in Kubernetes), the one path to mount writable is the data directory. Unset, the local providers write under `/app/node_modules/.alepha`, inside the image. Point `DATA_DIR`, and a SQLite `DATABASE_URL`, at a declared volume:
+
+```typescript check
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  image: {
+    volumes: ["/data"],
+    env: { DATA_DIR: "/data", DATABASE_URL: "sqlite:///data/app.db" },
+  },
+});
+```
+
+```bash
+docker run --read-only --cap-drop ALL -v app-data:/data -e APP_SECRET=... myorg/app
+```
 
 ## Options
 
@@ -120,7 +145,7 @@ These keys shape the generated Dockerfile. A Dockerfile you already own is used 
 | `install` | -                                                                                             | Packages installed with `npm install` before the app is copied, for CLI tools the app shells out to (e.g. `wrangler`). Ignored with `--compile`                                  |
 | `env`     | -                                                                                             | `ENV` defaults, emitted after the built-in `SERVER_HOST=0.0.0.0`. Not secrets: `docker run -e` overrides them and `docker inspect` shows them                                    |
 | `volumes` | -                                                                                             | `VOLUME` mount points. Each is created and owned by the container user first, so a named volume starts writable                                                                  |
-| `user`    | `1000` (none with `--compile`)                                                                | `USER` the process runs as. `"root"` opts back into root                                                                                                                         |
+| `user`    | `1000`, `65532:65532` with `--compile`                                                        | `USER` the process runs as. `"root"` opts back into root                                                                                                                         |
 | `tag`     | -                                                                                             | Image name without a version, completed by `--tag`                                                                                                                               |
 | `args`    | -                                                                                             | Extra `docker build` arguments, e.g. `["--platform", "linux/amd64"]`                                                                                                             |
 | `oci`     | -                                                                                             | Add the OCI labels: `revision` (git commit), `created` and `version` (from the tag) on the build command, plus the `labels` below                                                |

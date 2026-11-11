@@ -22,7 +22,7 @@
  */
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { type AddressInfo, createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,6 +53,8 @@ const BASES = [
   "node:24-alpine",
   "gcr.io/distroless/cc-debian12",
   "registry:2",
+  // Reads a named volume back, since the compiled image has no shell.
+  "busybox:1.37",
 ] as const;
 
 const APP_SECRET = "e2e-only-not-a-real-secret-0123456789abcdef";
@@ -444,6 +446,26 @@ describe("alepha image on real Docker", () => {
       // The standard case's Dockerfile would be reused untouched: the
       // compiled variant is a different file.
       await rm(join(PROJECT, "Dockerfile"), { force: true });
+      // A declared volume, and an app that writes into it at boot: what the
+      // non-root default has to keep working (#Q3336).
+      await writeFile(
+        join(PROJECT, "alepha.config.ts"),
+        `import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  image: { volumes: ["/data"] },
+});
+`,
+      );
+      const main = join(PROJECT, "src/main.server.ts");
+      await writeFile(
+        main,
+        `import { writeFileSync } from "node:fs";
+if (process.env.E2E_WRITE_TO) {
+  writeFileSync(\`\${process.env.E2E_WRITE_TO}/boot.txt\`, "booted");
+}
+${await readFile(main, "utf8")}`,
+      );
       await Shell.ok(CLI, ["build", "--runtime=bun"], PROJECT);
       await Shell.ok(
         CLI,
@@ -452,6 +474,38 @@ describe("alepha image on real Docker", () => {
         600_000,
       );
     }, 900_000);
+
+    it("is configured to run as 65532:65532, not root", async () => {
+      // `docker inspect`: distroless has no `id` to ask from inside.
+      expect(await Docker.inspect(COMPILED_TAG, "{{.Config.User}}")).toBe(
+        "65532:65532",
+      );
+    });
+
+    it("writes to a named volume declared in image.volumes", async () => {
+      const volume = `alepha-e2e-data-${RUN_ID}`;
+      await Shell.ok("docker", ["volume", "create", "--label", LABEL, volume]);
+      const container = await Docker.start(COMPILED_TAG, [
+        "-v",
+        `${volume}:/data`,
+        "-e",
+        "E2E_WRITE_TO=/data",
+      ]);
+      await Docker.waitHealthy(container);
+      const read = await Shell.ok("docker", [
+        "run",
+        "--rm",
+        "--label",
+        LABEL,
+        "-v",
+        `${volume}:/data`,
+        "busybox:1.37",
+        "sh",
+        "-c",
+        "cat /data/boot.txt && stat -c ' %u:%g' /data/boot.txt",
+      ]);
+      expect(read.trim()).toBe("booted 65532:65532");
+    });
 
     it("declares no healthcheck: its base has nothing to run a probe with", async () => {
       expect(

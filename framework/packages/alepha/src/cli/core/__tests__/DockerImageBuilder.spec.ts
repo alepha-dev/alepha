@@ -395,7 +395,7 @@ describe("DockerImageBuilder", () => {
       await task.run(createCtx(fs, shell, compileOptions, compiled("notepad")));
 
       const dockerfile = readDockerfile(fs);
-      expect(dockerfile).toMatch(/^COPY notepad \.$/m);
+      expect(dockerfile).toMatch(/^COPY --chown=65532:65532 notepad \.$/m);
       expect(dockerfile).toContain('ENTRYPOINT ["/app/notepad"]');
     });
 
@@ -458,7 +458,10 @@ describe("DockerImageBuilder", () => {
         false,
       );
       expect(
-        fs.wasWrittenMatching("/project/Dockerfile", /^COPY app \.$/m),
+        fs.wasWrittenMatching(
+          "/project/Dockerfile",
+          /^COPY --chown=65532:65532 app \.$/m,
+        ),
       ).toBe(true);
       expect(
         fs.wasWrittenMatching(
@@ -497,18 +500,57 @@ describe("DockerImageBuilder", () => {
       ).toBe(false);
     });
 
-    it("stays root, and says why in the generated file", async () => {
+    it("runs as 65532:65532 by default, and owns /app and the binary", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
       await task.run(createCtx(fs, shell, compileOptions, compiled()));
 
       const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toMatch(/^USER 65532:65532$/m);
+      // `/app` comes from the empty directory, BEFORE `WORKDIR`, which would
+      // otherwise create it owned by root.
+      const app = dockerfile.indexOf(
+        "COPY --chown=65532:65532 .alepha-empty /app",
+      );
+      expect(app).toBeGreaterThan(-1);
+      expect(app).toBeLessThan(dockerfile.indexOf("WORKDIR /app"));
+      expect(dockerfile).toMatch(/^COPY --chown=65532:65532 app \.$/m);
+      // Still no shell needed anywhere.
+      expect(dockerfile).not.toMatch(/^RUN /m);
+    });
+
+    it("creates the empty directory in dist/, generated file or not", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+      await fs.writeFile("/project/Dockerfile", "FROM scratch\n");
+
+      await task.run(createCtx(fs, shell, compileOptions, compiled()));
+
+      expect(await fs.exists("/project/dist/.alepha-empty")).toBe(true);
+    });
+
+    it("opts back into root with image.user, and copies with no --chown", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { ...compileOptions, user: "root", volumes: ["/data"] },
+          compiled(),
+        ),
+      );
+
+      const dockerfile = readDockerfile(fs);
       expect(dockerfile).not.toMatch(/^USER /m);
+      expect(dockerfile).not.toContain("--chown");
+      expect(dockerfile).not.toContain(".alepha-empty");
       expect(dockerfile).toContain("# Runs as root:");
     });
 
-    it("emits ENV and VOLUME, but no chown, when a volume is declared", async () => {
+    it("prepares each declared volume with a chowned copy, before VOLUME and with no RUN", async () => {
       const { fs, shell, task } = createTestEnv();
       await fs.writeFile("/project/dist/index.node.js", "// bundle");
 
@@ -527,8 +569,12 @@ describe("DockerImageBuilder", () => {
 
       const dockerfile = readDockerfile(fs);
       expect(dockerfile).toContain('ENV DATA_DIR="/data"');
-      expect(dockerfile).toContain('VOLUME ["/data"]');
-      // No shell in distroless: nothing can prepare the directory.
+      const prep = dockerfile.indexOf(
+        'COPY --chown=65532:65532 [".alepha-empty","/data"]',
+      );
+      expect(prep).toBeGreaterThan(-1);
+      expect(prep).toBeLessThan(dockerfile.indexOf('VOLUME ["/data"]'));
+      // No shell in distroless, and nothing to emulate on a foreign platform.
       expect(dockerfile).not.toMatch(/^RUN /m);
     });
 
@@ -559,7 +605,7 @@ describe("DockerImageBuilder", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/Dockerfile",
-          /COPY migrations \.\/migrations/,
+          /COPY --chown=65532:65532 migrations \.\/migrations/,
         ),
       ).toBe(true);
     });

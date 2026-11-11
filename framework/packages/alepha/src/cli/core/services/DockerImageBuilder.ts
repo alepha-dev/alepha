@@ -69,10 +69,9 @@ interface ResolvedCompile {
  *
  * 1. Standard (default) - copies the bundled JS + `package.json` and runs
  *    `bun install` (or `npm install`) inside the container.
- * 2. Compile - packages the single binary `BuildCompileTask` produces inside
- *    a minimal distroless image. No `node_modules` are ever installed. This
- *    task only writes that Dockerfile: the binary does not exist yet when it
- *    runs, so in this mode `--tag` is built by `BuildCompileTask`, after.
+ * 2. Compile - packages the single binary `alepha image --compile` compiled
+ *    just before (`WorkspaceCompiler`) inside a minimal distroless image. No
+ *    `node_modules` are ever installed.
  *
  * Creates:
  * - Dockerfile (compile or standard variant)
@@ -123,6 +122,32 @@ export class DockerImageBuilder {
   public static readonly DEFAULT_COMPILE_BASE = "gcr.io/distroless/cc-debian12";
 
   /**
+   * The compiled image's default user: distroless's `nonroot`, as a number.
+   *
+   * Numeric and not the base's `:nonroot` tag: `image.from` is a supported
+   * override, {@link DEFAULT_COMPILE_BASE} is read as one string by the triple
+   * chooser, and a numeric id works on any base. The same rule the standard
+   * variant follows with `1000`.
+   */
+  public static readonly DEFAULT_COMPILE_USER = "65532:65532";
+
+  /**
+   * An empty directory `alepha image` creates in `dist/` for the compiled
+   * variant, copied with `--chown` onto `/app` and onto every declared
+   * volume.
+   *
+   * ⚠️ **This is how a shell-less image gets a writable directory.** A named
+   * volume inherits the ownership of the image directory at its path, and
+   * the standard variant prepares it with `RUN mkdir && chown`. Distroless
+   * cannot run that line. `COPY --chown` of an empty directory creates the
+   * destination owned by the user, with no `RUN` at all, which also keeps
+   * the file free of anything that would need emulation on a foreign
+   * platform. A hand-run `docker build` on the generated file needs the
+   * directory too: run `alepha image --dockerfile` once, which creates it.
+   */
+  public static readonly EMPTY_DIR = ".alepha-empty";
+
+  /**
    * Write the Dockerfile when the app owns none, then build the image.
    */
   async run(ctx: ImageContext): Promise<void> {
@@ -137,6 +162,15 @@ export class DockerImageBuilder {
 
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");
     const owned = await this.fs.exists(dockerfile);
+
+    if (compile) {
+      // Created whether or not the Dockerfile is generated: a committed one
+      // references it just the same.
+      await this.fs.mkdir(
+        this.fs.join(ctx.root, distDir, DockerImageBuilder.EMPTY_DIR),
+        { recursive: true },
+      );
+    }
 
     await ctx.run({
       name: owned ? "check the Dockerfile" : "generate the Dockerfile",
@@ -254,9 +288,10 @@ export class DockerImageBuilder {
    * `image.from` is a supported override and `USER node` fails the
    * build outright on a base without that user.
    *
-   * Compile mode has no default: distroless has no shell, so a declared
-   * volume cannot be created and chowned at build time. An explicit `user`
-   * is still honoured there.
+   * Compile mode defaults to `65532:65532` (see
+   * {@link DEFAULT_COMPILE_USER}); its volumes and `/app` are made writable
+   * by copying an empty directory with `--chown` ({@link EMPTY_DIR}), since
+   * distroless has no shell to `chown` with. `"root"` opts back.
    */
   protected resolveUser(
     ctx: ImageContext,
@@ -266,7 +301,7 @@ export class DockerImageBuilder {
     if (configured) {
       return configured;
     }
-    return compile ? null : "1000";
+    return compile ? DockerImageBuilder.DEFAULT_COMPILE_USER : "1000";
   }
 
   /**
@@ -447,10 +482,6 @@ export class DockerImageBuilder {
       "# It is yours now. Edit it freely; `alepha image` reuses it untouched\n" +
       "# and only warns when the facts above stop matching a later build.\n";
 
-    const migrationsLine = opts.hasMigrations
-      ? "COPY migrations ./migrations\n"
-      : "";
-
     const envLines = this.renderEnv(opts.env);
     const volumeLines = this.renderVolumes(opts.volumes);
     const labelLines = this.renderLabels(opts.labels);
@@ -458,21 +489,42 @@ export class DockerImageBuilder {
     let dockerfile: string;
 
     if (opts.compile) {
-      // Root unless `image.user` says otherwise, and the generated
-      // file says so itself so it does not read as an oversight.
-      const userLine = opts.user
-        ? `USER ${opts.user}\n\n`
-        : "# Runs as root: the distroless base has no shell, so a declared volume\n" +
-          "# cannot be created and chowned at build time. Set `image.user`\n" +
-          "# to run as someone else.\n";
+      const root = this.isRootUser(opts.user);
+      const chownFlag = root
+        ? ""
+        : ` --chown=${this.chownSpec(opts.user as string)}`;
+      // ⚠️ `/app` is created by the copy, before `WORKDIR`, so it is owned by
+      // the user: the default data directory sits inside it. `WORKDIR` alone
+      // would create it owned by root.
+      const appLine = root
+        ? ""
+        : `COPY${chownFlag} ${DockerImageBuilder.EMPTY_DIR} /app\n`;
+      const compileMigrations = opts.hasMigrations
+        ? `COPY${chownFlag} migrations ./migrations\n`
+        : "";
+      // One copy per volume, before the `VOLUME` line: a named volume takes
+      // the ownership of the image directory at its path.
+      const volumePrep = root
+        ? ""
+        : opts.volumes
+            .map(
+              (path) =>
+                // Exec form: a path with a space needs no escaping rules.
+                `COPY${chownFlag} ${JSON.stringify([DockerImageBuilder.EMPTY_DIR, path])}\n`,
+            )
+            .join("");
+      const userLine =
+        opts.user && opts.user !== "root"
+          ? `USER ${opts.user}\n\n`
+          : "# Runs as root: `image.user` says so.\n";
       // `install` is ignored in compile mode: distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
-WORKDIR /app
+${appLine}WORKDIR /app
 ${labelLines ? `\n${labelLines}` : ""}
-COPY ${opts.compile.name} .
-${migrationsLine}
+COPY${chownFlag} ${opts.compile.name} .
+${compileMigrations}
 ENV SERVER_HOST=0.0.0.0
-${envLines}${volumeLines ? `\n${volumeLines}` : ""}
+${envLines}${volumeLines ? `\n${volumePrep}${volumeLines}` : ""}
 ${userLine}# No HEALTHCHECK: the distroless base has no shell and no runtime besides
 # the app, so nothing in the image can run a probe. Probe /health from outside.
 ENTRYPOINT ["/app/${opts.compile.name}"]

@@ -64,7 +64,7 @@ export default defineConfig({
 | `image.install` | Extra packages for the generated standard image          |
 | `image.env`     | Baked defaults, overridden by runtime environment values |
 | `image.volumes` | Volume mount points                                      |
-| `image.user`    | Container user override (standard default: uid 1000)     |
+| `image.user`    | Container user (default 1000, 65532:65532 compiled)      |
 | `image.tag`     | Default image name                                       |
 | `image.args`    | Docker build arguments as a string array                 |
 | `image.oci`     | Write the OCI labels below                               |
@@ -81,7 +81,7 @@ alepha build --runtime bun
 alepha image --compile --tag
 ```
 
-This compiles the Bun slice first, then packages the binary on `gcr.io/distroless/cc-debian12` by default. `--compile my-app` names the binary. The base determines the Linux Bun target triple: a Bun binary needs libc and supporting libraries, so `scratch` and `distroless/static` are refused. A compiled image has no default user; set `image.user` when needed. Runtime dependencies must be bundled, and `image.install` is ignored in this mode.
+This compiles the Bun slice first, then packages the binary on `gcr.io/distroless/cc-debian12` by default. `--compile my-app` names the binary. The base determines the Linux Bun target triple: a Bun binary needs libc and supporting libraries, so `scratch` and `distroless/static` are refused. A compiled image runs as `65532:65532` by default, owns `/app` and every `image.volumes` path, and needs no shell to do it; `image.user: "root"` opts back. It boots with a read-only root file system when `DATA_DIR` points at a declared volume (see [Non-root by default](/docs/cli-commands-image#non-root-by-default)). A compiled Dockerfile generated before this ran as root: regenerate it, and check the app writes nowhere else. Runtime dependencies must be bundled, and `image.install` is ignored in this mode.
 
 For a binary without an image, use [alepha compile](/docs/cli-commands-compile). For the complete image contract, see [alepha image](/docs/cli-commands-image).
 
