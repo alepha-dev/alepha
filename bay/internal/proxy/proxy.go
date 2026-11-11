@@ -395,7 +395,9 @@ two paths it protects.
 */
 func isOperational(path string) bool {
 	switch path {
-	case "/health", "/healthz", "/metrics":
+	// `/livez` and `/readyz` are the Alepha probes an orchestrator asks for
+	// apart (#Q3348): the same internals as `/health`, under another name.
+	case "/health", "/healthz", "/livez", "/readyz", "/metrics":
 		return true
 	}
 	return false

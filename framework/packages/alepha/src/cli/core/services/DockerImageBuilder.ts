@@ -9,6 +9,7 @@ import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import type { ImageOptions } from "../atoms/imageOptions.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
 import { BuildSlices } from "./BuildSlices.ts";
+import { SbomBuilder } from "./SbomBuilder.ts";
 
 /**
  * Everything `alepha image` hands the builder: what was built, where, and how
@@ -49,6 +50,30 @@ export interface ImageContext {
    */
   build?: boolean | string;
 
+  /**
+   * The platforms to build for (`image.platforms` or `--platform`), already
+   * validated. More than one makes the compiled Dockerfile pick its binary
+   * with `TARGETARCH`.
+   */
+  platforms?: string[];
+
+  /**
+   * Attach an SBOM attestation (`image.sbom` or `--sbom`).
+   */
+  sbom?: boolean;
+
+  /**
+   * Attach a `mode=max` provenance attestation (`image.provenance` or
+   * `--provenance`).
+   */
+  provenance?: boolean;
+
+  /**
+   * Push the image as it is built (`--push`), rather than load it into the
+   * local daemon.
+   */
+  push?: boolean;
+
   run: RunnerMethod;
 
   meta?: AlephaMeta;
@@ -60,6 +85,10 @@ export interface ImageContext {
 interface ResolvedCompile {
   name: string;
   base: string;
+  /**
+   * One binary per architecture, `<name>-<arch>`, picked by `TARGETARCH`.
+   */
+  multiArch: boolean;
 }
 
 /**
@@ -69,10 +98,9 @@ interface ResolvedCompile {
  *
  * 1. Standard (default) - copies the bundled JS + `package.json` and runs
  *    `bun install` (or `npm install`) inside the container.
- * 2. Compile - packages the single binary `BuildCompileTask` produces inside
- *    a minimal distroless image. No `node_modules` are ever installed. This
- *    task only writes that Dockerfile: the binary does not exist yet when it
- *    runs, so in this mode `--tag` is built by `BuildCompileTask`, after.
+ * 2. Compile - packages the single binary `alepha image --compile` compiled
+ *    just before (`WorkspaceCompiler`) inside a minimal distroless image. No
+ *    `node_modules` are ever installed.
  *
  * Creates:
  * - Dockerfile (compile or standard variant)
@@ -123,6 +151,108 @@ export class DockerImageBuilder {
   public static readonly DEFAULT_COMPILE_BASE = "gcr.io/distroless/cc-debian12";
 
   /**
+   * The compiled image's default user: distroless's `nonroot`, as a number.
+   *
+   * Numeric and not the base's `:nonroot` tag: `image.from` is a supported
+   * override, {@link DEFAULT_COMPILE_BASE} is read as one string by the triple
+   * chooser, and a numeric id works on any base. The same rule the standard
+   * variant follows with `1000`.
+   */
+  public static readonly DEFAULT_COMPILE_USER = "65532:65532";
+
+  /**
+   * An empty directory `alepha image` creates in `dist/` for the compiled
+   * variant, copied with `--chown` onto `/app` and onto every declared
+   * volume.
+   *
+   * ⚠️ **This is how a shell-less image gets a writable directory.** A named
+   * volume inherits the ownership of the image directory at its path, and
+   * the standard variant prepares it with `RUN mkdir && chown`. Distroless
+   * cannot run that line. `COPY --chown` of an empty directory creates the
+   * destination owned by the user, with no `RUN` at all, which also keeps
+   * the file free of anything that would need emulation on a foreign
+   * platform. A hand-run `docker build` on the generated file needs the
+   * directory too: run `alepha image --dockerfile` once, which creates it.
+   */
+  public static readonly EMPTY_DIR = ".alepha-empty";
+
+  /**
+   * Refuse, before anything is compiled or built, what the build would
+   * refuse or silently drop after minutes of work.
+   *
+   * - `sbom` with no `dist/sbom.cdx.json`: an SBOM attestation scanned from
+   *   the image lists the base and none of the bundled packages.
+   * - An attestation without `--push`, on a daemon whose image store cannot
+   *   keep one. Only the containerd image store holds an image index with
+   *   attestation manifests; the classic store refuses the build or drops
+   *   them, and the error says nothing about why.
+   *
+   * ⚠️ Called by `alepha image` before it compiles: a check that ran after a
+   * compile of several minutes would be a bad error.
+   */
+  async preflight(ctx: {
+    root: string;
+    distDir: string;
+    sbom?: boolean;
+    provenance?: boolean;
+    push?: boolean;
+    platforms?: string[];
+  }): Promise<void> {
+    if (
+      ctx.sbom &&
+      !(await this.fs.exists(
+        this.fs.join(ctx.root, ctx.distDir, SbomBuilder.FILE),
+      ))
+    ) {
+      throw new AlephaError(
+        `\`image.sbom\` needs ${ctx.distDir}/${SbomBuilder.FILE}, and this build wrote none. ` +
+          "Set `build.sbom: true` in alepha.config.ts and build again: an SBOM " +
+          "attestation scanned from the image alone lists the base image and none " +
+          "of the packages the app bundled.",
+      );
+    }
+    const multiPlatform = (ctx.platforms?.length ?? 0) > 1;
+    if (!(ctx.sbom || ctx.provenance || multiPlatform) || ctx.push) {
+      return;
+    }
+    if (await this.daemonKeepsAttestations()) {
+      return;
+    }
+    if (multiPlatform) {
+      throw new AlephaError(
+        `A multi-platform image (${ctx.platforms?.join(", ")}) is an image index, and this ` +
+          "Docker daemon's image store cannot hold one, so it cannot be loaded locally. " +
+          "Either push it as it is built (`alepha image --push`), or turn on the " +
+          "containerd image store.",
+      );
+    }
+    throw new AlephaError(
+      "An SBOM or provenance attestation lives in the image index, and this " +
+        "Docker daemon's image store cannot hold one. Either push the image as it " +
+        "is built (`alepha image --push`), or turn on the containerd image store " +
+        "(Docker Desktop: Settings, General, 'Use containerd for pulling and " +
+        'storing images\'; Docker Engine: `"features": { "containerd-snapshotter": true }` ' +
+        "in daemon.json).",
+    );
+  }
+
+  /**
+   * Whether the local daemon stores images with containerd, the one image
+   * store that keeps an index and its attestation manifests.
+   */
+  protected async daemonKeepsAttestations(): Promise<boolean> {
+    const info = await this.shell.capture([
+      "docker",
+      "info",
+      "--format",
+      "{{json .DriverStatus}}",
+    ]);
+    return (
+      info.exitCode === 0 && info.stdout.includes("containerd.snapshotter")
+    );
+  }
+
+  /**
    * Write the Dockerfile when the app owns none, then build the image.
    */
   async run(ctx: ImageContext): Promise<void> {
@@ -137,6 +267,15 @@ export class DockerImageBuilder {
 
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");
     const owned = await this.fs.exists(dockerfile);
+
+    if (compile) {
+      // Created whether or not the Dockerfile is generated: a committed one
+      // references it just the same.
+      await this.fs.mkdir(
+        this.fs.join(ctx.root, distDir, DockerImageBuilder.EMPTY_DIR),
+        { recursive: true },
+      );
+    }
 
     await ctx.run({
       name: owned ? "check the Dockerfile" : "generate the Dockerfile",
@@ -165,6 +304,9 @@ export class DockerImageBuilder {
             entry: this.slices.entryFileName(ctx.runtime),
           },
           hasMigrations: migrationsCopied,
+          hasSbom: await this.fs.exists(
+            this.fs.join(ctx.root, distDir, SbomBuilder.FILE),
+          ),
           hasDeps: await this.hasRuntimeDeps(ctx.root, distDir),
           install: ctx.image.install ?? [],
           env: ctx.image.env ?? {},
@@ -242,6 +384,7 @@ export class DockerImageBuilder {
     return {
       name,
       base: ctx.image.from ?? DockerImageBuilder.DEFAULT_COMPILE_BASE,
+      multiArch: (ctx.platforms?.length ?? 0) > 1,
     };
   }
 
@@ -254,9 +397,10 @@ export class DockerImageBuilder {
    * `image.from` is a supported override and `USER node` fails the
    * build outright on a base without that user.
    *
-   * Compile mode has no default: distroless has no shell, so a declared
-   * volume cannot be created and chowned at build time. An explicit `user`
-   * is still honoured there.
+   * Compile mode defaults to `65532:65532` (see
+   * {@link DEFAULT_COMPILE_USER}); its volumes and `/app` are made writable
+   * by copying an empty directory with `--chown` ({@link EMPTY_DIR}), since
+   * distroless has no shell to `chown` with. `"root"` opts back.
    */
   protected resolveUser(
     ctx: ImageContext,
@@ -266,7 +410,7 @@ export class DockerImageBuilder {
     if (configured) {
       return configured;
     }
-    return compile ? null : "1000";
+    return compile ? DockerImageBuilder.DEFAULT_COMPILE_USER : "1000";
   }
 
   /**
@@ -333,6 +477,48 @@ export class DockerImageBuilder {
     return `RUN mkdir -p ${paths} && chown ${this.chownSpec(user as string)} ${paths}\n`;
   }
 
+  /**
+   * The `HEALTHCHECK` of the standard variant: `/health`, probed with the
+   * runtime's own `fetch`.
+   *
+   * - **`/health`**, which every Alepha app serves and which answers 503
+   *   until the app is ready. Docker's `healthy` is read as readiness by
+   *   whatever consumes it (compose's `service_healthy`, Bay), so readiness
+   *   is the right signal.
+   * - **The runtime itself** (`node -e` or `bun -e`), never `wget` or `curl`:
+   *   `image.from` is a supported override and a base may carry neither,
+   *   which is the reason `USER` is a number too. Exec form, so no shell is
+   *   needed either.
+   * - **`SERVER_PORT` read at run time**, so `docker run -e SERVER_PORT=8080`
+   *   keeps the probe on the right port.
+   * - **A start period with a one-second start interval.** Docker's default
+   *   first probe runs 30 seconds after start, and Bay waits for `healthy`
+   *   before it routes to an image deploy that declares no health path: every
+   *   such deploy would wait 30 seconds where it waits about one. Probes
+   *   during the start period never count as failures. `--start-interval`
+   *   needs Docker Engine 25 or later.
+   *
+   * Any other `image.command` gets none, and a comment saying why: there is
+   * no runtime known to carry a `fetch` to probe with.
+   */
+  protected renderHealthcheck(command: string): string {
+    if (command !== "node" && command !== "bun") {
+      return (
+        `# No HEALTHCHECK: \`image.command\` is \`${command}\`, and the probe is written\n` +
+        "# for node or bun (`<runtime> -e` with its own fetch). Add one by hand.\n"
+      );
+    }
+    const probe =
+      "fetch('http://127.0.0.1:'+(process.env.SERVER_PORT||3000)+'/health')" +
+      ".then(r=>process.exit(r.ok?0:1),()=>process.exit(1))";
+    return (
+      "HEALTHCHECK --interval=30s --timeout=5s --retries=3 " +
+      "--start-period=60s --start-interval=1s \\\n" +
+      // Spaced like the CMD line below it, which a reader compares it with.
+      `  CMD [${[command, "-e", probe].map((it) => JSON.stringify(it)).join(", ")}]\n\n`
+    );
+  }
+
   protected async copyMigrations(
     root: string,
     distDir: string,
@@ -377,6 +563,12 @@ export class DockerImageBuilder {
       compile: ResolvedCompile | null;
       standard: { image: string; command: string; entry: string };
       hasMigrations: boolean;
+      /**
+       * `dist/sbom.cdx.json` exists. The standard variant copies it with
+       * `COPY . .`; the compiled one copies the binary only, so it needs a
+       * line of its own.
+       */
+      hasSbom: boolean;
       hasDeps: boolean;
       install: string[];
       env: Record<string, string>;
@@ -405,10 +597,6 @@ export class DockerImageBuilder {
       "# It is yours now. Edit it freely; `alepha image` reuses it untouched\n" +
       "# and only warns when the facts above stop matching a later build.\n";
 
-    const migrationsLine = opts.hasMigrations
-      ? "COPY migrations ./migrations\n"
-      : "";
-
     const envLines = this.renderEnv(opts.env);
     const volumeLines = this.renderVolumes(opts.volumes);
     const labelLines = this.renderLabels(opts.labels);
@@ -416,22 +604,54 @@ export class DockerImageBuilder {
     let dockerfile: string;
 
     if (opts.compile) {
-      // Root unless `image.user` says otherwise, and the generated
-      // file says so itself so it does not read as an oversight.
-      const userLine = opts.user
-        ? `USER ${opts.user}\n\n`
-        : "# Runs as root: the distroless base has no shell, so a declared volume\n" +
-          "# cannot be created and chowned at build time. Set `image.user`\n" +
-          "# to run as someone else.\n";
+      const root = this.isRootUser(opts.user);
+      const chownFlag = root
+        ? ""
+        : ` --chown=${this.chownSpec(opts.user as string)}`;
+      // ⚠️ `/app` is created by the copy, before `WORKDIR`, so it is owned by
+      // the user: the default data directory sits inside it. `WORKDIR` alone
+      // would create it owned by root.
+      const appLine = root
+        ? ""
+        : `COPY${chownFlag} ${DockerImageBuilder.EMPTY_DIR} /app\n`;
+      const compileMigrations = opts.hasMigrations
+        ? `COPY${chownFlag} migrations ./migrations\n`
+        : "";
+      // One binary per architecture: buildx sets `TARGETARCH` for each
+      // platform it builds, so one stage picks the right one. One platform,
+      // or none, keeps the file of today.
+      const binaryLine = opts.compile.multiArch
+        ? `ARG TARGETARCH\nCOPY${chownFlag} ${opts.compile.name}-\${TARGETARCH} ${opts.compile.name}\n`
+        : `COPY${chownFlag} ${opts.compile.name} .\n`;
+      // At a fixed path, `/app/sbom.cdx.json`, as the standard variant has it.
+      const sbomLine = opts.hasSbom
+        ? `COPY${chownFlag} ${SbomBuilder.FILE} .\n`
+        : "";
+      // One copy per volume, before the `VOLUME` line: a named volume takes
+      // the ownership of the image directory at its path.
+      const volumePrep = root
+        ? ""
+        : opts.volumes
+            .map(
+              (path) =>
+                // Exec form: a path with a space needs no escaping rules.
+                `COPY${chownFlag} ${JSON.stringify([DockerImageBuilder.EMPTY_DIR, path])}\n`,
+            )
+            .join("");
+      const userLine =
+        opts.user && opts.user !== "root"
+          ? `USER ${opts.user}\n\n`
+          : "# Runs as root: `image.user` says so.\n";
       // `install` is ignored in compile mode: distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
-WORKDIR /app
+${appLine}WORKDIR /app
 ${labelLines ? `\n${labelLines}` : ""}
-COPY ${opts.compile.name} .
-${migrationsLine}
+${binaryLine}${sbomLine}${compileMigrations}
 ENV SERVER_HOST=0.0.0.0
-${envLines}${volumeLines ? `\n${volumeLines}` : ""}
-${userLine}ENTRYPOINT ["/app/${opts.compile.name}"]
+${envLines}${volumeLines ? `\n${volumePrep}${volumeLines}` : ""}
+${userLine}# No HEALTHCHECK: the distroless base has no shell and no runtime besides
+# the app, so nothing in the image can run a probe. Probe /health from outside.
+ENTRYPOINT ["/app/${opts.compile.name}"]
 `;
     } else {
       const { image, command, entry } = opts.standard;
@@ -466,7 +686,7 @@ COPY${chownFlag} . .
 ${baseInstallLine}${extraInstallLine}${volumePrepLine}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumeLines}` : ""}
-${userLine}CMD ["${command}", "${entry}"]
+${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
 `;
     }
 
@@ -647,10 +867,32 @@ ${userLine}CMD ["${command}", "${entry}"]
       drag `src/` and `node_modules/` into every build.
     */
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");
+
+    /*
+      ⚠️ **`docker buildx build` only when asked for.** An attestation and a
+      push-as-you-build are buildx flags; without them the command stays the
+      `docker build` it always was, so an app that opts into nothing sees no
+      change. Attestations are command-line only: no Dockerfile line carries
+      them, so a hand-run build of the same file has none.
+    */
+    const attest = !!(ctx.sbom || ctx.provenance);
+    const platforms = ctx.platforms ?? [];
+    const buildx = attest || !!ctx.push || platforms.length > 0;
+    const buildxArgs = buildx
+      ? [
+          ...(platforms.length ? ["--platform", platforms.join(",")] : []),
+          ...(ctx.sbom ? ["--sbom=true"] : []),
+          ...(ctx.provenance ? ["--provenance=mode=max"] : []),
+          // `--load` names the default explicitly: on a builder that is not
+          // the daemon's own, the result would otherwise stay in its cache.
+          ctx.push ? "--push" : "--load",
+        ]
+      : [];
     const argv = [
       "docker",
-      "build",
+      ...(buildx ? ["buildx", "build"] : ["build"]),
       ...args,
+      ...buildxArgs,
       "-f",
       dockerfile,
       "-t",
@@ -663,7 +905,7 @@ ${userLine}CMD ["${command}", "${entry}"]
     // a project path with a space, or a label with an apostrophe, broke the
     // command line.
     await ctx.run({
-      name: `docker build ${imageTag}`,
+      name: `${buildx ? "docker buildx build" : "docker build"} ${imageTag}${ctx.push ? " (push)" : ""}`,
       handler: async () => {
         await this.shell.run(argv, { root: ctx.root });
       },

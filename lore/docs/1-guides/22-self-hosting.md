@@ -140,6 +140,40 @@ Every release page on [lore.alepha.dev](https://lore.alepha.dev) carries an **Ar
 
 **Downgrading is not supported once a migration has run.** An older image does not know how to undo a newer schema, and there is no down-migration. Take the backup above before an upgrade; that snapshot is the way back.
 
+## Health
+
+The image declares a `HEALTHCHECK` on `/health`, which answers 503 until Lore has migrated its database and is ready. `docker ps` shows the container `healthy` a few seconds after it starts, and compose can wait for it:
+
+```yaml
+services:
+  lore:
+    image: ghcr.io/alepha-dev/lore
+    volumes: [lore:/data]
+  proxy:
+    image: nginx
+    depends_on:
+      lore:
+        condition: service_healthy
+volumes:
+  lore:
+```
+
+## What the Image Contains
+
+Each release of the image carries its evidence, for a security review or an SBOM requirement:
+
+- **An SBOM attestation** (SPDX) listing the base image's packages and the npm packages bundled into Lore, and the build's own CycloneDX list inside the image at `/app/sbom.cdx.json`.
+- **A provenance attestation** (SLSA), recording how and from which commit the image was built.
+
+Read them from the registry, without pulling the image:
+
+```bash
+docker buildx imagetools inspect ghcr.io/alepha-dev/lore:latest --format '{{json .SBOM}}'
+docker buildx imagetools inspect ghcr.io/alepha-dev/lore:latest --format '{{json .Provenance}}'
+```
+
+The image is built for `linux/amd64`.
+
 ## Behind a Reverse Proxy
 
 The container serves plain HTTP. Put HTTPS in front of it for anything reachable from the internet: secure cookies and OAuth redirects both need it.

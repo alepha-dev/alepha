@@ -136,6 +136,24 @@ export const buildOptions = $atom({
       .optional(),
 
     /**
+     * Write a CycloneDX SBOM of what the build bundled, as
+     * `dist/sbom.cdx.json`.
+     *
+     * The server bundles its npm dependencies, so nothing else in `dist/`
+     * (and nothing in an image built from it) names them. The list comes
+     * from the bundler's module graph, the client and every server slice,
+     * plus the externals `dist/package.json` declares: a package the build
+     * never reached, such as a test runner, is not in it.
+     *
+     * The file sits at the root of `dist/`, outside the public directory, so
+     * it reaches the image, the `alepha pack` archive and a compiled image
+     * without being served. `alepha image --sbom` requires it.
+     *
+     * @default false
+     */
+    sbom: z.boolean().optional(),
+
+    /**
      * SSR module preloading.
      */
     preload: z

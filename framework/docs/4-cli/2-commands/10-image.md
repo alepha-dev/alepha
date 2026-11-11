@@ -30,6 +30,56 @@ The generated header records the manifest facts it came from:
 
 A later run **warns** when they no longer match, and never fails. The file is yours after generation, so a hard failure would make an intentional edit feel like a bug; the warning exists only so the drift is not silent.
 
+## Health
+
+The generated Node and Bun Dockerfiles carry a `HEALTHCHECK` on `/health`:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=60s --start-interval=1s \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.SERVER_PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+```
+
+- **`/health` answers 503 until the app is ready**, so Docker's `healthy` means ready. That is how everything reading it uses it: compose's `depends_on: condition: service_healthy`, and Bay, which waits for `healthy` before it routes to an image deploy that declares no health path.
+- **The probe is the runtime's own `fetch`**, never `wget` or `curl`, which a custom `image.from` may not carry.
+- **The port is read when the probe runs**, from `SERVER_PORT` (3000 by default), so `docker run -e SERVER_PORT=8080` keeps it right.
+- **A one-second start interval** inside a 60-second start period. Docker's default first probe runs 30 seconds after start, so a supervisor waiting for `healthy` would wait that long for an app that is up in one. Failures during the start period do not count. `--start-interval` needs Docker Engine 25 or later.
+
+There is no `image.healthcheck` option: the line is in a file you own, so edit or delete it there. An `image.command` other than `node` or `bun` gets no `HEALTHCHECK`, and a comment in the file saying why. Neither does the compiled image: its base has no shell and no runtime besides the app, so nothing in it can run a probe. Probe `/health` from outside it.
+
+⚠️ **An existing Dockerfile does not get one.** It is reused untouched, so delete it and run `alepha image --dockerfile` to regenerate it with the `HEALTHCHECK`.
+
+## Platforms
+
+```bash
+alepha image --platform linux/amd64 --tag                          # an arm64 laptop, an amd64 cluster
+alepha image --platform linux/amd64,linux/arm64 --push --tag=ghcr.io/myorg/app:1.4.0
+```
+
+`--platform` (or `image.platforms`) runs `docker buildx build --platform <list>`. One platform is the common case: an arm64 laptop building for an amd64 cluster. Two make a multi-arch index.
+
+- **`--compile` takes the binary's architecture from the platform, never from the host.** One platform compiles one binary for it, and the generated Dockerfile is the one of today. Several compile one binary each, from one compile, named `app-amd64` and `app-arm64`, and the Dockerfile picks one with buildx's own build argument: `ARG TARGETARCH` then `COPY app-${TARGETARCH} app`. The libc half of the Bun triple still comes from the base. A compiled image is built for `linux/amd64` and `linux/arm64`.
+- **`--platform` never goes in `image.args`**: it is refused there, naming `image.platforms`. A second source would disagree silently, and a `--platform` passed through `args` used to build the host's architecture into the image of another, a container that dies with `exec format error`.
+- **A multi-platform result is an index**, which the classic docker image store cannot load. Use `--push`, or the containerd image store; `alepha image` checks before it compiles anything.
+- **A foreign platform runs under emulation.** Every `RUN` line of the Dockerfile then needs binfmt handlers on the build machine: `npm install` when the artifact declares dependencies, `image.install`, and the volume preparation of the standard variant. Docker Desktop ships them; on Linux, install them once with `docker run --privileged --rm tonistiigi/binfmt --install all`. An uncompiled image with no dependencies and no volumes, and every compiled image, has no `RUN` line at all.
+
+⚠️ A Dockerfile you already own is reused untouched: a compiled one generated for one platform copies `app`, and a multi-platform build needs the `TARGETARCH` line. Delete it and regenerate.
+
+## Evidence: SBOM and provenance
+
+```bash
+alepha build                                   # with build.sbom: true
+alepha image --sbom --provenance --push --tag=ghcr.io/myorg/app:1.4.0
+```
+
+`--sbom` and `--provenance` (or `image.sbom` and `image.provenance`, both off by default) attach attestations to the image index, per platform: an SPDX SBOM and a SLSA provenance in `mode=max`. They run the build through `docker buildx build`; with neither, and without `--push`, the command stays the plain `docker build`.
+
+- **`--sbom` needs `build.sbom`.** The image holds the bundle, not the packages inside it, so a scan of its file system alone would list the base image and none of the app. `alepha build` writes what it bundled into `dist/sbom.cdx.json` (see [Software Bill of Materials](/docs/cli-commands-build#software-bill-of-materials)), the image carries it at `/app/sbom.cdx.json` in both variants, and buildx's scanner reads that file: the attested SPDX document lists the bundled packages beside the base image's. Without the file, `--sbom` is refused.
+- **`--push` builds and pushes in one step** (`docker buildx build --push`), with or without attestations. The tag must name the registry.
+- **Attestations need somewhere to live.** Without `--push`, the image is loaded into the local daemon, and only the containerd image store can hold an index with attestations. `alepha image` checks this before it compiles or builds anything, and stops with an error naming the two ways out: `--push`, or the containerd image store.
+- **Command-line only.** No Dockerfile line carries an attestation, so a hand-run `docker buildx build` of the committed file has none unless it passes the same flags.
+
+⚠️ **`mode=max` records the build arguments in the provenance.** Never pass a secret as `--build-arg` in `image.args`: anyone who can pull the image can read it.
+
 ## Which slice it runs
 
 The primary: the first declared runtime, read from the manifest. An image runs one process from one entry point, and this is the same rule every deployer follows.
@@ -61,7 +111,32 @@ It needs an interpreter, `libstdc++` and `libgcc`. Put it on a base that has non
 
 So `alepha image` derives the triple from the base rather than inheriting whatever the host would default to, and **refuses a base with no libc** (`scratch`, `distroless/static`) rather than building one, because no triple fixes it.
 
-The compiled variant stays root: the base has no shell, so a declared volume cannot be prepared at build time.
+### Non-root by default
+
+The compiled image runs as `65532:65532`, distroless's `nonroot` given as a number so it holds on any `image.from`. `image.user` overrides it, and `"root"` opts back.
+
+The base has no shell, so the standard variant's `RUN mkdir && chown` cannot prepare a volume there. `alepha image` creates an empty directory in `dist/` (`.alepha-empty`) and the generated file copies it with `--chown` onto `/app` and onto every `image.volumes` path, before its `VOLUME` line. A named volume takes the ownership of that directory, so it starts writable, and the file needs no `RUN` at all. A hand-run `docker build` of the generated file needs that directory too: `alepha image --dockerfile` creates it.
+
+⚠️ **Breaking for a compiled image that wrote as root.** A regenerated Dockerfile runs as `65532`, so a write anywhere but `/app` and the declared volumes fails. A Dockerfile you already own is reused untouched, so nothing changes until you delete it and regenerate.
+
+### A read-only root file system
+
+With `--read-only` (or `readOnlyRootFilesystem: true` in Kubernetes), the one path to mount writable is the data directory. Unset, the local providers write under `/app/node_modules/.alepha`, inside the image. Point `DATA_DIR`, and a SQLite `DATABASE_URL`, at a declared volume:
+
+```typescript check
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  image: {
+    volumes: ["/data"],
+    env: { DATA_DIR: "/data", DATABASE_URL: "sqlite:///data/app.db" },
+  },
+});
+```
+
+```bash
+docker run --read-only --cap-drop ALL -v app-data:/data -e APP_SECRET=... myorg/app
+```
 
 ## Options
 
@@ -70,6 +145,10 @@ The compiled variant stays root: the base has no shell, so a declared volume can
 | `--tag`, `-t`     | `--tag` uses `latest`, `--tag=1.3.4` that version with the configured name, `--tag=other/img:v1` verbatim |
 | `--compile`, `-c` | Compile the bun slice first and ship an image holding the binary. `--compile name` names it               |
 | `--dockerfile`    | Write the Dockerfile and stop, without building an image                                                  |
+| `--platform`      | Platforms to build for, comma-separated (`linux/amd64,linux/arm64`). Same as `image.platforms`            |
+| `--sbom`          | Attach an SBOM attestation (needs `build.sbom`). Same as `image.sbom`                                     |
+| `--provenance`    | Attach a `mode=max` provenance attestation. Same as `image.provenance`                                    |
+| `--push`          | Build and push in one step, with `docker buildx build --push`                                             |
 
 Building needs a name: `image.tag` in the config, unless `--tag` is a complete `name:tag`. `--tag=:1.3.4` is the same as `--tag=1.3.4`.
 
@@ -95,15 +174,18 @@ export default defineConfig({
 
 These keys shape the generated Dockerfile. A Dockerfile you already own is used untouched, so they only reach it through a regeneration (delete it and run `alepha image` again). `tag`, `args` and the build labels of `oci` go on the `docker build` command, so they apply either way.
 
-| Key       | Default                                                                                       | Description                                                                                                                                                                      |
-| --------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `from`    | `node:24-alpine`, `oven/bun:alpine` for bun, `gcr.io/distroless/cc-debian12` with `--compile` | Base image (`FROM`)                                                                                                                                                              |
-| `command` | `node`, or `bun` for bun                                                                      | Command that runs the entry. Not used with `--compile`, where the binary is the command                                                                                          |
-| `install` | -                                                                                             | Packages installed with `npm install` before the app is copied, for CLI tools the app shells out to (e.g. `wrangler`). Ignored with `--compile`                                  |
-| `env`     | -                                                                                             | `ENV` defaults, emitted after the built-in `SERVER_HOST=0.0.0.0`. Not secrets: `docker run -e` overrides them and `docker inspect` shows them                                    |
-| `volumes` | -                                                                                             | `VOLUME` mount points. Each is created and owned by the container user first, so a named volume starts writable                                                                  |
-| `user`    | `1000` (none with `--compile`)                                                                | `USER` the process runs as. `"root"` opts back into root                                                                                                                         |
-| `tag`     | -                                                                                             | Image name without a version, completed by `--tag`                                                                                                                               |
-| `args`    | -                                                                                             | Extra `docker build` arguments, e.g. `["--platform", "linux/amd64"]`                                                                                                             |
-| `oci`     | -                                                                                             | Add the OCI labels: `revision` (git commit), `created` and `version` (from the tag) on the build command, plus the `labels` below                                                |
-| `labels`  | -                                                                                             | `source`, `title`, `description` and `licenses` OCI labels, written into the Dockerfile when `oci` is on, each only when set. `source` links a package to its repository on GHCR |
+| Key          | Default                                                                                       | Description                                                                                                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `from`       | `node:24-alpine`, `oven/bun:alpine` for bun, `gcr.io/distroless/cc-debian12` with `--compile` | Base image (`FROM`)                                                                                                                                                              |
+| `command`    | `node`, or `bun` for bun                                                                      | Command that runs the entry. Not used with `--compile`, where the binary is the command                                                                                          |
+| `install`    | -                                                                                             | Packages installed with `npm install` before the app is copied, for CLI tools the app shells out to (e.g. `wrangler`). Ignored with `--compile`                                  |
+| `env`        | -                                                                                             | `ENV` defaults, emitted after the built-in `SERVER_HOST=0.0.0.0`. Not secrets: `docker run -e` overrides them and `docker inspect` shows them                                    |
+| `volumes`    | -                                                                                             | `VOLUME` mount points. Each is created and owned by the container user first, so a named volume starts writable                                                                  |
+| `user`       | `1000`, `65532:65532` with `--compile`                                                        | `USER` the process runs as. `"root"` opts back into root                                                                                                                         |
+| `tag`        | -                                                                                             | Image name without a version, completed by `--tag`                                                                                                                               |
+| `platforms`  | -                                                                                             | Platforms to build for, as `--platform`                                                                                                                                          |
+| `args`       | -                                                                                             | Extra `docker build` arguments, e.g. `["--no-cache"]`. Never `--platform`: use `platforms`                                                                                       |
+| `sbom`       | `false`                                                                                       | Attach an SBOM attestation, as `--sbom`                                                                                                                                          |
+| `provenance` | `false`                                                                                       | Attach a `mode=max` provenance attestation, as `--provenance`. It records the build arguments: no secret in `args`                                                               |
+| `oci`        | -                                                                                             | Add the OCI labels: `revision` (git commit), `created` and `version` (from the tag) on the build command, plus the `labels` below                                                |
+| `labels`     | -                                                                                             | `source`, `title`, `description` and `licenses` OCI labels, written into the Dockerfile when `oci` is on, each only when set. `source` links a package to its repository on GHCR |

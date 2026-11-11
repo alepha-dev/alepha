@@ -323,16 +323,30 @@ jobs:
           done
           cd "$RUNNER_TEMP/bay" && sha256sum bay-linux-amd64 bay-linux-arm64 > SHA256SUMS && cat SHA256SUMS
 
-      # The image is built here, before anything is public, and pushed after
-      # the tag: an image that does not build stops the release while it is
-      # still reversible.
+      # The image is built here, before anything is public, and published
+      # after the tag: an image that does not build stops the release while
+      # it is still reversible.
+      #
+      # ⚠️ It is the REAL build, attestations included (#Q3363): the SBOM and
+      # the provenance live in the image index, so the image is pushed as it
+      # is built, to a registry on this runner, and the publish step below
+      # copies that one index to ghcr. A dry run therefore exercises the whole
+      # attested path, and the build Verify Lore runs on every push is this
+      # one (`image:release`, then `docker-attestations.ts`).
+      - name: Start a registry on the runner
+        run: docker run -d --name registry -p 127.0.0.1:5000:5000 registry:2
+
       - name: Build the Lore image
         working-directory: lore/apps/lore
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          yarn alepha image --tag "ghcr.io/alepha-dev/lore:${VERSION}"
-          docker tag "ghcr.io/alepha-dev/lore:${VERSION}" "ghcr.io/alepha-dev/lore:latest"
+        run: yarn image:release --tag "127.0.0.1:5000/alepha-dev/lore:${VERSION}"
+
+      - name: Check the Lore image's attestations
+        working-directory: lore
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: node scripts/docker-attestations.ts --image "127.0.0.1:5000/alepha-dev/lore:${VERSION}"
 
       # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
@@ -414,14 +428,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Safe to repeat on a resume: a tag already pushed is pushed again.
+      # A registry-to-registry copy of the index the gate built, never a
+      # second build: `<version>` and `latest` are ONE digest, attestations
+      # included, from one command. Measured: `imagetools create` from a
+      # plain-HTTP loopback registry keeps the index digest unchanged.
+      # Safe to repeat on a resume: the gate rebuilt the index, and both tags
+      # are written again.
       - name: Push the Lore image
         if: inputs.dry_run != true
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          docker push "ghcr.io/alepha-dev/lore:${VERSION}"
-          docker push "ghcr.io/alepha-dev/lore:latest"
+          docker buildx imagetools create \
+            --tag "ghcr.io/alepha-dev/lore:${VERSION}" \
+            --tag "ghcr.io/alepha-dev/lore:latest" \
+            "127.0.0.1:5000/alepha-dev/lore:${VERSION}"
+          docker buildx imagetools inspect "ghcr.io/alepha-dev/lore:${VERSION}"
 
       # Bay's binaries ride on the one release: `bay/install.sh` takes the
       # newest release that carries one.
@@ -552,7 +574,7 @@ jobs:
             echo ""
             echo "- published the framework's packages and \`@alepha/lore\` ${VERSION} to npm"
             echo "- pushed the release commit and the tag \`${VERSION}\`, then dispatched Verify Framework, Verify Lore, Deploy Framework and Deploy Lore on \`main\`"
-            echo "- pushed \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`"
+            echo "- copied the attested index (SBOM and provenance) to \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`, one digest"
             echo "- created the GitHub release with Bay's binaries"
             echo "- pushed the Lore artifacts, published Lore release ${VERSION} and deployed alepha.dev"
             echo ""

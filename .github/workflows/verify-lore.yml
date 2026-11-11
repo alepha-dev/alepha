@@ -172,11 +172,27 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      # The build Release runs, on every push (folio #F1338, #Q3363): the
+      # attested image pushed to a registry on the runner, its attestations
+      # asserted on the index, then the image pulled back for the smoke and
+      # the size checks. A fixed port: the daemon pushes, not this shell.
+      - name: Start a registry on the runner
+        run: docker run -d --name registry -p 127.0.0.1:5000:5000 registry:2
+
       - name: Build the image
-        run: yarn w lore build:docker
+        run: yarn w lore build
+
+      - name: Build and push the attested image
+        run: yarn w lore image:release --tag=127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Check the attestations on the index
+        run: node scripts/docker-attestations.ts --image 127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Pull the image back
+        run: docker pull 127.0.0.1:5000/alepha-dev/lore:ci
 
       - name: Smoke test the image
-        run: bash scripts/docker-smoke.sh
+        run: bash scripts/docker-smoke.sh 127.0.0.1:5000/alepha-dev/lore:ci
 
       - name: Check the image size budget
-        run: node scripts/docker-size.ts
+        run: node scripts/docker-size.ts --image 127.0.0.1:5000/alepha-dev/lore:ci

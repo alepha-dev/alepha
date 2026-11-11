@@ -101,6 +101,11 @@ export class NodeHttpServerProvider extends ServerProvider {
 
   public readonly start = $hook({
     on: "start",
+    // ⚠️ First, before every other start hook: `/livez` exists for the window
+    // in which slow start hooks (migrations) run, and it answers only once
+    // the listener is bound. The not-ready gate answers 503 to everything
+    // else until the app is ready.
+    priority: "first",
     handler: async () => {
       await this.listen();
     },

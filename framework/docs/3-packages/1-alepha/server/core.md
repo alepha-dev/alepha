@@ -38,7 +38,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 
 ### Providers
 
-- [`ServerHealthProvider`](/docs/reference-providers-serverhealthprovider) - Registers `GET /health` and `GET /healthz`.
+- [`ServerHealthProvider`](/docs/reference-providers-serverhealthprovider) - Registers `GET /health` and `GET /healthz`, and the two probes an
 - [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) - Provides a configurable way to apply essential HTTP security headers
 - [`ServerMultipartProvider`](/docs/reference-providers-servermultipartprovider) - Parses `multipart/form-data` request bodies into route handler input.
 - [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) - On every request, this provider checks if the server is ready.
