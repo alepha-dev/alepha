@@ -176,9 +176,7 @@ export const parseField = (
     isArray,
     isObject,
     isArrayOfObjects,
-    enum: isEnum
-      ? (literalOptions ?? z.schema.enumOptions(schema))
-      : undefined,
+    enum: isEnum ? (literalOptions ?? z.schema.enumOptions(schema)) : undefined,
     iconHint,
     constraints,
     testId: (input.props as Record<string, unknown>)["data-testid"] as
@@ -272,7 +270,9 @@ const stringLiteralOptions = (schema: unknown): string[] | undefined => {
   const values: string[] = [];
   for (const option of z.schema.options(schema)) {
     if (!z.schema.isLiteral(option)) return undefined;
-    const literals = (option as any)?._zod?.def?.values as unknown[] | undefined;
+    const literals = (option as any)?._zod?.def?.values as
+      | unknown[]
+      | undefined;
     if (!literals?.every((value) => typeof value === "string")) {
       return undefined;
     }

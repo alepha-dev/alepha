@@ -178,10 +178,7 @@ export class JobService {
    * time comparison is the ORM's on every driver.
    */
   public async getStats(windowHours = 24): Promise<JobStats> {
-    const since = this.dt
-      .now()
-      .subtract(windowHours, "hour")
-      .toISOString();
+    const since = this.dt.now().subtract(windowHours, "hour").toISOString();
     const finished = (status: "ok" | "error" | "cancelled") =>
       this.executions.count({
         status: { eq: status },

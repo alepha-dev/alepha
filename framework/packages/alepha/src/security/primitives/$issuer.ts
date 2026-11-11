@@ -14,10 +14,10 @@ import {
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
+import type { JSONWebKeySet, JWTPayload } from "jose";
 
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
-import type { JSONWebKeySet, JWTPayload } from "jose";
 import type { OidcIssuerSource } from "../interfaces/OidcIssuerSource.ts";
 import { JwtProvider, type SigningConfig } from "../providers/JwtProvider.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";

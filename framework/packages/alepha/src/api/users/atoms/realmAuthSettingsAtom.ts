@@ -136,8 +136,7 @@ export const realmAuthSettingsAtom = $atom({
       .array(z.string())
       // Open-ended: the admin types new entries (#Q3424).
       .meta({
-        description:
-          "Default roles assigned to newly registered users",
+        description: "Default roles assigned to newly registered users",
         $control: { createNewEntry: true },
       }),
     verifyEmailUrl: z

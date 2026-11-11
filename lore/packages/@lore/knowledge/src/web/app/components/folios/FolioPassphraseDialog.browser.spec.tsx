@@ -69,9 +69,9 @@ describe("FolioPassphraseDialog", () => {
   it("draws its passphrase fields with the show/hide toggle", async () => {
     await mount({ requireConfirm: true });
 
-    expect(screen.getAllByRole("button", { name: "Show password" })).toHaveLength(
-      2,
-    );
+    expect(
+      screen.getAllByRole("button", { name: "Show password" }),
+    ).toHaveLength(2);
   });
 
   it("toasts a mismatch and keeps the dialog open, calling nothing", async () => {

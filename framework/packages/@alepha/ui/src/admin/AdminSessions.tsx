@@ -284,7 +284,7 @@ export const AdminSessions = () => {
           lastUsedAt: {
             label: tr("admin.sessions.colLastUsed", { default: "Last used" }),
             sortable: true,
-            cell: (s) => (
+            cell: (s) =>
               s.lastUsedAt ? (
                 <TimeAgo
                   value={s.lastUsedAt}
@@ -294,8 +294,7 @@ export const AdminSessions = () => {
                 <span className="text-muted-foreground text-xs">
                   {tr("admin.sessions.lastUsedNever", { default: "Never" })}
                 </span>
-              )
-            ),
+              ),
           },
           expiresAt: {
             label: tr("admin.sessions.colExpires", { default: "Expires" }),

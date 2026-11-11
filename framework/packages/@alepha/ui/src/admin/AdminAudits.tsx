@@ -150,8 +150,11 @@ export const AdminAudits = () => {
         // `items` as a function is the select's loader; its second argument
         // asks for the labels of values already picked.
         items: async (search: string, resolve?: string[]) => {
-          const label = (u: { id: string; email?: string; username?: string }) =>
-            u.email || u.username || u.id;
+          const label = (u: {
+            id: string;
+            email?: string;
+            username?: string;
+          }) => u.email || u.username || u.id;
           if (resolve?.length) {
             const users = await Promise.all(
               resolve.map((id) =>

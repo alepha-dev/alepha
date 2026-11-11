@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import TimeAgo from "../core/TimeAgo.tsx";
 import { Badge } from "../core/Badge.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
 import {
   Tooltip,
   TooltipContent,
@@ -270,7 +270,9 @@ export const AdminJobs = () => {
                   >
                     <Badge
                       variant={
-                        retention.isDefault(j.retention) ? "outline" : "secondary"
+                        retention.isDefault(j.retention)
+                          ? "outline"
+                          : "secondary"
                       }
                     >
                       {retention.isDefault(j.retention)
@@ -293,7 +295,7 @@ export const AdminJobs = () => {
             label: tr("admin.jobs.colLastRun", { default: "Last run" }),
             sortable: true,
             sortValue: (j) => j.recent.lastRun ?? "",
-            cell: (j) => (
+            cell: (j) =>
               // `TimeAgo`, which carries the exact date as its title (#Q3429).
               j.recent.lastRun ? (
                 <TimeAgo
@@ -304,8 +306,7 @@ export const AdminJobs = () => {
                 <span className="text-muted-foreground text-xs">
                   {tr("admin.jobs.unknown", { default: "unknown" })}
                 </span>
-              )
-            ),
+              ),
           },
           ok: {
             label: tr("admin.jobs.colOk", { default: "OK" }),

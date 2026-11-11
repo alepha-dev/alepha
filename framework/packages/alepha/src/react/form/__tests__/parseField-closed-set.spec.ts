@@ -19,9 +19,7 @@ describe("parseField on a closed set of strings", () => {
       z.literal("optional"),
       z.literal("email"),
     ]),
-    optionalLiterals: z
-      .union([z.literal("a"), z.literal("b")])
-      .optional(),
+    optionalLiterals: z.union([z.literal("a"), z.literal("b")]).optional(),
     mixed: z.union([z.literal("a"), z.string()]),
     numbers: z.union([z.literal(1), z.literal(2)]),
     free: z.string(),

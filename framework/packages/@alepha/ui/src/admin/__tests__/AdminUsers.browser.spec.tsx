@@ -11,8 +11,8 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Toaster } from "../../core/Toaster.tsx";
-import { ActionErrorToaster } from "../../shell/ActionErrorToaster.tsx";
 import { DialogProvider } from "../../core/useDialog.tsx";
+import { ActionErrorToaster } from "../../shell/ActionErrorToaster.tsx";
 import { AdminUsers } from "../AdminUsers.tsx";
 
 const user = (over: Partial<UserEntity>): UserEntity => ({

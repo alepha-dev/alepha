@@ -499,7 +499,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
           lastLoginAt: {
             label: tr("admin.users.colLastLogin", { default: "Last login" }),
             sortable: true,
-            cell: (u) => (
+            cell: (u) =>
               u.lastLoginAt ? (
                 <TimeAgo
                   value={u.lastLoginAt}
@@ -507,8 +507,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
                 />
               ) : (
                 <span className="text-muted-foreground text-xs">-</span>
-              )
-            ),
+              ),
           },
         })}
         rowActions={(u) => [

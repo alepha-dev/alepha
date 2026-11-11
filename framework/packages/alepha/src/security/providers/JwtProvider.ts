@@ -12,9 +12,6 @@ import {
   jwtVerify,
   SignJWT,
 } from "jose";
-import { JWTClaimValidationFailed, JWTExpired } from "jose/errors";
-
-import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import type {
   CryptoKey,
   FlattenedJWSInput,
@@ -27,6 +24,9 @@ import type {
   JWTVerifyResult,
   KeyObject,
 } from "jose";
+import { JWTClaimValidationFailed, JWTExpired } from "jose/errors";
+
+import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import type {
   OidcIssuerSource,
   TokenExpectation,

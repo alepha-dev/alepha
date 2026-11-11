@@ -16,9 +16,9 @@ import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "../core/Button.tsx";
-import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { Control, type ControlProps } from "./Control.tsx";
 import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
+import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { spanClass, widthFor } from "./grid.tsx";
 
 export interface ControlObjectProps {

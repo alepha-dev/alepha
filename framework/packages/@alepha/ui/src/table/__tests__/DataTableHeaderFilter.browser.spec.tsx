@@ -143,7 +143,9 @@ describe("DataTableHeaderFilter", () => {
       screen.getByRole("combobox", { name: "Filter: Reviewer" }),
     ).toBeTruthy();
     fireEvent.keyDown(funnel("reviewer")!, { key: "ArrowDown" });
-    fireEvent.click(await screen.findByRole("option", { name: "bob@example.com" }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "bob@example.com" }),
+    );
 
     await waitFor(() => expect(table.last()?.reviewer).toBe("u-2"));
   });

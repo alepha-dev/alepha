@@ -31,8 +31,8 @@ import {
   DialogTitle,
 } from "../core/Dialog.tsx";
 import { Control, type ControlProps } from "./Control.tsx";
-import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
+import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 
 interface ArrayItem {
   key: number;

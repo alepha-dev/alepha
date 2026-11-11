@@ -167,12 +167,12 @@ export const AdminNotificationsDetailTabs = (
 
       {tab === "preview" ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {/* `active` gates the fetch, so opening a row never re-renders a
+          {/* `active` gates the fetch, so opening a row never re-renders a
             template nobody asked to see. */}
-        <AdminNotificationsPreviewTab
-          notificationId={props.notificationId}
-          active={tab === "preview"}
-        />
+          <AdminNotificationsPreviewTab
+            notificationId={props.notificationId}
+            active={tab === "preview"}
+          />
         </div>
       ) : null}
 
