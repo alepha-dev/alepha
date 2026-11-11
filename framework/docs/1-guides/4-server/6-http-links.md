@@ -148,6 +148,8 @@ Actions behind `$secure` are pruned from an anonymous response, and are listed u
 
 Alepha does not and will not generate API clients. The type-safe path is `import type`, and for consumers outside TypeScript the answer is `alepha/server/swagger`, which serves an OpenAPI document that a dedicated codegen tool can read. That is a standing principle, not a gap waiting to be filled.
 
+The reverse case, an Alepha app calling an API that is not Alepha, has a recipe of its own: a service over `HttpClient` with a schema per response, a `$proxy`, and a test double. See [In Front of a Third-Party API](/docs/guides-server-third-party-api).
+
 ## Virtual Actions
 
 Each property on a `$client` proxy returns a `VirtualAction` with these methods:
