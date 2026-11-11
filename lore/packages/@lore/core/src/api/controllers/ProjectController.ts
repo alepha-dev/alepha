@@ -61,6 +61,7 @@ import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import { UserDockService } from "../services/UserDockService.ts";
 
 export class ProjectController {
   /**
@@ -126,6 +127,7 @@ export class ProjectController {
   protected readonly capabilityRegistry = $inject(CapabilityRegistry);
   audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly dock = $inject(UserDockService);
   auditService = $inject(AuditService);
   counts = $inject(ProjectCountRegistry);
   assignedWork = $inject(AssignedWorkRegistry);
@@ -515,6 +517,13 @@ export class ProjectController {
         ownedCount: z.integer(),
         maxProjects: z.integer(),
         canCreate: z.boolean(),
+        /**
+         * The caller's dock (#E139): the pinned project ids, in order. Here
+         * so the rail is right on the first paint with no request of its
+         * own; the browser keeps it in `userDockAtom`, which is personal and
+         * so never part of a shared, cached page.
+         */
+        dock: z.array(z.integer()),
       }),
     },
     handler: async ({ user }) => {
@@ -590,6 +599,9 @@ export class ProjectController {
         ownedCount,
         maxProjects: maxProjectsPerUser,
         canCreate: ownedCount < maxProjectsPerUser,
+        // After the reads above, not beside them: the first call seeds the
+        // row, and the membership list it seeds from is already in hand.
+        dock: await this.dock.read(user.id, result),
       };
     },
   });

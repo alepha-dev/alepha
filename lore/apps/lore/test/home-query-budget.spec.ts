@@ -35,7 +35,9 @@ const BUDGET = {
   // the list is ordered by last activity, and reading it only on the board
   // painted the first frame in `updatedAt` order and reshuffled it a second
   // later. One seek per project inside ONE statement, the board's own read.
-  getHomeOverview: 8,
+  // 8 -> 10 for the dock (#E139, #Q3434): its row is read with the overview,
+  // and this user's first read also seeds it, an insert.
+  getHomeOverview: 10,
   // Projects; last activity; open epics, blights and feedback in one
   // statement. It was 5 while the Recent activity panel existed - its own
   // read, plus one more for actor names whenever that feed had any - and the

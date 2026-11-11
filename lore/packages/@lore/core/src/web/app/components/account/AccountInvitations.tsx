@@ -7,6 +7,7 @@ import { useCallback } from "react";
 import type { InvitationController } from "../../../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import { storeHomeOverview } from "../../services/homeOverviewWrite.ts";
 
 const AccountInvitations = () => {
   const invitationApi = useClient<InvitationController>();
@@ -32,8 +33,7 @@ const AccountInvitations = () => {
       const result = await invitationApi.acceptInvitation({
         params: { id: invitationId },
       });
-      const overview = await projectApi.getHomeOverview();
-      alepha.store.set(userProjectsAtom, overview);
+      storeHomeOverview(alepha, await projectApi.getHomeOverview());
       return result.projectId;
     },
     [alepha, invitationApi, projectApi],

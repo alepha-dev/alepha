@@ -20,12 +20,12 @@ import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { dashboardWindowAtom } from "./atoms/dashboardWindowAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
-import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { isOAuthReturnTarget } from "./components/auth/oauthReturnTarget.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
+import { storeHomeOverview } from "./services/homeOverviewWrite.ts";
 import { canInProject } from "./services/projectRank.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
 import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
@@ -158,10 +158,7 @@ export class CoreRouter {
     lazy: () => import("./components/Layout.tsx"),
     loader: async ({ user }) => {
       if (user) {
-        this.alepha.store.set(
-          userProjectsAtom,
-          await this.projectApi.getHomeOverview(),
-        );
+        storeHomeOverview(this.alepha, await this.projectApi.getHomeOverview());
       }
     },
     errorHandler: (error, state) => {

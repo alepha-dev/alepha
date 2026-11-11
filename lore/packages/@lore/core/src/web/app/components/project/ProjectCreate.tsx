@@ -36,6 +36,7 @@ import type {
 import { projectTitleSchema } from "../../../../api/schemas/projectTitleSchema.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { capabilityRegistry as registry } from "../../services/capabilityRegistry.ts";
+import { storeHomeOverview } from "../../services/homeOverviewWrite.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import ProjectCreateBackdrop from "./ProjectCreateBackdrop.tsx";
@@ -177,7 +178,7 @@ const ProjectCreate = () => {
         );
       }
 
-      alepha.store.set(userProjectsAtom, await client.getHomeOverview());
+      storeHomeOverview(alepha, await client.getHomeOverview());
 
       await router.push("project", {
         params: { projectSlug: project.slug },
