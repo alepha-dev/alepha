@@ -10,9 +10,7 @@ import { $atom, type Infer, z } from "alepha";
 export type FieldRequirement = "none" | "optional" | "required";
 
 const fieldRequirement = (description: string) =>
-  z
-    .union([z.literal("none"), z.literal("optional"), z.literal("required")])
-    .describe(description);
+  z.enum(["none", "optional", "required"]).describe(description);
 
 /**
  * Username-specific field requirement, extending {@link FieldRequirement}
@@ -27,14 +25,7 @@ const fieldRequirement = (description: string) =>
 export type UsernameFieldRequirement = FieldRequirement | "email";
 
 const usernameFieldRequirement = (description: string) =>
-  z
-    .union([
-      z.literal("none"),
-      z.literal("optional"),
-      z.literal("required"),
-      z.literal("email"),
-    ])
-    .describe(description);
+  z.enum(["none", "optional", "required", "email"]).describe(description);
 
 /**
  * Availability of a second authentication factor.
@@ -47,13 +38,7 @@ const usernameFieldRequirement = (description: string) =>
 export type SecondFactorRequirement = "disabled" | "optional" | "required";
 
 const secondFactorRequirement = (description: string) =>
-  z
-    .union([
-      z.literal("disabled"),
-      z.literal("optional"),
-      z.literal("required"),
-    ])
-    .describe(description);
+  z.enum(["disabled", "optional", "required"]).describe(description);
 
 /**
  * Full realm auth configuration — the server's view.
