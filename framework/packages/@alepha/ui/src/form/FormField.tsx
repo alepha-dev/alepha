@@ -16,6 +16,7 @@ import {
   type FormFieldLayout,
   useFormFieldLayout,
 } from "./FormFieldLayoutProvider.tsx";
+import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { useFormFieldRequiredMarker } from "./FormFieldRequiredMarkerProvider.tsx";
 
 export interface FormFieldProps {
@@ -124,12 +125,10 @@ export const FormField = (props: FormFieldProps) => {
         <div className="flex flex-col gap-0.5">
           {props.label && (
             <Label htmlFor={props.id} className="font-medium">
-              {props.label}
-              {showRequiredMarker && (
-                <span className="text-danger-text ml-0.5" aria-hidden>
-                  *
-                </span>
-              )}
+              <span>
+                {props.label}
+                {showRequiredMarker && <FormFieldRequiredMark />}
+              </span>
             </Label>
           )}
           {props.description && !props.error && (
@@ -163,12 +162,10 @@ export const FormField = (props: FormFieldProps) => {
     >
       {props.label && (
         <Label htmlFor={props.id}>
-          {props.label}
-          {showRequiredMarker && (
-            <span className="text-danger-text ml-0.5" aria-hidden>
-              *
-            </span>
-          )}
+          <span>
+            {props.label}
+            {showRequiredMarker && <FormFieldRequiredMark />}
+          </span>
         </Label>
       )}
       {children}

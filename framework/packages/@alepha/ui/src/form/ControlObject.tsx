@@ -16,6 +16,7 @@ import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "../core/Button.tsx";
+import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { Control, type ControlProps } from "./Control.tsx";
 import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
 import { spanClass, widthFor } from "./grid.tsx";
@@ -185,16 +186,14 @@ export const ControlObject = (props: ControlObjectProps) => {
           >
             <Trash2 className="size-4" />
           </Button>
-        ) : (
-          <div className="size-8 shrink-0" />
-        )}
+        ) : // No placeholder when there is no button: an empty 32px box
+        // indented the title past the field labels below it (#Q3426).
+        null}
         <div className="flex min-w-0 flex-1 flex-col">
           {meta.label && (
             <legend className="text-sm leading-tight font-medium">
               {meta.label}
-              {meta.required && (
-                <span className="text-danger-text ml-0.5">*</span>
-              )}
+              {meta.required && <FormFieldRequiredMark />}
             </legend>
           )}
           {meta.description && (
