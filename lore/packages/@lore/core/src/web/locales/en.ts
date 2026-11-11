@@ -61,7 +61,6 @@ export default {
     "Try another name or clear the state filter.",
   "automation.gallery.description":
     "Start from a preset. It is created disabled, so you can test it before turning it on.",
-  "automation.gallery.back": "Back to automations",
   "automation.enable": "Enable",
   "automation.disable": "Disable",
   "automation.delete": "Delete",
@@ -1891,7 +1890,6 @@ export default {
   "area.detail.stats.first": "First quest",
   "area.detail.stats.last": "Last activity",
   "area.detail.stats.never": "Never",
-  "area.detail.back": "Back to areas",
   "area.detail.quests.title": "Recent quests",
 
   "error.title": "Oh no! Something went wrong.",
@@ -2563,7 +2561,6 @@ export default {
     "This project is the home of $1. Move these estates to another project or delete them first: other projects may deploy onto them.",
   "estates.blocker.apps":
     "Apps stays on while this project is the home of $1: move or delete them first.",
-  "bay.back": "All estates",
   "bay.settings.loans.col.project": "Project",
   "bay.settings.loans.col.lentAt": "Lent",
   "estates.online": "online",

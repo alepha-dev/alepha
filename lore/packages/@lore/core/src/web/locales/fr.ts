@@ -66,7 +66,6 @@ export default {
     "Essayez un autre nom ou effacez le filtre d’état.",
   "automation.gallery.description":
     "Partez d'un modèle. Il est créé désactivé, pour le tester avant de l'activer.",
-  "automation.gallery.back": "Retour aux automatisations",
   "automation.enable": "Activer",
   "automation.disable": "Désactiver",
   "automation.delete": "Supprimer",
@@ -1878,7 +1877,6 @@ export default {
   "area.detail.stats.first": "Première quête",
   "area.detail.stats.last": "Dernière activité",
   "area.detail.stats.never": "Jamais",
-  "area.detail.back": "Retour aux domaines",
   "area.detail.quests.title": "Quêtes récentes",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
@@ -2561,7 +2559,6 @@ export default {
     "Ce projet est le propriétaire de $1. Déplacez ces domaines vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
   "estates.blocker.apps":
     "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
-  "bay.back": "Tous les domaines",
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
   "estates.online": "en ligne",
