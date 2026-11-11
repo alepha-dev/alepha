@@ -69,7 +69,12 @@ export class Realm {
 
       registrationAllowed: true,
       email: "required",
-      username: "optional",
+
+      /**
+       * No username field at registration: it is derived from the email.
+       * "optional" or "required" asks for one, "none" drops usernames.
+       */
+      username: "email",
       defaultRoles: ["user"],
 
       /**
