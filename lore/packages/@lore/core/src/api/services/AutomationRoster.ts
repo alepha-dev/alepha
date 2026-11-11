@@ -88,7 +88,7 @@ export class AutomationRoster {
       try {
         await this.atomic.guarded(
           occurrence.projectId,
-          sql`${this.claims.live(occurrence, token)} AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${rosterId})`,
+          sql`${this.claims.live(occurrence, token)} AND NOT EXISTS ${this.persistence.receipts.subquery({ id: rosterId })}`,
           [
             sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, action_index, row_index, cursor, roster_complete, created_at, updated_at)
               VALUES (${rosterId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${rosterId}, 'roster', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${occurrence.id}, ${input.index}, ${input.row ?? null}, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
@@ -218,7 +218,13 @@ export class AutomationRoster {
         "Recipient is outside the current bounded chunk",
       );
     const condition = effectId
-      ? sql`EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${effectId} AND parent_id = ${page.occurrence.id} AND kind = 'action' AND status = 'committed' AND delivery_key = ${recipientId})`
+      ? sql`EXISTS ${this.persistence.receipts.subquery({
+          id: effectId,
+          parentId: page.occurrence.id,
+          kind: "action",
+          status: "committed",
+          deliveryKey: recipientId,
+        })}`
       : sql`TRUE`;
     await this.atomic.guarded(
       page.occurrence.projectId,
@@ -245,7 +251,22 @@ export class AutomationRoster {
     const now = this.dateTime.nowISOString();
     await this.atomic.guarded(
       page.occurrence.projectId,
-      sql`${this.claims.live(page.occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts AS chunk JOIN automation_runs AS run ON run.id = chunk.run_id WHERE chunk.id = ${chunkId} AND run.status IN ('succeeded', 'skipped')) AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE parent_id = ${rosterId} AND kind = 'recipient' AND position >= ${page.roster.cursor} AND position < ${next} AND status = 'claimed')`,
+      sql`${this.claims.live(page.occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
+        {
+          id: chunkId,
+          runId: {
+            inArray: this.persistence.runs.subquery(
+              { status: { inArray: ["succeeded", "skipped"] } },
+              "id",
+            ),
+          },
+        },
+      )} AND NOT EXISTS ${this.persistence.receipts.subquery({
+        parentId: rosterId,
+        kind: "recipient",
+        position: { gte: page.roster.cursor, lt: next },
+        status: "claimed",
+      })}`,
       [
         sql`UPDATE automation_receipts SET status = 'committed', snapshot = NULL, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${chunkId}`,
         sql`UPDATE automation_receipts SET cursor = ${next}, status = ${page.hasMore ? "claimed" : "committed"}, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${rosterId} AND cursor = ${page.roster.cursor}`,

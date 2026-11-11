@@ -64,17 +64,19 @@ export class AutomationLegacyJobRepository extends AutomationBatchRepository<
       const mutation = prepared.statement;
       let batch: Record<string, unknown>[][];
       try {
-        batch = await this.alepha
-          .inject(AutomationAtomic)
-          .guarded(
-            fence.projectId,
-            sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${fence.projectId} AND policy = ${fence.policy} AND state = 'adopted') AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND (${fence.condition ?? sql`TRUE`})`,
-            [
-              mutation,
-              sql`INSERT INTO automation_receipts (id, version, project_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${id}, 0, ${fence.projectId}, ${id}, 'legacy', 'committed', ${`legacy:${id}`}, 0, ${database.timestamp(now)}, ${database.timestamp(time.now().add(90, "days").toISOString())}, 0, 0, FALSE, ${database.timestamp(now)}, ${database.timestamp(now)})`,
-              ...(fence.statements ?? []),
-            ],
-          );
+        batch = await this.alepha.inject(AutomationAtomic).guarded(
+          fence.projectId,
+          sql`NOT EXISTS ${persistence.adoptions.subquery({
+            projectId: fence.projectId,
+            policy: fence.policy,
+            state: "adopted",
+          })} AND NOT EXISTS ${persistence.receipts.subquery({ id })} AND (${fence.condition ?? sql`TRUE`})`,
+          [
+            mutation,
+            sql`INSERT INTO automation_receipts (id, version, project_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${id}, 0, ${fence.projectId}, ${id}, 'legacy', 'committed', ${`legacy:${id}`}, 0, ${database.timestamp(now)}, ${database.timestamp(time.now().add(90, "days").toISOString())}, 0, 0, FALSE, ${database.timestamp(now)}, ${database.timestamp(now)})`,
+            ...(fence.statements ?? []),
+          ],
+        );
       } catch (error) {
         if (
           (await persistence.receipts.findById(id)) ||

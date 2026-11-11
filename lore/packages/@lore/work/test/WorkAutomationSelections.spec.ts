@@ -31,19 +31,22 @@ describe("WorkAutomationSelections", () => {
     await alepha.stop();
   });
 
-  const select = (projectId: number, tag: string) =>
+  type Input = Parameters<WorkAutomationSelections["select"]>[0];
+  const run = (input: Partial<Input>, reminders: boolean) =>
     (
       selections as unknown as {
         select: WorkAutomationSelections["select"];
       }
     ).select(
       {
-        projectId,
-        filters: { tag },
+        filters: {},
         evaluatedAt: new Date().toISOString(),
-      } as Parameters<WorkAutomationSelections["select"]>[0],
-      false,
+        ...input,
+      } as Input,
+      reminders,
     );
+  const select = (projectId: number, tag: string) =>
+    run({ projectId, filters: { tag } }, false);
 
   it("selects only the open quests carrying the tag, matched case-insensitively", async ({
     expect,
@@ -63,5 +66,42 @@ describe("WorkAutomationSelections", () => {
 
     expect(result.items.map((item) => item.title)).toEqual(["Tagged"]);
     expect(result.totalIsExact).toBe(true);
+  });
+
+  it("pages due reminders by (due, shortId) without skipping or repeating a quest", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(alepha);
+    const at = new Date(Date.now() - 60_000).toISOString();
+    const later = new Date(Date.now() - 30_000).toISOString();
+    // 52 due at the same instant, so the page boundary falls inside a tie,
+    // and one due later, after them all.
+    for (let index = 0; index < 52; index++)
+      await createTestQuest(alepha, project, {
+        acceptedAt: at,
+        acceptedBy: project.createdBy,
+        reminderInterval: "daily",
+        reminderNextAt: at,
+      });
+    await createTestQuest(alepha, project, {
+      title: "Last",
+      acceptedAt: at,
+      acceptedBy: project.createdBy,
+      reminderInterval: "daily",
+      reminderNextAt: later,
+    });
+
+    const first = await run({ projectId: project.id }, true);
+    expect(first.items).toHaveLength(50);
+    expect(first.hasMore).toBe(true);
+    const second = await run(
+      { projectId: project.id, cursor: first.next as Input["cursor"] },
+      true,
+    );
+
+    const seen = [...first.items, ...second.items].map((item) => item.shortId);
+    expect(new Set(seen).size).toBe(53);
+    expect(second.items.at(-1)?.title).toBe("Last");
+    expect(second.hasMore).toBe(false);
   });
 });

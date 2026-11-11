@@ -5,6 +5,7 @@ import {
   DbCacheProvider,
   DbEntityNotFoundError,
   sql,
+  type SQL,
   type SQLLike,
 } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
@@ -173,7 +174,7 @@ export class AutomationClaims {
             ? "Occurrence is not due"
             : undefined);
       const runId = this.crypto.randomUUID();
-      const guard = sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${input.revision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND (activated_at IS NULL OR activated_at <= ${this.database.timestamp(occurredAt)})) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`;
+      const guard = sql`NOT EXISTS ${this.persistence.receipts.subquery({ id })} AND ${this.activeRule(rule.id, input.revision, occurredAt)} ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`;
       try {
         await this.atomic.guarded(rule.projectId, guard, [
           ...(input.mutation ? [input.mutation] : []),
@@ -270,7 +271,7 @@ export class AutomationClaims {
     let rows: Array<Record<string, unknown>[]>;
     try {
       rows = await this.database.batch([
-        sql`UPDATE automation_receipts SET status = ${refused ? "refused" : "claimed"}, snapshot = ${JSON.stringify(prepared.snapshot)}, lease_token = ${refused ? null : token}, lease_until = ${refused ? null : this.database.timestamp(this.dateTime.now().add(2, "minutes").toISOString())}, reason = ${reason ?? null}, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${receipt.id} AND status = 'ready' AND version = ${receipt.version} AND (${refused ? 1 : 0} = 1 OR EXISTS (SELECT 1 FROM automations WHERE id = ${receipt.automationId} AND revision = ${receipt.ruleRevision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL)) RETURNING id`,
+        sql`UPDATE automation_receipts SET status = ${refused ? "refused" : "claimed"}, snapshot = ${JSON.stringify(prepared.snapshot)}, lease_token = ${refused ? null : token}, lease_until = ${refused ? null : this.database.timestamp(this.dateTime.now().add(2, "minutes").toISOString())}, reason = ${reason ?? null}, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${receipt.id} AND status = 'ready' AND version = ${receipt.version} AND (${refused ? 1 : 0} = 1 OR ${this.activeRule(receipt.automationId!, receipt.ruleRevision)}) RETURNING id`,
       ]);
     } catch {
       return { state: "busy" };
@@ -597,7 +598,16 @@ export class AutomationClaims {
     const occurrence = await this.lease(id, token);
     await this.atomic.guarded(
       occurrence.projectId,
-      sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor >= ${occurrence.snapshot?.actions.length ?? 0}) AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE parent_id = ${id} AND kind IN ('action', 'recipient', 'roster') AND status = 'claimed')`,
+      sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
+        {
+          id,
+          cursor: { gte: occurrence.snapshot?.actions.length ?? 0 },
+        },
+      )} AND NOT EXISTS ${this.persistence.receipts.subquery({
+        parentId: id,
+        kind: { inArray: ["action", "recipient", "roster"] },
+        status: "claimed",
+      })}`,
       [
         sql`UPDATE automation_receipts SET status = 'committed', snapshot = NULL, version = version + 1 WHERE parent_id = ${id} AND kind = 'chunk' AND status = 'claimed'`,
         sql`UPDATE automation_receipts SET status = 'committed', snapshot = NULL, result = ${JSON.stringify(this.safeResult(result ?? {}))}, lease_token = NULL, lease_until = NULL, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${id}`,
@@ -617,12 +627,50 @@ export class AutomationClaims {
     const next = occurrence.cursor + 1;
     await this.atomic.guarded(
       occurrence.projectId,
-      sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${input.receiptId} AND parent_id = ${id} AND kind IN ('action', 'roster') AND status IN ('committed', 'skipped') AND action_index = ${input.index} AND ${input.row === undefined ? sql`row_index IS NULL` : sql`row_index = ${input.row}`}) AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor = ${occurrence.cursor})`,
+      sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
+        {
+          id: input.receiptId,
+          parentId: id,
+          kind: { inArray: ["action", "roster"] },
+          status: { inArray: ["committed", "skipped"] },
+          actionIndex: input.index,
+          rowIndex:
+            input.row === undefined ? { isNull: true } : { eq: input.row },
+        },
+      )} AND ${this.atCursor(id, occurrence.cursor)}`,
       [
         sql`UPDATE automation_receipts SET cursor = ${next}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${id}`,
       ],
     );
     return next;
+  }
+
+  /**
+   * The rule is still the enabled, healthy revision it was, needing no
+   * approval, and, given `activeAt`, already active at that instant. The
+   * subquery adds the soft-delete filter the raw guard spelled out.
+   */
+  protected activeRule(id: string, revision: number, activeAt?: string): SQL {
+    return sql`EXISTS ${this.persistence.rules.subquery({
+      id,
+      revision,
+      enabled: true,
+      health: "active",
+      requiresApproval: false,
+      ...(activeAt
+        ? {
+            or: [
+              { activatedAt: { isNull: true } },
+              { activatedAt: { lte: activeAt } },
+            ],
+          }
+        : {}),
+    })}`;
+  }
+
+  /** The occurrence's program cursor has not moved since it was read. */
+  protected atCursor(id: string, cursor: number): SQL {
+    return sql`EXISTS ${this.persistence.receipts.subquery({ id, cursor })}`;
   }
 
   public live(receipt: AutomationReceipt, token: string): SQLLike {
@@ -778,7 +826,7 @@ export class AutomationClaims {
       try {
         rows = await this.atomic.guarded(
           occurrence.projectId,
-          sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${receipt.id} AND status = 'claimed' AND lease_token = ${token}) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
+          sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery({ id: receipt.id, status: "claimed", leaseToken: token })} ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
           [
             ...input.statements,
             sql`UPDATE automation_receipts SET status = 'committed', result = ${this.database.resultFields(this.safeResult(input.result), input.resultExpressions ?? {})}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${receipt.id}`,
@@ -825,7 +873,14 @@ export class AutomationClaims {
       });
       await this.atomic.guarded(
         occurrence.projectId,
-        sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${receipt.id} AND status = 'claimed' AND lease_token = ${token} AND version = ${receipt.version})`,
+        sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
+          {
+            id: receipt.id,
+            status: "claimed",
+            leaseToken: token,
+            version: receipt.version,
+          },
+        )}`,
         [
           sql`UPDATE automation_receipts SET result = ${JSON.stringify({ started: true })}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${receipt.id}`,
         ],
@@ -925,7 +980,7 @@ export class AutomationClaims {
     try {
       await this.atomic.guarded(
         occurrence.projectId,
-        sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor = ${occurrence.cursor})`,
+        sql`${this.live(occurrence, token)} AND ${this.atCursor(id, occurrence.cursor)}`,
         [
           sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, snapshot, position, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${chunkId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${chunkId}, 'chunk', 'committed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${id}, ${runId}, ${JSON.stringify(snapshot)}, ${occurrence.cursor}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) ON CONFLICT DO NOTHING`,
           sql`UPDATE automation_receipts SET snapshot = (SELECT snapshot FROM automation_receipts WHERE id = ${chunkId}), run_id = (SELECT run_id FROM automation_receipts WHERE id = ${chunkId}), cursor = 0, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${id}`,
@@ -967,7 +1022,7 @@ export class AutomationClaims {
         const runId = this.crypto.randomUUID();
         await this.atomic.guarded(
           occurrence.projectId,
-          sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor = ${occurrence.cursor})`,
+          sql`${this.live(occurrence, token)} AND ${this.atCursor(id, occurrence.cursor)}`,
           [
             sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, snapshot, position, cursor, roster_complete, created_at, updated_at) VALUES (${chunkId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${chunkId}, 'chunk', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${id}, ${runId}, ${JSON.stringify(snapshot)}, ${occurrence.cursor}, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) ON CONFLICT DO NOTHING`,
           ],
@@ -1187,9 +1242,32 @@ export class AutomationClaims {
   }
 
   public async repairTerminals(): Promise<number> {
-    const [rows] = await this.database.batch([
-      sql`SELECT id FROM automation_receipts AS occurrence WHERE kind = 'occurrence' AND status IN ('refused', 'failed', 'unknown') AND (snapshot IS NOT NULL OR EXISTS (SELECT 1 FROM automation_receipts AS child WHERE child.parent_id = occurrence.id AND child.status = 'claimed')) ORDER BY created_at, id LIMIT 50`,
-    ]);
+    const receipts = this.persistence.receipts;
+    // On the primary, as the batch it replaces was: a replica that lags
+    // would report an occurrence already repaired.
+    const rows = await this.database.primary(() =>
+      receipts.findMany({
+        where: {
+          kind: "occurrence",
+          status: { inArray: ["refused", "failed", "unknown"] },
+          or: [
+            { snapshot: { isNotNull: true } },
+            {
+              exists: receipts.subquery({
+                parentId: { eq: receipts.table.id },
+                status: "claimed",
+              }),
+            },
+          ],
+        },
+        columns: ["id"],
+        orderBy: [
+          { column: "createdAt", direction: "asc" },
+          { column: "id", direction: "asc" },
+        ],
+        limit: 50,
+      }),
+    );
     for (const row of rows) {
       const occurrence = await this.persistence.receipts.getById(
         String(row.id),

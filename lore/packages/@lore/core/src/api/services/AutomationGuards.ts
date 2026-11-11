@@ -200,7 +200,19 @@ export class AutomationGuards {
           };
       await this.atomic.guarded(
         rule.projectId,
-        sql`EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND version = ${rule.version} AND revision = ${occurrence.ruleRevision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL) AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${occurrence.id} AND status = 'claimed' AND lease_token = ${input.token} AND lease_until > ${this.database.timestamp(now)})`,
+        sql`EXISTS ${this.persistence.rules.subquery({
+          id: rule.id,
+          version: rule.version,
+          revision: occurrence.ruleRevision,
+          enabled: true,
+          health: "active",
+          requiresApproval: false,
+        })} AND EXISTS ${this.persistence.receipts.subquery({
+          id: occurrence.id,
+          status: "claimed",
+          leaseToken: input.token,
+          leaseUntil: { gt: now },
+        })}`,
         [
           sql`UPDATE automations SET baseline = ${baseline ? JSON.stringify(baseline) : null}, version = version + 1 WHERE id = ${rule.id}`,
           sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, result, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${id}, 0, ${rule.projectId}, ${rule.id}, ${id}, 'guard', 'committed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${occurrence.id}, ${occurrence.runId}, ${JSON.stringify(recorded)}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,

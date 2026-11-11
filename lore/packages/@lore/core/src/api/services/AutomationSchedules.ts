@@ -77,8 +77,20 @@ export class AutomationSchedules {
           );
           continue;
         }
-        const free = sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE automation_id = ${rule.id} AND kind = 'occurrence' AND status IN ('ready', 'claimed'))`;
-        const condition = sql`EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND next_run_at = ${this.database.timestamp(rule.nextRunAt)} AND ${rule.scheduleCron ? sql`schedule_cron = ${rule.scheduleCron}` : sql`schedule_cron IS NULL`}) AND ${free}`;
+        const free = sql`NOT EXISTS ${this.persistence.receipts.subquery({
+          automationId: rule.id,
+          kind: "occurrence",
+          status: { inArray: ["ready", "claimed"] },
+        })}`;
+        // The subquery adds the soft-delete filter the raw guard lacked: a
+        // rule deleted since it was read no longer gets an occurrence.
+        const condition = sql`EXISTS ${this.persistence.rules.subquery({
+          id: rule.id,
+          nextRunAt: rule.nextRunAt,
+          scheduleCron: rule.scheduleCron
+            ? { eq: rule.scheduleCron }
+            : { isNull: true },
+        })} AND ${free}`;
         const mutation = sql`UPDATE automations SET next_run_at = ${this.database.timestamp(next)}, schedule_cron = ${cron}, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${rule.id}`;
         if (scheduledAt < rule.nextRunAt) {
           // An old cursor no longer belongs to the current compiled schedule.

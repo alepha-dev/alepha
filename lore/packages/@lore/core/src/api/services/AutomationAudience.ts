@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { users } from "../entities/users.ts";
@@ -22,9 +22,10 @@ export class AutomationAudience {
       );
     const project = await this.security.projects.getById(projectId);
     const where = {
-      and: [
-        sql`EXISTS (SELECT 1 FROM users WHERE users.id = ${this.security.members.table.userId} AND users.enabled = TRUE)`,
-      ],
+      exists: this.users.subquery({
+        id: { eq: this.security.members.table.userId },
+        enabled: true,
+      }),
       organizationId: project.organizationId!,
       userId: { ne: publisherId },
     };
