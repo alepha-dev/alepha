@@ -101,6 +101,12 @@ export class ImageCommand {
           "Write the Dockerfile and stop, without building an image. Useful for committing the generated file before editing it.",
         )
         .optional(),
+      platform: z
+        .text()
+        .describe(
+          "Platforms to build for, comma-separated: `linux/amd64` or `linux/amd64,linux/arm64`. Same as `image.platforms`.",
+        )
+        .optional(),
       sbom: z
         .boolean()
         .describe(
@@ -151,6 +157,7 @@ export class ImageCommand {
           "`--push` builds and pushes an image, and `--dockerfile` builds none: pass one of them.",
         );
       }
+      const platforms = this.resolvePlatforms(flags.platform, !!flags.compile);
       // Before the compile, which can take minutes.
       if (!flags.dockerfile) {
         await this.builder.preflight({
@@ -159,11 +166,12 @@ export class ImageCommand {
           sbom,
           provenance,
           push,
+          platforms,
         });
       }
 
       const compiled = flags.compile
-        ? await this.compileFirst(root, flags.compile, run)
+        ? await this.compileFirst(root, flags.compile, run, platforms)
         : undefined;
 
       await this.builder.run({
@@ -172,6 +180,7 @@ export class ImageCommand {
         sbom,
         provenance,
         push,
+        platforms,
         // A compiled image runs a Bun binary whatever the manifest's primary
         // slice is, because `bun build --compile` is the only compiler there
         // is. The label and the base defaults follow that, not the manifest.
@@ -195,6 +204,7 @@ export class ImageCommand {
     root: string,
     flag: boolean | string,
     run: Parameters<typeof this.builder.run>[0]["run"],
+    platforms: string[] = [],
   ): Promise<string> {
     const name = typeof flag === "string" ? flag : "app";
     // Named once, on the builder that also writes it into the Dockerfile: two
@@ -206,15 +216,33 @@ export class ImageCommand {
     // ⚠️ `linux` always: an image runs Linux whatever machine built it, and
     // the host default would hand a macOS build a `bun-darwin-arm64` binary
     // that the container cannot execute.
-    const target = this.compiler.defaultBunTarget({ linux: true, musl });
+    // ⚠️ The ARCHITECTURE comes from the platform when one is asked for,
+    // never from the host: `--platform linux/amd64` on an arm64 laptop used
+    // to ship an amd64 image holding an arm64 binary, which dies with
+    // `exec format error`. The libc half still comes from the base.
+    const binaries =
+      platforms.length > 1
+        ? platforms.map((platform) => ({
+            name: `${name}-${this.dockerArch(platform)}`,
+            target: this.bunTargetFor(platform, musl),
+          }))
+        : [
+            {
+              name,
+              target: platforms.length
+                ? this.bunTargetFor(platforms[0], musl)
+                : this.compiler.defaultBunTarget({ linux: true, musl }),
+            },
+          ];
+    const target = binaries.map((it) => it.target).join(", ");
 
     await run({
-      name: `compile → ${name} (${target})`,
+      name: `compile → ${binaries.map((it) => it.name).join(", ")} (${target})`,
       handler: async () => {
         await this.compiler.compile({
           root,
           name,
-          target,
+          binaries,
           // The image's own `COPY migrations` line handles them, and the
           // builder copies them into the context itself.
           migrations: false,
@@ -223,6 +251,68 @@ export class ImageCommand {
       },
     });
     return name;
+  }
+
+  /**
+   * The platforms to build for: `--platform`, else `image.platforms`, else
+   * none (the builder's own default, as today).
+   *
+   * @throws {AlephaError} on `--platform` inside `image.args`, which would be
+   * a second source disagreeing silently, and on a platform a compiled
+   * binary cannot target
+   */
+  protected resolvePlatforms(
+    flag: string | undefined,
+    compile: boolean,
+  ): string[] {
+    const args = this.options.args ?? [];
+    if (
+      args.some((it) => it === "--platform" || it.startsWith("--platform="))
+    ) {
+      throw new AlephaError(
+        "`image.args` carries `--platform`: use `image.platforms` (or `--platform` on the command) instead. " +
+          "The architecture of a compiled binary is taken from that list, and a `--platform` passed through " +
+          "`args` was never seen by the compile: it built the host's architecture into an image of another.",
+      );
+    }
+    const platforms = (flag ? flag.split(",") : (this.options.platforms ?? []))
+      .map((it) => it.trim())
+      .filter(Boolean);
+    for (const platform of platforms) {
+      if (!/^[a-z0-9]+\/[a-z0-9]+(\/[a-z0-9]+)?$/.test(platform)) {
+        throw new AlephaError(
+          `'${platform}' is not a platform: write it as os/arch, e.g. linux/amd64.`,
+        );
+      }
+      if (compile && !this.compilePlatforms.includes(platform)) {
+        throw new AlephaError(
+          `A compiled image is built for ${this.compilePlatforms.join(" or ")}, not '${platform}': ` +
+            "those are the Linux targets Bun compiles for.",
+        );
+      }
+    }
+    return [...new Set(platforms)];
+  }
+
+  /**
+   * The platforms a compiled image can be built for: Bun's Linux targets.
+   */
+  protected readonly compilePlatforms = ["linux/amd64", "linux/arm64"];
+
+  /**
+   * `linux/amd64` → `amd64`: the `TARGETARCH` buildx sets, which names the
+   * binary.
+   */
+  protected dockerArch(platform: string): string {
+    return platform.split("/")[1];
+  }
+
+  /**
+   * The Bun triple for a platform and a libc: `linux/amd64` → `bun-linux-x64`.
+   */
+  protected bunTargetFor(platform: string, musl: boolean): string {
+    const arch = this.dockerArch(platform) === "amd64" ? "x64" : "arm64";
+    return musl ? `bun-linux-${arch}-musl` : `bun-linux-${arch}`;
   }
 
   /**

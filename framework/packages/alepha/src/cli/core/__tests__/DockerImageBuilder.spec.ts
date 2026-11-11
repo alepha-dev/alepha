@@ -374,6 +374,42 @@ describe("DockerImageBuilder", () => {
       expect(readDockerfile(fs)).not.toContain("sbom.cdx.json");
     });
 
+    it("builds for the platforms asked for with docker buildx build --platform", async () => {
+      const { argv } = await build({
+        platforms: ["linux/amd64", "linux/arm64"],
+        push: true,
+      });
+      expect(argv.slice(0, 3)).toEqual(["docker", "buildx", "build"]);
+      const at = argv.indexOf("--platform");
+      expect(argv[at + 1]).toBe("linux/amd64,linux/arm64");
+    });
+
+    it("keeps the compiled Dockerfile of today with one platform", async () => {
+      const { fs } = await build({
+        runtime: "bun",
+        compile: "app",
+        platforms: ["linux/amd64"],
+      });
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toMatch(/^COPY --chown=65532:65532 app \.$/m);
+      expect(dockerfile).not.toContain("TARGETARCH");
+    });
+
+    it("picks the binary with TARGETARCH in one stage with several", async () => {
+      const { fs } = await build({
+        runtime: "bun",
+        compile: "app",
+        platforms: ["linux/amd64", "linux/arm64"],
+        push: true,
+      });
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain(
+        "ARG TARGETARCH\nCOPY --chown=65532:65532 app-${TARGETARCH} app\n",
+      );
+      expect(dockerfile.match(/^FROM /gm)).toHaveLength(1);
+      expect(dockerfile).toContain('ENTRYPOINT ["/app/app"]');
+    });
+
     describe("preflight", () => {
       const classic = '[["Backing Filesystem","extfs"]]';
       const containerd = '[["driver-type","io.containerd.snapshotter.v1"]]';
@@ -407,6 +443,24 @@ describe("DockerImageBuilder", () => {
           root: "/project",
           distDir: "dist",
           provenance: true,
+        });
+      });
+
+      it("refuses a multi-platform result the classic store cannot load, naming --push", async () => {
+        const { shell, task } = createTestEnv();
+        shell.outputs.set(info, classic);
+        await expect(
+          task.preflight({
+            root: "/project",
+            distDir: "dist",
+            platforms: ["linux/amd64", "linux/arm64"],
+          }),
+        ).rejects.toThrow(/multi-platform.*--push/s);
+        // One platform loads like any image.
+        await task.preflight({
+          root: "/project",
+          distDir: "dist",
+          platforms: ["linux/amd64"],
         });
       });
 

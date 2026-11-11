@@ -226,6 +226,31 @@ describe("WorkspaceCompiler", () => {
     ).toBe(true);
   });
 
+  it("compiles one binary per target from ONE staged copy, before the cleanup", async () => {
+    const { fs, shell, task } = await createTestEnv();
+
+    await task.compile({
+      ...bare,
+      binaries: [
+        { name: "app-amd64", target: "bun-linux-x64" },
+        { name: "app-arm64", target: "bun-linux-arm64" },
+      ],
+    });
+
+    expect(
+      shell.calls
+        .filter((it) => it.command.startsWith("bun build"))
+        .map((it) => it.command),
+    ).toEqual([
+      "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-x64 --minify --outfile=app-amd64 index.bun.js",
+      "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-arm64 --minify --outfile=app-arm64 index.bun.js",
+    ]);
+    expect(await fs.exists("/project/dist/app-amd64")).toBe(true);
+    expect(await fs.exists("/project/dist/app-arm64")).toBe(true);
+    // The bun slice is gone only once both exist.
+    expect(await fs.exists("/project/dist/index.bun.js")).toBe(false);
+  });
+
   it("removes what the binary now carries, and keeps manifest.json and the SBOM", async () => {
     const { fs, task } = await createTestEnv();
 

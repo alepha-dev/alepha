@@ -36,6 +36,16 @@ export interface WorkspaceCompileOptions {
   target?: string;
 
   /**
+   * Several binaries from ONE staged copy, each with its own name and
+   * triple: `alepha image --platform linux/amd64,linux/arm64` compiles
+   * `app-amd64` and `app-arm64`. Replaces `name` and `target`.
+   *
+   * ⚠️ One call, not one call per target: the cleanup removes the bun slice
+   * once a binary exists, so a second call finds nothing to compile.
+   */
+  binaries?: Array<{ name: string; target: string }>;
+
+  /**
    * Minify the compiled output.
    */
   minify?: boolean;
@@ -132,7 +142,15 @@ export class WorkspaceCompiler {
       "compile-stage",
     );
     const stagedDist = this.fs.join(stage, "dist");
-    const binary = this.fs.join(dist, options.name);
+    const binaries = options.binaries?.length
+      ? options.binaries
+      : [
+          {
+            name: options.name,
+            target: options.target ?? this.defaultBunTarget(),
+          },
+        ];
+    const binary = this.fs.join(dist, binaries[0].name);
     await this.fs.rm(stage, { recursive: true, force: true });
     try {
       await this.fs.mkdir(stage, { recursive: true });
@@ -144,25 +162,28 @@ export class WorkspaceCompiler {
         bunEntry,
       );
 
-      const target = options.target ?? this.defaultBunTarget();
-      await this.shell.run(
-        this.buildCompileCommand(
-          options.name,
-          target,
-          options.minify ?? true,
-          bunEntry,
-        ),
-        { root: stagedDist },
-      );
-
-      const staged = this.fs.join(stagedDist, options.name);
-      if (!(await this.fs.exists(staged))) {
-        throw new AlephaError(
-          `\`bun build --compile\` finished but wrote no '${options.name}' in ${stagedDist}.`,
+      for (const { name, target } of binaries) {
+        await this.shell.run(
+          this.buildCompileCommand(
+            name,
+            target,
+            options.minify ?? true,
+            bunEntry,
+          ),
+          { root: stagedDist },
         );
+        const staged = this.fs.join(stagedDist, name);
+        if (!(await this.fs.exists(staged))) {
+          throw new AlephaError(
+            `\`bun build --compile\` finished but wrote no '${name}' in ${stagedDist}.`,
+          );
+        }
       }
-      await this.fs.rm(binary, { force: true });
-      await this.fs.cp(staged, binary);
+      for (const { name } of binaries) {
+        const out = this.fs.join(dist, name);
+        await this.fs.rm(out, { force: true });
+        await this.fs.cp(this.fs.join(stagedDist, name), out);
+      }
     } finally {
       await this.fs.rm(stage, { recursive: true, force: true });
     }
@@ -177,7 +198,9 @@ export class WorkspaceCompiler {
       await this.copyMigrations(options.root, dist);
     }
 
-    await this.logBinary(binary);
+    for (const { name } of binaries) {
+      await this.logBinary(this.fs.join(dist, name));
+    }
     return binary;
   }
 

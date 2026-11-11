@@ -9,6 +9,7 @@ import {
 import { describe, it } from "vitest";
 
 import { buildOptions } from "../atoms/buildOptions.ts";
+import { imageOptions } from "../atoms/imageOptions.ts";
 import { ImageCommand } from "../commands/image.ts";
 import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
 
@@ -32,6 +33,10 @@ describe("alepha image, choosing a Bun triple for a base", () => {
       this.primaryRuntime(manifest as any);
     public testAssertBase = (base: string) =>
       this.assertBaseCanRunABinary(base);
+    public testPlatforms = (flag: string | undefined, compile: boolean) =>
+      this.resolvePlatforms(flag, compile);
+    public testBunTarget = (platform: string, musl: boolean) =>
+      this.bunTargetFor(platform, musl);
   }
 
   it("reads and packages build.output.dist", async ({ expect }) => {
@@ -113,6 +118,51 @@ describe("alepha image, choosing a Bun triple for a base", () => {
   });
 
   const command = () => Alepha.create().inject(TestImageCommand);
+
+  describe("platforms", () => {
+    it("takes the architecture from the platform, the libc from the base", ({
+      expect,
+    }) => {
+      const cmd = command();
+      expect(cmd.testBunTarget("linux/amd64", false)).toBe("bun-linux-x64");
+      expect(cmd.testBunTarget("linux/arm64", false)).toBe("bun-linux-arm64");
+      expect(cmd.testBunTarget("linux/amd64", true)).toBe("bun-linux-x64-musl");
+    });
+
+    it("reads --platform as a comma list, and image.platforms without it", ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      alepha.set(imageOptions, { platforms: ["linux/arm64"] });
+      const cmd = alepha.inject(TestImageCommand);
+      expect(cmd.testPlatforms("linux/amd64, linux/arm64", true)).toEqual([
+        "linux/amd64",
+        "linux/arm64",
+      ]);
+      expect(cmd.testPlatforms(undefined, true)).toEqual(["linux/arm64"]);
+    });
+
+    it("refuses --platform inside image.args, naming image.platforms", ({
+      expect,
+    }) => {
+      const alepha = Alepha.create();
+      alepha.set(imageOptions, { args: ["--platform", "linux/amd64"] });
+      const cmd = alepha.inject(TestImageCommand);
+      expect(() => cmd.testPlatforms(undefined, false)).toThrow(
+        /image\.platforms/,
+      );
+    });
+
+    it("refuses a platform Bun cannot compile for", ({ expect }) => {
+      expect(() => command().testPlatforms("linux/386", true)).toThrow(
+        /linux\/amd64 or linux\/arm64/,
+      );
+      // An uncompiled image takes any os/arch.
+      expect(command().testPlatforms("linux/386", false)).toEqual([
+        "linux/386",
+      ]);
+    });
+  });
 
   it("wants a glibc binary for the default compiled base", ({ expect }) => {
     // `cc-debian12` carries glibc, `libstdc++` and `libgcc`, which is exactly

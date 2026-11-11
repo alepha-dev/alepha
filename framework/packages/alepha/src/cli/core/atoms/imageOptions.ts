@@ -118,9 +118,33 @@ export const imageOptions = $atom({
     tag: z.string().optional(),
 
     /**
+     * Platforms to build the image for, e.g. `["linux/amd64"]` on an arm64
+     * laptop deploying to an amd64 cluster, or both for a multi-arch index.
+     * `--platform` on the command overrides it.
+     *
+     * Set, the build is `docker buildx build --platform <list>`. With
+     * `--compile`, the binary's architecture comes from the platform, never
+     * from the machine that builds it, and several platforms compile one
+     * binary each (`app-amd64`, `app-arm64`) that the Dockerfile picks with
+     * `TARGETARCH`. A compiled image supports `linux/amd64` and
+     * `linux/arm64`.
+     *
+     * A multi-platform result cannot be loaded into the classic docker image
+     * store: use `--push`, or the containerd image store. A platform that is
+     * not the host's runs the Dockerfile's `RUN` lines under emulation, which
+     * needs binfmt handlers installed.
+     *
+     * @example ["linux/amd64", "linux/arm64"]
+     */
+    platforms: z.array(z.string()).optional(),
+
+    /**
      * Additional arguments to pass to `docker build`.
      *
-     * @example ["--platform", "linux/amd64", "--no-cache"]
+     * Never `--platform`: that is `platforms`, and a second source would
+     * disagree with it silently.
+     *
+     * @example ["--no-cache"]
      */
     args: z.array(z.string()).optional(),
 

@@ -48,6 +48,22 @@ There is no `image.healthcheck` option: the line is in a file you own, so edit o
 
 ⚠️ **An existing Dockerfile does not get one.** It is reused untouched, so delete it and run `alepha image --dockerfile` to regenerate it with the `HEALTHCHECK`.
 
+## Platforms
+
+```bash
+alepha image --platform linux/amd64 --tag                          # an arm64 laptop, an amd64 cluster
+alepha image --platform linux/amd64,linux/arm64 --push --tag=ghcr.io/myorg/app:1.4.0
+```
+
+`--platform` (or `image.platforms`) runs `docker buildx build --platform <list>`. One platform is the common case: an arm64 laptop building for an amd64 cluster. Two make a multi-arch index.
+
+- **`--compile` takes the binary's architecture from the platform, never from the host.** One platform compiles one binary for it, and the generated Dockerfile is the one of today. Several compile one binary each, from one compile, named `app-amd64` and `app-arm64`, and the Dockerfile picks one with buildx's own build argument: `ARG TARGETARCH` then `COPY app-${TARGETARCH} app`. The libc half of the Bun triple still comes from the base. A compiled image is built for `linux/amd64` and `linux/arm64`.
+- **`--platform` never goes in `image.args`**: it is refused there, naming `image.platforms`. A second source would disagree silently, and a `--platform` passed through `args` used to build the host's architecture into the image of another, a container that dies with `exec format error`.
+- **A multi-platform result is an index**, which the classic docker image store cannot load. Use `--push`, or the containerd image store; `alepha image` checks before it compiles anything.
+- **A foreign platform runs under emulation.** Every `RUN` line of the Dockerfile then needs binfmt handlers on the build machine: `npm install` when the artifact declares dependencies, `image.install`, and the volume preparation of the standard variant. Docker Desktop ships them; on Linux, install them once with `docker run --privileged --rm tonistiigi/binfmt --install all`. An uncompiled image with no dependencies and no volumes, and every compiled image, has no `RUN` line at all.
+
+⚠️ A Dockerfile you already own is reused untouched: a compiled one generated for one platform copies `app`, and a multi-platform build needs the `TARGETARCH` line. Delete it and regenerate.
+
 ## Evidence: SBOM and provenance
 
 ```bash
@@ -129,6 +145,7 @@ docker run --read-only --cap-drop ALL -v app-data:/data -e APP_SECRET=... myorg/
 | `--tag`, `-t`     | `--tag` uses `latest`, `--tag=1.3.4` that version with the configured name, `--tag=other/img:v1` verbatim |
 | `--compile`, `-c` | Compile the bun slice first and ship an image holding the binary. `--compile name` names it               |
 | `--dockerfile`    | Write the Dockerfile and stop, without building an image                                                  |
+| `--platform`      | Platforms to build for, comma-separated (`linux/amd64,linux/arm64`). Same as `image.platforms`            |
 | `--sbom`          | Attach an SBOM attestation (needs `build.sbom`). Same as `image.sbom`                                     |
 | `--provenance`    | Attach a `mode=max` provenance attestation. Same as `image.provenance`                                    |
 | `--push`          | Build and push in one step, with `docker buildx build --push`                                             |
@@ -166,7 +183,8 @@ These keys shape the generated Dockerfile. A Dockerfile you already own is used 
 | `volumes`    | -                                                                                             | `VOLUME` mount points. Each is created and owned by the container user first, so a named volume starts writable                                                                  |
 | `user`       | `1000`, `65532:65532` with `--compile`                                                        | `USER` the process runs as. `"root"` opts back into root                                                                                                                         |
 | `tag`        | -                                                                                             | Image name without a version, completed by `--tag`                                                                                                                               |
-| `args`       | -                                                                                             | Extra `docker build` arguments, e.g. `["--platform", "linux/amd64"]`                                                                                                             |
+| `platforms`  | -                                                                                             | Platforms to build for, as `--platform`                                                                                                                                          |
+| `args`       | -                                                                                             | Extra `docker build` arguments, e.g. `["--no-cache"]`. Never `--platform`: use `platforms`                                                                                       |
 | `sbom`       | `false`                                                                                       | Attach an SBOM attestation, as `--sbom`                                                                                                                                          |
 | `provenance` | `false`                                                                                       | Attach a `mode=max` provenance attestation, as `--provenance`. It records the build arguments: no secret in `args`                                                               |
 | `oci`        | -                                                                                             | Add the OCI labels: `revision` (git commit), `created` and `version` (from the tag) on the build command, plus the `labels` below                                                |

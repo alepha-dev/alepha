@@ -66,6 +66,7 @@ export default defineConfig({
 | `image.volumes`    | Volume mount points                                      |
 | `image.user`       | Container user (default 1000, 65532:65532 compiled)      |
 | `image.tag`        | Default image name                                       |
+| `image.platforms`  | Platforms to build for, e.g. `["linux/amd64"]`           |
 | `image.args`       | Docker build arguments as a string array                 |
 | `image.sbom`       | Attach an SBOM attestation (needs `build.sbom`)          |
 | `image.provenance` | Attach a `mode=max` provenance attestation               |
@@ -75,6 +76,17 @@ export default defineConfig({
 With `oci: true`, each `image.labels` field becomes an `org.opencontainers.image.*` `LABEL` line in the generated Dockerfile (`source` is what links a GHCR package to its repository), and `alepha image` adds `revision` (the git commit), `created` and `version` (from the tag) at build time. Without `oci`, `image.labels` is ignored. The generated Dockerfile always labels the image `dev.alepha.runtime`, naming the slice it runs.
 
 The generated standard image uses a Node or Bun base and installs runtime dependencies only when the artifact declares them. Each declared volume is prepared before its `VOLUME` line. Named volumes inherit those permissions; bind mounts retain the host directory's permissions. Baked values are public image defaults, so deliver secrets at runtime.
+
+## Another architecture
+
+Laptops are often arm64 and clusters amd64. Name the platform, so the image (and a compiled binary inside it) is built for where it runs:
+
+```bash
+alepha image --platform linux/amd64 --tag
+alepha image --platform linux/amd64,linux/arm64 --push --tag=1.4.0   # a multi-arch index
+```
+
+A multi-platform image is pushed as it is built (`--push`), unless the local daemon uses the containerd image store. Building for a platform other than the host's runs the Dockerfile's `RUN` lines under emulation, which needs binfmt handlers on Linux: `docker run --privileged --rm tonistiigi/binfmt --install all`. See [Platforms](/docs/cli-commands-image#platforms).
 
 ## SBOM and provenance
 

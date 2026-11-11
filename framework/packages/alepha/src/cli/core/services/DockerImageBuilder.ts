@@ -51,6 +51,13 @@ export interface ImageContext {
   build?: boolean | string;
 
   /**
+   * The platforms to build for (`image.platforms` or `--platform`), already
+   * validated. More than one makes the compiled Dockerfile pick its binary
+   * with `TARGETARCH`.
+   */
+  platforms?: string[];
+
+  /**
    * Attach an SBOM attestation (`image.sbom` or `--sbom`).
    */
   sbom?: boolean;
@@ -78,6 +85,10 @@ export interface ImageContext {
 interface ResolvedCompile {
   name: string;
   base: string;
+  /**
+   * One binary per architecture, `<name>-<arch>`, picked by `TARGETARCH`.
+   */
+  multiArch: boolean;
 }
 
 /**
@@ -185,6 +196,7 @@ export class DockerImageBuilder {
     sbom?: boolean;
     provenance?: boolean;
     push?: boolean;
+    platforms?: string[];
   }): Promise<void> {
     if (
       ctx.sbom &&
@@ -199,11 +211,20 @@ export class DockerImageBuilder {
           "of the packages the app bundled.",
       );
     }
-    if (!(ctx.sbom || ctx.provenance) || ctx.push) {
+    const multiPlatform = (ctx.platforms?.length ?? 0) > 1;
+    if (!(ctx.sbom || ctx.provenance || multiPlatform) || ctx.push) {
       return;
     }
     if (await this.daemonKeepsAttestations()) {
       return;
+    }
+    if (multiPlatform) {
+      throw new AlephaError(
+        `A multi-platform image (${ctx.platforms?.join(", ")}) is an image index, and this ` +
+          "Docker daemon's image store cannot hold one, so it cannot be loaded locally. " +
+          "Either push it as it is built (`alepha image --push`), or turn on the " +
+          "containerd image store.",
+      );
     }
     throw new AlephaError(
       "An SBOM or provenance attestation lives in the image index, and this " +
@@ -363,6 +384,7 @@ export class DockerImageBuilder {
     return {
       name,
       base: ctx.image.from ?? DockerImageBuilder.DEFAULT_COMPILE_BASE,
+      multiArch: (ctx.platforms?.length ?? 0) > 1,
     };
   }
 
@@ -595,6 +617,12 @@ export class DockerImageBuilder {
       const compileMigrations = opts.hasMigrations
         ? `COPY${chownFlag} migrations ./migrations\n`
         : "";
+      // One binary per architecture: buildx sets `TARGETARCH` for each
+      // platform it builds, so one stage picks the right one. One platform,
+      // or none, keeps the file of today.
+      const binaryLine = opts.compile.multiArch
+        ? `ARG TARGETARCH\nCOPY${chownFlag} ${opts.compile.name}-\${TARGETARCH} ${opts.compile.name}\n`
+        : `COPY${chownFlag} ${opts.compile.name} .\n`;
       // At a fixed path, `/app/sbom.cdx.json`, as the standard variant has it.
       const sbomLine = opts.hasSbom
         ? `COPY${chownFlag} ${SbomBuilder.FILE} .\n`
@@ -618,8 +646,7 @@ export class DockerImageBuilder {
       dockerfile = `${header}FROM ${opts.compile.base}
 ${appLine}WORKDIR /app
 ${labelLines ? `\n${labelLines}` : ""}
-COPY${chownFlag} ${opts.compile.name} .
-${sbomLine}${compileMigrations}
+${binaryLine}${sbomLine}${compileMigrations}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumePrep}${volumeLines}` : ""}
 ${userLine}# No HEALTHCHECK: the distroless base has no shell and no runtime besides
@@ -849,9 +876,11 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
       them, so a hand-run build of the same file has none.
     */
     const attest = !!(ctx.sbom || ctx.provenance);
-    const buildx = attest || !!ctx.push;
+    const platforms = ctx.platforms ?? [];
+    const buildx = attest || !!ctx.push || platforms.length > 0;
     const buildxArgs = buildx
       ? [
+          ...(platforms.length ? ["--platform", platforms.join(",")] : []),
           ...(ctx.sbom ? ["--sbom=true"] : []),
           ...(ctx.provenance ? ["--provenance=mode=max"] : []),
           // `--load` names the default explicitly: on a builder that is not
