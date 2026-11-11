@@ -139,19 +139,20 @@ const svc = alepha.inject(PaymentService);
 
 Alepha ships memory implementations for all I/O-bound services. These run in-process with no external dependencies and include test assertion helpers.
 
-| Provider                    | Import                | Replaces                                                                                    |
-| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------- |
-| `MemoryFileSystemProvider`  | `alepha/system`       | File system                                                                                 |
-| `MemoryShellProvider`       | `alepha/system`       | Shell commands                                                                              |
-| `MemoryQueueProvider`       | `alepha/queue`        | Job queues                                                                                  |
-| `MemoryTopicProvider`       | `alepha/topic`        | Pub/sub topics                                                                              |
-| `MemoryLockProvider`        | `alepha/lock`         | Distributed locks                                                                           |
-| `MemoryCacheProvider`       | `alepha/cache`        | Caching layer                                                                               |
-| `MemoryFileStorageProvider` | `alepha/bucket`       | File storage (S3, R2, etc.)                                                                 |
-| `MemoryEmailProvider`       | `alepha/email`        | Email sending                                                                               |
-| `MemorySmsProvider`         | `alepha/sms`          | SMS sending                                                                                 |
-| `MemoryCaptchaProvider`     | `alepha/captcha`      | Captcha verification                                                                        |
-| `MemoryPaymentProvider`     | `alepha/api/payments` | Payment service provider (see [Payments](/docs/guides-features-payments#local-development)) |
+| Provider                    | Import                | Replaces                                                                                       |
+| --------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `MemoryFileSystemProvider`  | `alepha/system`       | File system                                                                                    |
+| `MemoryShellProvider`       | `alepha/system`       | Shell commands                                                                                 |
+| `MemoryQueueProvider`       | `alepha/queue`        | Job queues                                                                                     |
+| `MemoryTopicProvider`       | `alepha/topic`        | Pub/sub topics                                                                                 |
+| `MemoryLockProvider`        | `alepha/lock`         | Distributed locks                                                                              |
+| `MemoryCacheProvider`       | `alepha/cache`        | Caching layer                                                                                  |
+| `MemoryFileStorageProvider` | `alepha/bucket`       | File storage (S3, R2, etc.)                                                                    |
+| `MemoryEmailProvider`       | `alepha/email`        | Email sending                                                                                  |
+| `MemorySmsProvider`         | `alepha/sms`          | SMS sending                                                                                    |
+| `MemoryCaptchaProvider`     | `alepha/captcha`      | Captcha verification                                                                           |
+| `MemoryPaymentProvider`     | `alepha/api/payments` | Payment service provider (see [Payments](/docs/guides-features-payments#local-development))    |
+| `MemoryHttpClient`          | `alepha/server`       | Calls to external APIs made through `HttpClient` (see [External APIs](#example-external-apis)) |
 
 In test environments, `FileSystemProvider` and `ShellProvider` both default to
 their memory implementations automatically (so do email, SMS and captcha) - file
@@ -223,6 +224,72 @@ Canned output works the same way: `shell.outputs.set(command, output)`, or
 `shell.configure({ outputs, errors, installedCommands })` to set several at
 once. Every call lands in `shell.calls`; `wasCalledMatching(regex)` and
 `getCallsMatching(regex)` match them by pattern.
+
+### Example: External APIs
+
+An app whose data comes from another team's API fakes that API with
+`MemoryHttpClient`. It is not a default: substitute it for `HttpClient`.
+
+```typescript
+import { Alepha } from "alepha";
+import { HttpClient, MemoryHttpClient } from "alepha/server";
+
+const alepha = Alepha.create().with({
+  provide: HttpClient,
+  use: MemoryHttpClient,
+});
+const http = alepha.inject(MemoryHttpClient);
+
+http.on("GET", "https://api.example.com/customers/:id", ({ params }) => ({
+  id: params.id,
+  name: "Ada",
+}));
+http.on("POST", "https://api.example.com/customers", () => ({ id: "c2" }), {
+  status: 201,
+});
+
+// Run code that calls the API...
+
+expect(http.calls("GET", "https://api.example.com/customers/:id")).toHaveLength(
+  1,
+);
+expect(http.calls("POST", "https://api.example.com/customers")[0].body).toEqual(
+  {
+    name: "Grace",
+  },
+);
+```
+
+- **Matching.** A route is a method (`"*"` for any) and an absolute URL whose
+  path may hold `:name` segments and a trailing `*`. The query string is not
+  part of the match. The route registered last wins.
+- **Answers.** A handler returns the data (sent as JSON, a string as text,
+  `undefined` as a 204), or a `Response` for full control. `status` and
+  `headers` options shape a data response. A handler that throws fails the
+  call as a network error does.
+- **Latency.** `delay: [5, "seconds"]` waits on `DateTimeProvider`'s clock, so
+  `travel()` moves past it, and the call's own `timeout` fires against it.
+- **Assertions.** Every answered or refused call lands in `http.recorded`
+  with its method, URL, params, query, headers and body; `calls(method,
+  pattern)` and `wasCalled(method, pattern)` filter them; `reset()` forgets
+  routes and calls.
+- **Unmatched calls fail.** A call to another origin with no route rejects,
+  naming the method and the URL. A call to the app's own origin (a relative
+  URL, the page's origin in the browser, the listening server on loopback, or
+  one given to `passThrough(origin)`) reaches the real `fetch` unless a route
+  matches it, so `$action.fetch()`, the link registry and `/api/_batch` keep
+  working.
+
+Only the transport is replaced: the timeout, cancellation, the cache, the
+`client` span, the mapping of a 4xx or 5xx to an `HttpError` and the response
+schema all run as they do against the network. The same instance answers unit
+specs, `renderWithAlepha(element, { alepha })` and SSR loaders, since all of
+them read the container's `HttpClient`.
+
+**What is not intercepted.** Code that calls the global `fetch` directly
+rather than `HttpClient`: `$proxy`, the OAuth providers, the email and AI
+providers and `$serviceAccount` among the framework's own. `MemoryHttpClient`
+never patches the global `fetch`.
 
 ## Test Data with Faker
 

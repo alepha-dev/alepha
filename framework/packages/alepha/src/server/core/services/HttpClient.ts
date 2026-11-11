@@ -147,7 +147,7 @@ export class HttpClient {
       ...headers,
     };
 
-    const response = await fetch(url, this.withTraceparent(request));
+    const response = await this.transport(url, this.withTraceparent(request));
     if (!response.ok) {
       throw await this.responseError(
         response,
@@ -486,7 +486,7 @@ export class HttpClient {
     options: ResolvedFetchOptions,
     cacheKey: string,
   ): Promise<FetchResponse> {
-    return fetch(url, request)
+    return this.transport(url, request)
       .then(async (response) => {
         this.log.debug("Response", {
           url,
@@ -532,6 +532,18 @@ export class HttpClient {
         }
         throw error;
       });
+  }
+
+  /**
+   * The one place a call reaches the network: every `fetch`, `fetchAction`
+   * and `fetchStream` ends here, after its timeout, signal, cache, span and
+   * headers are settled, and before its response is decoded.
+   *
+   * A test double overrides this and nothing else (`MemoryHttpClient`), so
+   * everything above it keeps running for real.
+   */
+  protected transport(url: string, request: RequestInit): Promise<Response> {
+    return fetch(url, request);
   }
 
   /**

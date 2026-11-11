@@ -21,3 +21,4 @@ export * from "./schemas/validationErrorDataSchema.ts";
 export * from "./schemas/versionSchema.ts";
 export * from "./schemas/okSchema.ts";
 export * from "./services/HttpClient.ts";
+export * from "./services/MemoryHttpClient.ts";
