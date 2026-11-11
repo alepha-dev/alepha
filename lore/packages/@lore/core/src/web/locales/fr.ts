@@ -841,7 +841,8 @@ export default {
     "$1 devient propriétaire et vous devenez $2. Vous ne pourrez pas revenir en arrière : seul le nouveau propriétaire peut vous le rendre.",
 
   "project.settings.danger.title": "Zone à risques",
-  "project.settings.delete.blocked.title": "Ce projet ne peut pas encore être détruit",
+  "project.settings.delete.blocked.title":
+    "Ce projet ne peut pas encore être détruit",
   "project.settings.actions.delete": "Détruire ce projet",
   "project.settings.actions.delete.helper":
     "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",

@@ -43,7 +43,10 @@ export const ProjectRailCard = (props: ProjectRailCardProps) => {
   const repository = parseRepository(props.project.repositoryUrl);
   return (
     <div
-      className={cn("flex min-w-0 items-center", props.compact ? "gap-2.5" : "gap-3")}
+      className={cn(
+        "flex min-w-0 items-center",
+        props.compact ? "gap-2.5" : "gap-3",
+      )}
       data-testid="project-rail-card"
     >
       <ProjectIcon
@@ -56,7 +59,10 @@ export const ProjectRailCard = (props: ProjectRailCardProps) => {
         )}
       />
       <div
-        className={cn("flex min-w-0 flex-col", props.compact ? "gap-0.5" : "gap-1")}
+        className={cn(
+          "flex min-w-0 flex-col",
+          props.compact ? "gap-0.5" : "gap-1",
+        )}
       >
         <span className="flex min-w-0 items-center gap-2">
           <span

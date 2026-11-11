@@ -62,7 +62,7 @@ describe("MyProjects", () => {
   });
 
   const mount = async () => {
-      alepha = Alepha.create()
+    alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
       .with({ provide: LinkProvider, use: FakeLinkProvider })
@@ -86,7 +86,6 @@ describe("MyProjects", () => {
         <MyProjects />
       </AlephaContext.Provider>,
     );
-
   };
 
   it("hides archived projects on load (#Q3412)", async ({ expect }) => {
