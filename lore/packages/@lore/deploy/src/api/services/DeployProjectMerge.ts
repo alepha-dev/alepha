@@ -72,6 +72,15 @@ export class DeployProjectMerge {
     { kind: "stack deployment", table: "stack_deployments" },
     { kind: "monitor", table: "monitors" },
     {
+      // The estates the source is the home of (#Q3278): a slug is unique
+      // per home project and never rewritten, since a machine's config may
+      // record it, so one the target already holds is a conflict.
+      kind: "estate",
+      table: "estates",
+      keys: ["slug"],
+      onCollision: "refuse",
+    },
+    {
       kind: "estate loan",
       table: "estate_projects",
       keys: ["estate_id"],

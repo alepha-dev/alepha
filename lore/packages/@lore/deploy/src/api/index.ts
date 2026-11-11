@@ -70,6 +70,7 @@ import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
+import { EstateAnchorHooks } from "./services/EstateAnchorHooks.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
 import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
@@ -137,6 +138,8 @@ export const LoreDeployApi = $module({
     DeployProjectMerge,
     // Frees the estates a deleted project held (#Q3169); nothing injects it.
     DeployProjectDeletion,
+    // Keeps a homed estate's cascade anchor on its project's owner (#Q3278).
+    EstateAnchorHooks,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
     // The apps tiles of #E77 (#Q2657).
