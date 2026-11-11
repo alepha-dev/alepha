@@ -65,7 +65,12 @@ describe("ProjectSettingsEstateNameCell", () => {
     return render(
       <AlephaContext.Provider value={alepha}>
         <ProjectSettingsEstateNameCell
-          row={{ id: estate.id, slug: estate.slug, origin: "lent", loan: estate }}
+          row={{
+            id: estate.id,
+            slug: estate.slug,
+            origin: "lent",
+            loan: estate,
+          }}
           onOpen={() => {}}
         />
       </AlephaContext.Provider>,
