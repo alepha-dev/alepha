@@ -4,14 +4,9 @@ import { $inject, AlephaError, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $route, type ServerReply } from "alepha/server";
-import {
-  type CryptoKey,
-  exportJWK,
-  generateKeyPair,
-  type JWK,
-  type JWTPayload,
-  SignJWT,
-} from "jose";
+// Functions only: a published declaration must not name a jose type, since
+// an app installing `alepha` does not install jose.
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
 /**
  * An OpenID Connect provider for tests: discovery, authorize, token, JWKS,
@@ -49,7 +44,7 @@ export class MockOidcProvider {
    */
   public origin = "";
 
-  protected keys?: { privateKey: CryptoKey; publicJwk: JWK };
+  protected keys?: { privateKey: CryptoKey; publicJwk: MockOidcClaims };
   protected readonly codes = new Map<string, MockOidcCode>();
   protected readonly refreshTokens = new Map<string, MockOidcGrant>();
   protected readonly revoked = new Set<string>();
@@ -505,10 +500,10 @@ export class MockOidcProvider {
     clientId: string;
     sid: string;
     scope: string;
-  }): JWTPayload {
+  }): MockOidcClaims {
     const iat = this.dateTime.now().unix();
     const { user } = this.options;
-    const claims: JWTPayload = {
+    const claims: MockOidcClaims = {
       iss: this.issuer,
       sub: user.sub,
       aud: this.options.audience,
@@ -593,7 +588,7 @@ export class MockOidcProvider {
 
   protected async getKeys(): Promise<{
     privateKey: CryptoKey;
-    publicJwk: JWK;
+    publicJwk: MockOidcClaims;
   }> {
     if (!this.keys) {
       const { privateKey, publicKey } = await generateKeyPair("RS256", {
@@ -610,7 +605,7 @@ export class MockOidcProvider {
     return this.keys;
   }
 
-  protected async sign(payload: JWTPayload): Promise<string> {
+  protected async sign(payload: MockOidcClaims): Promise<string> {
     const { privateKey } = await this.getKeys();
     return new SignJWT(payload)
       .setProtectedHeader({ alg: "RS256", kid: "mock-oidc-1", typ: "JWT" })
@@ -736,6 +731,11 @@ export interface MockOidcCall {
   token?: string;
   tokenTypeHint?: string;
 }
+
+/**
+ * The members of a token or a JWK, as the provider writes them.
+ */
+export type MockOidcClaims = Record<string, unknown>;
 
 interface MockOidcCode {
   clientId: string;
