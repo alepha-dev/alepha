@@ -18,6 +18,13 @@ import {
 import { useMemo, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
+import TimeAgo from "../core/TimeAgo.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../core/Tooltip.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { DataTable } from "../table/DataTable.tsx";
 import type { DataTableFilterFields } from "../table/dataTableTypes.ts";
@@ -171,6 +178,55 @@ export const AdminJobs = () => {
         filter={matchesJobFilters}
         onRowClick={(j) => open(j)}
         filters={{ fields: filterFields }}
+        // Execution figures over the last 24 hours (#Q3431), the same
+        // collapsible panel as Admin > Files', from one server call. They
+        // count kept runs, like the OK and Errors columns: retention trims
+        // successes hardest, so a figure is a floor, as the hints say.
+        summary={{
+          title: tr("admin.jobs.statsTitle", { default: "Last 24 hours" }),
+          onError: () => {},
+          fetch: async ({ signal }) => {
+            const stats = await client.getJobStats({}, { request: { signal } });
+            return [
+              {
+                label: tr("admin.jobs.statsError", { default: "Failed" }),
+                value: String(stats.error),
+                tone: stats.error > 0 ? "danger" : "neutral",
+                hint: stats.lastError
+                  ? tr("admin.jobs.statsLastError", {
+                      default: `Last: ${stats.lastError.jobName}, ${l(stats.lastError.completedAt, { date: "fromNow" })}`,
+                      args: [
+                        stats.lastError.jobName,
+                        l(stats.lastError.completedAt, { date: "fromNow" }),
+                      ],
+                    })
+                  : undefined,
+              },
+              {
+                label: tr("admin.jobs.statsOk", { default: "Succeeded" }),
+                value: String(stats.ok),
+                tone: "success",
+                hint: tr("admin.jobs.statsKeptHint", {
+                  default: "Runs still kept, not every run",
+                }),
+              },
+              {
+                label: tr("admin.jobs.statsCancelled", {
+                  default: "Cancelled",
+                }),
+                value: String(stats.cancelled),
+              },
+              {
+                label: tr("admin.jobs.statsRunning", { default: "Running" }),
+                value: String(stats.running),
+                hint: tr("admin.jobs.statsWaiting", {
+                  default: `${stats.waiting} waiting`,
+                  args: [String(stats.waiting)],
+                }),
+              },
+            ];
+          },
+        }}
         columns={{
           name: {
             label: tr("admin.jobs.colName", { default: "Name" }),
@@ -197,33 +253,60 @@ export const AdminJobs = () => {
           },
           retention: {
             label: tr("admin.jobs.colRetention", { default: "Retention" }),
+            // One tag, "default" or "custom" (#Q3430): the policy text was
+            // the same long line on almost every row. The policy is the tag's
+            // tooltip, on hover and on focus.
             cell: (j) => (
-              <span
-                className="text-muted-foreground inline-flex items-center gap-1.5 text-xs"
-                title={retention.sentence(j.retention)}
-              >
-                {retention.short(j.retention)}
-                {retention.isDefault(j.retention) && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {tr("admin.jobs.retention.default", {
-                      default: "default",
-                    })}
-                  </Badge>
-                )}
-              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="focus-visible:ring-ring/50 rounded-md outline-none focus-visible:ring-2"
+                        data-testid="job-retention"
+                      />
+                    }
+                  >
+                    <Badge
+                      variant={
+                        retention.isDefault(j.retention)
+                          ? "outline"
+                          : "secondary"
+                      }
+                    >
+                      {retention.isDefault(j.retention)
+                        ? tr("admin.jobs.retention.default", {
+                            default: "default",
+                          })
+                        : tr("admin.jobs.retention.custom", {
+                            default: "custom",
+                          })}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                    {retention.sentence(j.retention)}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ),
           },
           lastRun: {
             label: tr("admin.jobs.colLastRun", { default: "Last run" }),
             sortable: true,
             sortValue: (j) => j.recent.lastRun ?? "",
-            cell: (j) => (
-              <span className="text-muted-foreground text-xs">
-                {j.recent.lastRun
-                  ? l(j.recent.lastRun, { date: "fromNow" })
-                  : tr("admin.jobs.unknown", { default: "unknown" })}
-              </span>
-            ),
+            cell: (j) =>
+              // `TimeAgo`, which carries the exact date as its title (#Q3429).
+              j.recent.lastRun ? (
+                <TimeAgo
+                  value={j.recent.lastRun}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.jobs.unknown", { default: "unknown" })}
+                </span>
+              ),
           },
           ok: {
             label: tr("admin.jobs.colOk", { default: "OK" }),

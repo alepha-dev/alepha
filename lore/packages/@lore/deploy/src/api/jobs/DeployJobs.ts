@@ -86,11 +86,20 @@ export class DeployJobs {
   /**
    * How long a deploy that found no free slot waits before it looks again.
    *
-   * A redeploy takes 5 to 15 seconds, so ten is about one run's worth: short
-   * enough that a burst drains at the pace the slots free up, long enough
-   * that a wait of the whole deploy timeout is sixty looks, not thousands.
+   * ⚠️ **Three, down from ten** (#Q3387). A fan-out of one artifact to many
+   * tenants queues them all at once, and a busy slot used to cost each
+   * waiting deploy up to ten seconds after the slot freed, a large share of
+   * the 5 to 34 s measured between queueing and starting. With the byte work
+   * native (#E137) a tenant deploy holds a slot for less time, so the look
+   * comes round more often; a wait of the whole deploy timeout is still a
+   * few hundred looks, each one row read, never thousands.
    */
-  public static readonly SLOT_RETRY_SECONDS = 10;
+  public static readonly SLOT_RETRY_SECONDS = 3;
+
+  /**
+   * The line a deploy waiting for a slot writes, once.
+   */
+  public static readonly WAITING_LINE = "Waiting for a free deploy slot";
 
   /**
    * How Lore runs the framework's job sweep (`jobConfig`), set by
@@ -196,6 +205,13 @@ export class DeployJobs {
         return;
       }
 
+      // Said once on the row, so its log tells waiting for a slot apart from
+      // waiting for delivery; every later look would only fill the log's cap.
+      if (
+        !(row.log ?? []).some((line) => line.text === DeployJobs.WAITING_LINE)
+      ) {
+        await this.registry.line(row.id, DeployJobs.WAITING_LINE);
+      }
       this.log.info("No free deploy slot; waiting for one", {
         deploymentId: row.id,
         retryInSeconds: DeployJobs.SLOT_RETRY_SECONDS,

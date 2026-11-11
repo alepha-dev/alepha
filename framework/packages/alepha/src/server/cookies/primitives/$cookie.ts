@@ -1,6 +1,7 @@
 import type { PrimitiveSide } from "alepha";
 import {
   $inject,
+  AlephaError,
   createPrimitive,
   type Infer,
   Primitive,
@@ -28,7 +29,8 @@ import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
  * nginx its `Cookie` header at 8 KB, past which a request fails with 431 or 400.
  * The server logs a warning when a client's cookies pass about 6 KB. A very large
  * value, such as a big token set, belongs in a server-side session with only an
- * ID in the cookie.
+ * ID in the cookie: for the sign-in session that is
+ * `serverAuthOptions.sessionStore` of `alepha/server/auth`.
  */
 export const $cookie = <T extends ZType>(
   options: CookiePrimitiveOptions<T>,
@@ -124,7 +126,35 @@ export interface CookiePrimitiveOptions<T extends ZType> {
    * unset — it defaults to `true` (prefixed), matching every other cookie.
    */
   prefix?: boolean;
+
+  /**
+   * A cookie-name prefix the browser enforces, put in front of the name on
+   * the wire: `<browserPrefix><app>.<name>`.
+   *
+   * - `__Secure-`: only accepted with `Secure`.
+   * - `__Host-`: with `Secure`, no `Domain` and `Path=/`, so a sibling
+   *   subdomain cannot plant a cookie of the same name.
+   * - `__Http-` and `__Host-Http-`: the same, and `HttpOnly`, so no script
+   *   can set it either. A browser that does not know them still enforces
+   *   `__Host-Http-` as `__Host-`, which it starts with.
+   *
+   * A browser drops a prefixed cookie that has no `Secure`, so the prefix is
+   * applied only on a response that carries it: over https as the server
+   * sees it (`X-Forwarded-Proto` behind a proxy), and when `secure` is not
+   * off. Over plain http the bare name is used, unhardened. A read looks up
+   * the name that matches the request's scheme.
+   *
+   * Refused at start with `secure: false`, a `__Host-` form with `domain` or
+   * a `path` other than `/`, and an `Http-` form without `httpOnly`.
+   */
+  browserPrefix?: CookieBrowserPrefix;
 }
+
+export type CookieBrowserPrefix =
+  | "__Host-"
+  | "__Secure-"
+  | "__Host-Http-"
+  | "__Http-";
 
 export interface AbstractCookiePrimitive<T extends ZType> {
   readonly name: string;
@@ -149,6 +179,8 @@ export class CookiePrimitive<T extends ZType>
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
 
   protected onInit() {
+    this.assertBrowserPrefix();
+
     if (this.options.key) {
       // A cookie is the visitor's: the atom it feeds is personal, unless the
       // atom itself says `personal: false` (#E78).
@@ -168,6 +200,35 @@ export class CookiePrimitive<T extends ZType>
           }
         } catch {}
       });
+    }
+  }
+
+  /**
+   * Refuse a browser prefix the browser would reject: the cookie would never
+   * be stored, and nothing would say why.
+   */
+  protected assertBrowserPrefix(): void {
+    const prefix = this.options.browserPrefix;
+    if (!prefix) {
+      return;
+    }
+    if (this.options.secure === false) {
+      throw new AlephaError(
+        `Cookie "${this.name}": ${prefix} requires Secure, and it sets secure: false`,
+      );
+    }
+    if (
+      prefix.startsWith("__Host-") &&
+      (this.options.domain || (this.options.path ?? "/") !== "/")
+    ) {
+      throw new AlephaError(
+        `Cookie "${this.name}": ${prefix} forbids a domain and requires path "/"`,
+      );
+    }
+    if (prefix.endsWith("Http-") && !this.options.httpOnly) {
+      throw new AlephaError(
+        `Cookie "${this.name}": ${prefix} requires httpOnly: true`,
+      );
     }
   }
 
@@ -218,7 +279,12 @@ export class CookiePrimitive<T extends ZType>
       this.name,
       options?.cookies,
       this.options.prefix !== false,
-      { path: this.options.path, domain: this.options.domain },
+      {
+        path: this.options.path,
+        domain: this.options.domain,
+        browserPrefix: this.options.browserPrefix,
+        secure: this.options.secure,
+      },
     );
   }
 }
@@ -230,6 +296,13 @@ $cookie[KIND] = CookiePrimitive;
 export interface Cookies {
   req: Record<string, string>;
   res: Record<string, Cookie | null>;
+  /**
+   * Whether the request came over https as the server sees it, which decides
+   * whether a `browserPrefix` applies. Unknown on a raw `Cookie` header (a
+   * WebSocket upgrade): a read then takes the prefixed name when the jar
+   * holds it, since a browser stores one only from https.
+   */
+  https?: boolean;
 }
 
 export interface Cookie {

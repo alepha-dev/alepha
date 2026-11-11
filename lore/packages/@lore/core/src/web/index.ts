@@ -221,6 +221,12 @@ export {
   type ProjectUser,
   useProjectUsers,
 } from "./app/components/shared/useProjectUsers.ts";
+export { usePageCrumb } from "./app/components/shared/usePageCrumb.ts";
+export { pageCrumbAtom } from "./app/atoms/pageCrumbAtom.ts";
+export {
+  ProjectTrail,
+  type ProjectTrailCrumb,
+} from "./app/services/ProjectTrail.ts";
 export { useRank } from "./app/components/shared/useRank.ts";
 export {
   type AgentPromptItemSubject,

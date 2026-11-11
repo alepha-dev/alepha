@@ -121,9 +121,9 @@ export const gzip = async (bytes: Uint8Array): Promise<Uint8Array> => {
  * `tar`, compressed with zstd the way `alepha pack` compresses it.
  *
  * ⚠️ **Node's zlib, not a `CompressionStream`.** There is no `zstd` format in
- * the Compression Streams API - which is the whole reason Lore decodes zstd in
- * JavaScript on the read side - so the fixture reaches for the runtime that
- * does have it. Specs run under node; the Worker never builds an artifact.
+ * the Compression Streams API, so the fixture reaches for `node:zlib`, which
+ * the read side decodes with too (#Q3380). Specs run under node; the Worker
+ * never builds an artifact.
  *
  * The `windowLog` matches `WorkspacePacker.ZSTD_WINDOW_LOG`, so a frame this
  * fixture produces is the frame a real push carries.

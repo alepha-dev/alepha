@@ -45,6 +45,24 @@ There is no `--runtime`. Lore reads it from the artifact's own
 `dist/manifest.json`, because that is the build's own claim about itself and a
 flag would eventually disagree with it.
 
+## The asset list travels with the build
+
+Beside the archive, the push sends a list of the build's static assets: every
+file under `dist/public`, with its SHA-256, its size and its content type. The
+files are the ones the archive holds (the same excludes leave out source maps,
+`.DS_Store` and `node_modules`), and `_headers` and `_redirects` travel as
+their text.
+
+It is computed on your machine because it depends only on the build's bytes.
+Without it, Lore has to unpack and hash every asset again on the first deploy
+of each build, which is most of a deploy's work for a site of thousands of
+files. The push logs how long the list took.
+
+The list is optional both ways. A build pushed by an older CLI deploys
+normally, and its first deploy computes the list instead. Lore keeps each list
+for the project that pushed it, and checks the bytes of every asset it uploads
+against it, so a wrong list cannot reach another project's deploys.
+
 ## The credential
 
 `lore artifacts push` authenticates with an API key in the environment that

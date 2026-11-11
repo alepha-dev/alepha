@@ -29,6 +29,7 @@ export * from "./errors/InvalidWebhookSignatureError.ts";
 export * from "./errors/RealmNotFoundError.ts";
 export * from "./errors/SecurityError.ts";
 export * from "./interfaces/IssuerResolver.ts";
+export * from "./interfaces/OidcIssuerSource.ts";
 export * from "./interfaces/UserAccountToken.ts";
 export * from "./primitives/$basicAuth.ts";
 export * from "./primitives/$issuer.ts";

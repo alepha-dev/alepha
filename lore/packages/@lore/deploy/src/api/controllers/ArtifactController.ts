@@ -164,6 +164,14 @@ export class ArtifactController {
          * unupgraded pipeline red for a size optimisation.
          */
         maps: z.file({ maxBytes: 20 * 1024 * 1024 }).optional(),
+        /**
+         * The asset list the pusher's CLI computed (#Q3381): every file
+         * under the build's `public/` with its SHA-256, size and type, as
+         * JSON. A file part, not a field, because a site of thousands of
+         * assets is far past what a text field should carry. Optional both
+         * ways: an older CLI sends none and the first deploy computes it.
+         */
+        assets: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
       }),
       response: artifactPushResultSchema,
     },
@@ -178,6 +186,7 @@ export class ArtifactController {
         manifest: body.manifest,
         file: body.file,
         maps: body.maps,
+        assets: body.assets,
       });
 
       return { artifact: this.resource(artifact), stored };

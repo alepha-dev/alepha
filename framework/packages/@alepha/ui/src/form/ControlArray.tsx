@@ -32,6 +32,7 @@ import {
 } from "../core/Dialog.tsx";
 import { Control, type ControlProps } from "./Control.tsx";
 import { childI18nPrefix, resolveFieldI18n } from "./fieldI18n.ts";
+import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 
 interface ArrayItem {
   key: number;
@@ -672,7 +673,7 @@ export const ControlArray = (props: ControlArrayProps) => {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="text-sm leading-tight font-medium">
           {meta.label}
-          {meta.required && <span className="text-danger-text ml-0.5">*</span>}
+          {meta.required && <FormFieldRequiredMark />}
           <span className="text-muted-foreground ml-2 text-xs">
             ({items.length})
           </span>

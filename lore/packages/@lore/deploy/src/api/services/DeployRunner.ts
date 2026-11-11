@@ -15,8 +15,12 @@ import { BadRequestError } from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 
 import type { Artifact } from "../entities/artifacts.ts";
+import type { DeployAssetCacheEntry } from "../schemas/deployAssetCacheSchema.ts";
 import { ArtifactService } from "./ArtifactService.ts";
-import { ArtifactTarReader } from "./ArtifactTarReader.ts";
+import {
+  ArtifactTarReader,
+  type ArtifactTarSource,
+} from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
 import { DeployFileSystemProvider } from "./DeployFileSystemProvider.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
@@ -75,6 +79,16 @@ export interface DeployRequest {
    * The deployment row to write status and log lines against.
    */
   deploymentId?: string;
+
+  /**
+   * The D1 and KV ids this copy's last deploy recorded (#Q3386), so
+   * `provision` checks each by id instead of listing the estate's account.
+   * A hint: each is verified, and a missing one is recreated.
+   */
+  known?: {
+    d1?: { name: string; id: string };
+    kv?: { name: string; id: string };
+  };
 
   /**
    * The copy's environment, opened.
@@ -183,15 +197,18 @@ export class DeployRunner {
         deployment,
         `Fetching ${request.artifact.sha256.slice(0, 12)}`,
       );
-      const bytes = await this.artifactBytes(request.artifact);
+      const open = () => this.artifactStream(request.artifact);
+      const source = await open();
 
       await this.registry.line(deployment, "Unpacking");
       const { manifest, configTexts, unpacked } = await this.assetCache.prepare(
         ArtifactService.BUCKET,
         request.artifact.sha256,
-        bytes,
+        source,
         fs,
         DeployRunner.ROOT,
+        request.artifact.projectId,
+        (path) => this.isForeignSlice(path),
       );
       await this.registry.line(
         deployment,
@@ -230,8 +247,9 @@ export class DeployRunner {
       const adapter = alepha
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)
-        .withSecrets(request.secrets ?? {});
-      const assets = this.assetsOf(manifest, bytes, deployment, configTexts);
+        .withSecrets(request.secrets ?? {})
+        .withKnownResources(request.known ?? {});
+      const assets = this.assetsOf(manifest, open, deployment, configTexts);
       if (assets) {
         adapter.useAssets(assets);
       }
@@ -266,6 +284,30 @@ export class DeployRunner {
       throw error;
     }
   }
+
+  /**
+   * Whether a path belongs to a server slice a Cloudflare deploy never runs
+   * (#Q3383): `server/node/`, `server/bun/` and their `index.<runtime>.js`.
+   *
+   * ⚠️ Left out of the memory filesystem, not out of the walk: a
+   * multi-runtime artifact carries a node slice of tens of megabytes beside
+   * the workerd one, and writing it into the isolate cost memory for files no
+   * step reads. Only runtimes Cloudflare cannot run are named, so a slice
+   * this list does not know is still written.
+   */
+  protected isForeignSlice(path: string): boolean {
+    const relative = path.slice(DeployRunner.ROOT.length + 1);
+    return DeployRunner.FOREIGN_RUNTIMES.some(
+      (runtime) =>
+        relative.startsWith(`server/${runtime}/`) ||
+        relative === `index.${runtime}.js`,
+    );
+  }
+
+  /**
+   * The runtimes whose slices a Cloudflare deploy leaves out.
+   */
+  protected static readonly FOREIGN_RUNTIMES = ["node", "bun"];
 
   /**
    * Keep the artifact's own Worker entry, when it ships one.
@@ -348,13 +390,16 @@ export class DeployRunner {
   }
 
   /**
-   * The artifact's bytes, whole.
+   * The artifact's bytes, as a stream straight from storage.
    *
-   * ⚠️ Held in memory, which is what bounds an artifact at 20 MB on the way in
-   * and what `ArtifactTarReader.extract` bounds again on the way out. A
-   * streaming unpack would be better and is not what the tar reader does.
+   * ⚠️ **Never read whole** (#Q3380). The tar reader decodes a stream, so the
+   * archive is pulled from R2 as the zstd decoder needs it: what is resident is
+   * the decoder's window and one chunk, not the archive. A stream is consumed
+   * by one walk, so each pass opens its own.
    */
-  protected async artifactBytes(artifact: Artifact): Promise<Uint8Array> {
+  protected async artifactStream(
+    artifact: Artifact,
+  ): Promise<ReadableStream<Uint8Array>> {
     // ⚠️ An image row stores a registry reference and no bytes at all, so
     // there is nothing here to unpack. `DeployService` refuses one before a
     // deployment row is ever created; this is the second wall, and it names
@@ -367,7 +412,7 @@ export class DeployRunner {
     const file = await this.files.streamFile(artifact.fileId, {
       bucket: ArtifactService.BUCKET,
     });
-    return new Uint8Array(await file.arrayBuffer());
+    return file.stream();
   }
 
   /**
@@ -499,13 +544,20 @@ export class DeployRunner {
    * cheap and predictable, and the memory it replaces was neither.
    */
   protected assetsOf(
-    manifest: Record<string, CloudflareAssetEntry>,
-    bytes: Uint8Array,
+    listed: DeployAssetCacheEntry["manifest"],
+    open: () => Promise<ArtifactTarSource>,
     deployment?: string,
     configTexts: Record<string, string> = {},
   ): CloudflareDeployAssets | undefined {
-    if (Object.keys(manifest).length === 0) {
+    if (Object.keys(listed).length === 0) {
       return undefined;
+    }
+    // ⚠️ Only `hash` and `size` go to Cloudflare: the stored list also keeps
+    // each asset's full digest, which is Lore's, and an upload session is
+    // negotiated with exactly the two fields its API documents.
+    const manifest: Record<string, CloudflareAssetEntry> = {};
+    for (const [key, entry] of Object.entries(listed)) {
+      manifest[key] = { hash: entry.hash, size: entry.size };
     }
 
     const readAll = async (
@@ -526,7 +578,7 @@ export class DeployRunner {
       // killed under it. One line per PROGRESS_EVERY files answers that from
       // the timestamps alone.
       let sent = 0;
-      await this.reader.extract(bytes, nowhere, DeployRunner.ROOT, {
+      await this.reader.extract(await open(), nowhere, DeployRunner.ROOT, {
         skip: () => true,
         onSkipped: async (path, body) => {
           if (!path.startsWith(DeployRunner.ASSETS)) {
@@ -536,6 +588,19 @@ export class DeployRunner {
             path.slice(DeployRunner.ASSETS.length),
           );
           if (keys.has(key)) {
+            // ⚠️ The list may be the pusher's claim (#Q3381), so the bytes
+            // about to be uploaded are checked against its digest: native
+            // SHA-256 over a body already in hand. A body that disagrees is
+            // refused, never uploaded under a key it does not match.
+            const expected = listed[key]?.digest;
+            if (
+              expected &&
+              (await this.assetManifest.digest(body)) !== expected
+            ) {
+              throw new BadRequestError(
+                `The asset list stored for this build does not match the archive at ${key}. Push the build again.`,
+              );
+            }
             await onFile(key, body);
             if (++sent % DeployRunner.PROGRESS_EVERY === 0) {
               await this.registry.line(

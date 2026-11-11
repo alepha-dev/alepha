@@ -13,9 +13,14 @@ import {
 import { Label } from "../core/Label.tsx";
 import { cn } from "../core/utils.ts";
 import {
+  FORM_FIELD_DESCRIPTION_INLINE_MAX,
+  FormFieldDescriptionTip,
+} from "./FormFieldDescriptionTip.tsx";
+import {
   type FormFieldLayout,
   useFormFieldLayout,
 } from "./FormFieldLayoutProvider.tsx";
+import { FormFieldRequiredMark } from "./FormFieldRequiredMark.tsx";
 import { useFormFieldRequiredMarker } from "./FormFieldRequiredMarkerProvider.tsx";
 
 export interface FormFieldProps {
@@ -91,6 +96,18 @@ export const FormField = (props: FormFieldProps) => {
       }
     : undefined;
 
+  // A description past the threshold moves behind an (i) on the label line
+  // (#Q3427). It stays in the DOM, visually hidden, so the control is still
+  // described by it.
+  const tipped =
+    !!props.label &&
+    typeof props.description === "string" &&
+    props.description.length > FORM_FIELD_DESCRIPTION_INLINE_MAX;
+  const descriptionClass = tipped ? "sr-only" : "text-muted-foreground text-xs";
+  const tip = tipped ? (
+    <FormFieldDescriptionTip description={props.description as string} />
+  ) : null;
+
   const errorId = formFieldErrorId(props.id, props.error);
   const descriptionId = formFieldDescriptionId(
     props.id,
@@ -123,17 +140,18 @@ export const FormField = (props: FormFieldProps) => {
       >
         <div className="flex flex-col gap-0.5">
           {props.label && (
-            <Label htmlFor={props.id} className="font-medium">
-              {props.label}
-              {showRequiredMarker && (
-                <span className="text-danger-text ml-0.5" aria-hidden>
-                  *
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor={props.id} className="font-medium">
+                <span>
+                  {props.label}
+                  {showRequiredMarker && <FormFieldRequiredMark />}
                 </span>
-              )}
-            </Label>
+              </Label>
+              {tip}
+            </div>
           )}
           {props.description && !props.error && (
-            <p id={descriptionId} className="text-muted-foreground text-xs">
+            <p id={descriptionId} className={descriptionClass}>
               {props.description}
             </p>
           )}
@@ -162,18 +180,19 @@ export const FormField = (props: FormFieldProps) => {
       onBlur={onBlur}
     >
       {props.label && (
-        <Label htmlFor={props.id}>
-          {props.label}
-          {showRequiredMarker && (
-            <span className="text-danger-text ml-0.5" aria-hidden>
-              *
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={props.id}>
+            <span>
+              {props.label}
+              {showRequiredMarker && <FormFieldRequiredMark />}
             </span>
-          )}
-        </Label>
+          </Label>
+          {tip}
+        </div>
       )}
       {children}
       {props.description && !props.error && (
-        <p id={descriptionId} className="text-muted-foreground text-xs">
+        <p id={descriptionId} className={descriptionClass}>
           {props.description}
         </p>
       )}

@@ -2,7 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 
 import { SeoExpander } from "../helpers/SeoExpander.ts";
-import type { Head, HeadMeta } from "../interfaces/Head.ts";
+import type { Head, HeadAfterPages, HeadMeta } from "../interfaces/Head.ts";
 
 /**
  * Provides methods to fill and merge head information into the application state.
@@ -19,6 +19,12 @@ export class HeadProvider {
   protected readonly seoExpander = $inject(SeoExpander);
 
   public global?: Array<Head | (() => Head)> = [];
+
+  /**
+   * `$head({ afterPages })` entries, run by {@link fillHead} once every page
+   * head has merged. See {@link HeadAfterPages}.
+   */
+  public afterPages: Array<HeadAfterPages["afterPages"]> = [];
 
   /**
    * Track if we've warned about page-level htmlAttributes to avoid spam.
@@ -106,6 +112,20 @@ export class HeadProvider {
     for (const layer of state.layers) {
       if (layer.route?.head && !layer.error) {
         this.fillHeadByPage(layer.route, state, layer.props ?? {});
+      }
+    }
+
+    if (this.afterPages.length > 0) {
+      const layers = state.layers.map((layer) => ({
+        name: layer.name,
+        params: layer.config?.params,
+        error: layer.error,
+      }));
+      for (const after of this.afterPages) {
+        const head = after({ head: state.head, layers });
+        if (head) {
+          this.mergeHead(state, head);
+        }
       }
     }
 
@@ -362,6 +382,11 @@ interface HeadState {
     route?: HeadRoute;
     props?: Record<string, any>;
     error?: Error;
+    /**
+     * The page's name and matched params, handed to `$head({ afterPages })`.
+     */
+    name?: string;
+    config?: { params?: Record<string, any> };
     /**
      * The layer's matched path, compiled by the router from the route pattern
      * and its params — so `/docs/:slug` arrives here as `/docs/getting-started`,

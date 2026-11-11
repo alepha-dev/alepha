@@ -4,6 +4,7 @@ import { Alepha, type FileLike, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { MemoryFileStorageProvider } from "alepha/bucket";
+import { CloudflareAssetManifest } from "alepha/cli/infra-lib";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
@@ -14,6 +15,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   ArtifactController,
   ArtifactService,
+  ArtifactTarReader,
   DeployAssetCache,
   RegistryTransport,
 } from "../src/api/index.ts";
@@ -142,6 +144,7 @@ describe("artifacts", () => {
       manifest?: unknown;
       file: File;
       maps?: File;
+      assets?: File;
     },
   ) =>
     ctx.artifactController.pushArtifact.fetch(
@@ -155,6 +158,7 @@ describe("artifacts", () => {
           manifest: body.manifest as never,
           file: body.file,
           maps: body.maps,
+          assets: body.assets,
         },
       },
       { user },
@@ -593,27 +597,89 @@ describe("artifacts", () => {
   });
 
   describe("a manifest sent beside the bytes (#Q2681)", () => {
-    it("is recorded instead of the archive's, so the push need not inflate it", async ({
+    it("is refused at push when it disagrees with the archive's own (#Q3388)", async ({
       expect,
     }) => {
-      // The archive says node; the sent manifest says workerd. The row
-      // follows what was sent, which proves the archive was not read. The
-      // deploy is where the two are compared (DeployRunner).
+      // The archive says node; the sent manifest says workerd. Before #Q3388
+      // the row followed what was sent, and the queue, sigil provisioning and
+      // the secret listing all trusted it before any deploy compared it.
       const { owner, projectId } = await aProject();
-      const sent = {
-        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
-      };
+
+      expect(
+        await statusOf(
+          push(projectId, owner, {
+            file: await packedArtifact(),
+            manifest: JSON.stringify({
+              runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+            }),
+          }),
+        ),
+      ).toBe(400);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(0);
+    });
+
+    it("is accepted when it is the archive's own, whatever its key order", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const file = await packedArtifact();
+      const own = (await new ArtifactTarReader().readManifest(
+        new Uint8Array(await file.arrayBuffer()),
+      )) as Record<string, unknown>;
+      const reordered = Object.fromEntries(Object.entries(own).toReversed());
 
       const res = await push(projectId, owner, {
-        file: await packedArtifact(),
-        manifest: JSON.stringify(sent),
+        file,
+        manifest: JSON.stringify(reordered),
       });
 
-      expect(res.data.artifact.runtime).toBe("workerd");
+      expect(res.data.artifact.runtime).toBe("node");
       const [row] = await ctx.rows.artifacts.findMany({
         where: { projectId: { eq: projectId } },
       });
-      expect(JSON.parse(row!.manifest!)).toEqual(sent);
+      expect(JSON.parse(row!.manifest!)).toEqual(own);
+    });
+
+    it("checks a manifest too large for the column, and stores the archive's runtimes", async ({
+      expect,
+    }) => {
+      // Over 64 KB the column drops the document, so the row must still say
+      // what the archive says rather than what a pusher claimed.
+      const { owner, projectId } = await aProject();
+      const variables = Array.from({ length: 2_000 }, (_, i) => ({
+        name: `VARIABLE_${i}`,
+        description: "x".repeat(30),
+      }));
+      const file = await packedArtifact({
+        manifest: {
+          manifestVersion: 2,
+          project: "my-app",
+          runtimes: [{ runtime: "node", entry: "index.node.js" }],
+          variables,
+        },
+      });
+      const own = (await new ArtifactTarReader().readManifest(
+        new Uint8Array(await file.arrayBuffer()),
+      )) as Record<string, unknown>;
+
+      expect(
+        await statusOf(
+          push(projectId, owner, {
+            file,
+            manifest: JSON.stringify({
+              ...own,
+              runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+            }),
+          }),
+        ),
+      ).toBe(400);
+
+      const res = await push(projectId, owner, { file });
+      const [row] = await ctx.rows.artifacts.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+      expect(row!.manifest).toBeUndefined();
+      expect(res.data.artifact.runtime).toBe("node");
     });
 
     it("is refused when it is not JSON or declares no runtime", async ({
@@ -637,6 +703,101 @@ describe("artifacts", () => {
           }),
         ),
       ).toBe(400);
+    });
+  });
+
+  describe("an asset list sent beside the bytes (#Q3381)", () => {
+    const list = (body: unknown) =>
+      new File([JSON.stringify(body)], "assets.json", {
+        type: "application/json",
+      });
+    const valid = {
+      version: 1,
+      assets: [
+        {
+          path: "/index.html",
+          sha256:
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          size: 5,
+          contentType: "text/html; charset=utf-8",
+        },
+        {
+          path: "/_headers",
+          sha256: "a".repeat(64),
+          size: 3,
+          contentType: "application/null",
+        },
+      ],
+      config: { _headers: "/*\n  X: y\n" },
+    };
+
+    it("stores it under this project, with each Cloudflare key derived from the digest", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+        assets: list(valid),
+      });
+
+      const cache = ctx.alepha.inject(DeployAssetCache);
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const sha256 = pushed.data.artifact.sha256;
+      const stored = JSON.parse(
+        await (
+          await storage.download(
+            ArtifactService.BUCKET,
+            cache.pushedKey(projectId, sha256),
+          )
+        ).text(),
+      );
+      const keys = ctx.alepha.inject(CloudflareAssetManifest);
+      expect(stored.source).toBe("push");
+      // The config file listed as an asset is dropped: it travels as text.
+      expect(Object.keys(stored.manifest)).toEqual(["/index.html"]);
+      expect(stored.manifest["/index.html"]).toEqual({
+        hash: await keys.cloudflareKey(valid.assets[0]!.sha256, "/index.html"),
+        size: 5,
+        digest: valid.assets[0]!.sha256,
+      });
+      expect(stored.configTexts).toEqual(valid.config);
+      // Never under the shared key, which only a deploy writes.
+      expect(
+        await storage.exists(ArtifactService.BUCKET, cache.key(sha256)),
+      ).toBe(false);
+    });
+
+    it("refuses a list it cannot read, and stores nothing", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      await expect(
+        push(projectId, owner, {
+          file: await packedArtifact(),
+          assets: list({ version: 1, assets: [{ path: "no-slash" }] }),
+        }),
+      ).rejects.toThrow(/asset list/);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(0);
+    });
+
+    it("drops the pushed list with the build", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+        assets: list(valid),
+      });
+      const cache = ctx.alepha.inject(DeployAssetCache);
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const key = cache.pushedKey(projectId, pushed.data.artifact.sha256);
+      expect(await storage.exists(ArtifactService.BUCKET, key)).toBe(true);
+
+      await ctx.alepha
+        .inject(ArtifactService)
+        .delete((await ctx.rows.artifacts.findById(pushed.data.artifact.id))!);
+
+      expect(await storage.exists(ArtifactService.BUCKET, key)).toBe(false);
     });
   });
 

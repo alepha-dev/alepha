@@ -146,7 +146,7 @@ export class D1MigrationsService {
   ): Promise<string[]> {
     const answer = await api.d1Query(
       databaseId,
-      "SELECT name FROM d1_migrations;",
+      `${D1MigrationsService.BOOKKEEPING} SELECT name FROM d1_migrations;`,
     );
     return answer
       .flatMap((it) => it.results ?? [])
@@ -164,8 +164,10 @@ export class D1MigrationsService {
     migrationsDir = "migrations/sqlite",
   ): Promise<void> {
     const databaseId = await api.resolveD1Id(dbName);
-    await api.d1Query(databaseId, D1MigrationsService.BOOKKEEPING);
-
+    // ⚠️ The bookkeeping table and the names in it, in ONE query (#Q3386):
+    // two round trips on every deploy, nothing changed or not. Read from the
+    // database itself, never from a record kept elsewhere, so a time-travel
+    // restore or a `baseline` that dropped `d1_migrations` is still seen.
     const applied = new Set(await this.appliedNames(api, databaseId));
 
     const dir = this.fs.join(root ?? ".", migrationsDir);

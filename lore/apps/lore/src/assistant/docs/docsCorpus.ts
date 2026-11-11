@@ -536,7 +536,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Agent prompts",
     section: "Agent prompts",
     url: "https://alepha.dev/lore/docs/guides-agent-prompts",
-    text: "Every surface that names a piece of work can hand it to a coding agent. An\n**Agent Prompts** menu appears on epics, quests and feedback, and on the\nQuests page, the feedback inbox and the blights inbox, and a click\ncopies a ready prompt for Claude Code, Codex or anything else that reads a\npaste.\n\n**It starts off.** The switch is **Settings ▸ Quests ▸ Features ▸ Agent prompts**, one\nclick, once, per project. Until you turn it on the menus are not there, and\nthat is deliberate: a project that does not hand work to agents should not\ncarry a menu that does.\n\nNothing is ever sent anywhere. The prompt is rendered in your browser and\nput on your clipboard, and Lore neither transmits it nor keeps a copy of\nwhat you pasted.",
+    text: "Every surface that names a piece of work can hand it to a coding agent. An\n**Agent Prompts** menu appears on epics, quests and feedback, and on the\nQuests page, the feedback inbox and the blights inbox, and a click\ncopies a ready prompt for your coding agent, or anything else that reads a\npaste.\n\n**It starts off.** The switch is **Settings ▸ Quests ▸ Features ▸ Agent prompts**, one\nclick, once, per project. Until you turn it on the menus are not there, and\nthat is deliberate: a project that does not hand work to agents should not\ncarry a menu that does.\n\nNothing is ever sent anywhere. The prompt is rendered in your browser and\nput on your clipboard, and Lore neither transmits it nor keeps a copy of\nwhat you pasted.",
   },
   {
     guide: "Agent prompts",
@@ -955,6 +955,13 @@ export const docsCorpus: DocsSection[] = [
     url: "https://alepha.dev/lore/docs/guides-artifacts#the-flags",
     capability: "apps",
     text: "| Flag        | Default                                       | What it is                                 |\n| ----------- | --------------------------------------------- | ------------------------------------------ |\n| `--project` | `LORE_PROJECT`                                | The project slug, the one in your Lore URL |\n| `--app`     | the slugified `name` from your `package.json` | The name the build is filed under          |\n| `--tag`     | `latest`                                      | The version this build is named by         |\n| `--force`   | off                                           | Move a pinned tag that already holds bytes |\n\n`--project` and `--app` both have answers without you: the project from the\nenvironment, the app from your `package.json`. Pass them when the defaults are\nwrong, which is most often a monorepo publishing several apps from one\npipeline.\n\nAn artifact belongs to an **app**, not to a deployed copy of one. Every\nenvironment of `checkout` lists the same builds, and which one is running\nwhere is the Deploy tab's question.\n\nThere is no `--runtime`. Lore reads it from the artifact's own\n`dist/manifest.json`, because that is the build's own claim ab...",
+  },
+  {
+    guide: "Pushing artifacts",
+    section: "The asset list travels with the build",
+    url: "https://alepha.dev/lore/docs/guides-artifacts#the-asset-list-travels-with-the-build",
+    capability: "apps",
+    text: "Beside the archive, the push sends a list of the build's static assets: every\nfile under `dist/public`, with its SHA-256, its size and its content type. The\nfiles are the ones the archive holds (the same excludes leave out source maps,\n`.DS_Store` and `node_modules`), and `_headers` and `_redirects` travel as\ntheir text.\n\nIt is computed on your machine because it depends only on the build's bytes.\nWithout it, Lore has to unpack and hash every asset again on the first deploy\nof each build, which is most of a deploy's work for a site of thousands of\nfiles. The push logs how long the list took.\n\nThe list is optional both ways. A build pushed by an older CLI deploys\nnormally, and its first deploy computes the list instead. Lore keeps each list\nfor the project that pushed it, and checks the bytes of every asset it uploads\nagainst it, so a wrong list cannot reach another project's deploys.",
   },
   {
     guide: "Pushing artifacts",

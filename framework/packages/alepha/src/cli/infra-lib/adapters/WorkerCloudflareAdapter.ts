@@ -1,6 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { BuildCloudflareTask } from "alepha/cli";
-import { BuildManifestReader } from "alepha/cli";
+import { AssetWalker, BuildManifestReader } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -105,6 +105,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
   protected readonly migrations = $inject(D1MigrationsService);
   protected readonly assetManifest = $inject(CloudflareAssetManifest);
+  protected readonly walker = $inject(AssetWalker);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -149,6 +150,27 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     this.appSecrets = secrets;
     return this;
   }
+
+  /**
+   * What the previous deploy of this copy recorded it provisioned
+   * ({@link provisionedResources}), so `provision` checks each resource by
+   * its id instead of listing the account (#Q3386).
+   *
+   * ⚠️ **A hint, never a fact.** Each id is checked against Cloudflare and
+   * used only when the resource it names still exists under the expected
+   * name; a deleted one falls back to the listing and is recreated.
+   */
+  public withKnownResources(
+    known: Pick<WorkerCloudflareAdapter["provisionedResources"], "d1" | "kv">,
+  ): this {
+    this.knownResources = known;
+    return this;
+  }
+
+  protected knownResources: Pick<
+    WorkerCloudflareAdapter["provisionedResources"],
+    "d1" | "kv"
+  > = {};
 
   /**
    * The set {@link withSecrets} was given, empty until it is called.
@@ -228,7 +250,13 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         handler: async () => {
           // `weur`, as the CLI: without a hint Cloudflare places it near
           // this Worker's colo, which may be anywhere (#Q2954).
-          const database = await api.ensureD1(name, { locationHint: "weur" });
+          const database = await api.ensureD1(name, {
+            locationHint: "weur",
+            knownId:
+              this.knownResources.d1?.name === name
+                ? this.knownResources.d1.id
+                : undefined,
+          });
           // The shape `BuildCloudflareTask.enhanceD1` parses. It is a URL
           // rather than two variables because that is what the task reads and
           // what a node deploy sets.
@@ -255,7 +283,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       tasks.push({
         name: `provision kv (${name})`,
         handler: async () => {
-          const namespace = await api.ensureKV(name);
+          const namespace = await api.ensureKV(name, {
+            knownId:
+              this.knownResources.kv?.name === name
+                ? this.knownResources.kv.id
+                : undefined,
+          });
           if (this.jurisdictionOf()) {
             await this.warnGlobalLeftBehind(api, "kv", ctx.naming.kv());
           }
@@ -495,6 +528,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     // runner answers a string and Lore's shim answers the handler's value.
     let subdomainError: string | undefined;
 
+    // ⚠️ Asked now, beside the upload, and awaited after it (#Q3385): the
+    // account's workers.dev subdomain depends on nothing the deploy does, and
+    // read after the upload it was one more round trip on the critical path.
+    // `getSubdomain` never throws, so an unawaited failure cannot escape.
+    const accountSubdomain = ctx.options.domain
+      ? undefined
+      : this.deployer().getSubdomain();
+
     // Recorded before the upload rather than after: a Worker that half-uploads
     // still exists at Cloudflare, and a teardown that cannot name it is how an
     // orphan becomes permanent.
@@ -589,7 +630,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       return `https://${ctx.options.domain}`;
     }
 
-    return await this.workersDevUrl(worker, subdomainError, run);
+    return await this.workersDevUrl(
+      worker,
+      subdomainError,
+      run,
+      accountSubdomain,
+    );
   }
 
   /**
@@ -623,6 +669,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     worker: string,
     subdomainError: string | undefined,
     run: RunnerMethod,
+    accountSubdomain?: Promise<string | undefined>,
   ): Promise<string | undefined> {
     if (subdomainError) {
       await run({
@@ -636,7 +683,8 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     await run({
       name: "resolve workers.dev address",
       handler: async () => {
-        const subdomain = await this.deployer().getSubdomain();
+        const subdomain = await (accountSubdomain ??
+          this.deployer().getSubdomain());
         if (subdomain) {
           url = `https://${worker}.${subdomain}.workers.dev`;
         }
@@ -765,13 +813,11 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     const manifest: Record<string, CloudflareAssetEntry> = {};
     const paths = new Map<string, string>();
     const texts: Record<string, string> = {};
-    for (const entry of await this.fs.ls(root, { recursive: true })) {
+    // ⚠️ Through the shared walker, with pack's excludes (#Q3378): a walk of
+    // its own uploaded `*.map` and `.DS_Store`, which a Lore deploy of the same
+    // build never sees because the archive left them out.
+    for (const entry of await this.walker.walk(root)) {
       const path = this.fs.join(root, entry);
-      // ⚠️ A recursive listing names directories too on the node provider,
-      // and reading one is an error rather than an empty file.
-      if (!(await this.fs.stat(path)).isFile) {
-        continue;
-      }
       const bytes = new Uint8Array(await this.fs.readFile(path));
       const key = this.assetManifest.key(entry);
       // ⚠️ Configuration, not a page: its text goes in the asset config and
@@ -784,7 +830,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         continue;
       }
       manifest[key] = {
-        hash: this.assetManifest.hash(bytes, entry),
+        hash: await this.assetManifest.hash(bytes, entry),
         size: bytes.length,
       };
       paths.set(key, path);

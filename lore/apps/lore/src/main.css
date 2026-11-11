@@ -546,7 +546,12 @@ body::before {
 .theme-lavandula {
   /* Text stays the neutral Geist: this theme's voice is the heading, and
    * setting the body in a display face as well would make it unreadable.
-   * The mono is the default JetBrains Mono, inherited rather than restated. */
+   * Stated here since the default moved to Inter: inherited, it named a face
+   * `lavandula.css` does not carry. The mono is the default JetBrains Mono,
+   * inherited rather than restated. */
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --font-heading: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --radius: 0.25rem;
   --heading-tracking: 0.08em;

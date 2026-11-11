@@ -4,12 +4,15 @@ import { useState } from "react";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationAdoptionCard from "./AutomationAdoptionCard.tsx";
 import AutomationPage from "./AutomationPage.tsx";
 
 const AutomationAdoptionPage = () => {
   const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
+  // The trail ends with this page (#Q3408).
+  usePageCrumb("projectAutomationAdoption", tr("automation.adoption.title"));
   const [busy, setBusy] = useState(false);
   if (!project) return null;
   return (

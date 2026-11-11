@@ -192,7 +192,7 @@ export const artifacts = $entity({
      * ⚠️ **Absent for an image**: Lore stores a reference, never bytes. A
      * reader that fetches by this must check the format first - the compiler
      * points at both of them (`EstatePullController.pullArtifact` and
-     * `DeployRunner.artifactBytes`), and neither should be silenced with a
+     * `DeployRunner.artifactStream`), and neither should be silenced with a
      * cast.
      */
     fileId: z.uuid().optional(),

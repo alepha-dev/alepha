@@ -6,7 +6,13 @@
  *
  * @module
  */
-export { packedArtifact, type TarEntry, gzip, tar } from "./artifactTarball.ts";
+export {
+  packedArtifact,
+  type TarEntry,
+  gzip,
+  tar,
+  zstd,
+} from "./artifactTarball.ts";
 export { DeployTestEntities } from "./entities.ts";
 export { MemoryCloudflareProbeService } from "./MemoryCloudflareProbeService.ts";
 export {

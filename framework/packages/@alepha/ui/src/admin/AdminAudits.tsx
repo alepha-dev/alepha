@@ -10,6 +10,7 @@ import type {
   AuditActionPair,
   AuditEntity,
 } from "alepha/api/audits";
+import type { AdminUserController } from "alepha/api/users";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -36,6 +37,7 @@ import { useConfirmedAction } from "./useConfirmedAction.tsx";
 
 export const AdminAudits = () => {
   const client = useClient<AdminAuditController>();
+  const userClient = useClient<AdminUserController>();
   const toast = useToast();
   const router = useRouter<any>();
   const { tr } = useI18n();
@@ -129,6 +131,47 @@ export const AdminAudits = () => {
         clearLabel: tr("admin.audits.actionAll", { default: "All actions" }),
       },
     },
+    /**
+     * Every action of one user (#Q3432). A server-searched user picker: the
+     * list of users is not all here, and `resolve` names the one already
+     * picked, from a shared link or the stored filters. Hidden for an admin
+     * who may not list users, whose picker could only come up empty.
+     */
+    userId: {
+      schema: z.string(),
+      label: tr("admin.audits.colActor", { default: "Actor" }),
+      icon: User,
+      column: "actor",
+      hidden: !userClient.findUsers.can(),
+      control: {
+        clearLabel: tr("admin.audits.actorAll", { default: "All actors" }),
+        searchable: true,
+        loaderThreshold: 0,
+        // `items` as a function is the select's loader; its second argument
+        // asks for the labels of values already picked.
+        items: async (search: string, resolve?: string[]) => {
+          const label = (u: {
+            id: string;
+            email?: string;
+            username?: string;
+          }) => u.email || u.username || u.id;
+          if (resolve?.length) {
+            const users = await Promise.all(
+              resolve.map((id) =>
+                userClient.getUser({ params: { id } }).catch(() => undefined),
+              ),
+            );
+            return users
+              .filter((u) => u !== undefined)
+              .map((u) => ({ value: u.id, label: label(u) }));
+          }
+          const page = await userClient.findUsers({
+            query: { search: search || undefined, size: 20 },
+          });
+          return page.content.map((u) => ({ value: u.id, label: label(u) }));
+        },
+      },
+    },
   } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
@@ -153,6 +196,7 @@ export const AdminAudits = () => {
           type: pair?.type,
           action: pair?.action,
           layer: f?.layer,
+          userId: f?.userId || undefined,
           success: f?.status ? f.status === "ok" : undefined,
           // A day resolved to an instant, in UTC. The reader arguably means
           // their local day, but the server is not told their offset and UTC

@@ -26,6 +26,7 @@ import {
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
+import { BackchannelLogoutRegistry } from "../services/BackchannelLogoutRegistry.ts";
 import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 /**
@@ -50,15 +51,18 @@ import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
  *     }
  *   });
  *
- *   // External OIDC provider
+ *   // External OIDC provider: no user table, the provider's tokens are the
+ *   // session. The callback is served at `/oauth/callback`.
  *   keycloak = $auth({
  *     oidc: {
- *       issuer: "https://auth.example.com",
+ *       issuer: "https://auth.example.com/realms/acme",
  *       clientId: "my-app",
  *       clientSecret: "secret",
- *       redirectUri: "/auth/callback"
  *     }
  *   });
+ *
+ *   // Verifies the provider's tokens, from its discovery.
+ *   keycloakIssuer = $issuer({ oidc: () => this.keycloak });
  * }
  * ```
  */
@@ -212,6 +216,21 @@ export interface OidcOptions {
   responseMode?: "query" | "fragment" | "form_post";
 
   /**
+   * Accept OpenID Connect Back-Channel Logout 1.0 from this provider: it
+   * posts a signed logout token to
+   * `/oauth/backchannel-logout?provider=<name>` when a session ends there
+   * (an administrator ended it, or the user signed out of another app of
+   * the realm), and the session cookie it names is signed out on its next
+   * request.
+   *
+   * Only for a provider with no `issuer`, whose cookie holds the provider's
+   * own tokens. Turning it on declares a `$cache` (the denylist): with the
+   * memory cache a logout reaches one process, two instances need
+   * `REDIS_URL`. Off, the route answers 404 and nothing runs per request.
+   */
+  backchannelLogout?: boolean;
+
+  /**
    * Additional parameters to include in the authorization URL.
    * Useful for provider-specific parameters.
    */
@@ -280,17 +299,17 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
-  protected oauthConfig?: OAuthClientConfiguration;
-  protected oauthInitializer?: () => Promise<OAuthClientConfiguration>;
+  protected oauthConfig?: Configuration;
+  protected oauthInitializer?: () => Promise<Configuration>;
 
-  public get oauth(): OAuthClientConfiguration | undefined {
+  public get oauth(): Configuration | undefined {
     return this.oauthConfig;
   }
 
   /**
    * Get the OAuth2/OIDC configuration, initializing lazily if needed (serverless mode).
    */
-  public async getOAuth(): Promise<OAuthClientConfiguration | undefined> {
+  public async getOAuth(): Promise<Configuration | undefined> {
     if (this.oauthConfig) {
       return this.oauthConfig;
     }
@@ -308,6 +327,25 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     return this.options.name ?? this.config.propertyKey;
   }
 
+  /**
+   * Whether this provider accepts back-channel logout: opted in, and with
+   * no `issuer`, so its cookie holds the provider's own session.
+   */
+  public get backchannelLogout(): boolean {
+    return (
+      "oidc" in this.options &&
+      !("issuer" in this.options) &&
+      this.options.oidc.backchannelLogout === true
+    );
+  }
+
+  protected onInit() {
+    // The denylist and its `$cache` exist only for an app that opts in.
+    if (this.backchannelLogout) {
+      this.alepha.inject(BackchannelLogoutRegistry);
+    }
+  }
+
   public get issuer(): IssuerPrimitive | undefined {
     if ("issuer" in this.options) {
       return this.options.issuer;
@@ -315,12 +353,21 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     return undefined;
   }
 
-  public get jwks_uri(): string {
-    const jwks = this.oauth?.serverMetadata().jwks_uri;
-    if (!jwks) {
-      throw new AlephaError("No JWKS URI available for the auth provider");
+  /**
+   * The client id this app is registered under at the provider. What a
+   * federated `$issuer({ oidc: () => this.provider })` expects in a token's
+   * `aud`, or else its `azp`.
+   */
+  public get clientId(): string {
+    if ("oidc" in this.options) {
+      return this.options.oidc.clientId;
     }
-    return jwks;
+    if ("oauth" in this.options) {
+      return this.options.oauth.clientId;
+    }
+    throw new AlephaError(
+      `Auth provider '${this.name}' is not an OAuth2 or OIDC client`,
+    );
   }
 
   public get scope(): string | undefined {
@@ -373,7 +420,7 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
       try {
         return {
           ...this.tokenNormalizer.normalize(
-            await refreshTokenGrant(oauth as Configuration, refreshToken),
+            await refreshTokenGrant(oauth, refreshToken),
           ),
           issued_at: this.dateTimeProvider.now().unix(),
         };
@@ -588,22 +635,4 @@ export interface WithSecondFactorFn {
     method: SecondFactorMethod,
     code: string,
   ) => Async<boolean>;
-}
-
-/**
- * The OAuth2/OIDC client configuration of an auth provider, as the public API
- * sees it.
- *
- * It is an `openid-client` `Configuration` at runtime. openid-client is
- * bundled into `alepha`, so a consumer has no `openid-client` for a
- * declaration file to import from: the members name this instead, and the
- * framework casts it back where it calls openid-client.
- */
-export interface OAuthClientConfiguration {
-  serverMetadata(): {
-    issuer: string;
-    jwks_uri?: string;
-    end_session_endpoint?: string;
-    supportsPKCE(method?: string): boolean;
-  };
 }

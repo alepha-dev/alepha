@@ -40,6 +40,7 @@ class Sink {
     manifest?: unknown;
     filename: string;
     bytes: string;
+    assets?: string;
   };
 
   public push = $action({
@@ -54,6 +55,7 @@ class Sink {
         force: z.boolean().optional(),
         manifest: z.record(z.text(), z.any()).optional(),
         file: z.file(),
+        assets: z.file().optional(),
       }),
       response: z.object({
         artifact: z.object({
@@ -81,6 +83,7 @@ class Sink {
         manifest: body.manifest,
         filename: body.file.name,
         bytes: await body.file.text(),
+        assets: body.assets ? await body.assets.text() : undefined,
       };
 
       return {
@@ -188,6 +191,26 @@ describe("ArtifactUploader", () => {
    * and gzip would only complain later, on the server, about "not a gzip
    * archive".
    */
+  it("delivers the asset list as its own JSON part after the archive (#Q3381)", async () => {
+    const list = JSON.stringify({
+      version: 1,
+      assets: [
+        { path: "/a.js", sha256: "c".repeat(64), size: 1, contentType: "x" },
+      ],
+      config: {},
+    });
+    const ctx = await upload({ assets: list });
+
+    expect(ctx.sink.received?.assets).toBe(list);
+    expect(ctx.sink.received?.bytes).toBe("a packed artifact");
+  });
+
+  it("sends no asset part when there is no list", async () => {
+    const ctx = await upload();
+
+    expect(ctx.sink.received?.assets).toBeUndefined();
+  });
+
   it("delivers bytes that span several chunks unchanged", async () => {
     const content = "0123456789".repeat(50_000);
     const ctx = await upload({}, content);

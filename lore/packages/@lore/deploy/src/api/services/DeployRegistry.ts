@@ -55,6 +55,20 @@ export class DeployRegistry {
    */
   public static readonly MAX_LOG_LINES = 200;
 
+  protected forget(deploymentId: string | undefined): void {
+    if (deploymentId) {
+      this.open.delete(deploymentId);
+      this.startedHere.delete(deploymentId);
+    }
+  }
+
+  /**
+   * The runs this process has started, so a second `started` for one is a
+   * no-op. Kept apart from the open logs: a line written while a run is still
+   * queued (waiting for a slot) opens its log without starting it.
+   */
+  protected readonly startedHere = new Set<string>();
+
   /**
    * The run is picked up: status `running`, and a first line saying how long
    * it waited in the queue.
@@ -65,6 +79,18 @@ export class DeployRegistry {
    * through all the same.
    */
   public async started(deploymentId?: string): Promise<void> {
+    // Already started by this process (`DeployService.run` starts the row the
+    // moment it takes a slot, then the runner asks again): once is the line.
+    if (deploymentId && this.startedHere.has(deploymentId)) {
+      return;
+    }
+    if (deploymentId) {
+      this.startedHere.add(deploymentId);
+      if (this.startedHere.size > DeployRegistry.MAX_OPEN_LOGS) {
+        const oldest = this.startedHere.values().next().value;
+        if (oldest !== undefined) this.startedHere.delete(oldest);
+      }
+    }
     const now = this.dateTime.nowMillis();
     await this.patch(deploymentId, {
       status: "running",
@@ -75,6 +101,10 @@ export class DeployRegistry {
     }
     try {
       const row = await this.rows.findById(deploymentId);
+      if (row) {
+        // Seeds the run's log, so no later line reads the row again.
+        this.remember(deploymentId, row.log ?? [], row.startedAt);
+      }
       const queuedAt = row?.createdAt ? Date.parse(row.createdAt) : Number.NaN;
       if (Number.isFinite(queuedAt)) {
         await this.line(
@@ -94,6 +124,7 @@ export class DeployRegistry {
     if (outcome.url) {
       await this.line(deploymentId, `Deployed to ${outcome.url}`);
     }
+    this.forget(deploymentId);
     return this.patch(deploymentId, {
       status: "succeeded",
       url: outcome.url,
@@ -109,6 +140,7 @@ export class DeployRegistry {
     if (reason) {
       await this.line(deploymentId, `Failed: ${reason}`);
     }
+    this.forget(deploymentId);
     return this.patch(deploymentId, {
       status: "failed",
       error: reason?.slice(0, 2_000),
@@ -118,6 +150,7 @@ export class DeployRegistry {
 
   public async cancelled(deploymentId?: string): Promise<void> {
     await this.line(deploymentId, "Cancelled");
+    this.forget(deploymentId);
     await this.patch(deploymentId, {
       status: "cancelled",
       finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
@@ -125,12 +158,19 @@ export class DeployRegistry {
   }
 
   /**
-   * One line, appended.
+   * One line, appended: one D1 write (#Q3384).
    *
-   * ⚠️ Read-modify-write, and it does not need a lock: a deploy is one job
-   * execution writing its own row, and two runs against one instance are two
-   * rows. A lost line under a race would be a gap in a log, which is the
-   * failure this method is already allowed to have.
+   * ⚠️ **The log is kept in memory for the run, and written whole.** It used
+   * to read the row before every line, so a deploy of a dozen lines paid ~24
+   * round trips on its critical path. The first line of a run reads the row
+   * once (or {@link started} seeds it); every later line appends in memory and
+   * writes the bounded log back. Every line is still written as it happens,
+   * so a run killed mid-deploy shows how far it got.
+   *
+   * ⚠️ It needs no lock: a deploy is one job execution writing its own row,
+   * and two runs against one instance are two rows. A line some other
+   * process appended meanwhile would be overwritten, which is a gap in a log,
+   * the failure this method is already allowed to have.
    */
   public async line(
     deploymentId: string | undefined,
@@ -141,21 +181,50 @@ export class DeployRegistry {
       return;
     }
     try {
-      // Only what the append needs, by primary key (#Q2682).
-      const [row] = await this.rows.findMany({
-        columns: ["log", "startedAt"],
-        where: { id: { eq: deploymentId } },
-        limit: 1,
-      });
-      if (!row) {
-        return;
+      let open = this.open.get(deploymentId);
+      if (!open) {
+        // Only what the append needs, by primary key (#Q2682).
+        const [row] = await this.rows.findMany({
+          columns: ["log", "startedAt"],
+          where: { id: { eq: deploymentId } },
+          limit: 1,
+        });
+        if (!row) {
+          return;
+        }
+        open = this.remember(deploymentId, row.log ?? [], row.startedAt);
       }
-      await this.rows.updateById(deploymentId, {
-        log: this.appended(row.log ?? [], this.timed(row.startedAt, text)),
-      });
+      open.log = this.appended(open.log, this.timed(open.startedAt, text));
+      await this.rows.updateById(deploymentId, { log: open.log });
     } catch (error) {
       this.log.warn("Could not record a deploy log line", { error });
     }
+  }
+
+  /**
+   * The logs of the runs this process is writing, by deployment id. Dropped
+   * at the run's terminal state; bounded, so a run that never reaches one
+   * (its isolate killed) cannot make it grow.
+   */
+  protected readonly open = new Map<
+    string,
+    { log: DeployLogLine[]; startedAt?: string }
+  >();
+
+  protected static readonly MAX_OPEN_LOGS = 64;
+
+  protected remember(
+    deploymentId: string,
+    log: DeployLogLine[],
+    startedAt?: string,
+  ): { log: DeployLogLine[]; startedAt?: string } {
+    if (this.open.size >= DeployRegistry.MAX_OPEN_LOGS) {
+      const oldest = this.open.keys().next().value;
+      if (oldest !== undefined) this.open.delete(oldest);
+    }
+    const entry = { log, startedAt };
+    this.open.set(deploymentId, entry);
+    return entry;
   }
 
   /**

@@ -15,7 +15,7 @@ import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
 import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
-import { DeployRunner } from "./DeployRunner.ts";
+import { type DeployRequest, DeployRunner } from "./DeployRunner.ts";
 import { EstateCommandService } from "./EstateCommandService.ts";
 import { EstateService } from "./EstateService.ts";
 import { ResourceNameService } from "./ResourceNameService.ts";
@@ -301,6 +301,11 @@ export class DeployService {
 
     this.running++;
     try {
+      // ⚠️ **"Started" the moment the slot is taken** (#Q3387), before the
+      // gate, the artifact read, the name and the secrets: that pre-work used
+      // to be counted as queue wait, so the log blamed the queue for Lore's
+      // own work. The runner's own `started` is then a no-op.
+      await this.registry.started(row.id);
       const instance = await this.instances.findById(row.instanceId);
       if (!instance) {
         throw new BadRequestError(
@@ -377,6 +382,7 @@ export class DeployService {
           env: instance.env,
           domain: instance.url ? new URL(instance.url).host : undefined,
           deploymentId: row.id,
+          known: this.knownResourcesOf(instance.resources),
           // ⚠️ Opened at the last possible moment, and NOT before the gate:
           // a run that is going to be refused must not decrypt anything.
           // `open` refuses the whole deploy if any row fails to open, because
@@ -615,6 +621,32 @@ export class DeployService {
    * guarantees is that the ROW reaches a terminal state, which is what stops
    * the UI following a deploy forever.
    */
+  /**
+   * The D1 and KV ids the copy's last deploy recorded, for `provision` to
+   * check by id instead of listing the estate's account (#Q3386).
+   *
+   * Only a hint: anything unreadable answers nothing, and the provision
+   * client verifies every id it is given against Cloudflare.
+   */
+  protected knownResourcesOf(
+    resources: string | undefined,
+  ): DeployRequest["known"] {
+    if (!resources) return {};
+    try {
+      const parsed = JSON.parse(resources) as Record<string, unknown>;
+      const pick = (value: unknown) =>
+        value &&
+        typeof value === "object" &&
+        typeof (value as { name?: unknown }).name === "string" &&
+        typeof (value as { id?: unknown }).id === "string"
+          ? (value as { name: string; id: string })
+          : undefined;
+      return { d1: pick(parsed.d1), kv: pick(parsed.kv) };
+    } catch {
+      return {};
+    }
+  }
+
   protected async withTimeout<T>(
     row: Deployment,
     work: Promise<T>,

@@ -5,6 +5,7 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { buildOptions } from "../atoms/buildOptions.ts";
 import { ArchiveCompressor } from "./ArchiveCompressor.ts";
+import { AssetWalker } from "./AssetWalker.ts";
 import { BuildManifestReader } from "./BuildManifestReader.ts";
 
 export interface WorkspacePackOptions {
@@ -158,37 +159,25 @@ export class WorkspacePacker {
   protected static readonly CANDIDATES = ["dist", "migrations"];
 
   /**
-   * Paths that slip in via `dist/` and must not reach the archive.
+   * Paths that slip in via `dist/` and must not reach the archive:
+   * {@link AssetWalker.EXCLUDES}, the one list every reader of a build's
+   * assets shares (#Q3378), so a laptop deploy and a Lore deploy of one build
+   * upload the same files.
    *
-   * ⚠️ **`*.map` is here, so this changes what EVERY `alepha pack` produces**,
-   * not only what Lore stores. Deliberate: no runtime reads a source map out
-   * of a tarball, and Cloudflare treats them as a separate opt-in
-   * (`upload_source_maps`). Measured on Lore's `dist`, 266 of 267 server JS
-   * files had a sibling map and they were roughly 5 MB of a 6.4 MB gzipped
-   * archive - a 4x on every push, every pull and every stored version.
-   *
-   * ⚠️ **They are not discarded**, which is the part that makes the exclusion
-   * safe: {@link packMaps} writes them to a sibling archive in the same call,
-   * so an error report stays symbolicable by whatever reads them later. Adding
-   * a pattern here without a route for what it removes is how a diagnostic
-   * quietly stops existing.
+   * ⚠️ **`*.map` is on it, so this changes what EVERY `alepha pack`
+   * produces**. Measured on Lore's `dist`, 266 of 267 server JS files had a
+   * sibling map and they were roughly 5 MB of a 6.4 MB gzipped archive - a 4x
+   * on every push, every pull and every stored version. They are not
+   * discarded: {@link packMaps} writes them to a sibling archive in the same
+   * call, so an error report stays symbolicable.
    *
    * The entries are `tar` arguments, expanded by `tar` and not by the shell -
    * each is single-quoted at the call site, so an unquoted `*.map` cannot be
    * expanded against the cwd first. `--exclude='*.map'` matches at any depth
-   * in GNU and BSD tar alike.
+   * in GNU and BSD tar alike, which is the rule `AssetWalker.isExcluded`
+   * reproduces.
    */
-  protected static readonly EXCLUDES = [
-    "node_modules",
-    ".DS_Store",
-    "._*",
-    ".alepha",
-    "e2e",
-    "playwright-report",
-    "test-results",
-    "coverage",
-    "*.map",
-  ];
+  protected static readonly EXCLUDES = AssetWalker.EXCLUDES;
 
   /**
    * Make a package name safe to use as a filename.

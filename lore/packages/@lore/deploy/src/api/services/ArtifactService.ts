@@ -10,6 +10,10 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
+import {
+  type ArtifactAssetList,
+  artifactAssetListSchema,
+} from "../schemas/artifactAssetListSchema.ts";
 import type { ArtifactManifest } from "../schemas/artifactManifestSchema.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
@@ -66,6 +70,64 @@ export class ArtifactService {
    * build worth returning to is a build worth pinning a real tag on.
    */
   public async push(input: ArtifactPushInput): Promise<ArtifactPushResult> {
+    // Read before anything is stored, so a malformed list refuses the push
+    // rather than leaving an archive without the list its pusher meant.
+    const assets = input.assets
+      ? await this.assetListOf(input.assets)
+      : undefined;
+    const result = await this.storeArchive(input);
+    // ⚠️ After the row, and on every path, the idempotent re-push included:
+    // the list is keyed by the archive's digest and this project, so storing
+    // it again for the same bytes is harmless and repairs a missing one.
+    if (assets) {
+      await this.assetCache.storePushed(
+        ArtifactService.BUCKET,
+        input.projectId,
+        result.artifact.sha256,
+        assets,
+      );
+    }
+    return result;
+  }
+
+  /**
+   * The asset list a push carried (#Q3381), validated.
+   *
+   * ⚠️ A 400 when it is not one, rather than a push that silently drops it:
+   * the pusher meant the deploy to use it, and a CLI that writes a list this
+   * Lore cannot read should be told.
+   */
+  protected async assetListOf(file: FileLike): Promise<ArtifactAssetList> {
+    if (file.size > ArtifactService.MAX_ASSET_LIST_BYTES) {
+      throw new BadRequestError(
+        "The asset list sent with this push is larger than this registry reads.",
+      );
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      throw new BadRequestError(
+        "The asset list sent with this push is not valid JSON.",
+      );
+    }
+    const list = artifactAssetListSchema.safeParse(parsed);
+    if (!list.success) {
+      throw new BadRequestError(
+        "The asset list sent with this push is not one this Lore can read. Push without it, or with a current `lore` CLI.",
+      );
+    }
+    return list.data;
+  }
+
+  /**
+   * The largest asset list a push may carry: ~25,000 assets.
+   */
+  protected static readonly MAX_ASSET_LIST_BYTES = 4 * 1024 * 1024;
+
+  protected async storeArchive(
+    input: ArtifactPushInput,
+  ): Promise<ArtifactPushResult> {
     const app = this.normalizeApp(input.app);
     const tag = this.normalizeTag(input.tag);
 
@@ -75,14 +137,25 @@ export class ArtifactService {
     }
 
     const sha256 = await this.digest(bytes);
-    // ⚠️ A manifest sent beside the bytes is taken instead of inflating the
-    // archive to find one (#Q2681). Inflating costs a 32 MiB zstd window on
-    // top of the body's own copies, inside a 128 MB isolate, and Lore's own
-    // two-runtime push was billed 4 to 11 s of CPU for it. The archive's copy
-    // is still the authority: `DeployRunner` compares the two after the
-    // unpack and refuses a deploy where they differ. A client that sends no
-    // manifest (older CLIs) gets the scan, as before.
-    const manifest = input.manifest ?? (await this.reader.readManifest(bytes));
+    // ⚠️ **The archive's own manifest, always, checked against the one sent
+    // beside it** (#Q3388). Until then a sent manifest was taken instead of
+    // reading the archive (#Q2681), and it decided runtime and estate
+    // matching, the `runtimes` column, sigil provisioning and the secrets
+    // listed for the copy before any deploy compared it with the bytes; a Bay
+    // deploy never compared it at all. Reading it is cheap now: native zstd,
+    // stopping at the manifest, which `alepha pack` writes near the front.
+    // So the row only ever holds what the archive says, whatever its size:
+    // one too large for the column is still checked here, and dropped from
+    // the column rather than kept unverified.
+    const manifest = await this.reader.readManifest(bytes);
+    if (
+      input.manifest &&
+      this.canonical(input.manifest) !== this.canonical(manifest)
+    ) {
+      throw new BadRequestError(
+        `The manifest sent with this push does not match the ${ArtifactTarReader.MANIFEST_PATH} inside the archive. Push the build again, from one \`alepha build\`.`,
+      );
+    }
 
     const runtimes: string[] = manifest.runtimes.map((slice) => slice.runtime);
     const primary = runtimes[0];
@@ -478,7 +551,11 @@ export class ArtifactService {
         Boolean(id),
       ),
     );
-    await this.assetCache.remove(ArtifactService.BUCKET, existing.sha256);
+    await this.assetCache.remove(
+      ArtifactService.BUCKET,
+      existing.sha256,
+      existing.projectId,
+    );
     return updated;
   }
 
@@ -523,6 +600,22 @@ export class ArtifactService {
    * "unknown" to every reader, which is exactly what an unstorable manifest
    * is.
    */
+  /**
+   * JSON with every object's keys sorted, so two serialisations of one
+   * document compare equal.
+   */
+  protected canonical(value: unknown): string {
+    return JSON.stringify(value, (_key, entry: unknown) =>
+      entry && typeof entry === "object" && !Array.isArray(entry)
+        ? Object.fromEntries(
+            Object.entries(entry as Record<string, unknown>).sort(([a], [b]) =>
+              a < b ? -1 : a > b ? 1 : 0,
+            ),
+          )
+        : entry,
+    );
+  }
+
   protected serialise(manifest: ArtifactManifest): string | undefined {
     // `surface`, the build list of controllers and primitives (#Q3401), is
     // left out of the column: it runs past 64 KB on Lore itself (136 KB,
@@ -677,7 +770,11 @@ export class ArtifactService {
    */
   public async delete(artifact: Artifact): Promise<void> {
     await this.rows.deleteById(artifact.id);
-    await this.assetCache.remove(ArtifactService.BUCKET, artifact.sha256);
+    await this.assetCache.remove(
+      ArtifactService.BUCKET,
+      artifact.sha256,
+      artifact.projectId,
+    );
     await this.files.deleteFiles(
       [artifact.fileId, artifact.mapsFileId].filter((id): id is string =>
         Boolean(id),
@@ -850,6 +947,11 @@ export interface ArtifactPushInput {
    * included, so it needs no lifecycle of its own.
    */
   maps?: FileLike;
+  /**
+   * The asset list the pusher's CLI computed (#Q3381), JSON. Optional: an
+   * older CLI sends none, and the first deploy computes the list instead.
+   */
+  assets?: FileLike;
 }
 
 export interface ArtifactImagePushInput {

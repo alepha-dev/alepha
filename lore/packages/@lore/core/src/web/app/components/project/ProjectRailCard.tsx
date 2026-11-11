@@ -30,14 +30,15 @@ export interface ProjectRailCardProps {
  * What the project rail shows on hover (#Q3370): the project's image, its
  * name, and its repository when one is set.
  *
- * The repository line follows `HeaderRepositoryButton`'s rules: the GitHub
+ * The repository line keeps the rules of the header button it replaced: the GitHub
  * mark only for a GitHub host, a neutral branch icon for any other, and no
  * line at all for a stored value that does not parse as a URL. It shows the
  * path (`owner/repo`) rather than the whole URL, which the card is too narrow
  * for and which says nothing more.
  *
- * Account > Projects draws each row with it too (#Q3411), `compact`, so the
- * list and the rail show a project the same way.
+ * Account > Projects draws each row with it too (#Q3411), and the project
+ * sidebar its header (#Q3420), both `compact`, so the three show a project
+ * the same way.
  */
 export const ProjectRailCard = (props: ProjectRailCardProps) => {
   const repository = parseRepository(props.project.repositoryUrl);
@@ -81,6 +82,8 @@ export const ProjectRailCard = (props: ProjectRailCardProps) => {
             target="_blank"
             rel="noreferrer noopener"
             data-testid="project-rail-card-repository"
+            // The host is the part of the destination an icon cannot say.
+            aria-label={`${repository.label} (${repository.host})`}
             // Never the row's own click, where a caller's row navigates.
             onClick={(event) => event.stopPropagation()}
             className="text-muted-foreground hover:text-foreground flex min-w-0 items-center gap-1.5 text-xs"
@@ -110,5 +113,5 @@ const parseRepository = (url?: string | null) => {
   // Endswith rather than includes, so `github.com.example.org` is not GitHub.
   const github = host === "github.com" || host.endsWith(".github.com");
   const path = parsed.pathname.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
-  return { url, github, label: path || host };
+  return { url, github, host, label: path || host };
 };

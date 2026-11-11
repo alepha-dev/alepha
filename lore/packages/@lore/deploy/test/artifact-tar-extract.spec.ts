@@ -3,7 +3,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
 import { ArtifactTarReader } from "../src/api/index.ts";
-import { gzip, tar } from "../src/testing/index.ts";
+import { gzip, tar, zstd } from "../src/testing/index.ts";
 
 /**
  * Unpacking an artifact into the filesystem a deploy builds against (#288).
@@ -273,5 +273,82 @@ describe("unpacking an artifact", () => {
     );
 
     expect(manifest.runtimes[0]?.runtime).toBe("workerd");
+  });
+
+  describe("from a stream (#Q3380)", () => {
+    /**
+     * An R2 body arrives as chunks of whatever size the transport chose, so
+     * the magic can straddle two of them and the walk must not care.
+     */
+    const chunked = (bytes: Uint8Array, size: number) =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (let offset = 0; offset < bytes.length; offset += size) {
+            controller.enqueue(bytes.slice(offset, offset + size));
+          }
+          controller.close();
+        },
+      });
+
+    const entries = {
+      "index.node.js": "console.log(1);",
+      "manifest.json": JSON.stringify({
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+      }),
+      "public/app.js": "x".repeat(70_000),
+    };
+
+    it("unpacks a zstd stream fed one byte at a time at its head", async ({
+      expect,
+    }) => {
+      const { fs, reader } = setup();
+      const bytes = await zstd(tar(entries));
+
+      const result = await reader.extract(chunked(bytes, 3), fs, "/deploy");
+
+      expect(result.files).toBe(3);
+      expect(await fs.readTextFile("/deploy/public/app.js")).toHaveLength(
+        70_000,
+      );
+    });
+
+    it("unpacks a gzip stream the same way", async ({ expect }) => {
+      const { fs, reader } = setup();
+      const bytes = await gzip(tar(entries));
+
+      await reader.extract(chunked(bytes, 1024), fs, "/deploy");
+
+      expect(await fs.readTextFile("/deploy/index.node.js")).toBe(
+        "console.log(1);",
+      );
+    });
+
+    it("reads a manifest from a stream and stops early", async ({ expect }) => {
+      const { reader } = setup();
+      const manifest = await reader.readManifest(
+        chunked(await zstd(tar(entries)), 4096),
+      );
+
+      expect(manifest.runtimes[0]?.runtime).toBe("workerd");
+    });
+
+    it("refuses a frame declaring a window past 32 MiB", async ({ expect }) => {
+      // Streamed with no pledged size, so the frame declares the whole
+      // 128 MiB window instead of shrinking it to the input.
+      const { constants, createZstdCompress } = await import("node:zlib");
+      const compressor = createZstdCompress({
+        params: { [constants.ZSTD_c_windowLog]: 27 },
+      });
+      const out: Uint8Array[] = [];
+      compressor.on("data", (chunk: Uint8Array) => out.push(chunk));
+      const done = new Promise((resolve) => compressor.on("end", resolve));
+      compressor.end(tar(entries));
+      await done;
+      const { fs, reader } = setup();
+
+      await expect(
+        reader.extract(new Uint8Array(Buffer.concat(out)), fs, "/deploy"),
+      ).rejects.toThrow(/could not be decompressed/);
+    });
   });
 });

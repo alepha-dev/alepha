@@ -2,7 +2,7 @@ import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
-import type { Head } from "../interfaces/Head.ts";
+import type { Head, HeadAfterPages } from "../interfaces/Head.ts";
 import { HeadProvider } from "../providers/HeadProvider.ts";
 
 /**
@@ -14,7 +14,7 @@ export const $head = (options: HeadPrimitiveOptions) => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type HeadPrimitiveOptions = Head | (() => Head);
+export type HeadPrimitiveOptions = Head | (() => Head) | HeadAfterPages;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -26,6 +26,10 @@ export class HeadPrimitive extends Primitive<HeadPrimitiveOptions> {
 
   protected readonly provider = $inject(HeadProvider);
   protected onInit() {
+    if (typeof this.options === "object" && "afterPages" in this.options) {
+      this.provider.afterPages.push(this.options.afterPages);
+      return;
+    }
     this.provider.global = [...(this.provider.global ?? []), this.options];
   }
 }

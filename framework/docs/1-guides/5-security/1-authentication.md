@@ -67,11 +67,39 @@ issuer = $issuer({
 });
 ```
 
-An **external** issuer verifies tokens from an external provider (Auth0, Keycloak, etc.) using JWKS:
+An **external** issuer verifies tokens from an identity provider it does not
+hold the keys of (Keycloak, Auth0, Entra ID). It has two forms.
+
+The `oidc` form points at the `$auth` that signs users in, and reads
+everything from the provider's discovery: the keys, the issuer every token
+must carry, and the client id:
+
+```typescript
+class Auth {
+  keycloak = $auth({
+    oidc: {
+      issuer: "https://idp.example.com/realms/acme",
+      clientId: "acme-web",
+    },
+  });
+
+  issuer = $issuer({ oidc: () => this.keycloak });
+}
+```
+
+Discovery runs on the first token verified, never at boot, so the app starts
+while its provider is unreachable; a token that arrives before discovery
+succeeds is refused, and the next one tries again. `issuer` or `audience`
+written beside `oidc` replaces the discovered value, for an IdP that puts an
+API identifier in `aud`.
+
+The `jwks` form takes the key set and the expectations by hand:
 
 ```typescript
 issuer = $issuer({
   jwks: () => "https://your-tenant.auth0.com/.well-known/jwks.json",
+  issuer: "https://your-tenant.auth0.com/",
+  audience: "my-app",
   profile: (payload) => ({
     id: payload.sub,
     email: payload.email,
@@ -79,6 +107,16 @@ issuer = $issuer({
   }),
 });
 ```
+
+Either way a token passes only when its `iss` is the expected issuer and its
+`aud` carries the audience, or, failing that, its `azp` names the client:
+Keycloak's default access token says `aud: "account"` and `azp: "<client>"`.
+On a shared realm every client's tokens are signed with the same keys, so
+without this check a token minted for another client would authenticate. A
+`jwks` issuer with no `issuer` warns once at start.
+
+A federated token's `client_id` and `permission_scope` claims are not read:
+they mark a grant of an Alepha realm, and an IdP's token is a person's.
 
 ### Token Lifecycle
 
@@ -130,7 +168,29 @@ The security errors carry their own status the same way: an `InvalidTokenError` 
 
 Browsers cap one cookie at about 4 KB and silently drop anything larger, which reads as a logout right after a login. Tokens from an external provider such as Keycloak pass that easily: a JWT barely compresses, and encryption and encoding add to it. So `$cookie` chunks automatically: a value that encodes to more than 3,800 bytes is written as `app.tokens.0`, `app.tokens.1`, ... with the same attributes and joined back on read. Sign-out and refresh expire every chunk they no longer use, and a chunk that is lost or tampered with signs the user out rather than failing the request.
 
-Chunking keeps the session; it does not make it free. Every chunk goes back on every request, and request headers are capped: 16 KB in total by default on Node, 8 KB for the `Cookie` header on a default nginx (`large_client_header_buffers`). Past that the request fails with a 431 or a 400, before any of your code runs. The server logs a warning naming the cookie and its size when a client's cookies pass about 6 KB. If you see it for `tokens`, ask the provider for fewer claims, or keep the tokens in a server-side session with only an ID in the cookie.
+Chunking keeps the session; it does not make it free. Every chunk goes back on every request, and request headers are capped: 16 KB in total by default on Node, 8 KB for the `Cookie` header on a default nginx (`large_client_header_buffers`). Past that the request fails with a 431 or a 400, before any of your code runs. The server logs a warning naming the cookie and its size when a client's cookies pass about 6 KB. If you see it for `tokens`, ask the provider for fewer claims, or turn on the session store below.
+
+### The Session Store
+
+The session is stateless by default: the tokens themselves sit in the `tokens` cookie, encrypted. That needs no server state and scales without one. Two things it cannot do: keep an identity provider's large tokens out of every request, and end one session from the server.
+
+The session store does both. Turn it on for the whole app:
+
+```typescript
+import { serverAuthOptions } from "alepha/server/auth";
+
+alepha.store.set(serverAuthOptions, { sessionStore: true });
+```
+
+The cookie then holds `{ provider, realm, id }`, still encrypted, and the tokens live in a `$cache` entry under that random id, encrypted at rest with the key the cookie uses. The entry's lifetime is the cookie's and moves with each refresh. A refresh keeps the id; a new sign-in gets a new one and ends the entry it replaces; logout deletes its own.
+
+- `ServerAuthProvider.endSession(id)` ends a session from the server: its cookie signs out on its next request. A missing entry (ended, evicted, a memory cache restarted) is a signed-out visitor.
+- The store is `$cache`: memory in tests and on a single instance, Redis with `REDIS_URL`, the database cache or KV on Cloudflare. With the memory cache, two instances do not share sessions.
+- On KV, a TTL under 60 seconds is refused (the store rounds it up), and KV is eventually consistent: a sign-in can take a moment to be readable from another location, and an ended session to end everywhere.
+- Listing a user's sessions is not offered: a cache has no query by user.
+- An app with the store off declares no `$cache` for it, and needs no database to sign users in.
+
+An `$realm` app rarely needs it: its cookie holds the realm's small tokens, and its sessions are rows already. It matters for an `$auth({ oidc })` with no `issuer`, whose cookie holds the provider's tokens.
 
 ## User Management with $realm
 

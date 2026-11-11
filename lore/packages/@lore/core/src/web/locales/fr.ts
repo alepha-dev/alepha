@@ -167,7 +167,6 @@ export default {
   "header.actions.colorMode.dark": "Sombre",
   "header.actions.colorMode.light": "Clair",
   "header.actions.search": "Rechercher",
-  "header.actions.repository": "Dépôt",
 
   "spotlight.title": "Rechercher",
   "spotlight.description": "Trouver des quêtes et des folios dans ce projet.",
@@ -939,7 +938,7 @@ export default {
     "Relancer qui détient une quête restée silencieuse.",
   "project.capability.work.option.agentPrompts.label": "Invites pour agents",
   "project.capability.work.option.agentPrompts.description":
-    "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour Claude Code ou Codex ; rien n’est envoyé nulle part.",
+    "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour votre agent de code ; rien n’est envoyé nulle part.",
   "project.capability.knowledge.label": "Écrire et conserver le savoir",
   "project.capability.knowledge.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
@@ -2902,9 +2901,9 @@ export default {
   "agentPrompts.workLooseQuests": "Traiter les quêtes libres",
   "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.copied":
-    "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+    "Invite pour $1 copiée. Collez-la dans votre agent de code.",
   "agentPrompts.copied.surface":
-    "Invite copiée. Collez-la dans Claude Code ou Codex.",
+    "Invite copiée. Collez-la dans votre agent de code.",
   "agentPrompts.settings.title": "Invites pour agents",
   "agentPrompts.settings.description":
     "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",

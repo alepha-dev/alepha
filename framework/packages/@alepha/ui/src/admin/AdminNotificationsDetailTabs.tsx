@@ -1,8 +1,9 @@
+import { z } from "alepha";
 import type { NotificationDetailResource } from "alepha/api/notifications";
+import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../core/Tabs.tsx";
+import { Control } from "../form/Control.tsx";
 import { AdminNotificationsPreviewTab } from "./AdminNotificationsPreviewTab.tsx";
 import { AdminNotificationsRawTab } from "./AdminNotificationsRawTab.tsx";
 import { AdminNotificationsStatusBadge } from "./AdminNotificationsStatusBadge.tsx";
@@ -25,34 +26,55 @@ export interface AdminNotificationsDetailTabsProps {
 /**
  * The three views of one notification: what happened, what it looked like,
  * and everything else that was recorded.
+ *
+ * Switched by a `<Control segmented>` bound to a one-field form (#Q3428), the
+ * kit's own segmented control, where it used to be `Tabs` restyled by hand.
  */
 export const AdminNotificationsDetailTabs = (
   props: AdminNotificationsDetailTabsProps,
 ) => {
   const { l, tr } = useI18n();
-  const [tab, setTab] = useState(props.initialTab);
+  const form = useForm({
+    schema: z.object({ tab: z.enum(["details", "preview", "raw"]) }),
+    initialValues: {
+      tab: (["details", "preview", "raw"].includes(props.initialTab)
+        ? props.initialTab
+        : "details") as "details" | "preview" | "raw",
+    },
+    handler: () => {},
+  });
+  const [tab] = useFieldValue(form.input.tab);
   const detail = props.detail;
 
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(value) => setTab(String(value))}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
-    >
-      <TabsList className="mx-4">
-        <TabsTrigger value="details">
-          {tr("admin.notifications.tabDetails", { default: "Details" })}
-        </TabsTrigger>
-        <TabsTrigger value="preview">
-          {tr("admin.notifications.tabPreview", { default: "Preview" })}
-        </TabsTrigger>
-        <TabsTrigger value="raw">
-          {tr("admin.notifications.tabRaw", { default: "Raw" })}
-        </TabsTrigger>
-      </TabsList>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <Control
+        input={form.input.tab}
+        segmented
+        // No label: the three choices name themselves, and a schema-derived
+        // "Tab *" above them read as a form field to fill in.
+        label=""
+        inputProps={{
+          "aria-label": tr("admin.notifications.tabs", { default: "View" }),
+        }}
+        items={[
+          {
+            value: "details",
+            label: tr("admin.notifications.tabDetails", { default: "Details" }),
+          },
+          {
+            value: "preview",
+            label: tr("admin.notifications.tabPreview", { default: "Preview" }),
+          },
+          {
+            value: "raw",
+            label: tr("admin.notifications.tabRaw", { default: "Raw" }),
+          },
+        ]}
+      />
 
-      <TabsContent value="details" className="min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-6 px-4 pb-6 text-sm">
+      {tab === "details" ? (
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto text-sm">
           <div className="flex flex-wrap items-center gap-2">
             <AdminNotificationsStatusBadge status={detail.status} />
             {detail.skipReason ? (
@@ -141,23 +163,24 @@ export const AdminNotificationsDetailTabs = (
             </p>
           ) : null}
         </div>
-      </TabsContent>
+      ) : null}
 
-      <TabsContent
-        value="preview"
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      >
-        {/* `active` gates the fetch, so opening a row never re-renders a
+      {tab === "preview" ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {/* `active` gates the fetch, so opening a row never re-renders a
             template nobody asked to see. */}
-        <AdminNotificationsPreviewTab
-          notificationId={props.notificationId}
-          active={tab === "preview"}
-        />
-      </TabsContent>
+          <AdminNotificationsPreviewTab
+            notificationId={props.notificationId}
+            active={tab === "preview"}
+          />
+        </div>
+      ) : null}
 
-      <TabsContent value="raw" className="min-h-0 flex-1 overflow-y-auto">
-        <AdminNotificationsRawTab detail={detail} />
-      </TabsContent>
-    </Tabs>
+      {tab === "raw" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <AdminNotificationsRawTab detail={detail} />
+        </div>
+      ) : null}
+    </div>
   );
 };

@@ -476,3 +476,45 @@ describe("AdminJobController: deleting executions", () => {
     expect(jobExecutionRowSchema.shape).not.toHaveProperty("steps");
   });
 });
+
+/**
+ * The Jobs page banner (#Q3431): one call, figures over the last 24 hours,
+ * aggregated server-side.
+ */
+describe("AdminJobController: stats", () => {
+  it("counts finished runs in the window by outcome, and what runs and waits now", async ({
+    expect,
+  }) => {
+    const { app, controller } = await boot();
+    // A failure two days old: outside the window, so neither counted nor
+    // named as the latest error.
+    const old = app.now.now().subtract(2, "day").toISOString();
+    await app.executions.create({
+      jobName: "ops-app.old",
+      status: "error",
+      createdAt: old,
+      updatedAt: old,
+      completedAt: old,
+    });
+
+    const stats = await controller.getJobStats.run(
+      {},
+      { user: user("job-reader") },
+    );
+
+    // The fixture's a (ok), b (error) and e (cancelled) finished within six
+    // hours; d runs; c and f wait.
+    expect(stats).toEqual({
+      windowHours: 24,
+      ok: 1,
+      error: 1,
+      cancelled: 1,
+      running: 1,
+      waiting: 2,
+      lastError: {
+        jobName: "ops-app.work",
+        completedAt: expect.any(String),
+      },
+    });
+  });
+});

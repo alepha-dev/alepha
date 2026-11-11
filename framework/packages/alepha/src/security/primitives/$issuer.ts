@@ -15,10 +15,11 @@ import {
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
+import type { JSONWebKeySet, JWTPayload } from "jose";
 
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
-import type { JSONWebKeySet, JWTPayload } from "../interfaces/Jose.ts";
+import type { OidcIssuerSource } from "../interfaces/OidcIssuerSource.ts";
 import { JwtProvider, type SigningConfig } from "../providers/JwtProvider.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import type { Role } from "../schemas/roleSchema.ts";
@@ -88,7 +89,7 @@ export type IssuerPrimitiveOptions = {
    * nothing declared and nothing checked.
    */
   default?: boolean;
-} & (IssuerInternal | IssuerExternal);
+} & (IssuerInternal | IssuerExternal | IssuerOidc);
 
 export interface IssuerSettings {
   accessToken?: {
@@ -202,11 +203,59 @@ export type IssuerInternal = {
   secret: string;
 };
 
+/**
+ * A federated issuer whose keys are given by hand.
+ */
 export interface IssuerExternal {
   /**
    * URL to the JWKS (JSON Web Key Set) to verify JWT tokens from external providers.
    */
   jwks: (() => string) | JSONWebKeySet;
+
+  /**
+   * The `iss` every token must carry. Without it, any token the keys verify
+   * is accepted whoever issued it, and the issuer warns once at start.
+   */
+  issuer?: string;
+
+  /**
+   * One of these must be in a token's `aud`, or, when the IdP puts the
+   * client in `azp` instead (Keycloak does), `azp` must equal it. Without
+   * it, a token minted for another client of the same IdP authenticates.
+   */
+  audience?: string | string[];
+}
+
+/**
+ * A federated issuer fed by an `$auth({ oidc })`: the expected issuer, the
+ * client id and the JWKS url all come from the provider's discovery, on the
+ * first token verified, never at boot.
+ *
+ * ```ts
+ * class Auth {
+ *   keycloak = $auth({ oidc: { issuer: "https://idp.example.com/realms/acme", clientId: "web" } });
+ *   issuer = $issuer({ oidc: () => this.keycloak });
+ * }
+ * ```
+ */
+export interface IssuerOidc {
+  /**
+   * The provider. A function, so nothing is read when the field is
+   * declared.
+   */
+  oidc: () => OidcIssuerSource;
+
+  /**
+   * Replaces the discovered issuer as the expected `iss`.
+   */
+  issuer?: string;
+
+  /**
+   * Replaces the client id as the expected `aud`: an API identifier, where
+   * the IdP puts one there. `azp` is still accepted when it names the
+   * client.
+   */
+  audience?: string | string[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -260,10 +309,27 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       }
     }
 
+    const options = this.options as Partial<
+      IssuerInternal & IssuerExternal & IssuerOidc
+    >;
+    const forms = [options.secret, options.jwks, options.oidc].filter(
+      (it) => it !== undefined,
+    );
+    if (forms.length > 1) {
+      throw new AlephaError(
+        `Issuer '${this.name}' takes one of secret, jwks or oidc, not several`,
+      );
+    }
+
     this.securityProvider.createRealm({
       name: this.name,
       profile: this.options.profile,
-      secret: "jwks" in this.options ? this.options.jwks : this.options.secret,
+      secret: options.jwks ?? options.secret,
+      oidc: options.oidc,
+      expect:
+        options.issuer || options.audience
+          ? { issuer: options.issuer, audience: options.audience }
+          : undefined,
       signing: this.options.signing,
       default: this.options.default,
       roles,

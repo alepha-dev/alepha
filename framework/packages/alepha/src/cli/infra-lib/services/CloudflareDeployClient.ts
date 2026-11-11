@@ -318,16 +318,67 @@ export class CloudflareDeployClient {
       ? await this.uploadAssets(plan.scriptName, plan.assets)
       : undefined;
 
-    const versionId = await this.putScript(plan, assets);
-    await this.putSchedules(plan);
-    await this.putDomain(plan);
-    // Reported, not thrown: see `putSubdomain`. The caller decides what to
-    // say about it, because only the caller knows whether the app had a
-    // custom domain to fall back on.
-    const subdomainError = await this.putSubdomain(plan);
-    await this.putQueueConsumers(plan);
+    await this.putScriptBody(plan, assets);
 
-    return { versionId, subdomainError };
+    // ⚠️ **Together, once the script PUT has answered** (#Q3385). Each of
+    // these needs the script to exist and none needs another's answer, and
+    // run one after another they were 5 to 7 s of a tenant deploy's median.
+    // Every one runs to its end even when another fails, so a failure is
+    // reported per call rather than hiding the ones behind it.
+    const [versionId, , , subdomainError] = await this.settled(
+      plan.scriptName,
+      [
+        ["read the new version", () => this.newestVersion(plan.scriptName)],
+        ["set the cron triggers", () => this.putSchedules(plan)],
+        ["attach the custom domain", () => this.putDomain(plan)],
+        // Reported, not thrown: see `putSubdomain`. The caller decides what
+        // to say about it, because only the caller knows whether the app had
+        // a custom domain to fall back on.
+        ["set the workers.dev subdomain", () => this.putSubdomain(plan)],
+        ["bind the queue consumers", () => this.putQueueConsumers(plan)],
+      ] as const,
+    );
+
+    return {
+      versionId: versionId as string | undefined,
+      subdomainError: subdomainError as string | undefined,
+    };
+  }
+
+  /**
+   * Run every step, then answer their results in order, or throw.
+   *
+   * One failure is rethrown as it is, so its own message and status reach
+   * the caller unchanged. Several are reported together, each by its step,
+   * since a combined message naming only the first would hide the others.
+   */
+  protected async settled(
+    scriptName: string,
+    steps: ReadonlyArray<readonly [string, () => Promise<unknown>]>,
+  ): Promise<unknown[]> {
+    const results = await Promise.allSettled(steps.map(([, run]) => run()));
+    const failures = results.flatMap((result, i) =>
+      result.status === "rejected"
+        ? [{ step: steps[i]![0], error: result.reason as unknown }]
+        : [],
+    );
+    if (failures.length === 1) {
+      throw failures[0]!.error;
+    }
+    if (failures.length > 1) {
+      throw new AlephaError(
+        `${scriptName} was uploaded, but ${failures.length} steps after it failed: ${failures
+          .map(
+            ({ step, error }) =>
+              `${step}: ${error instanceof Error ? error.message : String(error)}`,
+          )
+          .join("; ")}`,
+        { cause: failures[0]!.error },
+      );
+    }
+    return results.map((result) =>
+      result.status === "fulfilled" ? result.value : undefined,
+    );
   }
 
   /**
@@ -737,6 +788,14 @@ export class CloudflareDeployClient {
     plan: CloudflareDeployPlan,
     assets?: { jwt: string },
   ): Promise<string | undefined> {
+    await this.putScriptBody(plan, assets);
+    return await this.newestVersion(plan.scriptName);
+  }
+
+  protected async putScriptBody(
+    plan: CloudflareDeployPlan,
+    assets?: { jwt: string },
+  ): Promise<void> {
     this.durableObjectLifecycle.validate({
       exports: plan.exports,
       migrations: plan.migrations === undefined ? undefined : [],
@@ -771,8 +830,6 @@ export class CloudflareDeployClient {
           }
         : undefined,
     });
-
-    return await this.newestVersion(plan.scriptName);
   }
 
   /**
@@ -881,15 +938,55 @@ export class CloudflareDeployClient {
    * ⚠️ Called for an empty array too, and that is the point: a deploy that
    * stopped declaring a cron must stop firing it, and skipping the call would
    * leave the previous schedule running against new code.
+   *
+   * ⚠️ **Skipped only when the LIVE schedule already matches** (#Q3385): the
+   * current crons are read and the write happens only on a difference. Most
+   * apps declare none and never had any, so most deploys write nothing. The
+   * decision is taken against what Cloudflare holds, never against what the
+   * last deploy is believed to have set, so a schedule changed by hand is
+   * still corrected. A read that fails falls back to the write.
    */
   public async putSchedules(plan: CloudflareDeployPlan): Promise<void> {
     if (!plan.crons) {
+      return;
+    }
+    const live = await this.liveCrons(plan.scriptName);
+    if (live && this.sameCrons(live, plan.crons)) {
       return;
     }
     await this.client.workers.scripts.schedules.update(plan.scriptName, {
       account_id: this.accountId,
       body: plan.crons.map((cron) => ({ cron })),
     });
+  }
+
+  /**
+   * The crons Cloudflare holds for a script, or `undefined` when they cannot
+   * be read (including an API surface with no read, as in a fake).
+   */
+  protected async liveCrons(scriptName: string): Promise<string[] | undefined> {
+    const get = this.client.workers.scripts.schedules.get;
+    if (!get) {
+      return undefined;
+    }
+    try {
+      const answer = await get.call(
+        this.client.workers.scripts.schedules,
+        scriptName,
+        { account_id: this.accountId },
+      );
+      return (answer?.schedules ?? []).map((it) => it.cron);
+    } catch {
+      return undefined;
+    }
+  }
+
+  protected sameCrons(a: string[], b: string[]): boolean {
+    const left = [...new Set(a)].sort();
+    const right = [...new Set(b)].sort();
+    return (
+      left.length === right.length && left.every((cron, i) => cron === right[i])
+    );
   }
 
   public async putDomain(plan: CloudflareDeployPlan): Promise<void> {
@@ -1219,6 +1316,14 @@ export interface CloudflareDeployApi {
           name: string,
           params: { account_id: string; body: Array<{ cron: string }> },
         ) => Promise<unknown>;
+        /**
+         * The live crons, read before writing them (#Q3385). Optional so a
+         * fake without it still deploys: the write then always happens.
+         */
+        get?: (
+          name: string,
+          params: { account_id: string },
+        ) => Promise<{ schedules?: Array<{ cron: string }> } | undefined>;
       };
       versions: {
         /**

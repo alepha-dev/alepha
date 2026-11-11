@@ -12,6 +12,7 @@ import {
 import {
   $route,
   BadRequestError,
+  NotFoundError,
   RequestOriginPolicy,
   type ServerRawRequest,
   type ServerReply,
@@ -32,8 +33,10 @@ import {
   type Configuration,
   randomPKCECodeVerifier,
   randomState,
+  tokenRevocation,
 } from "openid-client";
 
+import { serverAuthOptions } from "../atoms/serverAuthOptions.ts";
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
 import { MfaRequiredError } from "../errors/MfaRequiredError.ts";
 import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
@@ -46,10 +49,13 @@ import {
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
 import { mfaResendResponseSchema } from "../schemas/mfaResendResponseSchema.ts";
 import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts";
+import { sessionReferenceSchema } from "../schemas/sessionReferenceSchema.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
+import { BackchannelLogoutRegistry } from "../services/BackchannelLogoutRegistry.ts";
 import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
+import { SessionStore } from "../services/SessionStore.ts";
 
 export class ServerAuthProvider {
   public static readonly id: string = "alepha.server.ServerAuthProvider";
@@ -114,6 +120,7 @@ export class ServerAuthProvider {
     name: "authorizationCode",
     ttl: [15, "minutes"],
     httpOnly: true,
+    browserPrefix: "__Host-Http-",
     encrypt: true,
     schema: z.object({
       provider: z.text(),
@@ -130,19 +137,61 @@ export class ServerAuthProvider {
     name: "tokens",
     ttl: [30, "days"],
     httpOnly: true,
+    // RFC 10017 section 6.1.3.2: `__Host-Http-`, so no sibling subdomain
+    // and no script can plant a session of its own under this name. Over
+    // https only; plain http keeps the bare name (see `browserPrefix`).
+    browserPrefix: "__Host-Http-",
     compress: true,
     encrypt: true,
     schema: tokensSchema,
   });
 
+  /**
+   * The same cookie as {@link ServerAuthProvider.tokens}, as it reads with the
+   * session store on: a reference to the store's entry, not the tokens.
+   */
+  protected readonly sessionReference = $cookie({
+    name: "tokens",
+    ttl: [30, "days"],
+    httpOnly: true,
+    encrypt: true,
+    browserPrefix: "__Host-Http-",
+    schema: sessionReferenceSchema,
+  });
+
   protected readonly configure = $hook({
     on: "configure",
     handler: async () => {
+      // Registered only when on, before the container locks: its `$cache`
+      // must not exist for an app that keeps the stateless default.
+      if (this.alepha.store.get(serverAuthOptions)?.sessionStore) {
+        this.alepha.inject(SessionStore);
+      }
+
       for (const identity of this.identities) {
         await identity.prepare();
       }
     },
   });
+
+  /**
+   * The server-side session store, when `serverAuthOptions.sessionStore` is
+   * on.
+   */
+  protected get sessionStore(): SessionStore | undefined {
+    return this.alepha.store.get(serverAuthOptions)?.sessionStore
+      ? this.alepha.inject(SessionStore)
+      : undefined;
+  }
+
+  /**
+   * End a session kept in the session store, by the id its cookie names: it
+   * signs out on its next request. A no-op with the store off, where a
+   * session lives only in its cookie.
+   */
+  public async endSession(id: string): Promise<void> {
+    await this.sessionStore?.delete(id);
+  }
 
   /**
    * Fill request headers with access token from cookies or fallback to provider's fallback function.
@@ -219,7 +268,7 @@ export class ServerAuthProvider {
       // (plain external OAuth2/OIDC providers without an internal issuer).
       let resolved = user;
       if (!resolved) {
-        const tokens = this.getTokens(cookies);
+        const tokens = await this.getTokens(cookies);
         // `findProvider`: a cookie whose provider is gone has no user behind
         // it. The request hook already dropped it; this read still sees the
         // request's copy.
@@ -274,7 +323,7 @@ export class ServerAuthProvider {
         realm: query.realm,
       });
 
-      const previous = this.getTokens(cookies);
+      const previous = await this.getTokens(cookies);
       const result = await provider.refresh(
         body.refresh_token,
         body.access_token,
@@ -294,7 +343,7 @@ export class ServerAuthProvider {
       };
 
       // for web applications, we store tokens in cookies
-      this.setTokens(tokens, cookies);
+      await this.setTokens(tokens, cookies, { keepSession: true });
 
       return tokens;
     },
@@ -377,7 +426,7 @@ export class ServerAuthProvider {
       };
 
       // for web applications, we store tokens in cookies
-      this.setTokens(tokens, cookies);
+      await this.setTokens(tokens, cookies);
 
       const api = await this.serverLinksProvider.getUserApiLinks({
         user,
@@ -449,7 +498,7 @@ export class ServerAuthProvider {
         ...(await issuer.createToken(challenge.user)),
       };
 
-      this.setTokens(tokens, cookies);
+      await this.setTokens(tokens, cookies);
 
       const api = await this.serverLinksProvider.getUserApiLinks({
         user: challenge.user,
@@ -665,7 +714,7 @@ export class ServerAuthProvider {
         provider: query.provider,
         realm: query.realm,
       });
-      const oauth = (await provider.getOAuth()) as Configuration | undefined;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         throw new SecurityError(
           `Auth provider '${query.provider}' does not support OAuth2`,
@@ -847,7 +896,7 @@ export class ServerAuthProvider {
     }
 
     const provider = this.provider(authorizationCode);
-    const oauth = (await provider.getOAuth()) as Configuration | undefined;
+    const oauth = await provider.getOAuth();
     if (!oauth) {
       throw new SecurityError(
         `Auth provider '${provider.name}' does not support OAuth2`,
@@ -896,7 +945,7 @@ export class ServerAuthProvider {
 
     // external, full OIDC System (e.g. Keycloak, Auth0)
     if (!issuer) {
-      this.setTokens(externalTokens, cookies);
+      await this.setTokens(externalTokens, cookies);
       reply.redirect(redirectUri, 302);
       return;
     }
@@ -946,7 +995,7 @@ export class ServerAuthProvider {
     realm?: string,
   ): Promise<void> {
     const tokens = await issuer.createToken(user);
-    this.setTokens(
+    await this.setTokens(
       {
         ...tokens,
         issued_at: this.dateTimeProvider.now().unix(),
@@ -991,17 +1040,17 @@ export class ServerAuthProvider {
         post_logout_redirect_uri: z.text().optional(),
       }),
     },
-    handler: async ({ query, reply, cookies }) => {
+    handler: async ({ query, reply, cookies, url }) => {
       const redirect = this.validateRedirectUri(
         query.post_logout_redirect_uri ?? "/",
       );
-      const tokens = this.getTokens(cookies);
+      const tokens = await this.getTokens(cookies);
       if (!tokens) {
         reply.redirect(redirect, 302);
         return;
       }
 
-      this.tokens.del({ cookies });
+      await this.deleteTokens(cookies);
 
       // A cookie whose provider is gone (see `findProvider`) has no session
       // or IdP to end: deleting it is the whole logout.
@@ -1024,16 +1073,33 @@ export class ServerAuthProvider {
         }
       }
 
-      const oauth = (await provider.getOAuth()) as Configuration | undefined;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         reply.redirect(redirect, 302);
         return;
       }
 
+      // Before any redirect, in every branch below: the end-session redirect
+      // ends the IdP session only if the browser completes it, and a custom
+      // `logoutUri` or an IdP with no end-session endpoint may not end it at
+      // all. Revoking the refresh token (RFC 7009) does not depend on either.
+      if (!provider.issuer) {
+        await this.revokeTokens(oauth, tokens, provider.name);
+      }
+
       const params = new URLSearchParams();
       const idToken = tokens?.id_token;
 
-      params.set("post_logout_redirect_uri", redirect);
+      // The provider redirects the browser itself, so it needs an absolute
+      // URL (OpenID Connect RP-Initiated Logout 1.0, section 2): a relative
+      // one resolves against the provider's origin, and Keycloak refuses it
+      // as unregistered. The same rule as `redirect_uri` on login.
+      params.set(
+        "post_logout_redirect_uri",
+        redirect.startsWith("/")
+          ? `${url.protocol}//${url.host}${redirect}`
+          : redirect,
+      );
       if (idToken) {
         params.set("id_token_hint", idToken);
       }
@@ -1049,10 +1115,6 @@ export class ServerAuthProvider {
       }
 
       if (!oauth.serverMetadata().end_session_endpoint) {
-        // await tokenRevocation(
-        // 	oauth,
-        // 	tokens?.refresh_token ?? tokens.access_token,
-        // );
         reply.redirect(redirect, 302);
         return;
       }
@@ -1060,6 +1122,71 @@ export class ServerAuthProvider {
       reply.redirect(buildEndSessionUrl(oauth, params).toString(), 302);
     },
   });
+
+  /**
+   * OpenID Connect Back-Channel Logout 1.0: the identity provider posts a
+   * logout token here when a session ends on its side. The provider is named
+   * in the URL, as on `/oauth/login`, so routing needs no discovery.
+   *
+   * 404 for a provider that did not opt in (`oidc.backchannelLogout`).
+   */
+  public readonly backchannelLogout = $route({
+    path: alephaServerAuthRoutes.backchannelLogout,
+    method: "POST",
+    schema: {
+      query: z.object({ provider: z.text() }),
+      body: z.object({ logout_token: z.text({ size: "rich" }) }),
+    },
+    handler: async ({ query, body, reply }) => {
+      const provider = this.findProvider(query.provider);
+      if (!provider?.backchannelLogout) {
+        throw new NotFoundError();
+      }
+
+      reply.setHeader("cache-control", "no-store");
+
+      const registry = this.alepha.inject(BackchannelLogoutRegistry);
+      const ended = await registry.verify(provider, body.logout_token);
+      if (!ended) {
+        throw new BadRequestError("Invalid logout token");
+      }
+
+      await registry.record(provider.name, ended);
+      reply.status = 200;
+      return "";
+    },
+  });
+
+  /**
+   * Revoke a session's tokens at the provider (RFC 7009), when discovery
+   * advertises a revocation endpoint: the refresh token, else the access
+   * token. A failure is logged and never blocks the logout.
+   */
+  protected async revokeTokens(
+    oauth: Configuration,
+    tokens: Tokens,
+    provider: string,
+  ): Promise<void> {
+    if (!oauth.serverMetadata().revocation_endpoint) {
+      return;
+    }
+    const token = tokens.refresh_token ?? tokens.access_token;
+    if (!token) {
+      return;
+    }
+    try {
+      await tokenRevocation(oauth, token, {
+        token_type_hint: tokens.refresh_token
+          ? "refresh_token"
+          : "access_token",
+      });
+    } catch (e) {
+      this.log.warn("Failed to revoke the session's tokens", {
+        provider,
+        error: e,
+      });
+    }
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -1181,7 +1308,7 @@ export class ServerAuthProvider {
   protected async cookiesToTokens(
     cookies: Cookies,
   ): Promise<Tokens | undefined> {
-    const tokens = this.getTokens(cookies);
+    const tokens = await this.getTokens(cookies);
     if (!tokens) {
       // no cookie, no tokens
       this.log.trace("No tokens found in cookies");
@@ -1196,19 +1323,34 @@ export class ServerAuthProvider {
     // Minted by a provider or realm this app no longer has (see
     // `findProvider`): drop the cookie and carry on anonymous, rather than
     // failing the request in `extractAccessToken` below.
-    if (!this.findProvider(tokens)) {
+    const provider = this.findProvider(tokens);
+    if (!provider) {
       this.log.info("Signing out a session whose auth provider is gone", {
         provider: tokens.provider,
         realm: tokens.realm,
       });
-      this.tokens.del({ cookies });
+      await this.deleteTokens(cookies);
+      return;
+    }
+
+    // Ended by the identity provider (back-channel logout): before the
+    // refresh, so a refresh token the provider has not revoked cannot bring
+    // the session back.
+    if (
+      provider.backchannelLogout &&
+      (await this.alepha.inject(BackchannelLogoutRegistry).isLoggedOut(tokens))
+    ) {
+      this.log.info("Signing out a session the identity provider ended", {
+        provider: tokens.provider,
+      });
+      await this.deleteTokens(cookies);
       return;
     }
 
     // check if tokens are expired
     const refreshedTokens = await this.refreshTokens(tokens);
     if (!refreshedTokens) {
-      this.tokens.del({ cookies });
+      await this.deleteTokens(cookies);
       // 08/25: exception here will go to Server error handler, not the React one
       // better to remove cookie & session and let the page handle 401 Unauthorized
       //throw new SessionExpiredError("Session expired. Please login again.");
@@ -1218,14 +1360,58 @@ export class ServerAuthProvider {
     // Non-constant-time comparison is fine here — this determines whether to update
     // the cookie, not whether to grant access. No authentication decision is made.
     if (refreshedTokens.access_token !== tokens.access_token) {
-      this.setTokens(refreshedTokens, cookies);
+      await this.setTokens(refreshedTokens, cookies, { keepSession: true });
     }
 
     return refreshedTokens;
   }
 
-  protected getTokens(cookies?: Cookies): Tokens | undefined {
-    return this.tokens.get({ cookies });
+  /**
+   * The session's tokens: from the cookie, or, with the session store on,
+   * from the store entry the cookie names. A missing entry (ended, evicted,
+   * a memory cache restarted) is a signed-out visitor: the cookie is deleted.
+   *
+   * Every read of the session goes through here, and every write through
+   * {@link ServerAuthProvider.setTokens}.
+   */
+  protected async getTokens(cookies?: Cookies): Promise<Tokens | undefined> {
+    const store = this.sessionStore;
+    if (!store) {
+      return this.tokens.get({ cookies });
+    }
+
+    const reference = this.sessionReference.get({ cookies });
+    if (!reference) {
+      return undefined;
+    }
+
+    const tokens = await store.get(reference.id);
+    if (!tokens) {
+      this.log.debug("Signing out a session the store no longer holds", {
+        provider: reference.provider,
+      });
+      this.sessionReference.del({ cookies });
+      return undefined;
+    }
+    return tokens;
+  }
+
+  /**
+   * Delete the session: its cookie, and its store entry when the store is
+   * on.
+   */
+  protected async deleteTokens(cookies?: Cookies): Promise<void> {
+    const store = this.sessionStore;
+    if (!store) {
+      this.tokens.del({ cookies });
+      return;
+    }
+
+    const reference = this.sessionReference.get({ cookies });
+    if (reference) {
+      await store.delete(reference.id);
+    }
+    this.sessionReference.del({ cookies });
   }
 
   /**
@@ -1249,11 +1435,44 @@ export class ServerAuthProvider {
     return exp ? this.dateTimeProvider.duration(exp, "seconds") : undefined;
   }
 
-  protected setTokens(tokens: Tokens, cookies?: Cookies): void {
-    this.tokens.set(tokens, {
-      cookies,
-      ttl: this.tokenCookieTtl(tokens),
-    });
+  /**
+   * Write the session. With the session store on, the tokens go to the store
+   * and the cookie gets `{ provider, realm, id }`; the entry's TTL is the
+   * cookie's and moves with each refresh.
+   *
+   * `keepSession` (a refresh) keeps the entry's id; any other write is a new
+   * sign-in, which gets a new id and ends the entry it replaces.
+   */
+  protected async setTokens(
+    tokens: Tokens,
+    cookies?: Cookies,
+    options: { keepSession?: boolean } = {},
+  ): Promise<void> {
+    const ttl = this.tokenCookieTtl(tokens);
+    const store = this.sessionStore;
+    if (!store) {
+      this.tokens.set(tokens, { cookies, ttl });
+      return;
+    }
+
+    const previous = this.sessionReference.get({ cookies });
+    let id = previous?.id;
+    if (!id || !options.keepSession) {
+      if (id) {
+        await store.delete(id);
+      }
+      id = this.cryptoProvider.randomUUID();
+    }
+
+    await store.set(
+      id,
+      tokens,
+      ttl ?? this.dateTimeProvider.duration(30, "days"),
+    );
+    this.sessionReference.set(
+      { provider: tokens.provider, realm: tokens.realm, id },
+      { cookies, ttl },
+    );
   }
 
   protected extractAccessToken(tokens: Tokens) {

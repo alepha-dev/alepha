@@ -143,8 +143,12 @@ export const useDataTableFilterModel = (form: FormModel<ZObject>) => {
     // Before the list test, as `Control` orders it: a range IS an array, and
     // tested as one it would be offered as a list and drawn as a calendar.
     if (schema && z.schema.isDateRange(schema)) return "date";
+    // A `control.items` loader is a list too: a string filter whose options
+    // the server searches (the audit log's Actor, #Q3432) opened its header
+    // funnel as a text box.
     if (
       field.items ||
+      field.control?.items ||
       (schema && (z.schema.isEnum(schema) || z.schema.isArray(schema)))
     ) {
       return "list";
@@ -200,7 +204,10 @@ export const useDataTableFilterModel = (form: FormModel<ZObject>) => {
       icon: iconOf(field),
       clearable: true,
       placeholder: placeholderOf(field),
-      items: itemsOf(field),
+      // The field's options, or else the control's own: a `control.items`
+      // loader (a server-searched user picker, #Q3432) was replaced by
+      // `undefined` here and the picker opened empty.
+      items: itemsOf(field) ?? field.control?.items,
       // Sized from its content, not the trigger: the trigger grows as the
       // reader picks, and a popup tied to it would widen under the cursor.
       popupClassName: "w-max min-w-48",

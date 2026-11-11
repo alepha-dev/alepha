@@ -15,7 +15,7 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  * (`default % 100`) and so depended on two unrelated numbers staying
  * coordinated by comment.
  *
- * Slot 8 is free. Past that, raise the band's `stride`.
+ * Every slot from 0 to 9 is taken. Past that, raise the band's `stride`.
  *
  * ⚠️ Numbers are not reshuffled when a suite goes away. Slot 2 was
  * `apps/examples/playground`, retired once `apps/ui` replaced it; slots 1, 7
@@ -32,6 +32,7 @@ export const E2E_SLOTS = {
   "ssr-dev": 5,
   ui: 6,
   ai: 7,
+  oidc: 8,
   "mobile-api": 9,
 } as const;
 

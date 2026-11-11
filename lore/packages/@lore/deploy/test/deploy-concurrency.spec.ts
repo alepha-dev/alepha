@@ -363,6 +363,13 @@ describe("a deploy that finds no free slot", () => {
     expect(after?.startedAt).toBeDefined();
     expect(after?.error).toBeUndefined();
     expect(runner().peak).toBe(2);
+    // The wait for a slot is said once, before the start (#Q3387), so the
+    // log tells a busy slot apart from a slow delivery.
+    const texts = (after?.log ?? []).map((line) => line.text);
+    expect(texts.filter((t) => t === DeployJobs.WAITING_LINE)).toHaveLength(1);
+    expect(texts.indexOf(DeployJobs.WAITING_LINE)).toBeLessThan(
+      texts.findIndex((t) => /Started after/.test(t)),
+    );
   });
 
   it("runs a burst of five with never more than two at a time", async ({

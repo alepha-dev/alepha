@@ -1,12 +1,20 @@
 import { Alepha } from "alepha";
-import { WorkerCloudflareAdapter } from "alepha/cli/infra-lib";
+import {
+  CloudflareAssetManifest,
+  WorkerCloudflareAdapter,
+} from "alepha/cli/infra-lib";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
-import { ArtifactTarReader, DeployRunner } from "../src/api/index.ts";
+import {
+  ArtifactTarReader,
+  DeployAssetCache,
+  DeployRunner,
+} from "../src/api/index.ts";
+import { DeployFileSystemProvider } from "../src/api/services/DeployFileSystemProvider.ts";
 import { gzip, type TarEntry, tar } from "../src/testing/index.ts";
 
 /**
@@ -110,8 +118,13 @@ describe("deploying an artifact from inside the Worker", () => {
    * The adapter builds its two clients per call, so those factories are the
    * seam - which is also what keeps one deploy's credential out of another's.
    */
-  const withFakeCloudflare = async (bytes: Uint8Array) => {
+  const withFakeCloudflare = async (
+    bytes: Uint8Array,
+    options: { askForEveryAsset?: boolean } = {},
+  ) => {
     const calls: string[] = [];
+    const sent: string[] = [];
+    const containers: Alepha[] = [];
     let uploaded: {
       scriptName?: string;
       bindings?: any[];
@@ -124,8 +137,9 @@ describe("deploying an artifact from inside the Worker", () => {
     } = {};
 
     const provision = {
-      ensureD1: async (name: string) => {
+      ensureD1: async (name: string, options?: { knownId?: string }) => {
         calls.push(`provision:d1:${name}`);
+        if (options?.knownId) calls.push(`known:d1:${options.knownId}`);
         return { uuid: "db-uuid", name };
       },
       ensureR2: async (name: string) => {
@@ -150,6 +164,25 @@ describe("deploying an artifact from inside the Worker", () => {
       deploy: async (plan: typeof uploaded & { scriptName: string }) => {
         calls.push(`deploy:${plan.scriptName}`);
         uploaded = plan;
+        // Cloudflare asking for every asset, as it does on a first deploy:
+        // the second pass then streams each body to the upload.
+        const assets = plan.assets as
+          | {
+              manifest: Record<string, unknown>;
+              readAll?: (
+                keys: Set<string>,
+                onFile: (key: string) => Promise<void>,
+              ) => Promise<void>;
+            }
+          | undefined;
+        if (options.askForEveryAsset && assets?.readAll) {
+          await assets.readAll(
+            new Set(Object.keys(assets.manifest)),
+            async (key) => {
+              sent.push(key);
+            },
+          );
+        }
       },
       // A copy with no domain answers on workers.dev (#Q2132), and the
       // adapter reads the account's subdomain to compose that address.
@@ -164,9 +197,10 @@ describe("deploying an artifact from inside the Worker", () => {
     Object.assign(runner as unknown as Record<string, unknown>, {
       // The bytes come from `$storage` in production; what is under test here
       // starts at the tarball.
-      artifactBytes: async () => bytes,
+      artifactStream: async () => new Blob([bytes as BlobPart]).stream(),
       container: () => {
         const child = container();
+        containers.push(child);
         Object.assign(
           child.inject(WorkerCloudflareAdapter) as unknown as Record<
             string,
@@ -178,7 +212,14 @@ describe("deploying an artifact from inside the Worker", () => {
       },
     });
 
-    return { runner, calls, uploaded: () => uploaded };
+    return {
+      runner,
+      calls,
+      sent,
+      uploaded: () => uploaded,
+      // The deploy's own filesystem, to say what the unpack wrote.
+      files: () => containers[0]!.inject(DeployFileSystemProvider),
+    };
   };
 
   const request = (over: Record<string, unknown> = {}) => ({
@@ -373,6 +414,134 @@ describe("deploying an artifact from inside the Worker", () => {
     expect(assets.config).toMatchObject({
       _headers: headers,
       _redirects: redirects,
+    });
+  });
+
+  it("hands provision the database id the copy's last deploy recorded (#Q3386)", async ({
+    expect,
+  }) => {
+    const { runner, calls } = await withFakeCloudflare(await packed());
+
+    await runner.run(
+      request({
+        known: { d1: { name: "acme-my-app-east-preview", id: "db-recorded" } },
+      }) as never,
+    );
+
+    expect(calls).toContain("known:d1:db-recorded");
+  });
+
+  it("leaves the node slice out of the isolate, and keeps the workerd one (#Q3383)", async ({
+    expect,
+  }) => {
+    const { runner, files } = await withFakeCloudflare(
+      await packed(
+        {},
+        {
+          "index.node.js": "node entry",
+          "server/node/chunk.js": "x".repeat(10_000),
+          "server/workerd/chunk.js": "export const a = 1;",
+        },
+      ),
+    );
+
+    await runner.run(request() as never);
+
+    expect(await files().exists("/deploy/server/node/chunk.js")).toBe(false);
+    expect(await files().exists("/deploy/index.node.js")).toBe(false);
+    expect(await files().exists("/deploy/server/workerd/chunk.js")).toBe(true);
+    expect(await files().exists("/deploy/index.workerd.js")).toBe(true);
+  });
+
+  describe("the asset list pushed with the build (#Q3381)", () => {
+    const site = {
+      "public/": { typeflag: "5" as const },
+      "public/index.html": "page",
+    };
+
+    it("uploads from the pushed list, checking each body against its digest", async ({
+      expect,
+    }) => {
+      const { runner, sent, uploaded } = await withFakeCloudflare(
+        await packed({}, site),
+        { askForEveryAsset: true },
+      );
+      const digest = await new CloudflareAssetManifest().digest(
+        new TextEncoder().encode("page"),
+      );
+      await alepha
+        .inject(DeployAssetCache)
+        .storePushed("artifacts", 7, "a".repeat(64), {
+          version: 1,
+          assets: [
+            {
+              path: "/index.html",
+              sha256: digest,
+              size: 4,
+              contentType: "text/html; charset=utf-8",
+            },
+          ],
+          config: {},
+        });
+
+      await runner.run(
+        request({
+          artifact: {
+            app: "my-app",
+            sha256: "a".repeat(64),
+            fileId: "file-1",
+            projectId: 7,
+          },
+        }) as never,
+      );
+
+      expect(Object.keys(uploaded().assets!.manifest)).toEqual(["/index.html"]);
+      // Only `hash` and `size` reach Cloudflare, never Lore's digest.
+      expect(uploaded().assets!.manifest["/index.html"]).toEqual({
+        hash: await new CloudflareAssetManifest().cloudflareKey(
+          digest,
+          "/index.html",
+        ),
+        size: 4,
+      });
+      expect(sent).toEqual(["/index.html"]);
+    });
+
+    it("refuses a body that does not match the pushed digest", async ({
+      expect,
+    }) => {
+      const { runner, sent } = await withFakeCloudflare(
+        await packed({}, site),
+        { askForEveryAsset: true },
+      );
+      await alepha
+        .inject(DeployAssetCache)
+        .storePushed("artifacts", 7, "a".repeat(64), {
+          version: 1,
+          assets: [
+            {
+              path: "/index.html",
+              sha256: "f".repeat(64),
+              size: 4,
+              contentType: "text/html; charset=utf-8",
+            },
+          ],
+          config: {},
+        });
+
+      await expect(
+        runner.run(
+          request({
+            artifact: {
+              app: "my-app",
+              sha256: "a".repeat(64),
+              fileId: "file-1",
+              projectId: 7,
+            },
+          }) as never,
+        ),
+      ).rejects.toThrow(/does not match the archive at \/index.html/);
+      expect(sent).toEqual([]);
     });
   });
 

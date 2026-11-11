@@ -3,10 +3,6 @@ import { useI18n } from "alepha/react/i18n";
 
 export interface JobRetentionLabels {
   /**
-   * A short phrase for a table cell: "OK: last 7 · Errors: 30 days".
-   */
-  short: (retention: JobRetention) => string;
-  /**
    * The full rule, and where it came from, for a tooltip or an aside.
    */
   sentence: (retention: JobRetention) => string;
@@ -88,11 +84,6 @@ export const useJobRetentionLabels = (): JobRetentionLabels => {
   };
 
   return {
-    short: (retention) =>
-      tr("admin.jobs.retention.short", {
-        default: `OK: ${rule(retention.ok)} · Errors: ${rule(retention.error)}`,
-        args: [rule(retention.ok), rule(retention.error)],
-      }),
     sentence: (retention) =>
       `${tr("admin.jobs.retention.sentence", {
         default: `Successes: ${rule(retention.ok)}. Failures and cancellations: ${rule(retention.error)}.`,

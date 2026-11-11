@@ -84,7 +84,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
   const toast = useToast();
   const { user: currentUser } = useAuth();
   const router = useRouter<any>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const dialog = useDialog();
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshSignal, setRefreshSignal] = useState(0);
@@ -173,9 +173,18 @@ export const AdminUsers = (props: AdminUsersProps) => {
           query: { userRealmName: props.userRealmName },
           body: { roles },
         });
+        // Said out loud (#Q3433): a role change saved in silence. A failure
+        // throws, so `AppShell`'s ActionErrorToaster toasts it, and the
+        // picker keeps the roles it had: it only applies a change that saved.
+        toast.success(
+          tr("admin.users.rolesSaved", {
+            default: `Roles of ${userLabel(user)} saved`,
+            args: [userLabel(user)],
+          }),
+        );
       },
     },
-    [client, props.userRealmName],
+    [client, props.userRealmName, toast, tr],
   );
 
   const userLabel = (u: UserEntity) =>
@@ -490,11 +499,15 @@ export const AdminUsers = (props: AdminUsersProps) => {
           lastLoginAt: {
             label: tr("admin.users.colLastLogin", { default: "Last login" }),
             sortable: true,
-            cell: (u) => (
-              <span className="text-muted-foreground text-xs">
-                {u.lastLoginAt ? l(u.lastLoginAt, { date: "fromNow" }) : "—"}
-              </span>
-            ),
+            cell: (u) =>
+              u.lastLoginAt ? (
+                <TimeAgo
+                  value={u.lastLoginAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">-</span>
+              ),
           },
         })}
         rowActions={(u) => [

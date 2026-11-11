@@ -22,6 +22,7 @@ import { $logger } from "alepha/logger";
 
 import type {
   Cookie,
+  CookieBrowserPrefix,
   CookiePrimitiveOptions,
   Cookies,
 } from "../primitives/$cookie.ts";
@@ -59,6 +60,7 @@ export class ServerCookiesProvider {
           request.headers.cookie ?? "",
         ),
         res: {},
+        https: request.url?.protocol === "https:",
       };
     },
   });
@@ -71,6 +73,7 @@ export class ServerCookiesProvider {
           request.headers.cookie ?? "",
         ),
         res: {},
+        https: request.url?.protocol === "https:",
       };
     },
   });
@@ -125,7 +128,73 @@ export class ServerCookiesProvider {
    */
   protected prefixName(name: string, prefix = true): string {
     if (!prefix) return name;
-    return `${this.alepha.name.toLowerCase()}.${name}`;
+    // A cookie name is an RFC 6265 token: an `APP_NAME` of "My App" would
+    // otherwise name the cookie `my app.tokens`, which a browser may refuse.
+    const app = this.alepha.name
+      .toLowerCase()
+      .replace(/[^a-z0-9!#$%&'*+.^_`|~-]/g, "-");
+    return `${app}.${name}`;
+  }
+
+  /**
+   * The name a cookie goes by on this request, and, when a browser prefix
+   * applies, the bare name it would have had: a leftover of it is expired.
+   *
+   * The prefix applies exactly when the response carries `Secure`: over
+   * https, with `secure` not off (see `CookieParser.cookieToString`). A
+   * browser drops a prefixed cookie without it, so deciding by production
+   * alone would stop every sign-in on a built app served over plain http.
+   */
+  protected resolveName(
+    name: string,
+    options: {
+      prefix?: boolean;
+      browserPrefix?: CookieBrowserPrefix;
+      secure?: boolean;
+    },
+    cookies: Cookies,
+  ): { name: string; bare?: string } {
+    const base = this.prefixName(name, options.prefix !== false);
+    if (!options.browserPrefix) {
+      return { name: base };
+    }
+    const secure = options.secure ?? this.alepha.isProduction();
+    if (!secure || cookies.https === false) {
+      return { name: base };
+    }
+
+    const hardened = `${options.browserPrefix}${base}`;
+    if (cookies.https === true) {
+      return { name: hardened, bare: base };
+    }
+
+    // Scheme unknown (a raw Cookie header): a browser holds the prefixed
+    // name only if it was set over https, so its presence decides.
+    const held =
+      hardened in cookies.req ||
+      this.chunkNames(hardened, cookies.req).length > 0;
+    return { name: held ? hardened : base };
+  }
+
+  /**
+   * Expire a bare-named copy left from before the prefix, chunks included,
+   * so up to 8 KB of dead cookie does not ride along until it expires.
+   */
+  protected expireBare(
+    bare: string | undefined,
+    cookies: Cookies,
+    scope?: { path?: string; domain?: string },
+  ): void {
+    if (!bare) {
+      return;
+    }
+    const held = this.chunkNames(bare, cookies.req);
+    if (bare in cookies.req) {
+      held.push(bare);
+    }
+    if (held.length > 0) {
+      this.expire(held, cookies, scope);
+    }
   }
 
   public getCookie<T extends ZType>(
@@ -139,8 +208,14 @@ export class ServerCookiesProvider {
     // personal (#E78). The seeding done at `server:request:before` runs before any
     // recorder exists and is not counted.
     this.alepha.store.recorder()?.personal({ kind: "cookie", key: name });
-    const cookieName = this.prefixName(name, prefixed);
-    const scope = { path: options.path, domain: options.domain };
+    const { name: cookieName, bare } = this.resolveName(name, options, cookies);
+    const scope = {
+      path: options.path,
+      domain: options.domain,
+      browserPrefix: options.browserPrefix,
+      secure: options.secure,
+    };
+    this.expireBare(bare, cookies, scope);
     const chunks = prefixed ? this.chunkNames(cookieName, cookies.req) : [];
     let rawValue = cookies.req[cookieName];
 
@@ -212,7 +287,7 @@ export class ServerCookiesProvider {
     }
 
     const prefixed = options.prefix !== false;
-    const cookieName = this.prefixName(name, prefixed);
+    const { name: cookieName, bare } = this.resolveName(name, options, cookies);
     const encoded = encodeURIComponent(value);
 
     if (!prefixed && encoded.length > this.CHUNK_LENGTH) {
@@ -268,6 +343,8 @@ export class ServerCookiesProvider {
       );
     }
 
+    this.expireBare(bare, cookies, options);
+
     for (const [writtenName, part] of written) {
       cookies.res[writtenName] = { ...cookie, value: part };
     }
@@ -283,16 +360,26 @@ export class ServerCookiesProvider {
     name: string,
     contextCookies?: Cookies,
     prefix = true,
-    scope?: { path?: string; domain?: string },
+    scope?: {
+      path?: string;
+      domain?: string;
+      browserPrefix?: CookieBrowserPrefix;
+      secure?: boolean;
+    },
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
     this.alepha.store.recorder()?.personal({ kind: "set-cookie", key: name });
-    const cookieName = this.prefixName(name, prefix);
+    const { name: cookieName, bare } = this.resolveName(
+      name,
+      { prefix, browserPrefix: scope?.browserPrefix, secure: scope?.secure },
+      cookies,
+    );
     const chunks = prefix
       ? this.chunkNames(cookieName, { ...cookies.req, ...cookies.res })
       : [];
 
     this.expire([cookieName, ...chunks], cookies, scope);
+    this.expireBare(bare, cookies, scope);
   }
 
   /**
@@ -325,7 +412,7 @@ export class ServerCookiesProvider {
       if (this.warnedCookies.has(name)) continue;
       this.warnedCookies.add(name);
       this.log.warn(
-        `Cookies for this client total ${total} bytes, near the 8 KB a default nginx accepts and the 16 KB Node does. "${name}" is ${size} bytes of that. A large value belongs in a server-side session, with only its ID in the cookie.`,
+        `Cookies for this client total ${total} bytes, near the 8 KB a default nginx accepts and the 16 KB Node does. "${name}" is ${size} bytes of that. A large value belongs in a server-side session, with only its ID in the cookie${name.endsWith(".tokens") ? ": turn on serverAuthOptions.sessionStore" : ""}.`,
       );
     }
   }
@@ -392,6 +479,23 @@ export class ServerCookiesProvider {
   }
 
   // --- Crypto & Parsing ---
+
+  /**
+   * Encrypt a value with the key an `encrypt: true` cookie uses
+   * (AES-256-GCM, from `APP_SECRET`): for a value kept server-side that must
+   * be no less protected than it was in the cookie.
+   */
+  public encryptValue(text: string): string {
+    return this.encrypt(text);
+  }
+
+  /**
+   * The inverse of {@link ServerCookiesProvider.encryptValue}. Throws on a
+   * value that was altered or encrypted with another key.
+   */
+  public decryptValue(text: string): string {
+    return this.decrypt(text);
+  }
 
   protected encrypt(text: string): string {
     const iv = randomBytes(this.IV_LENGTH);
