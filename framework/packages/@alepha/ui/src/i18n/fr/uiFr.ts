@@ -227,6 +227,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "auth.login.noAccount": "Pas encore de compte ?",
   "auth.login.or": "OU",
   "auth.login.password": "Mot de passe",
+  "auth.login.passkey": "Se connecter avec une clé d'accès",
+  "auth.login.passkeyInvalid": "Cette clé d'accès n'a pas pu vous connecter.",
   "auth.login.phone": "Numéro de téléphone",
   "auth.login.signUp": "Créer un compte",
   "auth.login.submit": "Se connecter",
@@ -241,6 +243,9 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "auth.mfa.resendFailed":
     "Impossible d'envoyer un nouveau code. Réessayez dans un instant.",
   "auth.mfa.submit": "Valider",
+  "auth.mfa.passkeyInvalid":
+    "Cette clé d'accès n'a pas pu confirmer votre identité.",
+  "auth.mfa.usePasskey": "Utiliser une clé d'accès",
   "auth.mfa.title": "Vérification en deux étapes",
   "auth.mfa.totpHint":
     "Saisissez le code affiché par votre application d'authentification.",
@@ -1295,6 +1300,37 @@ export const uiFr: Record<string, DictionaryEntry> = {
   },
   "account.password.confirm": "Confirmer le nouveau mot de passe",
   "account.password.current": "Mot de passe actuel",
+  "account.passkeys.add": "Ajouter une clé d'accès",
+  "account.passkeys.addHint":
+    "Avec cet appareil, un téléphone ou une clé de sécurité.",
+  "account.passkeys.cancel": "Annuler",
+  "account.passkeys.description":
+    "Connectez-vous avec votre empreinte, votre visage ou le code de votre appareil plutôt qu'avec un mot de passe.",
+  "account.passkeys.lastUsed": "Ajoutée $1, utilisée le $2",
+  "account.passkeys.nameDescription":
+    "Pour la distinguer de vos autres clés d'accès.",
+  "account.passkeys.nameLabel": "Nom",
+  "account.passkeys.nameTitle": "Nommer cette clé d'accès",
+  "account.passkeys.neverUsed": "Ajoutée $1, jamais utilisée",
+  "account.passkeys.proofContinue": "Continuer",
+  "account.passkeys.proofPasskey":
+    "Confirmez avec une clé d'accès que vous avez déjà.",
+  "account.passkeys.proofPasskeyAdd":
+    "Confirmez avec une clé d'accès que vous avez déjà. Votre navigateur vous demandera ensuite de créer la nouvelle : deux demandes, l'une après l'autre.",
+  "account.passkeys.proofPassword":
+    "Saisissez votre mot de passe actuel pour continuer.",
+  "account.passkeys.proofTitle": "Confirmez que c'est bien vous",
+  "account.passkeys.remove": "Retirer",
+  "account.passkeys.removeAria": "Retirer $1",
+  "account.passkeys.removeDescription":
+    "Vous ne pourrez plus vous connecter avec cette clé d'accès.",
+  "account.passkeys.removeTitle": "Retirer $1 ?",
+  "account.passkeys.rename": "Renommer",
+  "account.passkeys.renameAria": "Renommer $1",
+  "account.passkeys.renameTitle": "Renommer cette clé d'accès",
+  "account.passkeys.synced": "Synchronisée",
+  "account.passkeys.title": "Clés d'accès",
+  "account.passkeys.unusable": "Inutilisable ici",
   "account.password.mismatch": "Les deux mots de passe ne correspondent pas",
   "account.password.new": "Nouveau mot de passe",
   "account.password.set": "Mot de passe défini",
@@ -1531,4 +1567,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "swagger.tryIt.json": "JSON",
   "swagger.tryIt.send": "Envoyer",
   "swagger.tryIt.title": "Essayer",
+  "passkey.alreadyRegistered":
+    "Cet appareil détient déjà une clé d'accès pour ce compte.",
+  "passkey.unsupported": "Ce navigateur ne peut pas utiliser les clés d'accès.",
 };

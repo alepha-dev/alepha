@@ -4,17 +4,19 @@ void React;
 
 import { AlephaError, SchemaValidationError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
+import { useInject } from "alepha/react";
 import {
   type MfaChallenge,
   MfaRequiredError,
+  PasskeyClient,
   useAuth,
 } from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { HttpError, isHttpError } from "alepha/server";
-import { AlertCircle, Mail, User } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { AlertCircle, Fingerprint, Mail, User } from "lucide-react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { BrandIcon } from "../core/BrandIcon.tsx";
@@ -23,6 +25,7 @@ import { Card, CardContent } from "../core/Card.tsx";
 import { Separator } from "../core/Separator.tsx";
 import { Control } from "../form/Control.tsx";
 import { AuthMfaStep } from "./AuthMfaStep.tsx";
+import { AuthPasskeyAutofill } from "./AuthPasskeyAutofill.tsx";
 import { safeRedirect } from "./safeRedirect.ts";
 
 export interface AuthLoginProps {
@@ -122,7 +125,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
   // browser autofill (especially iOS Keychain) pair the identifier with the
   // saved password reliably. Mixed configs fall back to `username` — the
   // WHATWG-canonical hint for "the account identifier".
-  const identifierAutoComplete =
+  const baseAutoComplete =
     loginMethods.length === 1
       ? loginMethods[0] === "email"
         ? "email"
@@ -130,6 +133,57 @@ export const AuthLogin = (props: AuthLoginProps) => {
           ? "tel"
           : "username"
       : "username";
+
+  // Passkeys, when the realm offers them and the browser can use them: a
+  // button under the form, and the identifier's autofill. `webauthn` is
+  // appended to the computed hint, never in its place.
+  const passkeyClient = useInject(PasskeyClient);
+  const passkeysOffered =
+    settings.passkeys === "optional" && passkeyClient.isSupported();
+  const identifierAutoComplete = passkeysOffered
+    ? `${baseAutoComplete} webauthn`
+    : baseAutoComplete;
+  const autofillRef = useRef<AbortController | undefined>(undefined);
+  const [autofillGeneration, setAutofillGeneration] = useState(0);
+  const [passkeyError, setPasskeyError] = useState<string>();
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+
+  const afterPasskey = async () => {
+    await router.push(safeRedirect(router.query.redirect), { force: true });
+  };
+
+  const signInWithPasskey = async () => {
+    // Two concurrent `get` calls throw: the autofill one goes first.
+    autofillRef.current?.abort();
+    setPasskeyBusy(true);
+    setPasskeyError(undefined);
+    try {
+      const tokens = await auth.loginPasskey({
+        realm: props.realmConfig.realmName,
+      });
+      if (tokens) {
+        await afterPasskey();
+        return;
+      }
+    } catch (err) {
+      if (err instanceof MfaRequiredError) {
+        setChallenge(err.data);
+        return;
+      }
+      setPasskeyError(
+        isHttpError(err, 401)
+          ? tr("auth.login.passkeyInvalid", {
+              default: "That passkey could not sign you in.",
+            })
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
+    } finally {
+      setPasskeyBusy(false);
+    }
+    setAutofillGeneration((it) => it + 1);
+  };
 
   const form = useForm({
     schema: z.object({
@@ -253,10 +307,12 @@ export const AuthLogin = (props: AuthLoginProps) => {
             </div>
           )}
 
-          {(error || formError) && (
+          {(error || formError || passkeyError) && (
             <Alert variant="destructive">
               <AlertCircle className="size-4" />
-              <AlertDescription>{error || formError}</AlertDescription>
+              <AlertDescription>
+                {error || formError || passkeyError}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -303,6 +359,32 @@ export const AuthLogin = (props: AuthLoginProps) => {
                 </a>
               )}
             </form>
+          )}
+
+          {!challenge && passkeysOffered && (
+            <>
+              <AuthPasskeyAutofill
+                realm={props.realmConfig.realmName}
+                onController={(controller) => {
+                  autofillRef.current = controller;
+                }}
+                generation={autofillGeneration}
+                onSignedIn={afterPasskey}
+                onError={(err) => setPasskeyError(err.message)}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                intent="none"
+                loading={passkeyBusy}
+                onClick={() => void signInWithPasskey()}
+              >
+                <Fingerprint className="size-4" />
+                {tr("auth.login.passkey", {
+                  default: "Sign in with a passkey",
+                })}
+              </Button>
+            </>
           )}
 
           {showDivider && (

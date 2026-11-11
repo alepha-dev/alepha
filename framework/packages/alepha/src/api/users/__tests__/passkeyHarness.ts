@@ -1,11 +1,13 @@
 import { Alepha } from "alepha";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaReactAuth, PasskeyClient } from "alepha/react/auth";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import {
   AlephaTestingWebAuthn,
   MemoryAuthenticator,
+  MemoryPasskeyClient,
 } from "alepha/testing/webauthn";
 
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
@@ -36,6 +38,11 @@ export class PasskeyHarness {
        * A second realm, with passkeys on, beside the default one.
        */
       secondRealm?: string;
+      /**
+       * Register `alepha/react/auth` with a `MemoryPasskeyClient`, to drive
+       * `ReactAuth` against this server.
+       */
+      reactAuth?: boolean;
     } = {},
   ): Promise<PasskeyHarness> {
     const harness = new PasskeyHarness();
@@ -45,12 +52,19 @@ export class PasskeyHarness {
         ...(options.databaseUrl ? { DATABASE_URL: options.databaseUrl } : {}),
       },
     });
+    if (options.reactAuth) {
+      // Before the module that resolves it.
+      alepha.with({ provide: PasskeyClient, use: MemoryPasskeyClient });
+    }
     alepha.with(AlephaServer);
     alepha.with(AlephaOrmPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaEmail);
     alepha.with(AlephaTestingWebAuthn);
     alepha.with(AlephaApiUsers);
+    if (options.reactAuth) {
+      alepha.with(AlephaReactAuth);
+    }
     alepha.with(() => ({
       realm: $realm({
         settings: {

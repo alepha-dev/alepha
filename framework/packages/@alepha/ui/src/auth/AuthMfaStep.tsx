@@ -5,7 +5,7 @@ void React;
 import { type MfaChallenge, useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { HttpError } from "alepha/server";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Fingerprint } from "lucide-react";
 import { useState } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
@@ -45,6 +45,36 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
   const [sentTo, setSentTo] = useState(props.challenge.sentTo);
 
   const isEmail = props.challenge.methods.includes("emailCode");
+
+  /**
+   * Clear the step with a passkey instead of the code. Offered beside the
+   * code field, never instead of it: a passkey alone raises no step, so the
+   * code this step was raised for is always an option.
+   */
+  const clearWithPasskey = async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const tokens = await auth.loginPasskey({
+        challenge: props.challenge.challenge,
+      });
+      if (tokens) {
+        await props.onVerified();
+      }
+    } catch (err) {
+      setError(
+        err instanceof HttpError && err.status === 401
+          ? tr("auth.mfa.passkeyInvalid", {
+              default: "That passkey could not confirm it is you.",
+            })
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submit = async (value: string) => {
     setLoading(true);
@@ -154,6 +184,19 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
       >
         {tr("auth.mfa.submit", { default: "Verify" })}
       </Button>
+
+      {props.challenge.passkey && (
+        <Button
+          type="button"
+          variant="outlined"
+          intent="none"
+          loading={loading}
+          onClick={() => void clearWithPasskey()}
+        >
+          <Fingerprint className="size-4" />
+          {tr("auth.mfa.usePasskey", { default: "Use a passkey" })}
+        </Button>
+      )}
 
       {isEmail && (
         <Button

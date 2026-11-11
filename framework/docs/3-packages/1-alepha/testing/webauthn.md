@@ -21,3 +21,5 @@ browser and no device.
 - Knobs for a misbehaving device: origin, user verification, counter,
   cross-origin, and tampering with one field
 - Runs on Node, Bun, workerd and jsdom
+- `MemoryPasskeyClient`, the browser side: substitute it for
+  `PasskeyClient` of `alepha/react/auth`
