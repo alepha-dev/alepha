@@ -369,7 +369,7 @@ const sample = async (target: Target, kind: EventKind): Promise<Sample> => {
         /\bworkerd\b/.test(it.command) && !/\bwrangler\b/.test(it.command),
     );
     if (workers.length === 0) {
-      throw new Error("no workerd process found");
+      throw new Error(`no workerd process found:\n${output.slice(-2000)}`);
     }
     const readAll = () => workers.reduce((sum, it) => sum + cpuOf(it.pid), 0);
     const atReady = readAll();
