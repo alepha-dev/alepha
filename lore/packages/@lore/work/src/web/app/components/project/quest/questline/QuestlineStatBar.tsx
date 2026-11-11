@@ -91,7 +91,7 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
           <span className={`size-[7px] shrink-0 rounded-full ${DOT[state]}`} />
           <b className="text-foreground font-mono text-xs font-medium">
             {summary.states.get(state) ?? 0}
-          </b>
+          </b>{" "}
           <span className="sr-only @3xl/statbar:not-sr-only">
             {tr(LABEL[state])}
           </span>
