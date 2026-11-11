@@ -11,6 +11,7 @@ import type { UserConfig } from "vite";
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { LazyControllerPlugin } from "../services/LazyControllerPlugin.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import {
   type PreloadTable,
@@ -291,6 +292,12 @@ export class BuildServerTask extends BuildTask {
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.viteUtils.createClientModulesPlugin());
+    // A pure controller's code becomes a chunk imported on its first use
+    // (#Q3407), from the build list: only for a server build that has one.
+    const lazy = opts.surface ? new LazyControllerPlugin() : undefined;
+    if (lazy && opts.surface) {
+      plugins.push(lazy.create(opts.surface));
+    }
 
     if (conditions.includes("workerd")) {
       plugins.push(this.workerdCreateRequirePlugin());
@@ -452,6 +459,21 @@ export class BuildServerTask extends BuildTask {
     } catch (error) {
       logger?.flush();
       throw error;
+    }
+
+    // Informative, like the purity report: a pure controller another file
+    // imports statically keeps its code in the eager bundle (#Q3407).
+    if (lazy?.eagerReport.length) {
+      this.log.info(
+        `${lazy.eagerReport.length} pure controllers keep their code eager (${opts.runtime}):`,
+      );
+      for (const it of lazy.eagerReport) {
+        this.log.info(
+          it.importers.length
+            ? `  ${it.key}: imported by ${it.importers.map((file) => file.replace(`${opts.root}/`, "")).join(", ")}`
+            : `  ${it.key}: re-exported by its module's file, or bundled with eager code`,
+        );
+      }
     }
 
     const resolvedConfig = await resolveConfig(viteBuildServerConfig, "build");

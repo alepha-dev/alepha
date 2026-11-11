@@ -151,11 +151,11 @@ export class ServerLinksProvider {
           method: row.method === "GET" ? undefined : row.method,
           prefix: this.prefix,
           path: row.path,
-          handler: (
+          handler: async (
             config: ClientRequestEntry<RequestConfigSchema>,
             options: ClientRequestOptions = {},
           ) => {
-            const action = surface.resolveAction(row);
+            const action = await surface.resolveActionAsync(row);
             if (!action) {
               throw new AlephaError(
                 `Action '${row.name}' is listed but its class registered no such action`,
@@ -254,6 +254,9 @@ export class ServerLinksProvider {
       ),
     },
     handler: async ({ body, user }) => {
+      // Schemas are read off the actions: classes made lazy chunks are
+      // imported first (#Q3407).
+      await this.alepha.loadDeclared();
       const result: Record<string, { body?: string; response?: string }> = {};
 
       for (const name of body.actions) {
