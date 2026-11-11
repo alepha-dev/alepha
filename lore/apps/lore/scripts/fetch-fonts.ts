@@ -44,7 +44,7 @@ interface Theme {
 const THEMES: Theme[] = [
   {
     id: "default",
-    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap",
+    url: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
   },
   {
     id: "forest",
