@@ -154,6 +154,36 @@ avoids overlapping a tick), a queue job takes `{ payload }` and is pushed like
 any other. Both accept `triggeredBy` / `triggeredByName`; it is what the
 admin's "run now" button calls.
 
+### Pushing inside a transaction
+
+A push inside `$transactional()` (or `DatabaseProvider.transactional()`) is
+part of that transaction: the job is an outbox row written beside your own.
+
+```typescript
+await this.db.transactional(async () => {
+  const order = await this.orders.create(input);
+  await this.confirmation.push({ orderId: order.id });
+});
+```
+
+- **The row commits with your write.** The handler runs once the outermost
+  transaction has committed, never on its still-open connection, and promptly,
+  without waiting for a sweep.
+- **A rollback cancels both.** No execution row is left and the handler never
+  runs.
+- **D1 has no transaction**, nor does a driver started with
+  `DATABASE_TRANSACTIONS=false`: each write stands alone, and the job is
+  dispatched as soon as it is pushed.
+- **A dispatch that fails after the commit is not thrown at you**: your
+  transaction has already committed. It is logged, the row stays `pending`,
+  and the sweep dispatches it.
+- **`inline` is the exception.** An inline push runs the handler in the caller,
+  so inside a transaction it still runs before the commit. Call it after the
+  commit.
+
+`pushMany()` follows the same rule, and so do delayed and keyed pushes. It is
+also what makes `$webhook`'s `send` an outbox: its deliveries are jobs.
+
 ### `key` dedups in-flight work, not completed work
 
 A push with a `key` returns the existing execution id instead of enqueueing a

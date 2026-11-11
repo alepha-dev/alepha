@@ -20,6 +20,7 @@ yarn add @alepha/commerce @alepha/ui
 | `@alepha/commerce/settlement`    | The durable jobs: invoice, confirmation, credit note, reconciliation  |
 | `@alepha/commerce/downloads`     | Digital goods: expiring, counted links                                |
 | `@alepha/commerce/recovery`      | Abandoned-cart reminders, with consent                                |
+| `@alepha/commerce/webhooks`      | Order events as signed webhooks                                       |
 | `@alepha/commerce/admin`         | The back-office API; its React screens are `admin/components/*`       |
 | `@alepha/commerce/vat`           | The VAT arithmetic alone                                              |
 
@@ -164,6 +165,30 @@ A `digital` product's `config.fileId` names a file in `alepha/api/files`, in a s
 ## Cart reminders
 
 `AlephaCommerceRecovery` sends two reminders for an abandoned cart, only to a buyer who agreed (`recoveryConsent`, never pre-ticked), with a one-click unsubscribe the mail client understands. Set `cartRecoveryConfig.baseUrl`, for the same reason.
+
+## Webhooks
+
+`AlephaCommerceWebhooks` sends five events to the tools a shop connects
+(fulfilment, accounting, an automation): `order.paid`, `order.shipped`,
+`order.refunded`, `order.cancelled` and `return.requested`. It registers
+`alepha/api/webhooks`, so the admin's Webhooks page appears with it; a shop
+that does not import it gets no webhook table at all.
+
+```ts
+import { AlephaCommerceWebhooks } from "@alepha/commerce/webhooks";
+```
+
+The events are sent **after the order's commit**, not atomically with it: a
+crash between the two loses that webhook, as it would lose the confirmation
+email pushed from the same moment. A webhook that cannot be queued never
+fails the sale.
+
+**Personal data.** `order.paid` and `order.shipped` carry the shipping
+recipient's name and postal address, to every endpoint subscribed to them. No
+event carries the customer's email, a phone number, billing details, a VAT
+number or a user id. Each payload's exact shape is in the event catalog
+(`GET /api/webhooks/events`) and the OpenAPI document. See the
+[webhooks guide](/docs/guides-features-webhooks).
 
 ## Documents and languages
 

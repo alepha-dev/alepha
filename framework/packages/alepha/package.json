@@ -152,6 +152,14 @@
       "import": "./src/api/verifications/index.ts",
       "default": "./src/api/verifications/index.ts"
     },
+    "./api/webhooks": {
+      "types": "./src/api/webhooks/index.ts",
+      "react-native": "./src/api/webhooks/index.browser.ts",
+      "workerd": "./src/api/webhooks/index.workerd.ts",
+      "browser": "./src/api/webhooks/index.browser.ts",
+      "import": "./src/api/webhooks/index.ts",
+      "default": "./src/api/webhooks/index.ts"
+    },
     "./background": {
       "types": "./src/background/index.ts",
       "workerd": "./src/background/index.workerd.ts",
@@ -659,6 +667,14 @@
         "browser": "./dist/api/verifications/index.browser.js",
         "import": "./dist/api/verifications/index.js",
         "default": "./dist/api/verifications/index.js"
+      },
+      "./api/webhooks": {
+        "types": "./dist/api/webhooks/index.d.ts",
+        "react-native": "./dist/api/webhooks/index.browser.js",
+        "workerd": "./dist/api/webhooks/index.workerd.js",
+        "browser": "./dist/api/webhooks/index.browser.js",
+        "import": "./dist/api/webhooks/index.js",
+        "default": "./dist/api/webhooks/index.js"
       },
       "./background": {
         "types": "./dist/background/index.d.ts",

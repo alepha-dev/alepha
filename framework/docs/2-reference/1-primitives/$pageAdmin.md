@@ -32,7 +32,7 @@ title becomes the `label`, so its sidebar entry and breadcrumb do not carry
 the prefix.
 
 **Calling this registers `AdminRouter`.** Declaring even one page this way
-mounts the whole `/admin` shell, including its fourteen built-in pages (Users,
+mounts the whole `/admin` shell, including its sixteen built-in pages (Users,
 Sessions, Jobs, …): an admin page without the admin shell around it is
 not a thing. This is the intended reading, but it is a real side effect:
 an application that wants `/admin` to carry only its own pages, with none
