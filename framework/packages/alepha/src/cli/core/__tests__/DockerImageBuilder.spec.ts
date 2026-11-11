@@ -313,6 +313,50 @@ describe("DockerImageBuilder", () => {
     });
   });
 
+  describe("a static site (#Q3324)", () => {
+    it("runs the bundled static server on node, as uid 1000 with the standard healthcheck", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/static-server.mjs", "// server");
+      await fs.writeFile("/project/dist/public/index.html", "<html></html>");
+
+      await task.run(createCtx(fs, shell, {}, { runtime: "static" }));
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain("FROM node:24-alpine");
+      expect(dockerfile).toContain('CMD ["node", "static-server.mjs"]');
+      expect(dockerfile).toContain("COPY --chown=1000:1000 . .");
+      expect(dockerfile).toContain("USER 1000");
+      expect(dockerfile).toContain("HEALTHCHECK");
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
+      expect(dockerfile).toContain("#   runtime: static");
+      expect(dockerfile).not.toContain("npm install");
+    });
+
+    it("takes image.from, image.user and image.env as a node slice does, and labels a bun base bun", async () => {
+      const { fs, shell, task } = createTestEnv();
+
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          {
+            from: "oven/bun:1-alpine",
+            user: "2000",
+            env: { API_URL: "https://api.example.com" },
+          },
+          { runtime: "static" },
+        ),
+      );
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain("FROM oven/bun:1-alpine");
+      expect(dockerfile).toContain('CMD ["bun", "static-server.mjs"]');
+      expect(dockerfile).toContain("USER 2000");
+      expect(dockerfile).toContain('ENV API_URL="https://api.example.com"');
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="bun"');
+    });
+  });
+
   describe("attestations and --push", () => {
     const build = async (
       overrides: Partial<ImageContext>,

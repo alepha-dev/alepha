@@ -188,6 +188,14 @@ export class ServerStaticProvider {
     // 3. store the directory info for reference
     this.directories.push({ options, files });
 
+    if (options.site) {
+      await this.mountSiteRules(prefix, files, fileSource, fileOptions, mount, {
+        mounted: new Set(routes.map((route) => route.path)),
+        silent: options.silent,
+      });
+      return;
+    }
+
     // bonus! for SPAs, handle history API fallback
     if (options.historyApiFallback) {
       // meaning all unmatched routes should serve index.html
@@ -219,6 +227,92 @@ export class ServerStaticProvider {
         },
       });
     }
+  }
+
+  /**
+   * The static-site rules Cloudflare and Bay apply to a build with no server
+   * (`site: true`), in Bay's order (`bay/internal/proxy/proxy.go`,
+   * `findStatic` and `serveFallback`):
+   *
+   * 1. `/about` answers from `about.html`, the flat file the prerender
+   *    writes, then from `about/index.html`;
+   * 2. any other miss without an extension answers `200.html` with 200, the
+   *    SPA shell a client-routed app resolves itself;
+   * 3. any other miss (a missing `.js`, `/_headers`) answers `404.html` with
+   *    404, a plain 404 when there is none. A missing chunk never gets the
+   *    shell: that would be a syntax error far from its cause.
+   */
+  protected async mountSiteRules(
+    prefix: string,
+    files: string[],
+    fileSource: StaticFileSource,
+    options: ServePrimitiveOptions,
+    mount: (route: {
+      silent?: boolean;
+      path: string;
+      handler: ServerHandler;
+    }) => void,
+    state: { mounted: Set<string>; silent?: boolean },
+  ): Promise<void> {
+    const pages = files.filter(
+      (it) => it.endsWith(".html") && !it.endsWith("/index.html"),
+    );
+    const indexes = files.filter(
+      (it) => it.endsWith("/index.html") && it !== "/index.html",
+    );
+    // Flat files first: Bay probes `${path}.html` before `${path}/index.html`.
+    const aliases: Array<{ alias: string; file: string }> = [
+      ...pages.map((file) => ({ alias: file.slice(0, -".html".length), file })),
+      ...indexes.map((file) => ({
+        alias: file.slice(0, -"/index.html".length),
+        file,
+      })),
+    ];
+    for (const { alias, file } of aliases) {
+      const handler = await this.createFileHandler(fileSource, file, options);
+      for (const path of this.routePaths(prefix, alias)) {
+        if (state.mounted.has(path)) {
+          continue;
+        }
+        state.mounted.add(path);
+        mount({ silent: state.silent, path, handler });
+      }
+    }
+
+    const shell = files.includes("/200.html")
+      ? await this.createFileHandler(fileSource, "/200.html", options)
+      : undefined;
+    const notFound = files.includes("/404.html")
+      ? await this.createFileHandler(fileSource, "/404.html", options)
+      : undefined;
+
+    mount({
+      silent: state.silent,
+      path: join(prefix, "*").replace(/\\/g, "/"),
+      handler: async (request) => {
+        const { reply } = request;
+        const path = this.pathUnder(prefix, request.url.pathname);
+        const extensionless = !/\.[^/]*$/.test(path);
+        if (
+          shell &&
+          extensionless &&
+          !ServerStaticProvider.CONFIG_FILES.includes(path)
+        ) {
+          return shell(request);
+        }
+        if (notFound) {
+          const body = await notFound(request);
+          // A revalidated 404 page stays a 304; anything else is the 404.
+          if (reply.status !== 304) {
+            reply.status = 404;
+          }
+          return body;
+        }
+        reply.headers["content-type"] = "text/plain";
+        reply.status = 404;
+        return "Not Found";
+      },
+    });
   }
 
   /**

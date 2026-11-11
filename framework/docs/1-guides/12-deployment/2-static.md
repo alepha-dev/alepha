@@ -69,11 +69,18 @@ starts:
 printf 'globalThis.__ALEPHA_ENV__ = %s;\n' "$(jq -cn '{API_URL: env.API_URL}')" > /srv/public/config.js
 ```
 
+`alepha image` packages the site with a server that answers `/config.js` from
+the container's environment instead, so no entrypoint is needed there (see
+[A static site](/docs/guides-deployment-docker#a-static-site)).
+
 The build gives `config.js` no `.br` sibling and `_headers` caches it with
 `max-age=0, must-revalidate`, never `immutable`: a host that preferred a stale
 precompressed copy, or a browser that kept it for a year, would undo the
 rewrite. A page prerendered at build time carries no value of its own either,
-so the build machine's values never win over the runtime ones.
+so the build machine's values never win over the runtime ones. A component that
+renders a browser key into the page does show the build-time value until the
+browser hydrates with the runtime one: read such a key in the browser only, or
+keep the page out of the prerender.
 
 ## Configure Domain
 
@@ -132,6 +139,7 @@ The `dist/public/` directory is a standard static site. Deploy it to any static 
 - **GitHub Pages**: copy `dist/public/` to the `gh-pages` branch
 - **Netlify**: set build output to `dist/public`
 - **Cloudflare Pages**: set build output to `dist/public`
+- **A container platform**: `alepha image` builds an image serving the site (see [A static site](/docs/guides-deployment-docker#a-static-site))
 
 The `200.html` file serves as the SPA fallback for hosting providers that support it (Surge, Netlify). Configure your hosting provider's rewrite rules to serve `200.html` for all unmatched routes.
 

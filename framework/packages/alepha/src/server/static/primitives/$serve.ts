@@ -53,6 +53,24 @@ export interface ServePrimitiveOptions {
   historyApiFallback?: boolean;
 
   /**
+   * Serve the directory the way Cloudflare and Bay serve a static site with
+   * no server behind it, for a build with `runtime: ["static"]`:
+   *
+   * - `/about` answers from `about.html` (the prerender writes pages flat),
+   *   then from `about/index.html`;
+   * - any other path without an extension answers `200.html` with status
+   *   200, the SPA shell;
+   * - anything else that matches no file answers `404.html` with status 404.
+   *
+   * Replaces {@link historyApiFallback}, whose fallback is `index.html`,
+   * which is the prerendered home page when `/` is prerendered rather than
+   * the shell.
+   *
+   * @default false
+   */
+  site?: boolean;
+
+  /**
    * Optional name of the primitive.
    * This is used for logging and debugging purposes.
    *
