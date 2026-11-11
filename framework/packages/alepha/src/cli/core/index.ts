@@ -124,6 +124,7 @@ export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ArchiveCompressor.ts";
+export * from "./services/AssetWalker.ts";
 export * from "./services/BuildPipeline.ts";
 export * from "./services/BuildSlices.ts";
 export * from "./services/ConventionRegistry.ts";

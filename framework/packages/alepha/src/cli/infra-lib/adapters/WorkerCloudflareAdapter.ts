@@ -1,6 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { BuildCloudflareTask } from "alepha/cli";
-import { BuildManifestReader } from "alepha/cli";
+import { AssetWalker, BuildManifestReader } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -105,6 +105,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
   protected readonly migrations = $inject(D1MigrationsService);
   protected readonly assetManifest = $inject(CloudflareAssetManifest);
+  protected readonly walker = $inject(AssetWalker);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -765,13 +766,11 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     const manifest: Record<string, CloudflareAssetEntry> = {};
     const paths = new Map<string, string>();
     const texts: Record<string, string> = {};
-    for (const entry of await this.fs.ls(root, { recursive: true })) {
+    // ⚠️ Through the shared walker, with pack's excludes (#Q3378): a walk of
+    // its own uploaded `*.map` and `.DS_Store`, which a Lore deploy of the same
+    // build never sees because the archive left them out.
+    for (const entry of await this.walker.walk(root)) {
       const path = this.fs.join(root, entry);
-      // ⚠️ A recursive listing names directories too on the node provider,
-      // and reading one is an error rather than an empty file.
-      if (!(await this.fs.stat(path)).isFile) {
-        continue;
-      }
       const bytes = new Uint8Array(await this.fs.readFile(path));
       const key = this.assetManifest.key(entry);
       // ⚠️ Configuration, not a page: its text goes in the asset config and

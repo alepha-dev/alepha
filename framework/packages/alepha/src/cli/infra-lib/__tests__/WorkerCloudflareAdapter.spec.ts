@@ -749,6 +749,26 @@ describe("the worker-side Cloudflare adapter", () => {
       });
     });
 
+    it("leaves out what alepha pack leaves out, so a laptop deploy uploads what a Lore deploy does (#Q3378)", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      await fs.writeFile("/deploy/public/asset.abc.css.map", "{}");
+      await fs.writeFile("/deploy/public/.DS_Store", "x");
+      await fs.writeFile("/deploy/public/nested/._logo.svg", "x");
+      await fs.writeFile("/deploy/public/node_modules/x/index.js", "x");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(Object.keys(calls[0]!.assets.manifest).sort()).toEqual([
+        "/asset.abc.css",
+        "/nested/logo.svg",
+      ]);
+    });
+
     it("merges the texts a runner supplies into the config, rather than replacing them", async ({
       expect,
     }) => {
