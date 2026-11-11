@@ -97,11 +97,40 @@ export class ServerSwaggerProvider {
       options,
     );
 
+    const webhooks = this.webhookPathItems();
+    if (webhooks) {
+      json["x-webhooks"] = webhooks;
+    }
+
     if (options.rewrite) {
       options.rewrite(json);
     }
 
     return json;
+  }
+
+  /**
+   * The `x-webhooks` section: one path item per `$webhook` in the container,
+   * or `undefined` when there is none.
+   *
+   * The document stays OpenAPI 3.0.0, where the top-level `webhooks` field
+   * does not exist (it is 3.1), so the events go under the extension key
+   * documentation tools read for 3.0 documents. Read by the primitive's
+   * string name, so this module imports nothing from `alepha/api`; each
+   * primitive builds its own entry, envelope included.
+   */
+  protected webhookPathItems(): Record<string, unknown> | undefined {
+    const webhooks = this.alepha.primitives("$webhook") as unknown as Array<{
+      name: string;
+      openApiPathItem?: () => Record<string, unknown>;
+    }>;
+    const entries = webhooks.filter(
+      (it) => typeof it.openApiPathItem === "function",
+    );
+    if (entries.length === 0) return undefined;
+    return Object.fromEntries(
+      entries.map((it) => [it.name, it.openApiPathItem!()]),
+    );
   }
 
   protected async setupSwaggerPlugin(

@@ -51,6 +51,11 @@ export const webhookOptions = $atom({
       .describe(
         "Ports an endpoint URL may name in production, besides 443. Outside production any port is allowed.",
       ),
+    publicCatalog: z
+      .boolean()
+      .describe(
+        "Serve the event catalog (`GET /api/webhooks/events`) without authentication, for integrators. Off by default: it then needs `admin:webhook:read`. Read when the controller is built, so set it before the app starts.",
+      ),
     maxPayloadBytes: z
       .integer()
       .min(1)
@@ -67,6 +72,7 @@ export const webhookOptions = $atom({
     allowPrivateDestinations: false,
     allowedPorts: [],
     maxPayloadBytes: 256 * 1024,
+    publicCatalog: false,
   },
   serverOnly: true,
 });

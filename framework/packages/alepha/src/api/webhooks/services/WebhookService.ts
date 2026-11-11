@@ -1,17 +1,12 @@
 import { $inject, $store, Alepha, AlephaError } from "alepha";
-import { CryptoProvider } from "alepha/crypto";
-import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
 
-import { webhookDeliveryEntity } from "../entities/webhookDeliveryEntity.ts";
 import { WebhookPayloadTooLargeError } from "../errors/WebhookPayloadTooLargeError.ts";
-import { WebhookJobs } from "../jobs/WebhookJobs.ts";
 import type { WebhookPrimitive } from "../primitives/$webhook.ts";
-import type { WebhookEnvelope } from "../schemas/webhookEnvelopeSchema.ts";
 import { webhookOptions } from "../schemas/webhookOptionsAtom.ts";
 import type { WebhookSendOptions } from "../schemas/webhookSendOptionsSchema.ts";
 import { WebhookEndpointService } from "./WebhookEndpointService.ts";
+import { WebhookOutbox } from "./WebhookOutbox.ts";
 
 /**
  * What `send` did: how many deliveries it wrote, and the event's id (the
@@ -29,11 +24,8 @@ export interface WebhookSendResult {
 export class WebhookService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly crypto = $inject(CryptoProvider);
-  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly endpoints = $inject(WebhookEndpointService);
-  protected readonly jobs = $inject(WebhookJobs);
-  protected readonly deliveries = $repository(webhookDeliveryEntity);
+  protected readonly outbox = $inject(WebhookOutbox);
   protected readonly options = $store(webhookOptions);
 
   /**
@@ -94,7 +86,7 @@ export class WebhookService {
       webhook.schema,
       data,
     ) as Record<string, unknown>;
-    const envelope = this.envelope(webhook.name, validated);
+    const envelope = this.outbox.envelope(webhook.name, validated);
     const bytes = new TextEncoder().encode(JSON.stringify(envelope)).byteLength;
     if (bytes > this.options.maxPayloadBytes) {
       throw new WebhookPayloadTooLargeError({
@@ -111,57 +103,10 @@ export class WebhookService {
     }
     return {
       eventId: envelope.id,
-      deliveries: await this.enqueue(
+      deliveries: await this.outbox.enqueue(
         envelope,
         targets.map((it) => it.id),
       ),
-    };
-  }
-
-  /**
-   * Write one `pending` delivery per endpoint for `envelope` and push their
-   * jobs in one `pushMany`, each keyed by its delivery id. Inside a
-   * transaction both join it, and the jobs are dispatched after the commit.
-   */
-  public async enqueue(
-    envelope: WebhookEnvelope,
-    endpointIds: string[],
-  ): Promise<number> {
-    if (endpointIds.length === 0) return 0;
-    const rows = await this.deliveries.createMany(
-      endpointIds.map((endpointId) => ({
-        endpointId,
-        eventType: envelope.type,
-        eventId: envelope.id,
-        payload: envelope,
-        status: "pending" as const,
-        attempt: 0,
-      })),
-    );
-    await this.jobs.deliver.pushMany(
-      rows.map((row) => ({ payload: { deliveryId: row.id }, key: row.id })),
-    );
-    this.log.debug("Webhook event queued", {
-      eventType: envelope.type,
-      eventId: envelope.id,
-      deliveries: rows.length,
-    });
-    return rows.length;
-  }
-
-  /**
-   * The envelope every receiver gets: a UUIDv7 id (the `webhook-id`), the
-   * event type, the time from `DateTimeProvider`, and the data.
-   */
-  public envelope(
-    type: string,
-    data: Record<string, unknown>,
-  ): WebhookEnvelope {
-    return {
-      id: this.crypto.randomUUIDv7(this.dateTime.nowMillis()),
-      type,
-      timestamp: this.dateTime.now().toISOString(),
-      data,
     };
   }
 }

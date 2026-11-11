@@ -4,9 +4,11 @@ import {
   type Infer,
   Primitive,
   type ZObject,
+  z,
 } from "alepha";
 import { KIND } from "alepha/internal";
 
+import { webhookEnvelopeSchema } from "../schemas/webhookEnvelopeSchema.ts";
 import type { WebhookSendOptions } from "../schemas/webhookSendOptionsSchema.ts";
 import {
   WebhookService,
@@ -86,6 +88,73 @@ export class WebhookPrimitive<T extends ZObject = ZObject> extends Primitive<
 
   public get schema(): T {
     return this.options.schema;
+  }
+
+  /**
+   * The JSON Schema of the event's `data`, for the event catalog.
+   */
+  public jsonSchema(): Record<string, unknown> {
+    return this.toJson(this.schema);
+  }
+
+  /**
+   * This event's entry in the OpenAPI document's `x-webhooks` section: a
+   * path item with one `post`, the envelope as its JSON body (with `data`
+   * this event's own schema), the three `webhook-*` headers, and a `2XX`.
+   *
+   * Built here, beside the envelope, so the swagger provider reads it by
+   * the primitive's name and never rebuilds the envelope itself.
+   */
+  public openApiPathItem(): Record<string, unknown> {
+    const header = (name: string, description: string) => ({
+      name,
+      in: "header",
+      required: true,
+      description,
+      schema: { type: "string" },
+    });
+    return {
+      post: {
+        summary: this.name,
+        description: this.description,
+        parameters: [
+          header(
+            "webhook-id",
+            "The event's id, stable across retries: deduplicate on it.",
+          ),
+          header(
+            "webhook-timestamp",
+            "When this attempt was signed, in seconds.",
+          ),
+          header(
+            "webhook-signature",
+            "Space-separated `v1,<base64>` HMAC-SHA256 signatures of `id.timestamp.body` (Standard Webhooks).",
+          ),
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: this.toJson(
+                webhookEnvelopeSchema.extend({ data: this.schema }),
+              ),
+            },
+          },
+        },
+        responses: {
+          "2XX": {
+            description:
+              "Received. Any other answer is retried; `410 Gone` unsubscribes the endpoint.",
+          },
+        },
+      },
+    };
+  }
+
+  protected toJson(schema: ZObject): Record<string, unknown> {
+    const json = z.toJSONSchema(schema) as Record<string, unknown>;
+    delete json.$schema;
+    return json;
   }
 
   protected onInit() {

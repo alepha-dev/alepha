@@ -1,14 +1,19 @@
 import type { ModulePrimitiveOptions } from "alepha";
+import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiJobs } from "alepha/api/jobs";
 
+import { WebhookAudits } from "./audits/WebhookAudits.ts";
+import { AdminWebhookController } from "./controllers/AdminWebhookController.ts";
 import { WebhookJobs } from "./jobs/WebhookJobs.ts";
 import { WebhookNotifications } from "./notifications/WebhookNotifications.ts";
 import { $webhook } from "./primitives/$webhook.ts";
+import { WebhookBuiltins } from "./primitives/WebhookBuiltins.ts";
 import { WebhookAddressResolver } from "./services/WebhookAddressResolver.ts";
 import { WebhookDeliveryService } from "./services/WebhookDeliveryService.ts";
 import { WebhookDestinationPolicy } from "./services/WebhookDestinationPolicy.ts";
 import { WebhookEndpointService } from "./services/WebhookEndpointService.ts";
 import { WebhookHealthService } from "./services/WebhookHealthService.ts";
+import { WebhookOutbox } from "./services/WebhookOutbox.ts";
 import { WebhookSecretService } from "./services/WebhookSecretService.ts";
 import { WebhookService } from "./services/WebhookService.ts";
 import { HttpWebhookTransport } from "./transports/HttpWebhookTransport.ts";
@@ -17,27 +22,41 @@ import { WebhookTransport } from "./transports/WebhookTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./audits/WebhookAudits.ts";
+export * from "./controllers/AdminWebhookController.ts";
 export * from "./entities/webhookDeliveryEntity.ts";
 export * from "./entities/webhookEndpointEntity.ts";
 export * from "./errors/WebhookDestinationRefusedError.ts";
+export * from "./errors/WebhookEndpointNotActiveError.ts";
 export * from "./errors/WebhookPayloadTooLargeError.ts";
 export * from "./jobs/WebhookJobs.ts";
 export * from "./notifications/WebhookNotifications.ts";
 export * from "./primitives/$webhook.ts";
+export * from "./primitives/WebhookBuiltins.ts";
 export * from "./schemas/createWebhookEndpointSchema.ts";
+export * from "./schemas/rotateWebhookSecretSchema.ts";
+export * from "./schemas/updateWebhookEndpointSchema.ts";
+export * from "./schemas/webhookDeliveryDetailResourceSchema.ts";
+export * from "./schemas/webhookDeliveryQuerySchema.ts";
+export * from "./schemas/webhookDeliveryRefSchema.ts";
+export * from "./schemas/webhookDeliveryResourceSchema.ts";
 export * from "./schemas/webhookDeliveryStatusSchema.ts";
 export * from "./schemas/webhookDisabledReasonSchema.ts";
+export * from "./schemas/webhookEndpointQuerySchema.ts";
 export * from "./schemas/webhookEndpointResourceSchema.ts";
 export * from "./schemas/webhookEndpointStatusSchema.ts";
 export * from "./schemas/webhookEndpointWithSecretSchema.ts";
 export * from "./schemas/webhookEnvelopeSchema.ts";
+export * from "./schemas/webhookEventResourceSchema.ts";
 export * from "./schemas/webhookOptionsAtom.ts";
+export * from "./schemas/webhookScopeQuerySchema.ts";
 export * from "./schemas/webhookSendOptionsSchema.ts";
 export * from "./services/WebhookAddressResolver.ts";
 export * from "./services/WebhookDeliveryService.ts";
 export * from "./services/WebhookDestinationPolicy.ts";
 export * from "./services/WebhookEndpointService.ts";
 export * from "./services/WebhookHealthService.ts";
+export * from "./services/WebhookOutbox.ts";
 export * from "./services/WebhookSecretService.ts";
 export * from "./services/WebhookService.ts";
 export * from "./transports/HttpWebhookTransport.ts";
@@ -99,7 +118,7 @@ declare module "alepha" {
  */
 export const webhooksModuleOptions = {
   name: "alepha.api.webhooks",
-  imports: [AlephaApiJobs],
+  imports: [AlephaApiJobs, AlephaApiAudits],
   primitives: [$webhook],
   services: [
     WebhookSecretService,
@@ -109,7 +128,11 @@ export const webhooksModuleOptions = {
     WebhookHealthService,
     WebhookDeliveryService,
     WebhookJobs,
+    WebhookOutbox,
     WebhookService,
+    WebhookBuiltins,
+    WebhookAudits,
+    AdminWebhookController,
   ],
   // `WebhookNotifications` is never registered here: the module stays
   // usable without `alepha/api/notifications`. An app turns the disabled
