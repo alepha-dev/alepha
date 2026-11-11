@@ -173,9 +173,18 @@ export const AdminUsers = (props: AdminUsersProps) => {
           query: { userRealmName: props.userRealmName },
           body: { roles },
         });
+        // Said out loud (#Q3433): a role change saved in silence. A failure
+        // throws, so `AppShell`'s ActionErrorToaster toasts it, and the
+        // picker keeps the roles it had: it only applies a change that saved.
+        toast.success(
+          tr("admin.users.rolesSaved", {
+            default: `Roles of ${userLabel(user)} saved`,
+            args: [userLabel(user)],
+          }),
+        );
       },
     },
-    [client, props.userRealmName],
+    [client, props.userRealmName, toast, tr],
   );
 
   const userLabel = (u: UserEntity) =>

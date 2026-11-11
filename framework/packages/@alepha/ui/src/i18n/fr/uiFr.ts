@@ -1151,6 +1151,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.enableTitle": "Réactiver l'utilisateur",
   "admin.users.enableUser": "Réactiver l'utilisateur",
   "admin.users.enabled": "Utilisateur réactivé",
+  "admin.users.rolesSaved": "Rôles de $1 enregistrés",
   "admin.users.noRoles": "Aucun rôle",
   "admin.users.noneActive": "Aucun utilisateur actif dans la sélection",
   "admin.users.noneSelected": "Aucun utilisateur supprimable dans la sélection",
