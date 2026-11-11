@@ -76,6 +76,8 @@ func TestUntarExtractsTheArtifactLayout(t *testing.T) {
 		entry{name: "index.node.js", body: "console.log(1)"},
 		entry{name: "manifest.json", body: `{"project":"lore"}`},
 		entry{name: "migrations/sqlite/0001.sql", body: "select 1;"},
+		// `alepha build` with `build.sbom` writes it at the root of dist/.
+		entry{name: "sbom.cdx.json", body: `{"bomFormat":"CycloneDX"}`},
 	)
 	dest := filepath.Join(t.TempDir(), "release")
 
@@ -83,7 +85,7 @@ func TestUntarExtractsTheArtifactLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, want := range []string{"index.node.js", "manifest.json", "migrations/sqlite/0001.sql"} {
+	for _, want := range []string{"index.node.js", "manifest.json", "migrations/sqlite/0001.sql", "sbom.cdx.json"} {
 		if _, err := os.Stat(filepath.Join(dest, filepath.FromSlash(want))); err != nil {
 			t.Fatalf("%s should have been extracted: %v", want, err)
 		}

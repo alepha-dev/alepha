@@ -66,6 +66,7 @@ describe("WorkspaceCompiler", () => {
     await fs.writeFile("/project/dist/public/entry.X1.js", "// client");
     await fs.writeFile("/project/dist/public/entry.X1.js.br", "br");
     await fs.writeFile("/project/dist/public/assets/logo.svg", "<svg/>");
+    await fs.writeFile("/project/dist/sbom.cdx.json", "{}");
     await fs.writeFile(
       "/project/dist/manifest.json",
       JSON.stringify({
@@ -225,7 +226,7 @@ describe("WorkspaceCompiler", () => {
     ).toBe(true);
   });
 
-  it("removes what the binary now carries, and keeps manifest.json", async () => {
+  it("removes what the binary now carries, and keeps manifest.json and the SBOM", async () => {
     const { fs, task } = await createTestEnv();
 
     await task.compile(bare);
@@ -235,6 +236,8 @@ describe("WorkspaceCompiler", () => {
     expect(await fs.exists("/project/dist/package.json")).toBe(false);
     expect(await fs.exists("/project/dist/public")).toBe(false);
     expect(await fs.exists("/project/dist/manifest.json")).toBe(true);
+    // It lists what the binary bundled, and the image copies it in.
+    expect(await fs.exists("/project/dist/sbom.cdx.json")).toBe(true);
   });
 
   /**

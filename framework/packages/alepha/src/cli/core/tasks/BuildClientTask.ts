@@ -3,6 +3,7 @@ import { FileSystemProvider } from "alepha/system";
 import type { UserConfig } from "vite";
 
 import { MetaResolver } from "../services/MetaResolver.ts";
+import { SbomBuilder } from "../services/SbomBuilder.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -34,6 +35,7 @@ export class BuildClientTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
+  protected readonly sbom = $inject(SbomBuilder);
 
   /**
    * The public directory Vite resolved for the last client build: the app's
@@ -83,6 +85,7 @@ export class BuildClientTask extends BuildTask {
             silent: !isCI,
             meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
             define: ctx.define,
+            sbom: !!ctx.options.sbom,
           });
         },
       });
@@ -104,6 +107,10 @@ export class BuildClientTask extends BuildTask {
      * cannot be shadowed by the build; absent, the bundle is unchanged.
      */
     define?: Record<string, string>;
+    /**
+     * Record what this build emitted for `dist/sbom.cdx.json`.
+     */
+    sbom?: boolean;
   }): Promise<void> {
     const { build: viteBuild } = await this.viteUtils.importVite();
     const plugins: any[] = [];
@@ -121,6 +128,10 @@ export class BuildClientTask extends BuildTask {
         this.publicDir = config.publicDir || undefined;
       },
     });
+
+    if (opts.sbom) {
+      plugins.push(this.sbom.plugin());
+    }
 
     if (opts.stats) {
       const viteAnalyzer = await this.viteUtils.importAnalyzer();

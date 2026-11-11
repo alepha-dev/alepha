@@ -30,7 +30,7 @@ alepha image --tag=myorg/app:v2   # complete tag override
 
 Every form but the last needs `image.tag` in the config.
 
-The artifact has an `index.<runtime>.js` wrapper, `server/<runtime>/` chunks, `public/` assets, its manifest and package metadata. Migrations are copied into the image context when present. There is no generated Dockerfile inside `dist/`.
+The artifact has an `index.<runtime>.js` wrapper, `server/<runtime>/` chunks, `public/` assets, its manifest and package metadata, and with `build.sbom` a CycloneDX SBOM of what the bundles contain (`sbom.cdx.json`, see [Software Bill of Materials](/docs/cli-commands-build#software-bill-of-materials)). Migrations are copied into the image context when present. There is no generated Dockerfile inside `dist/`.
 
 ## Configuration
 

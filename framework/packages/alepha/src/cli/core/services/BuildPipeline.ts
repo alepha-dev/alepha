@@ -18,6 +18,7 @@ import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
 import { BuildPwaTask } from "../tasks/BuildPwaTask.ts";
+import { BuildSbomTask } from "../tasks/BuildSbomTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
 import type { BuildTask, BuildTaskContext } from "../tasks/BuildTask.ts";
@@ -27,6 +28,7 @@ import { BuildSlices } from "./BuildSlices.ts";
 import { MetaResolver } from "./MetaResolver.ts";
 import { PackageManagerUtils } from "./PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./ProjectScaffolder.ts";
+import { SbomBuilder } from "./SbomBuilder.ts";
 
 /**
  * The `alepha build` pipeline, callable in process.
@@ -66,6 +68,7 @@ export class BuildPipeline {
   protected readonly metaOverride = $store(metaOptions);
   protected readonly freshness = $inject(BuildFreshness);
   protected readonly slices = $inject(BuildSlices);
+  protected readonly sbom = $inject(SbomBuilder);
 
   /**
    * Build pipeline: tasks run sequentially in this order.
@@ -86,6 +89,8 @@ export class BuildPipeline {
     // Before the target-specific config tasks: `dist/` exists by now, and
     // anything generating deploy config may want to read what was captured.
     $inject(BuildManifestTask),
+    // After every slice: it reads their module graphs and `dist/package.json`.
+    $inject(BuildSbomTask),
     $inject(BuildCloudflareTask),
     $inject(BuildStaticTask),
     $inject(BuildHeadersTask),
@@ -261,6 +266,10 @@ export class BuildPipeline {
         shellViewport: request.shellViewport,
       },
     };
+
+    // One document per build: a second build in the same process must not
+    // list the first one's modules.
+    this.sbom.reset();
 
     for (const task of this.tasks) {
       await task.run(ctx);

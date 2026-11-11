@@ -37,12 +37,17 @@ describe("unpacking an artifact", () => {
         "index.node.js": "console.log(1);",
         "manifest.json": '{"version":1}',
         "migrations/sqlite/0001.sql": "SELECT 1;",
+        // `alepha build` with `build.sbom` writes it at the root of dist/.
+        "sbom.cdx.json": '{"bomFormat":"CycloneDX"}',
       }),
       fs,
       "/deploy",
     );
 
-    expect(result.files).toBe(3);
+    expect(result.files).toBe(4);
+    expect(await fs.readTextFile("/deploy/sbom.cdx.json")).toContain(
+      "CycloneDX",
+    );
     expect(await fs.readTextFile("/deploy/index.node.js")).toBe(
       "console.log(1);",
     );
