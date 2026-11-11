@@ -1848,10 +1848,14 @@ export default {
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
   "account.projects.empty": "Vous ne faites partie d'aucun projet.",
-  "account.projects.quota": "$1 projets possédés sur $2",
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
   "account.projects.see-all": "Tous les projets",
+  "account.projects.filter.role": "Rôle",
+  "account.projects.filter.allRoles": "Tous les rôles",
+  "account.projects.filter.archived": "Archivés",
+  "account.projects.filter.active": "Non archivés",
+  "account.projects.filter.allStates": "Archivés ou non",
   "account.projects.archived": "Archivé",
 
   "area.detail.rename": "Renommer",

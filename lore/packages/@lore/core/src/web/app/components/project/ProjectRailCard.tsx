@@ -1,5 +1,6 @@
-import { BrandIcon } from "@alepha/ui";
+import { BrandIcon, cn } from "@alepha/ui";
 import { GitBranch } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 
@@ -10,6 +11,19 @@ export interface ProjectRailCardProps {
     icon?: string | null;
     repositoryUrl?: string | null;
   };
+  /**
+   * A row's size rather than a card's: a smaller image, one line of title
+   * (Account > Projects, #Q3411).
+   */
+  compact?: boolean;
+  /**
+   * Replaces the plain title, for a caller that makes it a link.
+   */
+  title?: ReactNode;
+  /**
+   * Drawn after the title (an Archived badge).
+   */
+  badge?: ReactNode;
 }
 
 /**
@@ -21,25 +35,48 @@ export interface ProjectRailCardProps {
  * line at all for a stored value that does not parse as a URL. It shows the
  * path (`owner/repo`) rather than the whole URL, which the card is too narrow
  * for and which says nothing more.
+ *
+ * Account > Projects draws each row with it too (#Q3411), `compact`, so the
+ * list and the rail show a project the same way.
  */
 export const ProjectRailCard = (props: ProjectRailCardProps) => {
   const repository = parseRepository(props.project.repositoryUrl);
   return (
-    <div className="flex items-center gap-3" data-testid="project-rail-card">
+    <div
+      className={cn("flex min-w-0 items-center", props.compact ? "gap-2.5" : "gap-3")}
+      data-testid="project-rail-card"
+    >
       <ProjectIcon
         fileId={props.project.icon}
         title={props.project.title}
         seed={props.project.slug}
-        className="size-12 rounded-xl"
+        className={cn(
+          "shrink-0",
+          props.compact ? "size-8 rounded-lg" : "size-12 rounded-xl",
+        )}
       />
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="truncate font-semibold">{props.project.title}</span>
+      <div
+        className={cn("flex min-w-0 flex-col", props.compact ? "gap-0.5" : "gap-1")}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn(
+              "truncate",
+              props.compact ? "text-sm font-medium" : "font-semibold",
+            )}
+          >
+            {props.title ?? props.project.title}
+          </span>
+          {props.badge}
+        </span>
         {repository && (
           <a
             href={repository.url}
             target="_blank"
             rel="noreferrer noopener"
             data-testid="project-rail-card-repository"
+            // Never the row's own click, where a caller's row navigates.
+            onClick={(event) => event.stopPropagation()}
             className="text-muted-foreground hover:text-foreground flex min-w-0 items-center gap-1.5 text-xs"
           >
             {repository.github ? (

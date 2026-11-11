@@ -61,8 +61,8 @@ describe("MyProjects", () => {
     alepha = undefined;
   });
 
-  it("lists an archived project with an Archived badge", async ({ expect }) => {
-    alepha = Alepha.create()
+  const mount = async () => {
+      alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
       .with({ provide: LinkProvider, use: FakeLinkProvider })
@@ -87,15 +87,33 @@ describe("MyProjects", () => {
       </AlephaContext.Provider>,
     );
 
+  };
+
+  it("hides archived projects on load (#Q3412)", async ({ expect }) => {
+    window.localStorage.removeItem("lor.account.projects.filters");
+    await mount();
+
     const rows = await screen.findAllByTestId("account-project-row");
-    expect(rows).toHaveLength(2);
+    expect(rows.map((it) => it.textContent)).toEqual(["Lore"]);
+    // The counter is gone; the filters are on the bar instead.
+    expect(screen.queryByTestId("project-quota")).toBeNull();
+    expect(screen.getAllByText("Not archived").length).toBeGreaterThan(0);
+  });
+
+  it("lists an archived project with an Archived badge once asked for", async ({
+    expect,
+  }) => {
+    window.localStorage.setItem(
+      "lor.account.projects.filters",
+      JSON.stringify({ archived: "archived" }),
+    );
+    await mount();
+
+    const rows = await screen.findAllByTestId("account-project-row");
+    expect(rows.map((it) => it.textContent)).toEqual(["Minorca"]);
     const badges = screen.getAllByTestId("account-project-archived");
     expect(badges).toHaveLength(1);
     expect(badges[0].textContent).toBe("Archived");
-    expect(
-      rows
-        .find((it) => it.textContent?.includes("Minorca"))
-        ?.contains(badges[0]),
-    ).toBe(true);
+    window.localStorage.removeItem("lor.account.projects.filters");
   });
 });

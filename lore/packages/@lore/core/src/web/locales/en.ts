@@ -1860,10 +1860,14 @@ export default {
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
   "account.projects.empty": "You are not part of any project yet.",
-  "account.projects.quota": "$1 of $2 projects owned",
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.see-all": "All projects",
+  "account.projects.filter.role": "Role",
+  "account.projects.filter.allRoles": "All roles",
+  "account.projects.filter.archived": "Archived",
+  "account.projects.filter.active": "Not archived",
+  "account.projects.filter.allStates": "Archived or not",
   "account.projects.archived": "Archived",
 
   "area.detail.rename": "Rename",
