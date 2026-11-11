@@ -20,7 +20,7 @@ import {
 export class AppSurfaceCollector {
   public collect(alepha: Alepha): AppSurface {
     const purity = alepha.purity();
-    const classes = this.classesOf(purity);
+    const classes = this.classesOf(purity, this.securityOf(alepha));
     const keyOf = (primitive: Primitive<any>) =>
       ContainerGraph.keyOf(primitive.config.service as Service);
 
@@ -115,7 +115,10 @@ export class AppSurfaceCollector {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  protected classesOf(purity: PurityEntry[]): AppSurfaceClass[] {
+  protected classesOf(
+    purity: PurityEntry[],
+    security?: { permissionsDeclaredBy: (service: Service) => string[] },
+  ): AppSurfaceClass[] {
     const counts = new Map<string, number>();
     for (const entry of purity) {
       const key = ContainerGraph.keyOf(entry.service);
@@ -135,13 +138,16 @@ export class AppSurfaceCollector {
       if (!entry.pure) {
         return { key, pure: false, reasons: entry.reasons };
       }
-      return {
+      const permissions = security?.permissionsDeclaredBy(entry.service);
+      return this.compact({
         key,
         pure: true,
         closure: entry.closure.length
           ? entry.closure.map((it) => ContainerGraph.keyOf(it))
           : undefined,
-      };
+        // Registered at boot from the list, since the class is not (#Q3416).
+        permissions: permissions?.length ? permissions : undefined,
+      });
     });
   }
 
@@ -167,6 +173,20 @@ export class AppSurfaceCollector {
     | undefined {
     try {
       return alepha.inject("alepha.server.links.ServerLinksProvider") as any;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * The security provider, when the app has one, for the permissions each
+   * class declared through `$secure`.
+   */
+  protected securityOf(
+    alepha: Alepha,
+  ): { permissionsDeclaredBy: (service: Service) => string[] } | undefined {
+    try {
+      return alepha.inject("alepha.security.SecurityProvider") as any;
     } catch {
       return undefined;
     }

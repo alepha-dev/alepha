@@ -42,7 +42,11 @@ describe("AppSurfaceCollector", () => {
 
     expect(surface.classes).toEqual(
       expect.arrayContaining([
-        { key: "acme.api:QuestApi", pure: true },
+        {
+          key: "acme.api:QuestApi",
+          pure: true,
+          permissions: ["quest:read"],
+        },
         { key: "acme.api:Hooked", pure: false, reasons: ["holds a $hook"] },
       ]),
     );
