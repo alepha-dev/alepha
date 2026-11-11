@@ -11,6 +11,11 @@ import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { coerceObject } from "./helpers/coerceStrings.ts";
 import { ContainerGraph, type PurityEntry } from "./helpers/ContainerGraph.ts";
+import {
+  isLazyService,
+  LAZY_SERVICE,
+  type LazyService,
+} from "./helpers/lazyService.ts";
 import { Primitive } from "./helpers/primitive.ts";
 import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
 import type { AppSurface } from "./interfaces/AppSurface.ts";
@@ -518,24 +523,15 @@ export class Alepha {
    */
   public isDeferrable(service: Service): boolean {
     const surface = this.surface;
-    if (!surface || this.started || typeof service !== "function") {
+    if (
+      !surface ||
+      this.started ||
+      (typeof service !== "function" && !isLazyService(service))
+    ) {
       return false;
     }
     const key = ContainerGraph.keyOf(service);
-    if (!surface.classes.some((it) => it.key === key && it.pure)) {
-      return false;
-    }
-    // Pages and the MCP surface are created late by their own quests; until
-    // then a class holding one is created at boot, whatever else it holds.
-    const owns = (rows: Array<{ class: string; mcp?: boolean }>) =>
-      rows.some((it) => it.class === key);
-    return !(
-      owns(surface.pages) ||
-      owns(surface.tools) ||
-      owns(surface.resources) ||
-      owns(surface.prompts) ||
-      surface.actions.some((it) => it.class === key && it.mcp)
-    );
+    return surface.classes.some((it) => it.key === key && it.pure);
   }
 
   /**
@@ -553,13 +549,48 @@ export class Alepha {
   }
 
   /**
+   * Creates, before start, the declared classes nothing would ever create
+   * late: those holding an MCP tool, resource or prompt when no MCP server is
+   * registered (#Q3406). The MCP server is what creates them on its first
+   * request; a tool class was also what registered its module, so with every
+   * tool class declared that module may never have come.
+   */
+  protected createUnservedDeclared(): void {
+    const surface = this.surface;
+    if (!surface || this.declared.size === 0) {
+      return;
+    }
+    const mcp = new Set(
+      [...surface.tools, ...surface.resources, ...surface.prompts].map(
+        (row) => row.class,
+      ),
+    );
+    if (mcp.size === 0) {
+      return;
+    }
+    for (const key of this.registry.keys()) {
+      if ((key as { id?: string }).id === "alepha.mcp.McpServerProvider") {
+        return;
+      }
+    }
+    for (const service of Array.from(this.declared)) {
+      if (mcp.has(ContainerGraph.keyOf(service))) {
+        this.inject(service);
+      }
+    }
+  }
+
+  /**
    * Create every declared class now: what a reader that needs every action
    * (OpenAPI, the schemas endpoint) calls first.
    */
   public createDeclared(): void {
     // A copy: each inject removes its class from the set.
     for (const service of Array.from(this.declared)) {
-      this.inject(service);
+      // A lazy stand-in is created once imported: `loadDeclared` first.
+      if (!isLazyService(service)) {
+        this.inject(service);
+      }
     }
   }
 
@@ -571,6 +602,16 @@ export class Alepha {
    * returns the instance, so it always creates.
    */
   public declareService(service: Service): boolean {
+    if (isLazyService(service)) {
+      // A lazy stand-in (#Q3407) is never created here: deferred, or, with
+      // no list (`ALEPHA_EAGER=true`), imported and created at start.
+      if (this.isDeferrable(service)) {
+        this.declared.add(service);
+      } else {
+        this.eagerLazy.push(service);
+      }
+      return true;
+    }
     if (this.registry.has(service) || this.substitutions.has(service)) {
       return false;
     }
@@ -579,6 +620,81 @@ export class Alepha {
     }
     this.declared.add(service);
     return true;
+  }
+
+  /**
+   * Lazy stand-ins a module registered while nothing defers them: imported
+   * and created by {@link start}, before the lock (#Q3407).
+   */
+  protected eagerLazy: LazyService[] = [];
+
+  /**
+   * The class a declared entry stands for: itself, or for a lazy stand-in the
+   * class its chunk exports, imported once (a failed import is retried on the
+   * next call). The class takes the stand-in's place among the declared ones.
+   */
+  public async resolveDeclared(service: Service): Promise<Service> {
+    if (!isLazyService(service)) {
+      return service;
+    }
+    const lazy = service[LAZY_SERVICE];
+    if (lazy.resolved) {
+      return lazy.resolved;
+    }
+    lazy.promise ??= lazy.load().then(
+      (resolved) => {
+        this.adopt(service, resolved);
+        return resolved;
+      },
+      (error) => {
+        lazy.promise = undefined;
+        throw error;
+      },
+    );
+    return lazy.promise;
+  }
+
+  /**
+   * Imports every declared lazy stand-in: what a reader that needs every
+   * class (OpenAPI, the schemas endpoint) awaits first.
+   */
+  public async loadDeclared(): Promise<void> {
+    await Promise.all(
+      [...this.declared]
+        .filter(isLazyService)
+        .map((it) => this.resolveDeclared(it)),
+    );
+  }
+
+  /**
+   * The class takes its stand-in's place: same module, same declaration.
+   */
+  protected adopt(lazy: LazyService, resolved: Service): void {
+    lazy[LAZY_SERVICE].resolved = resolved;
+    const module = (lazy as unknown as WithModule)[MODULE];
+    if (module) {
+      (resolved as WithModule)[MODULE] ??= module;
+    }
+    if (this.declared.delete(lazy as unknown as Service)) {
+      if (!this.registry.has(resolved)) {
+        this.declared.add(resolved);
+      }
+    }
+  }
+
+  /**
+   * A class injected before its chunk was imported through its stand-in
+   * (another file imports it statically): it takes the stand-in's place, so
+   * the lock admits it as declared.
+   */
+  protected adoptByName(service: Service): boolean {
+    for (const entry of this.declared) {
+      if (isLazyService(entry) && entry.name === service.name) {
+        this.adopt(entry, service);
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -1022,6 +1138,14 @@ export class Alepha {
         }
       }
 
+      this.createUnservedDeclared();
+
+      // With no list (`ALEPHA_EAGER=true`), the controllers the build made
+      // lazy are imported and created now, as every class is (#Q3407).
+      for (const lazy of this.eagerLazy.splice(0)) {
+        this.inject(await lazy[LAZY_SERVICE].load());
+      }
+
       this.locked = true;
 
       await this.events.emit("configure", this, { log: true });
@@ -1388,7 +1512,8 @@ export class Alepha {
       return this;
     }
 
-    const isSubstitution = typeof entry === "object";
+    // A lazy stand-in (#Q3407) is an object too, and no substitution.
+    const isSubstitution = typeof entry === "object" && !isLazyService(entry);
     if (isSubstitution) {
       if (entry.provide === entry.use) {
         this.inject(entry.provide);
@@ -1422,11 +1547,20 @@ export class Alepha {
     }
 
     // A pure class the build list names is declared, not created (#Q3402).
-    if (this.declareService(entry)) {
+    const service = entry as Service<T>;
+    if (this.declareService(service)) {
       return this;
     }
 
-    this.inject(entry);
+    // `alepha.with` is a registration form wherever it is called (a module's
+    // `register`, a `$realm`'s features, a helper): what it creates is
+    // registered, not injected by the class under construction (#Q3404).
+    this.containerGraph.openFrame(this.pendingInstantiations.length);
+    try {
+      this.inject(service);
+    } finally {
+      this.containerGraph.closeFrame();
+    }
 
     return this;
   }
@@ -1519,9 +1653,15 @@ export class Alepha {
     }
 
     if (!transient && registry === this.registry) {
+      // A primitive's `onInit` registering a class (`$realm` passing its
+      // features' controllers to `alepha.with`) is the framework's
+      // registration, as a module's `register` is, not an injection by the
+      // class that declares the primitive (#Q3404).
       this.containerGraph.injected(
         service,
-        this.containerGraph.injectorOf(this.pendingInstantiations),
+        this.primitiveInits > 0
+          ? null
+          : this.containerGraph.injectorOf(this.pendingInstantiations),
       );
     }
 
@@ -1550,7 +1690,8 @@ export class Alepha {
         this.started &&
         registry === this.registry &&
         !this.declared.has(service) &&
-        this.lateCreations === 0
+        this.lateCreations === 0 &&
+        !this.adoptByName(service)
       ) {
         const mod = (service as WithModule)[MODULE]?.name;
         throw new ContainerLockedError(

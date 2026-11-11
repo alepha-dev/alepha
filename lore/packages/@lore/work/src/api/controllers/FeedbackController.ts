@@ -7,7 +7,7 @@ import {
 } from "@lore/core/api";
 import { type Project, projects, type User } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
-import { $storage, FileService, files } from "alepha/api/files";
+import { FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, db, pageQuerySchema } from "alepha/orm";
@@ -39,6 +39,7 @@ import {
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
+import { WorkBuckets } from "../services/WorkBuckets.ts";
 
 /**
  * A feedback row carrying the relations a resource needs, as `include`
@@ -117,15 +118,15 @@ export class FeedbackController {
   protected feedbackShortId = $sequence();
 
   /**
-   * Bucket for feedback attachments. Size cap mirrors `feedbackOptionsAtom`
-   * — the bucket-level limit acts as a hard backstop in case the controller
-   * check is bypassed. MIME whitelist is enforced at upload time (not here)
-   * so it can read from the atom rather than baking values into `$storage`.
+   * The bucket, declared on `WorkBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
    */
-  attachmentBucket = $storage({
-    name: FeedbackRateLimiter.ATTACHMENT_BUCKET,
-    maxSize: 5,
-  });
+  protected readonly buckets = $inject(WorkBuckets);
+
+  public get attachmentBucket() {
+    return this.buckets.feedbackAttachments;
+  }
 
   /**
    * Submit feedback for a project. Any logged-in Lore user can submit so

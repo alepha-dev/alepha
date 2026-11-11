@@ -7,6 +7,7 @@ import {
   $inject,
   $store,
   Alepha,
+  AlephaError,
   type Infer,
   type Middleware,
   PipelineHandler,
@@ -21,6 +22,7 @@ import {
   type ServerHandler,
   ServerReply,
   type ServerRequest,
+  type ServerRequestData,
   ServerRouterProvider,
 } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
@@ -121,9 +123,12 @@ export class ReactServerProvider {
     on: "configure",
     handler: async () => {
       const pages = this.alepha.primitives($page);
+      // Page routers a build list let the app declare without creating
+      // (#Q3405): their pages are registered on the first page request.
+      const deferred = this.pageApi.hasDeclaredPages();
 
       const ssrEnabled =
-        pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
+        (pages.length > 0 || deferred) && this.env.REACT_SSR_ENABLED !== false;
 
       // production mode
       let root = "";
@@ -154,6 +159,14 @@ export class ReactServerProvider {
         }
       }
 
+      if (ssrEnabled && deferred) {
+        this.registerPagesOnFirstRequest();
+        this.log.info(
+          "SSR OK (page routers created on the first page request)",
+        );
+        return;
+      }
+
       if (ssrEnabled) {
         this.registerPages();
         this.log.info("SSR OK");
@@ -164,6 +177,34 @@ export class ReactServerProvider {
       this.log.info("SSR is disabled");
     },
   });
+
+  /**
+   * Stands in for every page while the page routers are declared and not
+   * created (#Q3405): one `GET /*` placeholder, below every API and static
+   * route, so only a page request (or a not-found) reaches it. Its first hit
+   * creates the routers, builds the tree and registers the real page routes,
+   * whose `/*` replaces it, then answers through them. A cron or an API
+   * request never creates a router.
+   */
+  protected registerPagesOnFirstRequest(): void {
+    this.pageApi.onPagesBuilt = () => this.registerPages();
+    this.serverRouterProvider.createPlaceholder(
+      "GET",
+      "/*",
+      (request: ServerRequestData) => {
+        this.pageApi.ensurePages();
+        const { route } = this.serverRouterProvider.match(
+          `/GET${request.url.pathname}`,
+        );
+        if (!route || route.placeholder) {
+          throw new AlephaError(
+            "The page routers were created and registered no page route",
+          );
+        }
+        return route.handler(request);
+      },
+    );
+  }
 
   /**
    * Register all pages as server routes.

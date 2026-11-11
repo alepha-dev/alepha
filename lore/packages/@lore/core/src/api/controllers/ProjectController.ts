@@ -1,6 +1,6 @@
 import { $inject, Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
-import { $storage, files } from "alepha/api/files";
+import { files } from "alepha/api/files";
 import {
   MemberService as OrganizationMemberService,
   type OrganizationMember,
@@ -54,6 +54,7 @@ import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
+import { CoreBuckets } from "../services/CoreBuckets.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -221,24 +222,15 @@ export class ProjectController {
   });
 
   /**
-   * Project icons (avatars). Image-only, 2 MB cap.
-   *
-   * Bucket value kept as `campaign-icons`, not renamed to `project-icons`:
-   * it's a value already persisted on every existing `files` row (and in
-   * production), not just an in-code identifier — same reasoning that keeps
-   * `FOLIO_ATTACHMENT_BUCKET` at `"archive-blobs"` (see the note in
-   * `FolioAttachmentService.ts`) and `FeedbackRateLimiter.ATTACHMENT_BUCKET` at
-   * `"petition-attachments"`.
+   * The bucket, declared on `CoreBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
    */
-  iconBucket = $storage({
-    name: "campaign-icons",
-    description: "Project icons",
-    // The project settings form uploads here straight from the browser.
-    clientUploads: true,
-    // Megabytes. This read `2 * 1024 * 1024` — two million megabytes.
-    maxSize: 2,
-    mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-  });
+  protected readonly buckets = $inject(CoreBuckets);
+
+  public get iconBucket() {
+    return this.buckets.projectIcons;
+  }
 
   /**
    * Creates the organization, the project, its owner and its capabilities.

@@ -36,6 +36,12 @@ import { ScopeGrantsProvider } from "./ScopeGrantsProvider.ts";
  * Browser, SSR friendly, service to handle links.
  */
 export class LinkProvider {
+  /**
+   * Stable id, so a container loaded in another module graph (the build's)
+   * can reach this provider by name.
+   */
+  public static readonly id: string = "alepha.server.links.LinkProvider";
+
   static path = {
     apiLinks: "/api/_links",
   };
@@ -48,7 +54,41 @@ export class LinkProvider {
   protected readonly scopeGrants = $inject(ScopeGrantsProvider);
 
   // Server-side: all registered links (local + remote), keyed by name
-  protected serverLinkMap = new Map<string, HttpClientLink>();
+  protected serverLinkStore = new Map<string, HttpClientLink>();
+
+  /**
+   * Registrations waiting for the first read of the server links (#Q3396):
+   * building the links list at configure costs every cold start, and only a
+   * fetch reads it.
+   */
+  protected deferredRegistrations: Array<() => void> = [];
+
+  /**
+   * Run `register` the first time anything reads the server links, instead
+   * of now. Safe under concurrent first reads: it runs once.
+   */
+  public deferRegistration(register: () => void): void {
+    this.deferredRegistrations.push(register);
+  }
+
+  /**
+   * Runs the deferred registrations now: what a build calls to see a
+   * duplicate action name fail.
+   */
+  public buildServerLinks(): void {
+    while (this.deferredRegistrations.length > 0) {
+      const pending = this.deferredRegistrations;
+      this.deferredRegistrations = [];
+      for (const register of pending) {
+        register();
+      }
+    }
+  }
+
+  protected get serverLinkMap(): Map<string, HttpClientLink> {
+    this.buildServerLinks();
+    return this.serverLinkStore;
+  }
 
   // Browser/SSR: parsed from the registry response
   protected actionMap = new Map<string, HttpClientLink>();

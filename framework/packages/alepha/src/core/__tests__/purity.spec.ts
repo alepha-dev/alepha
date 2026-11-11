@@ -282,6 +282,28 @@ describe("Alepha.purity", () => {
     });
   });
 
+  it("counts a class a primitive's onInit registers as registration, not an injection by its holder", ({
+    expect,
+  }) => {
+    class Feature {
+      list = ping();
+    }
+    // What `$realm({ features })` does: its onInit passes the feature's
+    // controller to `alepha.with`, while the class declaring it is on the
+    // stack.
+    class Registering extends Primitive<{}> {
+      public static override readonly side: PrimitiveSide = "boot";
+      protected override onInit() {
+        this.alepha.with(Feature);
+      }
+    }
+    class Holder {
+      realm = createPrimitive(Registering, {});
+    }
+    const alepha = Alepha.create().with(Holder);
+    expect(entryOf(alepha, Feature).pure).toBe(true);
+  });
+
   it("leaves a service out of the late closure once a module registers it", ({
     expect,
   }) => {

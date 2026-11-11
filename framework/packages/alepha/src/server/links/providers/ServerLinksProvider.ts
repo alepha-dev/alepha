@@ -78,7 +78,37 @@ export class ServerLinksProvider {
 
   public readonly onRoute = $hook({
     on: "configure",
+    // Built on the first read of the links, not here (#Q3396). A duplicate
+    // action name still fails at start: that check is cheap, the links are
+    // not.
     handler: () => {
+      const names = new Set<string>();
+      for (const action of this.alepha.primitives($action)) {
+        if (names.has(action.name)) {
+          throw new AlephaError(
+            `Duplicate action name "${action.name}". Each action must have a unique name.`,
+          );
+        }
+        names.add(action.name);
+      }
+      this.linkProvider.deferRegistration(() => this.registerLinks());
+    },
+  });
+
+  protected linksRegistered = false;
+
+  /**
+   * Every action and `$sse` as a local link, and the build list's rows for
+   * the classes declared and not created yet.
+   */
+  public registerLinks(): void {
+    // Once: a build forces it, and a build that prerenders emitted
+    // `configure` too.
+    if (this.linksRegistered) {
+      return;
+    }
+    this.linksRegistered = true;
+    {
       // convert all $action to local links
       for (const action of this.alepha.primitives($action)) {
         const bodyContentType = action.getBodyContentType();
@@ -121,11 +151,11 @@ export class ServerLinksProvider {
           method: row.method === "GET" ? undefined : row.method,
           prefix: this.prefix,
           path: row.path,
-          handler: (
+          handler: async (
             config: ClientRequestEntry<RequestConfigSchema>,
             options: ClientRequestOptions = {},
           ) => {
-            const action = surface.resolveAction(row);
+            const action = await surface.resolveActionAsync(row);
             if (!action) {
               throw new AlephaError(
                 `Action '${row.name}' is listed but its class registered no such action`,
@@ -158,8 +188,8 @@ export class ServerLinksProvider {
           },
         });
       }
-    },
-  });
+    }
+  }
 
   protected readonly onStart = $hook({
     on: "start",
@@ -224,6 +254,9 @@ export class ServerLinksProvider {
       ),
     },
     handler: async ({ body, user }) => {
+      // Schemas are read off the actions: classes made lazy chunks are
+      // imported first (#Q3407).
+      await this.alepha.loadDeclared();
       const result: Record<string, { body?: string; response?: string }> = {};
 
       for (const name of body.actions) {

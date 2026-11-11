@@ -9,6 +9,7 @@ import {
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildFreshness } from "../services/BuildFreshness.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { BuildTables } from "../services/BuildTables.ts";
 import { CloudflareAiDetector } from "../services/CloudflareAiDetector.ts";
 import { CloudflareEmailDetector } from "../services/CloudflareEmailDetector.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
@@ -40,6 +41,7 @@ export class BuildManifestTask extends BuildTask {
   protected readonly meta = $inject(MetaResolver);
   protected readonly freshness = $inject(BuildFreshness);
   protected readonly slices = $inject(BuildSlices);
+  protected readonly tables = $inject(BuildTables);
 
   async run(ctx: BuildTaskContext): Promise<void> {
     // Prebuilt mode re-reads an existing manifest and would only rewrite the
@@ -47,6 +49,11 @@ export class BuildManifestTask extends BuildTask {
     // how the artifact was actually built.
     if (ctx.manifest) {
       return;
+    }
+    // The tables a server builds on its first fetch, built here so their
+    // errors fail the build rather than the first request (#Q3396).
+    if (ctx.alepha) {
+      this.tables.force(ctx.alepha);
     }
     const distDir = ctx.options.output?.dist ?? "dist";
     await ctx.run({

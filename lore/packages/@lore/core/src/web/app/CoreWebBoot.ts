@@ -6,6 +6,7 @@ import { currentUserAtom } from "alepha/security";
 import { isHttpError } from "alepha/server";
 
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
+import { ProjectTrail } from "./services/ProjectTrail.ts";
 import { ReportsCsv } from "./services/ReportsCsv.ts";
 import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
 import { ReportsSummaryMarkdown } from "./services/ReportsSummaryMarkdown.ts";
@@ -30,6 +31,7 @@ export class CoreWebBoot {
   protected readonly alepha = $inject(Alepha);
   protected readonly router = $inject(ReactRouter);
   protected readonly reportsTabs = $inject(ReportsTabRegistry);
+  protected readonly trail = $inject(ProjectTrail);
 
   // Read by components through `useInject`, so they exist before the lock.
   protected readonly reportsUrl = $inject(ReportsUrlQuery);
@@ -66,6 +68,30 @@ export class CoreWebBoot {
           },
         });
       }
+    },
+  });
+
+  /**
+   * Every project page's title is its breadcrumb trail (#Q3408): "MCS ›
+   * Estates › ovh", the labels `ProjectView` draws, joined. One rule for the
+   * whole subtree, computed by `ProjectTrail` after every page head has
+   * merged, so a page's own `head.title` under this route no longer decides
+   * the tab. Pages outside a project, and an error layer, keep their own.
+   *
+   * Here and not on `ProjectRouter`: a `$head` is global, every render reads
+   * it, so its class is created at boot (#Q3404).
+   */
+  protected readonly trailTitle = $head({
+    afterPages: ({ layers }) => {
+      if (
+        !layers.some((layer) => layer.name === "project") ||
+        layers.some((layer) => layer.error)
+      ) {
+        return undefined;
+      }
+      const page = layers[layers.length - 1];
+      const title = this.trail.title(page?.name ?? "", page?.params ?? {});
+      return title ? { title } : undefined;
     },
   });
 

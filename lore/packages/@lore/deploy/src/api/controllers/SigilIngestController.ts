@@ -1,8 +1,8 @@
 import { sigilForwarded } from "@alepha/lore/sigil";
 import { SIGIL_INGEST_PATH } from "@alepha/lore/sigil";
-import { $hook, $inject, z } from "alepha";
+import { $inject, z } from "alepha";
 import { $logger } from "alepha/logger";
-import { $route, HttpError, UnauthorizedError } from "alepha/server";
+import { $route, UnauthorizedError } from "alepha/server";
 
 import type { Sigil } from "../entities/sigils.ts";
 import { SigilIngestService } from "../services/SigilIngestService.ts";
@@ -53,33 +53,6 @@ export class SigilIngestController {
       const sigil = await this.resolve(headers.authorization);
       await this.ingest.absorb(sigil, body);
       reply.status = 204;
-    },
-  });
-
-  /**
-   * A batch this sink refused, said at `warn` with the reason.
-   *
-   * The server logs a 4xx at `debug`, which production does not ship, and the
-   * sender's proxy is fail-open by design: so a sender whose payload stopped
-   * matching `sigilForwarded` loses all its telemetry while both sides look
-   * healthy. That happened for a day in October 2026, when `@alepha/lore`
-   * 0.32.0 ran on a framework whose `crypto.hash` had become async and
-   * forwarded an unawaited `visitor` as `{}` (#Q2683). The message names the
-   * field (`... (/visitor)`), which is the whole diagnosis.
-   *
-   * Never 401: an unknown token is anyone with the URL, and its reason is
-   * deliberately the same for every case (see {@link resolve}). The body is
-   * never logged, only the reason.
-   */
-  protected readonly onRefused = $hook({
-    on: "server:request:error",
-    handler: ({ route, error }) => {
-      if (route?.path !== SIGIL_INGEST_PATH) return;
-      if (!(error instanceof HttpError)) return;
-      if (error.status < 400 || error.status >= 500 || error.status === 401) {
-        return;
-      }
-      this.log.warn(`Sigil batch refused (${error.status}): ${error.message}`);
     },
   });
 

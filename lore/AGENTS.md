@@ -121,6 +121,14 @@ Not obvious from the code, so read them before writing any.
 - **One schema per file.** The one exemption is a table filter's `schema`, inline in a `DataTable`'s `filters.fields` record. A schema naming a domain type is imported, never redeclared, and only from a module the browser can load: a `schemas/` file or a UI constant, never an entity or a server barrel.
 - Rename files with `git mv`.
 
+### Controllers stay pure
+
+A class holding an `$action`, a `$page` or a `$tool` is created on its first request in production, which is what keeps a cold start cheap, as long as it is pure. `test/pure-controllers.spec.ts` fails, naming the class and the reason, the day one is not. Three rules keep them pure:
+
+- **No hook in a controller**, and no other primitive that acts at boot (`$storage`, `$permission`, `$head`, `$job`, ...). It goes on a class the module lists, as `CoreWebBoot` and the `*Buckets` classes do.
+- **A service resolves a controller where it calls it**, with `this.alepha.inject(QuestController)`, never as a field: a field makes the controller injected by a service, so created at boot.
+- **A module registers a controller with `services` or `alepha.with`**, never `alepha.inject` in `register`, which returns the instance and so always creates it.
+
 ### Typing traps
 
 - **Schemas are Zod, imported as `z` from `"alepha"`.** There is no `t` export: anything saying `t.text()` is pre-migration and wrong.

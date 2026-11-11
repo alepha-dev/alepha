@@ -21,6 +21,7 @@ export * from "./helpers/createPagination.ts";
 export * from "./helpers/FileLike.ts";
 export * from "./helpers/jsonSchemaToZod.ts";
 export * from "./helpers/ContainerGraph.ts";
+export * from "./helpers/lazyService.ts";
 export * from "./helpers/primitive.ts";
 export * from "./interfaces/AlephaMeta.ts";
 export * from "./interfaces/AppSurface.ts";
