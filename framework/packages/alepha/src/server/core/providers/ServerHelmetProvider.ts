@@ -302,6 +302,12 @@ export class ServerHelmetProvider {
     if (map.size === 0) {
       return map;
     }
+    // `alepha dev` serves plain http on localhost: `upgrade-insecure-requests`
+    // there can only break a subresource (Safari upgrades localhost, Chrome
+    // and Firefox exempt it), and protects nothing.
+    if (this.alepha.isViteDev()) {
+      map.delete("upgrade-insecure-requests");
+    }
     for (const [key, sources] of this.cspSources) {
       const existing = map.get(key) ?? map.get("default-src") ?? [];
       map.set(key, this.mergeSources(existing, sources));

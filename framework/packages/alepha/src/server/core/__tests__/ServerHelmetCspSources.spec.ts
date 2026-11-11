@@ -149,4 +149,25 @@ describe("ServerHelmetProvider CSP sources", () => {
       await alepha.stop();
     }
   });
+  it("drops upgrade-insecure-requests under alepha dev, which serves http on localhost", ({
+    expect,
+  }) => {
+    const dev = Alepha.create({ env: { VITE_ALEPHA_DEV: "true" } }).with(
+      AlephaServer,
+    );
+    dev.store.mut(helmetOptions, (old) => ({
+      ...old,
+      contentSecurityPolicy: {},
+    }));
+    const policy = dev.inject(ServerHelmetProvider).getHeaders()[
+      "content-security-policy"
+    ];
+    expect(policy).toContain("script-src 'self'");
+    expect(policy).not.toContain("upgrade-insecure-requests");
+
+    const { helmet } = appWith({ contentSecurityPolicy: {} });
+    expect(helmet.getHeaders()["content-security-policy"]).toContain(
+      "upgrade-insecure-requests",
+    );
+  });
 });

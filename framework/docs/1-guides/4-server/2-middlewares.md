@@ -83,6 +83,8 @@ Which to use for your own inline script: a global `$head` given a literal object
 
 The nonce goes into `script-src` only. `style-src` keeps `'unsafe-inline'`, which a browser ignores as soon as a nonce or a hash sits beside it. An API response or a file never asks for a nonce, and keeps the cached header. Your own code reads the current request's nonce with `ServerHelmetProvider.cspNonce()`, which creates it on first use.
 
+`alepha dev` enforces the same policy, so a violation shows while you write the code rather than in the production build. The dev head is inline scripts (the build metadata, your `define` constants, the reload handler, the stylesheet import, the plugins' preambles such as React Refresh); each is constant for the dev session and allowed by its hash. The HMR websocket is same-origin and passes `'self'`, and the `<style>` tags Vite injects pass `'unsafe-inline'`. One directive is left out in dev: `upgrade-insecure-requests`, since the dev server is plain `http` on localhost and some browsers upgrade localhost too.
+
 To add a source without restating the whole policy, register it with `ServerHelmetProvider`. It is appended to the effective policy, the built-in one or your own `directives`, and a directive the policy does not have is created from `default-src` first, so `frame-src` keeps the `'self'` it inherited:
 
 ```typescript

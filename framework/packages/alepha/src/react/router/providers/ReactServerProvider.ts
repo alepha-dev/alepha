@@ -334,6 +334,15 @@ export class ReactServerProvider {
 
     // Dev mode: use pre-transformed head content from Vite
     if (manifest.devHead) {
+      // `alepha dev` enforces the CSP as production does (#Q3353): its head
+      // is inline scripts (the build metadata, the define constants, the
+      // reload handler, the stylesheet import, the plugins' preambles), all
+      // constant for the dev session, so each is allowed by its hash.
+      for (const script of this.serverHeadProvider.inlineScriptsOf(
+        manifest.devHead,
+      )) {
+        this.helmet.addCspScriptHash(script);
+      }
       const devContent = faviconTag
         ? `${faviconTag}\n${manifest.devHead}\n`
         : `${manifest.devHead}\n`;
