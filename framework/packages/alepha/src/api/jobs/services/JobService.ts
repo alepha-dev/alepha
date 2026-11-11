@@ -12,6 +12,8 @@ import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 import type { JobExecutionResource } from "../schemas/jobExecutionResourceSchema.ts";
 import type { JobExecutionRow } from "../schemas/jobExecutionRowSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
+import type { JobStep } from "../schemas/jobStepSchema.ts";
+import type { JobStepView } from "../schemas/jobStepViewSchema.ts";
 
 /**
  * Admin surface for the job system.
@@ -253,12 +255,51 @@ export class JobService {
   /**
    * Full execution detail (includes captured logs).
    */
-  public async getExecution(id: string) {
+  public async getExecution(id: string): Promise<JobExecutionResource> {
     const execution = await this.executions.findById(id);
     if (!execution) {
       throw new NotFoundError(`Execution not found: ${id}`);
     }
-    return this.toResource(execution);
+    const { steps, ...rest } = execution;
+    return {
+      ...this.toResource(rest),
+      steps: steps ? this.stepTimeline(steps) : undefined,
+    };
+  }
+
+  /**
+   * The longest result preview the timeline carries, in characters.
+   */
+  protected readonly stepPreviewMaxLength = 2048;
+
+  /**
+   * A run's `steps` record as the admin's timeline: one entry per step,
+   * ordered by when it was written, each result as an indented JSON preview
+   * cut at {@link stepPreviewMaxLength}. Behind `admin:job:read`, like the
+   * payload the same response carries whole.
+   */
+  protected stepTimeline(steps: Record<string, JobStep>): JobStepView[] {
+    return Object.entries(steps)
+      .map(([name, step]) => {
+        const hasResult = step.result !== undefined;
+        let resultPreview: string | undefined;
+        if (hasResult) {
+          const json = JSON.stringify(step.result, null, 2);
+          resultPreview =
+            json.length <= this.stepPreviewMaxLength
+              ? json
+              : `${json.slice(0, this.stepPreviewMaxLength - 3)}...`;
+        }
+        return {
+          name,
+          at: step.at,
+          ms: step.ms,
+          ...(step.until ? { until: step.until } : {}),
+          hasResult,
+          ...(resultPreview !== undefined ? { resultPreview } : {}),
+        };
+      })
+      .sort((a, b) => a.at.localeCompare(b.at) || a.name.localeCompare(b.name));
   }
 
   /**
