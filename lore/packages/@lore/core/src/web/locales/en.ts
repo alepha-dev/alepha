@@ -1883,6 +1883,12 @@ export default {
   "account.projects.see-all": "All projects",
   "dock.full": "Your dock is full, so this project was not pinned.",
   "dock.full.manage": "Manage pins",
+  "dock.reorder.hint":
+    "Press Space to move this project in the dock, then the arrow keys, and Space again to drop it.",
+  "dock.reorder.picked": "Picked up $1.",
+  "dock.reorder.moved": "$1 moved to position $2 of $3.",
+  "dock.reorder.dropped": "$1 dropped.",
+  "dock.reorder.cancelled": "Move of $1 cancelled.",
   "account.projects.filter.role": "Role",
   "account.projects.filter.allRoles": "All roles",
   "account.projects.filter.archived": "Archived",

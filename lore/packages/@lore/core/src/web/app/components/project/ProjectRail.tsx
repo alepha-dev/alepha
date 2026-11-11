@@ -1,15 +1,31 @@
 import { Tooltip, TooltipContent, TooltipTrigger, cn } from "@alepha/ui";
-import { useStore } from "alepha/react";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { useAlepha, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Home, LayoutGrid, Plus } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailItem } from "./ProjectRailItem.tsx";
+import { useDock } from "./useDock.ts";
 
 /**
  * The dock: a column of project icons left of the sidebar, one click switches
@@ -25,6 +41,9 @@ import { ProjectRailItem } from "./ProjectRailItem.tsx";
  *   below the pins. Nothing is saved: it goes when the viewer leaves it.
  * - Shown on every project page, with no pins too: then only the fixed
  *   buttons and, if any, the temporary slot.
+ * - Reordered by dragging a pinned icon onto another, or from the keyboard:
+ *   Space picks the focused icon up, the arrows move it, Space or Enter drops
+ *   it and Escape puts it back (#Q3438). Saved on the drop, optimistically.
  *
  * ⚠️ **Selecting a project never moves it.** A dock is used by position, so
  * its order is changed only by the viewer, on the dock (#Q3370).
@@ -35,14 +54,25 @@ const ProjectRail = () => {
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
   const [dock] = useStore(userDockAtom);
-
-  if (!project) {
-    return null;
-  }
+  const alepha = useAlepha();
+  const actions = useDock();
+  const dndId = useId();
+  const hintId = useId();
+  const pinsRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [picked, setPicked] = useState<
+    { id: number; before: number[] } | undefined
+  >(undefined);
+  const [announcement, setAnnouncement] = useState("");
+  // Set by a pointer drop, read by the click the same pointerup fires.
+  const dropped = useRef(false);
+  const sensors = useSensors(
+    // Without a distance a plain click would start a drag, and a click must
+    // stay a click.
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
 
   const projects = overview?.projects ?? [];
-  const canCreate = overview?.canCreate ?? true;
-  const maxProjects = overview?.maxProjects;
   // The server already narrows the dock to live, unarchived memberships;
   // matching against the list in memory also keeps a project this tab just
   // left or archived from lingering until the next load.
@@ -51,9 +81,97 @@ const ProjectRail = () => {
     .map((id) => byId.get(id))
     .filter((it) => it !== undefined && !it.archivedAt)
     .map((it) => it!);
-  const temporary = pinned.some((it) => it.id === project.id)
+  const ids = pinned.map((it) => it.id);
+
+  // The keyboard move re-renders the list, which can take focus off the icon
+  // being moved: give it back.
+  useEffect(() => {
+    if (!picked) return;
+    pinsRef.current
+      ?.querySelector<HTMLElement>(
+        `[data-testid="project-rail-item"][data-project-id="${picked.id}"]`,
+      )
+      ?.focus();
+  }, [picked, dock]);
+
+  if (!project) {
+    return null;
+  }
+
+  const canCreate = overview?.canCreate ?? true;
+  const maxProjects = overview?.maxProjects;
+  const temporary = ids.includes(project.id)
     ? undefined
     : (byId.get(project.id) ?? project);
+  const titleOf = (id: number) => byId.get(id)?.title ?? "";
+
+  const onDragEnd = (event: DragEndEvent) => {
+    setDragging(false);
+    dropped.current = true;
+    // The click fires right after the pointerup that ended the drag; past
+    // this frame, clicks are clicks again.
+    setTimeout(() => {
+      dropped.current = false;
+    }, 0);
+    const from = ids.indexOf(Number(event.active.id));
+    const to = event.over ? ids.indexOf(Number(event.over.id)) : -1;
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...ids];
+    next.splice(to, 0, ...next.splice(from, 1));
+    void actions.move(next);
+  };
+
+  const onClickCapture = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (dropped.current) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  const onKeyDown =
+    (id: number) => (event: KeyboardEvent<HTMLAnchorElement>) => {
+      const held = picked?.id === id;
+      if (event.key === " ") {
+        event.preventDefault();
+        if (!held) {
+          setPicked({ id, before: ids });
+          setAnnouncement(tr("dock.reorder.picked", { args: [titleOf(id)] }));
+          return;
+        }
+      }
+      if (!held) return;
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+        const from = ids.indexOf(id);
+        const to = from + (event.key === "ArrowUp" ? -1 : 1);
+        if (to < 0 || to >= ids.length) return;
+        const next = [...ids];
+        next.splice(to, 0, ...next.splice(from, 1));
+        setAnnouncement(
+          tr("dock.reorder.moved", {
+            args: [titleOf(id), String(to + 1), String(ids.length)],
+          }),
+        );
+        // Drawn now, saved on the drop.
+        alepha.store.set(userDockAtom, next);
+        return;
+      }
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        setPicked(undefined);
+        setAnnouncement(tr("dock.reorder.dropped", { args: [titleOf(id)] }));
+        if (ids.join(",") !== picked.before.join(",")) {
+          void actions.reorder.run(ids, picked.before);
+        }
+        return;
+      }
+      if (event.key === "Escape" || event.key === "Tab") {
+        if (event.key === "Escape") event.preventDefault();
+        alepha.store.set(userDockAtom, picked.before);
+        setPicked(undefined);
+        setAnnouncement(tr("dock.reorder.cancelled", { args: [titleOf(id)] }));
+      }
+    };
 
   return (
     <nav
@@ -61,6 +179,12 @@ const ProjectRail = () => {
       data-testid="project-rail"
       className="hidden w-16 shrink-0 flex-col items-center border-r md:flex"
     >
+      <span id={hintId} className="sr-only">
+        {tr("dock.reorder.hint")}
+      </span>
+      <span aria-live="assertive" className="sr-only">
+        {announcement}
+      </span>
       <div className="flex shrink-0 flex-col items-center gap-2 pt-2.5">
         <RailButton
           label={tr("home.nav")}
@@ -71,28 +195,42 @@ const ProjectRail = () => {
         </RailButton>
         <RailSeparator />
       </div>
-      <div
-        data-testid="project-rail-pins"
-        // `px` leaves room for the marker and the ring, which an
-        // `overflow` container would otherwise clip.
-        className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-y-auto px-3 py-1"
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        onDragStart={() => setDragging(true)}
+        onDragCancel={() => setDragging(false)}
+        onDragEnd={onDragEnd}
       >
-        {pinned.map((it) => (
-          <ProjectRailItem
-            key={it.id}
-            project={it}
-            active={it.id === project.id}
-          />
-        ))}
-        {temporary && (
-          <ProjectRailItem
-            key="temporary"
-            project={temporary}
-            active
-            temporary
-          />
-        )}
-      </div>
+        <div
+          ref={pinsRef}
+          data-testid="project-rail-pins"
+          // `px` leaves room for the marker and the ring, which an
+          // `overflow` container would otherwise clip.
+          className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-y-auto px-3 py-1"
+        >
+          {pinned.map((it) => (
+            <ProjectRailItem
+              key={it.id}
+              project={it}
+              active={it.id === project.id}
+              dragging={dragging}
+              picked={picked?.id === it.id}
+              onKeyDown={onKeyDown(it.id)}
+              onClickCapture={onClickCapture}
+              describedBy={hintId}
+            />
+          ))}
+          {temporary && (
+            <ProjectRailItem
+              key="temporary"
+              project={temporary}
+              active
+              temporary
+            />
+          )}
+        </div>
+      </DndContext>
       <div className="flex shrink-0 flex-col items-center gap-2 pb-2.5">
         <RailSeparator />
         <RailButton

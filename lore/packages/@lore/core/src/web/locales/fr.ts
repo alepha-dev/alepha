@@ -1872,6 +1872,12 @@ export default {
   "account.projects.see-all": "Tous les projets",
   "dock.full": "Votre dock est plein : ce projet n'a pas été épinglé.",
   "dock.full.manage": "Gérer les épingles",
+  "dock.reorder.hint":
+    "Appuyez sur Espace pour déplacer ce projet dans le dock, puis sur les flèches, et de nouveau sur Espace pour le déposer.",
+  "dock.reorder.picked": "$1 saisi.",
+  "dock.reorder.moved": "$1 déplacé en position $2 sur $3.",
+  "dock.reorder.dropped": "$1 déposé.",
+  "dock.reorder.cancelled": "Déplacement de $1 annulé.",
   "account.projects.filter.role": "Rôle",
   "account.projects.filter.allRoles": "Tous les rôles",
   "account.projects.filter.archived": "Archivés",
