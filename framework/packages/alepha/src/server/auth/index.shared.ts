@@ -1,4 +1,5 @@
 export * from "./constants/routes.ts";
+export * from "./errors/InvalidPasskeyError.ts";
 export * from "./errors/MfaRequiredError.ts";
 export * from "./schemas/authenticationProviderSchema.ts";
 export * from "./schemas/mfaChallengeSchema.ts";

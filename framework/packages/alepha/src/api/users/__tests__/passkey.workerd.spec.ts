@@ -17,8 +17,8 @@ import { $realm, AlephaApiUsers } from "../index.ts";
  * D1 is not migrated on Workers, so the tables are created first from the
  * statements the ORM generates for this module on SQLite.
  */
-describe("alepha/api/users passkey enrolment (workerd)", () => {
-  it("adds a passkey across two requests, through the challenge cookie", async ({
+describe("alepha/api/users passkey enrolment and sign-in (workerd)", () => {
+  it("adds a passkey across two requests through the challenge cookie, then signs in with it", async ({
     expect,
   }) => {
     const node = Alepha.create({
@@ -121,29 +121,74 @@ export default { async fetch(request, env) {
           .join("; ");
         const credential = await device.create((await options.json()) as never);
 
-        const withoutCookie = await dispatch(
-          { credential },
-          { path: "/api/users/me/passkeys", headers },
-        );
+        const withoutCookie = (
+          (await (
+            await dispatch(
+              { credential },
+              { path: "/api/users/me/passkeys", headers },
+            )
+          ).json()) as { name: string }
+        ).name;
         const added = await dispatch(
           { credential, name: "Worker" },
           { path: "/api/users/me/passkeys", headers: { ...headers, cookie } },
         );
-        const list = await dispatch(undefined, {
-          method: "GET",
-          path: "/api/users/me/passkeys",
-          headers,
-        });
+        const list = await (
+          await dispatch(undefined, {
+            method: "GET",
+            path: "/api/users/me/passkeys",
+            headers,
+          })
+        ).json();
+        // Then sign in with it, on the sign-in routes of alepha/server/auth.
+        const signInOptions = await dispatch(
+          {},
+          {
+            path: "/_auth/passkey/options",
+            headers: { "content-type": "application/json" },
+          },
+        );
+        const signInCookie = signInOptions.headers
+          .getSetCookie()
+          .map((it) => it.split(";")[0])
+          .join("; ");
+        const assertion = await device.get(
+          (await signInOptions.json()) as never,
+        );
+        const signedIn = await dispatch(
+          { credential: assertion },
+          {
+            path: "/_auth/passkey/verify",
+            headers: {
+              "content-type": "application/json",
+              cookie: signInCookie,
+            },
+          },
+        );
+        const session = (await signedIn.json()) as {
+          provider?: string;
+          user?: { id: string };
+        };
+
         return {
+          signedIn: {
+            status: signedIn.status,
+            provider: session.provider,
+            user: session.user?.id === id,
+          },
           cookie: cookie.includes("passkeyChallenge="),
-          withoutCookie: ((await withoutCookie.json()) as { name: string })
-            .name,
+          withoutCookie,
           added: added.status,
-          list: await list.json(),
+          list,
         };
       },
     );
 
+    expect(result.signedIn).toEqual({
+      status: 200,
+      provider: "passkey",
+      user: true,
+    });
     expect(result.cookie).toBe(true);
     expect(result.withoutCookie).toBe("PASSKEY_CHALLENGE");
     expect(result.added).toBe(200);

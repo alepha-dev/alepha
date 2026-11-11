@@ -6,12 +6,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $rateLimit, type RateLimitResult } from "alepha/rate-limit";
 import {
+  type AuthenticationResponseJson,
   CryptoProvider,
   InvalidCredentialsError,
+  PasskeyCounterRegressionError,
   type UserAccount,
 } from "alepha/security";
 import { BadRequestError, UnauthorizedError } from "alepha/server";
-import type { OAuth2Profile } from "alepha/server/auth";
+import { InvalidPasskeyError, type OAuth2Profile } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 
@@ -21,6 +23,7 @@ import type { UserEntity } from "../entities/users.ts";
 import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { PasskeyService } from "./PasskeyService.ts";
 import { UsernameSlugger } from "./UsernameSlugger.ts";
 import { UserService } from "./UserService.ts";
 
@@ -54,6 +57,7 @@ export class SessionService {
     key: (input: AttemptBudget) => input.key,
   });
   protected readonly usernameSlugger = $inject(UsernameSlugger);
+  protected readonly passkeyService = $inject(PasskeyService);
   protected readonly userService = $inject(UserService);
 
   protected userAudits(realmName?: string) {
@@ -231,6 +235,115 @@ export class SessionService {
    * fills the counter before its compare, and a right password on it must
    * raise nothing.
    */
+  /**
+   * Sign a user in with a passkey assertion, for `/_auth/passkey/verify`.
+   *
+   * The `login:ip` slot of the password login is taken before any work and
+   * given back on success, so both share one budget. Then the assertion is
+   * checked by `PasskeyService.authenticate` (credential, owner's realm,
+   * signature, counter under the row version), the account must be enabled,
+   * and the `auth.login` audit records `provider: "passkey"` and whether the
+   * user was verified.
+   *
+   * Every refusal is an {@link InvalidPasskeyError}, the reason only in the
+   * log and the audit. A counter that did not increase is also audited as
+   * `security.blocked`: a possible cloned authenticator. The credential is
+   * not disabled; the audit is the signal.
+   */
+  public async loginWithPasskey(
+    credential: AuthenticationResponseJson,
+    context: {
+      challenge: string;
+      url: URL;
+      userId?: string;
+      requireUserVerification?: boolean;
+    },
+    userRealmName?: string,
+  ): Promise<{ user: UserEntity; userVerified: boolean }> {
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const settings = await realm.getSettings();
+    const { loginRateLimit } = settings;
+    const request = this.alepha.store.get("alepha.http.request");
+    const ip = request
+      ? await this.loginIp.consume({
+          key: this.ipBucket(request.ip),
+          max: loginRateLimit.ipMaxAttempts,
+          windowMs: loginRateLimit.windowMs,
+        })
+      : undefined;
+    if (ip && !ip.allowed) {
+      this.log.warn("Passkey sign-in blocked, IP rate limit exceeded", {
+        ip: request?.ip,
+        reason: ip.reason,
+      });
+      throw new InvalidPasskeyError();
+    }
+
+    try {
+      if ((settings.passkeys ?? "disabled") !== "optional") {
+        throw new InvalidPasskeyError(
+          "Passkeys are not available on this realm",
+        );
+      }
+      const rp = this.passkeyService.relyingParty(
+        settings,
+        realm.name,
+        context.url,
+      );
+      const { user, userVerified } = await this.passkeyService.authenticate(
+        credential,
+        {
+          realm: userRealmName,
+          challenge: context.challenge,
+          rp,
+          requireUserVerification: context.requireUserVerification,
+          userId: context.userId,
+        },
+      );
+      if (!user.enabled) {
+        throw new InvalidPasskeyError("Account disabled");
+      }
+
+      if (ip?.ticket) await this.loginIp.refund(ip.ticket);
+
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: user.id,
+        description: "User logged in via passkey",
+        metadata: { provider: "passkey", userVerified },
+      });
+      await this.ensureAdminRole(user, userRealmName);
+      return { user, userVerified };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.log.warn("Passkey sign-in refused", { reason });
+      if (PasskeyCounterRegressionError.find(error)) {
+        await this.sessionAudits(userRealmName)?.security.log("blocked", {
+          userRealm: realm.name,
+          success: false,
+          description:
+            "Passkey sign counter did not increase: possible cloned authenticator",
+          metadata: { credentialId: credential.id },
+        });
+      }
+      await this.sessionAudits(userRealmName)?.auth.log("login", {
+        userRealm: realm.name,
+        success: false,
+        description: "Passkey sign-in refused",
+        metadata: { provider: "passkey", reason },
+      });
+      await this.auditIpLock(
+        ip,
+        loginRateLimit.ipMaxAttempts,
+        realm.name,
+        userRealmName,
+      );
+      throw new InvalidPasskeyError();
+    }
+  }
+
   public async login(
     provider: string,
     username: string,

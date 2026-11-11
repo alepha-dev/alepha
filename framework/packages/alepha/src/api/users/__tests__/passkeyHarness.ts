@@ -90,6 +90,13 @@ export class PasskeyHarness {
     return device;
   }
 
+  /**
+   * A browser with no session, for the sign-in routes.
+   */
+  public anonymous(): PasskeyBrowser {
+    return new PasskeyBrowser(this, "", "");
+  }
+
   public get realm() {
     return this.alepha.inject(RealmProvider);
   }
@@ -172,7 +179,9 @@ export class PasskeyBrowser {
     const response = await fetch(`${this.harness.hostname}${path}`, {
       method,
       headers: {
-        authorization: `Bearer ${this.accessToken}`,
+        ...(this.accessToken
+          ? { authorization: `Bearer ${this.accessToken}` }
+          : {}),
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
         ...(cookie ? { cookie } : {}),
       },
@@ -233,6 +242,22 @@ export class PasskeyBrowser {
       throw new Error(`proof options: ${options.status}`);
     }
     return this.harness.device.get(options.body, knobs);
+  }
+
+  /**
+   * The passkey sign-in: options, the device's assertion, verify.
+   */
+  public async signInWithPasskey(
+    knobs: Parameters<MemoryAuthenticator["get"]>[1] = {},
+    device = this.harness.device,
+    query = "",
+  ): Promise<{ status: number; body: any }> {
+    const options = await this.call("POST", `/_auth/passkey/options${query}`);
+    if (options.status !== 200) {
+      return options;
+    }
+    const credential = await device.get(options.body, knobs);
+    return this.call("POST", `/_auth/passkey/verify${query}`, { credential });
   }
 
   public async list(): Promise<{ proof: string; items: any[] }> {

@@ -3,6 +3,7 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { DbConflictError } from "alepha/orm";
+import { $rateLimit } from "alepha/rate-limit";
 import {
   type AuthenticationOptionsJson,
   type AuthenticationResponseJson,
@@ -15,7 +16,7 @@ import {
   WebAuthnError,
   WebAuthnVerifier,
 } from "alepha/security";
-import { NotFoundError } from "alepha/server";
+import { NotFoundError, TooManyRequestsError } from "alepha/server";
 import { $cookie, type Cookies } from "alepha/server/cookies";
 
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
@@ -505,6 +506,55 @@ export class PasskeyService {
         transports: this.dataOf(row).transports,
       })),
       userVerification: "required",
+    };
+  }
+
+  /**
+   * Sign-in options per IP: looser than the password budget, since asking
+   * writes nothing, but bounded.
+   */
+  protected readonly signInOptionsLimit = $rateLimit({
+    name: "passkey:options",
+    limit: 60,
+    window: [1, "minutes"],
+  });
+
+  /**
+   * Assertion options for `/_auth/passkey/options`. With no `userId`,
+   * `allowCredentials` is empty and the answer depends on no account; with
+   * one, they list that user's usable passkeys.
+   */
+  public async signInOptions(
+    realm: string | undefined,
+    url: URL,
+    context: { userId?: string; requireUserVerification?: boolean } = {},
+  ): Promise<AuthenticationOptionsJson> {
+    const request = this.alepha.store.get("alepha.http.request");
+    const limited = await this.signInOptionsLimit.consume(
+      request?.ip ?? "unknown",
+    );
+    if (!limited.allowed) {
+      throw new TooManyRequestsError("Too many passkey sign-in attempts");
+    }
+    const settings = await this.assertEnabled(realm);
+    const rp = this.relyingParty(settings, this.realmName(realm), url);
+    const allowCredentials = context.userId
+      ? (await this.passkeysOf(context.userId, realm))
+          .filter((row) => this.isUsable(row, settings, rp.rpId))
+          .map((row) => ({
+            type: "public-key" as const,
+            id: row.providerUserId!,
+            transports: this.dataOf(row).transports,
+          }))
+      : [];
+    return {
+      challenge: this.newChallenge(),
+      rpId: rp.rpId,
+      timeout: 300_000,
+      allowCredentials,
+      userVerification: context.requireUserVerification
+        ? "required"
+        : "preferred",
     };
   }
 

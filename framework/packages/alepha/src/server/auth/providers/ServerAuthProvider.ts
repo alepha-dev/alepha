@@ -3,6 +3,8 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type Duration } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
+  authenticationOptionsJsonSchema,
+  authenticationResponseJsonSchema,
   InvalidCredentialsError,
   type IssuerPrimitive,
   SecurityError,
@@ -38,12 +40,14 @@ import {
 
 import { serverAuthOptions } from "../atoms/serverAuthOptions.ts";
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
+import { InvalidPasskeyError } from "../errors/InvalidPasskeyError.ts";
 import { MfaRequiredError } from "../errors/MfaRequiredError.ts";
 import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import {
   $auth,
   type AccessToken,
   type AuthPrimitive,
+  type WithPasskeyFn,
   type WithSecondFactorFn,
 } from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
@@ -547,6 +551,153 @@ export class ServerAuthProvider {
       return { sentTo: started?.sentTo };
     },
   });
+
+  /**
+   * The challenge of a passkey sign-in, held by the browser between the
+   * options and the verify: signed, encrypted, `httpOnly`, five minutes.
+   * Nothing is stored server side, so it works on Workers with no KV.
+   */
+  protected readonly passkeyChallenge = $cookie({
+    name: "passkeySignIn",
+    ttl: [5, "minutes"],
+    httpOnly: true,
+    sign: true,
+    encrypt: true,
+    browserPrefix: "__Host-Http-",
+    schema: z.object({
+      challenge: z.text({ trim: false }),
+      ceremony: z.literal("get"),
+      realm: z.text().optional(),
+      userId: z.text().optional(),
+    }),
+  });
+
+  /**
+   * Start a passkey sign-in: assertion options for the browser, and the
+   * challenge cookie.
+   *
+   * The body takes no identifier and `allowCredentials` is empty
+   * (discoverable credentials): the authenticator offers the accounts it
+   * holds for this relying party, and the answer depends on no account, so
+   * there is nothing to enumerate.
+   */
+  public readonly passkeyOptions = $route({
+    path: alephaServerAuthRoutes.passkeyOptions,
+    method: "POST",
+    schema: {
+      query: z.object({
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
+      }),
+      response: authenticationOptionsJsonSchema,
+    },
+    handler: async ({ query, url, cookies }) => {
+      const issuer = this.passkeyIssuer(query.realm);
+      let options;
+      try {
+        options = await issuer.passkeyOptions!({ url });
+      } catch (error) {
+        this.log.debug("Passkey options refused", error);
+        throw new InvalidPasskeyError();
+      }
+      this.passkeyChallenge.set(
+        { challenge: options.challenge, ceremony: "get", realm: query.realm },
+        { cookies },
+      );
+      return options;
+    },
+  });
+
+  /**
+   * Finish a passkey sign-in: verify the assertion and mint a session, with
+   * the same token response as `/_auth/token`.
+   *
+   * A user-verified assertion is possession plus biometrics or PIN, and
+   * satisfies the realm's second factor by itself. One that is not goes
+   * through the same gate a password does, and `/_auth/mfa` finishes it.
+   */
+  public readonly passkeyVerify = $route({
+    path: alephaServerAuthRoutes.passkeyVerify,
+    method: "POST",
+    schema: {
+      query: z.object({
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
+      }),
+      body: z.object({ credential: authenticationResponseJsonSchema }),
+      response: tokenResponseSchema,
+    },
+    handler: async ({ query, body, url, cookies }) => {
+      const issuer = this.passkeyIssuer(query.realm);
+      const stored = this.passkeyChallenge.get({ cookies });
+      if (stored) {
+        this.passkeyChallenge.del({ cookies });
+      }
+      if (
+        !stored ||
+        (stored.realm ?? undefined) !== (query.realm ?? undefined)
+      ) {
+        this.log.debug("Passkey sign-in without its challenge");
+        throw new InvalidPasskeyError();
+      }
+
+      let result: { user: UserAccount; userVerified: boolean };
+      try {
+        result = await issuer.verifyPasskey!(body.credential, {
+          url,
+          challenge: stored.challenge,
+        });
+      } catch (error) {
+        // The reason is the server's: the log and the audit have it.
+        this.log.debug("Passkey sign-in refused", error);
+        throw new InvalidPasskeyError();
+      }
+
+      const provider = "passkey";
+      if (!result.userVerified) {
+        const methods = await this.secondFactorMethods(issuer, result.user);
+        if (methods.length > 0) {
+          throw await this.challengeSecondFactor({
+            issuer,
+            user: result.user,
+            methods,
+            provider,
+            realm: query.realm,
+          });
+        }
+      }
+
+      const tokens = {
+        provider,
+        realm: query.realm,
+        ...(await issuer.createToken(result.user)),
+      };
+      await this.setTokens(tokens, cookies);
+      const api = await this.serverLinksProvider.getUserApiLinks({
+        user: result.user,
+      });
+      return { ...tokens, user: result.user, api };
+    },
+  });
+
+  /**
+   * The issuer of the realm's `passkey` provider, when it signs in with
+   * passkeys at all. Anything else is the one generic refusal.
+   */
+  protected passkeyIssuer(
+    realm?: string,
+  ): IssuerPrimitive & WithPasskeyFn & WithSecondFactorFn {
+    const provider = this.findProvider({ provider: "passkey", realm });
+    const issuer = provider?.issuer as
+      | (IssuerPrimitive & WithPasskeyFn & WithSecondFactorFn)
+      | undefined;
+    if (!issuer?.passkeyOptions || !issuer.verifyPasskey) {
+      throw new InvalidPasskeyError();
+    }
+    return issuer;
+  }
 
   /**
    * Ask the issuer which second factors this user owes, tolerating an issuer
