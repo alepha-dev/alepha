@@ -9,6 +9,7 @@ export * from "./schemas/jobExecutionResourceSchema.ts";
 export * from "./schemas/jobExecutionRowSchema.ts";
 export * from "./schemas/jobRegistrationSchema.ts";
 export * from "./schemas/jobRetentionSchema.ts";
+export * from "./schemas/jobStepSchema.ts";
 export * from "./schemas/triggerJobSchema.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
