@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
-    "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist"
+    "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist",
+    "start:e2e": "CI=true alepha build --runtime node && DATABASE_URL=sqlite://node_modules/.e2e/totp.db APP_SECRET=e2e-test-secret node dist",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@alepha/ui": "workspace:*",
@@ -19,6 +21,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/vite": "^4.3.5",
     "tailwindcss": "^4.3.5",
     "vite": "^8.3.7",
