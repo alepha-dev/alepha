@@ -14,6 +14,7 @@ alepha build --runtime=static
 2. Prerenders every `static: true` page, every `$route({ static: true })` and every `$sitemap` not set to `static: false`, as an SSR build does.
 3. Writes `index.html`. A `/` page prerendered in step 2 keeps its HTML; otherwise the `$page` at `/` (one declaring `path: "/"` or leaving `path` out, and with no children) is rendered and stripped to an empty `<div id="root"></div>`, and an app with none fails here.
 4. Writes `404.html` and `200.html`, SPA shells of `index.html`, and a `CNAME` file for Surge. Each is written only if your `public/` did not already provide it.
+   When the app declares a [`browser: true` env key](/docs/guides-core-configurations#reading-a-variable-in-the-browser), it also writes `config.js` with their values at build time, and every emitted HTML file loads it before the entry.
 5. Removes everything but `public/` and the manifest.
 6. Writes [`_headers`](/docs/guides-deployment-headers) and a brotli `.br` copy of each compressible file.
 
@@ -29,6 +30,7 @@ dist/
     404.html         # Not-found fallback
     CNAME            # Surge domain
     _headers         # Cache and security headers, for hosts that read it
+    config.js        # The browser: true env keys, when the app declares any
     entry.*.js, chunk.*.js, asset.*   # JS, CSS, images, at the root
     *.br             # Brotli copies, for hosts that serve them
   manifest.json      # What the build declared
@@ -44,6 +46,34 @@ npx surge dist/public
 ```
 
 Cloudflare Pages, Netlify, or GitHub Pages work just as well: point them at `dist/public/`. Cloudflare Pages and Netlify read the `_headers` file as is.
+
+## One Build, Many Environments
+
+A static site has no server to read its environment, so the build writes the
+[`browser: true` env keys](/docs/guides-core-configurations#reading-a-variable-in-the-browser)
+into one file, `dist/public/config.js`, with the build machine's values:
+
+```js
+globalThis.__ALEPHA_ENV__ = { API_URL: "https://api.example.com" };
+```
+
+Every HTML file the build emits loads it with `<script src="/config.js">`
+before the entry, an external script so a strict CSP accepts it. To ship the
+same files to staging and production, the host replaces that one file per
+environment. `manifest.json` lists the keys it must hold under `browser`, so
+the file can be written without booting the app. In a container, the
+entrypoint writes it from the container's environment before the server
+starts:
+
+```bash
+printf 'globalThis.__ALEPHA_ENV__ = %s;\n' "$(jq -cn '{API_URL: env.API_URL}')" > /srv/public/config.js
+```
+
+The build gives `config.js` no `.br` sibling and `_headers` caches it with
+`max-age=0, must-revalidate`, never `immutable`: a host that preferred a stale
+precompressed copy, or a browser that kept it for a year, would undo the
+rewrite. A page prerendered at build time carries no value of its own either,
+so the build machine's values never win over the runtime ones.
 
 ## Configure Domain
 

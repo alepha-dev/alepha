@@ -271,6 +271,7 @@ export class BuildManifestTask extends BuildTask {
     // means secret.
     type EnvEntry = BuildManifest["secrets"][number];
     const envEntries = new Map<string, EnvEntry & { secret: boolean }>();
+    const browserKeys: string[] = [];
     try {
       const dumped = ctx.alepha.dump().env;
       for (const [key, variable] of Object.entries(dumped)) {
@@ -279,6 +280,9 @@ export class BuildManifestTask extends BuildTask {
           description: variable.description,
           secret: variable.secret !== false,
         });
+        if (variable.browser) {
+          browserKeys.push(key);
+        }
       }
     } catch {}
 
@@ -374,6 +378,7 @@ export class BuildManifestTask extends BuildTask {
       crons,
       secrets: envOf(true),
       variables: envOf(false),
+      browser: browserKeys.length > 0 ? browserKeys.sort() : undefined,
       inspect: ctx.options.inspect ? true : undefined,
       optionsHash: this.freshness.optionsHash(ctx.options),
       // Only what a Worker deploy reads, and only when there is a Worker slice

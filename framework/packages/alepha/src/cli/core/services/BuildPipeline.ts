@@ -321,9 +321,11 @@ export interface BuildRequest {
    * Constants added to the client bundle's Vite `define`, already encoded as
    * source text (`JSON.stringify(value)`), the way `__ALEPHA_META__` is.
    *
-   * Browser code has no other channel for build-time configuration:
-   * `alepha.env` is empty in the browser. Never put a secret here; whatever is
-   * defined ships in a file anyone can read.
+   * The channel for configuration fixed at build time, such as a Capacitor
+   * shell's. Configuration that differs per environment is a `browser: true`
+   * env key instead, which the browser's `alepha.env` receives at run time.
+   * Never put a secret here; whatever is defined ships in a file anyone can
+   * read.
    */
   define?: Record<string, string>;
 

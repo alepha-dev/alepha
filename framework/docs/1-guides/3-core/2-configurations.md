@@ -165,6 +165,50 @@ Three things read it:
   orchestrator through `.env.<env>.local`, or listed in `infra().secrets.keys` in
   `alepha.config.ts`, is not on `variables` and stays a secret.
 
+### Reading a variable in the browser
+
+In the browser `alepha.env` holds nothing by default: no variable leaves the
+server unless it says so. `browser: true` is that annotation.
+
+```typescript check
+import { $env, z } from "alepha";
+
+class Api {
+  env = $env(
+    z.object({
+      API_URL: z.text({ browser: true }), // read by the browser too
+      LOG_LEVEL: z.text({ secret: false }), // declassified, server only
+    }),
+  );
+}
+```
+
+The same `$env` then works on both sides: the server reads `API_URL` from its
+environment, and the browser gets the value the server has, typed and
+validated by the same schema. One build serves every environment: nothing is
+baked into the bundle.
+
+- **It implies `secret: false`.** A browser key is sent to every visitor, so a
+  key declaring both `browser: true` and `secret: true` fails at boot.
+- **`secret: false` is not `browser: true`.** Declassifying a key says it is
+  safe in plaintext in a dashboard; it does not send it to the browser. The
+  framework declassifies `LOG_LEVEL` and the OTLP endpoint, none of which the
+  browser needs.
+- **How it travels.** A page the server renders carries the values in a JSON
+  block of its head, before the entry script. A page rendered at build time
+  (a prerendered page, a static site) carries none and loads `/config.js`
+  instead: the server answers it from its environment, and a static host
+  serves the file the build wrote, replaced per environment (see
+  [Static Deployment](/docs/guides-deployment-static#one-build-many-environments)).
+  Either way the values are in `alepha.env` before any `$env` runs.
+- `.meta({ browser: true })` is equivalent. `alepha gen env` labels such a key
+  `# (browser: sent to every visitor)`, after its `# (public)`, and
+  `alepha build` lists it under `browser` in `dist/manifest.json` as well as
+  under `variables`.
+
+A Capacitor app keeps build-time `define` for its configuration: there is no
+container to start and nothing to write a `config.js` into.
+
 ## State Management with $atom
 
 `$atom` defines a named, typed, validated piece of global state. Use it for application-level configuration and shared data.

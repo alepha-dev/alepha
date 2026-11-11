@@ -139,6 +139,34 @@ export class ReactServerTemplateProvider {
   }
 
   /**
+   * How the page hands the browser the `browser: true` keys of the env, ahead
+   * of the entry script so they are in `alepha.env` before any `$env` is
+   * read. Empty when the app declares none.
+   *
+   * - **At runtime** (the app started): a JSON data block with the server's
+   *   values, `<script id="__alepha_env" type="application/json">`. The same
+   *   for every visitor, so the page cache verdict stays `shared`, and not
+   *   executable, so a strict CSP accepts it.
+   * - **At build time** (a prerendered page, a static site's HTML): no value
+   *   at all, only `<script src="/config.js">`. The build machine's values
+   *   must never be baked into a file served in another environment; the
+   *   host's `config.js` (written per environment, or answered by the
+   *   server) supplies them.
+   *
+   * A Capacitor shell ({@link renderShellDocument}) carries neither: there is
+   * no container to write `config.js` in, and it keeps `define`.
+   */
+  public browserEnvHead(): string {
+    if (this.alepha.browserEnvKeys().length === 0) {
+      return "";
+    }
+    if (!this.alepha.isStarted()) {
+      return '<script src="/config.js"></script>\n';
+    }
+    return `<script id="${Alepha.BROWSER_ENV_ELEMENT}" type="application/json">${this.safeJsonSerialize(this.alepha.browserEnv())}</script>\n`;
+  }
+
+  /**
    * The document with an empty root: the early head, the given head, and no
    * page content or hydration data.
    *
@@ -579,6 +607,10 @@ export class ReactServerTemplateProvider {
           );
           controller.enqueue(slots.HTML_CLOSE);
           controller.enqueue(slots.HEAD_OPEN);
+          const browserEnv = this.browserEnvHead();
+          if (browserEnv) {
+            controller.enqueue(encoder.encode(browserEnv));
+          }
           if (this.earlyHeadContent) {
             controller.enqueue(encoder.encode(this.earlyHeadContent));
           }
@@ -671,6 +703,10 @@ export class ReactServerTemplateProvider {
           );
           controller.enqueue(slots.HTML_CLOSE);
           controller.enqueue(slots.HEAD_OPEN);
+          const browserEnv = this.browserEnvHead();
+          if (browserEnv) {
+            controller.enqueue(encoder.encode(browserEnv));
+          }
           if (this.earlyHeadContent) {
             controller.enqueue(encoder.encode(this.earlyHeadContent));
           }

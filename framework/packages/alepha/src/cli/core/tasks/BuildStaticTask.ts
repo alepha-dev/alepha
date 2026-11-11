@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute } from "node:path";
 
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
 import { BuildSlices } from "../services/BuildSlices.ts";
@@ -80,6 +80,8 @@ export class BuildStaticTask extends BuildTask {
           await this.fs.writeFile(spaPath, shell);
         }
 
+        await this.writeBrowserConfig(ctx, publicDir);
+
         const cnamePath = this.fs.join(publicDir, "CNAME");
         if (!(await this.fs.exists(cnamePath))) {
           const domain =
@@ -102,6 +104,42 @@ export class BuildStaticTask extends BuildTask {
    * viewport, theme script) and the entry assets are what a rendered page
    * would carry.
    */
+  /**
+   * `config.js`: the `browser: true` keys of the env with their build-time
+   * values, one global every emitted HTML file loads before the entry. A
+   * host replaces this one file per environment (one build, many
+   * environments); `manifest.json` lists the keys it must hold.
+   *
+   * Written only when the app declares such a key, and never compressed nor
+   * cached as immutable: a stale `.br` beside a rewritten file would be what
+   * a host prefers to serve.
+   */
+  protected async writeBrowserConfig(
+    ctx: BuildTaskContext,
+    publicDir: string,
+  ): Promise<void> {
+    let values: Record<string, string>;
+    try {
+      // Builds the whole graph, so every `$env` is read.
+      ctx.alepha.dump();
+      if (ctx.alepha.browserEnvKeys().length === 0) {
+        return;
+      }
+      values = ctx.alepha.browserEnv();
+    } catch {
+      return;
+    }
+    await this.fs.writeFile(
+      this.fs.join(publicDir, BuildStaticTask.BROWSER_CONFIG_FILE),
+      `globalThis.${Alepha.BROWSER_ENV_GLOBAL} = ${JSON.stringify(values).replace(/</g, "\\u003c")};\n`,
+    );
+  }
+
+  /**
+   * The browser configuration file at the root of `dist/public`.
+   */
+  public static readonly BROWSER_CONFIG_FILE = "config.js";
+
   protected async renderShell(
     ctx: BuildTaskContext,
     publicDir: string,

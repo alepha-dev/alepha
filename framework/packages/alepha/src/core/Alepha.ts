@@ -235,6 +235,15 @@ export class Alepha {
      * the case this covers. `import.meta.env` is `undefined` outside Vite (plain
      * server bundles, workerd), making it a no-op there.
      */
+    // In the browser, the `browser: true` keys of the server's env: `config.js`
+    // (a static build, a prerendered page) or the page's head payload (a
+    // server-rendered one). Both are in the document before the entry runs,
+    // so they are in `alepha.env` before any `$env` is read.
+    const browserEnv = Alepha.readBrowserEnv();
+    if (browserEnv) {
+      state.env = { ...browserEnv, ...state.env };
+    }
+
     if (state.env?.NODE_ENV == null) {
       const viteEnv = (import.meta as { env?: { PROD?: boolean } }).env;
       if (viteEnv?.PROD) {
@@ -357,6 +366,12 @@ export class Alepha {
    * the parsed-value cache keeps its simple shape.
    */
   protected cacheEnvOwner: Map<ZType, EnvOwner> = new Map();
+
+  /**
+   * Every `$env` schema read so far that declares a `browser: true` key.
+   * Kept apart from {@link cacheEnv}, which `loadEnv` clears.
+   */
+  protected browserEnvSchemas: Set<ZType> = new Set();
 
   /**
    * List of modules that are registered in the container.
@@ -1447,6 +1462,8 @@ export class Alepha {
       return this.cacheEnv.get(schema) as Infer<T>;
     }
 
+    this.checkBrowserKeys(schema);
+
     // Env vars are strings on the wire — coerce declared fields to their
     // schema types (boolean/number) before strict validation. Aliases are
     // resolved first, so an aliased value is coerced and validated as the key
@@ -1652,8 +1669,14 @@ export class Alepha {
           // than `||` so the inner schema's explicit `false` is not skipped
           // over in favour of the wrapper's absent one — and the final `?? true`
           // is what makes "nobody said" mean secret.
-          secret:
-            this.declaredSecret(inner) ?? this.declaredSecret(value) ?? true,
+          // `browser: true` implies `secret: false`: the value is sent to
+          // every visitor (`checkBrowserKeys` refuses an explicit `true`).
+          secret: this.isBrowserKey(value)
+            ? false
+            : (this.declaredSecret(inner) ??
+              this.declaredSecret(value) ??
+              true),
+          browser: this.isBrowserKey(value) ? true : undefined,
         };
       }
     }
@@ -1662,6 +1685,141 @@ export class Alepha {
       env,
       providers,
     };
+  }
+
+  /**
+   * The global a `config.js` sets, and the id of the head payload a
+   * server-rendered page carries: the two ways the browser receives the
+   * `browser: true` keys of the server's env.
+   */
+  public static readonly BROWSER_ENV_GLOBAL = "__ALEPHA_ENV__";
+  public static readonly BROWSER_ENV_ELEMENT = "__alepha_env";
+
+  /**
+   * The `browser: true` keys the document carries, in the browser only:
+   * `globalThis.__ALEPHA_ENV__` (set by `config.js`), else the JSON of
+   * `<script id="__alepha_env">`. `undefined` elsewhere, or when neither is
+   * there.
+   */
+  protected static readBrowserEnv(): Record<string, string> | undefined {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const fromGlobal = (globalThis as Record<string, unknown>)[
+      Alepha.BROWSER_ENV_GLOBAL
+    ];
+    if (fromGlobal && typeof fromGlobal === "object") {
+      return Alepha.stringValues(fromGlobal as Record<string, unknown>);
+    }
+    const element =
+      typeof document === "undefined"
+        ? null
+        : document.getElementById(Alepha.BROWSER_ENV_ELEMENT);
+    if (!element?.textContent) {
+      return undefined;
+    }
+    try {
+      return Alepha.stringValues(JSON.parse(element.textContent));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Env values travel as the strings `process.env` holds; `$env` coerces
+   * them to the schema's types as it does on the server.
+   */
+  protected static stringValues(
+    values: Record<string, unknown>,
+  ): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(values ?? {})) {
+      if (value === undefined || value === null) {
+        continue;
+      }
+      out[key] =
+        typeof value === "object"
+          ? JSON.stringify(value)
+          : String(value as string | number | boolean);
+    }
+    return out;
+  }
+
+  /**
+   * The `browser: true` keys of every `$env` read so far, with their values:
+   * what the browser may read. A key without the annotation is never here,
+   * whatever its `secret` value. Values are the parsed ones (defaults and
+   * `$KEY` references resolved) as strings, which the browser's `$env`
+   * decodes as the server's did. A key with no value is left out.
+   *
+   * `$env` is lazy: a key lands here once its service is built. Call it after
+   * `start()`, or after `dump()`, which builds the whole graph.
+   */
+  public browserEnv(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const schema of this.browserEnvSchemas) {
+      // Parsed again if `loadEnv` cleared the cache since (workerd lifts its
+      // bindings after the services were built).
+      const config = this.parseEnv(schema as ZObject);
+      for (const [key, value] of Object.entries(z.schema.shape(schema))) {
+        const parsed = (config as Record<string, unknown>)[key];
+        if (this.isBrowserKey(value) && parsed != null) {
+          out[key] =
+            typeof parsed === "object"
+              ? JSON.stringify(parsed)
+              : String(parsed as string | number | boolean);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The names of the `browser: true` keys of every `$env` read so far.
+   */
+  public browserEnvKeys(): string[] {
+    const keys = new Set<string>();
+    for (const schema of this.browserEnvSchemas) {
+      for (const [key, value] of Object.entries(z.schema.shape(schema))) {
+        if (this.isBrowserKey(value)) {
+          keys.add(key);
+        }
+      }
+    }
+    return [...keys].sort();
+  }
+
+  /**
+   * Whether an env key's schema carries `browser: true`, on the inner schema
+   * or its wrapper.
+   */
+  protected isBrowserKey(value: unknown): boolean {
+    const inner = z.schema.unwrap(value as ZType);
+    return (
+      z.schema.meta(inner).browser === true ||
+      z.schema.meta(value).browser === true
+    );
+  }
+
+  /**
+   * A `browser: true` key with an explicit `secret: true` contradicts itself:
+   * refuse it when its schema is first read, so the app fails at boot rather
+   * than shipping a secret to every visitor.
+   */
+  protected checkBrowserKeys(schema: ZType): void {
+    for (const [key, value] of Object.entries(z.schema.shape(schema))) {
+      if (!this.isBrowserKey(value)) {
+        continue;
+      }
+      this.browserEnvSchemas.add(schema);
+      const inner = z.schema.unwrap(value as ZType);
+      const secret = this.declaredSecret(inner) ?? this.declaredSecret(value);
+      if (secret === true) {
+        throw new AlephaError(
+          `Env key ${key} is declared browser: true and secret: true. A browser key is sent to every visitor, so it cannot be a secret: drop one of the two.`,
+        );
+      }
+    }
   }
 
   /**
@@ -1901,6 +2059,13 @@ export interface AlephaDumpEnvVariable {
    * since a default of secret would hide every column of every entity.
    */
   secret: boolean;
+  /**
+   * Whether the browser may read it (`z.text({ browser: true })`): the key
+   * travels to the page, in `config.js` or the server-rendered page's head.
+   * Absent when it did not say so: every other key, `secret: false` ones
+   * included, stays on the server. Implies `secret: false`.
+   */
+  browser?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

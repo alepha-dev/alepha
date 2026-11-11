@@ -48,7 +48,14 @@ export class BuildCompressTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly gzipCompress = promisify(gzipCb);
   protected readonly brotliCompress = promisify(brotliCompressCb);
-  protected readonly defaultFilter = /\.(js|mjs|cjs|css|wasm|svg|html|xml)$/;
+  /**
+   * The compressible text files, except the root `config.js`: a host
+   * rewrites it per environment, and a precompressed sibling left from the
+   * build would be what it serves instead (#Q3323).
+   */
+  protected readonly defaultFilter = (fileName: string): boolean =>
+    fileName !== "config.js" &&
+    /\.(js|mjs|cjs|css|wasm|svg|html|xml)$/.test(fileName);
 
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.flags?.prebuilt) {

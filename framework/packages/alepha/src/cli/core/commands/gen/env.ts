@@ -51,8 +51,13 @@ export class GenEnvCommand {
           // same line on nearly every key and tell the reader nothing. Last
           // annotation before the key, so it reads as a label ON the line a
           // human is about to paste a value into.
+          // A browser key is sent to every visitor: that is its own label,
+          // beside `# (public)`, which only says it is not a secret.
           if (value.secret === false) {
             dotEnvFile += `# (public)\n`;
+          }
+          if (value.browser) {
+            dotEnvFile += `# (browser: sent to every visitor)\n`;
           }
           dotEnvFile += `#${key}=${value.default ?? ""}\n\n`;
         }

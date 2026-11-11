@@ -177,6 +177,32 @@ describe("gen commands", () => {
     expect(written).not.toContain("# (public)\n#STRIPE_SECRET_KEY=");
   });
 
+  // A browser key is not only declassified: it reaches every visitor. It gets
+  // that label of its own, after the unchanged `# (public)` (#Q3323).
+  it("should label a browser: true env var on its own, beside # (public)", async () => {
+    const { cli, env, utils, fs } = create();
+
+    class Front {
+      env = $env(
+        z.object({
+          API_URL: z.text({ browser: true }).optional(),
+          LOG_HOST: z.text({ secret: false }).optional(),
+        }),
+      );
+    }
+
+    utils.userAlepha!.with($module({ name: "front", services: [Front] }));
+
+    await cli.run(env.command, { argv: "--output .env.example", root: "/app" });
+
+    const written = await fs.readTextFile("/app/.env.example");
+
+    expect(written).toContain(
+      "# (public)\n# (browser: sent to every visitor)\n#API_URL=",
+    );
+    expect(written).toContain("# (public)\n#LOG_HOST=");
+  });
+
   /**
    * `--output` is anchored to the project root so a relative path means what the
    * caller expects. `join` did that by concatenation, which reparents an

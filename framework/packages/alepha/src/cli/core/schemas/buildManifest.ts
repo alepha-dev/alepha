@@ -171,6 +171,13 @@ export const buildManifestSchema = z
         .loose(),
     ),
     /**
+     * Every `$env` key the app declared `browser: true`: the names a
+     * `config.js` must hold, so a host can write that file per environment
+     * without booting the app. Also listed in {@link variables}, since a
+     * browser key is never a secret. Absent when there is none.
+     */
+    browser: z.array(z.string()).optional(),
+    /**
      * Whether the server slices carry `alepha/inspector` (`alepha build
      * --inspect`). Even then it stays off until `ALEPHA_INSPECT=1`. Absent
      * when they do not.
