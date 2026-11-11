@@ -8,6 +8,7 @@ import {
   webhookDeliveryEntity,
   webhookEndpointEntity,
 } from "alepha/api/webhooks";
+import { BackgroundTaskProvider } from "alepha/background";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider } from "alepha/orm";
@@ -60,6 +61,7 @@ const dialects = {
 
 class OrderWebhooks {
   db = $inject(DatabaseProvider);
+  background = $inject(BackgroundTaskProvider);
   endpoints = $inject(WebhookEndpointService);
   deliveryRows = $repository(webhookDeliveryEntity);
   endpointRows = $repository(webhookEndpointEntity);
@@ -155,6 +157,7 @@ describe("$webhook", () => {
           url: "https://example.app/hooks",
         });
         const result = await app.paid.send({ orderId: "o1", total: 10 });
+        await app.background.flush();
         expect(result.deliveries).toBe(1);
         expect(result.eventId).toMatch(
           /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
@@ -227,6 +230,9 @@ describe("$webhook", () => {
         const targets = async (scope?: string) => {
           await app.deliveryRows.deleteMany({});
           await app.paid.send({ orderId: "o1", total: 1 }, { scope });
+          // Let the delivery jobs finish before the next round, and before
+          // teardown drops the schema under them.
+          await app.background.flush();
           return (await app.deliveryRows.findMany())
             .map((it) => it.endpointId)
             .sort();
