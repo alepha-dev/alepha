@@ -333,6 +333,48 @@ export class DockerImageBuilder {
     return `RUN mkdir -p ${paths} && chown ${this.chownSpec(user as string)} ${paths}\n`;
   }
 
+  /**
+   * The `HEALTHCHECK` of the standard variant: `/health`, probed with the
+   * runtime's own `fetch`.
+   *
+   * - **`/health`**, which every Alepha app serves and which answers 503
+   *   until the app is ready. Docker's `healthy` is read as readiness by
+   *   whatever consumes it (compose's `service_healthy`, Bay), so readiness
+   *   is the right signal.
+   * - **The runtime itself** (`node -e` or `bun -e`), never `wget` or `curl`:
+   *   `image.from` is a supported override and a base may carry neither,
+   *   which is the reason `USER` is a number too. Exec form, so no shell is
+   *   needed either.
+   * - **`SERVER_PORT` read at run time**, so `docker run -e SERVER_PORT=8080`
+   *   keeps the probe on the right port.
+   * - **A start period with a one-second start interval.** Docker's default
+   *   first probe runs 30 seconds after start, and Bay waits for `healthy`
+   *   before it routes to an image deploy that declares no health path: every
+   *   such deploy would wait 30 seconds where it waits about one. Probes
+   *   during the start period never count as failures. `--start-interval`
+   *   needs Docker Engine 25 or later.
+   *
+   * Any other `image.command` gets none, and a comment saying why: there is
+   * no runtime known to carry a `fetch` to probe with.
+   */
+  protected renderHealthcheck(command: string): string {
+    if (command !== "node" && command !== "bun") {
+      return (
+        `# No HEALTHCHECK: \`image.command\` is \`${command}\`, and the probe is written\n` +
+        "# for node or bun (`<runtime> -e` with its own fetch). Add one by hand.\n"
+      );
+    }
+    const probe =
+      "fetch('http://127.0.0.1:'+(process.env.SERVER_PORT||3000)+'/health')" +
+      ".then(r=>process.exit(r.ok?0:1),()=>process.exit(1))";
+    return (
+      "HEALTHCHECK --interval=30s --timeout=5s --retries=3 " +
+      "--start-period=60s --start-interval=1s \\\n" +
+      // Spaced like the CMD line below it, which a reader compares it with.
+      `  CMD [${[command, "-e", probe].map((it) => JSON.stringify(it)).join(", ")}]\n\n`
+    );
+  }
+
   protected async copyMigrations(
     root: string,
     distDir: string,
@@ -431,7 +473,9 @@ COPY ${opts.compile.name} .
 ${migrationsLine}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumeLines}` : ""}
-${userLine}ENTRYPOINT ["/app/${opts.compile.name}"]
+${userLine}# No HEALTHCHECK: the distroless base has no shell and no runtime besides
+# the app, so nothing in the image can run a probe. Probe /health from outside.
+ENTRYPOINT ["/app/${opts.compile.name}"]
 `;
     } else {
       const { image, command, entry } = opts.standard;
@@ -466,7 +510,7 @@ COPY${chownFlag} . .
 ${baseInstallLine}${extraInstallLine}${volumePrepLine}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumeLines}` : ""}
-${userLine}CMD ["${command}", "${entry}"]
+${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
 `;
     }
 

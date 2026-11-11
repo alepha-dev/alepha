@@ -313,6 +313,70 @@ describe("DockerImageBuilder", () => {
     });
   });
 
+  describe("HEALTHCHECK", () => {
+    const write = async (
+      image: ImageOptions = {},
+      overrides: Partial<ImageContext> = {},
+    ) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+      await task.run(createCtx(fs, shell, image, overrides));
+      return readDockerfile(fs);
+    };
+
+    it("probes /health with node's own fetch, on SERVER_PORT read at run time", async () => {
+      const dockerfile = await write();
+      const line = dockerfile.match(/^HEALTHCHECK .*\n  CMD (.*)$/m);
+      expect(line).not.toBeNull();
+      const argv = JSON.parse(line![1]);
+      expect(argv[0]).toBe("node");
+      expect(argv[1]).toBe("-e");
+      expect(argv[2]).toContain("fetch('http://127.0.0.1:'");
+      expect(argv[2]).toContain("process.env.SERVER_PORT||3000");
+      expect(argv[2]).toContain("/health");
+      // No binary the base might lack.
+      expect(dockerfile).not.toMatch(/wget|curl/);
+    });
+
+    it("probes with bun on the bun variant", async () => {
+      const dockerfile = await write({}, { runtime: "bun" });
+      expect(dockerfile).toMatch(/^ {2}CMD \["bun", "-e", "fetch\(/m);
+    });
+
+    it("sets every timing, with a start period and a one-second start interval", async () => {
+      const dockerfile = await write();
+      const flags = dockerfile.match(/^HEALTHCHECK (.*) \\$/m)?.[1] ?? "";
+      expect(flags).toContain("--interval=30s");
+      expect(flags).toContain("--timeout=5s");
+      expect(flags).toContain("--retries=3");
+      expect(flags).toContain("--start-period=60s");
+      expect(flags).toContain("--start-interval=1s");
+    });
+
+    it("sits right above CMD, after USER", async () => {
+      const dockerfile = await write();
+      const user = dockerfile.indexOf("USER 1000");
+      const health = dockerfile.indexOf("HEALTHCHECK");
+      const cmd = dockerfile.indexOf('CMD ["node", "index.node.js"]');
+      expect(user).toBeLessThan(health);
+      expect(health).toBeLessThan(cmd);
+    });
+
+    it("writes none for a custom image.command, and says why", async () => {
+      const dockerfile = await write({ command: "deno" });
+      expect(dockerfile).not.toMatch(/^HEALTHCHECK/m);
+      expect(dockerfile).toContain(
+        "# No HEALTHCHECK: `image.command` is `deno`",
+      );
+    });
+
+    it("writes none in the compiled variant, and says why", async () => {
+      const dockerfile = await write({}, { runtime: "bun", compile: "app" });
+      expect(dockerfile).not.toMatch(/^HEALTHCHECK/m);
+      expect(dockerfile).toContain("# No HEALTHCHECK: the distroless base");
+    });
+  });
+
   describe("compile mode", () => {
     // ⚠️ The binary's NAME, on the flags, not a `compile` build option.
     // `--compile` left `buildOptions` for `alepha compile`; all the Dockerfile

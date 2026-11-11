@@ -91,6 +91,8 @@ For a binary without an image, use [alepha compile](/docs/cli-commands-compile).
 docker run -p 3000:3000 --env-file .env.production ghcr.io/myorg/myapp:latest
 ```
 
-The generated image sets `SERVER_HOST=0.0.0.0`; supply `SERVER_PORT` to change the listening port. Both standard and compiled apps serve their client assets and apply the artifact's `_headers` file. See [Static File Headers](/docs/guides-deployment-headers).
+The generated image sets `SERVER_HOST=0.0.0.0`; supply `SERVER_PORT` to change the listening port.
+
+The standard image declares a `HEALTHCHECK` on `/health`, probed with the runtime's own `fetch` on `SERVER_PORT`, so `docker ps` shows `healthy` once the app is ready, compose can wait for it with `depends_on: condition: service_healthy`, and Bay reads it as readiness. The compiled image has none: nothing in it can run a probe. A Dockerfile generated before this was added has no `HEALTHCHECK` either: delete it and run `alepha image --dockerfile` to regenerate it. See [Health](/docs/cli-commands-image#health). Both standard and compiled apps serve their client assets and apply the artifact's `_headers` file. See [Static File Headers](/docs/guides-deployment-headers).
 
 Container images are an artifact format. [alepha deploy](/docs/cli-plugins-infra) drives configured infrastructure adapters; it does not turn a Docker image into an implicit provider deployment.

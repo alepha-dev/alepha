@@ -141,6 +141,30 @@ class Shell {
 
 class Docker {
   /**
+   * Wait for a container's `State.Health.Status` to reach a value, and fail
+   * with what it last was and its health log when it never does.
+   */
+  public static async waitHealthStatus(
+    id: string,
+    want: string,
+    timeoutMs: number,
+  ): Promise<string> {
+    const deadline = Date.now() + timeoutMs;
+    let last = "";
+    while (Date.now() < deadline) {
+      last = await Docker.inspect(id, "{{.State.Health.Status}}");
+      if (last === want) {
+        return last;
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    const log = await Docker.inspect(id, "{{json .State.Health.Log}}");
+    throw new AlephaError(
+      `${id} was still '${last}' after ${timeoutMs}ms, not '${want}'. Health log: ${log}`,
+    );
+  }
+
+  /**
    * `docker inspect --format`, trimmed.
    */
   public static async inspect(target: string, format: string): Promise<string> {
@@ -387,6 +411,20 @@ describe("alepha image on real Docker", () => {
       expect(uid.trim()).toBe("1000");
     });
 
+    it("reports healthy within seconds of boot, from its own HEALTHCHECK", async () => {
+      const container = await Docker.start(STANDARD_TAG);
+      const started = Date.now();
+      // A one-second start interval: Docker's default first probe would only
+      // run 30 seconds after start.
+      const status = await Docker.waitHealthStatus(
+        container.id,
+        "healthy",
+        20_000,
+      );
+      expect(status).toBe("healthy");
+      expect(Date.now() - started).toBeLessThan(20_000);
+    });
+
     it("is pushed to a registry and read back by digest", async () => {
       const remote = `${Registry.host}/alepha-e2e/standard:${RUN_ID}`;
       await Shell.ok("docker", ["tag", STANDARD_TAG, remote]);
@@ -414,6 +452,12 @@ describe("alepha image on real Docker", () => {
         600_000,
       );
     }, 900_000);
+
+    it("declares no healthcheck: its base has nothing to run a probe with", async () => {
+      expect(
+        await Docker.inspect(COMPILED_TAG, "{{json .Config.Healthcheck}}"),
+      ).toBe("null");
+    });
 
     it("boots and answers /health with ready: true", async () => {
       const container = await Docker.start(COMPILED_TAG);

@@ -30,6 +30,24 @@ The generated header records the manifest facts it came from:
 
 A later run **warns** when they no longer match, and never fails. The file is yours after generation, so a hard failure would make an intentional edit feel like a bug; the warning exists only so the drift is not silent.
 
+## Health
+
+The generated Node and Bun Dockerfiles carry a `HEALTHCHECK` on `/health`:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=60s --start-interval=1s \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.SERVER_PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+```
+
+- **`/health` answers 503 until the app is ready**, so Docker's `healthy` means ready. That is how everything reading it uses it: compose's `depends_on: condition: service_healthy`, and Bay, which waits for `healthy` before it routes to an image deploy that declares no health path.
+- **The probe is the runtime's own `fetch`**, never `wget` or `curl`, which a custom `image.from` may not carry.
+- **The port is read when the probe runs**, from `SERVER_PORT` (3000 by default), so `docker run -e SERVER_PORT=8080` keeps it right.
+- **A one-second start interval** inside a 60-second start period. Docker's default first probe runs 30 seconds after start, so a supervisor waiting for `healthy` would wait that long for an app that is up in one. Failures during the start period do not count. `--start-interval` needs Docker Engine 25 or later.
+
+There is no `image.healthcheck` option: the line is in a file you own, so edit or delete it there. An `image.command` other than `node` or `bun` gets no `HEALTHCHECK`, and a comment in the file saying why. Neither does the compiled image: its base has no shell and no runtime besides the app, so nothing in it can run a probe. Probe `/health` from outside it.
+
+⚠️ **An existing Dockerfile does not get one.** It is reused untouched, so delete it and run `alepha image --dockerfile` to regenerate it with the `HEALTHCHECK`.
+
 ## Which slice it runs
 
 The primary: the first declared runtime, read from the manifest. An image runs one process from one entry point, and this is the same rule every deployer follows.
