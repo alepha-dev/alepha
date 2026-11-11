@@ -3,7 +3,12 @@
   "enabled": true,
   "sslRequired": "none",
   "roles": {
-    "realm": [{ "name": "user", "description": "Anyone who can sign in" }]
+    "realm": [
+      {
+        "name": "user",
+        "description": "Anyone who can sign in"
+      }
+    ]
   },
   "clients": [
     {
@@ -19,8 +24,12 @@
       "webOrigins": ["http://localhost:3316"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3316/*"
-      }
+        "post.logout.redirect.uris": "http://localhost:3316/*",
+        "backchannel.logout.url": "http://host.docker.internal:3316/oauth/backchannel-logout?provider=keycloak",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "frontchannelLogout": false
     }
   ],
   "users": [
@@ -32,7 +41,11 @@
       "firstName": "Ada",
       "lastName": "Lovelace",
       "credentials": [
-        { "type": "password", "value": "ada", "temporary": false }
+        {
+          "type": "password",
+          "value": "ada",
+          "temporary": false
+        }
       ],
       "realmRoles": ["user", "default-roles-acme"]
     }

@@ -203,6 +203,23 @@ export class JwtProvider {
     source: () => OidcIssuerSource,
     overrides?: TokenExpectation,
   ): void {
+    this.log.debug(
+      `will verify JWTs from issuer '${name}' with OIDC discovery`,
+    );
+    this.keystore.push(this.createOidcKeyLoader(name, source, overrides));
+  }
+
+  /**
+   * The keystore entry {@link JwtProvider.setOidcKeyLoader} registers, built
+   * without registering it: for a token verified against a provider outside
+   * any realm, such as a back-channel logout token, with
+   * {@link JwtProvider.verifyWith}.
+   */
+  public createOidcKeyLoader(
+    name: string,
+    source: () => OidcIssuerSource,
+    overrides?: TokenExpectation,
+  ): KeyLoaderHolder {
     let remote: KeyLoader | undefined;
 
     const metadata = async () => {
@@ -215,11 +232,7 @@ export class JwtProvider {
       return oauth.serverMetadata();
     };
 
-    this.log.debug(
-      `will verify JWTs from issuer '${name}' with OIDC discovery`,
-    );
-
-    this.keystore.push({
+    return {
       name,
       keyLoader: async (header, token) => {
         if (!remote) {
@@ -242,7 +255,35 @@ export class JwtProvider {
           clientId,
         };
       },
+    };
+  }
+
+  /**
+   * Verify a token against one keystore entry: its signature, its expiry, and
+   * the entry's expectations (issuer, client). Throws whatever failed, as
+   * jose raised it or as an `InvalidTokenError` for the client check.
+   */
+  public async verifyWith(
+    entry: KeyLoaderHolder,
+    token: string,
+    options?: JWTVerifyOptions,
+  ): Promise<JWTVerifyResult<ExtendedJWTPayload>> {
+    // A federated realm's expectations: resolved per token, since an OIDC
+    // realm knows its issuer only after discovery.
+    const expected = await entry.expected?.();
+
+    const result = await jwtVerify<ExtendedJWTPayload>(token, entry.keyLoader, {
+      currentDate: this.dateTimeProvider.now().toDate(),
+      ...(entry.algorithms ? { algorithms: entry.algorithms } : {}),
+      ...(expected?.issuer ? { issuer: expected.issuer } : {}),
+      ...options,
     });
+
+    if (expected && !this.matchesExpectedClient(result.payload, expected)) {
+      throw new InvalidTokenError("Token was issued to another client");
+    }
+
+    return result;
   }
 
   protected expectation(
@@ -369,26 +410,10 @@ export class JwtProvider {
       });
 
       try {
-        // A federated realm's expectations: resolved per token, since an OIDC
-        // realm knows its issuer only after discovery.
-        const expected = await it.expected?.();
-
         const verified = {
           keyName: it.name,
-          result: await jwtVerify<ExtendedJWTPayload>(token, it.keyLoader, {
-            currentDate: this.dateTimeProvider.now().toDate(),
-            ...(it.algorithms ? { algorithms: it.algorithms } : {}),
-            ...(expected?.issuer ? { issuer: expected.issuer } : {}),
-            ...options,
-          }),
+          result: await this.verifyWith(it, token, options),
         };
-
-        if (
-          expected &&
-          !this.matchesExpectedClient(verified.result.payload, expected)
-        ) {
-          throw new InvalidTokenError("Token was issued to another client");
-        }
 
         this.log.trace("Token verified successfully", {
           keyName: verified.keyName,

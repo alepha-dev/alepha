@@ -29,6 +29,10 @@ export class Auth {
     oidc: {
       issuer: this.env.OIDC_ISSUER,
       clientId: this.env.OIDC_CLIENT_ID,
+      // A session ended in Keycloak (by an administrator, or a sign-out of
+      // another app of the realm) is signed out here on its next request.
+      // The realm posts to /oauth/backchannel-logout?provider=keycloak.
+      backchannelLogout: true,
     },
   });
 

@@ -25,6 +25,7 @@ import {
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
+import { BackchannelLogoutRegistry } from "../services/BackchannelLogoutRegistry.ts";
 import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 /**
@@ -211,6 +212,21 @@ export interface OidcOptions {
   responseMode?: "query" | "fragment" | "form_post";
 
   /**
+   * Accept OpenID Connect Back-Channel Logout 1.0 from this provider: it
+   * posts a signed logout token to
+   * `/oauth/backchannel-logout?provider=<name>` when a session ends there
+   * (an administrator ended it, or the user signed out of another app of
+   * the realm), and the session cookie it names is signed out on its next
+   * request.
+   *
+   * Only for a provider with no `issuer`, whose cookie holds the provider's
+   * own tokens. Turning it on declares a `$cache` (the denylist): with the
+   * memory cache a logout reaches one process, two instances need
+   * `REDIS_URL`. Off, the route answers 404 and nothing runs per request.
+   */
+  backchannelLogout?: boolean;
+
+  /**
    * Additional parameters to include in the authorization URL.
    * Useful for provider-specific parameters.
    */
@@ -300,6 +316,25 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
 
   public get name() {
     return this.options.name ?? this.config.propertyKey;
+  }
+
+  /**
+   * Whether this provider accepts back-channel logout: opted in, and with
+   * no `issuer`, so its cookie holds the provider's own session.
+   */
+  public get backchannelLogout(): boolean {
+    return (
+      "oidc" in this.options &&
+      !("issuer" in this.options) &&
+      this.options.oidc.backchannelLogout === true
+    );
+  }
+
+  protected onInit() {
+    // The denylist and its `$cache` exist only for an app that opts in.
+    if (this.backchannelLogout) {
+      this.alepha.inject(BackchannelLogoutRegistry);
+    }
   }
 
   public get issuer(): IssuerPrimitive | undefined {
@@ -607,6 +642,7 @@ export interface OAuthClientConfiguration {
     issuer: string;
     jwks_uri?: string;
     end_session_endpoint?: string;
+    revocation_endpoint?: string;
     supportsPKCE(method?: string): boolean;
   };
 }

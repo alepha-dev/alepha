@@ -12,6 +12,7 @@ import {
 import {
   $route,
   BadRequestError,
+  NotFoundError,
   RequestOriginPolicy,
   type ServerRawRequest,
   type ServerReply,
@@ -31,6 +32,7 @@ import {
   type Configuration,
   randomPKCECodeVerifier,
   randomState,
+  tokenRevocation,
 } from "openid-client";
 
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
@@ -48,6 +50,7 @@ import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts"
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
+import { BackchannelLogoutRegistry } from "../services/BackchannelLogoutRegistry.ts";
 import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 export class ServerAuthProvider {
@@ -1059,6 +1062,14 @@ export class ServerAuthProvider {
         return;
       }
 
+      // Before any redirect, in every branch below: the end-session redirect
+      // ends the IdP session only if the browser completes it, and a custom
+      // `logoutUri` or an IdP with no end-session endpoint may not end it at
+      // all. Revoking the refresh token (RFC 7009) does not depend on either.
+      if (!provider.issuer) {
+        await this.revokeTokens(oauth, tokens, provider.name);
+      }
+
       const params = new URLSearchParams();
       const idToken = tokens?.id_token;
 
@@ -1087,10 +1098,6 @@ export class ServerAuthProvider {
       }
 
       if (!oauth.serverMetadata().end_session_endpoint) {
-        // await tokenRevocation(
-        // 	oauth,
-        // 	tokens?.refresh_token ?? tokens.access_token,
-        // );
         reply.redirect(redirect, 302);
         return;
       }
@@ -1098,6 +1105,71 @@ export class ServerAuthProvider {
       reply.redirect(buildEndSessionUrl(oauth, params).toString(), 302);
     },
   });
+
+  /**
+   * OpenID Connect Back-Channel Logout 1.0: the identity provider posts a
+   * logout token here when a session ends on its side. The provider is named
+   * in the URL, as on `/oauth/login`, so routing needs no discovery.
+   *
+   * 404 for a provider that did not opt in (`oidc.backchannelLogout`).
+   */
+  public readonly backchannelLogout = $route({
+    path: alephaServerAuthRoutes.backchannelLogout,
+    method: "POST",
+    schema: {
+      query: z.object({ provider: z.text() }),
+      body: z.object({ logout_token: z.text({ size: "rich" }) }),
+    },
+    handler: async ({ query, body, reply }) => {
+      const provider = this.findProvider(query.provider);
+      if (!provider?.backchannelLogout) {
+        throw new NotFoundError();
+      }
+
+      reply.setHeader("cache-control", "no-store");
+
+      const registry = this.alepha.inject(BackchannelLogoutRegistry);
+      const ended = await registry.verify(provider, body.logout_token);
+      if (!ended) {
+        throw new BadRequestError("Invalid logout token");
+      }
+
+      await registry.record(provider.name, ended);
+      reply.status = 200;
+      return "";
+    },
+  });
+
+  /**
+   * Revoke a session's tokens at the provider (RFC 7009), when discovery
+   * advertises a revocation endpoint: the refresh token, else the access
+   * token. A failure is logged and never blocks the logout.
+   */
+  protected async revokeTokens(
+    oauth: Configuration,
+    tokens: Tokens,
+    provider: string,
+  ): Promise<void> {
+    if (!oauth.serverMetadata().revocation_endpoint) {
+      return;
+    }
+    const token = tokens.refresh_token ?? tokens.access_token;
+    if (!token) {
+      return;
+    }
+    try {
+      await tokenRevocation(oauth, token, {
+        token_type_hint: tokens.refresh_token
+          ? "refresh_token"
+          : "access_token",
+      });
+    } catch (e) {
+      this.log.warn("Failed to revoke the session's tokens", {
+        provider,
+        error: e,
+      });
+    }
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
 
@@ -1234,10 +1306,25 @@ export class ServerAuthProvider {
     // Minted by a provider or realm this app no longer has (see
     // `findProvider`): drop the cookie and carry on anonymous, rather than
     // failing the request in `extractAccessToken` below.
-    if (!this.findProvider(tokens)) {
+    const provider = this.findProvider(tokens);
+    if (!provider) {
       this.log.info("Signing out a session whose auth provider is gone", {
         provider: tokens.provider,
         realm: tokens.realm,
+      });
+      this.tokens.del({ cookies });
+      return;
+    }
+
+    // Ended by the identity provider (back-channel logout): before the
+    // refresh, so a refresh token the provider has not revoked cannot bring
+    // the session back.
+    if (
+      provider.backchannelLogout &&
+      (await this.alepha.inject(BackchannelLogoutRegistry).isLoggedOut(tokens))
+    ) {
+      this.log.info("Signing out a session the identity provider ended", {
+        provider: tokens.provider,
       });
       this.tokens.del({ cookies });
       return;
