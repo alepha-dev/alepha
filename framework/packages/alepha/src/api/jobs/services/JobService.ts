@@ -281,7 +281,9 @@ export class JobService {
   }
 
   /**
-   * Retry a dead or cancelled execution by re-pushing with the original payload.
+   * Retry a dead or cancelled execution by re-pushing with the original
+   * payload. A run that recorded steps resumes: the new row starts with a
+   * copy of them, so the steps already completed are not run again.
    */
   public async retryExecution(
     id: string,
@@ -309,7 +311,21 @@ export class JobService {
       triggeredBy: context?.triggeredByName ?? context?.triggeredBy,
     });
 
-    if (execution.payload) {
+    if (execution.payload && execution.steps) {
+      // Resume: the new row carries the old one's steps, whole, so the steps
+      // it completed return their results and the run carries on at the one
+      // that failed. A sleep entry goes too, and parks the new row until its
+      // own wake instant if that is still ahead.
+      await this.jobProvider.pushRetry(
+        execution.jobName,
+        execution.payload,
+        {
+          triggeredBy: context?.triggeredBy,
+          triggeredByName: context?.triggeredByName,
+        },
+        execution.steps,
+      );
+    } else if (execution.payload) {
       await job.push(execution.payload, {
         triggeredBy: context?.triggeredBy,
         triggeredByName: context?.triggeredByName,

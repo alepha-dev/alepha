@@ -948,6 +948,37 @@ export class JobProvider {
     payload: unknown,
     options?: PushOptions,
   ): Promise<string> {
+    return this.pushExecution(name, payload, options);
+  }
+
+  /**
+   * Push a new execution that starts with `steps` already recorded: what the
+   * admin's Retry does with a run that has steps, so the new row skips the
+   * steps the old one completed and carries on at the one that failed.
+   *
+   * Internal to the jobs module (`JobService.retryExecution` is its caller),
+   * and deliberately not a field of {@link PushOptions}: application code
+   * pushing a run with results it made up would defeat the record. The row
+   * otherwise goes through `push` exactly: validated payload, dedup when
+   * keyed, the same dispatch.
+   *
+   * @internal
+   */
+  public async pushRetry(
+    name: string,
+    payload: unknown,
+    options: PushOptions | undefined,
+    steps: Record<string, JobStep>,
+  ): Promise<string> {
+    return this.pushExecution(name, payload, options, { steps });
+  }
+
+  protected async pushExecution(
+    name: string,
+    payload: unknown,
+    options?: PushOptions,
+    seed?: { steps?: Record<string, JobStep> },
+  ): Promise<string> {
     const registration = this.getRegistration(name);
     if (registration.kind !== "queue") {
       throw new AlephaError(
@@ -1003,6 +1034,7 @@ export class JobProvider {
         scheduledAt,
         triggeredBy: options.triggeredBy,
         triggeredByName: options.triggeredByName,
+        ...(seed?.steps ? { steps: seed.steps } : {}),
       });
       if (!created) {
         // Lost the race to a concurrent same-key push — the winner dispatches.
@@ -1026,6 +1058,7 @@ export class JobProvider {
       scheduledAt,
       triggeredBy: options?.triggeredBy,
       triggeredByName: options?.triggeredByName,
+      ...(seed?.steps ? { steps: seed.steps } : {}),
     });
 
     if (inline) {
@@ -1174,6 +1207,7 @@ export class JobProvider {
     scheduledAt?: string;
     triggeredBy?: string;
     triggeredByName?: string;
+    steps?: Record<string, JobStep>;
   }): Promise<{ id: string; created: boolean }> {
     try {
       const execution = await this.executions.create(fields);
@@ -2651,6 +2685,24 @@ export class JobProvider {
    * Every phase serves its oldest rows first, so under a backlog work is
    * picked up in the order it has been waiting.
    */
+  /**
+   * What a sweep read loads: the columns its three actions use, and nothing
+   * else. `steps` above all: every due `scheduled` row is a candidate for
+   * `promote-due`, a sleeping run is exactly that, and its `steps` may hold
+   * up to `jobConfig.stepsMaxBytes`; a full batch of them would be about
+   * 100 MB in one tick, on a runtime with 128 MB. `payload` and `logs` go
+   * for the same reason.
+   */
+  protected readonly sweepColumns = [
+    "id",
+    "jobName",
+    "status",
+    "attempt",
+    "startedAt",
+    "updatedAt",
+    "redispatchCount",
+  ] as const;
+
   protected async runSweepEntry(
     entry: SweepEntry,
     now: DateTime,
@@ -2660,11 +2712,12 @@ export class JobProvider {
     entry.where(where, now);
 
     const limit = Math.max(1, this.config.sweepBatchSize);
-    const rows = await this.executions.findMany({
+    const rows = (await this.executions.findMany({
       where,
       limit,
+      columns: [...this.sweepColumns],
       ...(entry.orderBy ? { orderBy: entry.orderBy } : {}),
-    });
+    })) as JobExecutionEntity[];
 
     if (rows.length >= limit) {
       // A full batch means a backlog. Say so rather than leaving it to be

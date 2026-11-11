@@ -604,7 +604,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.jobs.retried": "Exécution remise en file",
   "admin.jobs.retry": "Relancer",
   "admin.jobs.retryConfirm":
-    "Remettre cette exécution en file pour une nouvelle tentative ?",
+    "Remettre cette exécution en file pour une nouvelle tentative ? Les étapes déjà terminées ne sont pas rejouées.",
   "admin.jobs.retryTitle": "Relancer l'exécution",
   "admin.jobs.startedAny": "Démarrée à tout moment",
   "admin.jobs.status.cancelled": "Annulée",

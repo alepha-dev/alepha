@@ -147,7 +147,8 @@ export const AdminJobDetailExecutions = (
       confirm: {
         title: tr("admin.jobs.retryTitle", { default: "Retry execution" }),
         description: tr("admin.jobs.retryConfirm", {
-          default: "Re-queue this execution for another attempt?",
+          default:
+            "Re-queue this execution for another attempt? The steps it already completed are not run again.",
         }),
       },
       handler: async (e, refresh) => {
