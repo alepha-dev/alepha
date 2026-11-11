@@ -10,8 +10,8 @@ import {
 import { useAlepha, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { LayoutGrid } from "lucide-react";
-import { useEffect } from "react";
+import { Home, LayoutGrid, Plus } from "lucide-react";
+import { type ReactNode, useEffect } from "react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { recentProjectsAtom } from "../../atoms/recentProjectsAtom.ts";
@@ -27,9 +27,10 @@ import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
  * (#Q3366). Desktop only; at phone width the switcher in the sidebar stays
  * the way to change project.
  *
- * Shown once the viewer has two projects to switch between. Up to ten, then
- * a link to every project. Hovering an icon opens a card with the project's
- * image, name and repository (#Q3370).
+ * Home at the top, then up to ten projects, then New project and All
+ * projects (#Q3374). Shown from the first project: on desktop it is the only
+ * way to switch, the sidebar header being a plain title there. Hovering an
+ * icon opens a card with the project's image, name and repository (#Q3370).
  *
  * ⚠️ **Selecting a project never moves it.** A rail is used by position, so
  * the order is the viewer's own and stays put (#Q3370; #Q3366 moved the last
@@ -47,6 +48,8 @@ const ProjectRail = () => {
   const [opened] = useStore(recentProjectsAtom);
 
   const projects = overview?.projects ?? [];
+  const canCreate = overview?.canCreate ?? true;
+  const maxProjects = overview?.maxProjects;
   const shown = project
     ? projectRailOrder(projects, opened ?? [], project.id, RECENT_PROJECTS_CAP)
     : [];
@@ -62,8 +65,7 @@ const ProjectRail = () => {
     alepha.store.set(recentProjectsAtom, shownKey.split(",").map(Number));
   }, [alepha, shownKey]);
 
-  const live = projects.filter((it) => !it.archivedAt);
-  if (!project || live.length < 2) {
+  if (!project) {
     return null;
   }
 
@@ -73,6 +75,14 @@ const ProjectRail = () => {
       data-testid="project-rail"
       className="hidden w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r py-2.5 md:flex"
     >
+      <RailButton
+        label={tr("home.nav")}
+        testId="project-rail-home"
+        href={router.path("home")}
+      >
+        <Home className="size-4" />
+      </RailButton>
+      <RailSeparator />
       {shown.map((it) => {
         const active = it.id === project.id;
         return (
@@ -119,25 +129,75 @@ const ProjectRail = () => {
           </HoverCard>
         );
       })}
-      <span aria-hidden className="bg-border my-0.5 h-px w-8 shrink-0" />
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Link
-              href={router.path("accountProjects")}
-              aria-label={tr("account.projects.see-all")}
-              data-testid="project-rail-all"
-              className="bg-background text-muted-foreground hover:text-foreground flex size-10 shrink-0 items-center justify-center rounded-2xl border transition-[border-radius,color] duration-150 hover:rounded-xl"
-            />
-          }
-        >
-          <LayoutGrid className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {tr("account.projects.see-all")}
-        </TooltipContent>
-      </Tooltip>
+      <RailSeparator />
+      <RailButton
+        label={
+          canCreate || !maxProjects
+            ? tr("home.create-project")
+            : `${tr("home.create-project")}: ${tr("home.create-project.max", { args: [String(maxProjects)] })}`
+        }
+        testId="project-rail-create"
+        href={canCreate ? router.path("projectCreate") : undefined}
+      >
+        <Plus className="size-4" />
+      </RailButton>
+      <RailButton
+        label={tr("account.projects.see-all")}
+        testId="project-rail-all"
+        href={router.path("accountProjects")}
+      >
+        <LayoutGrid className="size-4" />
+      </RailButton>
     </nav>
+  );
+};
+
+const RailSeparator = () => (
+  <span aria-hidden className="bg-border my-0.5 h-px w-8 shrink-0" />
+);
+
+/**
+ * A round icon button with a tooltip: Home, New project, All projects. With
+ * no `href` it is drawn disabled (New project once the quota is reached), its
+ * tooltip saying why.
+ */
+const RailButton = (props: {
+  label: string;
+  testId: string;
+  href?: string;
+  children: ReactNode;
+}) => {
+  const className =
+    "bg-background text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-2xl border transition-[border-radius,color] duration-150";
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          props.href ? (
+            <Link
+              href={props.href}
+              aria-label={props.label}
+              data-testid={props.testId}
+              className={cn(
+                className,
+                "hover:text-foreground hover:rounded-xl",
+              )}
+            />
+          ) : (
+            <span
+              role="link"
+              aria-label={props.label}
+              aria-disabled
+              data-testid={props.testId}
+              className={cn(className, "cursor-not-allowed opacity-50")}
+            />
+          )
+        }
+      >
+        {props.children}
+      </TooltipTrigger>
+      <TooltipContent side="right">{props.label}</TooltipContent>
+    </Tooltip>
   );
 };
 

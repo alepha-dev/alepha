@@ -426,27 +426,29 @@ test.describe("Home (switcher cap)", () => {
       "11 of 100 projects owned",
     );
 
-    // The switcher caps, and always keeps the project you are looking at.
+    // The rail caps, and always keeps the project you are looking at.
     // `firstSlug` is the LEAST recently updated of the eleven (it was created
-    // first), so it is exactly the case that falls outside the top ten - open
-    // its switcher and it must still be listed, or the checkmark disappears
-    // and the menu reads as though you are nowhere.
+    // first), so it is exactly the case that falls outside the top ten - it
+    // must still be on the rail, marked current, or the rail reads as though
+    // you are nowhere. Since #Q3374 the rail, not the sidebar switcher, is
+    // how a desktop changes project.
     await page.goto(`/${firstSlug}/`);
-    await page.getByTestId("project-switcher").click();
-    await expect(page.getByTestId("switcher-all-projects")).toBeVisible({
+    const rail = page.getByTestId("project-rail");
+    await expect(rail.getByTestId("project-rail-all")).toBeVisible({
       timeout: 10_000,
     });
+    await expect(rail.getByTestId("project-rail-item")).toHaveCount(10);
     await expect(
-      page.getByRole("menuitem").filter({ hasText: `Cap${t}`.slice(0, 20) }),
-    ).toBeVisible();
+      rail.getByRole("link", { name: `Cap${t}`.slice(0, 20) }),
+    ).toHaveAttribute("aria-current", "page");
 
-    // Every project row is a real anchor pointing at that project's slug, not
-    // a button with an onClick - the difference is invisible on a plain click
-    // and is the whole affordance on shift/⌘/middle-click (Lore feedback #61).
-    // Asserted on a row that is NOT the active one, so a fix that special-cased
-    // the current project would not pass.
+    // Every project on the rail is a real anchor pointing at that project's
+    // slug, not a button with an onClick - the difference is invisible on a
+    // plain click and is the whole affordance on shift/⌘/middle-click (Lore
+    // feedback #61). Asserted on one that is NOT the active one, so a fix
+    // that special-cased the current project would not pass.
     await expect(
-      page.getByRole("menuitem").filter({ hasText: `Jetty${t}`.slice(0, 20) }),
+      rail.getByRole("link", { name: `Jetty${t}`.slice(0, 20) }),
     ).toHaveAttribute("href", /^\/[a-z0-9-]+$/);
   });
 });
