@@ -43,9 +43,8 @@ waits for `bay serve`, runs `bay connector set`, and never prints the secret.
 On a host already running Bay:
 
 1. In Lore, create an estate in a project with Apps on: from its
-   **Settings ▸ Apps ▸ Estates**, from `/account/estates`, or with
-   `lore estate add <slug>`. The estate belongs to that project. The secret is
-   shown **once**.
+   **Settings ▸ Apps ▸ Estates**, or with `lore estate add <slug>`. The
+   estate belongs to that project. The secret is shown **once**.
 2. On the host, as root:
 
 ```bash
@@ -138,7 +137,7 @@ and base domain, which replace those set with `bay stack route`.
 
 ## The console
 
-Once the machine has said hello, `/account/estates/<estate>` in Lore shows,
+Once the machine has said hello, `/<project>/estates/<estate>` in Lore shows,
 to every member of the estate's project (acting on it takes `estate:update`
 there):
 

@@ -26,17 +26,19 @@ import type {
   ProjectEstateController,
 } from "../../../../../api/controllers/ProjectEstateController.ts";
 import type { OwnedEstateResource } from "../../../../../api/schemas/ownedEstateResourceSchema.ts";
+import EstateDrawer from "../../estates/EstateDrawer.tsx";
 import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.tsx";
 import ProjectSettingsHomeEstateRow from "./ProjectSettingsHomeEstateRow.tsx";
 
 /**
- * Where this project can deploy: the estates that have been lent to it.
+ * The project's estates (#E126): the ones it is the home of, which its
+ * members manage by rank, and the ones it borrows, which it may only deploy
+ * onto. Since estates left the account this is THE estates list: a `bay`
+ * row opens its console under this project, a `cloudflare` row its drawer.
  *
- * An estate belongs to a user, not to the project, so this page never
- * creates or deletes one on its own account. It lends and withdraws: "add"
- * picks one of the caller's own estates (or mints a new one and lends it in
- * the same step), and "detach" withdraws the loan. Both need `estate:lend`
+ * "Add" lends one of the estates the caller can see here (or mints a new one,
+ * homed and lent here in the same step), and "detach" withdraws a loan. Both need `estate:lend`
  * server-side; the button is disabled here for a rank without it, with a
  * tooltip, a UX hint rather than a second authorization boundary.
  *
@@ -56,6 +58,7 @@ const ProjectSettingsEstatesPage = () => {
 
   const [items, setItems] = useState<LentEstateResource[] | undefined>();
   const [adding, setAdding] = useState(false);
+  const [openId, setOpenId] = useState<string | undefined>();
   /**
    * The one moment a freshly minted secret is readable. Cleared as soon as
    * it is dismissed; nothing can show it again.
@@ -88,6 +91,9 @@ const ProjectSettingsEstatesPage = () => {
     [api, project?.id],
   );
   const homeItems = home.data?.items;
+  // Resolved from the list rather than held as its own copy, so a switch
+  // saved in the drawer redraws it from the same row the list shows.
+  const open = (homeItems ?? []).find((item) => item.id === openId);
   const lentIds = new Set((items ?? []).map((item) => item.id));
   const borrowed = (items ?? []).filter((item) => !item.isHome);
 
@@ -205,6 +211,7 @@ const ProjectSettingsEstatesPage = () => {
               key={estate.id}
               estate={estate}
               lentHere={lentIds.has(estate.id)}
+              onOpen={(item) => setOpenId(item.id)}
               {...(canLend
                 ? {
                     onLend: (item: OwnedEstateResource) =>
@@ -243,6 +250,24 @@ const ProjectSettingsEstatesPage = () => {
           ))}
         </Card>
       </div>
+
+      <EstateDrawer
+        estate={open}
+        onOpenChange={(next) => {
+          if (!next) setOpenId(undefined);
+        }}
+        // The rows are the query's, so a write re-reads them rather than
+        // patching a copy; the borrowed list is untouched by these writes.
+        onChanged={() => void home.refetch()}
+        onDeleted={(id) => {
+          setOpenId(undefined);
+          setItems((current) =>
+            (current ?? []).filter((item) => item.id !== id),
+          );
+          void home.refetch();
+        }}
+        onSecret={setFreshSecret}
+      />
 
       <ProjectSettingsEstatesAddDialog
         open={adding}

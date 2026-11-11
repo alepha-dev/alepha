@@ -20,7 +20,7 @@ import type { EstateController } from "../../../../api/controllers/EstateControl
 import type { ProjectEstateController } from "../../../../api/controllers/ProjectEstateController.ts";
 import type { EstateLoan } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
 import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
-import MyEstateSecretDialog from "../account/MyEstateSecretDialog.tsx";
+import EstateSecretDialog from "../estates/EstateSecretDialog.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
@@ -28,7 +28,7 @@ import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
 /**
  * The switches, the lending and the credential, for one machine.
  *
- * This is `MyEstateDrawer`'s body for a `bay` estate, on a page of its own.
+ * This is `EstateDrawer`'s body for a `bay` estate, on a page of its own.
  * The wording moves verbatim rather than being rewritten, because two
  * sentences here are load-bearing and were written to prevent a specific
  * misunderstanding.
@@ -63,7 +63,7 @@ const BaySettings = () => {
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
   const [moving, setMoving] = useState(false);
 
-  // One `useAction` per write, the way `MyEstateDrawer` sends the same four
+  // One `useAction` per write, the way `EstateDrawer` sends the same four
   // (#E59, #Q2329). A refusal is not caught here: the root
   // `ActionErrorToaster` shows the server's message.
   const updateAction = useAction<
@@ -144,7 +144,9 @@ const BaySettings = () => {
         toaster.success(tr("account.estates.toast.deleted"));
         // The estate this console is about no longer exists, so the console
         // cannot stay open over it.
-        await router.push("accountEstates");
+        await router.push("projectSettingsEstates", {
+          params: { projectSlug: estate.project?.slug ?? "" },
+        });
       },
     },
     [api, estate, dialog, router, toaster, tr],
@@ -169,7 +171,9 @@ const BaySettings = () => {
         toaster.success(tr("estates.toast.detached"));
         // The loans live on the owned-list resource, which this page does not
         // hold; the list is where they are read, so it is re-read there.
-        await router.push("accountEstates");
+        await router.push("projectSettingsEstates", {
+          params: { projectSlug: estate.project?.slug ?? "" },
+        });
       },
     },
     [projectEstateApi, estate, dialog, router, toaster, tr],
@@ -405,10 +409,22 @@ const BaySettings = () => {
         onOpenChange={setMoving}
         estate={estate}
         loans={estate.projects}
-        onMoved={(moved) => setEstate({ ...moved, projects: estate.projects })}
+        onMoved={(moved) => {
+          setEstate({ ...moved, projects: estate.projects });
+          // The console lives under the home project, so it follows the
+          // estate there: the old URL now names a project it left.
+          if (moved.project?.slug) {
+            void router.push("baySettings", {
+              params: {
+                projectSlug: moved.project.slug,
+                estateSlug: moved.slug,
+              },
+            });
+          }
+        }}
       />
 
-      <MyEstateSecretDialog
+      <EstateSecretDialog
         secret={freshSecret}
         onDismiss={() => setFreshSecret(undefined)}
       />

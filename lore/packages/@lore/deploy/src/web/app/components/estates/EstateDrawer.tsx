@@ -15,13 +15,7 @@ import { type I18n, OutboundLink } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import {
-  KeyRound,
-  RefreshCw,
-  SquareTerminal,
-  Trash2,
-  Unlink,
-} from "lucide-react";
+import { KeyRound, RefreshCw, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "../../../../api/controllers/EstateController.ts";
@@ -31,7 +25,7 @@ import type { OwnedEstateResource } from "../../../../api/schemas/ownedEstateRes
 import BayCommands from "../bay/BayCommands.tsx";
 import { estateErrorMessage } from "../shared/estateCreateDraft.ts";
 
-export interface MyEstateDrawerProps {
+export interface EstateDrawerProps {
   /**
    * The estate to show, or `undefined` when the drawer is closed. Its
    * presence is the open state, so there is no way to be open over nothing.
@@ -58,9 +52,10 @@ const INTERVALS = [300, 900, 1800, 3600, 21_600, 86_400];
  * stats interval, the projects it is lent to, its command queue, and the two
  * actions that touch the credential.
  *
- * This is `MyEstateCard`'s body, moved behind a click (feedback #2110). The
- * content is deliberately unchanged - including `MyEstateCommands`, which
- * moves as-is rather than being rewritten in the same pass.
+ * A `cloudflare` estate's settings, opened from its row in the home
+ * project's Settings ▸ Apps ▸ Estates list: a `bay` estate has a console of
+ * its own instead. It was the account Estates page's drawer until estates
+ * left the account (#E126).
  *
  * ⚠️ **A drawer is not a permission boundary.** Every action here is enforced
  * server-side by the rank of the estate's home project. This decides what to draw and nothing more, which is exactly
@@ -72,7 +67,7 @@ const INTERVALS = [300, 900, 1800, 3600, 21_600, 86_400];
  * `cloudflare` credential is not revoked at Cloudflare, only a `bay` secret
  * Lore minted itself.
  */
-const MyEstateDrawer = (props: MyEstateDrawerProps) => {
+const EstateDrawer = (props: EstateDrawerProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
@@ -336,27 +331,6 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
               </SheetDescription>
             </SheetHeader>
 
-            {/* The console (#E37) is where a `bay` estate's apps, gauges and
-                actions live. Linked from here the day the shell lands, so
-                nothing this drawer does becomes unreachable before D8 moves
-                the row's own click target. `cloudflare` has no console yet. */}
-            {estate.type === "bay" && (
-              <div className="px-4">
-                <Button
-                  variant="solid"
-                  intent="none"
-                  size="sm"
-                  data-testid="estate-open-console"
-                  onClick={() =>
-                    router.push("bay", { params: { estateId: estate.id } })
-                  }
-                >
-                  <SquareTerminal className="size-4" />
-                  {tr("bay.open")}
-                </Button>
-              </div>
-            )}
-
             <div className="flex flex-col gap-3 px-4">
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex flex-col gap-0.5">
@@ -568,9 +542,9 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
             {/* The command queue exists because a bay machine dials in and
                 asks for work. A cloudflare account has no connector to come
                 for it, and #1629 refuses one at enqueue.
-                ⚠️ Since #E37 a `bay` row opens its console rather than this
-                drawer, so in practice this branch is never taken and the
-                queue is read at /account/estates/:estateId/commands. Kept as the guard
+                ⚠️ A `bay` row opens its console rather than this drawer,
+                so in practice this branch is never taken and the queue is
+                read at /:projectSlug/estates/:estateSlug/commands. Kept as the guard
                 rather than deleted: it states the rule, and deleting it
                 would leave a cloudflare drawer one route change away from
                 rendering a queue nothing can serve. */}
@@ -626,4 +600,4 @@ interface EstateSwitches {
   statsIntervalSeconds?: number;
 }
 
-export default MyEstateDrawer;
+export default EstateDrawer;

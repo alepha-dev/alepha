@@ -85,7 +85,7 @@ class EstateLinks extends LinkProvider {
 class Routes {
   bay = $page({
     name: "bay",
-    path: "/account/estates/:estateId",
+    path: "/:projectSlug/estates/:estateSlug",
     component: () => null,
   });
 }

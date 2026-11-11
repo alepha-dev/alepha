@@ -2519,11 +2519,8 @@ export default {
   "bay.commands.col.reason": "Issue",
   "bay.commands.byNobody": "-",
   "bay.commands.result": "Ouvrir le résultat stocké",
-  "account.estates.inventory": "$1 application(s), communiqué $2",
-  "account.estates.inventory.none": "rien de communiqué",
   "bay.settings.rotate.warning":
     "La rotation révoque le secret actuel immédiatement. La machine est refusée à sa prochaine connexion et reste hors ligne jusqu'à ce que vous relanciez `bay connector set` dessus avec le nouveau.",
-  "bay.open": "Ouvrir la console",
   "bay.home": "Appartient à $1",
   "bay.settings.home":
     "Appartient à $1, dont les membres le gèrent, chacun selon son rang",
@@ -2547,10 +2544,6 @@ export default {
   "bay.move.toast": "Déplacé vers $1",
   "bay.move.serverElsewhere":
     "Le serveur reste dans le compte cloud de la personne qui l'a provisionné, qui n'est pas membre du nouveau projet.",
-  "account.estates.col.project": "Projet",
-  "account.estates.filter.project": "Projet",
-  "account.estates.filter.allProjects": "Tous les projets",
-  "account.estates.readOnly": "Consultation seulement",
   "estates.home.title": "Domaines de ce projet",
   "estates.home.description": "Ses membres les gèrent, chacun selon son rang.",
   "estates.home.empty": "Ce projet n'est le propriétaire d'aucun domaine.",
@@ -2641,24 +2634,6 @@ export default {
   "estates.toast.detached": "Domaine retiré",
   "estates.toast.copied": "Secret copié",
 
-  "account.estates.col.kind": "Type",
-  "account.estates.col.estate": "Domaine",
-  "account.estates.col.status": "Statut",
-  "account.estates.col.lentTo": "Prêté à",
-  "account.estates.col.created": "Créé",
-  "account.estates.lentTo": "$1 projet(s)",
-  "account.estates.create": "Créer un domaine",
-  "account.estates.create.description":
-    "Son secret est affiché une seule fois, à la création. Il ne peut pas être récupéré ensuite, seulement renouvelé.",
-  "account.estates.create.project": "Projet",
-  "account.estates.create.project.description":
-    "Le projet auquel le domaine appartient. Ses membres le gèrent, chacun selon son rang.",
-  "account.estates.create.project.only":
-    "Dans $1, le seul projet où vous pouvez créer un domaine.",
-  "account.estates.create.none":
-    "Vous ne pouvez créer de domaine dans aucun projet : un domaine appartient à un projet où Apps est activé, et votre rang doit y accorder estate:create.",
-  "account.estates.create.submit": "Créer",
-  "account.estates.new": "Nouveau domaine",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1 % · mémoire $2 %",
   "account.estates.gauge.none": "pas encore de statistiques",
@@ -2689,7 +2664,6 @@ export default {
   "account.estates.delete.confirmProvisioned":
     "Ce domaine tourne sur le serveur $1, acheté par lore estate provision chez $2. Le supprimer ici ne détruit pas ce serveur : il continue de tourner, et d'être facturé. Pour le détruire avec son IP et son disque, lancez plutôt lore estate delete $3 --yes.",
   "account.estates.delete.confirm": "Supprimer",
-  "account.estates.toast.created": "Domaine créé",
   "account.estates.toast.rotated": "Secret changé",
   "account.estates.toast.deleted": "Domaine supprimé",
   "account.delete.estates.one":

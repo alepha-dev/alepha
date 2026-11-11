@@ -121,6 +121,10 @@ describe("estate expiry", () => {
     expect(mail.records).toHaveLength(1);
     expect(mail.records[0]!.to).toBe("owner@example.com");
     expect(mail.records[0]!.body).toContain("tmp-2");
+    // The link opens the console under the estate's home project: estates
+    // have no account page since #E126.
+    expect(mail.records[0]!.body).toMatch(/\/[a-z0-9-]+\/estates\/tmp-2"/);
+    expect(mail.records[0]!.body).not.toContain("/account/estates");
 
     // Extending re-arms; once that expiry passes too, one more.
     await controller.updateEstate(

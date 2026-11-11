@@ -317,6 +317,36 @@ describe("estate access by the home project's rank", () => {
         { user: borrower },
       ),
     ).rejects.toThrow(ForbiddenError);
+    // The console's URL names the home project: under the borrowing project
+    // the slug is not found, even for the owner of both.
+    await expect(
+      lending.getHomeEstate(
+        { params: { projectId: other.id, estateSlug: "ovh-1" } },
+        { user: w.owner },
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("opens the console by its home project and slug, for that project's members only", async ({
+    expect,
+  }) => {
+    const w = await world();
+    const params = { projectId: w.project.id, estateSlug: "ovh-1" };
+
+    for (const user of [w.owner, w.reader, w.manager]) {
+      await expect(
+        lending.getHomeEstate({ params }, { user }),
+      ).resolves.toMatchObject({ id: w.estate.id, slug: "ovh-1" });
+    }
+    await expect(
+      lending.getHomeEstate({ params }, { user: w.stranger }),
+    ).rejects.toThrow(ForbiddenError);
+    await expect(
+      lending.getHomeEstate(
+        { params: { ...params, estateSlug: "nope" } },
+        { user: w.owner },
+      ),
+    ).rejects.toThrow(NotFoundError);
   });
 
   it("needs estate:lend on both sides to lend", async ({ expect }) => {

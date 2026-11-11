@@ -403,7 +403,7 @@ most), so widen `-n` for a longer window.
 
 A Bay connected to Lore pushes what `bay status --json` computes, on its
 report interval and after every command that changes something, and Lore
-renders it at `/account/estates/:estateId`. `computeStatus` is one function with two
+renders it at `/:projectSlug/estates/:estateSlug`. `computeStatus` is one function with two
 callers for that reason: a second copy of the backup-staleness rule would
 drift invisibly, since each copy looks right on its own.
 

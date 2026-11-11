@@ -2521,11 +2521,8 @@ export default {
   "bay.commands.col.reason": "Outcome",
   "bay.commands.byNobody": "-",
   "bay.commands.result": "Open the stored result",
-  "account.estates.inventory": "$1 app(s), reported $2",
-  "account.estates.inventory.none": "nothing reported",
   "bay.settings.rotate.warning":
     "Rotating revokes the current secret immediately. The machine is refused on its next dial and stays offline until you run `bay connector set` on it again with the new one.",
-  "bay.open": "Open console",
   "bay.home": "Belongs to $1",
   "bay.settings.home":
     "Belongs to $1, whose members manage it, each by their rank",
@@ -2549,10 +2546,6 @@ export default {
   "bay.move.toast": "Moved to $1",
   "bay.move.serverElsewhere":
     "The server it runs on stays in the cloud account of whoever provisioned it, who is not a member of the new project.",
-  "account.estates.col.project": "Project",
-  "account.estates.filter.project": "Project",
-  "account.estates.filter.allProjects": "All projects",
-  "account.estates.readOnly": "You can look, not change",
   "estates.home.title": "Estates of this project",
   "estates.home.description": "Its members manage these, each by their rank.",
   "estates.home.empty": "This project is the home of no estate.",
@@ -2643,24 +2636,6 @@ export default {
   "estates.toast.detached": "Estate detached",
   "estates.toast.copied": "Secret copied",
 
-  "account.estates.col.kind": "Kind",
-  "account.estates.col.estate": "Estate",
-  "account.estates.col.status": "Status",
-  "account.estates.col.lentTo": "Lent to",
-  "account.estates.col.created": "Created",
-  "account.estates.lentTo": "$1 project(s)",
-  "account.estates.create": "Create an estate",
-  "account.estates.create.description":
-    "Its secret is shown once, at creation. It cannot be recovered afterwards, only rotated.",
-  "account.estates.create.project": "Project",
-  "account.estates.create.project.description":
-    "The project the estate belongs to. Its members manage it, each by their rank.",
-  "account.estates.create.project.only":
-    "In $1, the one project you can create an estate in.",
-  "account.estates.create.none":
-    "You can create an estate in no project: an estate belongs to a project with Apps on, and your rank there needs estate:create.",
-  "account.estates.create.submit": "Create",
-  "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1% · memory $2%",
   "account.estates.gauge.none": "no stats yet",
@@ -2690,7 +2665,6 @@ export default {
   "account.estates.delete.confirmProvisioned":
     "This estate runs on server $1, which lore estate provision bought on $2. Deleting it here does not terminate that server: it keeps running, and billing. To terminate it with its IP and its disk, run lore estate delete $3 --yes instead.",
   "account.estates.delete.confirm": "Delete",
-  "account.estates.toast.created": "Estate created",
   "account.estates.toast.rotated": "Secret rotated",
   "account.estates.toast.deleted": "Estate deleted",
   "account.delete.estates.one":

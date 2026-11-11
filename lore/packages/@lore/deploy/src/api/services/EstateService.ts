@@ -863,6 +863,26 @@ export class EstateService {
   }
 
   /**
+   * The page a message about this estate links to, as a path from the app's
+   * root: a `bay` estate's console under its home project, a `cloudflare`
+   * one's row in that project's estates list (it has no console), and the
+   * admin's estates page for an estate with no home, the only place it can be
+   * opened. Estates have no account page since #E126.
+   */
+  async pagePath(estate: Estate): Promise<string> {
+    const home =
+      estate.projectId == null
+        ? undefined
+        : await this.projects.findById(estate.projectId);
+    if (!home?.slug) {
+      return "/admin/estates";
+    }
+    return estate.type === "bay"
+      ? `/${home.slug}/estates/${estate.slug}`
+      : `/${home.slug}/settings/estates`;
+  }
+
+  /**
    * Who is told when something about an estate needs fixing (a credential
    * failing, a server overdue): every member of its home project whose rank
    * grants `estate:update`, the owner always among them. An estate with no

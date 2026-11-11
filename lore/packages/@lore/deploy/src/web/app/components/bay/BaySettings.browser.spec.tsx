@@ -28,9 +28,9 @@ class QuietLinks extends LinkProvider {
 }
 
 class Routes {
-  accountEstates = $page({
-    name: "accountEstates",
-    path: "/account/estates",
+  baySettings = $page({
+    name: "baySettings",
+    path: "/:projectSlug/estates/:estateSlug/settings",
     component: () => null,
   });
   projectSettingsEstates = $page({

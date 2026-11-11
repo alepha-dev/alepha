@@ -45,9 +45,19 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
     >
       <div className="flex min-w-0 grow flex-col gap-0.5">
         <span className="flex items-center gap-2 text-sm font-medium">
-          {estate.can.includes("estate:read") ? (
+          {/* The console lives under the HOME project, which answers 403 to
+              a reader who is not a member there: linked only when `can`
+              says they may read it. */}
+          {estate.type === "bay" &&
+          estate.home?.slug &&
+          estate.can.includes("estate:read") ? (
             <Link
-              href={router.path("bay", { params: { estateId: estate.id } })}
+              href={router.path("bay", {
+                params: {
+                  projectSlug: estate.home.slug,
+                  estateSlug: estate.slug,
+                },
+              })}
               className="truncate hover:underline"
             >
               {estate.slug}

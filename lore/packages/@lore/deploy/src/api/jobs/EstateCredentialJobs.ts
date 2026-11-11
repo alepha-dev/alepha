@@ -183,6 +183,7 @@ export class EstateCredentialJobs {
     }
 
     const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
+    const path = await this.service.pagePath(estate);
     for (const person of reachable) {
       try {
         await this.notifications.credentialInvalid.push({
@@ -190,7 +191,7 @@ export class EstateCredentialJobs {
           variables: {
             estateSlug: estate.slug,
             reason,
-            estatesUrl: `${baseUrl}/account/estates`,
+            estatesUrl: `${baseUrl}${path}`,
             homeless: estate.projectId == null,
           },
         });

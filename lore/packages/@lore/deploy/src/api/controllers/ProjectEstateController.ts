@@ -113,6 +113,35 @@ export class ProjectEstateController {
   });
 
   /**
+   * One estate of this project, by its slug: what the console at
+   * `/:projectSlug/estates/:estateSlug` opens. A slug is unique per home
+   * project (#E126), so the pair names one estate. An estate only lent here
+   * is not found: its console lives under its own home.
+   */
+  getHomeEstate = $action({
+    use: [$ownsProject({ requires: "estate:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/estates/home/:estateSlug",
+    schema: {
+      params: z.object({ projectId: z.integer(), estateSlug: z.string() }),
+      response: ownedEstateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const row = await this.estates.findOne({
+        where: {
+          projectId: { eq: params.projectId },
+          slug: { eq: params.estateSlug },
+        },
+      });
+      if (!row) {
+        throw new NotFoundError("Estate not found");
+      }
+      const [owned] = await this.service.withLoans([row], user);
+      return owned!;
+    },
+  });
+
+  /**
    * Lend an estate to this project. Takes `estate:lend` here (the gate) and
    * in the estate's home project.
    */

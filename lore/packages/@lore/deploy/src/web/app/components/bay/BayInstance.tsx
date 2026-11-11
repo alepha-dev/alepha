@@ -80,8 +80,8 @@ const BayInstance = () => {
             <h2 className="text-lg font-semibold">{`${app}/${env}`}</h2>
             <BayStateBadge state={state} />
             {row.project?.slug && (
-              // ⚠️ `projectSlug` explicitly: this route holds `estateId`, and
-              // the router merges the current params by name.
+              // ⚠️ `projectSlug` explicitly: this route holds the HOME
+              // project's, and the copy may belong to a borrowing project.
               <a
                 className="text-sm underline-offset-4 hover:underline"
                 href={router.path("app", {

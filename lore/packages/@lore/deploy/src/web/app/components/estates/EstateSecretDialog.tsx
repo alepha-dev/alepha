@@ -11,7 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Check, Clipboard } from "lucide-react";
 import { useState } from "react";
 
-export interface MyEstateSecretDialogProps {
+export interface EstateSecretDialogProps {
   /**
    * The cleartext secret, or `undefined` when there is nothing to show. Its
    * presence IS the open state: there is no separate flag, because a dialog
@@ -40,7 +40,7 @@ export interface MyEstateSecretDialogProps {
  * create dialog's own submit. Creation and rotation both land here, because
  * both mint.
  */
-const MyEstateSecretDialog = (props: MyEstateSecretDialogProps) => {
+const EstateSecretDialog = (props: EstateSecretDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const [copied, setCopied] = useState(false);
@@ -92,4 +92,4 @@ const MyEstateSecretDialog = (props: MyEstateSecretDialogProps) => {
   );
 };
 
-export default MyEstateSecretDialog;
+export default EstateSecretDialog;

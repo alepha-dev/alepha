@@ -39,10 +39,10 @@ cannot open it, change it or read its logs.
 
 Estates are added inside a project with **Apps** on, by somebody whose rank
 there grants `estate:create`: from the project's **Settings ▸ Apps ▸ Estates**,
-from the **Estates** page of your account (`/account/estates`, which asks for
-the project), or with the CLI. Whichever way, the estate belongs to that
-project and is lent to it. The Estates page of your account lists the estates
-of every project where your rank lets you read them.
+or with the CLI. Either way, the estate belongs to that project and is lent to
+it. That page is where a project's estates are: the ones it is the home of,
+and the ones other projects lend it. Your account has no estates page, since
+an estate is never yours alone.
 
 ### A server bought for you
 
@@ -79,7 +79,7 @@ If anything fails after the server exists, the command terminates it before
 answering; if that fails too, it keeps the estate and prints the command that
 finishes the job, so no server bills where you cannot see it.
 
-A provisioned estate carries its server: the Estates page marks it with its
+A provisioned estate carries its server: the project's estates list marks it with its
 provider and type, and its console and `lore estate get` show the server, its
 zone, its hourly price and an estimate of what it has cost so far. The server
 lives in the cloud account of whoever ran `lore estate provision`, and the
@@ -87,8 +87,8 @@ console names that person.
 
 ### A Bay estate
 
-Create the estate from the project's **Settings ▸ Apps ▸ Estates**, from your
-account's Estates page, or from a project directory with the CLI:
+Create the estate from the project's **Settings ▸ Apps ▸ Estates**, or from a
+project directory with the CLI:
 
 ```bash
 lore estate add my-vps --label "My VPS"
@@ -181,7 +181,7 @@ The console's **Settings** tab also has, for whoever the rank allows:
 A member who may only look sees a Settings tab that says so, and which
 permission would let them do more.
 
-A Cloudflare estate has no console: clicking it on the Estates page opens a
+A Cloudflare estate has no console: clicking it in the project's estates list opens a
 drawer with **Allow deploys** and:
 
 - **Replace token**, to paste a new token over the old one;
@@ -282,7 +282,8 @@ or delete them first.
 
 ## The console of a Bay estate
 
-Clicking a Bay estate on the Estates page opens its console, with four tabs:
+Clicking a Bay estate in the project's estates list opens its console, at
+`/<project>/estates/<estate>`, with four tabs:
 
 | Tab      | What it shows                                                                    |
 | -------- | -------------------------------------------------------------------------------- |

@@ -13,15 +13,15 @@ import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 /**
  * Whether the estate's name is a door (feedback #P2126).
  *
- * ⚠️ The two cases are the whole point. The Bay console is owner-only and
- * `EstateService.loadOwned` answers **404** to anybody else, so a link on a
- * borrower's row would be worse than the inert text it replaced: it would
- * promise a page that does not exist for them.
+ * ⚠️ The two cases are the whole point. The Bay console lives under the
+ * estate's HOME project (#E126), which answers **403** to anybody who is not
+ * a member there, so a link on a borrower's row would be worse than the
+ * inert text it replaced: it would promise a page they cannot open.
  */
 class Routes {
   bay = $page({
     name: "bay",
-    path: "/account/estates/:estateId",
+    path: "/:projectSlug/estates/:estateSlug",
     component: () => null,
   });
 }
@@ -36,7 +36,7 @@ const anEstate = (over: Partial<LentEstateResource> = {}) =>
     online: true,
     deployAllowed: true,
     acceptedRuntimes: ["node"],
-    home: { id: 7, title: "Acme" },
+    home: { id: 7, title: "Acme", slug: "acme" },
     isHome: false,
     can: ["estate:read"],
     lentAt: "2026-09-01T10:00:00.000Z",
@@ -77,11 +77,12 @@ describe("ProjectSettingsEstateRow", () => {
     await mount(anEstate());
 
     const link = screen.getByRole("link", { name: "ovh-1" });
-    expect(link.getAttribute("href")).toBe(`/account/estates/${ESTATE_ID}`);
+    // Under the home project, never under the project listing the loan.
+    expect(link.getAttribute("href")).toBe("/acme/estates/ovh-1");
   });
 
   it("leaves the name as plain text for a borrower", async () => {
-    // The console 404s for them, so a link would dead-end.
+    // The console answers 403 for them, so a link would dead-end.
     const { container } = await mount(anEstate({ can: [] }));
 
     expect(screen.queryByRole("link", { name: "ovh-1" })).toBeNull();

@@ -68,6 +68,7 @@ export class EstateExpiryJobs {
       // one per estate: each recipient is told once, and one recipient's
       // failed send costs no other recipient theirs.
       const homeless = estate.projectId == null;
+      const path = await this.service.pagePath(estate);
       const recipients = await this.service.recipientsOf(estate);
       const people = recipients.length
         ? await this.users.findMany({ where: { id: { inArray: recipients } } })
@@ -80,14 +81,14 @@ export class EstateExpiryJobs {
               variables: {
                 estateSlug: estate.slug,
                 expiresAt: estate.expiresAt ?? now,
-                estatesUrl: `${baseUrl}/account/estates`,
+                estatesUrl: `${baseUrl}${path}`,
                 homeless,
               },
             }),
           );
         }
         await this.attempt(estate.slug, "inbox", () =>
-          this.overdueInbox(person.id, estate.slug),
+          this.overdueInbox(person.id, estate.slug, path),
         );
       }
     }
@@ -113,11 +114,15 @@ export class EstateExpiryJobs {
     }
   }
 
-  protected async overdueInbox(userId: string, slug: string): Promise<void> {
+  protected async overdueInbox(
+    userId: string,
+    slug: string,
+    href: string,
+  ): Promise<void> {
     await this.notifications.overdueInbox.push({
       contact: `lore-user:${userId}`,
       lang: this.inbox.lang,
-      variables: { estateSlug: slug, href: "/account/estates" },
+      variables: { estateSlug: slug, href },
     });
   }
 }

@@ -168,7 +168,7 @@ export class EstateInventoryService {
   /**
    * The two-number summary for a list of estates, keyed by estate id.
    *
-   * One query for the whole page, so `/account/estates` can say "7 apps,
+   * One query for the whole list, so an estates list can say "7 apps,
    * reported 4 minutes ago" per row without a read per row and without
    * parsing a single app array.
    */

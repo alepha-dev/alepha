@@ -80,8 +80,8 @@ const BayApps = () => {
                   {row.reported && row.project && row.instanceId ? (
                     // ⚠️ `projectSlug` is passed EXPLICITLY. The router merges
                     // the current route's params by name, and this route holds
-                    // `estateId` and nothing else - without it the link
-                    // renders a literal `:projectSlug` and goes nowhere.
+                    // the HOME project's `projectSlug`: a copy on the machine
+                    // may belong to a project the estate is lent to.
                     <a
                       className="truncate font-medium underline-offset-4 hover:underline"
                       href={
@@ -268,7 +268,12 @@ const BayApps = () => {
         }}
         onRowClick={(row) =>
           void router.push("bayApp", {
-            params: { estateId: estate.id, app: row.app, env: row.env },
+            params: {
+              projectSlug: estate.project?.slug ?? "",
+              estateSlug: estate.slug,
+              app: row.app,
+              env: row.env,
+            },
           })
         }
       />

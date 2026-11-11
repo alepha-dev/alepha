@@ -9,6 +9,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   confirmDialog,
+  createEstateInProject,
   createProjectViaWizard,
   createRankFromPreset,
   newUserContext,
@@ -69,37 +70,6 @@ const accept = async (page: Page, projectTitle: string): Promise<void> => {
   );
   await page.getByRole("button", { name: /^accept$/i }).click();
   expect((await accepted).ok()).toBe(true);
-};
-
-/**
- * Create a bay estate from the account page, in the only project the caller
- * can create one in, and dismiss the one-time secret. Answers its id.
- */
-const createEstate = async (
-  page: Page,
-  slug: string,
-  keep?: (secret: string) => void,
-): Promise<string> => {
-  await page.goto("/account/estates");
-  await page.waitForLoadState("networkidle");
-  await page.getByTestId("estate-create-open").click();
-  await page.getByTestId("estate-create-slug").fill(slug);
-  await page.getByTestId("estate-create-submit").click();
-  const reveal = page.getByTestId("my-estate-secret-dialog");
-  await expect(reveal).toBeVisible({ timeout: 15_000 });
-  const secret = await reveal.getByText(/est_[A-Za-z0-9_-]{16,}/).innerText();
-  keep?.(secret.trim());
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await releasePointerEvents(page);
-  await page
-    .getByRole("row")
-    .filter({ has: page.getByText(slug, { exact: true }) })
-    .getByTestId("my-estate-row")
-    .click();
-  await page.waitForURL(/\/account\/estates\/[0-9a-f-]{36}/, {
-    timeout: 15_000,
-  });
-  return new URL(page.url()).pathname.split("/")[3]!;
 };
 
 /**
@@ -180,8 +150,15 @@ const pushInventory = async (baseURL: string, secret: string) => {
   });
 };
 
-const openSettings = async (page: Page, estateId: string): Promise<void> => {
-  await page.goto(`/account/estates/${estateId}/settings`);
+/**
+ * The console's Settings tab, under the estate's home project (#E126).
+ */
+const openSettings = async (
+  page: Page,
+  projectSlug: string,
+  estateSlug: string,
+): Promise<void> => {
+  await page.goto(`/${projectSlug}/estates/${estateSlug}/settings`);
   await page.waitForLoadState("networkidle");
   await expect(page.getByTestId("bay-settings-home")).toBeVisible({
     timeout: 15_000,
@@ -200,7 +177,7 @@ test.describe("Project estates", () => {
     const first = await createProjectViaWizard(page, `Pe1${ts}`.slice(0, 20), {
       capabilities: ["apps"],
     });
-    const estateId = await createEstate(page, "ovh-team");
+    await createEstateInProject(page, first.slug, "ovh-team");
 
     // The Admin preset carries the three estate permissions since #E126.
     await createRankFromPreset(page, first.slug, "Admin");
@@ -214,12 +191,17 @@ test.describe("Project estates", () => {
       await accept(manager.page, title);
 
       // ── A plain Member: the console, read-only ──────────────────────────
-      await reader.page.goto("/account/estates");
+      // The project's estates list shows it to every member, and offers a
+      // plain Member no lending.
+      await reader.page.goto(`/${first.slug}/settings/estates`);
       await reader.page.waitForLoadState("networkidle");
-      await expect(reader.page.getByTestId("my-estate-readonly")).toBeVisible({
-        timeout: 15_000,
-      });
-      await openSettings(reader.page, estateId);
+      await expect(
+        reader.page
+          .getByTestId("home-estate-row")
+          .filter({ hasText: "ovh-team" }),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(reader.page.getByTestId("home-estate-lend")).toHaveCount(0);
+      await openSettings(reader.page, first.slug, "ovh-team");
       await expect(
         reader.page.getByTestId("bay-settings-readonly"),
       ).toBeVisible();
@@ -231,7 +213,7 @@ test.describe("Project estates", () => {
       );
 
       // ── A manager on the Admin rank: rotates ────────────────────────────
-      await openSettings(manager.page, estateId);
+      await openSettings(manager.page, first.slug, "ovh-team");
       await expect(
         manager.page.getByTestId("bay-settings-readonly"),
       ).toHaveCount(0);
@@ -252,7 +234,7 @@ test.describe("Project estates", () => {
     const second = await createProjectViaWizard(page, `Pe2${ts}`.slice(0, 20), {
       capabilities: ["apps"],
     });
-    await openSettings(page, estateId);
+    await openSettings(page, first.slug, "ovh-team");
     await page.getByTestId("bay-settings-move").click();
     await page.getByTestId("bay-move-project").click();
     await page.getByRole("option", { name: `Pe2${ts}`.slice(0, 20) }).click();
@@ -262,6 +244,11 @@ test.describe("Project estates", () => {
       `Pe2${ts}`.slice(0, 20),
       { timeout: 15_000 },
     );
+    // The console follows the estate to its new home: the old URL names a
+    // project it left.
+    await page.waitForURL(`**/${second.slug}/estates/ovh-team/settings`, {
+      timeout: 15_000,
+    });
     await page.goto(`/${second.slug}/settings/estates`);
     await page.waitForLoadState("networkidle");
     await expect(
@@ -332,14 +319,15 @@ test.describe("Project estates", () => {
 
     // 2. Builder adds a Bay estate in the first project; a machine connects
     //    and reports its inventory.
-    let secret = "";
-    const estateId = await createEstate(builder.page, "ow-vps", (value) => {
-      secret = value;
-    });
+    const { id: estateId, secret } = await createEstateInProject(
+      builder.page,
+      first.slug,
+      "ow-vps",
+    );
     await pushInventory(baseURL!, secret);
 
     // 3. Owner, who created nothing, opens its console and rotates it.
-    await openSettings(page, estateId);
+    await openSettings(page, first.slug, "ow-vps");
     await expect(page.getByTestId("bay-settings-creator")).toContainText(
       /ow-builder/,
     );

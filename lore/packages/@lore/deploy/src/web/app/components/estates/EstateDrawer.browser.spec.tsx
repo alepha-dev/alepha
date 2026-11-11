@@ -19,7 +19,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { OwnedEstateResource } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
-import MyEstateDrawer from "./MyEstateDrawer.tsx";
+import EstateDrawer from "./EstateDrawer.tsx";
 
 /**
  * Refuses `rotateEstate`; answers everything else with an empty result.
@@ -67,7 +67,7 @@ const ESTATE = {
  * shows it now, once, and the drawer is not told of a secret that was never
  * minted.
  */
-describe("MyEstateDrawer", () => {
+describe("EstateDrawer", () => {
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -98,7 +98,7 @@ describe("MyEstateDrawer", () => {
         <DialogProvider>
           <Toaster visibleToasts={20} />
           <ActionErrorToaster />
-          <MyEstateDrawer
+          <EstateDrawer
             estate={ESTATE}
             onOpenChange={() => {}}
             onChanged={() => {}}

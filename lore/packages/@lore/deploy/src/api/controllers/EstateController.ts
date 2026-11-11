@@ -51,8 +51,9 @@ export type {
 
 /**
  * One estate, managed by the members of its home project (epic #E126): the
- * console at `/account/estates/:estateId` and the list across every project
- * the caller can read estates in.
+ * console at `/:projectSlug/estates/:estateSlug` reads it here by id, and
+ * `listMyEstates` answers the estates of every project the caller can read
+ * estates in, for the CLI and MCP.
  *
  * Every action on `/estates/:estateId` goes through `$ownsProject` on the
  * estate row, which walks it to its home project by `projectId`, reads the
