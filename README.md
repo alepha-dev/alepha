@@ -65,12 +65,12 @@ export class AppRouter {
 
 `npx alepha deploy` puts it on Cloudflare. `npx alepha image` puts the same build in a container, for any host that runs one. The code does not change; what sits underneath it does:
 
-| Primitive     | On Cloudflare            | In Docker                                      |
-| ------------- | ------------------------ | ---------------------------------------------- |
-| `$repository` | D1                       | SQLite, or Postgres with `alepha/orm/postgres` |
-| `$storage`    | R2                       | S3 (`S3_ENDPOINT`) or the local disk           |
-| `$job`        | Queues and Cron Triggers | Redis (`REDIS_URL`) or in-process              |
-| `$cache`      | Cache API or KV          | Redis (`REDIS_URL`) or memory                  |
+| Primitive     | On Cloudflare                          | In Docker                                                                      |
+| ------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
+| `$repository` | D1                                     | SQLite, or Postgres with `alepha/orm/postgres`                                 |
+| `$storage`    | R2                                     | S3 (`S3_ENDPOINT`) or the local disk                                           |
+| `$job`        | an outbox in D1, Cron Triggers, Queues | an outbox in the database, delivered in-process or through Redis (`REDIS_URL`) |
+| `$cache`      | Cache API or KV                        | Redis (`REDIS_URL`) or memory                                                  |
 
 Leaving is a flag, not a rewrite.
 

@@ -12,6 +12,8 @@ import {
   AlephaApiJobs,
   JobService,
   jobExecutionEntity,
+  jobExecutionResourceSchema,
+  jobExecutionRowSchema,
 } from "../index.ts";
 
 class Roles {
@@ -403,5 +405,74 @@ describe("AdminJobController: deleting executions", () => {
         { user: user("job-cleaner") },
       ),
     ).resolves.toEqual({ deleted: 1, skipped: 0 });
+  });
+
+  it("returns a run's steps as an ordered timeline with capped previews, and never in a list row", async ({
+    expect,
+  }) => {
+    const { alepha, app, service, controller } = await boot();
+    const row = await app.executions.create({
+      jobName: "ops-app.work",
+      status: "scheduled",
+      payload: { v: 9 },
+      steps: {
+        "until-second": {
+          at: "2026-11-11T10:00:02.000Z",
+          ms: 0,
+          until: "2026-11-12T10:00:02.000Z",
+        },
+        capture: {
+          at: "2026-11-11T10:00:00.000Z",
+          ms: 42,
+          result: { id: "ch_1" },
+        },
+        notify: { at: "2026-11-11T10:00:01.000Z", ms: 3 },
+        big: {
+          at: "2026-11-11T10:00:01.500Z",
+          ms: 1,
+          result: "x".repeat(5000),
+        },
+      },
+    });
+
+    const detail = await controller.getExecution.run(
+      { params: { id: row.id } },
+      { user: user("job-reader") },
+    );
+    const encoded = alepha.codec.encode(jobExecutionResourceSchema, detail) as {
+      steps?: Array<Record<string, unknown>>;
+    };
+    for (const shape of [detail.steps, encoded.steps]) {
+      expect(shape?.map((s) => s.name)).toEqual([
+        "capture",
+        "notify",
+        "big",
+        "until-second",
+      ]);
+    }
+    const [capture, notify, big, sleep] = encoded.steps!;
+    expect(capture).toEqual({
+      name: "capture",
+      at: "2026-11-11T10:00:00.000Z",
+      ms: 42,
+      hasResult: true,
+      resultPreview: JSON.stringify({ id: "ch_1" }, null, 2),
+    });
+    expect(notify).toEqual({
+      name: "notify",
+      at: "2026-11-11T10:00:01.000Z",
+      ms: 3,
+      hasResult: false,
+    });
+    expect(String(big.resultPreview)).toHaveLength(2048);
+    expect(String(big.resultPreview).endsWith("...")).toBe(true);
+    expect(sleep.until).toBe("2026-11-12T10:00:02.000Z");
+    expect(sleep.hasResult).toBe(false);
+
+    const page = await service.getExecutions("ops-app.work", { size: 50 });
+    const listed = page.content.find((r) => r.id === row.id);
+    expect(listed).toBeDefined();
+    expect(listed).not.toHaveProperty("steps");
+    expect(jobExecutionRowSchema.shape).not.toHaveProperty("steps");
   });
 });

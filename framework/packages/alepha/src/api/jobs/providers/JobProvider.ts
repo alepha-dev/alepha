@@ -34,9 +34,11 @@ import type {
   JobPrimitiveOptions,
   JobRescheduleOptions,
   JobRetryBackoff,
+  JobSteps,
 } from "../primitives/$job.ts";
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
 import type { JobRetention } from "../schemas/jobRetentionSchema.ts";
+import type { JobStep } from "../schemas/jobStepSchema.ts";
 import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
 import type { JobDispatcher, JobDispatchOptions } from "./JobDispatcher.ts";
 import { JobQueueProvider } from "./JobQueueProvider.ts";
@@ -823,6 +825,10 @@ export class JobProvider {
                   now: startedAt,
                   signal,
                   executionId,
+                  step: this.refusedSteps(
+                    name,
+                    "a cron job has no steps, with or without 'retry'. Push a queue job from the cron for work that needs them",
+                  ),
                   reschedule: () => {
                     throw new AlephaError(
                       `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
@@ -925,7 +931,7 @@ export class JobProvider {
         maxAttempts: fields.attempt,
         startedAt: fields.startedAt.toISOString(),
         completedAt: this.dt.nowISOString(),
-        error: fields.error?.message,
+        error: fields.error ? this.rowError(fields.error.message) : undefined,
         logs: this.logBuffer.snapshot(),
         triggeredBy: fields.triggeredBy,
         triggeredByName: fields.triggeredByName,
@@ -941,6 +947,37 @@ export class JobProvider {
     name: string,
     payload: unknown,
     options?: PushOptions,
+  ): Promise<string> {
+    return this.pushExecution(name, payload, options);
+  }
+
+  /**
+   * Push a new execution that starts with `steps` already recorded: what the
+   * admin's Retry does with a run that has steps, so the new row skips the
+   * steps the old one completed and carries on at the one that failed.
+   *
+   * Internal to the jobs module (`JobService.retryExecution` is its caller),
+   * and deliberately not a field of {@link PushOptions}: application code
+   * pushing a run with results it made up would defeat the record. The row
+   * otherwise goes through `push` exactly: validated payload, dedup when
+   * keyed, the same dispatch.
+   *
+   * @internal
+   */
+  public async pushRetry(
+    name: string,
+    payload: unknown,
+    options: PushOptions | undefined,
+    steps: Record<string, JobStep>,
+  ): Promise<string> {
+    return this.pushExecution(name, payload, options, { steps });
+  }
+
+  protected async pushExecution(
+    name: string,
+    payload: unknown,
+    options?: PushOptions,
+    seed?: { steps?: Record<string, JobStep> },
   ): Promise<string> {
     const registration = this.getRegistration(name);
     if (registration.kind !== "queue") {
@@ -997,6 +1034,7 @@ export class JobProvider {
         scheduledAt,
         triggeredBy: options.triggeredBy,
         triggeredByName: options.triggeredByName,
+        ...(seed?.steps ? { steps: seed.steps } : {}),
       });
       if (!created) {
         // Lost the race to a concurrent same-key push — the winner dispatches.
@@ -1020,6 +1058,7 @@ export class JobProvider {
       scheduledAt,
       triggeredBy: options?.triggeredBy,
       triggeredByName: options?.triggeredByName,
+      ...(seed?.steps ? { steps: seed.steps } : {}),
     });
 
     if (inline) {
@@ -1082,15 +1121,27 @@ export class JobProvider {
     executionId: string,
     registration: JobRuntimeRegistration,
     fence?: JobClaimFence,
+    /**
+     * The run's lease state, shared with its step writes: a renewal does
+     * not start while a step write is in flight, and a step write awaits the
+     * renewal in flight. See {@link writeStep}.
+     */
+    lease?: JobLeaseState,
   ): ReturnType<typeof setInterval> {
     const intervalMs = Math.max(
       250,
       Math.floor(this.crashThresholdMs(registration) / 3),
     );
     const timer = setInterval(() => {
+      // A step write refreshes `updatedAt` itself, and may be moving the
+      // fence's `attempt`: a renewal built now could miss and stop the
+      // heartbeat for good.
+      if (lease?.stepWriting) return;
       void (async () => {
+        const renewal = this.renewLease(executionId, fence);
+        if (lease) lease.renewing = renewal;
         try {
-          await this.renewLease(executionId, fence);
+          await renewal;
         } catch (error) {
           if (this.shouldStopHeartbeat(error)) {
             clearInterval(timer);
@@ -1100,6 +1151,8 @@ export class JobProvider {
             `Lease heartbeat failed for ${executionId}, will retry next tick`,
             { error },
           );
+        } finally {
+          if (lease?.renewing === renewal) lease.renewing = undefined;
         }
       })();
     }, intervalMs);
@@ -1154,6 +1207,7 @@ export class JobProvider {
     scheduledAt?: string;
     triggeredBy?: string;
     triggeredByName?: string;
+    steps?: Record<string, JobStep>;
   }): Promise<{ id: string; created: boolean }> {
     try {
       const execution = await this.executions.create(fields);
@@ -1442,6 +1496,11 @@ export class JobProvider {
     executionId: string,
     next: RescheduleIntent,
     fence?: JobClaimFence,
+    /**
+     * The `steps` the parked row carries: the run's record plus the sleep's
+     * entry for a `step.sleep`. Left out, the column is not touched.
+     */
+    steps?: Record<string, JobStep> | null,
   ): Promise<void> {
     const parked = await this.guardedUpdate(
       executionId,
@@ -1452,8 +1511,9 @@ export class JobProvider {
         payload: next.payload,
         attempt: 0,
         redispatchCount: 0,
+        ...(steps === undefined ? {} : { steps }),
       },
-      "reschedule",
+      steps ? "sleep" : "reschedule",
       fence,
     );
     if (!parked) return;
@@ -1462,6 +1522,358 @@ export class JobProvider {
       scheduledAt: next.scheduledAt,
     });
     await this.dispatchDelayed(jobName, executionId, next.scheduledAt);
+  }
+
+  // --- Steps -----------------------------------------------------------------------------------------------------
+
+  /**
+   * The shape a step name must have: lower-case kebab segments joined by
+   * dots (`capture`, `first-reminder`, `charge.3`), at most
+   * {@link maxStepNameLength} characters.
+   */
+  public readonly stepNamePattern =
+    /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$/;
+
+  public readonly maxStepNameLength = 64;
+
+  /**
+   * The `step` a run receives when it may not use steps at all: every
+   * method throws, naming why.
+   */
+  protected refusedSteps(jobName: string, reason: string): JobSteps {
+    const refuse = (): never => {
+      throw new AlephaError(`Job '${jobName}' called step.*: ${reason}.`);
+    };
+    return {
+      run: async () => refuse(),
+      sleep: async () => refuse(),
+      sleepUntil: async () => refuse(),
+    };
+  }
+
+  /**
+   * The `step` of a pushed execution. See the contract folio of epic E123
+   * and {@link JobSteps}.
+   */
+  protected createSteps(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    run: JobStepRun,
+    abortController: AbortController,
+  ): JobSteps {
+    return {
+      run: (name, fn) =>
+        this.runStep(registration, executionId, run, abortController, name, fn),
+      sleep: async (name, duration) =>
+        this.sleepStep(
+          registration,
+          run,
+          name,
+          this.dt.now().add(this.dt.duration(duration)).toISOString(),
+        ),
+      sleepUntil: async (name, date) =>
+        this.sleepStep(registration, run, name, date.toISOString()),
+    };
+  }
+
+  /**
+   * The checks every `step.*` call makes before anything else, at call time:
+   * no transaction is open, the name is well formed and not yet used in this
+   * activation. Records the name as used.
+   */
+  protected assertStepCall(
+    registration: JobRuntimeRegistration,
+    run: JobStepRun,
+    name: string,
+  ): void {
+    const jobName = registration.name;
+    if (run.suspend) {
+      throw this.continuedAfterSleep(jobName, run);
+    }
+    if (this.alepha.get("alepha.orm.tx")) {
+      throw new AlephaError(
+        `Job '${jobName}' called step '${name}' inside a transaction. The step's record would join it and roll back with a later throw, while the step's work stays done. Open the transaction inside the step's function instead, where it commits before the result is recorded.`,
+      );
+    }
+    if (run.inStep) {
+      throw new AlephaError(
+        `Job '${jobName}' called step '${name}' inside step '${run.inStep}'. Steps do not nest: call them one after another from the handler.`,
+      );
+    }
+    if (
+      typeof name !== "string" ||
+      name.length === 0 ||
+      name.length > this.maxStepNameLength ||
+      !this.stepNamePattern.test(name)
+    ) {
+      throw new AlephaError(
+        `Job '${jobName}' named a step '${name}'. A step name is 1 to ${this.maxStepNameLength} characters of lower-case kebab segments joined by dots (${this.stepNamePattern.source}), such as 'capture' or 'charge.3'.`,
+      );
+    }
+    if (run.used.has(name)) {
+      throw new AlephaError(
+        `Job '${jobName}' used the step name '${name}' twice in one run. A name identifies a step: name each iteration of a loop, as in step.run(\`charge.\${i}\`, ...).`,
+      );
+    }
+    run.used.add(name);
+  }
+
+  /**
+   * `step.run(name, fn)`: the stored result when the run already has one,
+   * otherwise run `fn`, record its result with one fenced write, and return
+   * it. A throwing `fn` records nothing.
+   */
+  protected async runStep<R>(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    run: JobStepRun,
+    abortController: AbortController,
+    name: string,
+    fn: () => R | Promise<R>,
+  ): Promise<R> {
+    this.assertStepCall(registration, run, name);
+    const existing = run.steps[name];
+    if (existing) {
+      if (existing.until !== undefined) {
+        throw new AlephaError(
+          `Job '${registration.name}' called step.run('${name}'), but this run recorded '${name}' as a sleep. One name, one kind of step.`,
+        );
+      }
+      return existing.result as R;
+    }
+
+    const startedMs = this.dt.nowMillis();
+    let result: R;
+    run.inStep = name;
+    try {
+      result = await fn();
+    } finally {
+      run.inStep = undefined;
+    }
+    const ms = Math.max(0, Math.round(this.dt.nowMillis() - startedMs));
+
+    const entry: JobStep = { at: this.dt.nowISOString(), ms };
+    if (result !== undefined) {
+      this.assertStepResult(registration.name, name, result);
+      entry.result = result;
+    }
+    const steps = { ...run.steps, [name]: entry };
+    this.assertStepSizes(registration.name, name, entry, steps);
+    await this.writeStep(
+      registration,
+      executionId,
+      run,
+      abortController,
+      name,
+      steps,
+    );
+    this.log.debug(`step ${name} ok in ${ms}ms`, {
+      job: registration.name,
+      executionId,
+    });
+    return result;
+  }
+
+  /**
+   * Refuse a step result that would not come back the same from the row:
+   * only what JSON keeps structurally is accepted (strings, finite numbers,
+   * booleans, `null`, arrays and plain objects, recursively; a property whose
+   * value is `undefined` is dropped, as JSON drops it). A `Date`, a `Map`, a
+   * class instance, a `bigint` or a non-finite number would hand the first
+   * pass one value and every replay another. Throws inside the handler, so
+   * the run takes its retry path with the reason on the row.
+   */
+  protected assertStepResult(
+    jobName: string,
+    stepName: string,
+    value: unknown,
+    path = "result",
+    seen: Set<object> = new Set(),
+  ): void {
+    const refuse = (what: string): never => {
+      throw new AlephaError(
+        `Job '${jobName}', step '${stepName}': ${path} is ${what}, which a step cannot store. Step results are JSON: return plain objects, arrays, strings, finite numbers, booleans and null (a date as date.toISOString()).`,
+      );
+    };
+    if (value === null) return;
+    switch (typeof value) {
+      case "string":
+      case "boolean":
+        return;
+      case "number":
+        if (!Number.isFinite(value)) refuse(String(value));
+        return;
+      case "bigint":
+        return refuse("a bigint");
+      case "function":
+        return refuse("a function");
+      case "symbol":
+        return refuse("a symbol");
+      case "undefined":
+        return refuse("undefined");
+    }
+    const object = value as object;
+    if (seen.has(object)) refuse("a circular reference");
+    seen.add(object);
+    if (Array.isArray(object)) {
+      object.forEach((item, i) =>
+        this.assertStepResult(jobName, stepName, item, `${path}[${i}]`, seen),
+      );
+    } else {
+      const proto = Object.getPrototypeOf(object);
+      if (proto !== Object.prototype && proto !== null) {
+        refuse(`a ${object.constructor?.name ?? "class instance"}`);
+      }
+      for (const [key, item] of Object.entries(object)) {
+        if (item === undefined) continue;
+        this.assertStepResult(jobName, stepName, item, `${path}.${key}`, seen);
+      }
+    }
+    seen.delete(object);
+  }
+
+  /**
+   * Hold a step's result and the run's whole `steps` record to
+   * `jobConfig.stepResultMaxBytes` and `jobConfig.stepsMaxBytes`.
+   */
+  protected assertStepSizes(
+    jobName: string,
+    stepName: string,
+    entry: JobStep,
+    steps: Record<string, JobStep>,
+  ): void {
+    const bytes = (value: unknown) =>
+      new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    if (entry.result !== undefined) {
+      const size = bytes(entry.result);
+      if (size > this.config.stepResultMaxBytes) {
+        throw new AlephaError(
+          `Job '${jobName}', step '${stepName}': its result is ${size} bytes of JSON, over jobConfig.stepResultMaxBytes (${this.config.stepResultMaxBytes}). Store large data elsewhere and return its id.`,
+        );
+      }
+    }
+    const total = bytes(steps);
+    if (total > this.config.stepsMaxBytes) {
+      throw new AlephaError(
+        `Job '${jobName}', step '${stepName}': the run's steps would be ${total} bytes of JSON, over jobConfig.stepsMaxBytes (${this.config.stepsMaxBytes}). Store large data elsewhere and return its id.`,
+      );
+    }
+  }
+
+  /**
+   * `step.sleep` and `step.sleepUntil`: return at once when the run's record
+   * says the wait is over, otherwise record the wait on the activation and
+   * unwind the handler with the run's suspend signal. Nothing is written
+   * here: the row is parked once the handler has unwound (see
+   * `processQueueExecution`), with the sleep's entry in its `steps`.
+   *
+   * A stored wait whose `until` is still ahead (the row ran early, through
+   * clock skew between replicas) parks again for the remainder, keeping the
+   * stored `until`.
+   */
+  protected async sleepStep(
+    registration: JobRuntimeRegistration,
+    run: JobStepRun,
+    name: string,
+    until: string,
+  ): Promise<void> {
+    this.assertStepCall(registration, run, name);
+    if (run.rescheduled) {
+      throw new AlephaError(
+        `Job '${registration.name}' called step.sleep('${name}') after reschedule() in the same run. One of them parks the row, not both: a reschedule starts the steps over, a sleep keeps them.`,
+      );
+    }
+    const existing = run.steps[name];
+    if (existing && existing.until === undefined) {
+      throw new AlephaError(
+        `Job '${registration.name}' called a sleep '${name}', but this run recorded '${name}' as a step.run. One name, one kind of step.`,
+      );
+    }
+    const entry: JobStep = existing ?? {
+      at: this.dt.nowISOString(),
+      ms: 0,
+      until,
+    };
+    if (new Date(entry.until!).getTime() <= this.dt.nowMillis()) {
+      return;
+    }
+    const signal = new AlephaError(
+      `Job '${registration.name}' is sleeping in step '${name}' until ${entry.until}. This is the signal that unwinds the handler: do not catch it.`,
+    );
+    run.suspend = { name, entry, signal, intercepted: false };
+    throw signal;
+  }
+
+  /**
+   * The error of a handler that went on after `step.sleep` threw: it caught
+   * the signal. Thrown by every later `step.*` or `reschedule()` call, and
+   * recorded as the run's failure when the handler resolves or throws
+   * anything else.
+   */
+  protected continuedAfterSleep(jobName: string, run: JobStepRun): AlephaError {
+    return new AlephaError(
+      `Job '${jobName}': the handler continued after step.sleep('${run.suspend?.name}'). A sleep unwinds the handler by throwing; do not catch around it.`,
+    );
+  }
+
+  /**
+   * Record a completed step: ONE fenced, status-guarded `UPDATE` of the
+   * whole `steps` object (never a JSON-path update, so the dialects agree),
+   * and `attempt: 1` when the row's attempt is not 1 already, which makes the
+   * retry budget per step. The run's fence and attempt follow the write.
+   *
+   * Serialised with the lease heartbeat: it waits for a renewal in flight,
+   * and no renewal starts while it is in flight, since a renewal fenced on
+   * the old `attempt` landing after it would stop the heartbeat for good.
+   *
+   * A missed guard ends the activation: the row is no longer this run's.
+   * When it was cancelled, the run's signal aborts so the handler takes the
+   * cancel path; otherwise (a newer claim holds it) the throw lands in a
+   * failure path whose fenced writes all miss, as they should.
+   */
+  protected async writeStep(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+    run: JobStepRun,
+    abortController: AbortController,
+    name: string,
+    steps: Record<string, JobStep>,
+  ): Promise<void> {
+    run.lease.stepWriting = true;
+    try {
+      await run.lease.renewing?.catch(() => undefined);
+      const resetAttempt = run.attempt !== 1;
+      const written = await this.guardedUpdate(
+        executionId,
+        ["running"],
+        resetAttempt ? { steps, attempt: 1 } : { steps },
+        "step",
+        run.fence,
+      );
+      if (!written) {
+        const current = await this.executions
+          .findById(executionId)
+          .catch(() => undefined);
+        if (current?.status === "cancelled") {
+          if (!abortController.signal.aborted) {
+            abortController.abort(
+              new AbortedError(`Job execution ${executionId} cancelled`),
+            );
+          }
+          throw abortController.signal.reason;
+        }
+        throw new AlephaError(
+          `Job '${registration.name}' could not record step '${name}': execution ${executionId} is no longer held by this run (its lease went to a newer attempt, or it left 'running').`,
+        );
+      }
+      run.steps = steps;
+      if (resetAttempt) {
+        run.attempt = 1;
+        run.fence.attempt = 1;
+      }
+    } finally {
+      run.lease.stepWriting = false;
+    }
   }
 
   // --- Cancel ----------------------------------------------------------------------------------------------------
@@ -1664,11 +2076,33 @@ export class JobProvider {
       attempt: execution.attempt,
       startedAt: execution.startedAt,
     };
+    // What this activation knows about its steps. `attempt` and the fence
+    // move when a step completes (the retry budget is per step).
+    const run: JobStepRun = {
+      attempt: execution.attempt,
+      fence,
+      steps: { ...execution.steps },
+      used: new Set(),
+      lease: { stepWriting: false },
+    };
     const leaseTimer = this.startLeaseHeartbeat(
       executionId,
       registration,
       fence,
+      run.lease,
     );
+    const step =
+      registration.kind === "cron"
+        ? this.refusedSteps(
+            jobName,
+            "a cron job has no steps, with or without 'retry'. Push a queue job from the cron for work that needs them",
+          )
+        : inline
+          ? this.refusedSteps(
+              jobName,
+              "an inline push runs once for a waiting caller. Push without 'inline' for work that needs steps",
+            )
+          : this.createSteps(registration, executionId, run, abortController);
 
     const now = this.dt.now();
 
@@ -1687,32 +2121,76 @@ export class JobProvider {
           try {
             await this.traceRun(jobName, executionId, execution.attempt, () =>
               this.underRunSignal(abortController.signal, () =>
-                this.withTimeout(opts.timeout, (signal) =>
-                  opts.handler({
-                    payload: execution.payload,
-                    attempt: execution.attempt,
-                    now,
-                    signal,
-                    executionId,
-                    reschedule: (options) => {
-                      if (inline) {
-                        throw new AlephaError(
-                          `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                this.withTimeout(opts.timeout, async (signal) => {
+                  try {
+                    await opts.handler({
+                      payload: execution.payload,
+                      attempt: execution.attempt,
+                      now,
+                      signal,
+                      executionId,
+                      step,
+                      reschedule: (options) => {
+                        if (inline) {
+                          throw new AlephaError(
+                            `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                          );
+                        }
+                        if (run.suspend) {
+                          throw this.continuedAfterSleep(jobName, run);
+                        }
+                        parkAgain = this.rescheduleIntent(
+                          registration,
+                          execution.payload,
+                          options,
                         );
-                      }
-                      parkAgain = this.rescheduleIntent(
-                        registration,
-                        execution.payload,
-                        options,
-                      );
-                    },
-                  }),
-                ),
+                        run.rescheduled = true;
+                      },
+                    });
+                  } catch (error) {
+                    // A `step.sleep` unwinding the handler. Caught here,
+                    // inside the span and the timeout, so neither sees a
+                    // failure: a sleeping run is not a failed one.
+                    if (run.suspend && error === run.suspend.signal) {
+                      run.suspend.intercepted = true;
+                      return;
+                    }
+                    throw error;
+                  }
+                }),
               ),
             );
 
+            if (run.suspend) {
+              // The handler resolved on its own after a sleep threw: it
+              // caught the signal and carried on. Its remaining code ran
+              // without waiting, so this is a failure, never a success.
+              if (!run.suspend.intercepted) {
+                throw this.continuedAfterSleep(jobName, run);
+              }
+              // Only now, once the handler, its middleware and its
+              // `finally` blocks have unwound, is the row parked: the order
+              // `reschedule` has, and a row that is claimable again only
+              // when this activation is done with it.
+              const sleep = run.suspend;
+              await this.park(
+                jobName,
+                executionId,
+                {
+                  scheduledAt: sleep.entry.until!,
+                  payload: execution.payload,
+                },
+                fence,
+                { ...run.steps, [sleep.name]: sleep.entry },
+              );
+              return;
+            }
+
             if (parkAgain) {
-              await this.park(jobName, executionId, parkAgain, fence);
+              // A reschedule is a new iteration: the steps start over, or
+              // every `step.run` of the next pass would return the old
+              // results and do nothing. A wait that keeps them is a sleep.
+              await this.park(jobName, executionId, parkAgain, fence, null);
               return;
             }
 
@@ -1747,8 +2225,7 @@ export class JobProvider {
               { catch: true },
             );
           } catch (error) {
-            const err =
-              error instanceof Error ? error : new Error(String(error));
+            let err = error instanceof Error ? error : new Error(String(error));
 
             if (abortController.signal.aborted) {
               let current = await this.executions.findById(executionId);
@@ -1764,7 +2241,7 @@ export class JobProvider {
                   ["running"],
                   {
                     status: "cancelled",
-                    error: err.message,
+                    error: this.rowError(err.message),
                     completedAt: this.dt.nowISOString(),
                     key: null,
                     logs: this.logBuffer.snapshot(),
@@ -1796,6 +2273,13 @@ export class JobProvider {
               }
             }
 
+            // Anything but the sleep's own signal reaching here after a sleep
+            // was signalled means the handler caught the signal and went on:
+            // the failure is that, whatever it then threw.
+            if (run.suspend && !run.suspend.intercepted) {
+              err = this.continuedAfterSleep(jobName, run);
+            }
+
             if (inline) {
               // **The rule that decides whether this flag achieves
               // anything**: an inline failure writes a TERMINAL row, never
@@ -1815,7 +2299,7 @@ export class JobProvider {
                   ["running"],
                   {
                     status: "error",
-                    error: err.message,
+                    error: this.rowError(err.message),
                     completedAt: this.dt.nowISOString(),
                     key: null,
                     logs: this.logBuffer.snapshot(),
@@ -1841,7 +2325,8 @@ export class JobProvider {
             await this.handleFailure(
               executionId,
               registration,
-              execution.attempt,
+              // The run's current attempt: a completed step moved it to 1.
+              run.attempt,
               err,
               this.logBuffer.snapshot(),
               fence,
@@ -2026,7 +2511,7 @@ export class JobProvider {
         ["running"],
         {
           status: "scheduled",
-          error: error.message,
+          error: this.rowError(error.message),
           scheduledAt: nextScheduledAt,
           logs,
         },
@@ -2049,7 +2534,7 @@ export class JobProvider {
           ["running"],
           {
             status: "error",
-            error: error.message,
+            error: this.rowError(error.message),
             completedAt: this.dt.nowISOString(),
             key: null,
             logs,
@@ -2200,6 +2685,24 @@ export class JobProvider {
    * Every phase serves its oldest rows first, so under a backlog work is
    * picked up in the order it has been waiting.
    */
+  /**
+   * What a sweep read loads: the columns its three actions use, and nothing
+   * else. `steps` above all: every due `scheduled` row is a candidate for
+   * `promote-due`, a sleeping run is exactly that, and its `steps` may hold
+   * up to `jobConfig.stepsMaxBytes`; a full batch of them would be about
+   * 100 MB in one tick, on a runtime with 128 MB. `payload` and `logs` go
+   * for the same reason.
+   */
+  protected readonly sweepColumns = [
+    "id",
+    "jobName",
+    "status",
+    "attempt",
+    "startedAt",
+    "updatedAt",
+    "redispatchCount",
+  ] as const;
+
   protected async runSweepEntry(
     entry: SweepEntry,
     now: DateTime,
@@ -2209,11 +2712,12 @@ export class JobProvider {
     entry.where(where, now);
 
     const limit = Math.max(1, this.config.sweepBatchSize);
-    const rows = await this.executions.findMany({
+    const rows = (await this.executions.findMany({
       where,
       limit,
+      columns: [...this.sweepColumns],
       ...(entry.orderBy ? { orderBy: entry.orderBy } : {}),
-    });
+    })) as JobExecutionEntity[];
 
     if (rows.length >= limit) {
       // A full batch means a backlog. Say so rather than leaving it to be
@@ -2881,6 +3385,23 @@ export class JobProvider {
     );
   }
 
+  /**
+   * The longest error message the row's `error` column holds: it is a
+   * `z.text()`, which caps there.
+   */
+  protected readonly maxRowErrorLength = 255;
+
+  /**
+   * An error message cut to fit the row. A longer one failed the write that
+   * records the failure, which left the row `running` until the sweep took
+   * it for a crash: the error a reader needed was the one that was lost.
+   */
+  protected rowError(message: string): string {
+    return message.length <= this.maxRowErrorLength
+      ? message
+      : `${message.slice(0, this.maxRowErrorLength - 3)}...`;
+  }
+
   protected getRegistration(name: string): JobRuntimeRegistration {
     const registration = this.jobs.get(name);
     if (!registration) {
@@ -2899,4 +3420,57 @@ export class JobProvider {
 export interface JobClaimFence {
   attempt: number;
   startedAt?: string | null;
+}
+
+/**
+ * A run's lease state, shared by its heartbeat and its step writes so the
+ * two never race. See `JobProvider.writeStep`.
+ */
+export interface JobLeaseState {
+  stepWriting: boolean;
+  renewing?: Promise<void>;
+}
+
+/**
+ * What one activation of an execution knows about its steps.
+ */
+export interface JobStepRun {
+  /**
+   * The row's current attempt: what `claim()` wrote, then 1 once a step
+   * completed (the retry budget is per step).
+   */
+  attempt: number;
+  /**
+   * The claim's fence, the same object every write of the run passes. Its
+   * `attempt` moves with the row.
+   */
+  fence: JobClaimFence;
+  /**
+   * The row's steps, as written so far.
+   */
+  steps: Record<string, JobStep>;
+  /**
+   * Step names already called in this activation.
+   */
+  used: Set<string>;
+  /**
+   * The step whose function is running, while one is.
+   */
+  inStep?: string;
+  /**
+   * Set when a `step.sleep` threw its signal: the wait to park once the
+   * handler has unwound. `intercepted` is set when the signal itself came
+   * out of the handler; a handler that finished any other way caught it.
+   */
+  suspend?: {
+    name: string;
+    entry: JobStep;
+    signal: AlephaError;
+    intercepted: boolean;
+  };
+  /**
+   * Set by `reschedule()`: a sleep after it is refused.
+   */
+  rescheduled?: boolean;
+  lease: JobLeaseState;
 }

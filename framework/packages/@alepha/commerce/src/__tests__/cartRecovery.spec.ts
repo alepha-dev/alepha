@@ -45,24 +45,27 @@ class RecoveryProbe {
 }
 
 /**
- * Wait until the sequence is parked on `stage`: the row is `scheduled` with
- * that stage in its payload (the first reminder carries no stage yet).
- * travel() only fires timers that already exist, and the next stage's timer
- * is armed after the previous handler resolves, so a travel issued before the
- * park would compute the next delay from the travelled clock.
+ * Wait until the sequence is parked in `sleep`: the row is `scheduled` with
+ * that sleep's entry in its `steps` (`undefined`: parked on the push delay,
+ * before any step). travel() only fires timers that already exist, and the
+ * next wake's timer is armed after the previous pass unwinds, so a travel
+ * issued before the park would compute the next delay from the travelled
+ * clock.
  */
 const waitForParked = async (
   probe: RecoveryProbe,
   executionId: string,
-  stage: string | undefined,
+  sleep: "until-second" | "until-abandon" | undefined,
 ) => {
   await waitFor(
     () => probe.executions.findById(executionId),
     (r) =>
       r?.status === "scheduled" &&
-      (r.payload as { stage?: string })?.stage === stage &&
-      Boolean(r.scheduledAt),
-    { label: `sequence parked on ${stage ?? "the first reminder"}` },
+      Boolean(r.scheduledAt) &&
+      (sleep === undefined
+        ? !r.steps
+        : r.steps?.[sleep]?.until === r.scheduledAt),
+    { label: `sequence parked ${sleep ?? "before the first reminder"}` },
   );
 };
 
@@ -274,8 +277,8 @@ describe("cart recovery sequence", () => {
       expect(ctx.mail.records[0]!.to).toBe("camille@example.com");
       expect(ctx.mail.records[0]!.subject).toContain("panier");
 
-      // Second reminder after ~23h more: the same row, rescheduled.
-      await waitForParked(ctx.probe, parked!.id, "secondReminder");
+      // Second reminder after ~23h more: the same row, sleeping.
+      await waitForParked(ctx.probe, parked!.id, "until-second");
       await ctx.dt.travel([24, "hour"]);
       await waitFor(
         () => ctx.mail.records.length,
@@ -284,7 +287,7 @@ describe("cart recovery sequence", () => {
       );
 
       // Abandon after ~24h more.
-      await waitForParked(ctx.probe, parked!.id, "markAbandoned");
+      await waitForParked(ctx.probe, parked!.id, "until-abandon");
       await ctx.dt.travel([25, "hour"]);
       await waitFor(
         async () => (await ctx.probe.sessions.findById(sessionId))?.status,
@@ -329,6 +332,39 @@ describe("cart recovery sequence", () => {
     await ctx.dt.travel([3, "day"]);
     await new Promise((r) => setTimeout(r, 200));
     expect(ctx.mail.records).toHaveLength(0);
+  });
+
+  it("cancels the sleeping sequence when the checkout converts between reminders", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const { cartId, sessionId } = await openCheckout(ctx);
+    const started = await waitFor(
+      () => recoveryFor(ctx.probe, cartId),
+      (e) => Boolean(e),
+      { label: "recovery sequence started" },
+    );
+    await waitForParked(ctx.probe, started!.id, undefined);
+    await ctx.dt.travel([61, "minute"]);
+    await waitForParked(ctx.probe, started!.id, "until-second");
+    expect(ctx.mail.records).toHaveLength(1);
+
+    const { handoff } = await ctx.checkout.pay(sessionId, {
+      returnUrl: "https://bijoux.example/merci",
+    });
+    await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
+
+    const cancelled = await waitFor(
+      () => ctx.probe.executions.findById(started!.id),
+      (e) => e?.status === "cancelled",
+      { label: "sleeping sequence cancelled on conversion" },
+    );
+    expect(cancelled?.cancelledByName).toBe("checkout converted");
+    expect(cancelled?.steps?.["first-reminder"]).toBeDefined();
+
+    await ctx.dt.travel([3, "day"]);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(ctx.mail.records).toHaveLength(1);
   });
 
   it("starts nothing for a checkout without an email", async ({ expect }) => {

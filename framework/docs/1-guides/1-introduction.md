@@ -178,15 +178,15 @@ not by scanning directories or parsing metadata.
 
 Common infrastructure needs are built-in primitives:
 
-| Need              | Primitive  | What it does                                                  |
-| ----------------- | ---------- | ------------------------------------------------------------- |
-| Background jobs   | `$job`     | Durable async work: retries, idempotency keys, crash recovery |
-| File uploads      | `$storage` | Files with metadata: querying, TTL, tags (S3, R2, disk)       |
-| Cron jobs         | `$job`     | Same primitive, declared with `cron` instead of `schema`      |
-| Pub/sub           | `$topic`   | Publish and subscribe to events                               |
-| Caching           | `$cache`   | Cache expensive computations                                  |
-| Distributed locks | `$lock`    | Coordinate across processes                                   |
-| Email             | `$email`   | Send transactional email                                      |
+| Need              | Primitive  | What it does                                                         |
+| ----------------- | ---------- | -------------------------------------------------------------------- |
+| Background jobs   | `$job`     | Durable async work: retries, idempotency keys, crash recovery, steps |
+| File uploads      | `$storage` | Files with metadata: querying, TTL, tags (S3, R2, disk)              |
+| Cron jobs         | `$job`     | Same primitive, declared with `cron` instead of `schema`             |
+| Pub/sub           | `$topic`   | Publish and subscribe to events                                      |
+| Caching           | `$cache`   | Cache expensive computations                                         |
+| Distributed locks | `$lock`    | Coordinate across processes                                          |
+| Email             | `$email`   | Send transactional email                                             |
 
 Production builds compile to an optimized bundle deployable to Cloudflare, Bay, or any VPS.
 Declarations like `$job({ cron })` automatically map to native platform formats (Cloudflare Triggers).
