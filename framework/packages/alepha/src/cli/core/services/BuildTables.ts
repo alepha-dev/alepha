@@ -12,7 +12,11 @@ import type { Alepha } from "alepha";
  */
 export class BuildTables {
   public force(alepha: Alepha): void {
-    this.call(alepha, "alepha.server.links.ServerLinksProvider", "registerLinks");
+    this.call(
+      alepha,
+      "alepha.server.links.ServerLinksProvider",
+      "registerLinks",
+    );
     this.call(alepha, "alepha.server.links.LinkProvider", "buildServerLinks");
     this.call(alepha, "alepha.server.ServerRouterProvider", "build");
     this.call(alepha, "alepha.react.router.ReactPageProvider", "buildPages");

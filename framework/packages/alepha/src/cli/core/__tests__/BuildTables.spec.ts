@@ -1,5 +1,9 @@
 import { Alepha } from "alepha";
-import { $page, AlephaReactRouter, ReactPageProvider } from "alepha/react/router";
+import {
+  $page,
+  AlephaReactRouter,
+  ReactPageProvider,
+} from "alepha/react/router";
 import { $action } from "alepha/server";
 import { AlephaServerLinks, LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
@@ -16,8 +20,18 @@ describe("BuildTables", () => {
     expect,
   }) => {
     class Twice {
-      a = $action({ method: "GET", path: "/a", name: "same", handler: () => "" });
-      b = $action({ method: "GET", path: "/b", name: "same", handler: () => "" });
+      a = $action({
+        method: "GET",
+        path: "/a",
+        name: "same",
+        handler: () => "",
+      });
+      b = $action({
+        method: "GET",
+        path: "/b",
+        name: "same",
+        handler: () => "",
+      });
     }
     const alepha = Alepha.create().with(AlephaServerLinks).with(Twice);
     expect(() => alepha.inject(BuildTables).force(alepha)).toThrow(
@@ -25,7 +39,9 @@ describe("BuildTables", () => {
     );
   });
 
-  it("builds the links and the page tree of a sound app, once", ({ expect }) => {
+  it("builds the links and the page tree of a sound app, once", ({
+    expect,
+  }) => {
     class App {
       ping = $action({ method: "GET", path: "/ping", handler: () => "" });
       home = $page({ path: "/", component: () => "home" });
@@ -44,8 +60,11 @@ describe("BuildTables", () => {
         .getServerLinks()
         .map((it) => it.name),
     ).toContain("ping");
-    expect(alepha.inject(ReactPageProvider).getPages().map((it) => it.name)).toContain(
-      "home",
-    );
+    expect(
+      alepha
+        .inject(ReactPageProvider)
+        .getPages()
+        .map((it) => it.name),
+    ).toContain("home");
   });
 });

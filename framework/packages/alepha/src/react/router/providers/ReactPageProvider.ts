@@ -93,6 +93,12 @@ export const reactPageOptions = $atom({
  * Handle page routes for React applications. (Browser and Server)
  */
 export class ReactPageProvider {
+  /**
+   * Stable id, so a container loaded in another module graph (the build's)
+   * can reach this provider by name.
+   */
+  public static readonly id: string = "alepha.react.router.ReactPageProvider";
+
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly options = $store(reactPageOptions);
@@ -186,6 +192,16 @@ export class ReactPageProvider {
       this.rebuilding = false;
     }
     this.onPagesBuilt?.();
+  }
+
+  /**
+   * Builds the tree now if nothing built it: what `alepha build` calls, so an
+   * error building it raises fails the build (#Q3396).
+   */
+  public buildPages(): void {
+    if (this.pages.length === 0) {
+      this.buildTree();
+    }
   }
 
   protected buildTree(): void {
