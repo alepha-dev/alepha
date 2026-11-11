@@ -24,6 +24,7 @@ import { FolioNameService } from "./services/FolioNameService.ts";
 import { FoliosThisMonthMetric } from "./services/FoliosThisMonthMetric.ts";
 import { KnowledgeAutomationActions } from "./services/KnowledgeAutomationActions.ts";
 import { KnowledgeAutomationReferences } from "./services/KnowledgeAutomationReferences.ts";
+import { KnowledgeBuckets } from "./services/KnowledgeBuckets.ts";
 import { KnowledgeDashboard } from "./services/KnowledgeDashboard.ts";
 import { KnowledgeDashboardMetrics } from "./services/KnowledgeDashboardMetrics.ts";
 import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
@@ -38,6 +39,9 @@ export const LoreKnowledgeApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    // Every bucket of the package, at boot: an upload looks its bucket up
+    // by name, and the controllers that use one stay pure (#Q3404).
+    KnowledgeBuckets,
     KnowledgeReportsController,
     ProjectKnowledgeReportService,
     KnowledgeReportsSummary,

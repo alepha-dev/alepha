@@ -1,6 +1,6 @@
 import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
-import { $storage, FileController, files } from "alepha/api/files";
+import { FileController, files } from "alepha/api/files";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -9,6 +9,7 @@ import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folios } from "../entities/folios.ts";
 import { hydratedFolioAttachmentSchema } from "../schemas/hydratedFolioAttachmentSchema.ts";
 import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
+import { KnowledgeBuckets } from "../services/KnowledgeBuckets.ts";
 
 /**
  * REST surface for Folio attachments. The framework `FileController`
@@ -84,20 +85,15 @@ export class FolioAttachmentController {
     });
 
   /**
-   * Storage for Folio attachments. Declared here so `?bucket=archive-blobs`
-   * resolves — without it every Folio upload 404s with
-   * "Storage 'archive-blobs' not found." (Bucket value kept as
-   * `archive-blobs`, not renamed — see the note on
-   * `FolioAttachmentService.BUCKET`.) Any logged-in user with `file:create`
-   * can upload; per-project membership is enforced downstream by the
-   * `registerAttachment` action below.
+   * The bucket, declared on `KnowledgeBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
    */
-  folioBucket = $storage({
-    name: FolioAttachmentService.BUCKET,
-    description: "Folio attachments",
-    // The folio editor uploads here straight from the browser.
-    clientUploads: true,
-  });
+  protected readonly buckets = $inject(KnowledgeBuckets);
+
+  public get folioBucket() {
+    return this.buckets.folioAttachments;
+  }
 
   /**
    * Hydrate a attachment row with framework-file metadata (size, mimeType,

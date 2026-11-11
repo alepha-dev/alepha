@@ -20,6 +20,7 @@ import { UserController } from "./controllers/UserController.ts";
 import { UserJobs } from "./jobs/UserJobs.ts";
 import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { RealmProvider } from "./providers/RealmProvider.ts";
+import { AvatarPermissions } from "./services/AvatarPermissions.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
 import { MfaService } from "./services/MfaService.ts";
@@ -159,6 +160,7 @@ export const AlephaApiUsers = $module({
     // Same gate, same reason: a realm that switched avatars off must not grow
     // admin endpoints for them either.
     AdminAvatarController,
+    AvatarPermissions,
   ],
 });
 

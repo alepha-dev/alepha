@@ -59,6 +59,7 @@ import {
   RealmProvider,
   type RegistrationPreAuthorizationFn,
 } from "../providers/RealmProvider.ts";
+import { AvatarPermissions } from "../services/AvatarPermissions.ts";
 import { MfaService } from "../services/MfaService.ts";
 import { SessionService } from "../services/SessionService.ts";
 import { UserStorage } from "../storage/UserStorage.ts";
@@ -126,6 +127,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     // The operator-side pair, on the same flag: a realm without avatars has
     // no admin endpoints for them, and the admin UI's control hides itself
     // because an unregistered action is absent from `/api/_links`.
+    alepha.with(AvatarPermissions);
     alepha.with(AdminAvatarController);
   }
 

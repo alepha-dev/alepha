@@ -1,7 +1,6 @@
 import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { $inject, Alepha, z } from "alepha";
 import type { NotificationInboxController } from "alepha/api/notifications";
-import { $head } from "alepha/react/head";
 import { $page } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import { isHttpError } from "alepha/server";
@@ -16,7 +15,6 @@ import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import { ProjectLoaderRegistry } from "./registries/ProjectLoaderRegistry.ts";
 import { capabilityOption } from "./services/projectCapabilities.ts";
-import { ProjectTrail } from "./services/ProjectTrail.ts";
 
 /**
  * The two layouts every project page hangs under: `/:projectSlug` and its
@@ -37,28 +35,6 @@ export class ProjectRouter {
   protected readonly inboxApi = $client<NotificationInboxController>();
   protected readonly promptApi = $client<ProjectPromptController>();
   protected readonly loaders = $inject(ProjectLoaderRegistry);
-  protected readonly trail = $inject(ProjectTrail);
-
-  /**
-   * Every project page's title is its breadcrumb trail (#Q3408): "MCS ›
-   * Estates › ovh", the labels `ProjectView` draws, joined. One rule for the
-   * whole subtree, computed by `ProjectTrail` after every page head has
-   * merged, so a page's own `head.title` under this route no longer decides
-   * the tab. Pages outside a project, and an error layer, keep their own.
-   */
-  protected readonly trailTitle = $head({
-    afterPages: ({ layers }) => {
-      if (
-        !layers.some((layer) => layer.name === "project") ||
-        layers.some((layer) => layer.error)
-      ) {
-        return undefined;
-      }
-      const page = layers[layers.length - 1];
-      const title = this.trail.title(page?.name ?? "", page?.params ?? {});
-      return title ? { title } : undefined;
-    },
-  });
 
   project = $page({
     /**

@@ -1426,7 +1426,15 @@ export class Alepha {
       return this;
     }
 
-    this.inject(entry);
+    // `alepha.with` is a registration form wherever it is called (a module's
+    // `register`, a `$realm`'s features, a helper): what it creates is
+    // registered, not injected by the class under construction (#Q3404).
+    this.containerGraph.openFrame(this.pendingInstantiations.length);
+    try {
+      this.inject(entry);
+    } finally {
+      this.containerGraph.closeFrame();
+    }
 
     return this;
   }
@@ -1519,9 +1527,15 @@ export class Alepha {
     }
 
     if (!transient && registry === this.registry) {
+      // A primitive's `onInit` registering a class (`$realm` passing its
+      // features' controllers to `alepha.with`) is the framework's
+      // registration, as a module's `register` is, not an injection by the
+      // class that declares the primitive (#Q3404).
       this.containerGraph.injected(
         service,
-        this.containerGraph.injectorOf(this.pendingInstantiations),
+        this.primitiveInits > 0
+          ? null
+          : this.containerGraph.injectorOf(this.pendingInstantiations),
       );
     }
 

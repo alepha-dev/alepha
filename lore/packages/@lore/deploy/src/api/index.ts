@@ -57,6 +57,7 @@ import { DeployAutomationEventSubjects } from "./services/DeployAutomationEventS
 import { DeployAutomationNumericPresets } from "./services/DeployAutomationNumericPresets.ts";
 import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
+import { DeployBuckets } from "./services/DeployBuckets.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployedBuildService } from "./services/DeployedBuildService.ts";
@@ -89,6 +90,7 @@ import { QualityService } from "./services/QualityService.ts";
 import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
+import { SigilIngestRefusals } from "./services/SigilIngestRefusals.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { StackBundleReader } from "./services/StackBundleReader.ts";
@@ -129,6 +131,9 @@ export const LoreDeployApi = $module({
     AlephaRateLimit,
   ],
   services: [
+    // Every bucket of the package, at boot: an upload looks its bucket up
+    // by name, and the controllers that use one stay pure (#Q3404).
+    DeployBuckets,
     DeployReportsSummary,
     DeployAutomationEventSubjects,
     DeployAutomationReferences,
@@ -261,6 +266,8 @@ export const LoreDeployApi = $module({
     RegistryCredentialController,
     SigilController,
     SigilIngestController,
+    // The ingest route's refusal log: a hook, so at boot (#Q3404).
+    SigilIngestRefusals,
     UptimePushController,
     EstateController,
     ProjectEstateController,

@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $storage, FileService } from "alepha/api/files";
+import { FileService } from "alepha/api/files";
 import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/infra-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -28,6 +28,7 @@ import type { EstateCommandKind } from "../schemas/estateCommandValues.ts";
 import { stackDeployOutcomeSchema } from "../schemas/stackDeployOutcomeSchema.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
+import { DeployBuckets } from "../services/DeployBuckets.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { StackDeployService } from "../services/StackDeployService.ts";
 
@@ -83,7 +84,7 @@ export class EstatePullController {
    * Where a command's answer is stored. Its own bucket, because what is in it
    * is a machine's journal: bounded, short-lived and read by one owner.
    */
-  public static readonly RESULT_BUCKET = "estate-command-results";
+  public static readonly RESULT_BUCKET = DeployBuckets.RESULT_BUCKET;
 
   /**
    * How much of an answer this route accepts. Bay cuts to fit and reports
@@ -123,13 +124,16 @@ export class EstatePullController {
   protected readonly secrets = $inject(AppSecretService);
   protected readonly stackDeploys = $inject(StackDeployService);
 
-  resultBucket = $storage({
-    name: EstatePullController.RESULT_BUCKET,
-    description:
-      "What a machine answered a logs or backup command with (list, verify, probe, restore)",
-    maxSize: 1,
-    mimeTypes: ["application/json"],
-  });
+  /**
+   * The bucket, declared on `DeployBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
+   */
+  protected readonly buckets = $inject(DeployBuckets);
+
+  public get resultBucket() {
+    return this.buckets.pullResults;
+  }
 
   /**
    * `GET /estates/commands/:id/artifact`: the bytes the command names.
