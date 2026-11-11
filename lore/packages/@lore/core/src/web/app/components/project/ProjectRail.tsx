@@ -20,11 +20,13 @@ import {
   useState,
 } from "react";
 
+import { USER_DOCK_CAP } from "../../../../api/schemas/userDockCap.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailItem } from "./ProjectRailItem.tsx";
+import { ProjectRailMenu } from "./ProjectRailMenu.tsx";
 import { useDock } from "./useDock.ts";
 
 /**
@@ -44,6 +46,8 @@ import { useDock } from "./useDock.ts";
  * - Reordered by dragging a pinned icon onto another, or from the keyboard:
  *   Space picks the focused icon up, the arrows move it, Space or Enter drops
  *   it and Escape puts it back (#Q3438). Saved on the drop, optimistically.
+ * - Right-click an icon for Unpin (Pin on the temporary slot), Open in new
+ *   tab and Copy link (#Q3439).
  *
  * ⚠️ **Selecting a project never moves it.** A dock is used by position, so
  * its order is changed only by the viewer, on the dock (#Q3370).
@@ -104,6 +108,8 @@ const ProjectRail = () => {
     ? undefined
     : (byId.get(project.id) ?? project);
   const titleOf = (id: number) => byId.get(id)?.title ?? "";
+  const full = ids.length >= USER_DOCK_CAP;
+  const busy = actions.pin.loading || actions.unpin.loading;
 
   const onDragEnd = (event: DragEndEvent) => {
     setDragging(false);
@@ -219,6 +225,16 @@ const ProjectRail = () => {
               onKeyDown={onKeyDown(it.id)}
               onClickCapture={onClickCapture}
               describedBy={hintId}
+              menu={
+                <ProjectRailMenu
+                  project={it}
+                  pinned
+                  full={full}
+                  busy={busy}
+                  onPin={() => {}}
+                  onUnpin={() => void actions.unpin.run(it.id)}
+                />
+              }
             />
           ))}
           {temporary && (
@@ -227,6 +243,16 @@ const ProjectRail = () => {
               project={temporary}
               active
               temporary
+              menu={
+                <ProjectRailMenu
+                  project={temporary}
+                  pinned={false}
+                  full={full}
+                  busy={busy}
+                  onPin={() => void actions.pin.run(temporary.id)}
+                  onUnpin={() => {}}
+                />
+              }
             />
           )}
         </div>

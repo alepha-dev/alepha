@@ -1883,6 +1883,12 @@ export default {
   "account.projects.see-all": "All projects",
   "dock.full": "Your dock is full, so this project was not pinned.",
   "dock.full.manage": "Manage pins",
+  "dock.menu.pin": "Pin to dock",
+  "dock.menu.unpin": "Unpin from dock",
+  "dock.menu.full": "The dock is full ($1 projects)",
+  "dock.menu.open-new-tab": "Open in new tab",
+  "dock.menu.copy-link": "Copy link",
+  "dock.menu.copied": "Link copied",
   "dock.reorder.hint":
     "Press Space to move this project in the dock, then the arrow keys, and Space again to drop it.",
   "dock.reorder.picked": "Picked up $1.",

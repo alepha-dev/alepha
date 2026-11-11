@@ -1872,6 +1872,12 @@ export default {
   "account.projects.see-all": "Tous les projets",
   "dock.full": "Votre dock est plein : ce projet n'a pas été épinglé.",
   "dock.full.manage": "Gérer les épingles",
+  "dock.menu.pin": "Épingler au dock",
+  "dock.menu.unpin": "Retirer du dock",
+  "dock.menu.full": "Le dock est plein ($1 projets)",
+  "dock.menu.open-new-tab": "Ouvrir dans un nouvel onglet",
+  "dock.menu.copy-link": "Copier le lien",
+  "dock.menu.copied": "Lien copié",
   "dock.reorder.hint":
     "Appuyez sur Espace pour déplacer ce projet dans le dock, puis sur les flèches, et de nouveau sur Espace pour le déposer.",
   "dock.reorder.picked": "$1 saisi.",

@@ -35,12 +35,25 @@ const dockApi = {
     if (dockApi.fail) throw new Error("refused");
     return { projectIds: input.body.projectIds };
   },
+  dock: [] as number[],
+  pinProject: async (input: { params: { projectId: number } }) => {
+    dockApi.dock = [...dockApi.dock, input.params.projectId];
+    return { projectIds: dockApi.dock };
+  },
+  unpinProject: async (input: { params: { projectId: number } }) => {
+    dockApi.dock = dockApi.dock.filter((it) => it !== input.params.projectId);
+    return { projectIds: dockApi.dock };
+  },
 };
 
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return virtualClientFake({ reorderDock: dockApi.reorderDock });
+    return virtualClientFake({
+      reorderDock: dockApi.reorderDock,
+      pinProject: dockApi.pinProject,
+      unpinProject: dockApi.unpinProject,
+    });
   }
 }
 
@@ -128,6 +141,7 @@ describe("ProjectRail", () => {
       canCreate,
     });
     alepha.store.set(userDockAtom, dock);
+    dockApi.dock = dock;
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -225,7 +239,7 @@ describe("ProjectRail", () => {
     expect(slot.className).toContain("opacity-50");
     // Below the pins, inside the scrolling middle.
     const pins = screen.getByTestId("project-rail-pins");
-    expect(pins.lastElementChild?.firstElementChild).toBe(slot);
+    expect(pins.lastElementChild?.contains(slot)).toBe(true);
   });
 
   it("keeps the fixed buttons with no pins at all", async ({ expect }) => {
@@ -345,6 +359,78 @@ describe("ProjectRail", () => {
       // did not stop it from reaching it.
       expect(item("Club").getAttribute("href")).toBe("/club");
       expect(event.cancelBubble).toBe(false);
+    });
+  });
+
+  describe("right-click menu (#Q3439)", () => {
+    const item = (title: string) =>
+      screen
+        .getAllByTestId("project-rail-item")
+        .find((it) => it.getAttribute("aria-label") === title)!;
+
+    it("offers Unpin, Open in new tab and Copy link on a pinned icon", async ({
+      expect,
+    }) => {
+      await mount(
+        [row(1, "Lore", "2026-01-02"), row(2, "Club", "2026-01-01")],
+        1,
+        [1, 2],
+      );
+      fireEvent.contextMenu(item("Club"));
+
+      expect(await screen.findByTestId("project-rail-menu-unpin")).toBeTruthy();
+      expect(screen.queryByTestId("project-rail-menu-pin")).toBeNull();
+      expect(screen.getByTestId("project-rail-menu-new-tab")).toBeTruthy();
+      expect(screen.getByTestId("project-rail-menu-copy")).toBeTruthy();
+    });
+
+    it("unpinning the current project moves it to the temporary slot", async ({
+      expect,
+    }) => {
+      const app = await mount(
+        [row(1, "Lore", "2026-01-02"), row(2, "Club", "2026-01-01")],
+        1,
+        [1, 2],
+      );
+      fireEvent.contextMenu(item("Lore"));
+      fireEvent.click(await screen.findByTestId("project-rail-menu-unpin"));
+
+      await waitFor(() => expect(app.store.get(userDockAtom)).toEqual([2]));
+      expect(titles()).toEqual(["Club"]);
+      const slot = screen.getByTestId("project-rail-temporary");
+      expect(slot.getAttribute("aria-label")).toBe("Lore");
+    });
+
+    it("pins the temporary slot back", async ({ expect }) => {
+      const app = await mount(
+        [row(1, "Lore", "2026-01-02"), row(2, "Club", "2026-01-01")],
+        2,
+        [1],
+      );
+      fireEvent.contextMenu(screen.getByTestId("project-rail-temporary"));
+      fireEvent.click(await screen.findByTestId("project-rail-menu-pin"));
+
+      await waitFor(() => expect(app.store.get(userDockAtom)).toEqual([1, 2]));
+      expect(titles()).toEqual(["Lore", "Club"]);
+      expect(screen.queryByTestId("project-rail-temporary")).toBeNull();
+    });
+
+    it("disables Pin with a reason when the dock holds twenty", async ({
+      expect,
+    }) => {
+      const projects = Array.from({ length: 21 }, (_, i) =>
+        row(i + 1, `Project ${i + 1}`, `2026-01-${String(30 - i)}`),
+      );
+      await mount(
+        projects,
+        21,
+        projects.slice(0, 20).map((it) => it.id),
+      );
+      fireEvent.contextMenu(screen.getByTestId("project-rail-temporary"));
+
+      const pin = await screen.findByTestId("project-rail-menu-pin");
+      expect(pin.getAttribute("aria-disabled")).toBe("true");
+      expect(pin.textContent).toContain("The dock is full (20 projects)");
     });
   });
 });

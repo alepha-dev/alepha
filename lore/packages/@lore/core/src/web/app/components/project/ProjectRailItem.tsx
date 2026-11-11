@@ -1,10 +1,18 @@
-import { HoverCard, HoverCardContent, HoverCardTrigger, cn } from "@alepha/ui";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  cn,
+} from "@alepha/ui";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Link, useRouter } from "alepha/react/router";
 import {
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
@@ -49,6 +57,10 @@ export interface ProjectRailItemProps {
    * Describes the keyboard reorder to a screen reader.
    */
   describedBy?: string;
+  /**
+   * The right-click menu's content (`ProjectRailMenu`, #Q3439).
+   */
+  menu?: ReactNode;
 }
 
 /**
@@ -103,69 +115,76 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
         isDragging && "cursor-grabbing",
       )}
     >
-      <HoverCard
-        // A card left open when a drag starts would ride along with the
-        // pointer: shut while anything is dragged.
-        open={open && !props.dragging}
-        onOpenChange={(next) => setOpen(next && !props.dragging)}
-      >
-        <HoverCardTrigger
-          // One second (#Q3413): at 150 ms a card flashed open for every icon
-          // the pointer crossed on its way down the rail.
-          delay={1000}
-          closeDelay={100}
-          render={
-            <Link
-              href={router.path("project", {
-                params: { projectSlug: project.slug },
-              })}
-              aria-label={project.title}
-              aria-current={active ? "page" : undefined}
-              aria-describedby={sortable ? props.describedBy : undefined}
-              aria-pressed={props.picked ? true : undefined}
-              data-testid={
-                props.temporary ? "project-rail-temporary" : "project-rail-item"
+      <ContextMenu>
+        <ContextMenuTrigger render={<div className="flex" />}>
+          <HoverCard
+            // A card left open when a drag starts would ride along with the
+            // pointer: shut while anything is dragged.
+            open={open && !props.dragging}
+            onOpenChange={(next) => setOpen(next && !props.dragging)}
+          >
+            <HoverCardTrigger
+              // One second (#Q3413): at 150 ms a card flashed open for every icon
+              // the pointer crossed on its way down the rail.
+              delay={1000}
+              closeDelay={100}
+              render={
+                <Link
+                  href={router.path("project", {
+                    params: { projectSlug: project.slug },
+                  })}
+                  aria-label={project.title}
+                  aria-current={active ? "page" : undefined}
+                  aria-describedby={sortable ? props.describedBy : undefined}
+                  aria-pressed={props.picked ? true : undefined}
+                  data-testid={
+                    props.temporary
+                      ? "project-rail-temporary"
+                      : "project-rail-item"
+                  }
+                  data-project-id={project.id}
+                  draggable={false}
+                  onKeyDown={props.onKeyDown}
+                  onClickCapture={props.onClickCapture}
+                  className={cn(
+                    "group/rail relative flex shrink-0 rounded-2xl",
+                    props.temporary && "opacity-50 hover:opacity-100",
+                  )}
+                />
               }
-              data-project-id={project.id}
-              draggable={false}
-              onKeyDown={props.onKeyDown}
-              onClickCapture={props.onClickCapture}
-              className={cn(
-                "group/rail relative flex shrink-0 rounded-2xl",
-                props.temporary && "opacity-50 hover:opacity-100",
-              )}
-            />
-          }
-        >
-          {/* The marker on the rail's edge: full height on the current
-              project, a short notch under the pointer elsewhere. */}
-          <span
-            aria-hidden
-            className={cn(
-              "bg-foreground absolute top-1/2 -left-3 w-1 -translate-y-1/2 rounded-r-full transition-[height] duration-150",
-              active ? "h-8" : "h-0 group-hover/rail:h-4",
-            )}
-          />
-          <ProjectIcon
-            fileId={project.icon}
-            title={project.title}
-            seed={project.slug}
-            className={cn(
-              "size-10 transition-[border-radius] duration-150",
-              active
-                ? "ring-ring/40 rounded-xl ring-2"
-                : "rounded-2xl group-hover/rail:rounded-xl",
-              // Where a drop lands, and what the keyboard holds.
-              ((isOver && !isDragging) || props.picked) &&
-                "ring-primary ring-2",
-              isDragging && "opacity-70 shadow-lg",
-            )}
-          />
-        </HoverCardTrigger>
-        <HoverCardContent side="right" align="start" sideOffset={12}>
-          <ProjectRailCard project={project} />
-        </HoverCardContent>
-      </HoverCard>
+            >
+              {/* The marker on the rail's edge: full height on the current
+                  project, a short notch under the pointer elsewhere. */}
+              <span
+                aria-hidden
+                className={cn(
+                  "bg-foreground absolute top-1/2 -left-3 w-1 -translate-y-1/2 rounded-r-full transition-[height] duration-150",
+                  active ? "h-8" : "h-0 group-hover/rail:h-4",
+                )}
+              />
+              <ProjectIcon
+                fileId={project.icon}
+                title={project.title}
+                seed={project.slug}
+                className={cn(
+                  "size-10 transition-[border-radius] duration-150",
+                  active
+                    ? "ring-ring/40 rounded-xl ring-2"
+                    : "rounded-2xl group-hover/rail:rounded-xl",
+                  // Where a drop lands, and what the keyboard holds.
+                  ((isOver && !isDragging) || props.picked) &&
+                    "ring-primary ring-2",
+                  isDragging && "opacity-70 shadow-lg",
+                )}
+              />
+            </HoverCardTrigger>
+            <HoverCardContent side="right" align="start" sideOffset={12}>
+              <ProjectRailCard project={project} />
+            </HoverCardContent>
+          </HoverCard>
+        </ContextMenuTrigger>
+        {props.menu}
+      </ContextMenu>
     </div>
   );
 };
