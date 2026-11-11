@@ -33,6 +33,7 @@ describe("lore estate provision", () => {
   const create = (
     options: {
       projectExists?: boolean;
+      projectApps?: boolean;
       recordFails?: boolean;
       neverOnline?: boolean;
     } = {},
@@ -96,7 +97,9 @@ describe("lore estate provision", () => {
           return {
             id: 7,
             slug: "hello-world",
-            capabilities: [{ key: "work" }],
+            capabilities: options.projectApps
+              ? [{ key: "work" }, { key: "apps", options: {} }]
+              : [{ key: "work" }],
           };
         },
         createProject: async (request: unknown) => {
@@ -105,6 +108,7 @@ describe("lore estate provision", () => {
         },
       },
       lending: {
+        listHomeEstates: async () => ({ items: [] }),
         createProjectEstate: async (request: unknown) => {
           calls.push({ name: "createProjectEstate", request });
           return estate;
@@ -204,7 +208,7 @@ describe("lore estate provision", () => {
       run("--provider scaleway --name tmp-vps --no-allow-deploys"),
     ).rejects.toThrow("needs --project");
     expect(calls).toEqual([]);
-    expect(shell.wasCalled("scw instance server create")).toBe(false);
+    expect(shell.wasCalledMatching(/server create/)).toBe(false);
   });
 
   it("terminates the server and deletes the estate when a step after the create fails", async ({
@@ -234,14 +238,30 @@ describe("lore estate provision", () => {
     expect(calls.map((call) => call.name)).not.toContain("deleteEstate");
   });
 
-  it("says so when --project names an existing project, and that it cannot deploy without Apps", async ({
+  it("refuses an existing project with Apps off before buying a server", async ({
     expect,
   }) => {
-    const { run, printed, calls } = create({ projectExists: true });
+    const { run, calls, shell } = create({ projectExists: true });
+    await expect(
+      run("--provider scaleway --name tmp-vps --project hello-world"),
+    ).rejects.toThrow("does not have Apps on");
+    expect(calls).toEqual([]);
+    expect(shell.wasCalledMatching(/server create/)).toBe(false);
+  });
+
+  it("says so when --project names an existing project, and that it cannot deploy until its deploy option is on", async ({
+    expect,
+  }) => {
+    const { run, printed, calls } = create({
+      projectExists: true,
+      projectApps: true,
+    });
     await run("--provider scaleway --name tmp-vps --project hello-world");
     expect(calls.map((call) => call.name)).not.toContain("createProject");
     const out = printed.join("\n");
-    expect(out).toContain("Lending it to your existing project hello-world.");
+    expect(out).toContain(
+      "It will belong to your existing project hello-world.",
+    );
     expect(out).toContain(
       "lore project capability enable apps --option deploy -p hello-world",
     );

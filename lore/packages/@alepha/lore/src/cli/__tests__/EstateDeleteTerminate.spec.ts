@@ -15,6 +15,7 @@ import { describe, it } from "vitest";
 
 import { EstateCommand } from "../commands/EstateCommand.ts";
 import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
+import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
  * `lore estate delete` on a provisioned estate (#Q3167): the server goes
@@ -32,6 +33,7 @@ describe("lore estate delete, provisioned", () => {
         LOG_LEVEL: "error",
         LORE_API_KEY: "k",
         LORE_URL: "https://lore.test",
+        LORE_PROJECT: "hello",
         HOME: "/nonexistent",
       },
     })
@@ -60,6 +62,9 @@ describe("lore estate delete, provisioned", () => {
             provider: "scaleway",
             providerServerId: "srv-1",
             providerZone: "fr-par-1",
+            project: { id: 7, title: "Hello", slug: "hello" },
+            can: ["estate:read", "estate:update", "estate:delete"],
+            projects: [],
           },
         ],
       }),
@@ -98,8 +103,16 @@ describe("lore estate delete, provisioned", () => {
     };
     const command = alepha.inject(EstateCommand);
     Object.assign(
+      alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
+      { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
+    );
+    Object.assign(
       alepha.inject(LoreEstateResolver) as unknown as Record<string, unknown>,
-      { estates },
+      {
+        estates,
+        // The estates the project is the home of (#E126).
+        lending: { listHomeEstates: estates.listMyEstates },
+      },
     );
     Object.assign(command as unknown as Record<string, unknown>, { estates });
     const run = async (argv: string, sub: "delete" | "get" = "delete") => {

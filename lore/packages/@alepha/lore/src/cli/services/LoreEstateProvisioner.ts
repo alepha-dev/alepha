@@ -214,17 +214,6 @@ export class LoreEstateProvisioner {
     plan: ProvisionPlan,
     print: (line?: string) => void,
   ): Promise<Provisioned> {
-    await plan.provider.check();
-
-    const { items: mine } = await this.estates.listMyEstates();
-    const slug =
-      plan.name ?? (await this.generateName(new Set(mine.map((e) => e.slug))));
-    if (mine.some((estate) => estate.slug === slug)) {
-      throw this.refusal(
-        `You already own an estate named ${slug}: pick another --name, or omit it for a generated one.`,
-      );
-    }
-
     // An estate belongs to a project since #E126: there is no estate
     // without a home to create.
     if (!plan.project) {
@@ -232,7 +221,24 @@ export class LoreEstateProvisioner {
         "lore estate provision needs --project <slug>: an estate belongs to a project.",
       );
     }
+    await plan.provider.check();
+
+    // Before any server is bought: an existing project with Apps off is
+    // refused, since nobody could manage the estate there.
     const project = await this.ensureProject(plan.project, print);
+    // A slug is unique in its home project.
+    const { items: homed } = project.created
+      ? { items: [] as Array<{ slug: string }> }
+      : await this.lending.listHomeEstates({
+          params: { projectId: project.id },
+        });
+    const slug =
+      plan.name ?? (await this.generateName(new Set(homed.map((e) => e.slug))));
+    if (homed.some((estate) => estate.slug === slug)) {
+      throw this.refusal(
+        `${project.slug} already has an estate named ${slug}: pick another --name, or omit it for a generated one.`,
+      );
+    }
 
     const estate = await this.lending.createProjectEstate({
       params: { projectId: project.id },
@@ -328,7 +334,9 @@ export class LoreEstateProvisioner {
   }
 
   /**
-   * The project the estate is lent to, created when it does not exist yet.
+   * The project the estate belongs to, created with Apps on when it does not
+   * exist yet. An existing one with Apps off is refused here, before a server
+   * is bought (#Q3282): the estate could be managed through no page there.
    */
   protected async ensureProject(
     slug: string,
@@ -347,12 +355,19 @@ export class LoreEstateProvisioner {
     if (existing?.id) {
       // Said, because an existing project is a different act from a new one
       // (the walk of #Q3169 lent a server to an old project silently).
-      print(`Lending it to your existing project ${existing.slug ?? slug}.`);
       const apps = existing.capabilities?.find((row) => row.key === "apps");
-      const options = (apps?.options ?? {}) as Record<string, unknown>;
-      if (!apps || options.deploy !== true) {
+      if (!apps) {
+        throw this.refusal(
+          `${existing.slug ?? slug} does not have Apps on, so an estate could not be managed there. Turn it on first: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
+        );
+      }
+      print(
+        `It will belong to your existing project ${existing.slug ?? slug}.`,
+      );
+      const options = (apps.options ?? {}) as Record<string, unknown>;
+      if (options.deploy !== true) {
         print(
-          `${existing.slug ?? slug} cannot deploy apps yet: its Apps capability${apps ? "'s deploy option" : ""} is off. Turn it on with: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
+          `${existing.slug ?? slug} cannot deploy apps yet: its Apps capability's deploy option is off. Turn it on with: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
         );
       }
       return { id: existing.id, slug: existing.slug ?? slug, created: false };

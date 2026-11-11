@@ -504,6 +504,11 @@ describe("Bay connector against a real Lore", () => {
   let estate: EstateRow;
   let secret: string;
   let projectId: number;
+  /**
+   * The estate's home project (#E126): an estate is created in a project.
+   * The deploy cases below borrow it in a second one.
+   */
+  let homeId: number;
 
   const readEstate = (): Promise<EstateRow> =>
     ok<EstateRow>(
@@ -606,8 +611,20 @@ describe("Bay connector against a real Lore", () => {
   });
 
   it("enrols a real bay serve with a secret from the reveal-once flow, and the connection opens", async () => {
+    const home = await ok<{ id: number }>(
+      call(lore, owner, "createProject", {
+        body: {
+          title: "Bay E2E Home",
+          capabilities: [{ key: "apps", options: { deploy: true } }],
+        },
+      }),
+    );
+    homeId = home.id;
     const minted = await ok<EstateRow & { secret: string }>(
-      call(lore, owner, "createEstate", { body: { slug: "ovh-1" } }),
+      call(lore, owner, "createProjectEstate", {
+        params: { projectId: homeId },
+        body: { slug: "ovh-1" },
+      }),
     );
     estate = minted;
     secret = minted.secret;
@@ -1149,9 +1166,12 @@ describe("Bay connector against a real Lore", () => {
     expect(listed.out).toContain("demo");
   });
 
-  it("lets a lent-to member see the loan but never the secret, and never the owner's other estates", async () => {
+  it("lets a borrowing project's member see the loan but never the secret, the console, or the home's other estates", async () => {
     const other = await ok<EstateRow>(
-      call(lore, owner, "createEstate", { body: { slug: "hetzner" } }),
+      call(lore, owner, "createProjectEstate", {
+        params: { projectId: homeId },
+        body: { slug: "hetzner" },
+      }),
     );
     const member = await signUp(lore, "member");
     await ok(
@@ -1179,24 +1199,108 @@ describe("Bay connector against a real Lore", () => {
     expect(text).not.toContain("secret");
     expect(text).not.toContain("hetzner");
 
+    // Not a member of the home project: refused the console (#E126).
     expect(
       (
         await call(lore, member, "getEstate", {
           params: { estateId: estate.id },
         })
       ).status,
-    ).toBe(404);
+    ).toBe(403);
     expect(
       (
         await call(lore, member, "getEstate", {
           params: { estateId: other.id },
         })
       ).status,
-    ).toBe(404);
+    ).toBe(403);
     const mine = await ok<{ items: unknown[] }>(
       call(lore, member, "listMyEstates"),
     );
     expect(mine.items).toEqual([]);
+  });
+
+  it("walks an estate through the lore CLI: added in one project, lent to a second, moved there, deleted", async () => {
+    // #Q3282: the slug resolves per home project, the managing verbs act on
+    // the estates the project is the home of, and a move keeps the loans.
+    const bin = join(ROOT, "packages/@alepha/lore/dist/bin/index.js");
+    const key = await ok<{ token: string }>(
+      call(lore, owner, "createApiKey", { body: { name: "estate cli" } }),
+    );
+    const cli = (args: string[]): Promise<Ran> =>
+      new Promise((resolveRun, reject) => {
+        const child = spawn("node", [bin, ...args], {
+          cwd: work,
+          env: {
+            ...process.env,
+            NODE_ENV: "development",
+            LORE_URL: lore.url,
+            LORE_API_KEY: key.token,
+            LORE_PROJECT: "",
+            CLAUDECODE: "",
+            NO_COLOR: "1",
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        let out = "";
+        child.stdout.on("data", (d) => (out += d));
+        child.stderr.on("data", (d) => (out += d));
+        child.on("error", reject);
+        child.on("close", (code) => resolveRun({ code: code ?? -1, out }));
+      });
+
+    const added = await cli([
+      "estate",
+      "add",
+      "tmp-move",
+      "-p",
+      String(homeId),
+    ]);
+    expect(added.code, added.out).toBe(0);
+    const lent = await cli([
+      "estate",
+      "lend",
+      "tmp-move",
+      "-p",
+      String(projectId),
+    ]);
+    expect(lent.code, lent.out).toBe(0);
+    // The borrowing project cannot delete what it only borrows.
+    const notHome = await cli([
+      "estate",
+      "delete",
+      "tmp-move",
+      "-p",
+      String(projectId),
+      "--yes",
+    ]);
+    expect(notHome.code).not.toBe(0);
+    expect(notHome.out).toContain("is the home of no estate named tmp-move");
+
+    const moved = await cli([
+      "estate",
+      "move",
+      "tmp-move",
+      "-p",
+      String(homeId),
+      "--to",
+      String(projectId),
+      "--yes",
+    ]);
+    expect(moved.code, moved.out).toBe(0);
+    expect(moved.out).toContain("Still lent to:");
+    const listed = await cli(["estate", "list", "-p", String(projectId)]);
+    expect(listed.out).toMatch(/tmp-move[\s\S]*home/);
+
+    const deleted = await cli([
+      "estate",
+      "delete",
+      "tmp-move",
+      "-p",
+      String(projectId),
+      "--yes",
+    ]);
+    expect(deleted.code, deleted.out).toBe(0);
   });
 
   it("rotating and then deleting the estate make the next dial a 401 that hands over nothing", async () => {

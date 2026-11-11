@@ -6,6 +6,11 @@ import { AlephaError } from "alepha";
 export interface LentEstate {
   id: string;
   slug: string;
+  /**
+   * The estate's home project (epic #E126): a slug is unique per home, so two
+   * estates lent to one project can share one, and this tells them apart.
+   */
+  home?: { slug?: string; title: string };
 }
 
 /**
@@ -40,7 +45,7 @@ export class LoreEstateChoice {
   ): LentEstate {
     if (lent.length === 0) {
       throw new AlephaError(
-        `No estate is lent to this project, so ${copy} would have nowhere to deploy. Buy a server and lend it here with \`lore estate provision --provider scaleway --project <project>\`, or lend one you own with \`lore estate lend <slug> --project <project>\` (your estates: \`lore estate list\`).`,
+        `No estate is lent to this project, so ${copy} would have nowhere to deploy. Buy a server for it with \`lore estate provision --provider scaleway --project <project>\`, or lend one of another project's with \`lore estate lend <slug> --project <project>\`.`,
       );
     }
 
@@ -54,7 +59,20 @@ export class LoreEstateChoice {
       return { id: lent[0].id, slug: lent[0].slug };
     }
 
-    const found = lent.find((it) => it.slug === slug);
+    const matching = lent.filter((it) => it.slug === slug);
+    if (matching.length > 1) {
+      // A slug is unique per home project, not across the projects that lend
+      // to one: two lenders' `ovh-1` are two machines, and picking the first
+      // would be a silent choice of machine (#Q3144, #Q3282).
+      throw new AlephaError(
+        `Two estates called '${slug}' are lent to this project, from ${matching
+          .map((it) => it.home?.slug ?? it.home?.title ?? "an unknown project")
+          .join(
+            " and ",
+          )}. Choose the copy's estate on the Apps page, or detach one of them.`,
+      );
+    }
+    const found = matching[0];
     if (!found) {
       throw new AlephaError(
         `No estate called '${slug}' is lent to this project. Lent here: ${lent.map((it) => it.slug).join(", ")}.`,
