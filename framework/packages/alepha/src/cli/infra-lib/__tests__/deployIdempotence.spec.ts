@@ -636,6 +636,11 @@ class FakeCloudflareAccount {
         ([script]) => this.listVersions(script),
       ],
       [
+        "GET",
+        /^\/workers\/scripts\/([^/]+)\/schedules$/,
+        ([script]) => this.getSchedules(script),
+      ],
+      [
         "PUT",
         /^\/workers\/scripts\/([^/]+)\/schedules$/,
         async ([script]) => this.putSchedules(script, await json()),
@@ -1007,6 +1012,14 @@ class FakeCloudflareAccount {
         },
       },
     );
+  }
+
+  protected getSchedules(script: string) {
+    const entry = this.scripts.get(script);
+    if (!entry) {
+      return this.refuse(`No Worker named ${script}.`, 404);
+    }
+    return this.ok({ schedules: entry.schedules.map((cron) => ({ cron })) });
   }
 
   protected putSchedules(script: string, body: Array<{ cron: string }>) {

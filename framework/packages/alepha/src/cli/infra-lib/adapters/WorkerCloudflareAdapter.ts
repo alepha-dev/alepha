@@ -496,6 +496,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     // runner answers a string and Lore's shim answers the handler's value.
     let subdomainError: string | undefined;
 
+    // ⚠️ Asked now, beside the upload, and awaited after it (#Q3385): the
+    // account's workers.dev subdomain depends on nothing the deploy does, and
+    // read after the upload it was one more round trip on the critical path.
+    // `getSubdomain` never throws, so an unawaited failure cannot escape.
+    const accountSubdomain = ctx.options.domain
+      ? undefined
+      : this.deployer().getSubdomain();
+
     // Recorded before the upload rather than after: a Worker that half-uploads
     // still exists at Cloudflare, and a teardown that cannot name it is how an
     // orphan becomes permanent.
@@ -590,7 +598,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       return `https://${ctx.options.domain}`;
     }
 
-    return await this.workersDevUrl(worker, subdomainError, run);
+    return await this.workersDevUrl(
+      worker,
+      subdomainError,
+      run,
+      accountSubdomain,
+    );
   }
 
   /**
@@ -624,6 +637,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     worker: string,
     subdomainError: string | undefined,
     run: RunnerMethod,
+    accountSubdomain?: Promise<string | undefined>,
   ): Promise<string | undefined> {
     if (subdomainError) {
       await run({
@@ -637,7 +651,8 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     await run({
       name: "resolve workers.dev address",
       handler: async () => {
-        const subdomain = await this.deployer().getSubdomain();
+        const subdomain = await (accountSubdomain ??
+          this.deployer().getSubdomain());
         if (subdomain) {
           url = `https://${worker}.${subdomain}.workers.dev`;
         }

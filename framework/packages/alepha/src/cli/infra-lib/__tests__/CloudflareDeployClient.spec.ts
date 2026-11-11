@@ -732,6 +732,142 @@ describe("the Cloudflare deploy client", () => {
     });
   });
 
+  describe("finalize, after the script PUT (#Q3385)", () => {
+    const withLiveCrons = (
+      ctx: ReturnType<typeof fake>,
+      crons: string[] | "unreadable",
+    ) => {
+      const api = (ctx.client as unknown as { client: CloudflareDeployApi })
+        .client;
+      api.workers.scripts.schedules.get = async () => {
+        if (crons === "unreadable") throw new Error("no read");
+        return { schedules: crons.map((cron) => ({ cron })) };
+      };
+    };
+
+    it("skips the schedules write when the live crons already match", async ({
+      expect,
+    }) => {
+      const ctx = fake();
+      withLiveCrons(ctx, ["0 3 * * *"]);
+
+      await ctx.client.putSchedules(plan({ crons: ["0 3 * * *"] }) as never);
+      await ctx.client.putSchedules(plan({ crons: [] }) as never);
+
+      // Equal: no write. Different (a cron to clear): written.
+      expect(ctx.of("schedules.update")).toHaveLength(1);
+      expect(
+        (ctx.of("schedules.update")[0]!.args[1] as { body: unknown }).body,
+      ).toEqual([]);
+    });
+
+    it("skips it for an app that has no crons and never had any", async ({
+      expect,
+    }) => {
+      const ctx = fake();
+      withLiveCrons(ctx, []);
+
+      await ctx.client.putSchedules(plan({ crons: [] }) as never);
+
+      expect(ctx.of("schedules.update")).toHaveLength(0);
+    });
+
+    it("writes when the live crons cannot be read", async ({ expect }) => {
+      const ctx = fake();
+      withLiveCrons(ctx, "unreadable");
+
+      await ctx.client.putSchedules(plan({ crons: [] }) as never);
+
+      expect(ctx.of("schedules.update")).toHaveLength(1);
+    });
+
+    it("starts every post-PUT call before any of them answers", async ({
+      expect,
+    }) => {
+      const ctx = fake();
+      const api = (ctx.client as unknown as { client: CloudflareDeployApi })
+        .client;
+      const started: string[] = [];
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const held =
+        (name: string) =>
+        async (..._args: unknown[]) => {
+          started.push(name);
+          await gate;
+          return {};
+        };
+      api.workers.scripts.schedules.update = held("schedules") as never;
+      api.workers.domains.update = held("domain") as never;
+      api.workers.scripts.subdomain.create = held("subdomain") as never;
+
+      const done = ctx.client.deploy(
+        plan({
+          crons: ["0 3 * * *"],
+          domain: {
+            hostname: "a.example.app",
+            zoneId: "z",
+            zoneName: "example.app",
+          },
+          workersDev: true,
+        }) as never,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(started.sort()).toEqual(["domain", "schedules", "subdomain"]);
+      release();
+      await done;
+    });
+
+    it("rethrows one failure as it is, and names every step when several fail", async ({
+      expect,
+    }) => {
+      const one = fake();
+      (
+        one.client as unknown as { client: CloudflareDeployApi }
+      ).client.workers.domains.update = (async () => {
+        throw new Error("hostname taken");
+      }) as never;
+      await expect(
+        one.client.deploy(
+          plan({
+            domain: {
+              hostname: "a.example.app",
+              zoneId: "z",
+              zoneName: "example.app",
+            },
+          }) as never,
+        ),
+      ).rejects.toThrow(/^hostname taken$/);
+
+      const two = fake();
+      const api = (two.client as unknown as { client: CloudflareDeployApi })
+        .client;
+      api.workers.domains.update = (async () => {
+        throw new Error("hostname taken");
+      }) as never;
+      api.workers.scripts.schedules.update = (async () => {
+        throw new Error("bad cron");
+      }) as never;
+      await expect(
+        two.client.deploy(
+          plan({
+            crons: ["nope"],
+            domain: {
+              hostname: "a.example.app",
+              zoneId: "z",
+              zoneName: "example.app",
+            },
+          }) as never,
+        ),
+      ).rejects.toThrow(
+        /2 steps after it failed: set the cron triggers: bad cron; attach the custom domain: hostname taken/,
+      );
+    });
+  });
+
   describe("what a naive implementation drops", () => {
     it("clears the crons when a deploy stops declaring any", async ({
       expect,
