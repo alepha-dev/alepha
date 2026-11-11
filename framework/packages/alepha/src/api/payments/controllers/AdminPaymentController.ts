@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
-import { $action, okSchema } from "alepha/server";
+import { $action, okSchema, toWebRequest } from "alepha/server";
 
 import {
   captureIntentSchema,
@@ -153,8 +153,12 @@ export class AdminPaymentController {
     schema: {
       response: okSchema,
     },
+    // No body schema on purpose: the body parser then leaves the stream
+    // unread, and the provider verifies its signature over the exact bytes.
     handler: async (request) => {
-      await this.payments.handleWebhook(request.raw.web!.req);
+      await this.payments.handleWebhook(
+        await toWebRequest(request.url, request.raw),
+      );
       return { ok: true };
     },
   });

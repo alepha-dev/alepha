@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import type { ServerRequest } from "alepha/server";
+import { readRawBody, type ServerRequest } from "alepha/server";
 
 import { InvalidWebhookSignatureError } from "../errors/InvalidWebhookSignatureError.ts";
 import { WebhookSigner } from "./WebhookSigner.ts";
@@ -159,29 +159,7 @@ export class WebhookVerifier {
   protected async readBody(
     request: Pick<ServerRequest, "raw">,
   ): Promise<Uint8Array> {
-    const web = request.raw.web?.req;
-    if (web) {
-      return new Uint8Array(await web.arrayBuffer());
-    }
-    const node = request.raw.node?.req;
-    if (node) {
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      for await (const chunk of node as AsyncIterable<Uint8Array | string>) {
-        const bytes =
-          typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk;
-        chunks.push(bytes);
-        size += bytes.byteLength;
-      }
-      const body = new Uint8Array(size);
-      let offset = 0;
-      for (const chunk of chunks) {
-        body.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      return body;
-    }
-    return new Uint8Array();
+    return (await readRawBody(request.raw)) ?? new Uint8Array();
   }
 
   protected header(
