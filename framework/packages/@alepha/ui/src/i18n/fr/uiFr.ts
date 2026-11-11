@@ -1051,6 +1051,25 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.userDetail.never": "Jamais",
   "admin.userDetail.newPassword": "Nouveau mot de passe",
   "admin.userDetail.noIdentities": "Aucun compte lié.",
+  "admin.userDetail.noPasskeys": "Aucune clé d'accès.",
+  "admin.userDetail.passkeyDeviceBound": "Liée à l'appareil",
+  "admin.userDetail.passkeyNeverUsed": "Ajoutée $1, jamais utilisée",
+  "admin.userDetail.passkeyRevoke": "Révoquer",
+  "admin.userDetail.passkeyRevokeAll": "Révoquer toutes les clés d'accès",
+  "admin.userDetail.passkeyRevoked": "Clé d'accès révoquée",
+  "admin.userDetail.passkeySynced": "Synchronisée",
+  "admin.userDetail.passkeyUsed": "Ajoutée $1, utilisée le $2",
+  "admin.userDetail.passkeys": "Clés d'accès",
+  "admin.userDetail.passkeysRevoked": "Clés d'accès révoquées",
+  "admin.userDetail.passkeysSub":
+    "Révoquer une clé d'accès ne déconnecte pas l'utilisateur : révoquez ses sessions pour cela.",
+  "admin.userDetail.revokeAllPasskeysConfirm":
+    "L'utilisateur ne pourra plus se connecter avec aucune d'elles. Ses sessions en cours restent ouvertes : révoquez-les depuis l'onglet Sessions si un appareil est perdu.",
+  "admin.userDetail.revokeAllPasskeysTitle":
+    "Révoquer toutes les clés d'accès ?",
+  "admin.userDetail.revokePasskeyConfirm":
+    "L'utilisateur ne pourra plus se connecter avec elle. Ses sessions en cours restent ouvertes : révoquez-les depuis l'onglet Sessions si l'appareil est perdu.",
+  "admin.userDetail.revokePasskeyTitle": "Révoquer cette clé d'accès ?",
   "admin.userDetail.notFound": "Utilisateur introuvable.",
   "admin.userDetail.ok": "OK",
   "admin.userDetail.passwordSet": "Mot de passe mis à jour",

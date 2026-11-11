@@ -7,11 +7,13 @@ import { UserAudits } from "../audits/UserAudits.ts";
 import type { IdentityEntity } from "../entities/identities.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { IdentityQuery } from "../schemas/identityQuerySchema.ts";
+import { PasskeyService } from "./PasskeyService.ts";
 
 export class IdentityService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
+  protected readonly passkeyService = $inject(PasskeyService);
 
   protected userAudits(realmName?: string) {
     // Registered by every `$realm` whatever its features say; a realm
@@ -103,16 +105,64 @@ export class IdentityService {
   }
 
   /**
-   * Delete an identity by ID.
+   * An identity as an admin response carries it. A passkey row goes out
+   * without its public key: nothing secret, but nothing an operator needs
+   * either. The credential id stays in `providerUserId`: it is the row's key,
+   * and the server hands it out in `excludeCredentials` anyway.
+   */
+  public toResource(identity: IdentityEntity): IdentityEntity {
+    if (identity.provider !== this.passkeyService.provider) {
+      return identity;
+    }
+    const { publicKey: _publicKey, ...data } = (identity.providerData ??
+      {}) as Record<string, unknown>;
+    return { ...identity, providerData: data };
+  }
+
+  /**
+   * Revoke every passkey of a user, for the support case of a lost phone.
+   * Each is audited as `passkey_remove` and notified. The user's current
+   * sessions stay: revoking them is its own action.
+   */
+  public async revokeAllPasskeys(
+    userId: string,
+    userRealmName?: string,
+    actor?: { id: string; email?: string },
+  ): Promise<number> {
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const owner = await this.realmProvider
+      .userRepository(userRealmName)
+      .findOne({ where: { id: { eq: userId }, realm: { eq: realm.name } } });
+    if (!owner) {
+      throw new NotFoundError(`User '${userId}' not found`);
+    }
+    const rows = await this.passkeyService.passkeysOf(userId, userRealmName);
+    for (const row of rows) {
+      await this.passkeyService.revoke(row, userRealmName, actor);
+    }
+    return rows.length;
+  }
+
+  /**
+   * Delete an identity by ID. A passkey row is revoked through
+   * `PasskeyService.revoke`: audited as `passkey_remove` and notified to
+   * its owner, as a removal from the account page is. No "last way to sign
+   * in" guard, as for every identity an administrator removes.
    */
   public async deleteIdentity(
     id: string,
     userRealmName?: string,
+    actor?: { id: string; email?: string },
   ): Promise<void> {
     this.log.trace("Deleting identity", { id, userRealmName });
 
     // Verify identity exists
     const identity = await this.getIdentityById(id, userRealmName);
+
+    if (identity.provider === this.passkeyService.provider) {
+      await this.passkeyService.revoke(identity, userRealmName, actor);
+      return;
+    }
 
     await this.identities(userRealmName).deleteById(id);
     this.log.info("Identity deleted", {

@@ -42,6 +42,10 @@ Turning `totp` back to `disabled` does not delete the enrollments already made. 
 
 Enforce it in your UI instead. `settings.mfa.totp === "required"` in the realm config (`GET /api/realms/config`, public) tells you the policy, and `GET /api/users/me/mfa` tells you whether this user has satisfied it (`totp.enabled`). Send them to enrollment when they have not.
 
+### A passkey clears the step, and is not an enrollment
+
+In a realm that offers [passkeys](/docs/guides-security-passkeys), a user who holds one may clear the step with it instead of the code, once TOTP or an email code raised the step: the challenge then says `passkey: true`. A passkey alone raises no step, and is not an enrollment, so the UI gate above keeps reading `totp.enabled`.
+
 ## The sign-in flow
 
 `POST /_auth/token` behaves exactly as before for a realm with no second factor. When one is owed, it answers `401` with `name: "MFA_REQUIRED"` and the challenge in `data` instead of tokens:

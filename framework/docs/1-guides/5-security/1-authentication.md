@@ -494,6 +494,10 @@ setup before the instance is publicly reachable.
 > container gates the option on `!alepha.isServerless()` and grants its
 > administrator through `adminEmails` on the Worker.
 
+### Passkeys
+
+Beside a password and the identity providers below, a realm with `passkeys: "optional"` in its settings lets a user add a passkey and sign in with it alone: no username, no password, through a button on the login page or the browser's autofill. See [Passkeys](/docs/guides-security-passkeys).
+
 ### Identity Providers
 
 Enable login methods through the `identities` option:
