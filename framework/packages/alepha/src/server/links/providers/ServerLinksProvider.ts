@@ -5,6 +5,7 @@ import {
   $inject,
   $store,
   Alepha,
+  AlephaError,
   MIDDLEWARE_PROTECTED,
   type MiddlewareMetadata,
   TimeoutError,
@@ -26,6 +27,7 @@ import {
   HttpError,
   type ClientRequestOptions,
   type RequestConfigSchema,
+  ServerSurfaceProvider,
   ServerTimingProvider,
   serverApiOptions,
 } from "alepha/server";
@@ -99,6 +101,44 @@ export class ServerLinksProvider {
             options: ClientRequestOptions = {},
           ) => action.run(config, options),
         });
+      }
+
+      // The actions of classes declared and not created yet (#Q3403), from
+      // the build list: the same row, `secured` included, so `/api/_links`
+      // answers without creating them. The local handler creates the class
+      // on its first call; the schema is read, creating it, only when the
+      // schemas endpoint asks.
+      const surface = this.alepha.inject(ServerSurfaceProvider);
+      for (const { action: row } of surface.declaredActions()) {
+        if (row.kind === "sse") {
+          continue;
+        }
+        const link: Record<string, unknown> = {
+          name: row.name,
+          group: row.group,
+          contentType: row.contentType,
+          secured: row.secured,
+          method: row.method === "GET" ? undefined : row.method,
+          prefix: this.prefix,
+          path: row.path,
+          handler: (
+            config: ClientRequestEntry<RequestConfigSchema>,
+            options: ClientRequestOptions = {},
+          ) => {
+            const action = surface.resolveAction(row);
+            if (!action) {
+              throw new AlephaError(
+                `Action '${row.name}' is listed but its class registered no such action`,
+              );
+            }
+            return action.run(config, options);
+          },
+        };
+        Object.defineProperty(link, "schema", {
+          enumerable: true,
+          get: () => surface.resolveAction(row)?.options.schema,
+        });
+        this.linkProvider.registerLink(link as any);
       }
 
       // convert all $sse to local links

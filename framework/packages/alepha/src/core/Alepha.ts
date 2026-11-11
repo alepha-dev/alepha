@@ -467,8 +467,17 @@ export class Alepha {
    */
   public get surface(): AppSurface | undefined {
     if (this.surfaceList === undefined) {
+      // Asked while the container itself is still being built (its own core
+      // services): no list applies to those, and the env is not readable yet.
+      if (!this.store) {
+        return undefined;
+      }
+      // `ALEPHA_EAGER=true` creates everything at boot, as in dev, with no
+      // rebuild: the way out the day late creation has a side effect
+      // (#Q3403). Read once, before any module registers.
+      const eager = this.isEnvEnabled("ALEPHA_EAGER");
       this.surfaceList =
-        typeof __ALEPHA_SURFACE__ === "undefined"
+        eager || typeof __ALEPHA_SURFACE__ === "undefined"
           ? null
           : (JSON.parse(__ALEPHA_SURFACE__) as AppSurface);
     }
@@ -513,7 +522,45 @@ export class Alepha {
       return false;
     }
     const key = ContainerGraph.keyOf(service);
-    return surface.classes.some((it) => it.key === key && it.pure);
+    if (!surface.classes.some((it) => it.key === key && it.pure)) {
+      return false;
+    }
+    // Pages and the MCP surface are created late by their own quests; until
+    // then a class holding one is created at boot, whatever else it holds.
+    const owns = (rows: Array<{ class: string; mcp?: boolean }>) =>
+      rows.some((it) => it.class === key);
+    return !(
+      owns(surface.pages) ||
+      owns(surface.tools) ||
+      owns(surface.resources) ||
+      owns(surface.prompts) ||
+      surface.actions.some((it) => it.class === key && it.mcp)
+    );
+  }
+
+  /**
+   * The declared class a build list key names, if this process declared it.
+   * A listed class no module of this process declared is unknown here, and
+   * nothing is deferred for it.
+   */
+  public declaredByKey(key: string): Service | undefined {
+    for (const service of this.declared) {
+      if (ContainerGraph.keyOf(service) === key) {
+        return service;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Create every declared class now: what a reader that needs every action
+   * (OpenAPI, the schemas endpoint) calls first.
+   */
+  public createDeclared(): void {
+    // A copy: each inject removes its class from the set.
+    for (const service of Array.from(this.declared)) {
+      this.inject(service);
+    }
   }
 
   /**

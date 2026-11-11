@@ -283,6 +283,10 @@ export type ServerRouteRequestHandler = (
 
 export interface ServerRouteMatcher extends Route {
   handler: ServerRouteRequestHandler;
+  /**
+   * The stand-in of a route whose class is not created yet (#Q3403).
+   */
+  placeholder?: boolean;
 }
 
 export interface ServerRequestData {

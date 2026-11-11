@@ -36,6 +36,7 @@ import type {
   ServerRoute,
   ServerRouteInput,
   ServerRouteMatcher,
+  ServerRouteRequestHandler,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
@@ -183,6 +184,32 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       );
     }
     return this.routes;
+  }
+
+  /**
+   * A stand-in for a route of a class not created yet (#Q3403): listed among
+   * the routes (CORS reads them), and matched by the trie with `onHit` as
+   * its raw handler. The class's real route, created with the same method
+   * and path, replaces both.
+   */
+  public createPlaceholder(
+    method: string,
+    path: string,
+    onHit: ServerRouteRequestHandler,
+  ): void {
+    const route = {
+      method: method.toUpperCase() as RouteMethod,
+      path,
+      placeholder: true,
+      silent: true,
+      handler: new PipelineHandler(() => undefined),
+    } as ServerRoute;
+    this.routes.push(route);
+    this.push({
+      path: `/${route.method}/${path}`.replace(/\/+/g, "/"),
+      placeholder: true,
+      handler: onHit,
+    });
   }
 
   /**
