@@ -125,6 +125,35 @@ export const imageOptions = $atom({
     args: z.array(z.string()).optional(),
 
     /**
+     * Attach an SBOM attestation to the image (`docker buildx build
+     * --sbom=true`), and copy `dist/sbom.cdx.json` into it at
+     * `/app/sbom.cdx.json`.
+     *
+     * Requires `build.sbom`: the scanner buildx runs reads the image's file
+     * system, which holds the bundle and not the packages inside it, so the
+     * list of what the app bundled is the CycloneDX file the build wrote.
+     * An SBOM listing the base image and none of the app would be misleading
+     * evidence, so `alepha image` refuses to attach one without that file.
+     *
+     * An attestation lives in the image index, which the classic docker
+     * image store cannot hold: use `--push`, or the containerd image store.
+     *
+     * @default false
+     */
+    sbom: z.boolean().optional(),
+
+    /**
+     * Attach a SLSA provenance attestation to the image (`docker buildx
+     * build --provenance=mode=max`).
+     *
+     * ⚠️ `mode=max` records the build arguments, so a secret must never
+     * travel as `--build-arg` in `args`.
+     *
+     * @default false
+     */
+    provenance: z.boolean().optional(),
+
+    /**
      * Auto-add OCI standard labels (revision, created, version).
      *
      * Adds:

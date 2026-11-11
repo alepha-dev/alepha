@@ -101,6 +101,24 @@ export class ImageCommand {
           "Write the Dockerfile and stop, without building an image. Useful for committing the generated file before editing it.",
         )
         .optional(),
+      sbom: z
+        .boolean()
+        .describe(
+          "Attach an SBOM attestation and copy dist/sbom.cdx.json into the image. Needs `build.sbom`. Same as `image.sbom`.",
+        )
+        .optional(),
+      provenance: z
+        .boolean()
+        .describe(
+          "Attach a `mode=max` provenance attestation, which records the build arguments. Same as `image.provenance`.",
+        )
+        .optional(),
+      push: z
+        .boolean()
+        .describe(
+          "Build and push in one step (`docker buildx build --push`). The tag must name the registry.",
+        )
+        .optional(),
       compile: z
         .union([z.boolean(), z.text()])
         .meta({ aliases: ["c"] })
@@ -124,13 +142,36 @@ export class ImageCommand {
         );
       }
 
+      const distDir = this.build.output?.dist ?? "dist";
+      const sbom = flags.sbom ?? this.options.sbom ?? false;
+      const provenance = flags.provenance ?? this.options.provenance ?? false;
+      const push = flags.push ?? false;
+      if (push && flags.dockerfile) {
+        throw new AlephaError(
+          "`--push` builds and pushes an image, and `--dockerfile` builds none: pass one of them.",
+        );
+      }
+      // Before the compile, which can take minutes.
+      if (!flags.dockerfile) {
+        await this.builder.preflight({
+          root,
+          distDir,
+          sbom,
+          provenance,
+          push,
+        });
+      }
+
       const compiled = flags.compile
         ? await this.compileFirst(root, flags.compile, run)
         : undefined;
 
       await this.builder.run({
         root,
-        distDir: this.build.output?.dist ?? "dist",
+        distDir,
+        sbom,
+        provenance,
+        push,
         // A compiled image runs a Bun binary whatever the manifest's primary
         // slice is, because `bun build --compile` is the only compiler there
         // is. The label and the base defaults follow that, not the manifest.

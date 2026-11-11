@@ -143,6 +143,20 @@ class Shell {
 
 class Docker {
   /**
+   * A file out of an image, with no shell and no process: `docker create`,
+   * then `docker cp` into a directory of this run.
+   */
+  public static async readFile(image: string, path: string): Promise<string> {
+    const id = (
+      await Shell.ok("docker", ["create", "--label", LABEL, image])
+    ).trim();
+    const dir = join(WORK, `read-${id.slice(0, 12)}`);
+    await mkdir(dir, { recursive: true });
+    await Shell.ok("docker", ["cp", `${id}:${path}`, `${dir}/`]);
+    return readFile(join(dir, path.split("/").at(-1) as string), "utf8");
+  }
+
+  /**
    * Wait for a container's `State.Health.Status` to reach a value, and fail
    * with what it last was and its health log when it never does.
    */
@@ -254,6 +268,36 @@ class Registry {
     "application/vnd.docker.distribution.manifest.list.v2+json",
     "application/vnd.docker.distribution.manifest.v2+json",
   ].join(", ");
+
+  /**
+   * The in-toto predicate types of every attestation an index carries: the
+   * manifests buildx marks `vnd.docker.reference.type: attestation-manifest`,
+   * each holding one layer per predicate.
+   */
+  public static async attestationPredicates(
+    repository: string,
+    index: {
+      manifests?: Array<{
+        digest: string;
+        annotations?: Record<string, string>;
+      }>;
+    },
+  ): Promise<string[]> {
+    const attestations = (index.manifests ?? []).filter(
+      (it) =>
+        it.annotations?.["vnd.docker.reference.type"] ===
+        "attestation-manifest",
+    );
+    const predicates: string[] = [];
+    for (const attestation of attestations) {
+      const manifest = await Registry.manifest(repository, attestation.digest);
+      for (const layer of manifest.body.layers ?? []) {
+        const type = layer.annotations?.["in-toto.io/predicate-type"];
+        if (type) predicates.push(type);
+      }
+    }
+    return predicates;
+  }
 
   /**
    * Fetch a manifest by tag or digest, with the digest the registry gives it.
@@ -395,6 +439,16 @@ describe("alepha image on real Docker", () => {
   describe("the standard image", () => {
     beforeAll(async () => {
       await rm(join(PROJECT, "Dockerfile"), { force: true });
+      // `image --sbom` refuses to attest without the build's own list.
+      await writeFile(
+        join(PROJECT, "alepha.config.ts"),
+        `import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: { sbom: true },
+});
+`,
+      );
       await Shell.ok(CLI, ["build"], PROJECT);
       await Shell.ok(CLI, ["image", `--tag=${STANDARD_TAG}`], PROJECT);
     }, 600_000);
@@ -427,17 +481,45 @@ describe("alepha image on real Docker", () => {
       expect(Date.now() - started).toBeLessThan(20_000);
     });
 
-    it("is pushed to a registry and read back by digest", async () => {
-      const remote = `${Registry.host}/alepha-e2e/standard:${RUN_ID}`;
-      await Shell.ok("docker", ["tag", STANDARD_TAG, remote]);
-      await Shell.ok("docker", ["push", remote]);
-      const byTag = await Registry.manifest("alepha-e2e/standard", RUN_ID);
-      expect(byTag.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
-      const byDigest = await Registry.manifest(
-        "alepha-e2e/standard",
-        byTag.digest,
+    it("is pushed with --sbom --provenance --push, and the index carries both attestations", async () => {
+      const repository = "alepha-e2e/standard";
+      await Shell.ok(
+        CLI,
+        [
+          "image",
+          "--sbom",
+          "--provenance",
+          "--push",
+          `--tag=${Registry.host}/${repository}:${RUN_ID}`,
+        ],
+        PROJECT,
+        600_000,
       );
-      expect(byDigest.digest).toBe(byTag.digest);
+      const index = await Registry.manifest(repository, RUN_ID);
+      expect(index.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+      expect(index.mediaType).toMatch(/index|manifest\.list/);
+      // Read back by digest: the same document.
+      const byDigest = await Registry.manifest(repository, index.digest);
+      expect(byDigest.digest).toBe(index.digest);
+
+      const predicates = await Registry.attestationPredicates(
+        repository,
+        index.body,
+      );
+      expect(predicates).toContain("https://spdx.dev/Document");
+      expect(
+        predicates.some((it) => it.startsWith("https://slsa.dev/provenance/")),
+      ).toBe(true);
+    });
+
+    it("holds the build's SBOM at /app/sbom.cdx.json", async () => {
+      const sbom = JSON.parse(
+        await Docker.readFile(STANDARD_TAG, "/app/sbom.cdx.json"),
+      );
+      expect(sbom.bomFormat).toBe("CycloneDX");
+      expect(
+        sbom.components.some((it: { name: string }) => it.name === "alepha"),
+      ).toBe(true);
     });
   });
 
@@ -453,6 +535,7 @@ describe("alepha image on real Docker", () => {
         `import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
+  build: { sbom: true },
   image: { volumes: ["/data"] },
 });
 `,
@@ -519,17 +602,48 @@ ${await readFile(main, "utf8")}`,
       expect(health.ready).toBe(true);
     });
 
-    it("is pushed to a registry and read back by digest", async () => {
-      const remote = `${Registry.host}/alepha-e2e/compiled:${RUN_ID}`;
-      await Shell.ok("docker", ["tag", COMPILED_TAG, remote]);
-      await Shell.ok("docker", ["push", remote]);
-      const byTag = await Registry.manifest("alepha-e2e/compiled", RUN_ID);
-      expect(byTag.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
-      const byDigest = await Registry.manifest(
-        "alepha-e2e/compiled",
-        byTag.digest,
+    it("is pushed with --sbom --provenance --push, and the index carries both attestations", async () => {
+      const repository = "alepha-e2e/compiled";
+      // Compiling consumed `dist/` when the image above was built.
+      await Shell.ok(CLI, ["build", "--runtime=bun"], PROJECT);
+      await Shell.ok(
+        CLI,
+        [
+          "image",
+          "--compile",
+          "--sbom",
+          "--provenance",
+          "--push",
+          `--tag=${Registry.host}/${repository}:${RUN_ID}`,
+        ],
+        PROJECT,
+        600_000,
       );
-      expect(byDigest.digest).toBe(byTag.digest);
+      const index = await Registry.manifest(repository, RUN_ID);
+      expect(index.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+      expect(index.mediaType).toMatch(/index|manifest\.list/);
+      // Read back by digest: the same document.
+      const byDigest = await Registry.manifest(repository, index.digest);
+      expect(byDigest.digest).toBe(index.digest);
+
+      const predicates = await Registry.attestationPredicates(
+        repository,
+        index.body,
+      );
+      expect(predicates).toContain("https://spdx.dev/Document");
+      expect(
+        predicates.some((it) => it.startsWith("https://slsa.dev/provenance/")),
+      ).toBe(true);
+    });
+
+    it("holds the build's SBOM at /app/sbom.cdx.json", async () => {
+      const sbom = JSON.parse(
+        await Docker.readFile(COMPILED_TAG, "/app/sbom.cdx.json"),
+      );
+      expect(sbom.bomFormat).toBe("CycloneDX");
+      expect(
+        sbom.components.some((it: { name: string }) => it.name === "alepha"),
+      ).toBe(true);
     });
   });
 });

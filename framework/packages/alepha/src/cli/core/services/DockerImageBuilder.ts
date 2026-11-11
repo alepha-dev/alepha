@@ -9,6 +9,7 @@ import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import type { ImageOptions } from "../atoms/imageOptions.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
 import { BuildSlices } from "./BuildSlices.ts";
+import { SbomBuilder } from "./SbomBuilder.ts";
 
 /**
  * Everything `alepha image` hands the builder: what was built, where, and how
@@ -48,6 +49,23 @@ export interface ImageContext {
    * builds nothing.
    */
   build?: boolean | string;
+
+  /**
+   * Attach an SBOM attestation (`image.sbom` or `--sbom`).
+   */
+  sbom?: boolean;
+
+  /**
+   * Attach a `mode=max` provenance attestation (`image.provenance` or
+   * `--provenance`).
+   */
+  provenance?: boolean;
+
+  /**
+   * Push the image as it is built (`--push`), rather than load it into the
+   * local daemon.
+   */
+  push?: boolean;
 
   run: RunnerMethod;
 
@@ -148,6 +166,72 @@ export class DockerImageBuilder {
   public static readonly EMPTY_DIR = ".alepha-empty";
 
   /**
+   * Refuse, before anything is compiled or built, what the build would
+   * refuse or silently drop after minutes of work.
+   *
+   * - `sbom` with no `dist/sbom.cdx.json`: an SBOM attestation scanned from
+   *   the image lists the base and none of the bundled packages.
+   * - An attestation without `--push`, on a daemon whose image store cannot
+   *   keep one. Only the containerd image store holds an image index with
+   *   attestation manifests; the classic store refuses the build or drops
+   *   them, and the error says nothing about why.
+   *
+   * ⚠️ Called by `alepha image` before it compiles: a check that ran after a
+   * compile of several minutes would be a bad error.
+   */
+  async preflight(ctx: {
+    root: string;
+    distDir: string;
+    sbom?: boolean;
+    provenance?: boolean;
+    push?: boolean;
+  }): Promise<void> {
+    if (
+      ctx.sbom &&
+      !(await this.fs.exists(
+        this.fs.join(ctx.root, ctx.distDir, SbomBuilder.FILE),
+      ))
+    ) {
+      throw new AlephaError(
+        `\`image.sbom\` needs ${ctx.distDir}/${SbomBuilder.FILE}, and this build wrote none. ` +
+          "Set `build.sbom: true` in alepha.config.ts and build again: an SBOM " +
+          "attestation scanned from the image alone lists the base image and none " +
+          "of the packages the app bundled.",
+      );
+    }
+    if (!(ctx.sbom || ctx.provenance) || ctx.push) {
+      return;
+    }
+    if (await this.daemonKeepsAttestations()) {
+      return;
+    }
+    throw new AlephaError(
+      "An SBOM or provenance attestation lives in the image index, and this " +
+        "Docker daemon's image store cannot hold one. Either push the image as it " +
+        "is built (`alepha image --push`), or turn on the containerd image store " +
+        "(Docker Desktop: Settings, General, 'Use containerd for pulling and " +
+        'storing images\'; Docker Engine: `"features": { "containerd-snapshotter": true }` ' +
+        "in daemon.json).",
+    );
+  }
+
+  /**
+   * Whether the local daemon stores images with containerd, the one image
+   * store that keeps an index and its attestation manifests.
+   */
+  protected async daemonKeepsAttestations(): Promise<boolean> {
+    const info = await this.shell.capture([
+      "docker",
+      "info",
+      "--format",
+      "{{json .DriverStatus}}",
+    ]);
+    return (
+      info.exitCode === 0 && info.stdout.includes("containerd.snapshotter")
+    );
+  }
+
+  /**
    * Write the Dockerfile when the app owns none, then build the image.
    */
   async run(ctx: ImageContext): Promise<void> {
@@ -199,6 +283,9 @@ export class DockerImageBuilder {
             entry: this.slices.entryFileName(ctx.runtime),
           },
           hasMigrations: migrationsCopied,
+          hasSbom: await this.fs.exists(
+            this.fs.join(ctx.root, distDir, SbomBuilder.FILE),
+          ),
           hasDeps: await this.hasRuntimeDeps(ctx.root, distDir),
           install: ctx.image.install ?? [],
           env: ctx.image.env ?? {},
@@ -454,6 +541,12 @@ export class DockerImageBuilder {
       compile: ResolvedCompile | null;
       standard: { image: string; command: string; entry: string };
       hasMigrations: boolean;
+      /**
+       * `dist/sbom.cdx.json` exists. The standard variant copies it with
+       * `COPY . .`; the compiled one copies the binary only, so it needs a
+       * line of its own.
+       */
+      hasSbom: boolean;
       hasDeps: boolean;
       install: string[];
       env: Record<string, string>;
@@ -502,6 +595,10 @@ export class DockerImageBuilder {
       const compileMigrations = opts.hasMigrations
         ? `COPY${chownFlag} migrations ./migrations\n`
         : "";
+      // At a fixed path, `/app/sbom.cdx.json`, as the standard variant has it.
+      const sbomLine = opts.hasSbom
+        ? `COPY${chownFlag} ${SbomBuilder.FILE} .\n`
+        : "";
       // One copy per volume, before the `VOLUME` line: a named volume takes
       // the ownership of the image directory at its path.
       const volumePrep = root
@@ -522,7 +619,7 @@ export class DockerImageBuilder {
 ${appLine}WORKDIR /app
 ${labelLines ? `\n${labelLines}` : ""}
 COPY${chownFlag} ${opts.compile.name} .
-${compileMigrations}
+${sbomLine}${compileMigrations}
 ENV SERVER_HOST=0.0.0.0
 ${envLines}${volumeLines ? `\n${volumePrep}${volumeLines}` : ""}
 ${userLine}# No HEALTHCHECK: the distroless base has no shell and no runtime besides
@@ -743,10 +840,30 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
       drag `src/` and `node_modules/` into every build.
     */
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");
+
+    /*
+      ⚠️ **`docker buildx build` only when asked for.** An attestation and a
+      push-as-you-build are buildx flags; without them the command stays the
+      `docker build` it always was, so an app that opts into nothing sees no
+      change. Attestations are command-line only: no Dockerfile line carries
+      them, so a hand-run build of the same file has none.
+    */
+    const attest = !!(ctx.sbom || ctx.provenance);
+    const buildx = attest || !!ctx.push;
+    const buildxArgs = buildx
+      ? [
+          ...(ctx.sbom ? ["--sbom=true"] : []),
+          ...(ctx.provenance ? ["--provenance=mode=max"] : []),
+          // `--load` names the default explicitly: on a builder that is not
+          // the daemon's own, the result would otherwise stay in its cache.
+          ctx.push ? "--push" : "--load",
+        ]
+      : [];
     const argv = [
       "docker",
-      "build",
+      ...(buildx ? ["buildx", "build"] : ["build"]),
       ...args,
+      ...buildxArgs,
       "-f",
       dockerfile,
       "-t",
@@ -759,7 +876,7 @@ ${userLine}${this.renderHealthcheck(command)}CMD ["${command}", "${entry}"]
     // a project path with a space, or a label with an apostrophe, broke the
     // command line.
     await ctx.run({
-      name: `docker build ${imageTag}`,
+      name: `${buildx ? "docker buildx build" : "docker build"} ${imageTag}${ctx.push ? " (push)" : ""}`,
       handler: async () => {
         await this.shell.run(argv, { root: ctx.root });
       },

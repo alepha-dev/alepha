@@ -73,6 +73,45 @@ describe("alepha image, choosing a Bun triple for a base", () => {
     expect(docker?.options.root).toBe("/app");
   });
 
+  it("refuses --sbom without the build's SBOM before compiling anything", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    await fs.writeFile(
+      "/app/dist/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+      }),
+    );
+    await fs.writeFile("/app/dist/index.bun.js", "// app");
+    await expect(
+      alepha.inject(CliProvider).run(alepha.inject(ImageCommand).image, {
+        root: "/app",
+        argv: "--compile --sbom --push --tag=my/app:v1",
+      }),
+    ).rejects.toThrow(/build\.sbom/);
+    // Nothing compiled, nothing built.
+    expect(alepha.inject(MemoryShellProvider).calls).toEqual([]);
+    expect(await fs.exists("/app/dist/index.bun.js")).toBe(true);
+  });
+
   const command = () => Alepha.create().inject(TestImageCommand);
 
   it("wants a glibc binary for the default compiled base", ({ expect }) => {

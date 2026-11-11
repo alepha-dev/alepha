@@ -57,22 +57,46 @@ export default defineConfig({
 });
 ```
 
-| Setting         | Meaning                                                  |
-| --------------- | -------------------------------------------------------- |
-| `image.from`    | Base image (default `node:24-alpine`, `oven/bun:alpine`) |
-| `image.command` | Server command (default `node` or `bun`)                 |
-| `image.install` | Extra packages for the generated standard image          |
-| `image.env`     | Baked defaults, overridden by runtime environment values |
-| `image.volumes` | Volume mount points                                      |
-| `image.user`    | Container user (default 1000, 65532:65532 compiled)      |
-| `image.tag`     | Default image name                                       |
-| `image.args`    | Docker build arguments as a string array                 |
-| `image.oci`     | Write the OCI labels below                               |
-| `image.labels`  | `source`, `title`, `description`, `licenses`             |
+| Setting            | Meaning                                                  |
+| ------------------ | -------------------------------------------------------- |
+| `image.from`       | Base image (default `node:24-alpine`, `oven/bun:alpine`) |
+| `image.command`    | Server command (default `node` or `bun`)                 |
+| `image.install`    | Extra packages for the generated standard image          |
+| `image.env`        | Baked defaults, overridden by runtime environment values |
+| `image.volumes`    | Volume mount points                                      |
+| `image.user`       | Container user (default 1000, 65532:65532 compiled)      |
+| `image.tag`        | Default image name                                       |
+| `image.args`       | Docker build arguments as a string array                 |
+| `image.sbom`       | Attach an SBOM attestation (needs `build.sbom`)          |
+| `image.provenance` | Attach a `mode=max` provenance attestation               |
+| `image.oci`        | Write the OCI labels below                               |
+| `image.labels`     | `source`, `title`, `description`, `licenses`             |
 
 With `oci: true`, each `image.labels` field becomes an `org.opencontainers.image.*` `LABEL` line in the generated Dockerfile (`source` is what links a GHCR package to its repository), and `alepha image` adds `revision` (the git commit), `created` and `version` (from the tag) at build time. Without `oci`, `image.labels` is ignored. The generated Dockerfile always labels the image `dev.alepha.runtime`, naming the slice it runs.
 
 The generated standard image uses a Node or Bun base and installs runtime dependencies only when the artifact declares them. Each declared volume is prepared before its `VOLUME` line. Named volumes inherit those permissions; bind mounts retain the host directory's permissions. Baked values are public image defaults, so deliver secrets at runtime.
+
+## SBOM and provenance
+
+For software delivered as an image, buyers and the EU Cyber Resilience Act ask for a machine-readable SBOM. Turn on the build's own list, then attach attestations as the image is pushed:
+
+```typescript check filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: { sbom: true },
+  image: { tag: "ghcr.io/myorg/myapp", sbom: true, provenance: true },
+});
+```
+
+```bash
+alepha build
+alepha image --push --tag=1.4.0
+```
+
+The image carries `/app/sbom.cdx.json` (CycloneDX, what the bundles contain), and its index carries an SPDX SBOM attestation, which lists those packages too, and a SLSA provenance. Read them back with `docker buildx imagetools inspect ghcr.io/myorg/myapp:1.4.0 --format '{{json .SBOM}}'` (or `.Provenance`). Without `--push`, attestations need the containerd image store; `alepha image` says so before it builds.
+
+⚠️ Provenance is recorded in `mode=max`, which includes the build arguments: never pass a secret as `--build-arg` in `image.args`. Signing the image (cosign) is a step of your CI, after the push. See [Evidence: SBOM and provenance](/docs/cli-commands-image#evidence-sbom-and-provenance).
 
 ## Compiled image
 

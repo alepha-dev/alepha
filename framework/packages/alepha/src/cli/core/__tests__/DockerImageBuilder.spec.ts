@@ -313,6 +313,116 @@ describe("DockerImageBuilder", () => {
     });
   });
 
+  describe("attestations and --push", () => {
+    const build = async (
+      overrides: Partial<ImageContext>,
+      setup?: (fs: MemoryFileSystemProvider) => Promise<void>,
+    ) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.node.js", "// bundle");
+      await setup?.(fs);
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { tag: "ghcr.io/o/app" },
+          { build: true, ...overrides },
+        ),
+      );
+      const call = shell.calls.find((it) => it.argv?.[0] === "docker");
+      return { argv: call?.argv ?? [], fs };
+    };
+
+    it("stays the plain docker build of today when nothing is asked for", async () => {
+      const { argv } = await build({});
+      expect(argv.slice(0, 2)).toEqual(["docker", "build"]);
+      expect(argv.join(" ")).not.toMatch(/--sbom|--provenance|--push|--load/);
+    });
+
+    it("runs docker buildx build with both attestations, loaded locally", async () => {
+      const { argv } = await build({ sbom: true, provenance: true });
+      expect(argv.slice(0, 3)).toEqual(["docker", "buildx", "build"]);
+      expect(argv).toContain("--sbom=true");
+      expect(argv).toContain("--provenance=mode=max");
+      expect(argv).toContain("--load");
+      expect(argv).not.toContain("--push");
+      expect(argv.at(-1)).toBe("dist");
+    });
+
+    it("builds and pushes in one step with push, attestations or not", async () => {
+      const { argv } = await build({ push: true });
+      expect(argv.slice(0, 3)).toEqual(["docker", "buildx", "build"]);
+      expect(argv).toContain("--push");
+      expect(argv).not.toContain("--load");
+      expect(argv).not.toContain("--sbom=true");
+    });
+
+    it("copies the SBOM into the compiled image, which copies the binary only", async () => {
+      const { fs } = await build(
+        { runtime: "bun", compile: "app", sbom: true, push: true },
+        async (memory) => {
+          await memory.writeFile("/project/dist/sbom.cdx.json", "{}");
+        },
+      );
+      expect(readDockerfile(fs)).toMatch(
+        /^COPY --chown=65532:65532 sbom\.cdx\.json \.$/m,
+      );
+    });
+
+    it("writes no SBOM line when the build wrote none", async () => {
+      const { fs } = await build({ runtime: "bun", compile: "app" });
+      expect(readDockerfile(fs)).not.toContain("sbom.cdx.json");
+    });
+
+    describe("preflight", () => {
+      const classic = '[["Backing Filesystem","extfs"]]';
+      const containerd = '[["driver-type","io.containerd.snapshotter.v1"]]';
+      const info = "docker info --format {{json .DriverStatus}}";
+
+      it("refuses image.sbom with no dist/sbom.cdx.json, naming build.sbom", async () => {
+        const { task } = createTestEnv();
+        await expect(
+          task.preflight({
+            root: "/project",
+            distDir: "dist",
+            sbom: true,
+            push: true,
+          }),
+        ).rejects.toThrow(/build\.sbom/);
+      });
+
+      it("refuses an attestation the classic image store cannot keep, naming --push", async () => {
+        const { fs, shell, task } = createTestEnv();
+        await fs.writeFile("/project/dist/sbom.cdx.json", "{}");
+        shell.outputs.set(info, classic);
+        await expect(
+          task.preflight({ root: "/project", distDir: "dist", sbom: true }),
+        ).rejects.toThrow(/--push.*containerd image store/s);
+      });
+
+      it("lets it through on the containerd image store", async () => {
+        const { shell, task } = createTestEnv();
+        shell.outputs.set(info, containerd);
+        await task.preflight({
+          root: "/project",
+          distDir: "dist",
+          provenance: true,
+        });
+      });
+
+      it("asks the daemon nothing when the image is pushed", async () => {
+        const { shell, task } = createTestEnv();
+        await task.preflight({
+          root: "/project",
+          distDir: "dist",
+          provenance: true,
+          push: true,
+        });
+        expect(shell.wasCalledMatching(/docker info/)).toBe(false);
+      });
+    });
+  });
+
   describe("HEALTHCHECK", () => {
     const write = async (
       image: ImageOptions = {},
