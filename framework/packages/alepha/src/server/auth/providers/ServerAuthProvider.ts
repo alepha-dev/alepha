@@ -3,6 +3,9 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type Duration } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
+  authenticationOptionsJsonSchema,
+  type AuthenticationResponseJson,
+  authenticationResponseJsonSchema,
   InvalidCredentialsError,
   type IssuerPrimitive,
   SecurityError,
@@ -38,12 +41,14 @@ import {
 
 import { serverAuthOptions } from "../atoms/serverAuthOptions.ts";
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
+import { InvalidPasskeyError } from "../errors/InvalidPasskeyError.ts";
 import { MfaRequiredError } from "../errors/MfaRequiredError.ts";
 import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import {
   $auth,
   type AccessToken,
   type AuthPrimitive,
+  type WithPasskeyFn,
   type WithSecondFactorFn,
 } from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
@@ -368,7 +373,7 @@ export class ServerAuthProvider {
       }),
       response: tokenResponseSchema,
     },
-    handler: async ({ query, body, cookies }) => {
+    handler: async ({ query, body, cookies, url }) => {
       const provider = this.provider({
         provider: query.provider,
         realm: query.realm,
@@ -416,6 +421,7 @@ export class ServerAuthProvider {
           methods,
           provider: query.provider,
           realm: query.realm,
+          url,
         });
       }
 
@@ -549,6 +555,255 @@ export class ServerAuthProvider {
   });
 
   /**
+   * The challenge of a passkey sign-in, held by the browser between the
+   * options and the verify: signed, encrypted, `httpOnly`, five minutes.
+   * Nothing is stored server side, so it works on Workers with no KV.
+   */
+  protected readonly passkeyChallenge = $cookie({
+    name: "passkeySignIn",
+    ttl: [5, "minutes"],
+    httpOnly: true,
+    sign: true,
+    encrypt: true,
+    browserPrefix: "__Host-Http-",
+    schema: z.object({
+      challenge: z.text({ trim: false }),
+      ceremony: z.literal("get"),
+      realm: z.text().optional(),
+      userId: z.text().optional(),
+    }),
+  });
+
+  /**
+   * Start a passkey sign-in: assertion options for the browser, and the
+   * challenge cookie.
+   *
+   * The body takes no identifier and `allowCredentials` is empty
+   * (discoverable credentials): the authenticator offers the accounts it
+   * holds for this relying party, and the answer depends on no account, so
+   * there is nothing to enumerate.
+   */
+  public readonly passkeyOptions = $route({
+    path: alephaServerAuthRoutes.passkeyOptions,
+    method: "POST",
+    schema: {
+      query: z.object({
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
+      }),
+      body: z.object({
+        challenge: z
+          .text({
+            size: "rich",
+            description:
+              "The challenge of a pending second factor (the `data.challenge` of an `MfaRequiredError`): the options then list that user's passkeys and require user verification.",
+          })
+          .optional(),
+      }),
+      response: authenticationOptionsJsonSchema,
+    },
+    handler: async ({ query, body, url, cookies }) => {
+      // Pending mode: the same signed token `/_auth/mfa` takes, not a
+      // parallel one. It names the user, the provider and the realm.
+      const pending = body.challenge
+        ? await this.readChallenge(body.challenge)
+        : undefined;
+      if (body.challenge && !pending) {
+        throw new InvalidPasskeyError();
+      }
+      const realm = pending ? pending.realm : query.realm;
+      const issuer = this.passkeyIssuer(realm);
+      let options;
+      try {
+        options = await issuer.passkeyOptions!({
+          url,
+          userId: pending?.sub,
+          requireUserVerification: pending ? true : undefined,
+        });
+      } catch (error) {
+        this.log.debug("Passkey options refused", error);
+        throw new InvalidPasskeyError();
+      }
+      this.passkeyChallenge.set(
+        {
+          challenge: options.challenge,
+          ceremony: "get",
+          realm,
+          userId: pending?.sub,
+        },
+        { cookies },
+      );
+      return options;
+    },
+  });
+
+  /**
+   * Finish a passkey sign-in: verify the assertion and mint a session, with
+   * the same token response as `/_auth/token`.
+   *
+   * A user-verified assertion is possession plus biometrics or PIN, and
+   * satisfies the realm's second factor by itself. One that is not goes
+   * through the same gate a password does, and `/_auth/mfa` finishes it.
+   */
+  public readonly passkeyVerify = $route({
+    path: alephaServerAuthRoutes.passkeyVerify,
+    method: "POST",
+    schema: {
+      query: z.object({
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
+      }),
+      body: z.object({
+        credential: authenticationResponseJsonSchema,
+        challenge: z
+          .text({
+            size: "rich",
+            description:
+              "The pending second factor's challenge, when the options were asked for one.",
+          })
+          .optional(),
+      }),
+      response: tokenResponseSchema,
+    },
+    handler: async ({ query, body, url, cookies }) => {
+      const stored = this.passkeyChallenge.get({ cookies });
+      if (stored) {
+        this.passkeyChallenge.del({ cookies });
+      }
+      if (!stored) {
+        this.log.debug("Passkey sign-in without its challenge");
+        throw new InvalidPasskeyError();
+      }
+      if (stored.userId) {
+        return this.clearSecondFactorWithPasskey(
+          { ...stored, userId: stored.userId },
+          body,
+          url,
+          cookies,
+        );
+      }
+      if ((stored.realm ?? undefined) !== (query.realm ?? undefined)) {
+        throw new InvalidPasskeyError();
+      }
+      const issuer = this.passkeyIssuer(query.realm);
+
+      let result: { user: UserAccount; userVerified: boolean };
+      try {
+        result = await issuer.verifyPasskey!(body.credential, {
+          url,
+          challenge: stored.challenge,
+        });
+      } catch (error) {
+        // The reason is the server's: the log and the audit have it.
+        this.log.debug("Passkey sign-in refused", error);
+        throw new InvalidPasskeyError();
+      }
+
+      const provider = "passkey";
+      if (!result.userVerified) {
+        const methods = await this.secondFactorMethods(issuer, result.user);
+        if (methods.length > 0) {
+          throw await this.challengeSecondFactor({
+            issuer,
+            user: result.user,
+            methods,
+            provider,
+            realm: query.realm,
+            url,
+          });
+        }
+      }
+
+      const tokens = {
+        provider,
+        realm: query.realm,
+        ...(await issuer.createToken(result.user)),
+      };
+      await this.setTokens(tokens, cookies);
+      const api = await this.serverLinksProvider.getUserApiLinks({
+        user: result.user,
+      });
+      return { ...tokens, user: result.user, api };
+    },
+  });
+
+  /**
+   * Pending mode of `/_auth/passkey/verify`: a passkey clears the second
+   * factor a password login raised. The challenge token must still verify,
+   * name the user the options were bound to, and the assertion must come
+   * from that user's own passkey with the user-verified flag set. Success
+   * mints exactly as `/_auth/mfa` does, with the challenge's provider and
+   * realm.
+   */
+  protected async clearSecondFactorWithPasskey(
+    stored: { challenge: string; userId: string; realm?: string },
+    body: {
+      credential: AuthenticationResponseJson;
+      challenge?: string;
+    },
+    url: URL,
+    cookies: Cookies,
+  ) {
+    const pending = body.challenge
+      ? await this.readChallenge(body.challenge)
+      : undefined;
+    if (
+      !pending ||
+      pending.sub !== stored.userId ||
+      (pending.realm ?? undefined) !== (stored.realm ?? undefined)
+    ) {
+      throw new InvalidPasskeyError();
+    }
+    const issuer = this.passkeyIssuer(pending.realm);
+    try {
+      await issuer.verifyPasskey!(body.credential, {
+        url,
+        challenge: stored.challenge,
+        userId: stored.userId,
+        requireUserVerification: true,
+        secondFactor: true,
+      });
+    } catch (error) {
+      this.log.debug("Passkey second factor refused", error);
+      throw new InvalidPasskeyError();
+    }
+
+    const provider = this.provider({
+      provider: pending.provider,
+      realm: pending.realm,
+    });
+    const tokens = {
+      provider: pending.provider,
+      realm: pending.realm,
+      ...(await provider.issuer!.createToken(pending.user)),
+    };
+    await this.setTokens(tokens, cookies);
+    const api = await this.serverLinksProvider.getUserApiLinks({
+      user: pending.user,
+    });
+    return { ...tokens, user: pending.user, api };
+  }
+
+  /**
+   * The issuer of the realm's `passkey` provider, when it signs in with
+   * passkeys at all. Anything else is the one generic refusal.
+   */
+  protected passkeyIssuer(
+    realm?: string,
+  ): IssuerPrimitive & WithPasskeyFn & WithSecondFactorFn {
+    const provider = this.findProvider({ provider: "passkey", realm });
+    const issuer = provider?.issuer as
+      | (IssuerPrimitive & WithPasskeyFn & WithSecondFactorFn)
+      | undefined;
+    if (!issuer?.passkeyOptions || !issuer.verifyPasskey) {
+      throw new InvalidPasskeyError();
+    }
+    return issuer;
+  }
+
+  /**
    * Ask the issuer which second factors this user owes, tolerating an issuer
    * that does not implement the seam at all.
    */
@@ -573,9 +828,18 @@ export class ServerAuthProvider {
     methods: SecondFactorMethod[];
     provider: string;
     realm?: string;
+    url?: URL;
   }): Promise<MfaRequiredError> {
     const withSecondFactor = options.issuer as IssuerPrimitive &
-      WithSecondFactorFn;
+      WithSecondFactorFn &
+      WithPasskeyFn;
+
+    // Asked here, after the first factor passed: the flag says something
+    // about the account, so nobody without the password may see it.
+    const passkey =
+      options.url && withSecondFactor.hasPasskey
+        ? await withSecondFactor.hasPasskey(options.user, { url: options.url })
+        : false;
 
     const method = options.methods[0]!;
     const started = await withSecondFactor.startSecondFactor?.(
@@ -595,6 +859,7 @@ export class ServerAuthProvider {
           ServerAuthProvider.MFA_CHALLENGE_TTL_SECONDS,
       }),
       methods: options.methods,
+      passkey,
       sentTo: started?.sentTo,
     });
   }

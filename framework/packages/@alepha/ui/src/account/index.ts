@@ -40,6 +40,18 @@ export {
   accountRouterOptionsAtom,
 } from "./AccountRouterOptions.tsx";
 export {
+  AccountPasskeyProofDialog,
+  type AccountPasskeyProofDialogProps,
+} from "./AccountPasskeyProofDialog.tsx";
+export {
+  AccountPasskeyRow,
+  type AccountPasskeyRowProps,
+} from "./AccountPasskeyRow.tsx";
+export {
+  AccountPasskeys,
+  type AccountPasskeysProps,
+} from "./AccountPasskeys.tsx";
+export {
   default as AccountSecurity,
   type AccountSecurityProps,
 } from "./AccountSecurity.tsx";

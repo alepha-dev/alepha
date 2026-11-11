@@ -428,6 +428,11 @@ export class ServerCookiesProvider {
         path: scope?.path ?? "/",
         domain: scope?.domain,
         maxAge: 0,
+        // A browser refuses any Set-Cookie for an `__Http-` or
+        // `__Host-Http-` name without HttpOnly, deletions included: without
+        // it the expiry is dropped and the cookie lives on (a logout that
+        // signed nobody out).
+        httpOnly: /^(__Http-|__Host-Http-)/.test(name) || undefined,
       };
     }
   }

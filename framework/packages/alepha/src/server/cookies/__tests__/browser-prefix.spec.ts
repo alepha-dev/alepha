@@ -143,6 +143,24 @@ describe("$cookie({ browserPrefix })", () => {
     );
   });
 
+  it("deletes with Secure and HttpOnly, which a browser requires of __Host-Http-", async () => {
+    const { call } = await boot();
+
+    const { setCookie } = await call("/write", { https: true });
+    const dropped = await call("/drop", {
+      https: true,
+      cookie: pairs(setCookie),
+    });
+
+    expect(dropped.setCookie).toHaveLength(1);
+    expect(dropped.setCookie[0]).toMatch(/^__Host-Http-app\.session=;/);
+    expect(dropped.setCookie[0]).toContain("Max-Age=0");
+    expect(dropped.setCookie[0]).toContain("Secure");
+    expect(dropped.setCookie[0]).toContain("HttpOnly");
+    expect(dropped.setCookie[0]).toContain("Path=/");
+    expect(dropped.setCookie[0]).not.toContain("Domain=");
+  });
+
   it("expires a bare-named leftover, chunks included, on an https request", async () => {
     const { call } = await boot();
 

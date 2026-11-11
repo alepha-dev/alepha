@@ -41,20 +41,23 @@ describe("AdminUserDetailSecurityTab - two-factor", () => {
    * `credentials`, the `totp` row included. Splitting it out is this
    * component's job, so the rule cannot be lost by a caller.
    */
-  const mount = async (enrolled: boolean) => {
+  const mount = async (enrolled: boolean, extra: IdentityResource[] = []) => {
     alepha = Alepha.create().with(AlephaReactI18n);
     await alepha.start();
     return render(
       <AlephaContext.Provider value={alepha}>
         <AdminUserDetailSecurityTab
           hasPassword
-          socialIdentities={
-            enrolled
+          socialIdentities={[
+            ...(enrolled
               ? [identity("google"), identity("totp")]
-              : [identity("google")]
-          }
+              : [identity("google")]),
+            ...extra,
+          ]}
           removeIdentity={action()}
           clearTotp={action()}
+          revokePasskey={action()}
+          revokeAllPasskeys={action() as never}
           onChangePassword={() => {}}
         />
       </AlephaContext.Provider>,
@@ -88,5 +91,22 @@ describe("AdminUserDetailSecurityTab - two-factor", () => {
 
     expect(screen.queryByText("Google")).toBeTruthy();
     expect(screen.queryByText("Authenticator app")).toBeNull();
+  });
+
+  it("should list passkeys in their own group, with a fingerprint and never the credential id", async () => {
+    const passkey = {
+      id: "id-passkey",
+      provider: "passkey",
+      providerUserId: "Q1JFREVOVElBTC1JRA",
+      createdAt: "2026-11-01T10:00:00.000Z",
+      providerData: { name: "Work laptop", backedUp: true },
+    } as never as IdentityResource;
+    await mount(false, [passkey]);
+
+    expect(screen.queryByText("Passkeys")).toBeTruthy();
+    expect(screen.queryByText("Work laptop")).toBeTruthy();
+    expect(screen.queryByText("Synced")).toBeTruthy();
+    expect(screen.queryByText(/Q1JFREVOVElBTC1JRA/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Revoke/ })).toBeTruthy();
   });
 });

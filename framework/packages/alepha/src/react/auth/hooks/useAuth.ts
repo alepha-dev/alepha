@@ -57,6 +57,19 @@ export const useAuth = <T extends object = any>() => {
       await alepha.inject(ReactAuth).loginMfa(challenge, code);
     },
     /**
+     * Sign in with a passkey, or clear a pending second factor with one by
+     * passing its `challenge`. Resolves `undefined` when the user dismissed
+     * the prompt.
+     */
+    loginPasskey: (
+      options: {
+        challenge?: string;
+        mediation?: CredentialMediationRequirement;
+        signal?: AbortSignal;
+        realm?: string;
+      } = {},
+    ) => alepha.inject(ReactAuth).loginPasskey(options),
+    /**
      * Send an out-of-band code again. Does nothing useful for a factor whose
      * code is generated on the user's own device.
      */

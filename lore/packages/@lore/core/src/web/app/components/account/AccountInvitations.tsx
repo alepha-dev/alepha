@@ -1,18 +1,24 @@
+import { useToast } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { MyOrganizationInvitations } from "@alepha/ui/organizations";
 import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useCallback } from "react";
 
 import type { InvitationController } from "../../../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import { storeHomeOverview } from "../../services/homeOverviewWrite.ts";
+import type { I18n } from "../../services/I18n.ts";
 
 const AccountInvitations = () => {
   const invitationApi = useClient<InvitationController>();
   const projectApi = useClient<ProjectController>();
   const router = useRouter();
   const alepha = useAlepha();
+  const toaster = useToast();
+  const { tr } = useI18n<I18n, "en">();
 
   const load = useCallback(async () => {
     const invitations = await invitationApi.listMyInvitations();
@@ -32,11 +38,19 @@ const AccountInvitations = () => {
       const result = await invitationApi.acceptInvitation({
         params: { id: invitationId },
       });
-      const overview = await projectApi.getHomeOverview();
-      alepha.store.set(userProjectsAtom, overview);
+      storeHomeOverview(alepha, await projectApi.getHomeOverview());
+      if (!result.pinned) {
+        // Joined all the same; the dock just had no slot left (#E139).
+        toaster.info(tr("dock.full"), {
+          action: {
+            label: tr("dock.full.manage"),
+            onClick: () => void router.push("accountProjects"),
+          },
+        });
+      }
       return result.projectId;
     },
-    [alepha, invitationApi, projectApi],
+    [alepha, invitationApi, projectApi, router, toaster, tr],
   );
   const decline = useCallback(
     async (invitationId: string) => {

@@ -32,8 +32,14 @@ const usernameFieldRequirement = (description: string) =>
  *
  * - `"disabled"`: the method is not offered at all.
  * - `"optional"`: users may enroll, and are challenged once they have.
- * - `"required"`: every user must clear this factor, and is pushed through
- *   enrollment after their first successful password login if they have not.
+ * - `"required"`: the same, and the app's UI should push an unenrolled user
+ *   through enrollment. It is not enforced at login: an account with nothing
+ *   enrolled has no factor to be challenged on, and signs in on its password
+ *   alone. `settings.mfa` in the realm config says the policy and
+ *   `GET /users/me/mfa` (`totp.enabled`) whether this user meets it.
+ *
+ * A passkey is not an enrollment in any of these: it may clear a step TOTP
+ * or an email code raised, and raises none by itself.
  */
 export type SecondFactorRequirement = "disabled" | "optional" | "required";
 
@@ -191,8 +197,9 @@ export const realmAuthSettingsAtom = $atom({
     mfa: z.object({
       totp: secondFactorRequirement(
         "Authenticator-app codes (TOTP, RFC 6238). 'optional' lets a user " +
-          "enroll from their account page; 'required' forces enrollment " +
-          "after the first successful password login.",
+          "enroll from their account page; 'required' asks the app's UI to " +
+          "send an unenrolled user to enrollment, and is not enforced at " +
+          "login. A passkey is not an enrollment.",
       ),
       emailCode: secondFactorRequirement(
         "One-time codes sent by email. Needs `features.notifications` and a " +
@@ -201,6 +208,49 @@ export const realmAuthSettingsAtom = $atom({
           "both factors at once.",
       ),
     }),
+    passkeys: z
+      .enum(["disabled", "optional"])
+      .describe(
+        "Passkeys (WebAuthn). 'optional' lets a user add one from their " +
+          "account page, sign in with it and nothing else, and clear a " +
+          "second-factor step with it. 'disabled' offers none: passkeys " +
+          "added before stay listed and removable, and sign in nowhere.",
+      )
+      .default("disabled"),
+    passkeyRelyingParty: z
+      .object({
+        id: z
+          .text({ maxLength: 253 })
+          .describe(
+            "The relying party id: a hostname, no scheme and no port. A " +
+              "passkey is bound to it for life, so set it once to the " +
+              "registrable domain an app spanning several subdomains shares " +
+              "(`example.com` for `app.example.com` and `id.example.com`). " +
+              "Defaults to the request's hostname.",
+          )
+          .optional(),
+        name: z
+          .text()
+          .describe(
+            "The name the device shows beside the passkey. Defaults to " +
+              "`displayName`, else the realm's name.",
+          )
+          .optional(),
+        origins: z
+          .array(z.text({ maxLength: 2048 }))
+          .describe(
+            "Every origin a ceremony may come from, compared whole " +
+              "(`https://app.example.com`). Defaults to the request's host, " +
+              "compared by host whatever the scheme, since a proxy that ends " +
+              "TLS without forwarding it makes the request look like http.",
+          )
+          .optional(),
+      })
+      .describe(
+        "Where passkeys are bound and accepted from. Leave it out for an " +
+          "app served on one hostname.",
+      )
+      .optional(),
     refreshToken: z.object({
       expirationIdle: z
         .integer()
@@ -255,6 +305,9 @@ export const realmAuthSettingsAtom = $atom({
       totp: "disabled" as SecondFactorRequirement,
       emailCode: "disabled" as SecondFactorRequirement,
     },
+    // Off by default, so an upgrade changes nothing: the saas preset
+    // scaffolds "optional".
+    passkeys: "disabled" as "disabled" | "optional",
     refreshToken: {
       // expirationIdle: undefined — opt-in
     },

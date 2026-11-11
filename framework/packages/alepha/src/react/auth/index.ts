@@ -5,6 +5,7 @@ import { $auth, AlephaServerAuth } from "alepha/server/auth";
 import { AlephaServerLinks } from "alepha/server/links";
 
 import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
+import { PasskeyClient } from "./services/PasskeyClient.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
 import { ReactAuthQueryReset } from "./services/ReactAuthQueryReset.ts";
 import { ReactAuthTransport } from "./services/ReactAuthTransport.ts";
@@ -44,6 +45,7 @@ export const AlephaReactAuth = $module({
     AlephaServerAuth,
     ReactAuthProvider,
     ReactAuthTransport,
+    PasskeyClient,
     ReactAuth,
     ReactAuthQueryReset,
   ],

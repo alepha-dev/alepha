@@ -40,6 +40,7 @@ const Mfa = () => (
         challenge={{
           challenge: "showcase-challenge",
           methods: [v.method],
+          passkey: false,
           sentTo: v.method === "emailCode" ? v.sentTo : undefined,
         }}
         onVerified={() => {}}

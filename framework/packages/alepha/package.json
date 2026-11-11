@@ -525,6 +525,11 @@
       "import": "./src/testing/vitest/index.ts",
       "default": "./src/testing/vitest/index.ts"
     },
+    "./testing/webauthn": {
+      "types": "./src/testing/webauthn/index.ts",
+      "import": "./src/testing/webauthn/index.ts",
+      "default": "./src/testing/webauthn/index.ts"
+    },
     "./topic": {
       "types": "./src/topic/core/index.ts",
       "react-native": "./src/topic/core/index.browser.ts",
@@ -1045,6 +1050,11 @@
         "types": "./dist/testing/vitest/index.d.ts",
         "import": "./dist/testing/vitest/index.js",
         "default": "./dist/testing/vitest/index.js"
+      },
+      "./testing/webauthn": {
+        "types": "./dist/testing/webauthn/index.d.ts",
+        "import": "./dist/testing/webauthn/index.js",
+        "default": "./dist/testing/webauthn/index.js"
       },
       "./topic": {
         "types": "./dist/topic/core/index.d.ts",
