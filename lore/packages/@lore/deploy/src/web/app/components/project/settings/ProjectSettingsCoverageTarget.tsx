@@ -1,5 +1,6 @@
-import { Button, Card, CardContent } from "@alepha/ui";
+import { Button, CardContent } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { SettingsSection } from "@alepha/ui/settings";
 import type { ProjectController } from "@lore/core/api";
 import {
   currentProjectAtom,
@@ -38,21 +39,29 @@ const ProjectSettingsCoverageTarget = () => {
     },
   });
 
+  // The card edge of `SettingsSection` and the grid of `SettingsRow`, so it
+  // matches the other cards of the page and its Save sits on the right,
+  // vertically centred, like the ignore rules' Manage button (#Q3373).
   return (
-    <Card>
-      <CardContent>
-        <form {...form.props} className="flex items-end gap-3">
+    <SettingsSection>
+      <CardContent className="px-4 py-3">
+        <form
+          {...form.props}
+          className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6"
+        >
           <Control
             input={form.input.coverageTarget}
             label={tr("project.settings.coverageTarget")}
             description={tr("project.settings.coverageTarget.hint")}
           />
-          <Button type="submit" variant="outlined">
-            {tr("project.settings.coverageTarget.save")}
-          </Button>
+          <div className="flex justify-start sm:justify-end">
+            <Button type="submit" variant="outlined">
+              {tr("project.settings.coverageTarget.save")}
+            </Button>
+          </div>
         </form>
       </CardContent>
-    </Card>
+    </SettingsSection>
   );
 };
 

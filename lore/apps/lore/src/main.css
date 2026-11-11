@@ -99,6 +99,198 @@
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+ * The animated Lore sprite (`LoreLogoAnimated`): wings beat from their
+ * root, the orb breathes, bubbles rise, the star twinkles. Still under
+ * reduced motion.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.lore-logo-body {
+  animation: floating 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* Following the pointer (`follow`): the sprite drifts and tilts toward it,
+ * a few units at most, and eases there slowly so it reads as curiosity
+ * rather than tracking. `--lore-x` / `--lore-y` / `--lore-near` are written
+ * by the component. */
+.lore-logo-lean {
+  transform-box: view-box;
+  transform-origin: 50% 56%;
+  transform: translate(
+      calc(var(--lore-x, 0) * 7px),
+      calc(var(--lore-y, 0) * 5px)
+    )
+    rotate(calc(var(--lore-x, 0) * 6deg));
+  transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lore-logo-glow {
+  opacity: calc(var(--lore-near, 0) * 0.9);
+  transition: opacity 0.9s ease-out;
+}
+
+.lore-logo-wing {
+  transform-box: fill-box;
+  animation: 3.2s ease-in-out infinite;
+}
+
+/* Each wing turns about its root, beside the orb. */
+.lore-logo-wing-left {
+  transform-origin: 100% 100%;
+  animation-name: lore-logo-flap-left;
+}
+
+.lore-logo-wing-right {
+  transform-origin: 0% 100%;
+  animation-name: lore-logo-flap-right;
+}
+
+.lore-logo-wing-low-left {
+  transform-origin: 100% 0%;
+  animation-name: lore-logo-flap-right;
+}
+
+.lore-logo-wing-low-right {
+  transform-origin: 0% 0%;
+  animation-name: lore-logo-flap-left;
+}
+
+.lore-logo-orb,
+.lore-logo-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lore-logo-breathe 3.2s ease-in-out infinite;
+}
+
+.lore-logo-bubble {
+  transform-box: fill-box;
+  animation: lore-logo-rise 4.2s ease-in infinite;
+}
+
+.lore-logo-bubble-2 {
+  animation-delay: 1.4s;
+}
+
+.lore-logo-bubble-3 {
+  animation-delay: 2.1s;
+}
+
+.lore-logo-bubble-4 {
+  animation-delay: 3.1s;
+}
+
+.lore-logo-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lore-logo-twinkle 2.4s ease-in-out infinite;
+}
+
+@keyframes lore-logo-flap-left {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-9deg);
+  }
+}
+
+@keyframes lore-logo-flap-right {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(9deg);
+  }
+}
+
+@keyframes lore-logo-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes lore-logo-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-10px, -34px);
+    opacity: 0;
+  }
+}
+
+@keyframes lore-logo-twinkle {
+  0%,
+  100% {
+    transform: scale(0.6) rotate(0deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.15) rotate(45deg);
+    opacity: 1;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * The welcome page's pillar drawings (`HomeWelcomePillarArt`): dashes drift
+ * along their path and stars twinkle, slow enough to read as ambient.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.lore-art-drift {
+  stroke-dasharray: 4 5;
+  animation: lore-art-drift 14s linear infinite;
+}
+
+.lore-art-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lore-art-twinkle 7s ease-in-out infinite;
+}
+
+.lore-art-later {
+  animation-delay: 3.5s;
+}
+
+@keyframes lore-art-drift {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+@keyframes lore-art-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lore-art * {
+    animation: none !important;
+  }
+
+  .lore-logo * {
+    animation: none !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
  * Discreet scrollbars — thin, neutral, fade-on-hover.
  * Applied globally so every scroll container picks them up.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -210,10 +402,9 @@ body::before {
  */
 
 :root {
-  /* Geist is what `public/fonts/default.css` has always carried. It was
-   * registered on every page and applied to nothing. */
+  /* Inter, self-hosted by `public/fonts/default.css` (`yarn fonts`). */
   --font-sans:
-    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   /* The default mono, overridden by the two themes that want a warmer one.
    * ⚠️ "JetBrains Mono", not the "JetBrains Mono Variable" that
@@ -355,7 +546,12 @@ body::before {
 .theme-lavandula {
   /* Text stays the neutral Geist: this theme's voice is the heading, and
    * setting the body in a display face as well would make it unreadable.
-   * The mono is the default JetBrains Mono, inherited rather than restated. */
+   * Stated here since the default moved to Inter: inherited, it named a face
+   * `lavandula.css` does not carry. The mono is the default JetBrains Mono,
+   * inherited rather than restated. */
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --font-heading: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --radius: 0.25rem;
   --heading-tracking: 0.08em;

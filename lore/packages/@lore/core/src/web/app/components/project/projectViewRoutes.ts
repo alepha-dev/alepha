@@ -66,7 +66,7 @@ export const ROUTES_APP = new Set([
  * (`DeployRouter.bay`). They read "Estates" in the crumb and climb back to
  * the project's estates list, where every estate of the project is.
  */
-const ROUTES_ESTATE = [
+export const ROUTES_ESTATE = [
   "bay",
   "bayOverview",
   "bayApps",

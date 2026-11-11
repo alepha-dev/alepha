@@ -200,7 +200,9 @@ test.describe("Project estates", () => {
           .getByTestId("home-estate-row")
           .filter({ hasText: "ovh-team" }),
       ).toBeVisible({ timeout: 15_000 });
-      await expect(reader.page.getByTestId("home-estate-lend")).toHaveCount(0);
+      await expect(
+        reader.page.getByText("Lend to this project", { exact: true }),
+      ).toHaveCount(0);
       await openSettings(reader.page, first.slug, "ovh-team");
       await expect(
         reader.page.getByTestId("bay-settings-readonly"),

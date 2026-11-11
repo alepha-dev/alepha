@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui";
 import { DataTable } from "@alepha/ui/table";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import { currentProjectAtom, type I18n, usePageCrumb } from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
@@ -64,6 +64,10 @@ const AppAnalyticsDimension = () => {
   const dimension = routerState.params?.analyticsDimension as
     | Dimension
     | undefined;
+  // The drill-down ends its trail with the dimension (#Q3408). Its "Back to
+  // overview" button stays: it carries the filters back in the query, which
+  // neither the Analytics tab nor a crumb does.
+  usePageCrumb("appAnalyticsDimension", dimension && tr(TITLE[dimension]));
 
   if (!project || !instance?.sigil || !dimension) {
     return null;

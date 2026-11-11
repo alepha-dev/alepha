@@ -88,7 +88,9 @@ const ProjectRail = () => {
         return (
           <HoverCard key={it.id}>
             <HoverCardTrigger
-              delay={150}
+              // One second (#Q3413): at 150 ms a card flashed open for every
+              // icon the pointer crossed on its way down the rail.
+              delay={1000}
               closeDelay={100}
               render={
                 <Link

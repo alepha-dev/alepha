@@ -7,6 +7,7 @@ import { RefreshCw } from "lucide-react";
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunEvidence from "./AutomationRunEvidence.tsx";
 
@@ -32,6 +33,11 @@ const AutomationRunPage = (props: AutomationRunPageProps) => {
     [project?.id, props.runId],
   );
   const run = read.data;
+  // The trail ends with this run (#Q3408), named as the page's title is.
+  usePageCrumb(
+    "projectAutomationRun",
+    run ? tr(`automation.run.${run.status}`) : undefined,
+  );
   const snapshot = run?.snapshot;
   return (
     <AutomationPage

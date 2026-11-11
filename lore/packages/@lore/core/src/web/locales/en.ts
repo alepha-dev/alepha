@@ -61,7 +61,6 @@ export default {
     "Try another name or clear the state filter.",
   "automation.gallery.description":
     "Start from a preset. It is created disabled, so you can test it before turning it on.",
-  "automation.gallery.back": "Back to automations",
   "automation.enable": "Enable",
   "automation.disable": "Disable",
   "automation.delete": "Delete",
@@ -189,8 +188,27 @@ export default {
 
   "home.nav": "Home",
   "home.title": "Welcome",
-  "home.subtitle":
-    "Plan your work as quests, invite the people working on them, and keep the decisions and the notes that go with it in one place.",
+  "home.welcome.title": "Time to make great things",
+  "home.welcome.subtitle":
+    "Plan the work, remember the decisions, ship the apps. One place for the people who build it.",
+  "home.pillar.plan.title": "Plan",
+  "home.pillar.plan.description":
+    "The work ahead, grouped into epics and releases, on a board and a roadmap.",
+  "home.pillar.remember.title": "Remember",
+  "home.pillar.remember.description":
+    "A wiki of linked notes that keeps the decisions and the reasons behind them.",
+  "home.pillar.ship.title": "Ship",
+  "home.pillar.ship.description":
+    "Deploy your apps, then follow their errors, vitals and uptime.",
+  "home.feature.agents.title": "Agents",
+  "home.feature.agents.description":
+    "Your AI agents work in Lore over MCP and the CLI, with your permissions.",
+  "home.feature.automations.title": "Automations",
+  "home.feature.automations.description":
+    "Rules that act when something happens, or on a schedule.",
+  "home.feature.selfHost.title": "Self-hosting",
+  "home.feature.selfHost.description":
+    "Open source, and runs anywhere from one Docker image.",
   "home.create-project": "New Project",
   "home.create-project.max": "Limit reached ($1)",
   "project.create.limit.title": "You have reached the project limit",
@@ -462,7 +480,7 @@ export default {
   "board.filter.noRelease": "None",
   "board.filter.epic": "Epic",
   "board.filter.allEpics": "All epics",
-  "board.filter.noEpic": "No epic",
+  "board.filter.noEpic": "None",
   "board.table.epic": "Epic",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by another quest",
@@ -857,6 +875,7 @@ export default {
     "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
 
   "project.settings.danger.title": "Danger Zone",
+  "project.settings.delete.blocked.title": "This project cannot be deleted yet",
   "project.settings.actions.delete": "Delete this project",
   "project.settings.actions.delete.helper":
     "Sometimes retreat is the only option. All quests and progress will be lost forever.",
@@ -1859,10 +1878,14 @@ export default {
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
   "account.projects.empty": "You are not part of any project yet.",
-  "account.projects.quota": "$1 of $2 projects owned",
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.see-all": "All projects",
+  "account.projects.filter.role": "Role",
+  "account.projects.filter.allRoles": "All roles",
+  "account.projects.filter.archived": "Archived",
+  "account.projects.filter.active": "Not archived",
+  "account.projects.filter.allStates": "Archived or not",
   "account.projects.archived": "Archived",
 
   "area.detail.rename": "Rename",
@@ -1886,7 +1909,6 @@ export default {
   "area.detail.stats.first": "First quest",
   "area.detail.stats.last": "Last activity",
   "area.detail.stats.never": "Never",
-  "area.detail.back": "Back to areas",
   "area.detail.quests.title": "Recent quests",
 
   "error.title": "Oh no! Something went wrong.",
@@ -2363,15 +2385,20 @@ export default {
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
 
+  "estates.table.estate": "Estate",
+  "estates.table.origin": "Origin",
+  "estates.table.status": "Status",
+  "estates.table.deploys": "Deploys",
+  "estates.table.lastSeen": "Last seen",
+  "estates.origin.home": "This project",
+  "estates.origin.all": "All origins",
+  "estates.origin.lent": "Lent",
   "estates.project.title": "Estates",
-  "estates.project.description":
-    "Where this project can deploy. An estate is a machine or an account somebody owns and has lent to this project.",
   "estates.project.empty":
-    "No estate lent yet. Until one is, this project has nowhere to deploy.",
+    "No estate yet. Until one is added, this project has nowhere to deploy.",
   "estates.project.add": "Add an estate",
   "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
-  "estates.project.home": "belongs to this project",
   "estates.project.noHome": "no project",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
@@ -2546,21 +2573,13 @@ export default {
   "bay.move.toast": "Moved to $1",
   "bay.move.serverElsewhere":
     "The server it runs on stays in the cloud account of whoever provisioned it, who is not a member of the new project.",
-  "estates.home.title": "Estates of this project",
-  "estates.home.description": "Its members manage these, each by their rank.",
-  "estates.home.empty": "This project is the home of no estate.",
-  "estates.home.lentHere": "Lent to this project",
   "estates.home.notLentHere": "Not lent to this project",
   "estates.home.lentTo": "lent to $1 other project(s)",
   "estates.home.lend": "Lend to this project",
-  "estates.borrowed.title": "Estates lent to this project",
-  "estates.borrowed.description":
-    "Other projects' estates this one may deploy onto. Their home project manages them.",
   "estates.blocker.delete":
-    "This project is the home of $1: move or delete them first, other projects may deploy onto them.",
+    "This project is the home of $1. Move these estates to another project or delete them first: other projects may deploy onto them.",
   "estates.blocker.apps":
     "Apps stays on while this project is the home of $1: move or delete them first.",
-  "bay.back": "All estates",
   "bay.settings.loans.col.project": "Project",
   "bay.settings.loans.col.lentAt": "Lent",
   "estates.online": "online",
@@ -2569,7 +2588,6 @@ export default {
   "estates.offline": "offline",
   "estates.deploys.allowed": "deploys allowed",
   "estates.deploys.statsOnly": "stats only",
-  "estates.lastSeen": "last seen $1",
   "estates.neverSeen": "never connected",
   "estates.add.title": "Add an estate to $1",
   "estates.add.description":

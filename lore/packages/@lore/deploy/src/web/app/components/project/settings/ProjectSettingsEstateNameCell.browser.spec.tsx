@@ -8,7 +8,7 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { LentEstateResource } from "../../../../../api/controllers/ProjectEstateController.ts";
-import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
+import ProjectSettingsEstateNameCell from "./ProjectSettingsEstateNameCell.tsx";
 
 /**
  * Whether the estate's name is a door (feedback #P2126).
@@ -43,7 +43,7 @@ const anEstate = (over: Partial<LentEstateResource> = {}) =>
     ...over,
   }) as LentEstateResource;
 
-describe("ProjectSettingsEstateRow", () => {
+describe("ProjectSettingsEstateNameCell", () => {
   let alepha: Alepha | undefined;
 
   afterEach(async () => {
@@ -51,7 +51,7 @@ describe("ProjectSettingsEstateRow", () => {
     alepha = undefined;
   });
 
-  const mount = async (estate: LentEstateResource, canDetach = true) => {
+  const mount = async (estate: LentEstateResource) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaReact)
@@ -64,10 +64,14 @@ describe("ProjectSettingsEstateRow", () => {
 
     return render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectSettingsEstateRow
-          estate={estate}
-          canDetach={canDetach}
-          onDetach={() => {}}
+        <ProjectSettingsEstateNameCell
+          row={{
+            id: estate.id,
+            slug: estate.slug,
+            origin: "lent",
+            loan: estate,
+          }}
+          onOpen={() => {}}
         />
       </AlephaContext.Provider>,
     );
@@ -87,23 +91,5 @@ describe("ProjectSettingsEstateRow", () => {
 
     expect(screen.queryByRole("link", { name: "ovh-1" })).toBeNull();
     expect(container.textContent).toContain("ovh-1");
-  });
-
-  it("keeps Detach a separate control, never the row's own click target", async () => {
-    // A row-wide link would swallow it, and detaching has its own
-    // confirmation because it is a different act.
-    await mount(anEstate());
-
-    const detach = screen.getByRole("button", { name: "Detach" });
-    expect(detach.closest("a")).toBeNull();
-    // And the name link does not wrap the row either.
-    const link = screen.getByRole("link", { name: "ovh-1" });
-    expect(link.textContent).toBe("ovh-1");
-  });
-
-  it("draws no Detach for a reader who may not withdraw the loan", async () => {
-    await mount(anEstate({ can: [] }), false);
-
-    expect(screen.queryByRole("button", { name: "Detach" })).toBeNull();
   });
 });

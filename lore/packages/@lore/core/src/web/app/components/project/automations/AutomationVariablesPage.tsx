@@ -9,6 +9,7 @@ import type { AutomationVariableResource } from "../../../../../api/schemas/auto
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
+import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationVariableEditor from "./AutomationVariableEditor.tsx";
 
@@ -19,6 +20,8 @@ const AutomationVariablesPage = (props: AutomationVariablesPageProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
   const { tr } = useI18n<I18n, "en">();
+  // The trail ends with this page (#Q3408).
+  usePageCrumb("projectAutomationVariables", tr("automation.variables.title"));
   const kindLabels = {
     text: tr("automation.variables.kind.text"),
     number: tr("automation.variables.kind.number"),

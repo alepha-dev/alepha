@@ -106,6 +106,74 @@ describe("ViteDevServerProvider — retry loop", () => {
 });
 
 /**
+ * A loader whose partial reload fails the way a module graph that went stale
+ * mid-load does, and whose full reload succeeds.
+ */
+class StaleGraphViteDevServerProvider extends ViteDevServerProvider {
+  public readonly loads: Array<"partial" | "full"> = [];
+  public overlays = 0;
+  public brokenOnFullReload = false;
+
+  public async testReload(files: string[]): Promise<void> {
+    for (const file of files) this.changedFiles.add(file);
+    await this.performReload();
+  }
+
+  public get loaded(): boolean {
+    return this.alepha !== null && this.alepha !== undefined;
+  }
+
+  protected override async loadAlepha(
+    _isInitialLoad = false,
+    _filesToInvalidate?: Set<string>,
+  ): Promise<Alepha> {
+    const kind = this.hasError ? "full" : "partial";
+    this.loads.push(kind);
+    if (kind === "partial" || this.brokenOnFullReload) {
+      this.hasError = true;
+      throw new AlephaError("TOO_LATE_SUBSTITUTION");
+    }
+    this.hasError = false;
+    this.alepha = { start: async () => {} } as unknown as Alepha;
+    return this.alepha;
+  }
+
+  protected override sendBrowserReload(): void {}
+  protected override sendErrorOverlay(): void {
+    this.overlays += 1;
+  }
+  protected override logError(): void {}
+}
+
+describe("ViteDevServerProvider: a partial reload that fails", () => {
+  it("retries once with the whole graph before reporting anything", async ({
+    expect,
+  }) => {
+    // A save landing while a reload is loading lets Vite evaluate a module
+    // file twice, so one `$module` exists as two classes and is registered
+    // twice. Only a partial reload can see that; a full one never does.
+    const provider = Alepha.create().inject(StaleGraphViteDevServerProvider);
+
+    await provider.testReload(["/src/Home.tsx"]);
+
+    expect(provider.loads).toEqual(["partial", "full"]);
+    expect(provider.overlays).toBe(0);
+    expect(provider.loaded).toBe(true);
+  });
+
+  it("still reports an error the full reload repeats", async ({ expect }) => {
+    const provider = Alepha.create().inject(StaleGraphViteDevServerProvider);
+    provider.brokenOnFullReload = true;
+
+    await provider.testReload(["/src/Home.tsx"]);
+
+    expect(provider.loads).toEqual(["partial", "full"]);
+    expect(provider.overlays).toBe(1);
+    expect(provider.loaded).toBe(false);
+  });
+});
+
+/**
  * Stands in for Vite: records the config the dev server is created from and
  * stops there, since the config is all this spec reads.
  */

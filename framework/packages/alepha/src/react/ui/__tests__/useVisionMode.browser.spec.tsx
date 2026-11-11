@@ -1,6 +1,7 @@
 import { act, render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
+import type { Head } from "alepha/react/head";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -170,7 +171,9 @@ describe("useVisionMode", () => {
       const alepha = Alepha.create().with(AlephaReactUi);
       const persistence = alepha.inject(UiPersistence);
       const options = persistence.head.options;
-      const head = typeof options === "function" ? options() : options;
+      const head = (
+        typeof options === "function" ? options() : options
+      ) as Head;
       const script = head.script?.[0];
       const content = typeof script === "string" ? script : script?.content;
       // oxlint-disable-next-line typescript/no-implied-eval -- runs the inline boot script as the browser would

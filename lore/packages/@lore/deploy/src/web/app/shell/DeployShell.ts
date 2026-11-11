@@ -1,5 +1,6 @@
 import {
   ROUTES_APP,
+  ROUTES_ESTATE,
   lazyPart,
   AccountDeletionRegistry,
   ProjectBlockerRegistry,
@@ -17,6 +18,7 @@ import { $inject } from "alepha";
 import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
 
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
+import { currentEstateAtom } from "../atoms/currentEstateAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
@@ -186,6 +188,27 @@ export class DeployShell {
                 projectSlug: ctx.projectSlug,
                 app: instance.app,
                 env: instance.env,
+              }),
+            }
+          : undefined;
+      },
+    });
+
+    // An estate's console ends its trail with the estate (#Q3408): "Project >
+    // Estates > ovh", "Estates" climbing back to the project's estates list.
+    // The console's tabs stay on its plate, not on this bar. It replaced an
+    // "All estates" link in the plate, which said what the crumb already did.
+    this.shell.registerCrumb({
+      order: 15,
+      reads: [currentEstateAtom],
+      crumb: (ctx) => {
+        const estate = ctx.get(currentEstateAtom);
+        return ROUTES_ESTATE.includes(ctx.routeName) && estate
+          ? {
+              label: estate.slug,
+              href: ctx.path("bayOverview", {
+                projectSlug: ctx.projectSlug,
+                estateSlug: estate.slug,
               }),
             }
           : undefined;

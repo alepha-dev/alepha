@@ -1,4 +1,5 @@
-import { Button, Card, CardContent } from "@alepha/ui";
+import { Button } from "@alepha/ui";
+import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import {
   currentProjectAtom,
   ProjectShellRegistry,
@@ -83,24 +84,19 @@ const ProjectSettingsAppsPage = () => {
               server-side, so a member could open the dialog from the inbox
               only to be refused. Keep this owner-facing; do not re-expose it
               on the inbox. */}
-          <Card className="py-4 shadow">
-            <CardContent className="flex flex-col gap-3 px-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">
-                  {tr("blights.rules.title")}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {tr("blights.rules.settingsDescription")}
-                </span>
-              </div>
-              <div className="flex justify-start sm:justify-end">
-                <Button variant="outlined" onClick={() => setRulesOpen(true)}>
-                  <Ban className="size-4" />
-                  {tr("blights.rules.manage")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* A `SettingsSection` like the capability rows above, so the
+              three cards of this page share one edge (#Q3373). */}
+          <SettingsSection>
+            <SettingsRow
+              label={tr("blights.rules.title")}
+              description={tr("blights.rules.settingsDescription")}
+            >
+              <Button variant="outlined" onClick={() => setRulesOpen(true)}>
+                <Ban className="size-4" />
+                {tr("blights.rules.manage")}
+              </Button>
+            </SettingsRow>
+          </SettingsSection>
 
           <ProjectBlightRulesDialog
             open={rulesOpen}

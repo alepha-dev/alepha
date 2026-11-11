@@ -16,6 +16,7 @@ import type { AutomationResource } from "../../../../../api/schemas/automationRe
 import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationTemplateTokens.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRuleEditor from "./AutomationRuleEditor.tsx";
 import AutomationRuleSummary from "./AutomationRuleSummary.tsx";
@@ -68,6 +69,8 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
     [project?.id],
   );
   const rule = saved ?? read.data;
+  // The trail ends with the automation's title (#Q3408).
+  usePageCrumb("projectAutomationDetail", rule?.title);
   const toggle = useAction<[enabled: boolean], boolean>(
     {
       handler: async (_context, enabled) => {

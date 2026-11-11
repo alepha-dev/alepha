@@ -202,3 +202,46 @@ export interface HeadMeta {
    */
   media?: string;
 }
+
+/**
+ * A head computed after every page's own, from the page that was matched.
+ *
+ * A page's `head` sees its own props and the head above it, and the deepest
+ * page wins. That is right for a page that knows its title, and wrong for a
+ * title that is a rule of the whole app: a breadcrumb trail drawn by a layout
+ * from shared state, which no single page can see. `afterPages` runs once all
+ * page heads have merged, on the server and in the browser alike, receives the
+ * merged head and the matched layers (deepest last), and what it returns is
+ * merged over them. Return `undefined` to leave the head as the pages left it.
+ *
+ * ```ts
+ * class Titles {
+ *   head = $head({
+ *     afterPages: ({ layers }) => {
+ *       const page = layers[layers.length - 1];
+ *       return page?.name === "invoice"
+ *         ? { title: `Invoices › ${page.params?.id}` }
+ *         : undefined;
+ *     },
+ *   });
+ * }
+ * ```
+ */
+export interface HeadAfterPages {
+  afterPages: (context: HeadAfterPagesContext) => Head | undefined;
+}
+
+export interface HeadAfterPagesContext {
+  /**
+   * The head as the global entries and every page left it.
+   */
+  head: Head;
+  /**
+   * The matched pages, outermost first: each one's `name` and `params`.
+   */
+  layers: ReadonlyArray<{
+    name?: string;
+    params?: Record<string, any>;
+    error?: Error;
+  }>;
+}

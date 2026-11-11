@@ -126,6 +126,7 @@ export {
 } from "./app/components/project/capabilityNav.ts";
 export {
   ROUTES_APP,
+  ROUTES_ESTATE,
   ROUTES_FULL_WIDTH,
   ROUTES_WITH_QUEST_LOG,
   SECTION_HREF_ROUTES,
@@ -212,6 +213,12 @@ export {
   type ProjectUser,
   useProjectUsers,
 } from "./app/components/shared/useProjectUsers.ts";
+export { usePageCrumb } from "./app/components/shared/usePageCrumb.ts";
+export { pageCrumbAtom } from "./app/atoms/pageCrumbAtom.ts";
+export {
+  ProjectTrail,
+  type ProjectTrailCrumb,
+} from "./app/services/ProjectTrail.ts";
 export { useRank } from "./app/components/shared/useRank.ts";
 export {
   type AgentPromptItemSubject,

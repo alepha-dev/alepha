@@ -10,8 +10,16 @@ import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Check, CircleDot, Eye, Trash2, UserCheck, UserX } from "lucide-react";
-import { useCallback } from "react";
+import {
+  Check,
+  CircleDot,
+  Eye,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  UserX,
+} from "lucide-react";
+import { useCallback, useState } from "react";
 
 import { useDialog } from "../core/useDialog.tsx";
 import { UserAvatar } from "../core/UserAvatar.tsx";
@@ -22,6 +30,7 @@ import type {
   DataTableFilterValues,
 } from "../table/dataTableTypes.ts";
 import { AdminPage } from "./AdminPage.tsx";
+import { AdminUsersCreateDialog } from "./AdminUsersCreateDialog.tsx";
 import { AdminUsersRolesPicker } from "./AdminUsersRolesPicker.tsx";
 import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
 
@@ -77,6 +86,10 @@ export const AdminUsers = (props: AdminUsersProps) => {
   const router = useRouter<any>();
   const { l, tr } = useI18n();
   const dialog = useDialog();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  // Resolved against /api/_links: absent without `admin:user:create`.
+  const canCreate = client.createUser.can();
 
   // Role metadata is a read-only fetch via useQuery: runs on mount, re-runs
   // when realm changes, aborts on unmount via the passed signal.
@@ -333,6 +346,19 @@ export const AdminUsers = (props: AdminUsersProps) => {
         className="min-h-0 flex-1"
         persistenceKey="admin.users"
         fetch={fetcher}
+        refreshSignal={refreshSignal}
+        actions={
+          canCreate
+            ? [
+                {
+                  icon: UserPlus,
+                  label: tr("admin.users.create", { default: "Create user" }),
+                  primary: true,
+                  onClick: () => setCreateOpen(true),
+                },
+              ]
+            : undefined
+        }
         filters={{ fields: filterFields }}
         bulkActions={[
           {
@@ -510,6 +536,19 @@ export const AdminUsers = (props: AdminUsersProps) => {
             : []),
         ]}
       />
+      {canCreate && (
+        <AdminUsersCreateDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          userRealmName={props.userRealmName}
+          onCreated={() => {
+            toast.success(
+              tr("admin.users.created", { default: "User created" }),
+            );
+            setRefreshSignal((n) => n + 1);
+          }}
+        />
+      )}
     </AdminPage>
   );
 };

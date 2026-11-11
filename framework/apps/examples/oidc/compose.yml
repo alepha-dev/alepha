@@ -1,0 +1,26 @@
+# Keycloak with the `acme` realm imported, for running this example against a
+# real identity provider: `yarn keycloak`, then `yarn dev` in another terminal,
+# then open http://localhost:3316 and sign in as `ada` / `ada`.
+#
+# For back-channel logout Keycloak posts to the app on the host, so the app
+# must listen beyond loopback: `SERVER_HOST=0.0.0.0 yarn dev`.
+#
+# Not part of `framework/compose.yml`, which `yarn v` starts on every run: CI
+# signs in against the mock provider of `alepha/testing/oidc` instead.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # host.docker.internal resolves to IPv6 first, which the JVM cannot
+      # route on Docker Desktop: back-channel logout posts then fail.
+      JAVA_OPTS_APPEND: "-Djava.net.preferIPv4Stack=true"
+    ports:
+      - "8080:8080"
+    # Back-channel logout: Keycloak posts to the app on the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro

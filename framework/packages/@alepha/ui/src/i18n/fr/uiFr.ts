@@ -1113,6 +1113,19 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.colRoles": "Rôles",
   "admin.users.colStatus": "Statut",
   "admin.users.colUsername": "Identifiant",
+  "admin.users.create": "Créer un utilisateur",
+  "admin.users.createCancel": "Annuler",
+  "admin.users.createDescription":
+    "Le compte est créé actif, avec les rôles par défaut.",
+  "admin.users.createEmailRequired": "L'adresse e-mail est requise",
+  "admin.users.createIdentifierRequired":
+    "Saisissez une adresse e-mail ou un identifiant",
+  "admin.users.createPassword": "Mot de passe",
+  "admin.users.createPasswordHint":
+    "Facultatif. Sans mot de passe, l'utilisateur ne peut pas se connecter tant qu'aucun n'est défini.",
+  "admin.users.createTitle": "Créer un utilisateur",
+  "admin.users.createUsernameRequired": "L'identifiant est requis",
+  "admin.users.created": "Utilisateur créé",
   "admin.users.deleteConfirm":
     "Supprimer définitivement $1 ? L'opération est irréversible.",
   "admin.users.deleteTitle": "Supprimer l'utilisateur",

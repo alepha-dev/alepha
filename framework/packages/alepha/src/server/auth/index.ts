@@ -6,6 +6,7 @@ import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/serverAuthOptions.ts";
 export * from "./helpers/appleClientSecret.ts";
 export * from "./helpers/safeRedirectPath.ts";
 export * from "./index.shared.ts";
@@ -18,6 +19,8 @@ export * from "./primitives/$authGithub.ts";
 export * from "./primitives/$authGoogle.ts";
 export * from "./primitives/$authMicrosoft.ts";
 export * from "./providers/ServerAuthProvider.ts";
+export * from "./services/BackchannelLogoutRegistry.ts";
+export * from "./services/SessionStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
