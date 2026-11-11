@@ -10,6 +10,7 @@ import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { coerceObject } from "./helpers/coerceStrings.ts";
+import { ContainerGraph, type PurityEntry } from "./helpers/ContainerGraph.ts";
 import { Primitive } from "./helpers/primitive.ts";
 import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
 import type { Async } from "./interfaces/Async.ts";
@@ -388,6 +389,22 @@ export class Alepha {
   protected substitutions = new Map<Service, { use: Service }>();
 
   /**
+   * Who created whom, and what each class holds: what {@link purity} reads.
+   */
+  protected containerGraph = new ContainerGraph(
+    (service) =>
+      Module.is(service) ||
+      (service as { prototype?: unknown }).prototype instanceof Primitive,
+  );
+
+  /**
+   * Depth of primitive `onInit` calls in progress. A listener a primitive
+   * registers from its own `onInit` is that primitive's business: its side
+   * decides what it means for the class (#Q3395).
+   */
+  protected primitiveInits = 0;
+
+  /**
    * Registry of primitives.
    */
   protected primitiveRegistry = new Map<Service<Primitive>, Array<Primitive>>();
@@ -528,6 +545,13 @@ export class Alepha {
     });
     this.events = this.inject(EventManager);
     this.events.logFn = () => this.log;
+    this.events.registered = () => {
+      if (this.primitiveInits === 0) {
+        this.containerGraph.listened(
+          this.containerGraph.ownerOf(this.pendingInstantiations),
+        );
+      }
+    };
     this.context = this.inject(AlsProvider);
     this.codec = this.inject(CodecManager);
   }
@@ -833,6 +857,7 @@ export class Alepha {
         this.seedCoreServices();
         this.primitiveRegistry = new Map();
         this.pendingInstantiations = [];
+        this.containerGraph.clear();
         this.events.clear();
         delete (target as WithModule)[MODULE];
 
@@ -1086,6 +1111,7 @@ export class Alepha {
     this.seedCoreServices();
     this.primitiveRegistry = new Map();
     this.pendingInstantiations = [];
+    this.containerGraph.clear();
     this.substitutions = new Map();
     this.cacheEnv = new Map();
     this.cacheEnvOwner = new Map();
@@ -1345,6 +1371,13 @@ export class Alepha {
       });
     }
 
+    if (!transient && registry === this.registry) {
+      this.containerGraph.injected(
+        service,
+        this.containerGraph.injectorOf(this.pendingInstantiations),
+      );
+    }
+
     if (!transient) {
       // the requested type is searched in the container
       const match = registry.get(service);
@@ -1402,10 +1435,16 @@ export class Alepha {
       // propagate the current module
       __alephaRef.parent = instance.constructor as Service;
 
-      instance.register(this);
-
-      // restore the previous $get context
-      __alephaRef.parent = parent;
+      // What the module creates is its registration, even when an injection
+      // pulled it in while another class was under construction (#Q3395).
+      this.containerGraph.openFrame(this.pendingInstantiations.length);
+      try {
+        instance.register(this);
+      } finally {
+        this.containerGraph.closeFrame();
+        // restore the previous $get context
+        __alephaRef.parent = parent;
+      }
     }
 
     return instance;
@@ -1901,6 +1940,23 @@ export class Alepha {
   }
 
   /**
+   * Which classes are pure controllers, and why the others are not (#Q3395).
+   *
+   * One entry per class holding a table primitive (`$action`, `$page`,
+   * `$tool`, ...). A class is pure when it holds no `$hook`, no boot
+   * primitive and registers no listener while constructed, when nothing but
+   * registration and other pure classes injects it, and when no class it
+   * alone creates is a boot class. A pure entry carries its late closure: the
+   * classes that exist only because pure classes created them.
+   *
+   * Valid on a loaded container that never started: it reads what
+   * construction recorded, nothing `configure` or `start` does.
+   */
+  public purity(): PurityEntry[] {
+    return this.containerGraph.purity();
+  }
+
+  /**
    * Get all primitives of the specified type.
    */
   public primitives<TPrimitive extends Primitive>(
@@ -1991,9 +2047,18 @@ export class Alepha {
     // container is the only legitimate caller. Naming the shape would need a
     // double cast (protected vs public are not assignable), which says less
     // than this comment does.
-    (value as any).onInit();
+    this.primitiveInits++;
+    try {
+      (value as any).onInit();
+    } finally {
+      this.primitiveInits--;
+    }
 
     const kind = value.constructor as Service;
+    this.containerGraph.primitive(
+      this.containerGraph.ownerOf(this.pendingInstantiations),
+      kind as Service<Primitive>,
+    );
     const existing = this.primitiveRegistry.get(kind);
     if (existing) {
       existing.push(value);

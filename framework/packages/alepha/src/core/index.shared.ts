@@ -20,6 +20,7 @@ export * from "./helpers/coerceStrings.ts";
 export * from "./helpers/createPagination.ts";
 export * from "./helpers/FileLike.ts";
 export * from "./helpers/jsonSchemaToZod.ts";
+export * from "./helpers/ContainerGraph.ts";
 export * from "./helpers/primitive.ts";
 export * from "./interfaces/AlephaMeta.ts";
 export * from "./interfaces/Async.ts";

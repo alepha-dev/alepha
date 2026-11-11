@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   ActionToolSchema,
@@ -315,6 +316,11 @@ export interface AiTurnResult {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by the AI provider at start.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly provider = $inject(AiProvider);
   protected readonly toolSchema = $inject(AiToolSchema);
   protected readonly actionToolSchema = $inject(ActionToolSchema);

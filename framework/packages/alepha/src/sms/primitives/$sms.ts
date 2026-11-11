@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   AlephaError,
   createPrimitive,
@@ -57,6 +58,11 @@ export interface SmsPrimitiveOptions {
  * ```
  */
 export class SmsPrimitive extends Primitive<SmsPrimitiveOptions> {
+  /**
+   * `inert` for the pure controller rule: does nothing until it is called.
+   */
+  public static override readonly side: PrimitiveSide = "inert";
+
   protected readonly provider = this.$provider();
 
   public get name() {

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, AlephaError, createPrimitive, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { KIND } from "alepha/internal";
@@ -98,6 +99,11 @@ export type AnalyticsRecordRow = Record<
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: registers its dataset at init, read by the rollup jobs.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   /**
    * What a dataset name is allowed to look like on every backend: lowercase
    * letters, digits and underscores, starting with a letter.

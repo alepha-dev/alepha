@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -65,7 +66,12 @@ export interface OpenApiServer {
   description?: string;
 }
 
-export class SwaggerPrimitive extends Primitive<SwaggerPrimitiveOptions> {}
+export class SwaggerPrimitive extends Primitive<SwaggerPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by ServerSwaggerProvider at configure.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+}
 
 $swagger[KIND] = SwaggerPrimitive;
 

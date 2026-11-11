@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   Alepha,
@@ -211,6 +212,11 @@ export interface IssuerExternal {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: creates its realm at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly alepha = $inject(Alepha);
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);

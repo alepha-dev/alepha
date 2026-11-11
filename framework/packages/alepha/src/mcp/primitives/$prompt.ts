@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   type Async,
@@ -150,6 +151,11 @@ export interface PromptPrimitiveOptions<T extends ZObject> {
 export class PromptPrimitive<T extends ZObject> extends Primitive<
   PromptPrimitiveOptions<T>
 > {
+  /**
+   * `table` for the pure controller rule: served on request: the MCP server reads it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly mcpServer = $inject(McpServerProvider);
 
   /**

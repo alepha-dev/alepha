@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   AlephaError,
@@ -86,6 +87,11 @@ export const $rateLimit = <TInput = string>(
 export class RateLimitPrimitive<TInput = string> extends Primitive<
   RateLimitPrimitiveOptions<TInput>
 > {
+  /**
+   * `inert` for the pure controller rule: its onInit only checks its name; it counts when called.
+   */
+  public static override readonly side: PrimitiveSide = "inert";
+
   protected readonly log = $logger();
   protected readonly windows = $inject(RateLimitWindows);
   protected readonly dateTime = $inject(DateTimeProvider);

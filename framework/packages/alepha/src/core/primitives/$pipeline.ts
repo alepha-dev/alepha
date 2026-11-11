@@ -2,6 +2,7 @@ import { KIND } from "alepha/internal";
 import { OPTIONS } from "alepha/internal";
 
 import type { Alepha } from "../Alepha.ts";
+import type { PrimitiveSide } from "../helpers/ContainerGraph.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import { $context } from "./$context.ts";
 
@@ -46,6 +47,11 @@ export function $pipeline<T extends (...args: any[]) => any>(
 export class PipelinePrimitive<
   TOptions extends PipelinePrimitiveOptions = PipelinePrimitiveOptions,
 > extends Primitive<TOptions> {
+  /**
+   * `inert` for the pure controller rule: runs only when called.
+   */
+  public static override readonly side: PrimitiveSide = "inert";
+
   public readonly handler = new PipelineHandler(
     this.options.handler,
     this.options.use,

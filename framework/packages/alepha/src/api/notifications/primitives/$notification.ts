@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   createPrimitive,
@@ -125,6 +126,11 @@ export class NotificationPrimitive<
   T extends ZObject,
   O extends NotificationPrimitiveOptions<T> = NotificationPrimitiveOptions<T>,
 > extends Primitive<O> {
+  /**
+   * `boot` for the pure controller rule: read by the notification services through alepha.primitives.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly notificationJobs = $inject(NotificationJobs);
 
   public get name() {

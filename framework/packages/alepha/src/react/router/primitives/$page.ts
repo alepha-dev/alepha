@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   AlephaError,
@@ -649,6 +650,11 @@ export class PagePrimitive<
 > extends Primitive<
   PagePrimitiveOptions<TConfig, TProps, TPropsParent, TName>
 > {
+  /**
+   * `table` for the pure controller rule: served on request: matched by the page router.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly reactPageService = $inject(ReactPageService);
 
   protected onInit() {

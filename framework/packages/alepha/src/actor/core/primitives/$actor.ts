@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   AlephaError,
@@ -85,6 +86,11 @@ export class ActorPrimitive<T extends ZType = ZType> extends Primitive<
     expiresAt?: ActorExpiry<Infer<T>>;
   }
 > {
+  /**
+   * `boot` for the pure controller rule: declares an actor host at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly provider = $inject(ActorProvider);
   protected readonly registry = $inject(ActorRegistry);
   protected readonly codec = $inject(ActorCodec);

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   createPrimitive,
@@ -79,6 +80,11 @@ export interface ParameterPrimitiveOptions<T extends ZObject> {
 export class ParameterPrimitive<T extends ZObject> extends Primitive<
   ParameterPrimitiveOptions<T>
 > {
+  /**
+   * `boot` for the pure controller rule: registers itself with the parameter provider at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly provider = $inject(ParameterProvider);
 
   /**

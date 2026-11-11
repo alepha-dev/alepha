@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $atom,
   $inject,
@@ -237,6 +238,11 @@ declare module "alepha" {
 export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   ToolPrimitiveOptions<T>
 > {
+  /**
+   * `table` for the pure controller rule: served on request: the MCP server lists and calls it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly mcpServer = $inject(McpServerProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly settings = $store(mcpToolOptions);

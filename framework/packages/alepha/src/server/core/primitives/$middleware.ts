@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, type Middleware, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -51,6 +52,11 @@ export interface ServerMiddlewarePrimitiveOptions {
 }
 
 export class ServerMiddlewarePrimitive extends Primitive<ServerMiddlewarePrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: pushes a global middleware at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
   protected onInit() {
