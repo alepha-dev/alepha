@@ -59,7 +59,7 @@ yarn w bench cold ../examples/shop --events api,page --rounds 9
 yarn w bench cold ../../../lore/apps/lore --variant list --variant eager=ALEPHA_EAGER=true
 ```
 
-Each sample is a fresh `wrangler dev --local` (the repository's wrangler, never a global one), with a local D1, an R2 bucket and the jobs queue bound the way a deploy binds them, and one event: a cron tick (`cron`), `GET /api/_links` (`api`) or `GET /` (`page`). The CPU of the workerd processes is read at ready and after the event (`proc_pid_rusage` on macOS, `/proc/<pid>/schedstat` on Linux), and an empty Worker's reading is subtracted. A warm-up run per variant applies the migrations first, so no measured event pays for them.
+Each sample is a fresh `wrangler dev --local` (the repository's wrangler, never a global one), with a local D1, an R2 bucket and the jobs queue bound the way a deploy binds them, and one event: a cron tick (`cron`), `GET /api/_links` (`api`), `GET /` (`page`) or a first MCP request, `tools/list` on `POST /mcp` (`mcp`, not in the default set). The CPU of the workerd processes is read at ready and after the event (`proc_pid_rusage` on macOS, `/proc/<pid>/schedstat` on Linux), and an empty Worker's reading is subtracted. A warm-up run per variant applies the migrations first, so no measured event pays for them.
 
 A variant is a build and an environment, `name[=dist][,KEY=VALUE...]`, the dist directory relative to the app. Without `--variant`, the build is compared with itself under `ALEPHA_EAGER=true`, which creates every class at boot. `--build` runs `alepha build --runtime workerd` first. Variants run interleaved, in a rotating order, and the low quartile of `--rounds` (7) is reported: a busy machine moves one run by tens of ms.
 

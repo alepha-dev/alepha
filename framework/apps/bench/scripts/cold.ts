@@ -13,6 +13,7 @@ import { isAbsolute, join, resolve } from "node:path";
  *   yarn w bench cold ../../../lore/apps/lore
  *   yarn w bench cold ../../../lore/apps/lore --variant list --variant eager=ALEPHA_EAGER=true
  *   yarn w bench cold ../examples/shop --events api,page --rounds 9
+ *   yarn w bench cold ../../../lore/apps/lore --events cron,mcp
  *   yarn w bench cold ../../../lore/apps/lore --runtimes node,bun
  *
  * Every sample is a fresh `wrangler dev --local` (one workerd), killed after
@@ -47,13 +48,26 @@ interface Sample {
   event: number;
 }
 
-type EventKind = "cron" | "api" | "page";
+type EventKind = "cron" | "api" | "page" | "mcp";
 
 const EVENTS: Record<EventKind, { path: string; init?: RequestInit }> = {
   // `--test-scheduled` answers this path with a scheduled event.
   cron: { path: "/__scheduled?cron=*/10+*+*+*+*" },
   api: { path: "/api/_links" },
   page: { path: "/", init: { redirect: "manual" } },
+  // The first MCP request: the one that creates the MCP surface. Answered
+  // or refused (it needs a token), the tool classes exist by then.
+  mcp: {
+    path: "/mcp",
+    init: {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    },
+  },
 };
 
 // -------------------------------------------------------------------------------------------------------------------
