@@ -15,14 +15,14 @@ class CountingManifest extends CloudflareAssetManifest {
   hashes = 0;
   timerFired = false;
   hashesAtTimer = 0;
-  override hash(bytes: Uint8Array, path: string): string {
+  override async hash(bytes: Uint8Array, path: string): Promise<string> {
     if (++this.hashes === 1) {
       setTimeout(() => {
         this.timerFired = true;
         this.hashesAtTimer = this.hashes;
       }, 0);
     }
-    return super.hash(bytes, path);
+    return await super.hash(bytes, path);
   }
 }
 
@@ -118,6 +118,41 @@ describe("deploy asset cache", () => {
       ).toEqual(result);
     }
     expect(ctx.hashes.hashes).toBe(4);
+  });
+
+  it("never reads a v1 list, whose keys are wrangler's blake3 scheme (#Q3377)", async ({
+    expect,
+  }) => {
+    const ctx = boot();
+    const archive = await bytes();
+    const fresh = await ctx.cache.prepare(
+      "artifacts",
+      digest,
+      archive,
+      ctx.fs(),
+      "/deploy",
+    );
+    await ctx.storage.delete("artifacts", ctx.cache.key(digest));
+    await ctx.storage.upload(
+      "artifacts",
+      new File(
+        [JSON.stringify({ ...fresh, version: 1, manifest: {} })],
+        "cache.json",
+      ),
+      `deploy-assets-v1-${digest}.json`,
+    );
+
+    const again = await ctx.cache.prepare(
+      "artifacts",
+      digest,
+      archive,
+      ctx.fs(),
+      "/deploy",
+    );
+
+    expect(ctx.cache.key(digest)).toBe(`deploy-assets-v2-${digest}.json`);
+    expect(again.manifest).toEqual(fresh.manifest);
+    expect(ctx.hashes.hashes).toBe(2);
   });
 
   it("treats storage failures as a cache miss, including writes", async ({

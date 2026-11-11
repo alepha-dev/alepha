@@ -105,9 +105,10 @@ export default defineConfig({
          * and it is easy to discover the wrong way: a request that exceeds it
          * fails with Error 1102 rather than a timeout that names itself.
          *
-         * Lore's own CPU-heavy step is the deploy runner (#1205): BLAKE3 plus
-         * base64 over every changed asset of somebody else's site. `apps/docs`
-         * is 1545 files and 44 MB, which is real work in one invocation.
+         * Lore's own CPU-heavy step is the deploy runner (#1205): unpacking
+         * and hashing every asset of somebody else's site, which #E137 made
+         * native (zstd, SHA-256) but which stays real work on a site of
+         * thousands of files in one invocation.
          *
          * Set deliberately rather than left at the default, which is the whole
          * point: an ordinary request uses milliseconds, so raising this costs

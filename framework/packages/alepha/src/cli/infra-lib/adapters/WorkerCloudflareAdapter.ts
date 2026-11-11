@@ -783,7 +783,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         continue;
       }
       manifest[key] = {
-        hash: this.assetManifest.hash(bytes, entry),
+        hash: await this.assetManifest.hash(bytes, entry),
         size: bytes.length,
       };
       paths.set(key, path);

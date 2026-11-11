@@ -1,5 +1,3 @@
-import { blake3 } from "@noble/hashes/blake3.js";
-
 /**
  * One entry of the manifest Cloudflare answers an upload session for.
  */
@@ -11,36 +9,40 @@ export interface CloudflareAssetEntry {
 /**
  * The asset manifest a Workers deploy is negotiated with.
  *
- * ## ⚠️ The hash is undocumented, and getting it wrong fails silently
+ * ## Two hashes, kept apart (#Q3377)
  *
- * Cloudflare's docs say only "a 32 hexadecimal character hash". wrangler's own
- * implementation, read out of `wrangler@4.127.1`'s `hashFile`, is:
+ * - **The asset digest**, {@link digest}: the full SHA-256 of the raw bytes, 64
+ *   hex characters. It is what an asset list carries (Lore's CLI computes it
+ *   at push) and what a body is checked against before it is uploaded.
+ * - **The Cloudflare key**, {@link cloudflareKey}: the 32 hex characters a
+ *   Workers upload session is negotiated with, derived from the digest and
+ *   the extension, so it costs one small hash and never a pass over the
+ *   bytes.
  *
- * ```js
- * blake3(contents.toString("base64") + extname(filepath).substring(1))
- *   .toString("hex")
- *   .slice(0, 32)
- * ```
+ * ⚠️ **The extension stays in the key.** Cloudflare stores each part's
+ * `Content-Type` under the key it was uploaded with, so the same bytes served
+ * as `logo.svg` and as `logo.txt` must not share one key: the second would be
+ * served with the first one's type.
  *
- * Three details, each of which is a silent bug on its own:
+ * ## ⚠️ Not wrangler's scheme, on purpose
  *
- * - it hashes the **base64 of the content**, not the content;
- * - it appends the extension **without its dot**, and an extensionless file
- *   appends nothing;
- * - it keeps the **first 32 hex characters**, which is 16 bytes of a 32-byte
- *   digest.
+ * wrangler hashes `blake3(base64(bytes) + extension)`, and this class copied
+ * it until #Q3377. Cloudflare does not verify the key: its Workers for
+ * Platforms docs accept any consistent 32-hex hash. The copy cost a base64 of
+ * every asset plus a pure-JS BLAKE3 (`crypto.subtle` has none), measured at
+ * ~1.5 s each on the docs site against ~40 ms for native SHA-256 (folio
+ * #F1484). What it bought was sharing assets with a `wrangler deploy` of the
+ * same script, which no Alepha deploy path does.
  *
- * Get any of them wrong and nothing errors: Cloudflare simply never recognises
- * a file it already holds, so every deploy re-uploads everything and a laptop
- * deploy and a Lore deploy never share an asset. The failure is a bill and a
- * latency, not an exception.
+ * The cost of the switch is paid once: a script's first deploy after it
+ * re-uploads every asset, since no key matches the old ones.
  *
- * ## Why `@noble/hashes` and not `crypto.subtle`
+ * ## ⚠️ A wrong key fails silently
  *
- * `crypto.subtle` has no BLAKE3, and wrangler's `blake3-wasm` carries a wasm
- * binary and is Node-only. `@noble/hashes/blake3` is pure JS and runs in a
- * Worker. Verified byte-identical against `blake3-wasm`, on files past the
- * base64 chunk size too - see `CloudflareAssetManifest.spec.ts`.
+ * Nothing errors when the scheme drifts between two deployers: Cloudflare
+ * simply never recognises a file it already holds, so every deploy re-uploads
+ * everything. The laptop deploy (`WorkerCloudflareAdapter`) and Lore's deploy
+ * use this one class, so they move together.
  */
 export class CloudflareAssetManifest {
   /**
@@ -106,23 +108,57 @@ export class CloudflareAssetManifest {
   ];
 
   /**
-   * wrangler's `hashFile`, reproduced.
+   * The asset digest: the full SHA-256 of the raw bytes, as 64 lowercase hex
+   * characters, by the runtime's native crypto.
+   *
+   * ⚠️ `crypto.subtle`, not `node:crypto`: this class reaches Lore's Worker
+   * through `alepha/cli/infra-lib`'s workerd entry, which admits no `node:`
+   * builtin beyond `node:async_hooks` (`workerdEntryGraph.spec.ts`). The two
+   * are equally native, 18 against 20 ms for 50 MB on local workerd (folio
+   * #F1484); the only cost is that the answer is a promise.
    */
-  public hash(bytes: Uint8Array, path: string): string {
-    const payload = `${this.base64(bytes)}${this.extension(path)}`;
-    return this.hex(blake3(new TextEncoder().encode(payload))).slice(0, 32);
+  public async digest(bytes: Uint8Array): Promise<string> {
+    return this.hex(
+      new Uint8Array(
+        await crypto.subtle.digest("SHA-256", bytes as BufferSource),
+      ),
+    );
+  }
+
+  /**
+   * The 32-hex key a Workers upload session knows an asset by, derived from
+   * its {@link digest} and its extension (#Q3377): the first 32 hex
+   * characters of `sha256(<digest>.<extension>)`, the extension without its
+   * dot and empty when there is none.
+   *
+   * Cheap on purpose: it hashes 70 bytes, never the asset, so a deploy holding
+   * a pushed asset list derives every key without reading a file.
+   */
+  public async cloudflareKey(digest: string, path: string): Promise<string> {
+    const payload = new TextEncoder().encode(
+      `${digest}.${this.extension(path)}`,
+    );
+    return (await this.digest(payload)).slice(0, 32);
+  }
+
+  /**
+   * The Cloudflare key of these bytes at this path: {@link cloudflareKey} of
+   * their {@link digest}.
+   */
+  public async hash(bytes: Uint8Array, path: string): Promise<string> {
+    return await this.cloudflareKey(await this.digest(bytes), path);
   }
 
   /**
    * The whole manifest, keyed by served path.
    */
-  public build(
+  public async build(
     files: Array<{ path: string; bytes: Uint8Array }>,
-  ): Record<string, CloudflareAssetEntry> {
+  ): Promise<Record<string, CloudflareAssetEntry>> {
     const manifest: Record<string, CloudflareAssetEntry> = {};
     for (const file of files) {
       manifest[this.key(file.path)] = {
-        hash: this.hash(file.bytes, file.path),
+        hash: await this.hash(file.bytes, file.path),
         size: file.bytes.length,
       };
     }

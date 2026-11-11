@@ -1,117 +1,102 @@
-import { extname } from "node:path";
+import { createHash } from "node:crypto";
 
 import { describe, it } from "vitest";
 
 import { CloudflareAssetManifest } from "../services/CloudflareAssetManifest.ts";
 
 /**
- * Hash parity with wrangler, which is the one thing in the deploy path that
- * fails silently when it is wrong.
+ * The asset digest and the Cloudflare key it derives (#Q3377).
  *
- * ⚠️ **A wrong hash raises nothing.** Cloudflare simply never recognises a file
- * it already holds, so every deploy re-uploads every asset and a laptop deploy
- * and a Lore deploy never share one. The symptom is a bill and a latency, and
- * the cause is 32 characters that look plausible.
+ * ⚠️ **A wrong key raises nothing.** Cloudflare simply never recognises a file
+ * it already holds, so every deploy re-uploads every asset, and a laptop deploy
+ * and a Lore deploy that disagree never share one. The symptom is a bill and a
+ * latency, which is why the scheme is pinned here digest for digest.
  *
- * The reference is wrangler's own `hashFile`, read out of
- * `wrangler@4.127.1/wrangler-dist/cli.js`:
- *
- * ```js
- * const base64Contents = contents.toString("base64");
- * const extension = path.extname(filepath).substring(1);
- * return blake3Wasm.hash(base64Contents + extension).toString("hex").slice(0, 32);
- * ```
- *
- * ⚠️ Checked against **`blake3-wasm`, the implementation wrangler actually
- * calls**, rather than against a `wrangler deploy --dry-run`. Stronger, and
- * the reason is not convenience: a dry run needs credentials and prints a plan,
- * while this compares digest to digest over real bytes. Both packages are
- * already in the tree as wrangler's own dependencies.
+ * The oracle is OpenSSL's SHA-256 through `node:crypto`, over the published
+ * test vectors and over bytes computed independently of the class.
  */
 describe("the Cloudflare asset manifest", () => {
   const manifest = new CloudflareAssetManifest();
+  const bytes = (text: string) => new TextEncoder().encode(text);
 
   /**
-   * wrangler's hash, computed with wrangler's own hasher.
-   *
-   * Loaded lazily and by name, because `blake3-wasm` is a transitive
-   * dependency of wrangler rather than a declared one of this package: it is
-   * a test oracle, and shipping it would put a wasm binary in a Worker bundle.
+   * The scheme, written out once outside the class: the first 32 hex of
+   * `sha256("<64-hex digest>.<extension>")`.
    */
-  const wranglerHash = async (bytes: Buffer, path: string): Promise<string> => {
-    const { hash } = (await import("blake3-wasm")) as unknown as {
-      hash: (input: string) => { toString: (enc: string) => string };
-    };
-    const base64Contents = bytes.toString("base64");
-    const extension = extname(path).substring(1);
-    return hash(base64Contents + extension)
-      .toString("hex")
+  const expectedKey = (digest: string, extension: string) =>
+    createHash("sha256")
+      .update(`${digest}.${extension}`)
+      .digest("hex")
       .slice(0, 32);
-  };
 
-  it("reproduces wrangler's hash byte for byte", async ({ expect }) => {
-    const cases: Array<[string, Buffer]> = [
-      ["index.html", Buffer.from("<!doctype html><title>x</title>")],
-      ["assets/app.js", Buffer.from("export default 1;\n")],
-      ["assets/app.css", Buffer.from("body{color:red}")],
-      // No extension at all: wrangler appends nothing, and appending "" is
-      // not the same as appending the file name.
-      ["LICENSE", Buffer.from("MIT")],
-      // A dotfile is a NAME, not an extension - `path.extname(".gitignore")`
-      // is "".
-      [".gitignore", Buffer.from("node_modules\n")],
+  it("digests the raw bytes with SHA-256, all 64 hex characters", async ({
+    expect,
+  }) => {
+    // FIPS 180-2 test vectors.
+    expect(await manifest.digest(new Uint8Array(0))).toBe(
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    );
+    expect(await manifest.digest(bytes("abc"))).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+    expect(await manifest.digest(bytes("hello"))).toBe(
+      "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    );
+  });
+
+  it("derives the 32-hex key from the digest and the extension", async ({
+    expect,
+  }) => {
+    const digest = await manifest.digest(bytes("export default 1;\n"));
+
+    expect(await manifest.cloudflareKey(digest, "assets/app.js")).toBe(
+      expectedKey(digest, "js"),
+    );
+    expect(
+      await manifest.hash(bytes("export default 1;\n"), "assets/app.js"),
+    ).toBe(expectedKey(digest, "js"));
+    expect(await manifest.hash(bytes("x"), "a.css")).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("reads the extension the way path.extname does", async ({ expect }) => {
+    const digest = await manifest.digest(bytes("MIT"));
+    const cases: Array<[string, string]> = [
+      // No extension at all appends nothing after the dot.
+      ["LICENSE", ""],
+      // A dotfile is a NAME, not an extension.
+      [".gitignore", ""],
       // A dot in a directory is not an extension of the file.
-      ["dir.v2/README", Buffer.from("read me")],
-      // Bytes that are not text, so the base64 step is doing real work.
-      ["img/logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0xfe])],
-      // Empty, which base64s to "" and still gets the extension appended.
-      ["empty.txt", Buffer.alloc(0)],
+      ["dir.v2/README", ""],
+      // Only the last one counts.
+      ["assets/app.min.js", "js"],
+      ["img\\logo.PNG", "PNG"],
     ];
 
-    for (const [path, bytes] of cases) {
-      expect(
-        manifest.hash(new Uint8Array(bytes), path),
-        `hash of ${path}`,
-      ).toBe(await wranglerHash(bytes, path));
+    for (const [path, extension] of cases) {
+      expect(await manifest.cloudflareKey(digest, path), path).toBe(
+        expectedKey(digest, extension),
+      );
     }
   });
 
-  it("keys an asset by its served path", ({ expect }) => {
-    expect(manifest.key("index.html")).toBe("/index.html");
-    expect(manifest.key("assets/app.js")).toBe("/assets/app.js");
-    // Already absolute, and Windows separators, both normalised rather than
-    // doubled - a `//index.html` key is a 404 nobody would look for here.
-    expect(manifest.key("/index.html")).toBe("/index.html");
-    expect(manifest.key("assets\\app.js")).toBe("/assets/app.js");
-  });
-
-  it("builds a manifest of hash and size", ({ expect }) => {
-    const built = manifest.build([
-      { path: "index.html", bytes: new Uint8Array(Buffer.from("hello")) },
-    ]);
-
-    expect(Object.keys(built)).toEqual(["/index.html"]);
-    expect(built["/index.html"].size).toBe(5);
-    expect(built["/index.html"].hash).toMatch(/^[0-9a-f]{32}$/);
-  });
-
-  /**
-   * The parity check that matters, over files the size of a real build.
-   *
-   * The fixtures above are a few bytes each, so they never cross
-   * `BASE64_CHUNK`: the one place a reproduction can be right on a small file
-   * and wrong on a bundle. This ran over a built `apps/lore/dist/public` until
-   * Lore left for github.com/alepha-dev/lore (#E72); deterministic bytes at
-   * and around the chunk boundary prove the same thing without a build, so it
-   * runs on every checkout instead of being skipped on a clean one.
-   */
-  it("agrees with wrangler on files past the base64 chunk size", async ({
+  it("keys the same bytes apart under two extensions, and together under one", async ({
     expect,
   }) => {
+    // Cloudflare stores a part's Content-Type with its key, so `logo.svg` and
+    // `logo.txt` holding the same bytes must not share one.
+    const svg = await manifest.hash(bytes("<svg/>"), "logo.svg");
+    const txt = await manifest.hash(bytes("<svg/>"), "logo.txt");
+    const elsewhere = await manifest.hash(bytes("<svg/>"), "deep/other.svg");
+
+    expect(svg).not.toBe(txt);
+    expect(svg).toBe(elsewhere);
+  });
+
+  it("hashes files past any chunk size as a whole", async ({ expect }) => {
     // A fixed linear congruential sequence: bytes that look like a binary
     // asset, identical on every run.
-    const bytesOf = (length: number, seed: number): Buffer => {
-      const out = Buffer.alloc(length);
+    const bytesOf = (length: number, seed: number): Uint8Array => {
+      const out = new Uint8Array(length);
       let state = seed;
       for (let i = 0; i < length; i++) {
         state = (Math.imul(state, 1103515245) + 12345) >>> 0;
@@ -120,19 +105,32 @@ describe("the Cloudflare asset manifest", () => {
       return out;
     };
 
-    const chunk = 0x8000;
-    const cases: Array<[string, Buffer]> = [
-      ["assets/below.js", bytesOf(chunk - 1, 1)],
-      ["assets/exact.css", bytesOf(chunk, 2)],
-      ["assets/above.js.map", bytesOf(chunk + 1, 3)],
-      ["fonts/inter.woff2", bytesOf(chunk * 3 + 7, 4)],
-      ["assets/vendor.js", bytesOf(250_000, 5)],
-    ];
-
-    for (const [path, bytes] of cases) {
-      expect(manifest.hash(new Uint8Array(bytes), path), path).toBe(
-        await wranglerHash(bytes, path),
+    for (const length of [0x8000 - 1, 0x8000, 0x8000 + 1, 250_000]) {
+      const body = bytesOf(length, length);
+      expect(await manifest.digest(body)).toBe(
+        createHash("sha256").update(body).digest("hex"),
       );
     }
+  });
+
+  it("keys an asset by its served path", async ({ expect }) => {
+    expect(manifest.key("index.html")).toBe("/index.html");
+    expect(manifest.key("assets/app.js")).toBe("/assets/app.js");
+    // Already absolute, and Windows separators, both normalised rather than
+    // doubled - a `//index.html` key is a 404 nobody would look for here.
+    expect(manifest.key("/index.html")).toBe("/index.html");
+    expect(manifest.key("assets\\app.js")).toBe("/assets/app.js");
+  });
+
+  it("builds a manifest of hash and size", async ({ expect }) => {
+    const built = await manifest.build([
+      { path: "index.html", bytes: bytes("hello") },
+    ]);
+
+    expect(Object.keys(built)).toEqual(["/index.html"]);
+    expect(built["/index.html"].size).toBe(5);
+    expect(built["/index.html"].hash).toBe(
+      expectedKey(await manifest.digest(bytes("hello")), "html"),
+    );
   });
 });

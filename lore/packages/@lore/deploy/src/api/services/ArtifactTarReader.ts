@@ -367,9 +367,7 @@ export class ArtifactTarReader {
    * output is consumed as it is produced, so what is resident is the zstd
    * window plus a chunk, never the archive nor its inflated tar.
    */
-  protected async decompressed(
-    source: ArtifactTarSource,
-  ): Promise<{
+  protected async decompressed(source: ArtifactTarSource): Promise<{
     chunks: AsyncIterator<Uint8Array>;
     close: () => Promise<void>;
   }> {

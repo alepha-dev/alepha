@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 export const deployAssetCacheSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   sha256: z.text().regex(/^[a-f0-9]{64}$/),
   manifest: z.record(
     z.string(),

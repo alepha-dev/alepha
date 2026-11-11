@@ -31,9 +31,23 @@ export class DeployAssetCache {
   protected static readonly YIELD_EVERY = 32;
   protected static readonly YIELD_AFTER_MS = 25;
 
+  /**
+   * Where the list of an archive lives, beside it in the artifacts bucket.
+   *
+   * ⚠️ **The version is in the key, and bumping it is how a scheme change is
+   * made safe.** `v1` lists carry wrangler's blake3 keys; `v2` carries the
+   * SHA-256-derived keys of #Q3377. A v1 list read after the switch would
+   * negotiate an upload session with keys no deployer computes any more, so
+   * it is simply never found and the list is computed again.
+   */
   public key(sha256: string): string {
-    return `deploy-assets-v1-${sha256}.json`;
+    return `deploy-assets-v${DeployAssetCache.VERSION}-${sha256}.json`;
   }
+
+  /**
+   * The list format, and the version in {@link key}.
+   */
+  public static readonly VERSION = 2;
 
   public async prepare(
     bucket: string,
@@ -68,7 +82,7 @@ export class DeployAssetCache {
               if (field) configTexts[field] = new TextDecoder().decode(body);
             } else {
               manifest[key] = {
-                hash: this.hashes.hash(body, key),
+                hash: await this.hashes.hash(body, key),
                 size: body.length,
               };
             }
@@ -85,7 +99,7 @@ export class DeployAssetCache {
           },
     });
     const entry: DeployAssetCacheEntry = {
-      version: 1,
+      version: DeployAssetCache.VERSION,
       sha256,
       manifest,
       configTexts,
