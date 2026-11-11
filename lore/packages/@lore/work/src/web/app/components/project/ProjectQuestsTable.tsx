@@ -431,10 +431,11 @@ const ProjectQuestsTable = () => {
   // picker for an attachment, so hiding what has shipped would make the
   // table unable to answer "what went into 0.27.0".
   //
-  // Led by "No release", which is not a release: "what is still unassigned"
-  // is the question a release planner asks most, and every option being a
-  // release left it unanswerable. Named that rather than "None", which in a
-  // filter reads as "no filter".
+  // Led by an empty choice, which is not a release: "what is still
+  // unassigned" is the question a release planner asks most, and every option
+  // being a release left it unanswerable. Every quest filter labels its empty
+  // choice "None" (#Q3415): the chip then reads "Release: None", and "all" is
+  // the control's clear label, so the two cannot be confused.
   const releaseOptions = [
     {
       value: QUEST_RELEASE_NONE,
@@ -449,8 +450,7 @@ const ProjectQuestsTable = () => {
   // Every epic, whatever its status: naming an epic here is addressing it,
   // so a draft epic's quests are listed although the backlog hides them.
   //
-  // Led by "No epic" for the reason the release list is led by "No release",
-  // and named that rather than "None" for the same one.
+  // Led by the empty choice, "None", for the reason the release list is.
   const epicsEnabled = capabilityOption(project, "work", "epics");
   const epicOptions = [
     {
@@ -543,7 +543,7 @@ const ProjectQuestsTable = () => {
       },
     },
     // Epic ids as strings, plus the sentinel, as for `release`. Offered with
-    // no epic yet too: "No epic" is then every quest, which is true, and the
+    // no epic yet too: "None" is then every quest, which is true, and the
     // entry does not come and go with the first epic.
     epic: {
       schema: z.array(z.string()),

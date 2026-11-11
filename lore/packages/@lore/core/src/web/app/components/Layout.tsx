@@ -36,12 +36,14 @@ const Layout = () => {
         {/* A row: the page, and beside it the framework's dock slot, where a
             docked panel (the app's assistant, through an overlay below) takes
             its width from the page rather than covering it. Empty, the slot
-            takes none. */}
+            takes none. The slot is `bg-sidebar`, the frame the project's
+            inset shell draws around its page, so the dock sits in the same
+            frame instead of on the body's colour (#Q3372). */}
         <div className="flex h-svh overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <NestedView />
           </div>
-          <AiChatDockSlot />
+          <AiChatDockSlot className="bg-sidebar" />
         </div>
         {/* What the app adds at the root (`ShellExtensionRegistry`), mounted
             once so it outlives every page. Core names none of them. */}

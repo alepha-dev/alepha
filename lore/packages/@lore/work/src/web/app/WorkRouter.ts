@@ -23,6 +23,7 @@ import type { FeedbackController } from "../../api/controllers/FeedbackControlle
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
+import { currentAreaAtom } from "./atoms/currentAreaAtom.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
@@ -447,7 +448,12 @@ export class WorkRouter {
       const area = await this.areaApi.getArea({
         params: { id: params.areaId },
       });
+      // For the breadcrumb's leaf (#Q3408). See `currentAreaAtom`.
+      this.alepha.store.set(currentAreaAtom, area);
       return { area };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentAreaAtom, undefined);
     },
     // A deleted or foreign area is a 404, like the sibling detail routes,
     // not the generic error page.

@@ -15,6 +15,7 @@ import {
   RequestOriginPolicy,
   type ServerRawRequest,
   type ServerReply,
+  toWebRequest,
 } from "alepha/server";
 import {
   $cookie,
@@ -809,49 +810,24 @@ export class ServerAuthProvider {
    * Build a web `Request` for a `form_post` callback, on either runtime.
    *
    * Web-request runtimes (workerd, Bun, Deno) hand us one already. The Node
-   * adapter does not — it only carries an `IncomingMessage` — and the code
+   * adapter does not, it only carries an `IncomingMessage`, and the code
    * used to check `raw.web.req` alone, so on plain Node `currentUrl` stayed the
    * query URL, the authorization code was never read from the body, and Apple
-   * Sign In failed outright. The body is a small form post, so it is buffered
-   * rather than streamed: no `duplex` handling, no `node:stream` import.
+   * Sign In failed outright. The conversion is the server's shared
+   * `toWebRequest`, which the payments webhook route uses too.
    *
-   * Returns `undefined` for anything that is not a POST — a normal
+   * Returns `undefined` for anything that is not a POST: a normal
    * query-parameter callback keeps using the URL.
    */
   protected async toWebRequest(
     url: URL,
     raw?: ServerRawRequest,
   ): Promise<Request | undefined> {
-    if (raw?.web?.req && raw.web.req.method === "POST") {
-      return raw.web.req;
-    }
-
-    const nodeReq = raw?.node?.req;
-    if (!nodeReq || nodeReq.method !== "POST") {
+    const method = raw?.web?.req.method ?? raw?.node?.req.method;
+    if (method !== "POST") {
       return undefined;
     }
-
-    const chunks: Buffer[] = [];
-    for await (const chunk of nodeReq) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(nodeReq.headers)) {
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          headers.append(key, item);
-        }
-      } else if (value !== undefined) {
-        headers.set(key, value);
-      }
-    }
-
-    return new Request(url, {
-      method: "POST",
-      headers,
-      body: Buffer.concat(chunks),
-    });
+    return toWebRequest(url, raw);
   }
 
   /**

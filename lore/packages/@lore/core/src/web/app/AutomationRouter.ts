@@ -1,13 +1,31 @@
 import { $inject, Alepha, z } from "alepha";
+import { I18nProvider } from "alepha/react/i18n";
 import { NotFoundError } from "alepha/server";
 
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
+import { ProjectShellRegistry } from "./registries/ProjectShellRegistry.ts";
 import { capabilityOption } from "./services/projectCapabilities.ts";
 import { canInProject } from "./services/projectRank.ts";
 
 export class AutomationRouter {
   protected readonly alepha = $inject(Alepha);
+  protected readonly shell = $inject(ProjectShellRegistry);
+  protected readonly i18n = $inject(I18nProvider);
+
+  constructor() {
+    // The gallery ends its trail with itself, "Project > Automations > New
+    // automation" (#Q3408), where it used to carry a "Back to automations"
+    // button saying what the Automations crumb already did.
+    this.shell.registerCrumb({
+      order: 60,
+      crumb: (ctx) =>
+        ctx.routeName === "projectAutomationGallery"
+          ? { label: this.i18n.tr("automation.new") }
+          : undefined,
+    });
+  }
+
   projectAutomations = $pageProject({
     name: "projectAutomations",
     path: "/automations",
