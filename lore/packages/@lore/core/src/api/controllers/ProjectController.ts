@@ -61,6 +61,7 @@ import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import { UserDockService } from "../services/UserDockService.ts";
 
 export class ProjectController {
   /**
@@ -126,6 +127,7 @@ export class ProjectController {
   protected readonly capabilityRegistry = $inject(CapabilityRegistry);
   audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly dock = $inject(UserDockService);
   auditService = $inject(AuditService);
   counts = $inject(ProjectCountRegistry);
   assignedWork = $inject(AssignedWorkRegistry);
@@ -304,7 +306,14 @@ export class ProjectController {
           )
           .optional(),
       }),
-      response: projectResourceSchema,
+      response: projectResourceSchema.extend({
+        /**
+         * Whether the project landed on the creator's dock (#E139). `false`
+         * when the dock was already full: the project exists all the same,
+         * and the client says so with a link to manage pins.
+         */
+        pinned: z.boolean(),
+      }),
     },
     handler: async ({ body, user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
@@ -424,7 +433,20 @@ export class ProjectController {
         description: project.title,
       });
 
-      return this.projectMapper.toResource(project, rows);
+      // After the owner row: a pin is refused for a non-member. Never fatal,
+      // the project is made and a missing pin is a toast, not a failure.
+      const pinned = await this.dock
+        .pin(user.id, project.id)
+        .then((outcome) => outcome.pinned)
+        .catch((error: unknown) => {
+          this.log.warn("createProject: could not pin the new project", {
+            projectId: project.id,
+            error,
+          });
+          return false;
+        });
+
+      return { ...this.projectMapper.toResource(project, rows), pinned };
     },
   });
 
@@ -515,6 +537,13 @@ export class ProjectController {
         ownedCount: z.integer(),
         maxProjects: z.integer(),
         canCreate: z.boolean(),
+        /**
+         * The caller's dock (#E139): the pinned project ids, in order. Here
+         * so the rail is right on the first paint with no request of its
+         * own; the browser keeps it in `userDockAtom`, which is personal and
+         * so never part of a shared, cached page.
+         */
+        dock: z.array(z.integer()),
       }),
     },
     handler: async ({ user }) => {
@@ -590,6 +619,9 @@ export class ProjectController {
         ownedCount,
         maxProjects: maxProjectsPerUser,
         canCreate: ownedCount < maxProjectsPerUser,
+        // After the reads above, not beside them: the first call seeds the
+        // row, and the membership list it seeds from is already in hand.
+        dock: await this.dock.read(user.id, result),
       };
     },
   });
@@ -1385,6 +1417,12 @@ export class ProjectController {
     if (archived !== Boolean(project.archivedAt)) {
       project.archivedAt = archived ? this.dateTime.nowISOString() : undefined;
       await this.projects.save(project);
+      // Archiving frees the slot on every member's dock (#E139, #Q3436).
+      // Unarchiving pins nothing back: a dock is what its owner chose, and
+      // that is why this is a write and not only the read filter.
+      if (archived && project.organizationId) {
+        await this.dock.unpinForMembers(project.organizationId, project.id);
+      }
       await this.audits.project.logSuccess(archived ? "archive" : "unarchive", {
         ...this.audits.actor(user),
         ...this.audits.scope(project.id),

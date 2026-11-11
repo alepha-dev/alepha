@@ -1,155 +1,297 @@
+import { Tooltip, TooltipContent, TooltipTrigger, cn } from "@alepha/ui";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  cn,
-} from "@alepha/ui";
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { useAlepha, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Home, LayoutGrid, Plus } from "lucide-react";
-import { type ReactNode, useEffect } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 
+import { USER_DOCK_CAP } from "../../../../api/schemas/userDockCap.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { recentProjectsAtom } from "../../atoms/recentProjectsAtom.ts";
+import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { ProjectIcon } from "../shared/ProjectIcon.tsx";
-import { ProjectRailCard } from "./ProjectRailCard.tsx";
-import { projectRailOrder } from "./projectRailOrder.ts";
-import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
+import { ProjectRailItem } from "./ProjectRailItem.tsx";
+import { ProjectRailMenu } from "./ProjectRailMenu.tsx";
+import { useDock } from "./useDock.ts";
 
 /**
- * A column of project icons left of the sidebar: one click switches project
- * (#Q3366). Desktop only; at phone width the switcher in the sidebar stays
- * the way to change project.
+ * The dock: a column of project icons left of the sidebar, one click switches
+ * project (#Q3366, #E139). Desktop only; at phone width the switcher in the
+ * sidebar stays the way to change project.
  *
- * Home at the top, then up to ten projects, then New project and All
- * projects (#Q3374). Shown from the first project: on desktop it is the only
- * way to switch, the sidebar header being a plain title there. Hovering an
- * icon opens a card with the project's image, name and repository (#Q3370).
+ * - Home at the top, New project and All projects at the bottom, fixed
+ *   (#Q3374). Only the icons between them scroll, and the current project is
+ *   scrolled into view.
+ * - The icons are the viewer's pinned projects, in the order they chose
+ *   (`userDockAtom`, stored per account in `user_docks`), at most 20.
+ * - A current project that is not pinned shows in a faded temporary slot
+ *   below the pins. Nothing is saved: it goes when the viewer leaves it.
+ * - Shown on every project page, with no pins too: then only the fixed
+ *   buttons and, if any, the temporary slot.
+ * - Reordered by dragging a pinned icon onto another, or from the keyboard:
+ *   Space picks the focused icon up, the arrows move it, Space or Enter drops
+ *   it and Escape puts it back (#Q3438). Saved on the drop, optimistically.
+ * - Right-click an icon for Unpin (Pin on the temporary slot), Open in new
+ *   tab and Copy link (#Q3439).
  *
- * ⚠️ **Selecting a project never moves it.** A rail is used by position, so
- * the order is the viewer's own and stays put (#Q3370; #Q3366 moved the last
- * opened to the top on the next load, and the owner asked for it to stop).
- * `recentProjectsAtom` holds the order as shown: the first time, the projects
- * by last update; afterwards a project already on the rail keeps its slot, and
- * one opened from outside it (All projects, a link) takes the last slot.
+ * ⚠️ **Selecting a project never moves it.** A dock is used by position, so
+ * its order is changed only by the viewer, on the dock (#Q3370).
  */
 const ProjectRail = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
-  const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
-  const [opened] = useStore(recentProjectsAtom);
+  const [dock] = useStore(userDockAtom);
+  const alepha = useAlepha();
+  const actions = useDock();
+  const dndId = useId();
+  const hintId = useId();
+  const pinsRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [picked, setPicked] = useState<
+    { id: number; before: number[] } | undefined
+  >(undefined);
+  const [announcement, setAnnouncement] = useState("");
+  // Set while a pointer drag runs, read by the click its pointerup fires.
+  const dropped = useRef(false);
+  const sensors = useSensors(
+    // Without a distance a plain click would start a drag, and a click must
+    // stay a click.
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
 
   const projects = overview?.projects ?? [];
-  const canCreate = overview?.canCreate ?? true;
-  const maxProjects = overview?.maxProjects;
-  const shown = project
-    ? projectRailOrder(projects, opened ?? [], project.id, RECENT_PROJECTS_CAP)
-    : [];
-  const shownKey = shown.map((it) => it.id).join(",");
+  // The server already narrows the dock to live, unarchived memberships;
+  // matching against the list in memory also keeps a project this tab just
+  // left or archived from lingering until the next load.
+  const byId = new Map(projects.map((it) => [it.id, it]));
+  const pinned = (dock ?? [])
+    .map((id) => byId.get(id))
+    .filter((it) => it !== undefined && !it.archivedAt)
+    .map((it) => it!);
+  const ids = pinned.map((it) => it.id);
 
-  // Store the order as shown, so the next page load draws the same rail. A
-  // no-op when nothing changed, which is every visit to a project already on
-  // the rail.
+  // The click a drop ends with must not follow the link it was released
+  // on. dnd-kit stops that click's propagation at `document`, so no React
+  // handler ever hears it, but it does not prevent its default: the anchor
+  // then navigates natively, reloading the page and dropping the save in
+  // flight. Prevented here, from `window`, which the event reaches first.
   useEffect(() => {
-    if (!shownKey) return;
-    const current = (alepha.store.get(recentProjectsAtom) ?? []).join(",");
-    if (current === shownKey) return;
-    alepha.store.set(recentProjectsAtom, shownKey.split(",").map(Number));
-  }, [alepha, shownKey]);
+    const swallow = (event: MouseEvent) => {
+      if (dropped.current) event.preventDefault();
+    };
+    window.addEventListener("click", swallow, true);
+    return () => window.removeEventListener("click", swallow, true);
+  }, []);
+
+  // The keyboard move re-renders the list, which can take focus off the icon
+  // being moved: give it back.
+  useEffect(() => {
+    if (!picked) return;
+    pinsRef.current
+      ?.querySelector<HTMLElement>(
+        `[data-testid="project-rail-item"][data-project-id="${picked.id}"]`,
+      )
+      ?.focus();
+  }, [picked, dock]);
 
   if (!project) {
     return null;
   }
 
+  const canCreate = overview?.canCreate ?? true;
+  const maxProjects = overview?.maxProjects;
+  const temporary = ids.includes(project.id)
+    ? undefined
+    : (byId.get(project.id) ?? project);
+  const titleOf = (id: number) => byId.get(id)?.title ?? "";
+  const full = ids.length >= USER_DOCK_CAP;
+  const busy = actions.pin.loading || actions.unpin.loading;
+
+  // A drop's click is held from the moment a drag starts until the next
+  // press: the pointerup that drops an icon also clicks the link under it.
+  const onDragStart = () => {
+    setDragging(true);
+    dropped.current = true;
+  };
+
+  const settle = () => {
+    setDragging(false);
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    settle();
+    const from = ids.indexOf(Number(event.active.id));
+    const to = event.over ? ids.indexOf(Number(event.over.id)) : -1;
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...ids];
+    next.splice(to, 0, ...next.splice(from, 1));
+    void actions.move(next);
+  };
+
+  const onKeyDown =
+    (id: number) => (event: KeyboardEvent<HTMLAnchorElement>) => {
+      const held = picked?.id === id;
+      if (event.key === " ") {
+        event.preventDefault();
+        if (!held) {
+          setPicked({ id, before: ids });
+          setAnnouncement(tr("dock.reorder.picked", { args: [titleOf(id)] }));
+          return;
+        }
+      }
+      if (!held) return;
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+        const from = ids.indexOf(id);
+        const to = from + (event.key === "ArrowUp" ? -1 : 1);
+        if (to < 0 || to >= ids.length) return;
+        const next = [...ids];
+        next.splice(to, 0, ...next.splice(from, 1));
+        setAnnouncement(
+          tr("dock.reorder.moved", {
+            args: [titleOf(id), String(to + 1), String(ids.length)],
+          }),
+        );
+        // Drawn now, saved on the drop.
+        alepha.store.set(userDockAtom, next);
+        return;
+      }
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        setPicked(undefined);
+        setAnnouncement(tr("dock.reorder.dropped", { args: [titleOf(id)] }));
+        if (ids.join(",") !== picked.before.join(",")) {
+          void actions.reorder.run(ids, picked.before);
+        }
+        return;
+      }
+      if (event.key === "Escape" || event.key === "Tab") {
+        if (event.key === "Escape") event.preventDefault();
+        alepha.store.set(userDockAtom, picked.before);
+        setPicked(undefined);
+        setAnnouncement(tr("dock.reorder.cancelled", { args: [titleOf(id)] }));
+      }
+    };
+
   return (
     <nav
       aria-label={tr("project.rail.label")}
       data-testid="project-rail"
-      className="hidden w-16 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r py-2.5 md:flex"
+      className="hidden w-16 shrink-0 flex-col items-center border-r md:flex"
     >
-      <RailButton
-        label={tr("home.nav")}
-        testId="project-rail-home"
-        href={router.path("home")}
+      <span id={hintId} className="sr-only">
+        {tr("dock.reorder.hint")}
+      </span>
+      <span aria-live="assertive" className="sr-only">
+        {announcement}
+      </span>
+      <div className="flex shrink-0 flex-col items-center gap-2 pt-2.5">
+        <RailButton
+          label={tr("home.nav")}
+          testId="project-rail-home"
+          href={router.path("home")}
+        >
+          <Home className="size-4" />
+        </RailButton>
+        <RailSeparator />
+      </div>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        onDragStart={onDragStart}
+        onDragCancel={settle}
+        onDragEnd={onDragEnd}
       >
-        <Home className="size-4" />
-      </RailButton>
-      <RailSeparator />
-      {shown.map((it) => {
-        const active = it.id === project.id;
-        return (
-          <HoverCard key={it.id}>
-            <HoverCardTrigger
-              // One second (#Q3413): at 150 ms a card flashed open for every
-              // icon the pointer crossed on its way down the rail.
-              delay={1000}
-              closeDelay={100}
-              render={
-                <Link
-                  href={router.path("project", {
-                    params: { projectSlug: it.slug },
-                  })}
-                  aria-label={it.title}
-                  aria-current={active ? "page" : undefined}
-                  data-testid="project-rail-item"
-                  className="group/rail relative flex"
+        <div
+          ref={pinsRef}
+          data-testid="project-rail-pins"
+          // A new press is a new gesture: a click is a click again. Capture,
+          // so it runs before the icon's own drag listener.
+          onPointerDownCapture={() => {
+            dropped.current = false;
+          }}
+          // `px` leaves room for the marker and the ring, which an
+          // `overflow` container would otherwise clip.
+          className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-y-auto px-3 py-1"
+        >
+          {pinned.map((it) => (
+            <ProjectRailItem
+              key={it.id}
+              project={it}
+              active={it.id === project.id}
+              dragging={dragging}
+              picked={picked?.id === it.id}
+              onKeyDown={onKeyDown(it.id)}
+              describedBy={hintId}
+              menu={
+                <ProjectRailMenu
+                  project={it}
+                  pinned
+                  full={full}
+                  busy={busy}
+                  onPin={() => {}}
+                  onUnpin={() => void actions.unpin.run(it.id)}
                 />
               }
-            >
-              {/* The marker on the rail's edge: full height on the current
-                  project, a short notch under the pointer elsewhere. */}
-              <span
-                aria-hidden
-                className={cn(
-                  "bg-foreground absolute top-1/2 -left-3 w-1 -translate-y-1/2 rounded-r-full transition-[height] duration-150",
-                  active ? "h-8" : "h-0 group-hover/rail:h-4",
-                )}
-              />
-              <ProjectIcon
-                fileId={it.icon}
-                title={it.title}
-                seed={it.slug}
-                className={cn(
-                  "size-10 transition-[border-radius] duration-150",
-                  active
-                    ? "ring-ring/40 rounded-xl ring-2"
-                    : "rounded-2xl group-hover/rail:rounded-xl",
-                )}
-              />
-            </HoverCardTrigger>
-            <HoverCardContent side="right" align="start" sideOffset={12}>
-              <ProjectRailCard project={it} />
-            </HoverCardContent>
-          </HoverCard>
-        );
-      })}
-      <RailSeparator />
-      <RailButton
-        label={
-          canCreate || !maxProjects
-            ? tr("home.create-project")
-            : `${tr("home.create-project")}: ${tr("home.create-project.max", { args: [String(maxProjects)] })}`
-        }
-        testId="project-rail-create"
-        href={canCreate ? router.path("projectCreate") : undefined}
-      >
-        <Plus className="size-4" />
-      </RailButton>
-      <RailButton
-        label={tr("account.projects.see-all")}
-        testId="project-rail-all"
-        href={router.path("accountProjects")}
-      >
-        <LayoutGrid className="size-4" />
-      </RailButton>
+            />
+          ))}
+          {temporary && (
+            <ProjectRailItem
+              key="temporary"
+              project={temporary}
+              active
+              temporary
+              menu={
+                <ProjectRailMenu
+                  project={temporary}
+                  pinned={false}
+                  full={full}
+                  busy={busy}
+                  onPin={() => void actions.pin.run(temporary.id)}
+                  onUnpin={() => {}}
+                />
+              }
+            />
+          )}
+        </div>
+      </DndContext>
+      <div className="flex shrink-0 flex-col items-center gap-2 pb-2.5">
+        <RailSeparator />
+        <RailButton
+          label={
+            canCreate || !maxProjects
+              ? tr("home.create-project")
+              : `${tr("home.create-project")}: ${tr("home.create-project.max", { args: [String(maxProjects)] })}`
+          }
+          testId="project-rail-create"
+          href={canCreate ? router.path("projectCreate") : undefined}
+        >
+          <Plus className="size-4" />
+        </RailButton>
+        <RailButton
+          label={tr("account.projects.see-all")}
+          testId="project-rail-all"
+          href={router.path("accountProjects")}
+        >
+          <LayoutGrid className="size-4" />
+        </RailButton>
+      </div>
     </nav>
   );
 };
