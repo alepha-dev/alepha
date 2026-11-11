@@ -131,4 +131,6 @@ The generated image sets `SERVER_HOST=0.0.0.0`; supply `SERVER_PORT` to change t
 
 The standard image declares a `HEALTHCHECK` on `/health`, probed with the runtime's own `fetch` on `SERVER_PORT`, so `docker ps` shows `healthy` once the app is ready, compose can wait for it with `depends_on: condition: service_healthy`, and Bay reads it as readiness. The compiled image has none: nothing in it can run a probe. A Dockerfile generated before this was added has no `HEALTHCHECK` either: delete it and run `alepha image --dockerfile` to regenerate it. See [Health](/docs/cli-commands-image#health). Both standard and compiled apps serve their client assets and apply the artifact's `_headers` file. See [Static File Headers](/docs/guides-deployment-headers).
 
+To run the image on Kubernetes (probes, shutdown, a read-only root file system), see [Kubernetes](/docs/guides-deployment-kubernetes).
+
 Container images are an artifact format. [alepha deploy](/docs/cli-plugins-infra) drives configured infrastructure adapters; it does not turn a Docker image into an implicit provider deployment.
