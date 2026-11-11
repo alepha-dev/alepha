@@ -137,14 +137,25 @@ export class ArtifactService {
     }
 
     const sha256 = await this.digest(bytes);
-    // ⚠️ A manifest sent beside the bytes is taken instead of inflating the
-    // archive to find one (#Q2681). Inflating costs a 32 MiB zstd window on
-    // top of the body's own copies, inside a 128 MB isolate, and Lore's own
-    // two-runtime push was billed 4 to 11 s of CPU for it. The archive's copy
-    // is still the authority: `DeployRunner` compares the two after the
-    // unpack and refuses a deploy where they differ. A client that sends no
-    // manifest (older CLIs) gets the scan, as before.
-    const manifest = input.manifest ?? (await this.reader.readManifest(bytes));
+    // ⚠️ **The archive's own manifest, always, checked against the one sent
+    // beside it** (#Q3388). Until then a sent manifest was taken instead of
+    // reading the archive (#Q2681), and it decided runtime and estate
+    // matching, the `runtimes` column, sigil provisioning and the secrets
+    // listed for the copy before any deploy compared it with the bytes; a Bay
+    // deploy never compared it at all. Reading it is cheap now: native zstd,
+    // stopping at the manifest, which `alepha pack` writes near the front.
+    // So the row only ever holds what the archive says, whatever its size:
+    // one too large for the column is still checked here, and dropped from
+    // the column rather than kept unverified.
+    const manifest = await this.reader.readManifest(bytes);
+    if (
+      input.manifest &&
+      this.canonical(input.manifest) !== this.canonical(manifest)
+    ) {
+      throw new BadRequestError(
+        `The manifest sent with this push does not match the ${ArtifactTarReader.MANIFEST_PATH} inside the archive. Push the build again, from one \`alepha build\`.`,
+      );
+    }
 
     const runtimes: string[] = manifest.runtimes.map((slice) => slice.runtime);
     const primary = runtimes[0];
@@ -589,6 +600,22 @@ export class ArtifactService {
    * "unknown" to every reader, which is exactly what an unstorable manifest
    * is.
    */
+  /**
+   * JSON with every object's keys sorted, so two serialisations of one
+   * document compare equal.
+   */
+  protected canonical(value: unknown): string {
+    return JSON.stringify(value, (_key, entry: unknown) =>
+      entry && typeof entry === "object" && !Array.isArray(entry)
+        ? Object.fromEntries(
+            Object.entries(entry as Record<string, unknown>).sort(([a], [b]) =>
+              a < b ? -1 : a > b ? 1 : 0,
+            ),
+          )
+        : entry,
+    );
+  }
+
   protected serialise(manifest: ArtifactManifest): string | undefined {
     const json = JSON.stringify(manifest);
     return json.length > ArtifactService.MAX_MANIFEST_BYTES ? undefined : json;

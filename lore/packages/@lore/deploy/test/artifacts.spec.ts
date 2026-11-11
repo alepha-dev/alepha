@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   ArtifactController,
   ArtifactService,
+  ArtifactTarReader,
   DeployAssetCache,
   RegistryTransport,
 } from "../src/api/index.ts";
@@ -560,27 +561,89 @@ describe("artifacts", () => {
   });
 
   describe("a manifest sent beside the bytes (#Q2681)", () => {
-    it("is recorded instead of the archive's, so the push need not inflate it", async ({
+    it("is refused at push when it disagrees with the archive's own (#Q3388)", async ({
       expect,
     }) => {
-      // The archive says node; the sent manifest says workerd. The row
-      // follows what was sent, which proves the archive was not read. The
-      // deploy is where the two are compared (DeployRunner).
+      // The archive says node; the sent manifest says workerd. Before #Q3388
+      // the row followed what was sent, and the queue, sigil provisioning and
+      // the secret listing all trusted it before any deploy compared it.
       const { owner, projectId } = await aProject();
-      const sent = {
-        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
-      };
+
+      expect(
+        await statusOf(
+          push(projectId, owner, {
+            file: await packedArtifact(),
+            manifest: JSON.stringify({
+              runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+            }),
+          }),
+        ),
+      ).toBe(400);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(0);
+    });
+
+    it("is accepted when it is the archive's own, whatever its key order", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const file = await packedArtifact();
+      const own = (await new ArtifactTarReader().readManifest(
+        new Uint8Array(await file.arrayBuffer()),
+      )) as Record<string, unknown>;
+      const reordered = Object.fromEntries(Object.entries(own).toReversed());
 
       const res = await push(projectId, owner, {
-        file: await packedArtifact(),
-        manifest: JSON.stringify(sent),
+        file,
+        manifest: JSON.stringify(reordered),
       });
 
-      expect(res.data.artifact.runtime).toBe("workerd");
+      expect(res.data.artifact.runtime).toBe("node");
       const [row] = await ctx.rows.artifacts.findMany({
         where: { projectId: { eq: projectId } },
       });
-      expect(JSON.parse(row!.manifest!)).toEqual(sent);
+      expect(JSON.parse(row!.manifest!)).toEqual(own);
+    });
+
+    it("checks a manifest too large for the column, and stores the archive's runtimes", async ({
+      expect,
+    }) => {
+      // Over 64 KB the column drops the document, so the row must still say
+      // what the archive says rather than what a pusher claimed.
+      const { owner, projectId } = await aProject();
+      const variables = Array.from({ length: 2_000 }, (_, i) => ({
+        name: `VARIABLE_${i}`,
+        description: "x".repeat(30),
+      }));
+      const file = await packedArtifact({
+        manifest: {
+          manifestVersion: 2,
+          project: "my-app",
+          runtimes: [{ runtime: "node", entry: "index.node.js" }],
+          variables,
+        },
+      });
+      const own = (await new ArtifactTarReader().readManifest(
+        new Uint8Array(await file.arrayBuffer()),
+      )) as Record<string, unknown>;
+
+      expect(
+        await statusOf(
+          push(projectId, owner, {
+            file,
+            manifest: JSON.stringify({
+              ...own,
+              runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+            }),
+          }),
+        ),
+      ).toBe(400);
+
+      const res = await push(projectId, owner, { file });
+      const [row] = await ctx.rows.artifacts.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+      expect(row!.manifest).toBeUndefined();
+      expect(res.data.artifact.runtime).toBe("node");
     });
 
     it("is refused when it is not JSON or declares no runtime", async ({
