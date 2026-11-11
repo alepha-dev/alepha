@@ -15,6 +15,7 @@ import { BadRequestError } from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 
 import type { Artifact } from "../entities/artifacts.ts";
+import type { DeployAssetCacheEntry } from "../schemas/deployAssetCacheSchema.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import {
   ArtifactTarReader,
@@ -196,6 +197,7 @@ export class DeployRunner {
         source,
         fs,
         DeployRunner.ROOT,
+        request.artifact.projectId,
       );
       await this.registry.line(
         deployment,
@@ -490,13 +492,20 @@ export class DeployRunner {
    * cheap and predictable, and the memory it replaces was neither.
    */
   protected assetsOf(
-    manifest: Record<string, CloudflareAssetEntry>,
+    listed: DeployAssetCacheEntry["manifest"],
     open: () => Promise<ArtifactTarSource>,
     deployment?: string,
     configTexts: Record<string, string> = {},
   ): CloudflareDeployAssets | undefined {
-    if (Object.keys(manifest).length === 0) {
+    if (Object.keys(listed).length === 0) {
       return undefined;
+    }
+    // ⚠️ Only `hash` and `size` go to Cloudflare: the stored list also keeps
+    // each asset's full digest, which is Lore's, and an upload session is
+    // negotiated with exactly the two fields its API documents.
+    const manifest: Record<string, CloudflareAssetEntry> = {};
+    for (const [key, entry] of Object.entries(listed)) {
+      manifest[key] = { hash: entry.hash, size: entry.size };
     }
 
     const readAll = async (
@@ -527,6 +536,19 @@ export class DeployRunner {
             path.slice(DeployRunner.ASSETS.length),
           );
           if (keys.has(key)) {
+            // ⚠️ The list may be the pusher's claim (#Q3381), so the bytes
+            // about to be uploaded are checked against its digest: native
+            // SHA-256 over a body already in hand. A body that disagrees is
+            // refused, never uploaded under a key it does not match.
+            const expected = listed[key]?.digest;
+            if (
+              expected &&
+              (await this.assetManifest.digest(body)) !== expected
+            ) {
+              throw new BadRequestError(
+                `The asset list stored for this build does not match the archive at ${key}. Push the build again.`,
+              );
+            }
             await onFile(key, body);
             if (++sent % DeployRunner.PROGRESS_EVERY === 0) {
               await this.registry.line(

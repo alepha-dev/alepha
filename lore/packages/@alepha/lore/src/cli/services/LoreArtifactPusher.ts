@@ -1,9 +1,11 @@
 import { $env, $inject, z } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
+import { ArtifactAssetLister } from "./ArtifactAssetLister.ts";
 import { ArtifactUploader } from "./ArtifactUploader.ts";
 import { GitContextService } from "./GitContextService.ts";
 import { LoreProjectResolver } from "./LoreProjectResolver.ts";
@@ -31,7 +33,9 @@ export class LoreArtifactPusher {
   protected readonly packer = $inject(WorkspacePacker);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly uploader = $inject(ArtifactUploader);
+  protected readonly assetLister = $inject(ArtifactAssetLister);
   protected readonly git = $inject(GitContextService);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * ⚠️ Declared through `$env` rather than read off `process.env`, for the
@@ -91,6 +95,27 @@ export class LoreArtifactPusher {
    * Fails loudly: a push that cannot happen throws, and the caller exits
    * non-zero.
    */
+  /**
+   * The asset list sent with the push (#Q3381), as JSON, or `undefined` for a
+   * build with no `public/`.
+   *
+   * ⚠️ Computed here, on the pusher's machine, because it depends only on the
+   * build's bytes: Lore's Worker used to inflate and hash the whole archive
+   * on every deploy to learn it, and a docs site of thousands of files spent
+   * most of a deploy's CPU there. The time it adds to a push is logged.
+   */
+  protected async assetsOf(root: string): Promise<string | undefined> {
+    const started = this.dateTime.nowMillis();
+    const list = await this.assetLister.list(root);
+    if (!list) {
+      return undefined;
+    }
+    this.log.info(
+      `Listed ${list.assets.length} assets in ${this.dateTime.nowMillis() - started} ms`,
+    );
+    return JSON.stringify(list);
+  }
+
   public async push(input: {
     root: string;
     project: string;
@@ -133,6 +158,7 @@ export class LoreArtifactPusher {
         archivePath,
         filename,
         manifest: await this.manifestOf(root),
+        assets: await this.assetsOf(root),
         // The sibling source-map archive, when the build produced one
         // (#1515). Absent is normal, not an error: the maps are excluded
         // from the artifact and stored beside it, so nothing is discarded.

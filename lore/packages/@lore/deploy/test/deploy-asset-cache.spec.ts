@@ -15,14 +15,14 @@ class CountingManifest extends CloudflareAssetManifest {
   hashes = 0;
   timerFired = false;
   hashesAtTimer = 0;
-  override async hash(bytes: Uint8Array, path: string): Promise<string> {
+  override async digest(bytes: Uint8Array): Promise<string> {
     if (++this.hashes === 1) {
       setTimeout(() => {
         this.timerFired = true;
         this.hashesAtTimer = this.hashes;
       }, 0);
     }
-    return await super.hash(bytes, path);
+    return await super.digest(bytes);
   }
 }
 
@@ -153,6 +153,66 @@ describe("deploy asset cache", () => {
     expect(ctx.cache.key(digest)).toBe(`deploy-assets-v2-${digest}.json`);
     expect(again.manifest).toEqual(fresh.manifest);
     expect(ctx.hashes.hashes).toBe(2);
+  });
+
+  describe("a list pushed with the archive (#Q3381)", () => {
+    const pushed = {
+      version: 1 as const,
+      assets: [
+        {
+          path: "/index.html",
+          sha256: "b".repeat(64),
+          size: 4,
+          contentType: "text/html; charset=utf-8",
+        },
+      ],
+      config: { _headers: "/*\n  X: pushed\n" },
+    };
+
+    it("is used by that project's deploy, which then hashes nothing", async ({
+      expect,
+    }) => {
+      const ctx = boot();
+      await ctx.cache.storePushed("artifacts", 7, digest, pushed);
+      const fs = ctx.fs();
+
+      const entry = await ctx.cache.prepare(
+        "artifacts",
+        digest,
+        await bytes(),
+        fs,
+        "/deploy",
+        7,
+      );
+
+      expect(ctx.hashes.hashes).toBe(0);
+      expect(entry.source).toBe("push");
+      expect(entry.manifest["/index.html"]?.digest).toBe("b".repeat(64));
+      expect(entry.configTexts).toEqual(pushed.config);
+      // The server files are still unpacked: the list replaces the hashing,
+      // never the extraction.
+      expect(await fs.readTextFile("/deploy/index.node.js")).toBe("server");
+    });
+
+    it("never steers another project's deploy of the same bytes", async ({
+      expect,
+    }) => {
+      const ctx = boot();
+      await ctx.cache.storePushed("artifacts", 7, digest, pushed);
+
+      const entry = await ctx.cache.prepare(
+        "artifacts",
+        digest,
+        await bytes(),
+        ctx.fs(),
+        "/deploy",
+        8,
+      );
+
+      expect(entry.source).toBe("deploy");
+      expect(ctx.hashes.hashes).toBe(1);
+      expect(entry.manifest["/index.html"]?.digest).not.toBe("b".repeat(64));
+    });
   });
 
   it("treats storage failures as a cache miss, including writes", async ({

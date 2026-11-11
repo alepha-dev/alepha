@@ -195,6 +195,46 @@ describe("lore artifacts push", () => {
     });
   });
 
+  describe("the asset list (#Q3381)", () => {
+    it("lists every public file with its SHA-256, leaving out pack's excludes and the config files", async () => {
+      const ctx = await setup();
+      await ctx.fs.writeFile("/repo/dist/public/index.html", "hello");
+      await ctx.fs.writeFile("/repo/dist/public/assets/app.js", "1");
+      await ctx.fs.writeFile("/repo/dist/public/assets/app.js.map", "{}");
+      await ctx.fs.writeFile("/repo/dist/public/.DS_Store", "x");
+      await ctx.fs.writeFile("/repo/dist/public/_headers", "/*\n  X: y\n");
+      await ctx.cli.run(ctx.command.push, { argv: "", root: "/repo" });
+
+      const list = JSON.parse(ctx.uploader.uploads[0]!.assets!);
+      expect(list.version).toBe(1);
+      expect(list.assets).toEqual([
+        {
+          path: "/assets/app.js",
+          // sha256("1")
+          sha256:
+            "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+          size: 1,
+          contentType: "text/javascript; charset=utf-8",
+        },
+        {
+          path: "/index.html",
+          // sha256("hello")
+          sha256:
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          size: 5,
+          contentType: "text/html; charset=utf-8",
+        },
+      ]);
+      expect(list.config).toEqual({ _headers: "/*\n  X: y\n" });
+    });
+
+    it("sends none for a build with no public directory", async () => {
+      const ctx = await push();
+
+      expect(ctx.uploader.uploads[0]!.assets).toBeUndefined();
+    });
+  });
+
   describe("the tag", () => {
     it("defaults to latest, the one tag that may be replaced", async () => {
       const ctx = await push();

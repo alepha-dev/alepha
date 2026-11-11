@@ -174,7 +174,14 @@ export class ArtifactUploader {
         // `RequestInit` has no such field - it is a fetch extension, not a
         // spec type. Without it node refuses the request outright.
         duplex: "half",
-        body: this.body(boundary, fields, input.filename, stream, maps),
+        body: this.body(
+          boundary,
+          fields,
+          input.filename,
+          stream,
+          maps,
+          input.assets,
+        ),
         schema: { response: ArtifactUploader.RESPONSE },
       } as never,
     );
@@ -202,8 +209,9 @@ export class ArtifactUploader {
     filename: string,
     file: AsyncIterable<unknown>,
     maps?: { filename: string; stream: AsyncIterable<unknown> },
+    assets?: string,
   ): ReadableStream<Uint8Array> {
-    const chunks = this.chunks(boundary, fields, filename, file, maps);
+    const chunks = this.chunks(boundary, fields, filename, file, maps, assets);
     return new ReadableStream<Uint8Array>({
       async pull(controller) {
         const next = await chunks.next();
@@ -227,6 +235,7 @@ export class ArtifactUploader {
     filename: string,
     file: AsyncIterable<unknown>,
     maps?: { filename: string; stream: AsyncIterable<unknown> },
+    assets?: string,
   ): AsyncGenerator<Uint8Array> {
     const encoder = new TextEncoder();
 
@@ -245,6 +254,18 @@ export class ArtifactUploader {
       yield* this.filePart(boundary, "maps", maps.filename, maps.stream);
     }
 
+    // The asset list (#Q3381), JSON, as a file part: a site's list runs to
+    // hundreds of kilobytes, past what a text field should carry.
+    if (assets) {
+      yield* this.filePart(
+        boundary,
+        "assets",
+        "assets.json",
+        [encoder.encode(assets)],
+        "application/json",
+      );
+    }
+
     yield encoder.encode(`--${boundary}--\r\n`);
   }
 
@@ -260,13 +281,14 @@ export class ArtifactUploader {
     boundary: string,
     name: string,
     filename: string,
-    file: AsyncIterable<unknown>,
+    file: AsyncIterable<unknown> | Iterable<Uint8Array>,
+    contentType = "application/gzip",
   ): AsyncGenerator<Uint8Array> {
     const encoder = new TextEncoder();
 
     yield encoder.encode(
       `--${boundary}\r\nContent-Disposition: form-data; name="${name}"; filename="${filename}"\r\n` +
-        "Content-Type: application/gzip\r\n\r\n",
+        `Content-Type: ${contentType}\r\n\r\n`,
     );
 
     for await (const chunk of file) {
@@ -328,6 +350,12 @@ export interface ArtifactUploadInput {
    */
   mapsPath?: string;
   mapsFilename?: string;
+
+  /**
+   * The asset list, JSON (#Q3381): sent as the `assets` part when present.
+   * An older Lore ignores the part, so sending it is always safe.
+   */
+  assets?: string;
 }
 
 export interface ArtifactUploaded {

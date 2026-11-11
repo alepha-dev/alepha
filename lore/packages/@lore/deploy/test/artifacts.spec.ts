@@ -4,6 +4,7 @@ import { Alepha, type FileLike, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { MemoryFileStorageProvider } from "alepha/bucket";
+import { CloudflareAssetManifest } from "alepha/cli/infra-lib";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
@@ -142,6 +143,7 @@ describe("artifacts", () => {
       manifest?: unknown;
       file: File;
       maps?: File;
+      assets?: File;
     },
   ) =>
     ctx.artifactController.pushArtifact.fetch(
@@ -155,6 +157,7 @@ describe("artifacts", () => {
           manifest: body.manifest as never,
           file: body.file,
           maps: body.maps,
+          assets: body.assets,
         },
       },
       { user },
@@ -601,6 +604,101 @@ describe("artifacts", () => {
           }),
         ),
       ).toBe(400);
+    });
+  });
+
+  describe("an asset list sent beside the bytes (#Q3381)", () => {
+    const list = (body: unknown) =>
+      new File([JSON.stringify(body)], "assets.json", {
+        type: "application/json",
+      });
+    const valid = {
+      version: 1,
+      assets: [
+        {
+          path: "/index.html",
+          sha256:
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+          size: 5,
+          contentType: "text/html; charset=utf-8",
+        },
+        {
+          path: "/_headers",
+          sha256: "a".repeat(64),
+          size: 3,
+          contentType: "application/null",
+        },
+      ],
+      config: { _headers: "/*\n  X: y\n" },
+    };
+
+    it("stores it under this project, with each Cloudflare key derived from the digest", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+        assets: list(valid),
+      });
+
+      const cache = ctx.alepha.inject(DeployAssetCache);
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const sha256 = pushed.data.artifact.sha256;
+      const stored = JSON.parse(
+        await (
+          await storage.download(
+            ArtifactService.BUCKET,
+            cache.pushedKey(projectId, sha256),
+          )
+        ).text(),
+      );
+      const keys = ctx.alepha.inject(CloudflareAssetManifest);
+      expect(stored.source).toBe("push");
+      // The config file listed as an asset is dropped: it travels as text.
+      expect(Object.keys(stored.manifest)).toEqual(["/index.html"]);
+      expect(stored.manifest["/index.html"]).toEqual({
+        hash: await keys.cloudflareKey(valid.assets[0]!.sha256, "/index.html"),
+        size: 5,
+        digest: valid.assets[0]!.sha256,
+      });
+      expect(stored.configTexts).toEqual(valid.config);
+      // Never under the shared key, which only a deploy writes.
+      expect(
+        await storage.exists(ArtifactService.BUCKET, cache.key(sha256)),
+      ).toBe(false);
+    });
+
+    it("refuses a list it cannot read, and stores nothing", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      await expect(
+        push(projectId, owner, {
+          file: await packedArtifact(),
+          assets: list({ version: 1, assets: [{ path: "no-slash" }] }),
+        }),
+      ).rejects.toThrow(/asset list/);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(0);
+    });
+
+    it("drops the pushed list with the build", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+        assets: list(valid),
+      });
+      const cache = ctx.alepha.inject(DeployAssetCache);
+      const storage = ctx.alepha.inject(MemoryFileStorageProvider);
+      const key = cache.pushedKey(projectId, pushed.data.artifact.sha256);
+      expect(await storage.exists(ArtifactService.BUCKET, key)).toBe(true);
+
+      await ctx.alepha
+        .inject(ArtifactService)
+        .delete((await ctx.rows.artifacts.findById(pushed.data.artifact.id))!);
+
+      expect(await storage.exists(ArtifactService.BUCKET, key)).toBe(false);
     });
   });
 

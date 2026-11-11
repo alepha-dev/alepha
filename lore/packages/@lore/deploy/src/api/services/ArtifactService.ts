@@ -10,6 +10,10 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
+import {
+  type ArtifactAssetList,
+  artifactAssetListSchema,
+} from "../schemas/artifactAssetListSchema.ts";
 import type { ArtifactManifest } from "../schemas/artifactManifestSchema.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
@@ -66,6 +70,64 @@ export class ArtifactService {
    * build worth returning to is a build worth pinning a real tag on.
    */
   public async push(input: ArtifactPushInput): Promise<ArtifactPushResult> {
+    // Read before anything is stored, so a malformed list refuses the push
+    // rather than leaving an archive without the list its pusher meant.
+    const assets = input.assets
+      ? await this.assetListOf(input.assets)
+      : undefined;
+    const result = await this.storeArchive(input);
+    // ⚠️ After the row, and on every path, the idempotent re-push included:
+    // the list is keyed by the archive's digest and this project, so storing
+    // it again for the same bytes is harmless and repairs a missing one.
+    if (assets) {
+      await this.assetCache.storePushed(
+        ArtifactService.BUCKET,
+        input.projectId,
+        result.artifact.sha256,
+        assets,
+      );
+    }
+    return result;
+  }
+
+  /**
+   * The asset list a push carried (#Q3381), validated.
+   *
+   * ⚠️ A 400 when it is not one, rather than a push that silently drops it:
+   * the pusher meant the deploy to use it, and a CLI that writes a list this
+   * Lore cannot read should be told.
+   */
+  protected async assetListOf(file: FileLike): Promise<ArtifactAssetList> {
+    if (file.size > ArtifactService.MAX_ASSET_LIST_BYTES) {
+      throw new BadRequestError(
+        "The asset list sent with this push is larger than this registry reads.",
+      );
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      throw new BadRequestError(
+        "The asset list sent with this push is not valid JSON.",
+      );
+    }
+    const list = artifactAssetListSchema.safeParse(parsed);
+    if (!list.success) {
+      throw new BadRequestError(
+        "The asset list sent with this push is not one this Lore can read. Push without it, or with a current `lore` CLI.",
+      );
+    }
+    return list.data;
+  }
+
+  /**
+   * The largest asset list a push may carry: ~25,000 assets.
+   */
+  protected static readonly MAX_ASSET_LIST_BYTES = 4 * 1024 * 1024;
+
+  protected async storeArchive(
+    input: ArtifactPushInput,
+  ): Promise<ArtifactPushResult> {
     const app = this.normalizeApp(input.app);
     const tag = this.normalizeTag(input.tag);
 
@@ -478,7 +540,11 @@ export class ArtifactService {
         Boolean(id),
       ),
     );
-    await this.assetCache.remove(ArtifactService.BUCKET, existing.sha256);
+    await this.assetCache.remove(
+      ArtifactService.BUCKET,
+      existing.sha256,
+      existing.projectId,
+    );
     return updated;
   }
 
@@ -670,7 +736,11 @@ export class ArtifactService {
    */
   public async delete(artifact: Artifact): Promise<void> {
     await this.rows.deleteById(artifact.id);
-    await this.assetCache.remove(ArtifactService.BUCKET, artifact.sha256);
+    await this.assetCache.remove(
+      ArtifactService.BUCKET,
+      artifact.sha256,
+      artifact.projectId,
+    );
     await this.files.deleteFiles(
       [artifact.fileId, artifact.mapsFileId].filter((id): id is string =>
         Boolean(id),
@@ -843,6 +913,11 @@ export interface ArtifactPushInput {
    * included, so it needs no lifecycle of its own.
    */
   maps?: FileLike;
+  /**
+   * The asset list the pusher's CLI computed (#Q3381), JSON. Optional: an
+   * older CLI sends none, and the first deploy computes the list instead.
+   */
+  assets?: FileLike;
 }
 
 export interface ArtifactImagePushInput {

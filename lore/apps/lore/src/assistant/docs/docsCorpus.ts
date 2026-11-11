@@ -958,6 +958,13 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Pushing artifacts",
+    section: "The asset list travels with the build",
+    url: "https://alepha.dev/lore/docs/guides-artifacts#the-asset-list-travels-with-the-build",
+    capability: "apps",
+    text: "Beside the archive, the push sends a list of the build's static assets: every\nfile under `dist/public`, with its SHA-256, its size and its content type. The\nfiles are the ones the archive holds (the same excludes leave out source maps,\n`.DS_Store` and `node_modules`), and `_headers` and `_redirects` travel as\ntheir text.\n\nIt is computed on your machine because it depends only on the build's bytes.\nWithout it, Lore has to unpack and hash every asset again on the first deploy\nof each build, which is most of a deploy's work for a site of thousands of\nfiles. The push logs how long the list took.\n\nThe list is optional both ways. A build pushed by an older CLI deploys\nnormally, and its first deploy computes the list instead. Lore keeps each list\nfor the project that pushed it, and checks the bytes of every asset it uploads\nagainst it, so a wrong list cannot reach another project's deploys.",
+  },
+  {
+    guide: "Pushing artifacts",
     section: "The credential",
     url: "https://alepha.dev/lore/docs/guides-artifacts#the-credential",
     capability: "apps",

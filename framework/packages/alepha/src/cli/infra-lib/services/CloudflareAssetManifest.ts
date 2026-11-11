@@ -118,11 +118,7 @@ export class CloudflareAssetManifest {
    * #F1484); the only cost is that the answer is a promise.
    */
   public async digest(bytes: Uint8Array): Promise<string> {
-    return this.hex(
-      new Uint8Array(
-        await crypto.subtle.digest("SHA-256", bytes as BufferSource),
-      ),
-    );
+    return await this.sha256(bytes);
   }
 
   /**
@@ -138,7 +134,7 @@ export class CloudflareAssetManifest {
     const payload = new TextEncoder().encode(
       `${digest}.${this.extension(path)}`,
     );
-    return (await this.digest(payload)).slice(0, 32);
+    return (await this.sha256(payload)).slice(0, 32);
   }
 
   /**
@@ -280,6 +276,19 @@ export class CloudflareAssetManifest {
       binary += String.fromCharCode(...chunk);
     }
     return btoa(binary);
+  }
+
+  /**
+   * SHA-256 as lowercase hex. Kept apart from {@link digest} so that counting
+   * or substituting the asset digest does not also catch the small hash a key
+   * is derived with.
+   */
+  protected async sha256(bytes: Uint8Array): Promise<string> {
+    return this.hex(
+      new Uint8Array(
+        await crypto.subtle.digest("SHA-256", bytes as BufferSource),
+      ),
+    );
   }
 
   protected hex(bytes: Uint8Array): string {
