@@ -164,7 +164,7 @@ describe("deploying an artifact from inside the Worker", () => {
     Object.assign(runner as unknown as Record<string, unknown>, {
       // The bytes come from `$storage` in production; what is under test here
       // starts at the tarball.
-      artifactBytes: async () => bytes,
+      artifactStream: async () => new Blob([bytes as BlobPart]).stream(),
       container: () => {
         const child = container();
         Object.assign(

@@ -1,5 +1,7 @@
+import { pipeline, Readable } from "node:stream";
+import * as zlib from "node:zlib";
+
 import { BadRequestError, isHttpError } from "alepha/server";
-import { Decompress as ZstdDecompress } from "fzstd";
 
 import {
   type ArtifactManifest,
@@ -34,10 +36,11 @@ import {
  * ## Constant memory, bounded work
  *
  * The archive is decompressed as a stream and every entry body is discarded as
- * it goes by; only `dist/manifest.json` is collected, and the scan stops the
- * moment it is complete. What is held is one chunk plus a partial header, not
- * the decompressed archive - which for a real app is tens of megabytes against
- * a Worker isolate that has about 128.
+ * it goes by; only `manifest.json` is collected, and the scan stops the
+ * moment it is complete. The input is streamed too: a deploy hands the R2 body
+ * straight in. What is held is the zstd window, one chunk and a partial
+ * header, never the archive nor its inflated tar - which for a real app is
+ * tens of megabytes against a Worker isolate that has about 128.
  *
  * {@link MAX_INFLATED_BYTES} bounds the other direction. Gzip expands, and a
  * 20 MB upload can legally inflate to gigabytes; without a budget the CPU cost
@@ -76,12 +79,14 @@ export class ArtifactTarReader {
   protected static readonly MAX_MANIFEST_BYTES = 1024 * 1024;
 
   /**
-   * How much compressed input is handed to the zstd decoder per `pull`.
+   * The largest zstd window a frame may declare, as a power of two: 32 MiB,
+   * what `alepha pack` writes (`ArchiveCompressor.WINDOW_LOG`).
    *
-   * Small enough that its output is consumed as it is produced rather than
-   * accumulating, large enough that the scan is not one call per tar block.
+   * The window is the one large buffer a streaming decode holds, and two
+   * deploys share an isolate of about 128 MB with web traffic. A frame asking
+   * for more is refused as an archive this reader does not read.
    */
-  protected static readonly ZSTD_SOURCE_CHUNK = 256 * 1024;
+  protected static readonly ZSTD_WINDOW_LOG_MAX = 25;
 
   /**
    * How much an {@link extract} will WRITE, which is a different bound from
@@ -108,8 +113,10 @@ export class ArtifactTarReader {
    * Alepha artifact is a bad request, and the message says which of the three
    * ways it failed so a CI log is enough to fix it.
    */
-  public async readManifest(bytes: Uint8Array): Promise<ArtifactManifest> {
-    const found = await this.findEntry(bytes, ArtifactTarReader.MANIFEST_PATH);
+  public async readManifest(
+    source: ArtifactTarSource,
+  ): Promise<ArtifactManifest> {
+    const found = await this.findEntry(source, ArtifactTarReader.MANIFEST_PATH);
     if (!found) {
       throw new BadRequestError(
         `This artifact carries no ${ArtifactTarReader.MANIFEST_PATH}. Build it with \`alepha build\` and pack it with \`alepha pack\`.`,
@@ -163,7 +170,7 @@ export class ArtifactTarReader {
    * path, so an archive that lists no directory entries still unpacks.
    */
   public async extract(
-    bytes: Uint8Array,
+    source: ArtifactTarSource,
     fs: ArtifactTarSink,
     root: string,
     options: ArtifactTarExtractOptions = {},
@@ -173,7 +180,7 @@ export class ArtifactTarReader {
     let written = 0;
     let skipped = 0;
 
-    for await (const entry of this.entries(bytes)) {
+    for await (const entry of this.entries(source)) {
       if (++files > MAX_ENTRIES) {
         throw new BadRequestError(
           `This artifact holds more than ${MAX_ENTRIES} entries, which is more than a deploy will unpack.`,
@@ -304,10 +311,10 @@ export class ArtifactTarReader {
    * keeps a manifest read cheap on a 40 MB archive.
    */
   protected async findEntry(
-    bytes: Uint8Array,
+    source: ArtifactTarSource,
     wanted: string,
   ): Promise<Uint8Array | undefined> {
-    for await (const entry of this.entries(bytes, {
+    for await (const entry of this.entries(source, {
       only: wanted,
       maxBody: ArtifactTarReader.MAX_MANIFEST_BYTES,
     })) {
@@ -334,53 +341,115 @@ export class ArtifactTarReader {
    * what an extraction needs and why the budget it applies is its own.
    */
   /**
-   * The archive's bytes, decompressed, whichever compression it carries.
+   * The archive's bytes, decompressed, whichever compression it carries, as
+   * chunks pulled one at a time.
    *
    * ⚠️ **Chosen by magic bytes, never by the filename.** The filename is
    * whatever the pusher called the file, and `ArtifactController` deliberately
    * lets it disagree with the manifest; deciding a decoder on it would let a
-   * rename change how the bytes are read.
+   * rename change how the bytes are read. On a stream that means reading the
+   * first four bytes before choosing, and handing them back to the decoder.
    *
-   * ⚠️ **zstd is decoded in JavaScript, and it has to be.** workerd's
-   * `DecompressionStream` takes `gzip`, `deflate` and `deflate-raw` only —
-   * there is no native zstd in a Worker — so `fzstd` (MIT, no dependencies,
-   * decompression only) does it. `alepha pack` pins its `windowLog` at 32 MiB
-   * for exactly this reason: the dedup a larger window would buy is already
-   * fully realised at 32, and a frame declaring 128 MiB would ask this isolate
-   * for a buffer the size of its whole memory budget.
+   * ⚠️ **zstd is decoded natively, by `node:zlib`.** workerd's
+   * `DecompressionStream` takes `gzip`, `deflate` and `deflate-raw` only, but
+   * its `node:zlib` has `createZstdDecompress` (under `nodejs_compat`, which
+   * every Alepha Worker carries). It replaced the pure-JS `fzstd`, which cost
+   * ~1.5 s of CPU per pass on the docs archive against ~50 ms native (#Q3380,
+   * folio #F1484). Measured 2026-11-11 on local workerd at compatibility date
+   * 2026-11-03: a 125 MB tar inflated in ~100 ms, streaming.
    *
-   * Fed in slices rather than all at once so the decoder's output is consumed
-   * as it is produced. The caller discards every body it does not want, and
-   * pushing the whole source in one call would materialise the entire
-   * decompressed archive — tens of megabytes — defeating the point.
+   * ⚠️ **The window is capped**, at {@link ZSTD_WINDOW_LOG_MAX}. `alepha pack`
+   * pins its `windowLog` at 32 MiB, and the decoder's own default accepts
+   * 128 MiB: a frame declaring that would ask this isolate for a buffer the
+   * size of its whole memory budget. Capped, it is refused as a bad archive.
+   *
+   * Streamed both ways: the source is pulled as the decoder needs it and the
+   * output is consumed as it is produced, so what is resident is the zstd
+   * window plus a chunk, never the archive nor its inflated tar.
    */
-  protected decompressed(bytes: Uint8Array): ReadableStream<Uint8Array> {
-    if (!this.isZstd(bytes)) {
-      return new Blob([bytes as BlobPart])
-        .stream()
-        .pipeThrough(new DecompressionStream("gzip"));
+  protected async decompressed(
+    source: ArtifactTarSource,
+  ): Promise<{
+    chunks: AsyncIterator<Uint8Array>;
+    close: () => Promise<void>;
+  }> {
+    const input =
+      source instanceof Uint8Array
+        ? new Blob([source as BlobPart]).stream()
+        : source;
+    const reader = input.getReader();
+
+    // Enough of the head to read the magic, kept to be replayed.
+    const head: Uint8Array[] = [];
+    let headLength = 0;
+    let ended = false;
+    while (headLength < 4) {
+      const next = await reader.read();
+      if (next.done) {
+        ended = true;
+        break;
+      }
+      head.push(next.value);
+      headLength += next.value.length;
     }
-
-    const { ZSTD_SOURCE_CHUNK } = ArtifactTarReader;
-    let offset = 0;
-    let decoder: ZstdDecompress;
-
-    return new ReadableStream<Uint8Array>({
+    const replayed = new ReadableStream<Uint8Array>({
       start(controller) {
-        decoder = new ZstdDecompress((chunk) => controller.enqueue(chunk));
+        for (const chunk of head) controller.enqueue(chunk);
+        if (ended) controller.close();
       },
-      pull(controller) {
-        const end = Math.min(offset + ZSTD_SOURCE_CHUNK, bytes.length);
-        const last = end >= bytes.length;
-        // Enqueues happen synchronously from inside this call, through the
-        // callback handed to the decoder above.
-        decoder.push(bytes.subarray(offset, end), last);
-        offset = end;
-        if (last) {
-          controller.close();
-        }
+      async pull(controller) {
+        const next = await reader.read();
+        if (next.done) controller.close();
+        else controller.enqueue(next.value);
+      },
+      cancel(reason) {
+        return reader.cancel(reason);
       },
     });
+
+    if (!this.isZstd(this.concat(head))) {
+      const out = replayed
+        .pipeThrough(
+          new DecompressionStream("gzip") as unknown as ReadableWritablePair<
+            Uint8Array,
+            Uint8Array
+          >,
+        )
+        .getReader();
+      return {
+        chunks: {
+          next: async () => {
+            const next = await out.read();
+            return next.done
+              ? { done: true, value: undefined }
+              : { done: false, value: next.value };
+          },
+        },
+        close: () => out.cancel().catch(() => undefined),
+      };
+    }
+
+    const from = Readable.fromWeb(
+      replayed as unknown as Parameters<typeof Readable.fromWeb>[0],
+    );
+    const decoder = zlib.createZstdDecompress({
+      params: {
+        [zlib.constants.ZSTD_d_windowLogMax]:
+          ArtifactTarReader.ZSTD_WINDOW_LOG_MAX,
+      },
+    });
+    // The callback only keeps a failure from being unhandled: the same error
+    // reaches the decoder, whose iterator throws it to the walk.
+    pipeline(from, decoder, () => undefined);
+    const chunks = decoder[Symbol.asyncIterator]() as AsyncIterator<Uint8Array>;
+    return {
+      chunks,
+      close: async () => {
+        decoder.destroy();
+        from.destroy();
+        await reader.cancel().catch(() => undefined);
+      },
+    };
   }
 
   /**
@@ -400,14 +469,15 @@ export class ArtifactTarReader {
   }
 
   protected async *entries(
-    bytes: Uint8Array,
+    source: ArtifactTarSource,
     options: { only?: string; maxBody?: number } = {},
   ): AsyncGenerator<ArtifactTarEntry & { body: Uint8Array }> {
     const { BLOCK, MAX_INFLATED_BYTES } = ArtifactTarReader;
-    // ⚠️ A bad archive does NOT fail here. Wiring the streams up is all this
-    // line does; the decode error surfaces on the first `read()`, which is why
-    // the guard below is around the loop and not around this.
-    const reader = this.decompressed(bytes).getReader();
+    // ⚠️ A bad archive does NOT fail here. Reading the magic and wiring the
+    // decoder up is all this line does; the decode error surfaces on the
+    // first `next()`, which is why the guard below is around the loop and
+    // not around this.
+    const { chunks, close } = await this.decompressed(source);
     // Only ever holds a partial header, so it stays under one block.
     let carry = new Uint8Array(0);
     let skip = 0;
@@ -423,7 +493,7 @@ export class ArtifactTarReader {
 
     try {
       while (!finished) {
-        const next = await reader.read();
+        const next = await chunks.next();
         if (next.done) break;
         let chunk = next.value;
         inflated += chunk.length;
@@ -519,10 +589,10 @@ export class ArtifactTarReader {
         "This artifact could not be decompressed: it is neither a zstd nor a gzip archive.",
       );
     } finally {
-      // Cancelling a stream that has ERRORED rejects with that same error, so
+      // Closing a stream that has ERRORED rejects with that same error, so
       // the rejection is swallowed here rather than replacing the message that
       // was chosen to describe it.
-      await reader.cancel().catch(() => undefined);
+      await close().catch(() => undefined);
     }
 
     for (const entry of ready) {
@@ -606,6 +676,14 @@ export class ArtifactTarReader {
     return out;
   }
 }
+
+/**
+ * What a reader walks: the archive's bytes whole (a push, a spec), or a stream
+ * of them (an R2 body, which a deploy never reads whole).
+ *
+ * ⚠️ A stream is consumed: walk it once. A second pass opens it again.
+ */
+export type ArtifactTarSource = Uint8Array | ReadableStream<Uint8Array>;
 
 /**
  * One tar entry's header, as much of it as this reader reads.

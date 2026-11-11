@@ -2198,7 +2198,6 @@ __metadata:
     "@types/react-dom": "npm:^19.3.0"
     "@types/ws": "npm:^8.18.2"
     alepha: "workspace:*"
-    fzstd: "npm:0.1.1"
     js-yaml: "npm:5.5.0"
     lucide-react: "npm:^1.70.0"
     react: "npm:^19.3.1"
@@ -6119,13 +6118,6 @@ __metadata:
   version: 7.5.0
   resolution: "fuse.js@npm:7.5.0"
   checksum: 10c0/1fa51a66063b9b0579921ed1d774864e5e027719d3a4fdb469e6636befa4a9f2f7da626c07da757c6e1ef8a761c7bd3a217e6ecc8e16f0276e1a0f8dd941ff77
-  languageName: node
-  linkType: hard
-
-"fzstd@npm:0.1.1":
-  version: 0.1.1
-  resolution: "fzstd@npm:0.1.1"
-  checksum: 10c0/c4ae25a4b9e7ac58e9716fcb0c4ec19f3e678d90a67a59e97ce361beb27e4aa4b8666b58b4dc2d715e92db4b65b189c978186a5fedba6fccb5ec9765717dd1cd
   languageName: node
   linkType: hard
 

@@ -12,7 +12,10 @@ import {
   deployAssetCacheSchema,
   type DeployAssetCacheEntry,
 } from "../schemas/deployAssetCacheSchema.ts";
-import { ArtifactTarReader } from "./ArtifactTarReader.ts";
+import {
+  ArtifactTarReader,
+  type ArtifactTarSource,
+} from "./ArtifactTarReader.ts";
 
 /**
  * Disposable, server-computed asset metadata beside the artifact blobs.
@@ -35,7 +38,7 @@ export class DeployAssetCache {
   public async prepare(
     bucket: string,
     sha256: string,
-    bytes: Uint8Array,
+    source: ArtifactTarSource,
     fs: MemoryFileSystemProvider,
     root: string,
   ): Promise<DeployAssetCacheEntry> {
@@ -54,7 +57,7 @@ export class DeployAssetCache {
     const assets = `${root}/public/`;
     let count = 0;
     let yieldedAt = this.clock.nowMillis();
-    const unpacked = await this.reader.extract(bytes, fs, root, {
+    const unpacked = await this.reader.extract(source, fs, root, {
       skip: (path) => path.startsWith(assets),
       onSkipped: cached
         ? undefined
