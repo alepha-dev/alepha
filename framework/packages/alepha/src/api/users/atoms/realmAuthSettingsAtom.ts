@@ -79,12 +79,15 @@ export const realmAuthSettingsAtom = $atom({
       ),
     usernameBlocklist: z
       .array(z.text())
-      .describe(
-        "Usernames that the slugger / manual registration must reject. " +
+      // Open-ended: the admin types new entries (#Q3424).
+      .meta({
+        description:
+          "Usernames that the slugger / manual registration must reject. " +
           "Default empty so apps can register `admin`/`root`/`me`/etc. if " +
           "they want; populate it explicitly for handles you want to keep " +
           "off-limits.",
-      ),
+        $control: { createNewEntry: true },
+      }),
     phoneNumber: fieldRequirement(
       "Phone number field requirement for user accounts",
     ),
@@ -115,17 +118,28 @@ export const realmAuthSettingsAtom = $atom({
       ),
     adminEmails: z
       .array(z.email())
-      .describe(
-        "List of email addresses that are automatically promoted to admin role on login",
-      ),
+      // Open-ended: the admin types new entries (#Q3424).
+      .meta({
+        description:
+          "List of email addresses that are automatically promoted to admin role on login",
+        $control: { createNewEntry: true },
+      }),
     adminUsernames: z
       .array(z.text())
-      .describe(
-        "List of usernames that are automatically promoted to admin role on login",
-      ),
+      // Open-ended: the admin types new entries (#Q3424).
+      .meta({
+        description:
+          "List of usernames that are automatically promoted to admin role on login",
+        $control: { createNewEntry: true },
+      }),
     defaultRoles: z
       .array(z.string())
-      .describe("Default roles assigned to newly registered users"),
+      // Open-ended: the admin types new entries (#Q3424).
+      .meta({
+        description:
+          "Default roles assigned to newly registered users",
+        $control: { createNewEntry: true },
+      }),
     verifyEmailUrl: z
       .string()
       .describe(
