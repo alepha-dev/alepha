@@ -226,6 +226,9 @@ export class BrowserHeadProvider {
     if (link.hreflang) {
       el.setAttribute("hreflang", link.hreflang);
     }
+    if (link.integrity) {
+      el.setAttribute("integrity", link.integrity);
+    }
     document.head.appendChild(el);
     return el;
   }

@@ -115,6 +115,12 @@ The lists are `TurnstileCaptchaProvider.CSP_SOURCES` and `StripePaymentProvider.
 
 A directive is matched in kebab-case or camelCase (`scriptSrc` and `script-src` are one directive). Nothing registered is sent while the CSP is off. Register at `configure`: the header is built once and cached, and `alepha build` writes the same policy into `dist/public/_headers` when it configures the app (a prerendered page or a static site). One line of that file holds 2000 characters, about 30 script hashes beside the built-in policy; the build says how many sources a policy over the limit holds.
 
+#### Subresource Integrity
+
+`alepha build` computes a SHA-384 of every JS and CSS file it emits, and the server writes it as `integrity` on what the document has a tag for: the entry script, the entry stylesheets, and every `modulepreload` (the entry's own graph and the first page's chunks), plus the matching `Link` header preloads. A browser refuses any of those files whose bytes changed between the build and the visitor. A `$head` link given an `integrity` gets the attribute too. Nothing to turn on, and it works with or without the CSP.
+
+What it does not cover: a chunk loaded later by an `import()` (a client navigation to another page, a lazy component) and a page stylesheet Vite inserts itself have no tag in the document, so no integrity. They are authorised by `script-src 'self'` (and `style-src`) only; no import map with an `integrity` section is built, since it would be an inline script of tens of kilobytes on every page of a large app. For a payment page under PCI DSS 4.0.1 requirement 6.4.3, that means the method for a lazily loaded chunk is the CSP, not SRI: keep the checkout's code in the page's static imports if you want every byte of it integrity-checked. `alepha dev` serves no hashed files and writes no integrity.
+
 ### Body Parser
 
 JSON, plain text and URL-encoded bodies are parsed for any route with a `body` schema, and a body over the limit answers 413 before the handler runs. Multipart has its own limits, below.

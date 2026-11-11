@@ -366,34 +366,62 @@ export class ReactServerProvider {
     }
     const assets = this.ssrManifestProvider.getEntryAssets();
     if (assets) {
-      for (const css of assets.css) {
-        parts.push(`<link rel="stylesheet" href="${css}">`);
-      }
+      assets.css.forEach((css, i) => {
+        const integrity = assets.cssIntegrity?.[i];
+        // `crossorigin` with the integrity: SRI on a file served from
+        // another origin (an asset base on a CDN) needs a CORS request, and it
+        // matches the `preload as=style crossorigin` the same file gets.
+        parts.push(
+          integrity
+            ? `<link rel="stylesheet" href="${css}" integrity="${integrity}" crossorigin="">`
+            : `<link rel="stylesheet" href="${css}">`,
+        );
+      });
     }
 
     // Everything above is safe on an error page; the entry script is not, so
     // the two heads fork here. See ReactServerTemplateProvider.errorHeadContent.
     const styleOnlyParts = [...parts];
 
-    if (assets?.js) {
+    // The entry is imported by every chunk (it holds the shared code). A
+    // module enters the browser's module map on its first fetch, whoever made
+    // it, and a later `<script integrity>` reuses that entry unchecked: when a
+    // preloaded chunk's import of the entry got there first, a tampered entry
+    // ran (#Q3319, measured in `apps/examples/ssr/e2e/prod/integrity.spec.ts`).
+    // A checked `modulepreload` of the entry ahead of every other module tag
+    // makes the first fetch the checked one.
+    if (assets?.js && assets.jsIntegrity) {
       parts.push(
-        // `async`: it must be able to run before the document ends, or a
-        // deferred value would hold the page dead until it settled. The early
-        // head leaves before the loaders, so this cannot depend on the page:
-        // `ReactBrowserProvider.payloadWritten` is what keeps every other page
-        // waiting for the end of the document, as a deferred script did.
-        `<script type="module" crossorigin="" src="${assets.js}" async></script>`,
+        `<link rel="modulepreload" href="${assets.js}" integrity="${assets.jsIntegrity}">`,
       );
     }
 
     // The entry's own static graph, which every page needs and nothing about
     // a request can change. Without it these chunks are discovered only by
     // parsing entry.js, two sequential round trips deep.
+    //
+    // Ahead of the entry script (#Q3319): a module is integrity-checked only
+    // when its `modulepreload` was processed before something imports it, so
+    // written after, the entry's static imports could be fetched unchecked.
     const entryGraph = this.templateProvider.renderHeadContent({
       link: this.ssrManifestProvider.collectEntryGraphLinks(),
     });
     if (entryGraph) {
       parts.push(entryGraph.trimEnd());
+    }
+
+    if (assets?.js) {
+      const integrity = assets.jsIntegrity
+        ? ` integrity="${assets.jsIntegrity}"`
+        : "";
+      parts.push(
+        // `async`: it must be able to run before the document ends, or a
+        // deferred value would hold the page dead until it settled. The early
+        // head leaves before the loaders, so this cannot depend on the page:
+        // `ReactBrowserProvider.payloadWritten` is what keeps every other page
+        // waiting for the end of the document, as a deferred script did.
+        `<script type="module" crossorigin="" src="${assets.js}"${integrity} async></script>`,
+      );
     }
 
     this.templateProvider.setEarlyHeadContent(

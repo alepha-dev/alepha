@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { isAbsolute, join } from "node:path";
 
@@ -534,21 +535,32 @@ export class BuildServerTask extends BuildTask {
       `${opts.distDir}/${opts.clientDir}`,
     );
 
-    const data = {
-      // This is the only point in the pipeline holding every manifest at
-      // once, so it is the only one that can resolve a preload key - and the
-      // only one that can refuse to.
-      preload: clientManifest
-        ? this.preloadTable.build({
-            clientManifest,
-            preloadManifest: preloadManifest ?? {},
-            ssrManifest: ssrManifest ?? {},
-            base: base === "/" ? "" : base,
-            allowUnresolved: opts.allowUnresolvedPreloads,
-          })
-        : undefined,
-      favicon,
-    };
+    // This is the only point in the pipeline holding every manifest at
+    // once, so it is the only one that can resolve a preload key - and the
+    // only one that can refuse to.
+    const preload = clientManifest
+      ? this.preloadTable.build({
+          clientManifest,
+          preloadManifest: preloadManifest ?? {},
+          ssrManifest: ssrManifest ?? {},
+          base: base === "/" ? "" : base,
+          allowUnresolved: opts.allowUnresolvedPreloads,
+        })
+      : undefined;
+    if (preload) {
+      preload.integrity = await this.integrityOf(
+        preload.files,
+        `${opts.distDir}/${opts.clientDir}`,
+        base === "/" ? "" : base,
+      );
+      this.log.info(
+        `Subresource Integrity: ${preload.integrity.filter(Boolean).length} JS and CSS files hashed (sha384). ` +
+          "The document's tags carry it: the entry script, the stylesheets, the preloaded graph. " +
+          "A chunk loaded later by import() is authorised by script-src 'self' only.",
+      );
+    }
+
+    const data = { preload, favicon };
 
     return {
       viteDir,
@@ -557,6 +569,42 @@ export class BuildServerTask extends BuildTask {
       // integer per line tripled the size of a generated file nobody reads.
       statement: `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(data)});\n`,
     };
+  }
+
+  /**
+   * Subresource Integrity for each file of the preload table, parallel to
+   * `files`: `sha384-<base64>` of the bytes on disk for a `.js` or `.css`
+   * file, `""` for anything else or a file that is not there.
+   *
+   * Taken here, after the client build wrote them: no later task of the
+   * build rewrites a JS or CSS file under the public directory (the
+   * compressed copies are separate files). It covers what a document has a
+   * tag for: the entry script, the stylesheets and the preloaded graph. A
+   * chunk loaded later by `import()` is authorised by `script-src 'self'`
+   * only; no integrity import map is built.
+   */
+  protected async integrityOf(
+    files: string[],
+    publicDir: string,
+    base: string,
+  ): Promise<string[]> {
+    return Promise.all(
+      files.map(async (href) => {
+        if (!/\.(m?js|css)$/.test(href)) {
+          return "";
+        }
+        const file =
+          base && href.startsWith(`${base}/`)
+            ? href.slice(base.length + 1)
+            : href.replace(/^\//, "");
+        const path = `${publicDir}/${file}`;
+        if (!(await this.fs.exists(path))) {
+          return "";
+        }
+        const bytes = await this.fs.readFile(path);
+        return `sha384-${createHash("sha384").update(bytes).digest("base64")}`;
+      }),
+    );
   }
 
   /**

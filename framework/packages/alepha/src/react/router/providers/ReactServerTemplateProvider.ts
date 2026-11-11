@@ -272,6 +272,8 @@ export class ReactServerTemplateProvider {
         if (link.sizes) content += ` sizes="${this.escapeHtml(link.sizes)}"`;
         if (link.hreflang)
           content += ` hreflang="${this.escapeHtml(link.hreflang)}"`;
+        if (link.integrity)
+          content += ` integrity="${this.escapeHtml(link.integrity)}"`;
         content += ">\n";
       }
     }
