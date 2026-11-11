@@ -1417,6 +1417,12 @@ export class ProjectController {
     if (archived !== Boolean(project.archivedAt)) {
       project.archivedAt = archived ? this.dateTime.nowISOString() : undefined;
       await this.projects.save(project);
+      // Archiving frees the slot on every member's dock (#E139, #Q3436).
+      // Unarchiving pins nothing back: a dock is what its owner chose, and
+      // that is why this is a write and not only the read filter.
+      if (archived && project.organizationId) {
+        await this.dock.unpinForMembers(project.organizationId, project.id);
+      }
       await this.audits.project.logSuccess(archived ? "archive" : "unarchive", {
         ...this.audits.actor(user),
         ...this.audits.scope(project.id),

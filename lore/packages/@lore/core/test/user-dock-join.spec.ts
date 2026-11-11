@@ -1,13 +1,15 @@
 import { InvitationController, ProjectController } from "@lore/core/api";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { userDocks } from "../src/api/entities/userDocks.ts";
 import { LoreCoreApi } from "../src/api/index.ts";
 import { USER_DOCK_CAP } from "../src/api/schemas/userDockCap.ts";
 import { UserDockService } from "../src/api/services/UserDockService.ts";
@@ -16,6 +18,10 @@ import {
   createTestMember,
   createTestProject,
 } from "../src/testing/index.ts";
+
+class DockEntities extends CoreTestEntities {
+  docks = $repository(userDocks);
+}
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -30,6 +36,7 @@ interface Ctx {
   projects: ProjectController;
   invitations: InvitationController;
   dock: UserDockService;
+  docks: DockEntities["docks"];
   person: () => Promise<Person>;
 }
 
@@ -44,7 +51,7 @@ const setup = async (): Promise<Ctx> => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(LoreCoreApi);
-  alepha.inject(CoreTestEntities);
+  const repos = alepha.inject(DockEntities);
   await alepha.start();
 
   const admin = alepha.inject(AdminUserController);
@@ -54,6 +61,7 @@ const setup = async (): Promise<Ctx> => {
     projects: alepha.inject(ProjectController),
     invitations: alepha.inject(InvitationController),
     dock: alepha.inject(UserDockService),
+    docks: repos.docks,
     person: async () => {
       const data = fake.generate(
         z.object({ username: z.string(), email: z.email() }),
@@ -99,6 +107,13 @@ describe("the dock on create and join", () => {
     await ctx.dock.reorder(user.id, ids);
     return ids;
   };
+
+  /**
+   * The stored array, unfiltered: an unpin is a write, not the read filter.
+   */
+  const rowOf = async (userId: string) =>
+    (await ctx.docks.findOne({ where: { userId: { eq: userId } } }))
+      ?.projectIds;
 
   const invite = async (owner: Person, projectId: number, email: string) => {
     const res = await ctx.invitations.createInvitation.fetch(
@@ -181,6 +196,66 @@ describe("the dock on create and join", () => {
       expect(result.ok).toBe(true);
       expect(result.pinned).toBe(false);
       expect(await ctx.dock.read(invitee.id)).toEqual(filled);
+    });
+  });
+
+  /**
+   * Owner and invitee share a project the invitee pinned by accepting.
+   */
+  const shared = async () => {
+    const owner = await ctx.person();
+    const project = await ctx.projects.createProject(
+      { body: { title: "Shared one" } },
+      { user: owner },
+    );
+    await createPresetRanks(ctx.alepha, project.id);
+    const invitee = await ctx.person();
+    const id = await invite(owner, project.id, invitee.email);
+    await ctx.invitations.acceptInvitation.run(
+      { params: { id } },
+      { user: invitee },
+    );
+    return { owner, invitee, project };
+  };
+
+  describe("unpin (#Q3436)", () => {
+    it("unpins a project the user leaves", async ({ expect }) => {
+      const { invitee, project } = await shared();
+      expect(await rowOf(invitee.id)).toEqual([project.id]);
+      await ctx.projects.leaveProject(
+        { params: { id: project.id } },
+        { user: invitee },
+      );
+      expect(await ctx.dock.read(invitee.id)).toEqual([]);
+      expect(await rowOf(invitee.id)).toEqual([]);
+    });
+
+    it("unpins a project the user is removed from", async ({ expect }) => {
+      const { owner, invitee, project } = await shared();
+      await ctx.projects.removeMember(
+        { params: { id: project.id, userId: invitee.id } },
+        { user: owner },
+      );
+      expect(await rowOf(invitee.id)).toEqual([]);
+    });
+
+    it("unpins an archived project for every member, and unarchiving pins nothing back", async ({
+      expect,
+    }) => {
+      const { owner, invitee, project } = await shared();
+      await ctx.projects.archiveProject(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+      expect(await rowOf(owner.id)).toEqual([]);
+      expect(await rowOf(invitee.id)).toEqual([]);
+
+      await ctx.projects.unarchiveProject(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+      expect(await ctx.dock.read(owner.id)).toEqual([]);
+      expect(await ctx.dock.read(invitee.id)).toEqual([]);
     });
   });
 });

@@ -11,6 +11,11 @@ import { UserDockService } from "../services/UserDockService.ts";
  * - An accepted invitation pins the project for the user who accepted it
  *   (#Q3435). It is the only way to join a project: `MemberService.add` has
  *   no route. A full dock leaves it unpinned, and the accept answer says so.
+ * - Leaving a project, or being removed from it, unpins it (#Q3436): one
+ *   event for both, `leave` telling them apart.
+ *
+ * Archiving is not an event: `ProjectController.setArchived` unpins for every
+ * member itself.
  */
 export class UserDockHooks {
   protected readonly log = $logger();
@@ -36,6 +41,19 @@ export class UserDockHooks {
           error,
         });
       }
+    },
+  });
+
+  protected readonly onMemberRemoved = $hook({
+    on: "organization:member:removed",
+    handler: async ({ organizationId, userId }) => {
+      const project = await this.projects.findOne({
+        where: { organizationId: { eq: organizationId } },
+      });
+      if (!project) {
+        return;
+      }
+      await this.dock.unpin(userId, project.id);
     },
   });
 }
