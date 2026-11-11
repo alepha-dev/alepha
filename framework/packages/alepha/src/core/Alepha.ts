@@ -491,6 +491,64 @@ export class Alepha {
   protected surfaceList?: AppSurface | null;
 
   /**
+   * Classes a module declared and the build list calls pure, not created yet
+   * (#Q3402). The first `inject` of one creates it, before or after start.
+   */
+  protected declared = new Set<Service>();
+
+  /**
+   * Depth of late creations in progress: while a declared class is being
+   * created after start, what it creates is admitted by the lock too.
+   */
+  protected lateCreations = 0;
+
+  /**
+   * Whether a module may declare this class without creating it: a build
+   * list is present and calls it pure. Without a list, or for a class the
+   * list does not call pure, every registration creates at once (#Q3402).
+   */
+  public isDeferrable(service: Service): boolean {
+    const surface = this.surface;
+    if (!surface || this.started || typeof service !== "function") {
+      return false;
+    }
+    const key = ContainerGraph.keyOf(service);
+    return surface.classes.some((it) => it.key === key && it.pure);
+  }
+
+  /**
+   * Declare a class without creating it, when it can be deferred. Returns
+   * whether it was: a class that cannot be is left to the caller to create.
+   *
+   * This is what `services: [X]` and `alepha.with(X)` do. `alepha.inject(X)`
+   * returns the instance, so it always creates.
+   */
+  public declareService(service: Service): boolean {
+    if (this.registry.has(service) || this.substitutions.has(service)) {
+      return false;
+    }
+    if (!this.isDeferrable(service)) {
+      return false;
+    }
+    this.declared.add(service);
+    return true;
+  }
+
+  /**
+   * Whether a class is declared and not created yet.
+   */
+  public isDeclared(service: Service): boolean {
+    return this.declared.has(service);
+  }
+
+  /**
+   * The classes declared and not created yet, in declaration order.
+   */
+  public declaredServices(): Service[] {
+    return [...this.declared];
+  }
+
+  /**
    * The environment variables for the App.
    */
   public get env(): Readonly<Env> {
@@ -1316,6 +1374,11 @@ export class Alepha {
       return this;
     }
 
+    // A pure class the build list names is declared, not created (#Q3402).
+    if (this.declareService(entry)) {
+      return this;
+    }
+
     this.inject(entry);
 
     return this;
@@ -1433,7 +1496,15 @@ export class Alepha {
       // container. Refusing it after start makes `lifetime: "scoped"` unusable at
       // the only time it matters (while handling a request), so the guard must
       // apply only when we are instantiating into the global registry itself.
-      if (this.started && registry === this.registry) {
+      // The lock refuses an unknown class, not a declared one (#Q3402): a
+      // class a module declared is created on first use, and so is what it
+      // creates while it is being created.
+      if (
+        this.started &&
+        registry === this.registry &&
+        !this.declared.has(service) &&
+        this.lateCreations === 0
+      ) {
         const mod = (service as WithModule)[MODULE]?.name;
         throw new ContainerLockedError(
           `Container is locked. No more services can be added. Attempted to inject '${service.name}' from '${parent?.name}'. ${mod ? `Module '${mod}' is not registered ?` : ""}`,
@@ -1452,7 +1523,19 @@ export class Alepha {
       return this.inject(service, { parent, lifetime });
     }
 
-    const instance: T = this.new(service, opts.args);
+    const late = this.started && this.declared.has(service);
+    if (late) {
+      this.lateCreations++;
+    }
+    let instance: T;
+    try {
+      instance = this.new(service, opts.args);
+    } finally {
+      if (late) {
+        this.lateCreations--;
+      }
+    }
+    this.declared.delete(service);
 
     const definition: ServiceDefinition<T> = {
       parents: [parent],
@@ -2080,6 +2163,17 @@ export class Alepha {
 
   protected processPrimitive(value: Primitive, propertyKey = "") {
     value.config.propertyKey = propertyKey;
+    // Refused before its onInit runs, so a boot primitive's side effects
+    // never happen after start (#Q3402).
+    if (
+      this.lateCreations > 0 &&
+      ContainerGraph.sideOf(value.constructor as Service<Primitive>) === "boot"
+    ) {
+      const owner = this.containerGraph.ownerOf(this.pendingInstantiations);
+      throw new AlephaError(
+        `Cannot create '${owner?.name ?? "unknown"}' after start: it holds ${ContainerGraph.kindName(value.constructor as Service<Primitive>)} '${propertyKey}', which acts at boot. A class created on first use holds no boot primitive; list the class in a module to create it at boot.`,
+      );
+    }
     // `onInit` is protected: a primitive must not invoke it on itself, and the
     // container is the only legitimate caller. Naming the shape would need a
     // double cast (protected vs public are not assignable), which says less

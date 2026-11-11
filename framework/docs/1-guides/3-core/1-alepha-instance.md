@@ -105,6 +105,8 @@ Any service that injects `EmailProvider` will receive the substituted implementa
 
 A substitution must come before anything builds the original: once `EmailProvider` has been instantiated, `alepha.with({ provide: EmailProvider, use: ... })` throws `TooLateSubstitutionError`, unless it says `optional: true`, which keeps the existing one silently. Once the app has started the container is locked: registering a new service, or injecting a singleton nobody built during boot, throws `ContainerLockedError`.
 
+The lock refuses a class nobody registered, not a registered one. In a production build, a pure controller that a module lists in `services` or passes to `alepha.with` is declared at boot and created on first use, after start; so is everything it alone creates while it is being created. `alepha.inject(X)` in a module's `register` returns the instance, so it always creates at once. A class created that late may hold no `$hook` and no other primitive that acts at boot: it is refused with an error naming the class and the primitive. In dev and tests every class is still created at boot.
+
 ### Service Lifetimes
 
 | Lifetime    | Behavior                                             |

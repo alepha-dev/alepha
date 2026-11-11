@@ -203,9 +203,26 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     route.method ??= "GET";
     route.method = route.method.toUpperCase() as RouteMethod;
 
+    // A real route takes its placeholder's place (#Q3402): in the list here,
+    // and in the trie below, where pushing the same path replaces the node's
+    // route.
+    if (!route.placeholder) {
+      const index = this.routes.findIndex(
+        (it) =>
+          it.placeholder &&
+          it.method === route.method &&
+          it.path === route.path,
+      );
+      if (index !== -1) {
+        this.routes.splice(index, 1);
+      }
+    }
+
     this.routes.push(route);
 
-    for (const entry of this.globalMiddlewareRegistry) {
+    for (const entry of route.placeholder
+      ? []
+      : this.globalMiddlewareRegistry) {
       if (this.matchesPattern(route.path, entry.pattern)) {
         if (this.matchesMiddlewareFilter(route, entry)) {
           route.handler.use(...entry.middleware);

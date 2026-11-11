@@ -225,6 +225,13 @@ export interface ServerRoute<
    * The route still serves live at request time for runtimes that have a server.
    */
   static?: boolean;
+
+  /**
+   * A stand-in for a route whose class is not created yet (#Q3402): it
+   * answers by creating the class, whose real route then replaces it. Global
+   * middlewares are applied to the real route, not to this one.
+   */
+  placeholder?: boolean;
 }
 
 /**
