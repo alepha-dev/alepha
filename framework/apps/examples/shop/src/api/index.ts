@@ -7,6 +7,7 @@ import { AlephaCommercePromotions } from "@alepha/commerce/promotions";
 import { AlephaCommerceRecovery } from "@alepha/commerce/recovery";
 import { AlephaCommerceSettlement } from "@alepha/commerce/settlement";
 import { AlephaCommerceShipping } from "@alepha/commerce/shipping";
+import { AlephaCommerceWebhooks } from "@alepha/commerce/webhooks";
 import { $module } from "alepha";
 import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiFiles, FileAccessProvider } from "alepha/api/files";
@@ -52,6 +53,9 @@ export const ShopApi = $module({
     AlephaCommerceSettlement,
     // Abandoned-cart reminders, one self-rescheduling $job per cart.
     AlephaCommerceRecovery,
+    // Order events as signed webhooks for the shop's other tools; the admin's
+    // Webhooks page appears with it.
+    AlephaCommerceWebhooks,
     AlephaCommerceAdmin,
     /*
      * Back-office modules, registered for their admin surface rather than for
