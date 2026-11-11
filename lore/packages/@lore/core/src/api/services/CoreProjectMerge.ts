@@ -1,8 +1,21 @@
 import { $inject } from "alepha";
+import {
+  organizationMembers,
+  organizationRanks,
+} from "alepha/api/organizations";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
+import { $repository, DatabaseProvider, sql, type SQLLike } from "alepha/orm";
 
+import { automationAdoptions } from "../entities/automationAdoptions.ts";
+import { automationEvents } from "../entities/automationEvents.ts";
+import { automationReceipts } from "../entities/automationReceipts.ts";
+import { automationRuns } from "../entities/automationRuns.ts";
+import { automations } from "../entities/automations.ts";
+import { automationVariables } from "../entities/automationVariables.ts";
+import { projectCapabilities } from "../entities/projectCapabilities.ts";
+import { projectPrompts } from "../entities/projectPrompts.ts";
+import { projects } from "../entities/projects.ts";
 import {
   type ProjectMergeChange,
   type ProjectMergeConflict,
@@ -41,54 +54,58 @@ export class CoreProjectMerge {
   protected readonly tables = $inject(ProjectMergeTables);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly projects = $repository(projects);
+  protected readonly members = $repository(organizationMembers);
+  protected readonly ranks = $repository(organizationRanks);
 
   protected static readonly moved: ProjectMergeTable[] = [
     {
       kind: "capability",
-      table: "project_capabilities",
+      entity: projectCapabilities,
       keys: ["key"],
       onCollision: "keepTarget",
     },
     {
       kind: "prompt",
-      table: "project_prompts",
+      entity: projectPrompts,
       keys: ["kind"],
       onCollision: "keepTarget",
     },
-    { kind: "automation", table: "automations" },
+    { kind: "automation", entity: automations },
     {
       kind: "automation variable",
-      table: "automation_variables",
+      entity: automationVariables,
       keys: ["key"],
       onCollision: "refuse",
     },
     {
       kind: "automation adoption",
-      table: "automation_adoptions",
+      entity: automationAdoptions,
       keys: ["policy"],
       onCollision: "refuse",
     },
     {
       kind: "automation event",
-      table: "automation_events",
+      entity: automationEvents,
       keys: ["identity"],
       onCollision: "refuse",
     },
     {
       kind: "automation receipt",
-      table: "automation_receipts",
+      entity: automationReceipts,
       keys: ["identity"],
       onCollision: "refuse",
     },
-    { kind: "automation run", table: "automation_runs" },
+    { kind: "automation run", entity: automationRuns },
   ];
 
   constructor() {
+    this.tables.prepare(CoreProjectMerge.moved);
     this.merge.registerStep({
       order: 5,
       name: "core",
       tables: [
-        ...CoreProjectMerge.moved.map((table) => table.table),
+        ...CoreProjectMerge.moved.map((table) => table.entity.name),
         // Stays with the source: see the class comment.
         "project_dashboard_cards",
         "project_dashboards",
@@ -106,7 +123,7 @@ export class CoreProjectMerge {
     const statements: SQLLike[] = [];
     for (const table of CoreProjectMerge.moved) {
       const result = await this.tables.move(context, table);
-      moved[table.table] = result.moved;
+      moved[table.entity.name] = result.moved;
       changed.push(...result.changed);
       conflicts.push(...result.conflicts);
       statements.push(...result.statements);
@@ -129,34 +146,30 @@ export class CoreProjectMerge {
     changed: ProjectMergeChange[];
     statements: SQLLike[];
   }> {
-    const organizationOf = async (projectId: number) => {
-      const rows = await this.database.execute(
-        sql`SELECT organization_id FROM projects WHERE id = ${projectId}`,
-      );
-      const id = rows[0]?.organization_id;
-      return typeof id === "string" ? id : undefined;
-    };
+    const organizationOf = async (projectId: number) =>
+      (await this.projects.findById(projectId, { force: true }))
+        ?.organizationId ?? undefined;
     const source = await organizationOf(context.sourceProjectId);
     const target = await organizationOf(context.targetProjectId);
     if (!source || !target) {
       return { changed: [], statements: [] };
     }
-    const members = async (organizationId: string) =>
-      (
-        await this.database.execute(
-          sql`SELECT user_id, rank FROM organization_members WHERE organization_id = ${organizationId}`,
-        )
-      ).map((row) => ({
-        userId: String(row.user_id),
-        rank: typeof row.rank === "string" ? row.rank : undefined,
-      }));
+    const members = (organizationId: string) =>
+      this.members.findMany(
+        {
+          where: { organizationId: { eq: organizationId } },
+          columns: ["userId", "rank"],
+        },
+        { force: true },
+      );
     const present = new Set((await members(target)).map((row) => row.userId));
     const ranks = new Set(
       (
-        await this.database.execute(
-          sql`SELECT key FROM organization_ranks WHERE organization_id = ${target}`,
+        await this.ranks.findMany(
+          { where: { organizationId: { eq: target } }, columns: ["key"] },
+          { force: true },
         )
-      ).map((row) => String(row.key)),
+      ).map((row) => row.key),
     );
 
     const now = this.dateTime.nowISOString();

@@ -1,5 +1,11 @@
-import { $inject } from "alepha";
-import { DatabaseProvider, sql, type SQL, type SQLLike } from "alepha/orm";
+import type { ZObject } from "alepha";
+import {
+  type PgQueryWhere,
+  type Repository,
+  sql,
+  type SQL,
+  type SQLLike,
+} from "alepha/orm";
 
 import { splitMarkdownCode } from "../../web/app/components/shared/element/markdownCodeSegments.ts";
 import type { ProjectMergeRenumber } from "./ProjectMergeService.ts";
@@ -21,8 +27,6 @@ import type { ProjectMergeRenumber } from "./ProjectMergeService.ts";
  * too, as the reader leaves them: a token quoted in backticks is not a link.
  */
 export class ProjectMergeReferences {
-  protected readonly database = $inject(DatabaseProvider);
-
   /**
    * The letter each renumbered kind is written with, as the resource kinds
    * register them. A kind without one (a directory, an attachment) has no
@@ -66,35 +70,46 @@ export class ProjectMergeReferences {
   }
 
   /**
-   * Reads `columns` of every row `where` selects, rewrites them, and answers
-   * one UPDATE per row whose text changed. `id` is the table's primary key.
+   * Reads the `fields` of every row `where` selects, soft-deleted ones
+   * included (`force`), rewrites them, and answers one UPDATE per row whose
+   * text changed. `id` is the table's primary key.
    */
-  public async rewrite(
+  public async rewrite<T extends ZObject>(
     rewriter: ProjectMergeRewriter,
-    input: { table: string; columns: string[]; where: SQL },
+    input: {
+      repository: Repository<T>;
+      fields: string[];
+      where: PgQueryWhere<T>;
+    },
   ): Promise<{ rewritten: number; statements: SQLLike[] }> {
-    const rows = await this.database.execute(
-      sql`SELECT id, ${sql.join(
-        input.columns.map((column) => sql.identifier(column)),
-        sql`, `,
-      )} FROM ${sql.identifier(input.table)} WHERE ${input.where}`,
-    );
+    const { repository } = input;
+    const columns = repository.table as unknown as Record<
+      string,
+      { name: string }
+    >;
+    const rows = (await repository.findMany(
+      {
+        where: input.where,
+        columns: ["id", ...input.fields] as never,
+      },
+      { force: true },
+    )) as Record<string, unknown>[];
     const statements: SQLLike[] = [];
     for (const row of rows) {
       const sets: SQL[] = [];
-      for (const column of input.columns) {
-        const value = row[column];
+      for (const field of input.fields) {
+        const value = row[field];
         if (typeof value !== "string") {
           continue;
         }
         const next = rewriter.text(value);
         if (next !== value) {
-          sets.push(sql`${sql.identifier(column)} = ${next}`);
+          sets.push(sql`${sql.identifier(columns[field].name)} = ${next}`);
         }
       }
       if (sets.length) {
         statements.push(
-          sql`UPDATE ${sql.identifier(input.table)} SET ${sql.join(sets, sql`, `)} WHERE id = ${row.id}`,
+          sql`UPDATE ${sql.identifier(repository.tableName)} SET ${sql.join(sets, sql`, `)} WHERE id = ${row.id}`,
         );
       }
     }

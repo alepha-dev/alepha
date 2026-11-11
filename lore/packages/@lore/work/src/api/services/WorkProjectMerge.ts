@@ -8,8 +8,26 @@ import {
   ProjectMergeService,
   type ProjectMergeStepPlan,
 } from "@lore/core/api";
-import { $inject } from "alepha";
-import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
+import { $inject, type ZObject } from "alepha";
+import {
+  $repository,
+  type EntityPrimitive,
+  type PgQueryWhere,
+  type Repository,
+  RepositoryProvider,
+  sql,
+  type SQLLike,
+} from "alepha/orm";
+
+import { areas } from "../entities/areas.ts";
+import { epicReviewItems } from "../entities/epicReviewItems.ts";
+import { epicReviews } from "../entities/epicReviews.ts";
+import { epics } from "../entities/epics.ts";
+import { feedback } from "../entities/feedback.ts";
+import { feedbackComments } from "../entities/feedbackComments.ts";
+import { questComments } from "../entities/questComments.ts";
+import { quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 
 /**
  * Work's step of a project merge, registered on core's `ProjectMergeService`
@@ -29,14 +47,24 @@ import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
  *   soft-deleted while the source's is live is brought back, since every
  *   area a quest names has a live row.
  *
- * Every read is raw SQL on purpose: soft-deleted rows still occupy the
- * unique indexes the move must not trip, and the repositories hide them.
+ * Every read passes `force`: soft-deleted rows still occupy the unique
+ * indexes the move must not trip, and move with the rest. The writes are
+ * raw statements of the merge's one atomic batch.
  */
 export class WorkProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly numbers = $inject(ProjectMergeNumbers);
   protected readonly references = $inject(ProjectMergeReferences);
-  protected readonly database = $inject(DatabaseProvider);
+  protected readonly repositories = $inject(RepositoryProvider);
+  protected readonly quests = $repository(quests);
+  protected readonly questComments = $repository(questComments);
+  protected readonly epics = $repository(epics);
+  protected readonly epicReviews = $repository(epicReviews);
+  protected readonly epicReviewItems = $repository(epicReviewItems);
+  protected readonly feedback = $repository(feedback);
+  protected readonly feedbackComments = $repository(feedbackComments);
+  protected readonly releases = $repository(releases);
+  protected readonly areas = $repository(areas);
 
   constructor() {
     this.merge.registerStep({
@@ -66,57 +94,64 @@ export class WorkProjectMerge {
     rewriter: ProjectMergeRewriter,
   ): Promise<{ rewritten: Record<string, number>; statements: SQLLike[] }> {
     const source = context.sourceProjectId;
-    const targets = [
-      {
-        table: "quests",
-        columns: ["description", "completion_message"],
-        where: sql`project_id = ${source}`,
-      },
-      {
-        table: "quest_comments",
-        columns: ["body"],
-        where: sql`quest_id IN (SELECT id FROM quests WHERE project_id = ${source})`,
-      },
-      {
-        table: "epics",
-        columns: ["description"],
-        where: sql`project_id = ${source}`,
-      },
-      {
-        table: "epic_reviews",
-        columns: ["summary"],
-        where: sql`project_id = ${source}`,
-      },
-      {
-        // A change item's `target` is a JSON number and is not rewritten: a
-        // renumbered quest leaves it naming the old number, as a record.
-        table: "epic_review_items",
-        columns: ["title", "context", "answer"],
-        where: sql`epic_id IN (SELECT id FROM epics WHERE project_id = ${source})`,
-      },
-      {
-        table: "feedback",
-        columns: ["description"],
-        where: sql`project_id = ${source}`,
-      },
-      {
-        table: "feedback_comments",
-        columns: ["body"],
-        where: sql`feedback_id IN (SELECT id FROM feedback WHERE project_id = ${source})`,
-      },
-      {
-        table: "releases",
-        columns: ["description", "changelog"],
-        where: sql`project_id = ${source}`,
-      },
-    ];
+    const force = { force: true };
     const rewritten: Record<string, number> = {};
     const statements: SQLLike[] = [];
-    for (const target of targets) {
-      const result = await this.references.rewrite(rewriter, target);
-      rewritten[target.table] = result.rewritten;
+    const rewrite = async <T extends ZObject>(
+      repository: Repository<T>,
+      fields: string[],
+      where: PgQueryWhere<T>,
+    ) => {
+      const result = await this.references.rewrite(rewriter, {
+        repository,
+        fields,
+        where,
+      });
+      rewritten[repository.tableName] = result.rewritten;
       statements.push(...result.statements);
-    }
+    };
+    await rewrite(this.quests, ["description", "completionMessage"], {
+      projectId: { eq: source },
+    });
+    await rewrite(this.questComments, ["body"], {
+      questId: {
+        inArray: this.quests.subquery(
+          { projectId: { eq: source } },
+          "id",
+          force,
+        ),
+      },
+    });
+    await rewrite(this.epics, ["description"], { projectId: { eq: source } });
+    await rewrite(this.epicReviews, ["summary"], {
+      projectId: { eq: source },
+    });
+    // A change item's `target` is a JSON number and is not rewritten: a
+    // renumbered quest leaves it naming the old number, as a record.
+    await rewrite(this.epicReviewItems, ["title", "context", "answer"], {
+      epicId: {
+        inArray: this.epics.subquery(
+          { projectId: { eq: source } },
+          "id",
+          force,
+        ),
+      },
+    });
+    await rewrite(this.feedback, ["description"], {
+      projectId: { eq: source },
+    });
+    await rewrite(this.feedbackComments, ["body"], {
+      feedbackId: {
+        inArray: this.feedback.subquery(
+          { projectId: { eq: source } },
+          "id",
+          force,
+        ),
+      },
+    });
+    await rewrite(this.releases, ["description", "changelog"], {
+      projectId: { eq: source },
+    });
     return { rewritten, statements };
   }
 
@@ -132,18 +167,15 @@ export class WorkProjectMerge {
       const result = await this.planNumbered(context, kind);
       renumbered.push(...result.renumbered);
       statements.push(...result.statements);
-      moved[kind.table] = result.moved;
+      moved[kind.entity.name] = result.moved;
     }
 
     // An epic's reviews carry its project too (#E121), and move with it.
     // Their items name the epic alone, and the epic keeps its id.
     statements.push(this.move("epic_reviews", context));
-    moved.epic_reviews = Number(
-      (
-        await this.database.execute(
-          sql`SELECT COUNT(*) AS n FROM epic_reviews WHERE project_id = ${context.sourceProjectId}`,
-        )
-      )[0]?.n ?? 0,
+    moved.epic_reviews = await this.epicReviews.count(
+      { projectId: { eq: context.sourceProjectId } },
+      { force: true },
     );
 
     const releases = await this.planReleases(context);
@@ -166,15 +198,15 @@ export class WorkProjectMerge {
   protected static readonly numbered: NumberedKind[] = [
     {
       kind: "quest",
-      table: "quests",
-      column: "short_id",
+      entity: quests,
+      field: "shortId",
       sequence: "questShortId",
     },
-    { kind: "epic", table: "epics", column: "number", sequence: "epicNumber" },
+    { kind: "epic", entity: epics, field: "number", sequence: "epicNumber" },
     {
       kind: "feedback",
-      table: "feedback",
-      column: "short_id",
+      entity: feedback,
+      field: "shortId",
       sequence: "feedbackShortId",
     },
   ];
@@ -187,20 +219,23 @@ export class WorkProjectMerge {
     renumbered: ProjectMergeRenumber[];
     statements: SQLLike[];
   }> {
+    const repository = this.repositories.getRepository(kind.entity);
     const source = await this.rows(
-      kind.table,
-      kind.column,
+      repository,
+      kind.field,
       context.sourceProjectId,
     );
     const target = await this.rows(
-      kind.table,
-      kind.column,
+      repository,
+      kind.field,
       context.targetProjectId,
     );
     const numbering = await this.numbers.renumber({
       kind: kind.kind,
-      table: kind.table,
-      column: kind.column,
+      table: repository.tableName,
+      column: (repository.table as unknown as Record<string, { name: string }>)[
+        kind.field
+      ].name,
       sequence: kind.sequence,
       targetProjectId: context.targetProjectId,
       targetNumbers: target.map((row) => row.number),
@@ -213,7 +248,7 @@ export class WorkProjectMerge {
         // Renumbered while still in the source project, where the new
         // number is free too: it is above every number the source uses.
         ...numbering.statements,
-        this.move(kind.table, context),
+        this.move(repository.tableName, context),
       ],
     };
   }
@@ -226,14 +261,19 @@ export class WorkProjectMerge {
   }> {
     const read = async (projectId: number) =>
       (
-        await this.database.execute(
-          sql`SELECT id, number, tag, default_since FROM releases WHERE project_id = ${projectId} ORDER BY id`,
+        await this.releases.findMany(
+          {
+            where: { projectId: { eq: projectId } },
+            columns: ["id", "number", "tag", "defaultSince"],
+            orderBy: [{ column: "id", direction: "asc" }],
+          },
+          { force: true },
         )
       ).map((row) => ({
-        id: Number(row.id),
-        number: Number(row.number),
-        tag: typeof row.tag === "string" ? row.tag : undefined,
-        isDefault: row.default_since != null,
+        id: row.id,
+        number: row.number,
+        tag: row.tag ?? undefined,
+        isDefault: row.defaultSince != null,
       }));
     const source = await read(context.sourceProjectId);
     const target = await read(context.targetProjectId);
@@ -294,13 +334,18 @@ export class WorkProjectMerge {
   }> {
     const read = async (projectId: number) =>
       (
-        await this.database.execute(
-          sql`SELECT id, name, deleted_at FROM areas WHERE project_id = ${projectId} ORDER BY id`,
+        await this.areas.findMany(
+          {
+            where: { projectId: { eq: projectId } },
+            columns: ["id", "name", "deletedAt"],
+            orderBy: [{ column: "id", direction: "asc" }],
+          },
+          { force: true },
         )
       ).map((row) => ({
-        id: Number(row.id),
-        name: String(row.name),
-        live: row.deleted_at == null,
+        id: row.id,
+        name: row.name,
+        live: row.deletedAt == null,
       }));
     const source = await read(context.sourceProjectId);
     const byName = new Map(
@@ -335,16 +380,21 @@ export class WorkProjectMerge {
    * Every row of a project, soft-deleted ones included, in creation order.
    */
   protected async rows(
-    table: string,
-    column: string,
+    repository: Repository<ZObject>,
+    field: string,
     projectId: number,
   ): Promise<Array<{ id: number; number: number }>> {
-    const rows = await this.database.execute(
-      sql`SELECT id, ${sql.identifier(column)} AS number FROM ${sql.identifier(table)} WHERE project_id = ${projectId} ORDER BY id`,
-    );
+    const rows = (await repository.findMany(
+      {
+        where: { projectId: { eq: projectId } },
+        columns: ["id", field],
+        orderBy: [{ column: "id", direction: "asc" }],
+      } as never,
+      { force: true },
+    )) as Record<string, unknown>[];
     return rows.map((row) => ({
       id: Number(row.id),
-      number: Number(row.number),
+      number: Number(row[field]),
     }));
   }
 
@@ -358,7 +408,10 @@ export class WorkProjectMerge {
  */
 interface NumberedKind {
   kind: string;
-  table: string;
-  column: string;
+  entity: EntityPrimitive<any>;
+  /**
+   * The field holding the per-project number.
+   */
+  field: string;
   sequence: string;
 }

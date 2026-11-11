@@ -1,5 +1,11 @@
-import { $inject } from "alepha";
-import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
+import { $inject, type ZObject } from "alepha";
+import {
+  type EntityPrimitive,
+  type Repository,
+  RepositoryProvider,
+  sql,
+  type SQLLike,
+} from "alepha/orm";
 
 import type {
   ProjectMergeChange,
@@ -24,7 +30,23 @@ import type {
  *   the one the merged project keeps.
  */
 export class ProjectMergeTables {
-  protected readonly database = $inject(DatabaseProvider);
+  protected readonly repositories = $inject(RepositoryProvider);
+
+  /**
+   * Resolves the repository of every table a step moves. A step calls it
+   * from its constructor, at boot: the container refuses a repository
+   * first asked for once the app has started, and a table some module
+   * never reads through a repository of its own would have none yet.
+   */
+  public prepare(tables: ProjectMergeTable[]): void {
+    for (const table of tables) {
+      this.repository(table);
+    }
+  }
+
+  public repository(table: ProjectMergeTable): Repository<ZObject> {
+    return this.repositories.getRepository(table.entity);
+  }
 
   public async move(
     context: ProjectMergeContext,
@@ -35,17 +57,22 @@ export class ProjectMergeTables {
     conflicts: ProjectMergeConflict[];
     statements: SQLLike[];
   }> {
-    const idColumn = table.idColumn ?? "id";
+    const repository = this.repository(table);
+    const name = repository.tableName;
+    const idField = table.idField ?? "id";
+    const idColumn = this.column(repository, idField);
     const keys = table.keys ?? [];
+    // `force`: a soft-deleted row moves too, and still holds its key.
     const read = (projectId: number) =>
-      this.database.execute(
-        sql`SELECT ${sql.join(
-          [idColumn, ...keys].map((column) => sql.identifier(column)),
-          sql`, `,
-        )} FROM ${sql.identifier(table.table)} WHERE project_id = ${projectId}`,
-      );
+      repository.findMany(
+        {
+          where: { projectId: { eq: projectId } },
+          columns: [idField, ...keys],
+        },
+        { force: true },
+      ) as Promise<Record<string, unknown>[]>;
     const keyOf = (row: Record<string, unknown>) =>
-      keys.map((column) => this.text(row[column])).join(" / ");
+      keys.map((field) => this.text(row[field])).join(" / ");
 
     const source = await read(context.sourceProjectId);
     const changed: ProjectMergeChange[] = [];
@@ -57,7 +84,7 @@ export class ProjectMergeTables {
       const target = new Map(
         (await read(context.targetProjectId)).map((row) => [
           keyOf(row),
-          this.text(row[idColumn]),
+          this.text(row[idField]),
         ]),
       );
       for (const row of source) {
@@ -66,7 +93,7 @@ export class ProjectMergeTables {
         if (targetId === undefined) {
           continue;
         }
-        const sourceId = this.text(row[idColumn]);
+        const sourceId = this.text(row[idField]);
         if (table.onCollision === "keepTarget") {
           moved -= 1;
           changed.push({
@@ -77,7 +104,7 @@ export class ProjectMergeTables {
             to: "",
           });
           statements.push(
-            sql`DELETE FROM ${sql.identifier(table.table)} WHERE ${sql.identifier(idColumn)} = ${row[idColumn]}`,
+            sql`DELETE FROM ${sql.identifier(name)} WHERE ${sql.identifier(idColumn)} = ${row[idField]}`,
           );
         } else {
           conflicts.push({ kind: table.kind, key, sourceId, targetId });
@@ -86,9 +113,16 @@ export class ProjectMergeTables {
     }
 
     statements.push(
-      sql`UPDATE ${sql.identifier(table.table)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`,
+      sql`UPDATE ${sql.identifier(name)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`,
     );
     return { moved, changed, conflicts, statements };
+  }
+
+  /**
+   * The physical name of one of a repository's fields.
+   */
+  protected column(repository: Repository<ZObject>, field: string): string {
+    return (repository.table as Record<string, { name: string }>)[field].name;
   }
 
   protected text(value: unknown): string {
@@ -110,13 +144,17 @@ export interface ProjectMergeTable {
    * The kind named in the plan: `sigil`, `capability`, ...
    */
   kind: string;
-  table: string;
   /**
-   * The primary key column, `id` unless named.
+   * The table's entity: its rows are read through its repository, with
+   * `force`, so soft-deleted ones count.
    */
-  idColumn?: string;
+  entity: EntityPrimitive<any>;
   /**
-   * The columns that, with `project_id`, are unique. Absent for a table
+   * The primary key field, `id` unless named.
+   */
+  idField?: string;
+  /**
+   * The fields that, with `projectId`, are unique. Absent for a table
    * whose rows can never collide.
    */
   keys?: string[];

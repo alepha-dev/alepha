@@ -1,6 +1,7 @@
 import { $inject, AlephaError } from "alepha";
-import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import { $repository, DatabaseProvider, type SQLLike } from "alepha/orm";
 
+import { projects } from "../entities/projects.ts";
 import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
 import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
@@ -34,6 +35,7 @@ import {
  */
 export class ProjectMergeService {
   protected readonly database = $inject(DatabaseProvider);
+  protected readonly projects = $repository(projects);
   protected readonly automationDatabase = $inject(AutomationDatabase);
   protected readonly references = $inject(ProjectMergeReferences);
   protected readonly steps: ProjectMergeStep[] = [];
@@ -117,26 +119,21 @@ export class ProjectMergeService {
   }
 
   protected async slugOf(projectId: number): Promise<string | undefined> {
-    const rows = await this.database.execute(
-      `SELECT slug FROM projects WHERE id = ${Number(projectId)}`,
-    );
-    const slug = rows[0]?.slug;
-    return typeof slug === "string" ? slug : undefined;
+    const project = await this.projects.findById(projectId, { force: true });
+    return project?.slug ?? undefined;
   }
 
   /**
-   * Refuses a project that does not exist or is deleted. The `projects`
-   * table is read raw, so a soft-deleted project is visible here and
-   * refused by name rather than reported as missing.
+   * Refuses a project that does not exist or is deleted. The project is
+   * read with `force`, so a soft-deleted one is visible here and refused by
+   * name rather than reported as missing.
    */
   protected async assertProject(projectId: number): Promise<void> {
-    const rows = await this.database.execute(
-      `SELECT id, deleted_at FROM projects WHERE id = ${Number(projectId)}`,
-    );
-    if (!rows[0]) {
+    const project = await this.projects.findById(projectId, { force: true });
+    if (!project) {
       throw new AlephaError(`No project ${projectId}`);
     }
-    if (rows[0].deleted_at != null) {
+    if (project.deletedAt != null) {
       throw new AlephaError(`Project ${projectId} is deleted`);
     }
   }
