@@ -196,10 +196,27 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
           title: tr("admin.parameters.importTitle", {
             default: "Import parameters",
           }),
-          description: tr("admin.parameters.importConfirm", {
-            default: `Import ${recognized.length} parameter(s)? ${skipped > 0 ? `${skipped} unknown entrie(s) will be skipped.` : ""}`,
-            args: [String(recognized.length), String(skipped)],
-          }),
+          // One count per entry: the skipped part is its own sentence.
+          description: [
+            tr("admin.parameters.importConfirm", {
+              count: recognized.length,
+              default: {
+                one: "Import {count} parameter?",
+                other: "Import {count} parameters?",
+              },
+            }),
+            skipped > 0
+              ? tr("admin.parameters.importSkipped", {
+                  count: skipped,
+                  default: {
+                    one: "{count} unknown entry will be skipped.",
+                    other: "{count} unknown entries will be skipped.",
+                  },
+                })
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
         });
         if (!ok) return;
         for (const it of recognized) {
@@ -213,8 +230,11 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
         }
         toast.success(
           tr("admin.parameters.imported", {
-            default: `Imported ${recognized.length} parameter(s)`,
-            args: [String(recognized.length)],
+            count: recognized.length,
+            default: {
+              one: "Imported {count} parameter",
+              other: "Imported {count} parameters",
+            },
           }),
         );
         setReloadKey((k) => k + 1);

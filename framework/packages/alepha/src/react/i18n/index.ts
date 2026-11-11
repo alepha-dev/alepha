@@ -14,6 +14,7 @@ export { default as Translate, Tr } from "./components/Translate.tsx";
 export * from "./hooks/useI18n.ts";
 export * from "./primitives/$dictionary.ts";
 export * from "./providers/I18nProvider.ts";
+export * from "./services/LangDirection.ts";
 export * from "./services/RequestLangResolver.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -31,8 +32,9 @@ declare module "alepha" {
  *
  * **Features:**
  * - Translation loading
- * - Locale detection
- * - Positional interpolation (`$1`, `$2`) and localized dates/numbers
+ * - Locale detection, and the writing direction (`<html dir>`) of the language
+ * - Interpolation, positional (`$1`, `$2`) or named (`{name}`), and localized dates/numbers
+ * - Plurals and select: a variant entry chosen by `count` through `Intl.PluralRules`, or by `select`
  *
  * @module alepha.react.i18n
  */

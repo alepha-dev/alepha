@@ -1,19 +1,23 @@
 import { useI18n } from "../hooks/useI18n.ts";
+import type { DictionaryEntry } from "../primitives/$dictionary.ts";
+import type { I18nArgs, I18nSelector } from "../providers/I18nProvider.ts";
 
-export interface TranslateProps {
+export type TranslateProps = TranslateBaseProps & I18nSelector;
+
+export interface TranslateBaseProps {
   /**
    * Dictionary key to look up — the same key you would pass to `tr(...)`.
    */
   k: string;
   /**
-   * Positional substitutions for `$1`, `$2`, … placeholders in the entry.
+   * Substitutions: positional for `$1`, `$2`, …, or named for `{name}`.
    */
-  args?: string[];
+  args?: I18nArgs;
   /**
    * Shown when the key is missing from every registered dictionary (otherwise
    * the raw key is rendered, matching `tr`'s behaviour).
    */
-  fallback?: string;
+  fallback?: DictionaryEntry;
 }
 
 /**
@@ -31,12 +35,22 @@ export interface TranslateProps {
  * @example
  * ```tsx
  * nav: { label: <Translate k="admin.nav.users" /> }
- * <Translate k="cart.items" args={[String(count)]} fallback="Items" />
+ * <Translate k="cart.items" count={count} fallback={{ one: "{count} item", other: "{count} items" }} />
  * ```
  */
 export const Translate = (props: TranslateProps) => {
   const { tr } = useI18n();
-  return <>{tr(props.k, { args: props.args, default: props.fallback })}</>;
+  return (
+    <>
+      {tr(props.k, {
+        args: props.args,
+        default: props.fallback,
+        ...(props.select !== undefined
+          ? { select: props.select }
+          : { count: props.count }),
+      })}
+    </>
+  );
 };
 
 /**

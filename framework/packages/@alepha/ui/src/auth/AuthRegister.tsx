@@ -382,7 +382,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
                   <p className="text-muted-foreground text-center text-sm">
                     {tr("auth.register.verifyHint", {
                       default:
-                        "Please enter the verification code(s) sent to you.",
+                        "Please enter each verification code sent to you.",
                     })}
                   </p>
                   {verifyError && (

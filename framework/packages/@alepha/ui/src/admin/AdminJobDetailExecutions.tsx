@@ -205,8 +205,12 @@ export const AdminJobDetailExecutions = (
           default: "Delete executions",
         }),
         description: tr("admin.jobs.bulkDeleteConfirm", {
-          default: `Permanently delete ${items.length} execution(s)? Runs that have not finished are skipped. This cannot be undone.`,
-          args: [String(items.length)],
+          count: items.length,
+          default: {
+            one: "Permanently delete {count} execution? Runs that have not finished are skipped. This cannot be undone.",
+            other:
+              "Permanently delete {count} executions? Runs that have not finished are skipped. This cannot be undone.",
+          },
         }),
         destructive: true,
       }),
@@ -216,10 +220,14 @@ export const AdminJobDetailExecutions = (
           body: { ids: items.map((e) => e.id) },
         });
         toast.success(
-          tr("admin.jobs.bulkDeleted", {
-            default: `${res.deleted} deleted, ${res.skipped} skipped`,
-            args: [String(res.deleted), String(res.skipped)],
-          }),
+          // Two counts, so two entries joined here: each can be one alone.
+          `${tr("admin.jobs.bulkDeleted", {
+            count: res.deleted,
+            default: "{count} deleted",
+          })}, ${tr("admin.jobs.bulkSkipped", {
+            count: res.skipped,
+            default: "{count} skipped",
+          })}`,
         );
         clearSelection();
         refresh();

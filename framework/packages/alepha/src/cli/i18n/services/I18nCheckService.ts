@@ -37,6 +37,62 @@ export interface I18nCheckResult {
    * `tr(...)` call sites that pass fewer arguments than their key needs.
    */
   missingArgs: I18nMissingArg[];
+  /**
+   * `tr(...)` call sites that leave a `{name}` of their entry unfilled.
+   */
+  missingNames: I18nMissingName[];
+  /**
+   * Plural entries whose categories do not fit their language: an error for
+   * a missing category or a key that is plural in one language and a plain
+   * string in another, a warning for a category the language never selects.
+   */
+  pluralIssues: I18nPluralIssue[];
+}
+
+export interface I18nPluralIssue {
+  /**
+   * `error` fails the check; `warning` is printed and does not.
+   */
+  severity: "error" | "warning";
+  /**
+   * - `missing`: a category the language selects (or `other`) is absent.
+   * - `unexpected`: a category the language never selects is present.
+   * - `mixed`: the key is a variant object here and a plain string in
+   *   another language's catalog.
+   */
+  kind: "missing" | "unexpected" | "mixed";
+  /**
+   * The dotted key of the entry.
+   */
+  key: string;
+  /**
+   * The language of the catalog the entry is declared in.
+   */
+  lang: string;
+  /**
+   * The categories missing or unexpected; for `mixed`, the languages that
+   * write the key as a plain string.
+   */
+  categories: string[];
+  /**
+   * Absolute path of the dictionary file the entry is declared in.
+   */
+  file: string;
+}
+
+export interface I18nMissingName {
+  /**
+   * The dotted key whose `{name}` placeholders go unfilled.
+   */
+  key: string;
+  /**
+   * The names the call does not pass, `count` meaning the `count` option.
+   */
+  names: string[];
+  /**
+   * Absolute path of the file holding the call.
+   */
+  file: string;
 }
 
 export interface I18nMissingArg {
@@ -130,14 +186,23 @@ export class I18nCheckService {
    * Matches an ICU/`String.format`-style placeholder — `{0}`, `{1}`, … — inside a
    * dictionary file.
    *
-   * Alepha interpolates `$1`, `$2`, … (see `I18nProvider.render`). `{0}` is not a
-   * syntax it knows, so it survives verbatim into the rendered string and the user
+   * Alepha interpolates `$1`, `$2`, … and `{name}` (see `I18nProvider.render`),
+   * and a name is never a number: `{0}` is not a placeholder, so it survives
+   * verbatim into the rendered string and the user
    * reads a literal `{0}` where a number or a name belonged. The failure is
    * entirely silent — no throw, no missing-key fallback — which is why it is worth
    * a check rather than a code review. The two syntaxes are unambiguous, so a
    * match is always a mistake and never a deliberate choice.
    */
   protected readonly badPlaceholderRe = /\{\d+\}/g;
+
+  /**
+   * Matches a `{name}` placeholder, or the `{{` / `}}` escape that writes a
+   * literal brace (matched so the scan steps over it, never collected).
+   * A `${name}` is a template literal's substitution in the file's own code,
+   * not a placeholder.
+   */
+  protected readonly namedPlaceholderRe = /\{\{|\}\}|(?<!\$)\{(\w+)\}/g;
 
   /**
    * Find unused translation keys.
@@ -192,12 +257,48 @@ export class I18nCheckService {
       }
     }
 
+    // The language of each dictionary, where it can be proven: a lazily
+    // imported key file takes the language of the `$dictionary` call that
+    // imports it, and an inline object the language of the call it sits in.
+    const fileLang = new Map<string, string>();
+    const inlineLangs = new Map<
+      string,
+      Array<{ start: number; end: number; lang: string }>
+    >();
+    for (const [file, raw] of fileContents) {
+      if (!raw.includes(this.dictionaryMarker)) continue;
+      const calls = this.dictionaryCalls(this.blankComments(raw));
+      for (const call of calls) {
+        if (!call.lang) continue;
+        if (call.importSpec) {
+          const target = this.resolveImport(
+            file,
+            call.importSpec,
+            fileContents,
+          );
+          if (target && !fileLang.has(target)) fileLang.set(target, call.lang);
+          continue;
+        }
+        const ranges = inlineLangs.get(file) ?? [];
+        ranges.push({ start: call.start, end: call.end, lang: call.lang });
+        inlineLangs.set(file, ranges);
+      }
+    }
+    // key → its value in each catalog: variant names, or `null` for a plain
+    // string. Values that are neither (an identifier, a call) are not recorded.
+    const entries = new Map<
+      string,
+      Array<{ lang: string | undefined; file: string; names: string[] | null }>
+    >();
+
     const dictionaryFiles: string[] = [];
     const allKeys = new Set<string>();
     const badPlaceholders: I18nBadPlaceholder[] = [];
     // key → highest `$N` its value uses. Only keys that need arguments are
     // recorded, so the call-site scan below stays proportional to those.
     const arity = new Map<string, number>();
+    // key → the `{name}` placeholders its value uses, across its variants.
+    const names = new Map<string, Set<string>>();
     for (const file of dictionarySet) {
       const raw = fileContents.get(file);
       if (!raw) continue;
@@ -217,6 +318,18 @@ export class I18nCheckService {
         ...this.findBadPlaceholders(file, text, declarations),
       );
       this.collectArity(text, declarations, arity);
+      this.collectNames(text, declarations, names);
+      for (const m of text.matchAll(this.keyDeclarationRe)) {
+        const at = m.index ?? 0;
+        const value = this.readValue(text, at + m[0].length);
+        if (value === undefined) continue;
+        const lang =
+          fileLang.get(file) ??
+          inlineLangs.get(file)?.find((r) => at > r.start && at < r.end)?.lang;
+        const list = entries.get(m[1]) ?? [];
+        list.push({ lang, file, names: value });
+        entries.set(m[1], list);
+      }
       if (allKeys.size > before) dictionaryFiles.push(file);
     }
 
@@ -234,9 +347,13 @@ export class I18nCheckService {
     const corpus = corpusParts.join("\n");
 
     const missingArgs: I18nMissingArg[] = [];
+    const missingNames: I18nMissingName[] = [];
     for (const [file, text] of sourceFiles) {
       missingArgs.push(...this.findMissingArgs(file, text, arity));
+      missingNames.push(...this.findMissingNames(file, text, names));
     }
+
+    const pluralIssues = this.checkPlurals(entries, sourceFiles);
 
     let exemptKeys = 0;
     const unused: string[] = [];
@@ -261,7 +378,253 @@ export class I18nCheckService {
       unused: unused.sort(),
       badPlaceholders,
       missingArgs,
+      missingNames,
+      pluralIssues,
     };
+  }
+
+  /**
+   * The CLDR plural categories. An entry whose variant names are all among
+   * them is a plural entry, unless a call passes it `select:`.
+   */
+  protected readonly pluralCategoryNames = new Set([
+    "zero",
+    "one",
+    "two",
+    "few",
+    "many",
+    "other",
+  ]);
+
+  /**
+   * Validate every plural entry whose language is known against the rules of
+   * that language.
+   *
+   * - **Required**: `other`, plus every category `select(n)` returns for the
+   *   integers 0 to 200. Not `resolvedOptions().pluralCategories`: French
+   *   resolves `one, many, other` on current ICU, and only 1,000,000 and its
+   *   multiples select `many`, so requiring it would report every French
+   *   entry written with `one` and `other`.
+   * - **Allowed**: `resolvedOptions().pluralCategories`. Anything else is a
+   *   warning.
+   * - A key that is a variant object in one language and a plain string in
+   *   another is an error: a language with no distinction writes `other`
+   *   alone, so the call site passes a count in every language.
+   *
+   * An entry with any variant name outside the CLDR categories is a select,
+   * and is left alone: its `other` is the compiler's.
+   */
+  protected checkPlurals(
+    entries: Map<
+      string,
+      Array<{ lang: string | undefined; file: string; names: string[] | null }>
+    >,
+    sourceFiles: Array<[string, string]>,
+  ): I18nPluralIssue[] {
+    const issues: I18nPluralIssue[] = [];
+    for (const [key, values] of entries) {
+      const variants = values.filter((v) => v.names !== null);
+      if (variants.length === 0) continue;
+      const plural = variants.every((v) =>
+        (v.names ?? []).every((n) => this.pluralCategoryNames.has(n)),
+      );
+      if (!plural || this.passesSelect(key, sourceFiles)) continue;
+
+      const plainLangs = [
+        ...new Set(
+          values
+            .filter((v) => v.names === null && v.lang)
+            .map((v) => v.lang as string),
+        ),
+      ];
+
+      for (const v of variants) {
+        if (!v.lang) continue;
+        const rules = this.categoriesOf(v.lang);
+        if (!rules) continue;
+        const names = new Set(v.names);
+        const missing = this.cldrOrder(
+          [...rules.required].filter((c) => !names.has(c)),
+        );
+        if (missing.length > 0) {
+          issues.push({
+            severity: "error",
+            kind: "missing",
+            key,
+            lang: v.lang,
+            categories: missing,
+            file: v.file,
+          });
+        }
+        const unexpected = this.cldrOrder(
+          [...names].filter((c) => !rules.allowed.has(c)),
+        );
+        if (unexpected.length > 0) {
+          issues.push({
+            severity: "warning",
+            kind: "unexpected",
+            key,
+            lang: v.lang,
+            categories: unexpected,
+            file: v.file,
+          });
+        }
+        const others = plainLangs.filter((lang) => lang !== v.lang);
+        if (others.length > 0) {
+          issues.push({
+            severity: "error",
+            kind: "mixed",
+            key,
+            lang: v.lang,
+            categories: others,
+            file: v.file,
+          });
+        }
+      }
+    }
+    return issues;
+  }
+
+  /**
+   * Sort categories in CLDR order (`zero` to `other`), anything else last.
+   */
+  protected cldrOrder(categories: string[]): string[] {
+    const order = [...this.pluralCategoryNames];
+    const rank = (c: string) =>
+      order.includes(c) ? order.indexOf(c) : order.length;
+    return [...categories].sort((a, b) => rank(a) - rank(b));
+  }
+
+  /**
+   * The categories a language requires and allows, or `undefined` when `Intl`
+   * refuses the tag (nothing can be proven about it). Cached per language.
+   */
+  protected categoriesOf(
+    lang: string,
+  ): { required: Set<string>; allowed: Set<string> } | undefined {
+    if (!this.categoriesCache.has(lang)) {
+      let result: { required: Set<string>; allowed: Set<string> } | undefined;
+      try {
+        const rules = new Intl.PluralRules(lang);
+        const required = new Set<string>(["other"]);
+        for (let n = 0; n <= 200; n++) required.add(rules.select(n));
+        result = {
+          required,
+          allowed: new Set(rules.resolvedOptions().pluralCategories),
+        };
+      } catch {
+        result = undefined;
+      }
+      this.categoriesCache.set(lang, result);
+    }
+    return this.categoriesCache.get(lang);
+  }
+
+  protected readonly categoriesCache = new Map<
+    string,
+    { required: Set<string>; allowed: Set<string> } | undefined
+  >();
+
+  /**
+   * Whether a call the check can read passes `select:` for `key`, which makes
+   * an entry with only CLDR names a select rather than a plural.
+   */
+  protected passesSelect(
+    key: string,
+    sourceFiles: Array<[string, string]>,
+  ): boolean {
+    const literal = key.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`);
+    const call = new RegExp(
+      `\\b(?:tr|translate)\\s*\\(\\s*["'\`]${literal}["'\`]`,
+      "g",
+    );
+    for (const [, text] of sourceFiles) {
+      for (const m of text.matchAll(call)) {
+        const tail = this.callTail(text, (m.index ?? 0) + m[0].length);
+        if (tail && /(^|[{,\s])select\s*[:,}]/.test(tail)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Every `$dictionary(...)` call in a (comment-blanked) file: its span, its
+   * language (the `lang` option, else the property it is assigned to), and
+   * the specifier it lazily imports, if any.
+   */
+  protected dictionaryCalls(text: string): Array<{
+    start: number;
+    end: number;
+    lang: string | undefined;
+    importSpec: string | undefined;
+  }> {
+    const calls: Array<{
+      start: number;
+      end: number;
+      lang: string | undefined;
+      importSpec: string | undefined;
+    }> = [];
+    for (const m of text.matchAll(/\$dictionary\s*\(/g)) {
+      const open = (m.index ?? 0) + m[0].length - 1;
+      const end = this.matchingClose(text, open);
+      if (end === undefined) continue;
+      const body = text.slice(open, end);
+      const option = /(^|[{,\s])lang\s*:\s*["'`]([^"'`]+)["'`]/.exec(body);
+      const property = /(\w+)\s*[=:]\s*$/.exec(
+        text.slice(Math.max(0, open - 200), m.index ?? 0),
+      );
+      const importSpec = /^\(\s*\{[^{}]*?import\s*\(\s*["']([^"']+)["']/.exec(
+        body,
+      )?.[1];
+      calls.push({
+        start: open,
+        end,
+        lang: option?.[2] ?? property?.[1],
+        importSpec,
+      });
+    }
+    return calls;
+  }
+
+  /**
+   * The index of the bracket closing the one at `open`, skipping strings, or
+   * `undefined` when it does not close.
+   */
+  protected matchingClose(text: string, open: number): number | undefined {
+    let depth = 0;
+    let quote: string | undefined;
+    for (let i = open; i < text.length; i++) {
+      const c = text[i];
+      if (quote) {
+        if (c === "\\") i++;
+        else if (c === quote) quote = undefined;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === "`") quote = c;
+      else if (c === "(" || c === "[" || c === "{") depth++;
+      else if (c === ")" || c === "]" || c === "}") {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Read the value of an entry starting at `from` (just after its `:`): the
+   * top-level names of a variant object, `null` for a plain string, or
+   * `undefined` for anything else (an identifier, a call), which is not read.
+   */
+  protected readValue(text: string, from: number): string[] | null | undefined {
+    let i = from;
+    while (i < text.length && /\s/.test(text[i])) i++;
+    const c = text[i];
+    if (c === '"' || c === "'" || c === "`") return null;
+    if (c !== "{") return undefined;
+    const end = this.matchingClose(text, i);
+    if (end === undefined) return undefined;
+    const names = this.propertyNames(text.slice(i + 1, end));
+    return names ? [...names] : undefined;
   }
 
   /**
@@ -384,6 +747,185 @@ export class I18nCheckService {
         into.set(key, Math.max(into.get(key) ?? 0, max));
       }
     }
+  }
+
+  /**
+   * Record the `{name}` placeholders of each entry, across every variant of a
+   * variant object (the same positional attribution as {@link collectArity}).
+   * `{count}` is recorded too: the `count` option fills it. A numeric `{0}` is
+   * the bad placeholder's, and an escaped `{{name}}` is text.
+   */
+  protected collectNames(
+    text: string,
+    declarations: Array<{ key: string; index: number }>,
+    into: Map<string, Set<string>>,
+  ): void {
+    for (let i = 0; i < declarations.length; i++) {
+      const start = declarations[i].index;
+      const end = declarations[i + 1]?.index ?? text.length;
+      for (const m of text
+        .slice(start, end)
+        .matchAll(this.namedPlaceholderRe)) {
+        const name = m[1];
+        if (!name || /^\d+$/.test(name)) continue;
+        const key = declarations[i].key;
+        const set = into.get(key) ?? new Set<string>();
+        set.add(name);
+        into.set(key, set);
+      }
+    }
+  }
+
+  /**
+   * Find `tr("key")` calls that leave a `{name}` of `"key"` unfilled: a name
+   * missing from `args: { ... }`, every name when the call passes positional
+   * arguments or none, and `{count}` when it passes no `count`.
+   *
+   * As conservative as {@link findMissingArgs}: a spread, an `args` that is a
+   * variable, or an options object it cannot read leaves the call alone.
+   */
+  protected findMissingNames(
+    file: string,
+    text: string,
+    names: Map<string, Set<string>>,
+  ): I18nMissingName[] {
+    const found: I18nMissingName[] = [];
+    for (const [key, used] of names) {
+      const literal = key.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`);
+      const call = new RegExp(
+        `\\b(tr|translate)\\s*\\(\\s*["'\`]${literal}["'\`]`,
+        "g",
+      );
+      for (const m of text.matchAll(call)) {
+        const rest = this.callTail(text, (m.index ?? 0) + m[0].length);
+        if (rest === undefined) continue;
+        const passed = this.passedNames(rest, m[1] === "translate");
+        if (passed === undefined) continue;
+        const missing = [...used].filter((name) =>
+          name === "count" ? !passed.count : !passed.names?.has(name),
+        );
+        if (passed.names === undefined) {
+          // `args` could not be read: only `{count}` is proven.
+          const onlyCount = missing.filter((name) => name === "count");
+          if (onlyCount.length > 0) found.push({ key, names: onlyCount, file });
+          continue;
+        }
+        if (missing.length > 0) found.push({ key, names: missing, file });
+      }
+    }
+    return found;
+  }
+
+  /**
+   * What a call passes for named placeholders: whether it passes a `count`,
+   * and the names of its `args` record (an empty set for positional or absent
+   * arguments, `undefined` when `args` cannot be read). `undefined` overall
+   * when the options themselves cannot be read.
+   *
+   * `translate(key, args, { count })` takes the arguments positionally.
+   */
+  protected passedNames(
+    tail: string,
+    positional: boolean,
+  ): { count: boolean; names: Set<string> | undefined } | undefined {
+    const trimmed = tail.trim();
+    if (trimmed === "") return { count: false, names: new Set() };
+    if (!trimmed.startsWith(",")) return undefined;
+    const after = trimmed.slice(1).trimStart();
+
+    if (positional) {
+      // translate(key, args?, options?)
+      let args: Set<string> | undefined;
+      let rest = after;
+      if (after.startsWith("[")) {
+        const list = this.balanced(after, "[", "]");
+        if (list === undefined) return undefined;
+        args = new Set();
+        rest = after.slice(list.length);
+      } else if (after.startsWith("{")) {
+        const obj = this.balanced(after, "{", "}");
+        if (obj === undefined) return undefined;
+        args = this.propertyNames(obj.slice(1, -1));
+        rest = after.slice(obj.length);
+      } else {
+        return undefined;
+      }
+      rest = rest.trim();
+      if (rest === "") return { count: false, names: args };
+      if (!rest.startsWith(",")) return undefined;
+      const opts = rest.slice(1).trim();
+      if (!opts.startsWith("{")) return undefined;
+      const obj = this.balanced(opts, "{", "}");
+      if (obj === undefined) return undefined;
+      const keys = this.propertyNames(obj.slice(1, -1));
+      if (keys === undefined) return undefined;
+      return { count: keys.has("count"), names: args };
+    }
+
+    if (!after.startsWith("{")) return undefined;
+    const obj = this.balanced(after, "{", "}");
+    if (obj === undefined) return undefined;
+    const inner = obj.slice(1, -1);
+    const keys = this.propertyNames(inner);
+    if (keys === undefined) return undefined;
+    const count = keys.has("count");
+    if (!keys.has("args")) return { count, names: new Set() };
+
+    const m = /(^|[{,\s])args\s*:\s*/.exec(inner);
+    const value = m ? inner.slice(m.index + m[0].length) : "";
+    if (value.startsWith("[")) return { count, names: new Set() };
+    if (value.startsWith("{")) {
+      const record = this.balanced(value, "{", "}");
+      return {
+        count,
+        names: record ? this.propertyNames(record.slice(1, -1)) : undefined,
+      };
+    }
+    return { count, names: undefined };
+  }
+
+  /**
+   * The top-level property names of an object literal's body, shorthand
+   * included, or `undefined` when a spread makes them unknowable.
+   */
+  protected propertyNames(body: string): Set<string> | undefined {
+    const parts: string[] = [];
+    let depth = 0;
+    let quote: string | undefined;
+    let current = "";
+    for (let i = 0; i < body.length; i++) {
+      const c = body[i];
+      if (quote) {
+        if (c === "\\") {
+          current += c + (body[i + 1] ?? "");
+          i++;
+          continue;
+        }
+        if (c === quote) quote = undefined;
+      } else if (c === '"' || c === "'" || c === "`") {
+        quote = c;
+      } else if (c === "(" || c === "[" || c === "{") {
+        depth++;
+      } else if (c === ")" || c === "]" || c === "}") {
+        depth--;
+      } else if (c === "," && depth === 0) {
+        parts.push(current);
+        current = "";
+        continue;
+      }
+      current += c;
+    }
+    parts.push(current);
+
+    const names = new Set<string>();
+    for (const raw of parts) {
+      const part = raw.trim();
+      if (part === "") continue;
+      if (part.startsWith("...")) return undefined;
+      const m = /^["']?([\w$]+)["']?\s*(?::|$)/.exec(part);
+      if (m) names.add(m[1]);
+    }
+    return names;
   }
 
   /**

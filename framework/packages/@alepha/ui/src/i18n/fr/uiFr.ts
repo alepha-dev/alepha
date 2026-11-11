@@ -1,3 +1,5 @@
+import type { DictionaryEntry } from "alepha/react/i18n";
+
 /**
  * French strings for every component in this package.
  *
@@ -42,7 +44,7 @@
  * A second language means a sibling file; there is deliberately no `uiEn`, since
  * the components already default to English.
  */
-export const uiFr: Record<string, string> = {
+export const uiFr: Record<string, DictionaryEntry> = {
   // The assistant (`@alepha/ui/ai`), in a drawer or a dock.
   "ai.chat.approve": "Approuver",
   "ai.chat.awaiting": "Action à valider",
@@ -139,7 +141,10 @@ export const uiFr: Record<string, string> = {
   "dataTable.shareFiltersCopied": "Lien copié",
   "dataTable.selectAll": "Sélectionner toutes les lignes",
   "dataTable.selectRow": "Sélectionner la ligne",
-  "dataTable.selected": "$1 sélectionné(s)",
+  "dataTable.selected": {
+    one: "{count} sélectionné",
+    other: "{count} sélectionnés",
+  },
   "dataTable.summary": "Résumé",
   "dataTable.toggleColumns": "Afficher ou masquer des colonnes",
   // Same table, different prefix: the page-size select calls `table.pageSize`
@@ -372,17 +377,23 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.noteDays": "$1 jours",
   "admin.analytics.noteHeat": "$1 jours × 24 heures",
   "admin.analytics.noteBuckets": "$1 seaux",
-  "admin.analytics.noteColumns": "$1 colonnes",
-  "admin.analytics.noteColumns.one": "1 colonne",
-  "admin.analytics.noteGroups": "$1 groupes",
-  "admin.analytics.noteGroups.one": "1 groupe",
+  "admin.analytics.noteColumns": {
+    one: "{count} colonne",
+    other: "{count} colonnes",
+  },
+  "admin.analytics.noteGroups": {
+    one: "{count} groupe",
+    other: "{count} groupes",
+  },
   "admin.analytics.noteHours": "$1 heures",
   "admin.analytics.noteNoTimeGrain": "aucun grain temporel",
   "admin.analytics.noteSummedAcross": "sommé sur $1",
   "admin.analytics.noteTopOf": "$1 premiers sur $2",
   "admin.analytics.overview": "Vue d'ensemble",
-  "admin.analytics.overviewNote": "$1 mesures · $2",
-  "admin.analytics.overviewNote.one": "1 mesure · $1",
+  "admin.analytics.overviewNote": {
+    one: "{count} mesure · $1",
+    other: "{count} mesures · $1",
+  },
   "admin.analytics.pickDataset": "Choisir un jeu de données",
   "admin.analytics.pickDimension": "Filtrer sur une dimension",
   "admin.analytics.raiseLimit": "Monter à $1",
@@ -395,8 +406,10 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.requestTitle": "Corps de la requête",
   "admin.analytics.resetItem": "Réinitialiser la requête",
   "admin.analytics.resize": "Glisser pour redimensionner",
-  "admin.analytics.rowNote": "$1 groupes · $2 affichés · tri $3 $4",
-  "admin.analytics.rowNote.one": "1 groupe · tri $1 $2",
+  "admin.analytics.rowNote": {
+    one: "{count} groupe · tri {key} {direction}",
+    other: "{count} groupes · {shown} affichés · tri {key} {direction}",
+  },
   "admin.analytics.rows": "Lignes",
   "admin.analytics.run": "Lancer la requête",
   "admin.analytics.samplingEstimated": "Estimé, échantillonné ×$1",
@@ -429,10 +442,16 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.vsPreviousSpan": "vs les $1 précédents",
   "admin.audits.actionAll": "Toutes les actions",
   "admin.audits.bulkDelete": "Supprimer la sélection",
-  "admin.audits.bulkDeleteConfirm":
-    "Supprimer $1 entrée(s) d'audit ? Ces journaux sont généralement conservés pour des raisons de conformité. L'opération est irréversible.",
+  "admin.audits.bulkDeleteConfirm": {
+    one: "Supprimer {count} entrée d'audit ? Ces journaux sont généralement conservés pour des raisons de conformité. L'opération est irréversible.",
+    other:
+      "Supprimer {count} entrées d'audit ? Ces journaux sont généralement conservés pour des raisons de conformité. L'opération est irréversible.",
+  },
   "admin.audits.bulkDeleteTitle": "Supprimer des entrées d'audit",
-  "admin.audits.bulkDeleted": "$1 entrée(s) d'audit supprimée(s)",
+  "admin.audits.bulkDeleted": {
+    one: "{count} entrée d'audit supprimée",
+    other: "{count} entrées d'audit supprimées",
+  },
   "admin.audits.colAction": "Action",
   "admin.audits.colActor": "Auteur",
   "admin.audits.colResource": "Ressource",
@@ -449,10 +468,16 @@ export const uiFr: Record<string, string> = {
   "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",
   "admin.files.bulkDelete": "Supprimer la sélection",
-  "admin.files.bulkDeleteConfirm":
-    "Supprimer définitivement $1 fichier(s) ? L'opération est irréversible.",
+  "admin.files.bulkDeleteConfirm": {
+    one: "Supprimer définitivement {count} fichier ? L'opération est irréversible.",
+    other:
+      "Supprimer définitivement {count} fichiers ? L'opération est irréversible.",
+  },
   "admin.files.bulkDeleteTitle": "Supprimer des fichiers",
-  "admin.files.bulkDeleted": "$1 fichier(s) supprimé(s)",
+  "admin.files.bulkDeleted": {
+    one: "{count} fichier supprimé",
+    other: "{count} fichiers supprimés",
+  },
   "admin.files.colBucket": "Bucket",
   "admin.files.colName": "Nom",
   "admin.files.colSize": "Taille",
@@ -475,16 +500,29 @@ export const uiFr: Record<string, string> = {
   "admin.files.usageModeQuota": "Du quota",
   "admin.files.usageModeShare": "Répartition",
   "admin.files.usageFree": "$1 libres · $2 utilisés",
-  "admin.files.usageNoQuota": "$1 fichier(s), sans quota",
+  "admin.files.usageNoQuota": {
+    one: "{count} fichier, sans quota",
+    other: "{count} fichiers, sans quota",
+  },
   "admin.files.usageOfQuota": "utilisés sur $1",
   "admin.files.usageTitle": "Stockage",
   "admin.files.usageUsed": "utilisés",
   "admin.jobs.back": "Retour aux tâches",
   "admin.jobs.bulkDelete": "Supprimer la sélection",
-  "admin.jobs.bulkDeleteConfirm":
-    "Supprimer définitivement $1 exécution(s) ? Les exécutions non terminées sont ignorées. Cette action est irréversible.",
+  "admin.jobs.bulkDeleteConfirm": {
+    one: "Supprimer définitivement {count} exécution ? Les exécutions non terminées sont ignorées. Cette action est irréversible.",
+    other:
+      "Supprimer définitivement {count} exécutions ? Les exécutions non terminées sont ignorées. Cette action est irréversible.",
+  },
   "admin.jobs.bulkDeleteTitle": "Supprimer des exécutions",
-  "admin.jobs.bulkDeleted": "$1 supprimée(s), $2 ignorée(s)",
+  "admin.jobs.bulkDeleted": {
+    one: "{count} supprimée",
+    other: "{count} supprimées",
+  },
+  "admin.jobs.bulkSkipped": {
+    one: "{count} ignorée",
+    other: "{count} ignorées",
+  },
   "admin.jobs.cancel": "Annuler",
   "admin.jobs.cancelConfirm":
     "Annuler cette exécution en attente ? Elle ne sera pas lancée.",
@@ -594,10 +632,16 @@ export const uiFr: Record<string, string> = {
   "admin.jobs.view": "Voir",
   "admin.jobs.viewExecutions": "Voir les exécutions",
   "admin.keys.bulkRevoke": "Révoquer la sélection",
-  "admin.keys.bulkRevokeConfirm":
-    "Révoquer $1 clé(s) d'API ? Les applications qui les utilisent perdront l'accès.",
+  "admin.keys.bulkRevokeConfirm": {
+    one: "Révoquer {count} clé d'API ? Les applications qui l'utilisent perdront l'accès.",
+    other:
+      "Révoquer {count} clés d'API ? Les applications qui les utilisent perdront l'accès.",
+  },
   "admin.keys.bulkRevokeTitle": "Révoquer des clés d'API",
-  "admin.keys.bulkRevoked": "$1 clé(s) d'API révoquée(s)",
+  "admin.keys.bulkRevoked": {
+    one: "{count} clé d'API révoquée",
+    other: "{count} clés d'API révoquées",
+  },
   "admin.keys.colCreated": "Créée le",
   "admin.keys.colExpires": "Expire",
   "admin.keys.colIpAllowlist": "Autorisée depuis",
@@ -662,10 +706,15 @@ export const uiFr: Record<string, string> = {
   "admin.title": "Administration - $1",
 
   "admin.notifications.bulkDelete": "Supprimer la sélection",
-  "admin.notifications.bulkDeleteConfirm":
-    "Supprimer $1 notification(s) ? L'opération est irréversible.",
+  "admin.notifications.bulkDeleteConfirm": {
+    one: "Supprimer {count} notification ? L'opération est irréversible.",
+    other: "Supprimer {count} notifications ? L'opération est irréversible.",
+  },
   "admin.notifications.bulkDeleteTitle": "Supprimer des notifications",
-  "admin.notifications.bulkDeleted": "$1 notification(s) supprimée(s)",
+  "admin.notifications.bulkDeleted": {
+    one: "{count} notification supprimée",
+    other: "{count} notifications supprimées",
+  },
   "admin.notifications.allChannels": "Tous les canaux",
   "admin.notifications.allStatuses": "Tous les statuts",
   "admin.notifications.allTemplates": "Tous les modèles",
@@ -757,13 +806,23 @@ export const uiFr: Record<string, string> = {
     "Sélectionnez un paramètre pour voir ses versions.",
   "admin.parameters.historyTitle": "Historique",
   "admin.parameters.import": "Importer",
-  "admin.parameters.importConfirm": "Importer $1 paramètre(s) ?",
+  "admin.parameters.importConfirm": {
+    one: "Importer {count} paramètre ?",
+    other: "Importer {count} paramètres ?",
+  },
+  "admin.parameters.importSkipped": {
+    one: "{count} entrée inconnue sera ignorée.",
+    other: "{count} entrées inconnues seront ignorées.",
+  },
   "admin.parameters.importInvalidJson": "Fichier JSON invalide",
   "admin.parameters.importNoItems": "Aucun paramètre trouvé dans le fichier",
   "admin.parameters.importNoneMatch":
     "Aucun paramètre enregistré ne correspond aux noms importés",
   "admin.parameters.importTitle": "Importer des paramètres",
-  "admin.parameters.imported": "$1 paramètre(s) importé(s)",
+  "admin.parameters.imported": {
+    one: "{count} paramètre importé",
+    other: "{count} paramètres importés",
+  },
   "admin.parameters.jsonDialogDescription":
     "Contenu JSON brut de cette version du paramètre.",
   "admin.parameters.rollback": "Revenir à cette version",
@@ -782,8 +841,14 @@ export const uiFr: Record<string, string> = {
     "Aucun $parameter ne déclare « $1 » dans ce processus. Si un module non chargé ici le lit encore, le supprimer jette cette configuration. Toutes ses versions enregistrées sont retirées.",
   "admin.parameters.orphanDeleteTitle": "Supprimer ce paramètre ?",
   "admin.parameters.orphanDeleted": "« $1 » supprimé.",
-  "admin.parameters.orphansHide": "Masquer $1 orphelin(s)",
-  "admin.parameters.orphansShow": "Afficher $1 orphelin(s)",
+  "admin.parameters.orphansHide": {
+    one: "Masquer {count} orphelin",
+    other: "Masquer {count} orphelins",
+  },
+  "admin.parameters.orphansShow": {
+    one: "Afficher {count} orphelin",
+    other: "Afficher {count} orphelins",
+  },
   "admin.parameters.saved": "Paramètre enregistré",
   "admin.parameters.tagsPlaceholder": "Ajouter des étiquettes…",
   "admin.parameters.treeEmpty": "Aucun paramètre enregistré.",
@@ -799,10 +864,16 @@ export const uiFr: Record<string, string> = {
   "admin.payments.colStatus": "Statut",
   "admin.payments.colWhen": "Date",
   "admin.sessions.bulkRevoke": "Révoquer la sélection",
-  "admin.sessions.bulkRevokeConfirm":
-    "Révoquer $1 session(s) ? Les utilisateurs concernés seront déconnectés.",
+  "admin.sessions.bulkRevokeConfirm": {
+    one: "Révoquer {count} session ? L'utilisateur concerné sera déconnecté.",
+    other:
+      "Révoquer {count} sessions ? Les utilisateurs concernés seront déconnectés.",
+  },
   "admin.sessions.bulkRevokeTitle": "Révoquer des sessions",
-  "admin.sessions.bulkRevoked": "$1 session(s) révoquée(s)",
+  "admin.sessions.bulkRevoked": {
+    one: "{count} session révoquée",
+    other: "{count} sessions révoquées",
+  },
   "admin.sessions.colDevice": "Appareil",
   "admin.sessions.colExpires": "Expire le",
   "admin.sessions.colIp": "IP",
@@ -932,15 +1003,26 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.verified": "Vérifié",
   "admin.users.active": "Actif",
   "admin.users.bulkDelete": "Supprimer la sélection",
-  "admin.users.bulkDeleteConfirm":
-    "Supprimer $1 utilisateur(s) ? L'opération est irréversible.",
+  "admin.users.bulkDeleteConfirm": {
+    one: "Supprimer {count} utilisateur ? L'opération est irréversible.",
+    other: "Supprimer {count} utilisateurs ? L'opération est irréversible.",
+  },
   "admin.users.bulkDeleteTitle": "Supprimer des utilisateurs",
-  "admin.users.bulkDeleted": "$1 utilisateur(s) supprimé(s)",
+  "admin.users.bulkDeleted": {
+    one: "{count} utilisateur supprimé",
+    other: "{count} utilisateurs supprimés",
+  },
   "admin.users.bulkDisable": "Désactiver la sélection",
-  "admin.users.bulkDisableConfirm":
-    "Désactiver $1 utilisateur(s) ? Ils ne pourront plus se connecter.",
+  "admin.users.bulkDisableConfirm": {
+    one: "Désactiver {count} utilisateur ? Il ne pourra plus se connecter.",
+    other:
+      "Désactiver {count} utilisateurs ? Ils ne pourront plus se connecter.",
+  },
   "admin.users.bulkDisableTitle": "Désactiver des utilisateurs",
-  "admin.users.bulkDisabled": "$1 utilisateur(s) désactivé(s)",
+  "admin.users.bulkDisabled": {
+    one: "{count} utilisateur désactivé",
+    other: "{count} utilisateurs désactivés",
+  },
   "admin.users.cantDisableSelf":
     "Vous ne pouvez pas désactiver votre propre compte",
   "admin.users.colEmail": "Adresse e-mail",
@@ -1063,7 +1145,10 @@ export const uiFr: Record<string, string> = {
     "Le secret actuel cesse de fonctionner immédiatement, et un nouveau est affiché une seule fois. Mettez la clé à jour là où elle est enregistrée.",
   "account.keys.rotateTitle": "Régénérer $1 ?",
   "account.keys.scopeColumn": "Autorisée",
-  "account.keys.scopeCount": "$1 permission(s)",
+  "account.keys.scopeCount": {
+    one: "{count} permission",
+    other: "{count} permissions",
+  },
   "account.keys.scopeEmpty":
     "Vous ne détenez aucune permission à laquelle une clé pourrait être restreinte.",
   "account.keys.scopeFull": "Accès complet",
@@ -1111,8 +1196,10 @@ export const uiFr: Record<string, string> = {
   "account.password.changeDescription":
     "Tous vos autres appareils seront déconnectés.",
   "account.password.changed": "Mot de passe changé",
-  "account.password.changedWithSessions":
-    "Mot de passe changé - $1 autre(s) session(s) déconnectée(s)",
+  "account.password.changedWithSessions": {
+    one: "Mot de passe changé - {count} autre session déconnectée",
+    other: "Mot de passe changé - {count} autres sessions déconnectées",
+  },
   "account.password.confirm": "Confirmer le nouveau mot de passe",
   "account.password.current": "Mot de passe actuel",
   "account.password.mismatch": "Les deux mots de passe ne correspondent pas",

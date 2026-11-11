@@ -80,8 +80,12 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
           toaster.show(
             otherSessionsRevoked > 0
               ? tr("account.password.changedWithSessions", {
-                  default: "Password changed - $1 other session(s) signed out",
-                  args: [String(otherSessionsRevoked)],
+                  count: otherSessionsRevoked,
+                  default: {
+                    one: "Password changed - {count} other session signed out",
+                    other:
+                      "Password changed - {count} other sessions signed out",
+                  },
                 })
               : tr("account.password.changed", { default: "Password changed" }),
             "success",

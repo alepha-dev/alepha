@@ -34,7 +34,7 @@ import { I18nProvider } from "../providers/I18nProvider.ts";
  * run(App);
  * ```
  */
-export const $dictionary = <T extends Record<string, string>>(
+export const $dictionary = <T extends Record<string, DictionaryEntry>>(
   options: DictionaryPrimitiveOptions<T>,
 ): DictionaryPrimitive<T> => {
   return createPrimitive(DictionaryPrimitive<T>, options);
@@ -42,7 +42,42 @@ export const $dictionary = <T extends Record<string, string>>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface DictionaryPrimitiveOptions<T extends Record<string, string>> {
+/**
+ * One value of a catalog: a plain string, or a variant object.
+ *
+ * A variant object is chosen by the `count` option of `tr()`, through the
+ * `Intl.PluralRules` of the entry's own language, so its names are the CLDR
+ * categories (`zero`, `one`, `two`, `few`, `many`, `other`). `other` is
+ * required: it is what a count whose category the entry lacks renders, and
+ * what a read with no count renders.
+ *
+ * A variant name carries no dot: the key scanners of `alepha i18n check` read
+ * a quoted, dotted name as a catalog key.
+ *
+ * @example
+ * ```ts
+ * const en = {
+ *   "tickets.count": { one: "{count} ticket", other: "{count} tickets" },
+ * } satisfies Record<string, DictionaryEntry>;
+ *
+ * tr("tickets.count", { count: 3 }); // "3 tickets"
+ * ```
+ */
+export type DictionaryEntry = string | DictionaryVariants;
+
+/**
+ * The variant object of a {@link DictionaryEntry}: `other` plus any variant.
+ */
+export type DictionaryVariants = {
+  other: string;
+  [variant: string]: string;
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface DictionaryPrimitiveOptions<
+  T extends Record<string, DictionaryEntry>,
+> {
   lang?: string;
   name?: string;
   lazy: () => Async<{ default: T }>;
@@ -51,7 +86,7 @@ export interface DictionaryPrimitiveOptions<T extends Record<string, string>> {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class DictionaryPrimitive<
-  T extends Record<string, string>,
+  T extends Record<string, DictionaryEntry>,
 > extends Primitive<DictionaryPrimitiveOptions<T>> {
   protected provider = $inject(I18nProvider);
   protected onInit() {

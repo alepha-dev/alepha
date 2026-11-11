@@ -68,10 +68,12 @@ export class I18nCommand {
         }
         process.stdout.write(
           `\nAlepha interpolates ${c.set("CYAN", "$1")}, ` +
-            `${c.set("CYAN", "$2")}, … — a ${c.set("CYAN", "{0}")} is copied ` +
-            `into the rendered string verbatim. Rewrite the placeholder ` +
-            `(note ${c.set("CYAN", "$1")} is the FIRST argument, not ` +
-            `${c.set("CYAN", "$0")}).\n`,
+            `${c.set("CYAN", "$2")}, … and ${c.set("CYAN", "{name}")}, and a ` +
+            `name is never a number: a ${c.set("CYAN", "{0}")} is copied ` +
+            `into the rendered string verbatim. Rewrite the placeholder as ` +
+            `${c.set("CYAN", "$1")} (the FIRST argument, not ` +
+            `${c.set("CYAN", "$0")}) or as a named ` +
+            `${c.set("CYAN", "{name}")}.\n`,
         );
       }
 
@@ -96,6 +98,60 @@ export class I18nCommand {
         );
       }
 
+      if (result.missingNames.length > 0) {
+        process.stdout.write(
+          `\n${c.set("RED", "✗")} Calls leaving a named placeholder unfilled ` +
+            `(${result.missingNames.length}):\n`,
+        );
+        for (const a of result.missingNames) {
+          const file = a.file.startsWith(root)
+            ? a.file.slice(root.length + 1)
+            : a.file;
+          process.stdout.write(
+            `  ${c.set("DIM", "-")} ${a.key} ${c.set("DIM", `(${file})`)}: ` +
+              `missing ${a.names.map((n) => `{${n}}`).join(", ")}\n`,
+          );
+        }
+        process.stdout.write(
+          `\nThe unfilled ${c.set("CYAN", "{name}")} is rendered to the user ` +
+            `verbatim. Pass ${c.set("CYAN", "{ args: { name } }")} at the ` +
+            `call site (${c.set("CYAN", "{count}")} takes the ` +
+            `${c.set("CYAN", "count")} option), or drop the placeholder.\n`,
+        );
+      }
+
+      const pluralErrors = result.pluralIssues.filter(
+        (i) => i.severity === "error",
+      );
+      if (result.pluralIssues.length > 0) {
+        process.stdout.write(
+          `\n${c.set(pluralErrors.length > 0 ? "RED" : "ORANGE", pluralErrors.length > 0 ? "✗" : "warn")} ` +
+            `Plural entries that do not fit their language ` +
+            `(${result.pluralIssues.length}):\n`,
+        );
+        for (const i of result.pluralIssues) {
+          const file = i.file.startsWith(root)
+            ? i.file.slice(root.length + 1)
+            : i.file;
+          const what =
+            i.kind === "missing"
+              ? `missing ${i.categories.join(", ")}`
+              : i.kind === "unexpected"
+                ? `${i.categories.join(", ")} never selected (warning)`
+                : `a plain string in ${i.categories.join(", ")}`;
+          process.stdout.write(
+            `  ${c.set("DIM", "-")} ${i.key} [${i.lang}] ` +
+              `${c.set("DIM", `(${file})`)}: ${what}\n`,
+          );
+        }
+        process.stdout.write(
+          `\nA plural entry needs ${c.set("CYAN", "other")} and every ` +
+            `category its language selects for a whole number. A language ` +
+            `with no distinction writes ${c.set("CYAN", '{ other: "..." }')} ` +
+            `alone, so the call passes a count in every language.\n`,
+        );
+      }
+
       if (result.unused.length > 0) {
         process.stdout.write(
           `\n${c.set("RED", "✗")} Unused translations (${result.unused.length}):\n`,
@@ -113,7 +169,9 @@ export class I18nCommand {
       if (
         result.unused.length === 0 &&
         result.badPlaceholders.length === 0 &&
-        result.missingArgs.length === 0
+        result.missingArgs.length === 0 &&
+        result.missingNames.length === 0 &&
+        pluralErrors.length === 0
       ) {
         process.stdout.write(
           `\n${c.set("GREEN", "✓")} All translations are referenced.\n\n`,

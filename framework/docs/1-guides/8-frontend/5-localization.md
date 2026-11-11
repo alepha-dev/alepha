@@ -162,18 +162,113 @@ tr("hello");
 tr("welcome", { args: ["Alice"] });
 // "Welcome, Alice"
 
+tr("greeting", { args: { name: "Alice", last4: 4242 } });
+// "Hello Alice, your card ends in 4242"
+
+tr("ticket.status", { select: "open" });
+// "Open"
+
 tr("missing_key", { default: "Fallback text" });
 // "Fallback text"
 ```
 
 **Options:**
 
-| Option    | Type       | Description                               |
-| --------- | ---------- | ----------------------------------------- |
-| `args`    | `string[]` | Positional arguments for `$1`, `$2`, etc. |
-| `default` | `string`   | Fallback if the key is not found.         |
+| Option    | Type                               | Description                                                       |
+| --------- | ---------------------------------- | ----------------------------------------------------------------- |
+| `args`    | `(string \| number)[]` or a record | Positional arguments for `$1`, `$2`, or named ones for `{name}`.  |
+| `count`   | `number`                           | Selects a plural variant and fills `{count}` (see Plurals below). |
+| `select`  | `string`                           | Selects the variant of that name (see Select below).              |
+| `default` | `DictionaryEntry`                  | Fallback if the key is not found: a string or a variant object.   |
 
 Fallback behavior: if the key is not found in the current language, the fallback language (`"en"` by default) is checked. If still not found, the raw key string is returned.
+
+### Plurals
+
+A catalog value can be a variant object instead of a string, keyed by the plural categories of `Intl.PluralRules` (`zero`, `one`, `two`, `few`, `many`, `other`). `other` is required: a variant object without it does not compile.
+
+```typescript
+// en.ts
+export default {
+  "tickets.count": { one: "{count} ticket", other: "{count} tickets" },
+};
+
+// pl.ts
+export default {
+  "tickets.count": {
+    one: "{count} zgłoszenie",
+    few: "{count} zgłoszenia",
+    many: "{count} zgłoszeń",
+    other: "{count} zgłoszenia",
+  },
+};
+```
+
+```typescript
+tr("tickets.count", { count: 1 }); // "1 ticket"
+tr("tickets.count", { count: 1234 }); // "1,234 tickets"
+```
+
+- **`count` picks the variant**, through `Intl.PluralRules` of the language the entry is written in. An English entry reached through the fallback on a Polish page is selected with English rules, since it is English text.
+- **`{count}` is the count formatted for that language** with `Intl.NumberFormat` (`1,234` in English, `1 234` in French). `$1`, `$2` keep working inside a variant.
+- **A category the entry lacks renders `other`**, and so does a variant entry read without a `count`. A language with no plural distinction writes `{ other: "..." }` alone.
+- A plain string entry is unchanged, and fills `{count}` when it is given one.
+- There are no exact-number variants: a zero case that needs its own sentence is its own key.
+
+A `default` can carry a variant object too. It belongs to no dictionary, so it is selected with the rules of the fallback language:
+
+```typescript
+tr("files.deleted", {
+  count,
+  default: { one: "{count} file deleted", other: "{count} files deleted" },
+});
+```
+
+### Named arguments
+
+A `{name}` placeholder is filled from a record passed as `args`; values are strings or numbers, inserted as written. Positional `$1`, `$2` keep working, and an array never fills a name.
+
+```typescript
+// en.ts
+export default {
+  greeting: "Hello {name}, your card ends in {last4}",
+};
+
+tr("greeting", { args: { name: "Alice", last4: 4242 } });
+```
+
+- **`{count}` is the `count` option's**: a named argument called `count` does not fill it.
+- **A placeholder with no argument is left as written**, and a substituted value is never read again: a value containing `{name}`, `$2` or `<b>` is inserted literally.
+- **A literal brace is written doubled**: `{{` renders `{` and `}}` renders `}`, so `"Write {{name}}"` renders `Write {name}`.
+
+Braces are syntax since named arguments: a catalog written before them that holds a literal `{word}` keeps rendering it only while no argument has that name, and should double its braces.
+
+Names are type-checked when the catalog is written `as const`: a missing or misspelled name is then a compile error at `tr()`, across every variant of the entry. Any other catalog types its values `string` and accepts any record, and `alepha i18n check` reports a call that omits a name.
+
+### Select
+
+A variant object can also be chosen by a string, with the `select` option. `other` is what a value with no variant of its own renders:
+
+```typescript
+// en.ts
+export default {
+  "ticket.status": { open: "Open", closed: "Closed", other: "Unknown" },
+};
+
+tr("ticket.status", { select: ticket.status });
+```
+
+A call takes one selector: `count` and `select` together are a type error. A variant name carries no dot.
+
+To type a catalog file, use `DictionaryEntry`:
+
+```typescript
+import type { DictionaryEntry } from "alepha/react/i18n";
+
+export default {
+  "tickets.count": { one: "{count} ticket", other: "{count} tickets" },
+} satisfies Record<string, DictionaryEntry>;
+```
 
 ### l(value, options?)
 
@@ -250,6 +345,18 @@ The current language code string.
 
 Array of all available language codes, derived from registered dictionaries.
 
+### dir
+
+The writing direction of the current language: `"rtl"` for a right-to-left language, `"ltr"` otherwise.
+
+```typescript
+const { dir } = useI18n();
+```
+
+The right-to-left languages are a fixed list (`ar`, `he`, `fa`, `ur`, `ps`, `sd`, `ug`, `yi`, `dv`, `ckb`), matched on the base language of the tag, so `ar-EG` is right-to-left. Anything else, a string that is not a language tag included, is `"ltr"`.
+
+`<html dir>` follows it, next to `<html lang>`: on the server for each request's language, and in the browser on a language switch. That is what makes Tailwind's `rtl:` variants match. An application that sets `htmlAttributes.dir` in its own `$head` keeps its value.
+
 ## Translate Component
 
 `<Translate>` (also exported as `<Tr>`) is `tr()` as JSX:
@@ -258,7 +365,10 @@ Array of all available language codes, derived from registered dictionaries.
 import { Tr } from "alepha/react/i18n";
 
 <Tr k="welcome" args={["Alice"]} fallback="Welcome, $1" />;
+<Tr k="tickets.count" count={3} />;
 ```
+
+It takes the same `args` (positional or named), `count` and `select` as `tr()`, and its `fallback` can be a variant object.
 
 ## Localize Component
 

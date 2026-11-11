@@ -2,10 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import type { StorageStats } from "alepha/api/files";
 import { AlephaContext } from "alepha/react";
-import { AlephaReactI18n } from "alepha/react/i18n";
+import { $dictionary, AlephaReactI18n } from "alepha/react/i18n";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { uiFr } from "../../i18n/fr/uiFr.ts";
 import { AdminFilesUsageCard } from "../AdminFilesUsageCard.tsx";
 
 const MB = 1024 * 1024;
@@ -94,12 +95,43 @@ describe("AdminFilesUsageCard", () => {
 
     expect(text).toContain("200.0 MB");
     expect(text).toContain("used");
-    expect(text).toContain("14 file(s), no quota");
+    expect(text).toContain("14 files, no quota");
     expect(text).not.toContain("free");
     expect(width(view, "artifacts")).toBeCloseTo(
       ((150 * MB) / (200 * MB + 1024)) * 100,
       3,
     );
+  });
+
+  /**
+   * The file count is a plural entry (#Q3360): its English is the call site's
+   * `default`, its French `uiFr`'s, and French `one` covers 0.
+   */
+  it.each([
+    ["en", 0, "0 files, no quota"],
+    ["en", 1, "1 file, no quota"],
+    ["en", 2, "2 files, no quota"],
+    ["fr", 0, "0 fichier, sans quota"],
+    ["fr", 1, "1 fichier, sans quota"],
+    ["fr", 2, "2 fichiers, sans quota"],
+  ])("counts the files in %s for %d", async (lang, totalFiles, expected) => {
+    class Catalogs {
+      en = $dictionary({ lazy: async () => ({ default: {} }) });
+      fr = $dictionary({ lazy: async () => ({ default: { ...uiFr } }) });
+    }
+    alepha = Alepha.create().with(AlephaReactI18n);
+    alepha.inject(Catalogs);
+    // The store, not `setLang`: `setLang` writes the `lang` cookie, which
+    // jsdom keeps for every later test of the file.
+    alepha.store.set("alepha.react.i18n.lang", lang);
+    await alepha.start();
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <AdminFilesUsageCard stats={{ ...stats(0), totalFiles }} />
+      </AlephaContext.Provider>,
+    );
+
+    expect(view.container.textContent).toContain(expected);
   });
 
   it("opens a panel of that bucket's figures when a segment is clicked", async () => {

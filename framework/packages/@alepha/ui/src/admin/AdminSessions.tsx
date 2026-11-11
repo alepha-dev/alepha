@@ -186,8 +186,12 @@ export const AdminSessions = () => {
             default: "Revoke sessions",
           }),
           description: tr("admin.sessions.bulkRevokeConfirm", {
-            default: `Revoke ${items.length} session(s)? Affected users will be signed out.`,
-            args: [String(items.length)],
+            count: items.length,
+            default: {
+              one: "Revoke {count} session? The affected user will be signed out.",
+              other:
+                "Revoke {count} sessions? Affected users will be signed out.",
+            },
           }),
           destructive: true,
         });
@@ -197,8 +201,11 @@ export const AdminSessions = () => {
         });
         toast.success(
           tr("admin.sessions.bulkRevoked", {
-            default: `${res.deleted.length} session(s) revoked`,
-            args: [String(res.deleted.length)],
+            count: res.deleted.length,
+            default: {
+              one: "{count} session revoked",
+              other: "{count} sessions revoked",
+            },
           }),
         );
         ctx.clearSelection();

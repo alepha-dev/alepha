@@ -19,6 +19,7 @@ describe("html lang in the browser", () => {
   beforeEach(() => {
     document.head.innerHTML = "";
     document.documentElement.removeAttribute("lang");
+    document.documentElement.removeAttribute("dir");
   });
 
   it("should update the attribute when the language changes", async () => {
@@ -32,5 +33,22 @@ describe("html lang in the browser", () => {
 
     await i18n.setLang("en");
     expect(document.documentElement.getAttribute("lang")).toBe("en");
+  });
+
+  it("should update dir when the language changes (#Q3350)", async () => {
+    class Rtl {
+      en = $dictionary({ lazy: async () => ({ default: { hello: "Hello" } }) });
+      ar = $dictionary({ lazy: async () => ({ default: { hello: "مرحبا" } }) });
+    }
+    const alepha = Alepha.create().with(AlephaReactI18n);
+    alepha.inject(Rtl);
+    const i18n = alepha.inject(I18nProvider);
+    await alepha.start();
+
+    await i18n.setLang("ar");
+    expect(document.documentElement.getAttribute("dir")).toBe("rtl");
+
+    await i18n.setLang("en");
+    expect(document.documentElement.getAttribute("dir")).toBe("ltr");
   });
 });

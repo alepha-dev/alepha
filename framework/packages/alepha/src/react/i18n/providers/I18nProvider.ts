@@ -11,6 +11,8 @@ import { RouterLocaleProvider } from "alepha/react/router";
 import { $cookie } from "alepha/server/cookies";
 
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
+import type { DictionaryEntry } from "../primitives/$dictionary.ts";
+import { LangDirection } from "../services/LangDirection.ts";
 import { RequestLangResolver } from "../services/RequestLangResolver.ts";
 
 export class I18nProvider<
@@ -35,9 +37,16 @@ export class I18nProvider<
    * browser, so it has to be re-read every time the head is resolved. An
    * application that sets `htmlAttributes.lang` itself still wins: its own
    * `$head` registers after this one.
+   *
+   * `dir` is written beside it, always, `ltr` included (#Q3350): an Arabic
+   * page laid out left to right never matches Tailwind's `rtl:` variants, and
+   * a switch back to a left-to-right language has to clear the attribute's
+   * old value. It is derived from `lang`, so the page-cache variant on
+   * `lang` already covers it. An application's own `htmlAttributes.dir`
+   * wins the same way.
    */
   protected readonly htmlLang = $head(() => ({
-    htmlAttributes: { lang: this.lang },
+    htmlAttributes: { lang: this.lang, dir: this.dir },
   }));
 
   /**
@@ -70,8 +79,8 @@ export class I18nProvider<
     target: string;
     name: string;
     lang: string;
-    loader: () => Promise<Record<string, string>>;
-    translations: Record<string, string>;
+    loader: () => Promise<Record<string, DictionaryEntry>>;
+    translations: Record<string, DictionaryEntry>;
 
     /**
      * Whether {@link loader} has already run for this entry.
@@ -172,6 +181,24 @@ export class I18nProvider<
     this.numberFormatRef ??= new Intl.NumberFormat(this.lang);
     return this.numberFormatRef;
   }
+
+  /**
+   * One `Intl.PluralRules` per language, built on first use.
+   *
+   * A Map and not a single cached instance in the manner of `numberFormatRef`:
+   * this provider is one instance for every request while the language is per
+   * request, and the language here is the ENTRY's, not the active one, so one
+   * render can need two. `null` records a language `Intl` refused, so a bad
+   * tag is tried once. The keys are dictionary languages, which are the
+   * developer's, never a request's raw `lang` cookie.
+   */
+  protected pluralRules = new Map<string, Intl.PluralRules | null>();
+
+  /**
+   * One `Intl.NumberFormat` per language for `{count}`, for the same reasons
+   * as {@link pluralRules}.
+   */
+  protected countFormats = new Map<string, Intl.NumberFormat | null>();
 
   public get languages() {
     const languages = new Set<string>();
@@ -474,25 +501,58 @@ export class I18nProvider<
     return this.alepha.store.get("alepha.react.i18n.lang") || this.fallbackLang;
   }
 
-  public translate = (key: string, args: string[] = []) => {
-    for (const item of this.registry) {
-      if (item.lang === this.lang) {
-        if (item.translations[key]) {
-          return this.render(item.translations[key], args); // append lang for fallback
-        }
-      }
-    }
+  /**
+   * The writing direction of the active language: `"rtl"` for Arabic,
+   * Hebrew, Persian, Urdu and the other right-to-left languages of
+   * {@link LangDirection}, region-qualified tags included, `"ltr"` otherwise.
+   */
+  public get dir(): "rtl" | "ltr" {
+    return LangDirection.of(this.lang);
+  }
 
-    for (const item of this.registry) {
-      if (item.lang === this.fallbackLang) {
-        if (item.translations[key]) {
-          return this.render(item.translations[key], args); // append lang for fallback
-        }
-      }
+  /**
+   * Translate `key` in the active language, then in the fallback language.
+   * Returns the key itself when neither has it.
+   */
+  public translate = (
+    key: string,
+    args: I18nArgs = [],
+    options: I18nSelector = {},
+  ): string => {
+    const found = this.lookup(key);
+    if (!found) {
+      return key;
     }
-
-    return key; // fallback to the key itself if not found
+    return this.render(found.entry, args, { ...options, lang: found.lang });
   };
+
+  /**
+   * Find `key` in the active language, then in the fallback language, and say
+   * which language the entry is written in: a variant is selected with the
+   * rules of that language, not of the active one (an English entry reached
+   * through the fallback on a Polish page is English text).
+   */
+  protected lookup(
+    key: string,
+  ): { entry: DictionaryEntry; lang: string } | undefined {
+    for (const lang of [this.lang, this.fallbackLang]) {
+      for (const item of this.registry) {
+        if (item.lang !== lang) {
+          continue;
+        }
+        const entry = item.translations[key];
+        // A plain object inherits `constructor` and friends: only a string or
+        // a variant object is an entry, and an empty string is a missing one.
+        if (
+          (typeof entry === "string" && entry) ||
+          (typeof entry === "object" && entry !== null)
+        ) {
+          return { entry, lang };
+        }
+      }
+    }
+    return undefined;
+  }
 
   public readonly l = (
     value: I18nLocalizeType,
@@ -568,29 +628,55 @@ export class I18nProvider<
    * keeps autocomplete for the typed dictionary keys while allowing shared
    * library components to pass arbitrary string keys (with a `default`
    * fallback) without casting to `as never`.
+   *
+   * Generic over the key so a catalog written `as const` has the `{name}`
+   * placeholders of the entry checked against `args`. Any other catalog types
+   * its values `string`, and accepts any record.
    */
-  public readonly tr = (
-    key: keyof ServiceDictionary<S>[K] | (string & {}),
-    options: {
-      args?: string[];
-      default?: string;
-    } = {},
+  public readonly tr = <
+    Key extends keyof ServiceDictionary<S>[K] | (string & {}),
+  >(
+    key: Key,
+    options: I18nTrOptions<I18nEntryOf<ServiceDictionary<S>[K], Key>> = {},
   ): string => {
-    const args = options.args || [];
-    const translation = this.translate(key as string, args);
-    if (translation === (key as string) && options.default) {
+    const args: I18nArgs = options.args || [];
+    const found = this.lookup(key as string);
+    if (found) {
+      return this.render(found.entry, args, {
+        count: options.count,
+        select: options.select,
+        lang: found.lang,
+      });
+    }
+    if (options.default) {
       // The default goes through `render` too. It used to be returned raw, so
       // every `tr(key, { default: "$1 rows", args })` whose key was not in a
       // catalogue displayed the literal `$1` - and the default's whole job is
       // to be what an application without that key shows. It was the admin
       // kit's own analytics counts, among others.
-      return this.render(options.default, args);
+      //
+      // A default belongs to no dictionary, so it is read as written in the
+      // fallback language: it is what shows when no catalog has the key, which
+      // is where the fallback chain ends.
+      return this.render(options.default, args, {
+        count: options.count,
+        select: options.select,
+        lang: this.fallbackLang,
+      });
     }
-    return translation;
+    return key as string;
   };
 
   /**
-   * Substitute `$1`, `$2`, … placeholders with their arguments.
+   * Select the variant of an entry, then substitute its placeholders: `$1`,
+   * `$2`, … with positional arguments, `{name}` with the named argument of
+   * that name, and `{count}` with the count formatted for the entry's
+   * language. `{{` and `}}` write a literal brace.
+   *
+   * A variant object read with a count takes the category the entry's
+   * language selects for it, or `other` when the entry lacks that category or
+   * the language is one `Intl` refuses. Read with a `select`, it takes the
+   * variant of that name, or `other`. Read with neither, it renders `other`.
    *
    * One regex pass, not a loop of `String.replace(string, …)`. The loop had
    * two faults: it replaced `$1` before it ever considered `$10`, so `$10`
@@ -600,15 +686,235 @@ export class I18nProvider<
    *
    * A single pass also means a substituted VALUE is never rescanned, so a
    * user-supplied string that happens to contain `$2` is inserted literally
-   * instead of being treated as another placeholder. A placeholder with no
-   * corresponding argument is left as written.
+   * instead of being treated as another placeholder: the same holds for a
+   * value containing `{name}` or markup. A placeholder with no corresponding
+   * argument is left as written. `{count}` is the `count` option's alone: a
+   * named argument called `count` does not fill it.
    */
-  protected render(item: string, args: string[]): string {
-    return item.replace(/\$(\d+)/g, (match, digits: string) => {
-      const index = Number.parseInt(digits, 10) - 1;
-      return index >= 0 && index < args.length ? String(args[index]) : match;
-    });
+  protected render(
+    item: DictionaryEntry,
+    args: I18nArgs,
+    options: I18nRenderOptions = {},
+  ): string {
+    const lang = options.lang ?? this.lang;
+    const count = options.count;
+    const text = this.selectVariant(item, lang, count, options.select);
+    const positional = this.isPositional(args) ? args : [];
+    const named = this.isPositional(args) ? undefined : args;
+    return text.replace(
+      /\{\{|\}\}|\{(\w+)\}|\$(\d+)/g,
+      (match, name: string | undefined, digits: string | undefined) => {
+        if (match === "{{") {
+          return "{";
+        }
+        if (match === "}}") {
+          return "}";
+        }
+        if (name !== undefined) {
+          if (name === "count") {
+            return count === undefined ? match : this.formatCount(count, lang);
+          }
+          return named && Object.hasOwn(named, name)
+            ? String(named[name])
+            : match;
+        }
+        const index = Number.parseInt(digits ?? "", 10) - 1;
+        return index >= 0 && index < positional.length
+          ? String(positional[index])
+          : match;
+      },
+    );
   }
+
+  protected isPositional(args: I18nArgs): args is ReadonlyArray<I18nArgValue> {
+    return Array.isArray(args);
+  }
+
+  /**
+   * The text of an entry: the string itself, or the variant `select` names,
+   * or the one `Intl.PluralRules` selects in `lang` for `count`, falling back
+   * to `other`. Own properties only: a variant object is a plain object, and
+   * `select: "constructor"` must not reach its prototype.
+   */
+  protected selectVariant(
+    item: DictionaryEntry,
+    lang: string,
+    count: number | undefined,
+    select?: string,
+  ): string {
+    if (typeof item === "string") {
+      return item;
+    }
+    const name =
+      select ??
+      (count === undefined
+        ? undefined
+        : this.pluralRulesFor(lang)?.select(count));
+    if (name !== undefined && Object.hasOwn(item, name)) {
+      const variant = item[name];
+      if (typeof variant === "string") {
+        return variant;
+      }
+    }
+    return item.other;
+  }
+
+  protected pluralRulesFor(lang: string): Intl.PluralRules | undefined {
+    if (!this.pluralRules.has(lang)) {
+      let rules: Intl.PluralRules | null = null;
+      try {
+        rules = new Intl.PluralRules(lang);
+      } catch {
+        // A dictionary `lang` Intl refuses (a RangeError): `other` it is.
+      }
+      this.pluralRules.set(lang, rules);
+    }
+    return this.pluralRules.get(lang) ?? undefined;
+  }
+
+  protected formatCount(count: number, lang: string): string {
+    if (!this.countFormats.has(lang)) {
+      let format: Intl.NumberFormat | null = null;
+      try {
+        format = new Intl.NumberFormat(lang);
+      } catch {
+        // Same as `pluralRulesFor`: a refused tag prints the bare number.
+      }
+      this.countFormats.set(lang, format);
+    }
+    return this.countFormats.get(lang)?.format(count) ?? String(count);
+  }
+}
+
+/**
+ * One argument of a translation, positional or named.
+ */
+export type I18nArgValue = string | number;
+
+/**
+ * The arguments of a translation: positional for `$1`, `$2`, …, or named for
+ * `{name}`.
+ */
+export type I18nArgs =
+  | ReadonlyArray<I18nArgValue>
+  | Readonly<Record<string, I18nArgValue>>;
+
+/**
+ * What a variant entry is chosen by: a `count`, through `Intl.PluralRules`, or
+ * a `select`, by variant name. One per call: the two together are a type
+ * error.
+ */
+export type I18nSelector =
+  | {
+      /**
+       * The number a variant entry is selected by, through the
+       * `Intl.PluralRules` of the entry's own language. Also fills `{count}`,
+       * formatted with `Intl.NumberFormat` for that language.
+       */
+      count?: number;
+      select?: never;
+    }
+  | {
+      count?: never;
+      /**
+       * The name of the variant to render; `other` when the entry has no
+       * variant of that name.
+       */
+      select?: string;
+    };
+
+/**
+ * The options of `tr()`. `E` is the entry the key names, when the catalog is
+ * typed precisely enough to know it (`as const`).
+ */
+export type I18nTrOptions<E = DictionaryEntry> = {
+  /**
+   * Positional substitutions for `$1`, `$2`, …, or named ones for `{name}`.
+   */
+  args?: ReadonlyArray<I18nArgValue> | I18nNamedArgs<E>;
+  /**
+   * What renders when no dictionary has the key: a string or a variant
+   * object, read as written in the fallback language.
+   */
+  default?: DictionaryEntry;
+} & I18nSelector;
+
+/**
+ * The entry `Key` names in the dictionary `D`, or any entry when the key is
+ * not one of its own.
+ */
+export type I18nEntryOf<D, Key> = 0 extends 1 & D
+  ? DictionaryEntry
+  : Key extends keyof D
+    ? D[Key]
+    : DictionaryEntry;
+
+/**
+ * The `{name}` placeholders a literal string uses: `{count}` (the `count`
+ * option's), an escaped `{{name}}` and a name with a space or a brace in it
+ * are not names.
+ */
+export type I18nPlaceholderNames<T extends string> =
+  T extends `${string}{${infer Name}}${infer Rest}`
+    ?
+        | (Name extends
+            | "count"
+            | ""
+            | `{${string}`
+            | `${string}${" " | "{" | "}"}${string}`
+            ? never
+            : Name)
+        | I18nPlaceholderNames<Rest>
+    : never;
+
+/**
+ * The `{name}` placeholders of an entry, across every variant.
+ */
+export type I18nEntryNames<E> = E extends string
+  ? I18nPlaceholderNames<E>
+  : E extends object
+    ? {
+        [V in keyof E]: E[V] extends string
+          ? I18nPlaceholderNames<E[V]>
+          : never;
+      }[keyof E]
+    : never;
+
+/**
+ * Whether every string of an entry is a literal type, which is what makes its
+ * names checkable.
+ */
+export type I18nIsLiteralEntry<E> = E extends string
+  ? string extends E
+    ? false
+    : true
+  : E extends object
+    ? string extends E[keyof E]
+      ? false
+      : true
+    : false;
+
+/**
+ * The named arguments an entry takes: exactly its `{name}` placeholders when
+ * its strings are literal types (a catalog written `as const`), any record
+ * otherwise.
+ */
+export type I18nNamedArgs<E> = 0 extends 1 & E
+  ? Readonly<Record<string, I18nArgValue>>
+  : [E] extends [never]
+    ? Readonly<Record<string, I18nArgValue>>
+    : [I18nIsLiteralEntry<E>] extends [true]
+      ? { readonly [N in I18nEntryNames<E>]: I18nArgValue }
+      : Readonly<Record<string, I18nArgValue>>;
+
+/**
+ * How `render` reads an entry: what selects its variant, and the language
+ * the entry is written in.
+ */
+export interface I18nRenderOptions {
+  count?: number;
+  select?: string;
+  lang?: string;
 }
 
 export type I18nLocalizeType =
