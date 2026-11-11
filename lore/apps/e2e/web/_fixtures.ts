@@ -48,9 +48,12 @@ const waitForServer = async (
     }
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(1_000) });
-      if (res.status > 0) {
+      // The listener binds before start() ends, and answers 503 until the
+      // server is ready: only another status means it is (#Q3414).
+      if (res.status !== 503) {
         return;
       }
+      await new Promise((r) => setTimeout(r, 25));
     } catch {
       await new Promise((r) => setTimeout(r, 25));
     }
