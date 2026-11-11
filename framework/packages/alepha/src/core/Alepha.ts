@@ -525,17 +525,9 @@ export class Alepha {
     if (!surface.classes.some((it) => it.key === key && it.pure)) {
       return false;
     }
-    // Pages and the MCP surface are created late by their own quests; until
-    // then a class holding one is created at boot, whatever else it holds.
-    const owns = (rows: Array<{ class: string; mcp?: boolean }>) =>
-      rows.some((it) => it.class === key);
-    return !(
-      owns(surface.pages) ||
-      owns(surface.tools) ||
-      owns(surface.resources) ||
-      owns(surface.prompts) ||
-      surface.actions.some((it) => it.class === key && it.mcp)
-    );
+    // Pages are created late by their own quest; until then a class holding
+    // one is created at boot, whatever else it holds.
+    return !surface.pages.some((it) => it.class === key);
   }
 
   /**
@@ -550,6 +542,38 @@ export class Alepha {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Creates, before start, the declared classes nothing would ever create
+   * late: those holding an MCP tool, resource or prompt when no MCP server is
+   * registered (#Q3406). The MCP server is what creates them on its first
+   * request; a tool class was also what registered its module, so with every
+   * tool class declared that module may never have come.
+   */
+  protected createUnservedDeclared(): void {
+    const surface = this.surface;
+    if (!surface || this.declared.size === 0) {
+      return;
+    }
+    const mcp = new Set(
+      [...surface.tools, ...surface.resources, ...surface.prompts].map(
+        (row) => row.class,
+      ),
+    );
+    if (mcp.size === 0) {
+      return;
+    }
+    for (const key of this.registry.keys()) {
+      if ((key as { id?: string }).id === "alepha.mcp.McpServerProvider") {
+        return;
+      }
+    }
+    for (const service of Array.from(this.declared)) {
+      if (mcp.has(ContainerGraph.keyOf(service))) {
+        this.inject(service);
+      }
+    }
   }
 
   /**
@@ -1021,6 +1045,8 @@ export class Alepha {
           this.inject(key);
         }
       }
+
+      this.createUnservedDeclared();
 
       this.locked = true;
 

@@ -83,6 +83,12 @@ import type { ToolPrimitive } from "../primitives/$tool.ts";
  * transport providers like StreamableHttpMcpTransport.
  */
 export class McpServerProvider {
+  /**
+   * Stable id, so the container can tell whether the MCP server is
+   * registered without importing this module (#Q3406).
+   */
+  public static readonly id: string = "alepha.mcp.McpServerProvider";
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly crypto = $inject(CryptoProvider);
@@ -238,6 +244,58 @@ export class McpServerProvider {
   });
 
   /**
+   * Whether the classes a build list declared for the MCP surface exist.
+   */
+  protected materialized = false;
+
+  /**
+   * Creates, once, every class the build list names for the MCP surface and
+   * the process declared without creating (#Q3406): `tools/list` needs every
+   * tool's schema, so the first MCP request pays for the whole MCP surface,
+   * and nothing else ever does. Their `$tool`, `$resource` and `$prompt`
+   * register themselves as they are created; an `$action` declaring `mcp` is
+   * served here, as `configure` serves the ones created at boot.
+   */
+  protected materialize(): void {
+    if (this.materialized) {
+      return;
+    }
+    this.materialized = true;
+    const surface = this.alepha.surface;
+    if (!surface) {
+      return;
+    }
+    const keys = new Set(
+      [...surface.tools, ...surface.resources, ...surface.prompts].map(
+        (row) => row.class,
+      ),
+    );
+    for (const row of surface.actions) {
+      if (row.mcp) {
+        keys.add(row.class);
+      }
+    }
+    const existing = new Set(this.alepha.primitives($action));
+    for (const key of keys) {
+      const service = this.alepha.declaredByKey(key);
+      if (service) {
+        this.alepha.inject(service);
+      }
+    }
+    for (const action of this.alepha.primitives($action)) {
+      if (
+        existing.has(action) ||
+        !action.options.mcp ||
+        action.options.disabled ||
+        this.actionTools.has(action.name)
+      ) {
+        continue;
+      }
+      this.registerAction(action);
+    }
+  }
+
+  /**
    * Serve one action as a tool, its descriptor built by `ActionToolSchema`,
    * the converter `$ai` uses too.
    */
@@ -256,6 +314,7 @@ export class McpServerProvider {
    * The actions served as tools.
    */
   public getActionTools(): McpActionTool[] {
+    this.materialize();
     return Array.from(this.actionTools.values());
   }
 
@@ -318,6 +377,7 @@ export class McpServerProvider {
    * Get the server capabilities based on registered primitives.
    */
   public getCapabilities(): McpCapabilities {
+    this.materialize();
     return {
       tools: this.tools.size > 0 || this.actionTools.size > 0 ? {} : undefined,
       // Templates live under the same capability as concrete resources —
@@ -353,6 +413,7 @@ export class McpServerProvider {
    * Get all registered tools.
    */
   public getTools(): ToolPrimitive<any>[] {
+    this.materialize();
     return Array.from(this.tools.values());
   }
 
@@ -360,6 +421,7 @@ export class McpServerProvider {
    * Get all registered resources.
    */
   public getResources(): ResourcePrimitive[] {
+    this.materialize();
     return Array.from(this.resources.values());
   }
 
@@ -367,6 +429,7 @@ export class McpServerProvider {
    * Get all registered resource templates.
    */
   public getResourceTemplates(): ResourceTemplatePrimitive<any>[] {
+    this.materialize();
     return Array.from(this.resourceTemplates.values());
   }
 
@@ -374,6 +437,7 @@ export class McpServerProvider {
    * Get all registered prompts.
    */
   public getPrompts(): PromptPrimitive<any>[] {
+    this.materialize();
     return Array.from(this.prompts.values());
   }
 
@@ -381,6 +445,7 @@ export class McpServerProvider {
    * Get a tool by name.
    */
   public getTool(name: string): ToolPrimitive<any> | undefined {
+    this.materialize();
     return this.tools.get(name);
   }
 
@@ -388,6 +453,7 @@ export class McpServerProvider {
    * Get a resource by URI.
    */
   public getResource(uri: string): ResourcePrimitive | undefined {
+    this.materialize();
     return this.resources.get(uri);
   }
 
@@ -395,6 +461,7 @@ export class McpServerProvider {
    * Get a prompt by name.
    */
   public getPrompt(name: string): PromptPrimitive<any> | undefined {
+    this.materialize();
     return this.prompts.get(name);
   }
 
@@ -525,6 +592,7 @@ export class McpServerProvider {
    * nothing is declared or the target does not exist (routing answers that).
    */
   public requiredPermissions(request: JsonRpcRequest): string[] {
+    this.materialize();
     if (request.method !== "tools/call") {
       return [];
     }
@@ -599,6 +667,7 @@ export class McpServerProvider {
     request: JsonRpcRequest,
     context?: McpContext,
   ): Promise<JsonRpcResponse | null> {
+    this.materialize();
     const id = request.id;
 
     // Notifications have no id and expect no response

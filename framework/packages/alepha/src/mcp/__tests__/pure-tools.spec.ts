@@ -61,7 +61,13 @@ const surface: AppSurface = {
     { key: "SearchApi", pure: true },
   ],
   actions: [
-    { name: "list", group: "QuestApi", method: "GET", path: "/quests", class: "QuestApi" },
+    {
+      name: "list",
+      group: "QuestApi",
+      method: "GET",
+      path: "/quests",
+      class: "QuestApi",
+    },
     {
       name: "search",
       group: "SearchApi",
@@ -125,7 +131,11 @@ describe("pure MCP tool classes", () => {
     });
     expect(names(first)).toEqual(["quest_list", "search"]);
     expect(names(second)).toEqual(["quest_list", "search"]);
-    expect([...created].sort()).toEqual(["QuestApi", "QuestTools", "SearchApi"]);
+    expect([...created].sort()).toEqual([
+      "QuestApi",
+      "QuestTools",
+      "SearchApi",
+    ]);
 
     const call = await mcp.handleMessage({
       jsonrpc: "2.0",
@@ -150,7 +160,8 @@ describe("pure MCP tool classes", () => {
       method: "tools/list",
       params: {
         _meta: {
-          "io.modelcontextprotocol/protocolVersion": MODERN_PROTOCOL_VERSIONS[0],
+          "io.modelcontextprotocol/protocolVersion":
+            MODERN_PROTOCOL_VERSIONS[0],
           "io.modelcontextprotocol/clientInfo": { name: "spec", version: "1" },
           "io.modelcontextprotocol/clientCapabilities": {},
         },
