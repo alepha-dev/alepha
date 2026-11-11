@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../core/Card.tsx";
+import { AdminUserDetailPasskeys } from "./AdminUserDetailPasskeys.tsx";
 
 export interface AdminUserDetailSecurityTabProps {
   /**
@@ -38,6 +39,12 @@ export interface AdminUserDetailSecurityTabProps {
    * different: this one does not take away a way in, it takes away a check.
    */
   clearTotp: UseActionReturn<[IdentityResource], void>;
+  /**
+   * Revoke one passkey: the identity delete, confirmed with the caveat that
+   * the user's sessions stay.
+   */
+  revokePasskey: UseActionReturn<[IdentityResource], void>;
+  revokeAllPasskeys: UseActionReturn<[], void>;
   onChangePassword: () => void;
 }
 
@@ -60,8 +67,12 @@ export const AdminUserDetailSecurityTab = (
   const totpIdentity = props.socialIdentities.find(
     (it) => it.provider === "totp",
   );
+  // Passkeys are a group of their own, out of the connections list.
+  const passkeys = props.socialIdentities.filter(
+    (it) => it.provider === "passkey",
+  );
   const connections = props.socialIdentities.filter(
-    (it) => it.provider !== "totp",
+    (it) => it.provider !== "totp" && it.provider !== "passkey",
   );
 
   return (
@@ -148,6 +159,12 @@ export const AdminUserDetailSecurityTab = (
             </CardFooter>
           ) : null}
         </Card>
+
+        <AdminUserDetailPasskeys
+          passkeys={passkeys}
+          revokePasskey={props.revokePasskey}
+          revokeAllPasskeys={props.revokeAllPasskeys}
+        />
 
         <Card>
           <CardHeader>

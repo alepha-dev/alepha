@@ -66,6 +66,7 @@ export const SHOWCASE_REALM: RealmConfig = {
       totp: "disabled",
       emailCode: "disabled",
     },
+    passkeys: "disabled",
     refreshToken: {},
   } as RealmConfig["settings"],
 };

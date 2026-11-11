@@ -1,7 +1,12 @@
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { ReactBrowserProvider, Redirection } from "alepha/react/router";
-import { currentUserAtom, type UserAccountToken } from "alepha/security";
+import {
+  type AuthenticationOptionsJson,
+  authenticationOptionsJsonSchema,
+  currentUserAtom,
+  type UserAccountToken,
+} from "alepha/security";
 import { HttpClient } from "alepha/server";
 import {
   alephaServerAuthRoutes,
@@ -13,6 +18,7 @@ import {
 } from "alepha/server/auth";
 import { LinkProvider } from "alepha/server/links";
 
+import { PasskeyClient } from "./PasskeyClient.ts";
 import { ReactAuthTransport } from "./ReactAuthTransport.ts";
 
 /**
@@ -24,6 +30,7 @@ export class ReactAuth {
   protected readonly httpClient = $inject(HttpClient);
   protected readonly linkProvider = $inject(LinkProvider);
   protected readonly transport = $inject(ReactAuthTransport);
+  protected readonly passkeys = $inject(PasskeyClient);
 
   protected readonly onBeginTransition = $hook({
     on: "react:transition:begin",
@@ -168,6 +175,95 @@ export class ReactAuth {
 
     await this.signedIn(data);
 
+    return data;
+  }
+
+  /**
+   * Sign in with a passkey: the options from `/_auth/passkey/options`, the
+   * browser's ceremony through {@link PasskeyClient}, then
+   * `/_auth/passkey/verify`, and the session is set exactly as a password
+   * login sets it.
+   *
+   * With `challenge` (the `data.challenge` of an `MfaRequiredError`), the
+   * passkey clears that pending second factor instead. `mediation` and
+   * `signal` run it as browser autofill (`"conditional"`).
+   *
+   * Resolves `undefined` when the user dismissed the prompt: a quiet
+   * outcome, not an error. A refusal by the server rejects, as a wrong
+   * password does.
+   */
+  public async loginPasskey(
+    options: {
+      challenge?: string;
+      mediation?: CredentialMediationRequirement;
+      signal?: AbortSignal;
+      realm?: string;
+      hostname?: string;
+    } = {},
+  ): Promise<Tokens | undefined> {
+    const query = options.realm
+      ? `?realm=${encodeURIComponent(options.realm)}`
+      : "";
+    const begun = await this.httpClient.fetch(
+      this.authUrl(
+        `${alephaServerAuthRoutes.passkeyOptions}${query}`,
+        options.hostname,
+      ),
+      {
+        method: "POST",
+        ...(await this.transport.request({ authenticated: false })),
+        body: JSON.stringify(
+          options.challenge ? { challenge: options.challenge } : {},
+        ),
+        schema: { response: authenticationOptionsJsonSchema },
+      },
+    );
+
+    const ceremony = await this.passkeys.get(
+      begun.data as AuthenticationOptionsJson,
+      { mediation: options.mediation, signal: options.signal },
+    );
+    if (!ceremony.ok) {
+      if (ceremony.reason === "cancelled") {
+        return undefined;
+      }
+      throw (
+        ceremony.error ??
+        new AlephaError("This browser cannot sign in with a passkey")
+      );
+    }
+
+    const transport = await this.transport.request({ authenticated: false });
+    const { data } = await this.httpClient.fetch(
+      this.authUrl(
+        `${alephaServerAuthRoutes.passkeyVerify}${query}`,
+        options.hostname,
+      ),
+      {
+        method: "POST",
+        ...transport,
+        // Outside a browser nothing keeps the challenge cookie between the
+        // two calls, so it is handed back by hand. A browser sends it itself.
+        ...(this.alepha.isBrowser()
+          ? {}
+          : {
+              headers: {
+                ...(transport as { headers?: Record<string, string> }).headers,
+                cookie: begun.headers
+                  .getSetCookie()
+                  .map((it) => it.split(";")[0])
+                  .join("; "),
+              },
+            }),
+        body: JSON.stringify({
+          credential: ceremony.value,
+          ...(options.challenge ? { challenge: options.challenge } : {}),
+        }),
+        schema: { response: tokenResponseSchema },
+      },
+    );
+
+    await this.signedIn(data);
     return data;
   }
 

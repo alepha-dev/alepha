@@ -17,8 +17,8 @@ import { TotpService } from "./TotpService.ts";
  * The second factor a user has to clear after their password.
  *
  * `passkey` is deliberately absent: WebAuthn needs a server-issued challenge
- * of its own, so it will arrive as a third verifier rather than by widening
- * this union quietly.
+ * of its own, so it is a third verifier with its own routes rather than a
+ * member of this union. It clears a step this union raised, and raises none.
  */
 export type SecondFactorMethod = "totp" | "emailCode";
 
@@ -473,6 +473,34 @@ export class MfaService {
     code: string,
     realm?: string,
   ): Promise<boolean> {
+    const attempt = await this.takeAttempt(userId, realm);
+    if (!attempt.allowed) {
+      return false;
+    }
+
+    const passed =
+      method === this.totpProvider
+        ? await this.verifyTotp(userId, code, realm)
+        : await this.verifyEmailCode(userId, code, realm);
+
+    if (passed) {
+      await attempt.refund();
+    }
+
+    return passed;
+  }
+
+  /**
+   * Take one slot of the user's second-factor budget, before the factor is
+   * checked: the `mfa` counter, limit and window from the realm's
+   * `loginRateLimit` (`accountMaxAttempts`, `windowMs`). Shared by the codes
+   * and by a passkey clearing a pending second factor, so one budget bounds
+   * every way of answering the step. `refund` gives the slot back on a pass.
+   */
+  public async takeAttempt(
+    userId: string,
+    realm?: string,
+  ): Promise<{ allowed: boolean; refund: () => Promise<void> }> {
     const resolved = this.realmProvider.getRealm(realm);
     const settings = await resolved.getSettings();
     const { accountMaxAttempts, windowMs } = settings.loginRateLimit;
@@ -485,7 +513,7 @@ export class MfaService {
     // the password one: a user who mistypes codes must not spend the budget
     // that protects their password, and vice versa.
     //
-    // The attempt is taken BEFORE the code is compared (#Q2529): checking
+    // The attempt is taken BEFORE the factor is checked (#Q2529): checking
     // first and counting after a failure let a burst of parallel guesses all
     // read the counter under the cap. A pass gives the slot back.
     const attempt = await this.attempts.consume({
@@ -498,19 +526,15 @@ export class MfaService {
         userId,
         reason: attempt.reason,
       });
-      return false;
     }
-
-    const passed =
-      method === this.totpProvider
-        ? await this.verifyTotp(userId, code, realm)
-        : await this.verifyEmailCode(userId, code, realm);
-
-    if (passed && attempt.ticket) {
-      await this.attempts.refund(attempt.ticket);
-    }
-
-    return passed;
+    return {
+      allowed: attempt.allowed,
+      refund: async () => {
+        if (attempt.ticket) {
+          await this.attempts.refund(attempt.ticket);
+        }
+      },
+    };
   }
 
   /**

@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $secure, SecurityProvider } from "alepha/security";
-import { $action, okSchema } from "alepha/server";
+import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { identityQuerySchema } from "../schemas/identityQuerySchema.ts";
 import { identityResourceSchema } from "../schemas/identityResourceSchema.ts";
@@ -29,12 +29,16 @@ export class AdminIdentityController {
       }),
       response: z.page(identityResourceSchema),
     },
-    handler: ({ query, user }) => {
+    handler: async ({ query, user }) => {
       const { userRealmName, ...q } = query;
-      return this.identityService.findIdentities(
+      const page = await this.identityService.findIdentities(
         q,
         this.securityProvider.assertRealmScope(user, userRealmName),
       );
+      return {
+        ...page,
+        content: page.content.map((it) => this.identityService.toResource(it)),
+      };
     },
   });
 
@@ -57,10 +61,12 @@ export class AdminIdentityController {
       }),
       response: identityResourceSchema,
     },
-    handler: ({ params, query, user }) =>
-      this.identityService.getIdentityById(
-        params.id,
-        this.securityProvider.assertRealmScope(user, query.userRealmName),
+    handler: async ({ params, query, user }) =>
+      this.identityService.toResource(
+        await this.identityService.getIdentityById(
+          params.id,
+          this.securityProvider.assertRealmScope(user, query.userRealmName),
+        ),
       ),
   });
 
@@ -87,8 +93,38 @@ export class AdminIdentityController {
       await this.identityService.deleteIdentity(
         params.id,
         this.securityProvider.assertRealmScope(user, query.userRealmName),
+        { id: user.id, email: user.email },
       );
       return { ok: true, id: params.id };
     },
+  });
+
+  /**
+   * Revoke every passkey of a user: the support case of a lost phone.
+   * Revoking one is the identity delete above. The user's sessions stay.
+   */
+  public readonly revokeUserPasskeys = $action({
+    method: "DELETE",
+    path: `${this.url}/users/:userId/passkeys`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:identity:delete"] })],
+    description: "Revoke every passkey of a user",
+    errors: [NotFoundError],
+    schema: {
+      params: z.object({ userId: z.uuid() }),
+      query: z.object({
+        userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
+      }),
+      response: z.object({ ok: z.boolean(), revoked: z.integer() }),
+    },
+    handler: async ({ params, query, user }) => ({
+      ok: true,
+      revoked: await this.identityService.revokeAllPasskeys(
+        params.userId,
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+        { id: user.id, email: user.email },
+      ),
+    }),
   });
 }

@@ -32,12 +32,16 @@ export interface FeedbackThreadBodyProps {
 }
 
 /**
- * A feedback comment's body: plain text, with resolved mentions as links.
+ * A feedback comment's body: plain text with resolved mentions as links for
+ * the reporter's own words, Markdown for a reply from the team or an agent.
  *
- * ⚠️ **Still no markdown, and that is the point.** A reporter is an outsider
- * and this body is shown to the project owner, which is why the thread has
- * never rendered markdown - the same reason a blight's fields do not. This
- * does not reverse that: it splits the text on the shared mention matcher
+ * ⚠️ **No markdown for the reporter, and that is the point.** A reporter is
+ * an outsider and this body is shown to the project owner, the same reason a
+ * blight's fields are never rendered as markdown. Concretely, `MarkdownView`
+ * loads a Markdown image from wherever it points, so a reporter's
+ * `![](https://their-server/x.png)` would make the owner's browser call that
+ * server on opening the inbox, telling it who read the report and when.
+ * The plain path does not reverse that: it splits the text on the shared mention matcher
  * and emits an `<a>` only for a handle that resolved to a real member of
  * this project. Everything else is a text node, which React escapes, so the
  * outsider-input posture is unchanged and the surface is strictly narrower

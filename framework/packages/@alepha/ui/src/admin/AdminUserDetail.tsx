@@ -483,6 +483,69 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
     [props.userRealmName],
   );
 
+  // -- Passkeys --------------------------------------------------------------
+
+  /*
+   * One passkey is the identity delete; all of them is one call, for a lost
+   * phone. Neither signs the user out, and the confirmation says so: the
+   * sessions tab is the tool for that.
+   */
+  const revokePasskey = useAction<[IdentityResource]>(
+    {
+      handler: async (_ctx, identity) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.revokePasskeyTitle", {
+            default: "Revoke this passkey?",
+          }),
+          description: tr("admin.userDetail.revokePasskeyConfirm", {
+            default:
+              "The user can no longer sign in with it. Their current sessions stay signed in: revoke them from the Sessions tab if the device is lost.",
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await identityClient.deleteIdentity({
+          params: { id: identity.id },
+          query: { userRealmName: props.userRealmName },
+        });
+        toast.success(
+          tr("admin.userDetail.passkeyRevoked", { default: "Passkey revoked" }),
+        );
+        await identitiesQuery.refetch();
+      },
+    },
+    [props.userRealmName],
+  );
+
+  const revokeAllPasskeys = useAction<[]>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.revokeAllPasskeysTitle", {
+            default: "Revoke every passkey?",
+          }),
+          description: tr("admin.userDetail.revokeAllPasskeysConfirm", {
+            default:
+              "The user can no longer sign in with any of them. Their current sessions stay signed in: revoke them from the Sessions tab if a device is lost.",
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await identityClient.revokeUserPasskeys({
+          params: { userId },
+          query: { userRealmName: props.userRealmName },
+        });
+        toast.success(
+          tr("admin.userDetail.passkeysRevoked", {
+            default: "Passkeys revoked",
+          }),
+        );
+        await identitiesQuery.refetch();
+      },
+    },
+    [props.userRealmName, userId],
+  );
+
   // -- Sessions / audits fetchers -------------------------------------------
 
   const sessionsFetcher = useCallback(
@@ -666,6 +729,8 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
             socialIdentities={socialIdentities}
             removeIdentity={removeIdentity}
             clearTotp={clearTotp}
+            revokePasskey={revokePasskey}
+            revokeAllPasskeys={revokeAllPasskeys}
             onChangePassword={() => setPasswordOpen(true)}
           />
         )}

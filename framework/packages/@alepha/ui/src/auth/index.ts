@@ -10,6 +10,10 @@
 
 export { AuthLogin, type AuthLoginProps } from "./AuthLogin.tsx";
 export { AuthMfaStep, type AuthMfaStepProps } from "./AuthMfaStep.tsx";
+export {
+  AuthPasskeyAutofill,
+  type AuthPasskeyAutofillProps,
+} from "./AuthPasskeyAutofill.tsx";
 export { AuthRegister, type AuthRegisterProps } from "./AuthRegister.tsx";
 export {
   AuthResetPassword,
@@ -26,3 +30,4 @@ export {
   type TurnstileWidgetHandle,
   type TurnstileWidgetProps,
 } from "./TurnstileWidget.tsx";
+export { ACCOUNT_PASSKEYS_KEY, usePasskey } from "./usePasskey.ts";

@@ -10,6 +10,8 @@ import { DateTimeProvider } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import {
   type AccessTokenResponse,
+  type AuthenticationOptionsJson,
+  type AuthenticationResponseJson,
   type IssuerPrimitive,
   SecurityError,
   SecurityProvider,
@@ -138,6 +140,18 @@ export type AuthInternal = {
        * This is usually used with a login button that redirects to the OAuth2 provider.
        */
       oauth: OAuth2Options;
+    }
+  | {
+      /**
+       * Passkey (WebAuthn) sign-in, through `/_auth/passkey/options` and
+       * `/_auth/passkey/verify`. The issuer fills {@link WithPasskeyFn}.
+       *
+       * Registered by `$realm` under the name `passkey`, so a session minted
+       * by a passkey names a provider that exists. It has no button of its
+       * own in `authenticationMethods`: the login page reads the realm's
+       * `passkeys` setting.
+       */
+      passkey: true;
     }
   | {
       /**
@@ -609,6 +623,64 @@ export interface WithLoginFn {
  * An issuer that fills none of these has no second factor, and the login
  * route behaves exactly as it did before.
  */
+/**
+ * What a passkey ceremony is run for.
+ */
+export interface PasskeySignInContext {
+  /**
+   * The request URL: the relying party defaults to its host.
+   */
+  url: URL;
+  /**
+   * Bind the ceremony to one user: their credentials only, as when a
+   * passkey clears a pending second factor.
+   */
+  userId?: string;
+  /**
+   * Refuse an assertion without the user-verified flag.
+   */
+  requireUserVerification?: boolean;
+  /**
+   * The ceremony clears a pending second factor rather than signing in:
+   * the second-factor budget applies, not the login one.
+   */
+  secondFactor?: boolean;
+}
+
+/**
+ * The seam through which an issuer signs users in with a passkey, filled by
+ * `$realm` like {@link WithLoginFn}: `alepha/server/auth` holds the routes,
+ * the challenge cookie and the session, and never imports the users module.
+ *
+ * Every refusal of {@link verifyPasskey} throws; the route answers all of
+ * them with one `InvalidPasskeyError`.
+ */
+export interface WithPasskeyFn {
+  /**
+   * Assertion options for a sign-in, with a fresh challenge. With no
+   * `userId`, `allowCredentials` is empty and the answer depends on no
+   * account.
+   */
+  passkeyOptions?: (
+    context: PasskeySignInContext,
+  ) => Async<AuthenticationOptionsJson>;
+
+  /**
+   * Verify an assertion against the challenge the options carried, and
+   * return the account it signs in, and whether the user was verified.
+   */
+  verifyPasskey?: (
+    credential: AuthenticationResponseJson,
+    context: PasskeySignInContext & { challenge: string },
+  ) => Async<{ user: UserAccount; userVerified: boolean }>;
+
+  /**
+   * Whether this user holds a passkey that may clear a pending second
+   * factor here. Asked only after the password checked out.
+   */
+  hasPasskey?: (user: UserAccount, context: { url: URL }) => Async<boolean>;
+}
+
 export interface WithSecondFactorFn {
   /**
    * Which factors this user must clear. An empty list means the primary

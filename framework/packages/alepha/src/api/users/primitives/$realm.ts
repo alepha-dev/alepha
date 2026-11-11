@@ -27,6 +27,7 @@ import {
   type UserAccount,
 } from "alepha/security";
 import {
+  $auth,
   $authApple,
   $authCredentials,
   $authFacebook,
@@ -39,6 +40,7 @@ import {
   type LinkAccountOptions,
   type WithLinkFn,
   type WithLoginFn,
+  type WithPasskeyFn,
   type WithSecondFactorFn,
 } from "alepha/server/auth";
 
@@ -61,12 +63,14 @@ import {
 } from "../providers/RealmProvider.ts";
 import { AvatarPermissions } from "../services/AvatarPermissions.ts";
 import { MfaService } from "../services/MfaService.ts";
+import { PasskeyService } from "../services/PasskeyService.ts";
 import { SessionService } from "../services/SessionService.ts";
 import { UserStorage } from "../storage/UserStorage.ts";
 
 export type RealmPrimitive = IssuerPrimitive &
   WithLinkFn &
   WithLoginFn &
+  WithPasskeyFn &
   WithSecondFactorFn;
 
 /**
@@ -89,6 +93,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   const securityProvider = alepha.inject(SecurityProvider);
   const realmProvider = alepha.inject(RealmProvider);
   const mfaService = alepha.inject(MfaService);
+  const passkeyService = alepha.inject(PasskeyService);
 
   const name = options.issuer?.name ?? DEFAULT_USER_REALM_NAME;
 
@@ -369,6 +374,21 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   realm.verifySecondFactor = (user, method, code) =>
     mfaService.verify(user.id, method, code, realm.name);
 
+  // Compose display name from first+last for OIDC `name` claim. Without
+  // this, credentials-registered users appear as "Anonymous User". Shared by
+  // the password and the passkey sign-in, so both name the user alike.
+  const toAccount = (user: {
+    firstName?: string | null;
+    lastName?: string | null;
+  }) => {
+    const composedName =
+      [user.firstName, user.lastName]
+        .filter((s): s is string => !!s?.trim())
+        .join(" ")
+        .trim() || undefined;
+    return { ...user, name: composedName };
+  };
+
   realm.login = (name: string) => {
     return async (credentials: Credentials) => {
       const user = await sessionService.login(
@@ -377,15 +397,30 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
         credentials.password,
         realm.name,
       );
-      // Compose display name from first+last for OIDC `name` claim.
-      // Without this, credentials-registered users appear as "Anonymous User".
-      const composedName =
-        [user.firstName, user.lastName]
-          .filter((s): s is string => !!s?.trim())
-          .join(" ")
-          .trim() || undefined;
-      return { ...user, name: composedName };
+      return toAccount(user) as UserAccount;
     };
+  };
+
+  // Passkey sign-in. The routes live in `alepha/server/auth` beside the
+  // password login; the realm hands them the options and the verification.
+  realm.passkeyOptions = (context) =>
+    passkeyService.signInOptions(realm.name, context.url, {
+      userId: context.userId,
+      requireUserVerification: context.requireUserVerification,
+    });
+
+  // A passkey is one more way to clear a step TOTP or an email code raised:
+  // it never raises one (`secondFactor` above does not look at passkeys).
+  realm.hasPasskey = (user, context) =>
+    passkeyService.hasUsablePasskey(user.id, realm.name, context.url);
+
+  realm.verifyPasskey = async (credential, context) => {
+    const { user, userVerified } = await sessionService.loginWithPasskey(
+      credential,
+      context,
+      realm.name,
+    );
+    return { user: toAccount(user) as UserAccount, userVerified };
   };
 
   const identities = options.identities ?? {
@@ -427,6 +462,14 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
     alepha.with(() => auth);
   }
+
+  // Always registered, whatever `passkeys` says (a realm with
+  // `features.parameters` can turn it on at runtime): a session cookie names
+  // its provider, and one naming a provider that is not registered is dropped
+  // on the next request. It has no login button of its own.
+  alepha.with(() => ({
+    passkey: $auth({ name: "passkey", issuer: realm, passkey: true }),
+  }));
 
   if (features.parameters) {
     alepha.with(AlephaApiParameters);

@@ -16,6 +16,15 @@ export const mfaChallengeSchema = z.object({
   methods: z
     .array(secondFactorMethodSchema)
     .describe("Which factors will clear it."),
+  passkey: z
+    .boolean()
+    .describe(
+      "Whether a passkey may clear this step: the realm offers passkeys " +
+        "and this user holds a usable one. Computed after the password, so " +
+        "it reveals nothing to someone who does not hold it. A passkey only " +
+        "ever clears a step TOTP or an email code raised: `methods` is never " +
+        "empty.",
+    ),
   sentTo: z
     .text({
       description:

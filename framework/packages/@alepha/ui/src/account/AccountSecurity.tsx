@@ -1,5 +1,6 @@
 import type {
   MyIdentity,
+  MyPasskeyList,
   MyIdentityController,
   MyMfaController,
   MyMfaStatus,
@@ -27,6 +28,7 @@ import { SettingsSection } from "../settings/SettingsSection.tsx";
 import { AccountDeleteDialog } from "./AccountDeleteDialog.tsx";
 import { AccountMfaDialog } from "./AccountMfaDialog.tsx";
 import { AccountPage } from "./AccountPage.tsx";
+import { AccountPasskeys } from "./AccountPasskeys.tsx";
 import { AccountPasswordDialog } from "./AccountPasswordDialog.tsx";
 import { AccountRecoveryCodesDialog } from "./AccountRecoveryCodesDialog.tsx";
 
@@ -74,6 +76,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [mfaOpen, setMfaOpen] = useState(false);
+  const [passkeys, setPasskeys] = useState<MyPasskeyList>();
 
   const { data: mfa, refetch: reloadMfa } = useQuery<MyMfaStatus>(
     { handler: () => mfaApi.getMyMfa() as Promise<MyMfaStatus> },
@@ -89,6 +92,13 @@ const AccountSecurity = (props: AccountSecurityProps) => {
    * code, which is exactly what `disableTotp` refuses to do.
    */
   const signInMethods = identities.filter((it) => it.provider !== "totp");
+
+  /**
+   * The server lists passkeys apart from the identities, and counts the
+   * usable ones as ways to sign in: so does the Remove affordance below.
+   */
+  const usablePasskeys = passkeys?.items.filter((it) => it.usable).length ?? 0;
+  const waysIn = signInMethods.length + usablePasskeys;
 
   /**
    * A realm can turn the authenticator-app factor off. Offering a Set up
@@ -226,7 +236,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
               args: [l(identity.createdAt, { date: "ll" })],
             })}
           >
-            {signInMethods.length > 1 ? (
+            {waysIn > 1 ? (
               <Button
                 variant="minimal"
                 size="sm"
@@ -341,6 +351,8 @@ const AccountSecurity = (props: AccountSecurityProps) => {
           </Button>
         </SettingsRow>
       </SettingsSection>
+
+      <AccountPasskeys realmConfig={props.realmConfig} onLoaded={setPasskeys} />
 
       <SettingsDangerSection
         description={tr("account.security.dangerDescription", {

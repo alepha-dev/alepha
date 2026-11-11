@@ -95,6 +95,13 @@ export class Realm {
       verifyEmailRequired: false,
       verifyPhoneRequired: false,
       resetPasswordAllowed: false,
+
+      /**
+       * Passkeys: a user adds one from the account page, then signs in with
+       * it alone, or clears a second-factor step with it. "disabled" turns
+       * them off.
+       */
+      passkeys: "optional",
     },
     identities: {
       credentials: true,

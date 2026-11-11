@@ -11,13 +11,16 @@ export class UserAudits {
   public readonly user = $audit({
     type: "user",
     description:
-      "User management events (create, update, delete, role/password changes).",
+      "User management events (create, update, delete, role/password changes, passkeys added, renamed and removed).",
     actions: [
       "create",
       "update",
       "delete",
       "role_change",
       "password_change",
+      "passkey_add",
+      "passkey_rename",
+      "passkey_remove",
       "enable",
       "disable",
     ],

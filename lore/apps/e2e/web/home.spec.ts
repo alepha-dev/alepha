@@ -415,18 +415,17 @@ test.describe("Home (switcher cap)", () => {
     // No quota counter since #Q3412: the toolbar holds filters instead.
     await expect(page.getByTestId("project-quota")).toHaveCount(0);
 
-    // The rail caps, and always keeps the project you are looking at.
-    // `firstSlug` is the LEAST recently updated of the eleven (it was created
-    // first), so it is exactly the case that falls outside the top ten - it
-    // must still be on the rail, marked current, or the rail reads as though
-    // you are nowhere. Since #Q3374 the rail, not the sidebar switcher, is
+    // The rail is the dock since #E139: every project created lands on it,
+    // so all eleven are pinned, in creation order, the cap being twenty
+    // (`dock.spec.ts` walks the full dock). The project being looked at is
+    // marked current. Since #Q3374 the rail, not the sidebar switcher, is
     // how a desktop changes project.
     await page.goto(`/${firstSlug}/`);
     const rail = page.getByTestId("project-rail");
     await expect(rail.getByTestId("project-rail-all")).toBeVisible({
       timeout: 10_000,
     });
-    await expect(rail.getByTestId("project-rail-item")).toHaveCount(10);
+    await expect(rail.getByTestId("project-rail-item")).toHaveCount(11);
     await expect(
       rail.getByRole("link", { name: `Cap${t}`.slice(0, 20) }),
     ).toHaveAttribute("aria-current", "page");

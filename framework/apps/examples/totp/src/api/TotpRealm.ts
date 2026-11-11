@@ -30,6 +30,11 @@ export class TotpRealm {
       displayName: "Alepha TOTP demo",
       description: "Two-factor authentication with an authenticator app.",
 
+      // Passkeys beside the password: sign in with one alone, or clear the
+      // TOTP step with one. The example the passkeys guide's manual check
+      // runs on.
+      passkeys: "optional",
+
       /*
        * The demo administrator, by username rather than by email.
        *

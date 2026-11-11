@@ -5,6 +5,7 @@ import { $action, BadRequestError, NotFoundError } from "alepha/server";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { myIdentitySchema } from "../schemas/myIdentitySchema.ts";
 import { MfaService } from "../services/MfaService.ts";
+import { PasskeyService } from "../services/PasskeyService.ts";
 import { UserService } from "../services/UserService.ts";
 
 /**
@@ -24,25 +25,36 @@ import { UserService } from "../services/UserService.ts";
  * appears here, cannot be unlinked here, and does not count as a way in.
  * Removing it goes through `MyMfaController.disableTotp`, which asks for a
  * code, so a stolen session cannot strip 2FA through this route.
+ *
+ * **Neither is a passkey.** A passkey is a way in, and counts as one while it
+ * is usable (see `PasskeyService.waysToSignIn`), but it is listed and removed
+ * through `MyPasskeyController` only: removing it asks for proof, is
+ * audited, and emails the owner. Here it reads as missing.
  */
 export class MyIdentityController {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly userService = $inject(UserService);
   protected readonly mfaService = $inject(MfaService);
+  protected readonly passkeyService = $inject(PasskeyService);
 
   protected identities(realm?: string) {
     return this.realmProvider.identityRepository(realm);
   }
 
   /**
-   * The caller's identity rows that are a way to sign in: everything except
-   * the TOTP enrollment.
+   * The caller's identity rows this controller lists and unlinks: every way
+   * to sign in but the TOTP enrollment and the passkeys.
    */
   protected async signInIdentities(user: { id: string; realm?: string }) {
     return this.identities(user.realm).findMany({
       where: {
         userId: { eq: user.id },
-        provider: { ne: this.mfaService.totpProvider },
+        provider: {
+          notInArray: [
+            this.mfaService.totpProvider,
+            this.passkeyService.provider,
+          ],
+        },
       },
       orderBy: [{ column: "createdAt", direction: "asc" }],
     });
@@ -130,7 +142,7 @@ export class MyIdentityController {
       params: z.object({ id: z.uuid() }),
       response: z.object({ ok: z.boolean() }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, user, url }) => {
       const repo = this.identities(user.realm);
 
       // Sign-in methods only: the TOTP row reads as missing, like any id the
@@ -152,9 +164,17 @@ export class MyIdentityController {
         either: password reset needs a credentials identity to reset.
 
         Only sign-in methods count: a TOTP enrollment left alone is no way
-        in, so a password beside it is still the last one.
+        in, so a password beside it is still the last one. A usable passkey
+        counts, one made for another host does not.
       */
-      if (all.length <= 1) {
+      // One count with the passkey removal: a usable passkey is a way in,
+      // so a password beside it is not the last one.
+      const ways = await this.passkeyService.waysToSignIn(
+        user.id,
+        user.realm,
+        url.hostname,
+      );
+      if (ways.filter((it) => it.id !== target.id).length === 0) {
         throw new BadRequestError(
           "This is the only way to sign in to this account. Add another before removing it.",
         );

@@ -13,6 +13,7 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 import { projectFixture } from "../../../../testing/projectFixture.ts";
 import { virtualClientFake } from "../../../../testing/virtualClientFake.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { I18n } from "../../services/I18n.ts";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
@@ -88,7 +89,11 @@ describe("ProjectSwitcher", () => {
       }) as MediaQueryList;
   };
 
-  const mount = async (currentId: number, mobile: boolean) => {
+  const mount = async (
+    currentId: number,
+    mobile: boolean,
+    dock: number[] = [],
+  ) => {
     setMobile(mobile);
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -118,6 +123,7 @@ describe("ProjectSwitcher", () => {
       maxProjects: 10,
       canCreate: true,
     });
+    alepha.store.set(userDockAtom, dock);
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -128,8 +134,8 @@ describe("ProjectSwitcher", () => {
     );
   };
 
-  const open = async (currentId: number) => {
-    await mount(currentId, true);
+  const open = async (currentId: number, dock: number[] = []) => {
+    await mount(currentId, true, dock);
     fireEvent.click(screen.getByTestId("project-switcher"));
     await screen.findByText("Acme");
   };
@@ -157,5 +163,18 @@ describe("ProjectSwitcher", () => {
 
     // Once on the trigger, once in the menu.
     expect(screen.getAllByText("Minorca")).toHaveLength(2);
+  });
+
+  it("lists pinned projects first, in dock order, then the rest (#Q3441)", async ({
+    expect,
+  }) => {
+    // Pinned: Acme then Lore; the archived Minorca stays out though pinned.
+    await open(1, [3, 2, 1]);
+
+    const titles = screen
+      .getAllByRole("menuitem")
+      .map((it) => it.querySelector(".truncate")?.textContent ?? "")
+      .filter((text) => ["Lore", "Acme", "Minorca"].includes(text));
+    expect(titles).toEqual(["Acme", "Lore"]);
   });
 });

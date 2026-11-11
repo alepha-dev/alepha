@@ -14,6 +14,7 @@ import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.
 import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { UserDockService } from "../services/UserDockService.ts";
 
 export class InvitationController {
   protected readonly url = "/invitations";
@@ -23,6 +24,7 @@ export class InvitationController {
   protected readonly invitationTokens = $inject(InvitationTokenService);
   protected readonly users = $repository(users);
   protected readonly projects = $repository(projects);
+  protected readonly dock = $inject(UserDockService);
 
   /**
    * Create a new invitation.
@@ -290,9 +292,16 @@ export class InvitationController {
       response: z.object({
         ok: z.boolean(),
         projectId: z.string(),
+        /**
+         * Whether the project landed on the dock (#E139). `false` when the
+         * dock was full: the user joined all the same.
+         */
+        pinned: z.boolean(),
       }),
     },
     handler: async ({ params, user }) => {
+      // `UserDockHooks` pins the project on the accepted event, inside this
+      // call.
       const result = await this.invitationService.accept(params.id, user);
       const project = await this.projects.getOne({
         where: { organizationId: { eq: result.organizationId } },
@@ -308,7 +317,11 @@ export class InvitationController {
         resourceId: String(project.id),
       });
 
-      return { ok: true, projectId: String(project.id) };
+      return {
+        ok: true,
+        projectId: String(project.id),
+        pinned: (await this.dock.read(user.id)).includes(project.id),
+      };
     },
   });
 

@@ -8,4 +8,6 @@ export const alephaServerAuthRoutes = {
   userinfo: "/_auth/userinfo",
   mfa: "/_auth/mfa",
   mfaResend: "/_auth/mfa/resend",
+  passkeyOptions: "/_auth/passkey/options",
+  passkeyVerify: "/_auth/passkey/verify",
 };

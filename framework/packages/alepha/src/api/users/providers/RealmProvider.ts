@@ -211,7 +211,8 @@ export class RealmProvider {
       },
       // Merged by hand, two levels deep: the realm's settings over the atom's
       // defaults, then `passwordPolicy` and `loginRateLimit`, the only nested
-      // objects, so a realm naming one field of either keeps the rest. A
+      // objects (and `passkeyRelyingParty`, which has no defaults to keep and is
+      // copied), so a realm naming one field of either keeps the rest. A
       // generic deep merge is not planned: it would also merge what a realm
       // means to replace.
       settings: {
@@ -233,6 +234,13 @@ export class RealmProvider {
           ...realmAuthSettingsAtom.options.default.mfa,
           ...realmOptions.settings?.mfa,
         },
+        ...(realmOptions.settings?.passkeyRelyingParty
+          ? {
+              passkeyRelyingParty: {
+                ...realmOptions.settings.passkeyRelyingParty,
+              },
+            }
+          : {}),
       },
       features,
       getSettings: async function () {

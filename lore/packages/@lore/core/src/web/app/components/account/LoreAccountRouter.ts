@@ -8,6 +8,7 @@ import type { InvitationController } from "../../../../api/controllers/Invitatio
 import type { NotificationPreferenceController } from "../../../../api/controllers/NotificationPreferenceController.ts";
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import { storeHomeOverview } from "../../services/homeOverviewWrite.ts";
 
 /**
  * Lore's own pages inside the shared `/account` area.
@@ -53,10 +54,7 @@ export class LoreAccountRouter {
    */
   protected async loadProjects(): Promise<void> {
     if (!this.alepha.store.get(userProjectsAtom)) {
-      this.alepha.store.set(
-        userProjectsAtom,
-        await this.projectApi.getHomeOverview(),
-      );
+      storeHomeOverview(this.alepha, await this.projectApi.getHomeOverview());
     }
   }
 

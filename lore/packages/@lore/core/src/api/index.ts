@@ -34,8 +34,10 @@ import { ProjectReportController } from "./controllers/ProjectReportController.t
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
+import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+import { UserDockHooks } from "./hooks/UserDockHooks.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
@@ -122,6 +124,7 @@ import { ReportsDigest } from "./services/ReportsDigest.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
+import { UserDockService } from "./services/UserDockService.ts";
 
 /**
  * The server half of `@lore/core`, the glue: projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, the dashboard, reports, agent prompts and the web shell.
@@ -330,6 +333,10 @@ export const LoreCoreApi = $module({
     // one above: every path here hangs off `/projects/:projectId` and is
     // gated by `$ownsProject`, where home's hang off `/me` and cannot be.
     ProjectDashboardController,
+    // Each user's dock of pinned projects (#E139): the rail's order.
+    UserDockService,
+    UserDockController,
+    UserDockHooks,
   ],
   register: (alepha) => {
     alepha.with({
@@ -395,6 +402,7 @@ export { ProjectPromptController } from "./controllers/ProjectPromptController.t
 export { ProjectRankController } from "./controllers/ProjectRankController.ts";
 export { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 export { SearchController } from "./controllers/SearchController.ts";
+export { UserDockController } from "./controllers/UserDockController.ts";
 export { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 export { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 export { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
@@ -421,6 +429,7 @@ export { ProjectDashboardCardService } from "./services/ProjectDashboardCardServ
 export { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 export { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+export { UserDockService } from "./services/UserDockService.ts";
 export {
   type DashboardAttentionItem,
   type DashboardAttentionItems,
