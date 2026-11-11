@@ -555,6 +555,11 @@ jobs:
         with:
           deno-version: v2.x
 
+      # `image.e2e.spec.ts` builds the standard and the compiled image of a
+      # scaffolded project with `alepha image`, runs both, and pushes them to a
+      # registry container it starts itself (#Q3361). It needs the runner's
+      # Docker and fails without it, for the same reason as Deno above. One
+      # platform, the runner's: a multi-platform build is proved by hand.
       - name: Run CLI E2E Tests
         timeout-minutes: 10
         run: yarn e2e-cli
