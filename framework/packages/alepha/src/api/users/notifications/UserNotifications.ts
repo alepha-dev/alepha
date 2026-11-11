@@ -248,6 +248,50 @@ export class UserNotifications {
     }),
   });
 
+  public readonly passkeyChanged = $notification({
+    category: "security",
+    description:
+      "Email sent to users when a passkey is added to or removed from their account.",
+    critical: true,
+    sensitive: true,
+    email: {
+      subject: (it) =>
+        it.change === "added"
+          ? "A passkey was added to your account"
+          : "A passkey was removed from your account",
+      body: (it) => `
+				<h1>${it.change === "added" ? "Passkey Added" : "Passkey Removed"}</h1>
+				<p>Hi ${it.email},</p>
+				<p>The passkey "${it.passkeyName}" was ${it.change === "added" ? "added to" : "removed from"} your account.</p>
+				<p>If this was you, there is nothing to do.</p>
+				<p>If this wasn't you, someone may have access to your account. Change your password and review the passkeys on your account's security page as soon as possible.</p>
+				<p>Best regards,<br>The Team</p>
+			`,
+    },
+    translations: {
+      fr: {
+        email: {
+          subject: (it) =>
+            it.change === "added"
+              ? "Une clé d'accès a été ajoutée à votre compte"
+              : "Une clé d'accès a été retirée de votre compte",
+          body: (it) => `
+					<h1>${it.change === "added" ? "Clé d'accès ajoutée" : "Clé d'accès retirée"}</h1>
+					<p>Bonjour,</p>
+					<p>La clé d'accès « ${it.passkeyName} » a été ${it.change === "added" ? "ajoutée à" : "retirée de"} votre compte.</p>
+					<p>Si c'était bien vous, vous n'avez rien à faire.</p>
+					<p>Si ce n'était pas vous, quelqu'un a peut-être accès à votre compte. Changez votre mot de passe et vérifiez les clés d'accès de votre compte au plus vite.</p>
+				`,
+        },
+      },
+    },
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      change: z.enum(["added", "removed"]),
+      passkeyName: z.string(),
+    }),
+  });
+
   public readonly emailVerificationLink = $notification({
     category: "security",
     description:

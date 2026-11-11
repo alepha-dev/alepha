@@ -188,6 +188,49 @@ export const realmAuthSettingsAtom = $atom({
           "both factors at once.",
       ),
     }),
+    passkeys: z
+      .enum(["disabled", "optional"])
+      .describe(
+        "Passkeys (WebAuthn). 'optional' lets a user add one from their " +
+          "account page, sign in with it and nothing else, and clear a " +
+          "second-factor step with it. 'disabled' offers none: passkeys " +
+          "added before stay listed and removable, and sign in nowhere.",
+      )
+      .default("disabled"),
+    passkeyRelyingParty: z
+      .object({
+        id: z
+          .text({ maxLength: 253 })
+          .describe(
+            "The relying party id: a hostname, no scheme and no port. A " +
+              "passkey is bound to it for life, so set it once to the " +
+              "registrable domain an app spanning several subdomains shares " +
+              "(`example.com` for `app.example.com` and `id.example.com`). " +
+              "Defaults to the request's hostname.",
+          )
+          .optional(),
+        name: z
+          .text()
+          .describe(
+            "The name the device shows beside the passkey. Defaults to " +
+              "`displayName`, else the realm's name.",
+          )
+          .optional(),
+        origins: z
+          .array(z.text({ maxLength: 2048 }))
+          .describe(
+            "Every origin a ceremony may come from, compared whole " +
+              "(`https://app.example.com`). Defaults to the request's host, " +
+              "compared by host whatever the scheme, since a proxy that ends " +
+              "TLS without forwarding it makes the request look like http.",
+          )
+          .optional(),
+      })
+      .describe(
+        "Where passkeys are bound and accepted from. Leave it out for an " +
+          "app served on one hostname.",
+      )
+      .optional(),
     refreshToken: z.object({
       expirationIdle: z
         .integer()
@@ -242,6 +285,9 @@ export const realmAuthSettingsAtom = $atom({
       totp: "disabled" as SecondFactorRequirement,
       emailCode: "disabled" as SecondFactorRequirement,
     },
+    // Off by default, so an upgrade changes nothing: the saas preset
+    // scaffolds "optional".
+    passkeys: "disabled" as "disabled" | "optional",
     refreshToken: {
       // expirationIdle: undefined — opt-in
     },

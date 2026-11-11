@@ -212,6 +212,18 @@ describe("alepha init --preset", () => {
       expect(realm).toContain('name: "ui"');
     });
 
+    it("should scaffold a realm that offers passkeys", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      const realm = await readFile(fs, "/project/src/api/Realm.ts");
+      // The atom's default is "disabled", so an upgrade changes nothing;
+      // a new saas project starts with passkeys on.
+      expect(realm).toContain('passkeys: "optional"');
+    });
+
     it("should document DATABASE_URL in .env.example", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
