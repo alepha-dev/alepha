@@ -5,6 +5,7 @@ import { Alepha } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { InstantiableClass, Service } from "../interfaces/Service.ts";
 import { $context } from "../primitives/$context.ts";
+import type { PrimitiveSide } from "./ContainerGraph.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -22,6 +23,13 @@ export interface PrimitiveConfig {
 }
 
 export abstract class Primitive<T extends object = {}> {
+  /**
+   * What this kind means for the class holding it: `table` (served on
+   * request), `boot` (acts at boot) or `inert` (does nothing until called).
+   * Undeclared counts as `boot`. See {@link PrimitiveSide}.
+   */
+  public static readonly side?: PrimitiveSide;
+
   protected readonly alepha: Alepha;
 
   public readonly options: T;

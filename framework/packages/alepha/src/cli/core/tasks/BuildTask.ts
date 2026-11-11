@@ -1,4 +1,9 @@
-import { type Alepha, AlephaError, type AlephaMeta } from "alepha";
+import {
+  type Alepha,
+  AlephaError,
+  type AlephaMeta,
+  type AppSurface,
+} from "alepha";
 import type { RunnerMethod } from "alepha/command";
 
 import type { BuildOptions } from "../atoms/buildOptions.ts";
@@ -81,6 +86,13 @@ export interface BuildTaskContext {
    * `null` when introspection (`ctx.alepha`) is the source of truth.
    */
   manifest: BuildManifest | null;
+
+  /**
+   * The build list (#Q3401): computed from the loaded app before any task
+   * runs, or read from `manifest.surface` on a prebuilt deploy. Absent when
+   * neither has one.
+   */
+  surface?: AppSurface;
 
   /**
    * Constants the caller adds to the client bundle's Vite `define`, already

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   createPrimitive,
   PipelinePrimitive,
@@ -215,6 +216,11 @@ export interface SubscriberPrimitiveOptions<
 
 export class SubscriberPrimitive<
   T extends TopicMessageSchema,
-> extends PipelinePrimitive<SubscriberPrimitiveOptions<T>> {}
+> extends PipelinePrimitive<SubscriberPrimitiveOptions<T>> {
+  /**
+   * `boot` for the pure controller rule: read by TopicProvider at start.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+}
 
 $subscriber[KIND] = SubscriberPrimitive;

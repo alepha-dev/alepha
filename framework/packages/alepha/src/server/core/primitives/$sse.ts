@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   $store,
@@ -284,6 +285,11 @@ export const $sse = <
 export class SsePrimitive<
   TConfig extends SseConfigSchema,
 > extends PipelinePrimitive<SsePrimitiveOptions<TConfig>> {
+  /**
+   * `table` for the pure controller rule: served on request: the router dispatches to it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   /**
    * Marks the context of an HTTP call with the callback the innermost
    * handler calls on entry: past every `use` middleware, so the response

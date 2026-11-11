@@ -49,7 +49,7 @@ export const AdminSessions = () => {
   const client = useClient<AdminSessionController>();
   const toast = useToast();
   const dialog = useDialog();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
 
   // Same shape as the audit log's action facet: the values come from the
   // rows, so the control offers the countries this instance has actually seen
@@ -284,13 +284,17 @@ export const AdminSessions = () => {
           lastUsedAt: {
             label: tr("admin.sessions.colLastUsed", { default: "Last used" }),
             sortable: true,
-            cell: (s) => (
-              <span className="text-muted-foreground text-xs">
-                {s.lastUsedAt
-                  ? l(s.lastUsedAt, { date: "fromNow" })
-                  : tr("admin.sessions.lastUsedNever", { default: "Never" })}
-              </span>
-            ),
+            cell: (s) =>
+              s.lastUsedAt ? (
+                <TimeAgo
+                  value={s.lastUsedAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.sessions.lastUsedNever", { default: "Never" })}
+                </span>
+              ),
           },
           expiresAt: {
             label: tr("admin.sessions.colExpires", { default: "Expires" }),

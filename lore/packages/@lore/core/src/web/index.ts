@@ -15,6 +15,7 @@ import { AutomationRouter } from "./app/AutomationRouter.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
+import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
@@ -58,10 +59,17 @@ export const LoreCoreWeb = $module({
     // Read by `Layout` and `HeaderActions` on every page, so it exists before
     // the container locks whether or not the app registers anything on it.
     alepha.inject(ShellExtensionRegistry);
-    alepha.inject(CoreRouter);
-    alepha.inject(AutomationRouter);
-    alepha.inject(AccountRouter);
-    alepha.inject(LoreAccountRouter);
+    // Core's boot work (the 401 redirect, the global head, the reports tab
+    // and services), apart from its pages so the router holds pages only
+    // (#Q3400).
+    alepha.inject(CoreWebBoot);
+    // Routers with `alepha.with`, not `alepha.inject`: it is the same
+    // registration today, and it returns nothing the caller reads, so a
+    // build list can declare a pure router without creating it (#Q3417).
+    alepha.with(CoreRouter);
+    alepha.with(AutomationRouter);
+    alepha.with(AccountRouter);
+    alepha.with(LoreAccountRouter);
 
     // Lore's `quests.createdBy` cascades, so deleting an account also deletes
     // every quest it authored, including inside other people's projects. The

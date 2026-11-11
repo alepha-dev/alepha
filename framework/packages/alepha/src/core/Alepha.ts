@@ -10,8 +10,10 @@ import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { coerceObject } from "./helpers/coerceStrings.ts";
+import { ContainerGraph, type PurityEntry } from "./helpers/ContainerGraph.ts";
 import { Primitive } from "./helpers/primitive.ts";
 import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
+import type { AppSurface } from "./interfaces/AppSurface.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import {
@@ -50,6 +52,7 @@ import { alephaEnvSchema } from "./schemas/alephaEnvSchema.ts";
  * {@link Alepha.meta} is shaped the way it is.
  */
 declare const __ALEPHA_META__: string | undefined;
+declare const __ALEPHA_SURFACE__: string | undefined;
 
 /**
  * Where an `$env` schema was declared.
@@ -388,6 +391,22 @@ export class Alepha {
   protected substitutions = new Map<Service, { use: Service }>();
 
   /**
+   * Who created whom, and what each class holds: what {@link purity} reads.
+   */
+  protected containerGraph = new ContainerGraph(
+    (service) =>
+      Module.is(service) ||
+      (service as { prototype?: unknown }).prototype instanceof Primitive,
+  );
+
+  /**
+   * Depth of primitive `onInit` calls in progress. A listener a primitive
+   * registers from its own `onInit` is that primitive's business: its side
+   * decides what it means for the class (#Q3395).
+   */
+  protected primitiveInits = 0;
+
+  /**
    * Registry of primitives.
    */
   protected primitiveRegistry = new Map<Service<Primitive>, Array<Primitive>>();
@@ -434,6 +453,146 @@ export class Alepha {
    */
   public get log(): LoggerInterface | undefined {
     return this.store.get("alepha.logger");
+  }
+
+  /**
+   * The build list this container defers by (#Q3401, #Q3402): which classes
+   * are pure controllers, and every primitive a runtime needs without
+   * creating its class.
+   *
+   * Baked into a built server bundle by `alepha build`; absent in dev, in
+   * tests and in an app built before it, where every class is created at
+   * boot. A spec that wants late creation hands one over with
+   * {@link useSurface}. Nothing reads one implicitly anywhere else.
+   */
+  public get surface(): AppSurface | undefined {
+    if (this.surfaceList === undefined) {
+      // Asked while the container itself is still being built (its own core
+      // services): no list applies to those, and the env is not readable yet.
+      if (!this.store) {
+        return undefined;
+      }
+      // `ALEPHA_EAGER=true` creates everything at boot, as in dev, with no
+      // rebuild: the way out the day late creation has a side effect
+      // (#Q3403). Read once, before any module registers.
+      const eager = this.isEnvEnabled("ALEPHA_EAGER");
+      this.surfaceList =
+        eager || typeof __ALEPHA_SURFACE__ === "undefined"
+          ? null
+          : (JSON.parse(__ALEPHA_SURFACE__) as AppSurface);
+    }
+    return this.surfaceList ?? undefined;
+  }
+
+  /**
+   * Hand the container a build list, or take it away with `undefined`.
+   * Must be called before the modules register: a class is deferred, or
+   * not, when its module declares it.
+   */
+  public useSurface(surface: AppSurface | undefined): this {
+    this.surfaceList = surface ?? null;
+    return this;
+  }
+
+  /**
+   * `null` once read and absent; `undefined` before the first read.
+   */
+  protected surfaceList?: AppSurface | null;
+
+  /**
+   * Classes a module declared and the build list calls pure, not created yet
+   * (#Q3402). The first `inject` of one creates it, before or after start.
+   */
+  protected declared = new Set<Service>();
+
+  /**
+   * Depth of late creations in progress: while a declared class is being
+   * created after start, what it creates is admitted by the lock too.
+   */
+  protected lateCreations = 0;
+
+  /**
+   * Whether a module may declare this class without creating it: a build
+   * list is present and calls it pure. Without a list, or for a class the
+   * list does not call pure, every registration creates at once (#Q3402).
+   */
+  public isDeferrable(service: Service): boolean {
+    const surface = this.surface;
+    if (!surface || this.started || typeof service !== "function") {
+      return false;
+    }
+    const key = ContainerGraph.keyOf(service);
+    if (!surface.classes.some((it) => it.key === key && it.pure)) {
+      return false;
+    }
+    // Pages and the MCP surface are created late by their own quests; until
+    // then a class holding one is created at boot, whatever else it holds.
+    const owns = (rows: Array<{ class: string; mcp?: boolean }>) =>
+      rows.some((it) => it.class === key);
+    return !(
+      owns(surface.pages) ||
+      owns(surface.tools) ||
+      owns(surface.resources) ||
+      owns(surface.prompts) ||
+      surface.actions.some((it) => it.class === key && it.mcp)
+    );
+  }
+
+  /**
+   * The declared class a build list key names, if this process declared it.
+   * A listed class no module of this process declared is unknown here, and
+   * nothing is deferred for it.
+   */
+  public declaredByKey(key: string): Service | undefined {
+    for (const service of this.declared) {
+      if (ContainerGraph.keyOf(service) === key) {
+        return service;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Create every declared class now: what a reader that needs every action
+   * (OpenAPI, the schemas endpoint) calls first.
+   */
+  public createDeclared(): void {
+    // A copy: each inject removes its class from the set.
+    for (const service of Array.from(this.declared)) {
+      this.inject(service);
+    }
+  }
+
+  /**
+   * Declare a class without creating it, when it can be deferred. Returns
+   * whether it was: a class that cannot be is left to the caller to create.
+   *
+   * This is what `services: [X]` and `alepha.with(X)` do. `alepha.inject(X)`
+   * returns the instance, so it always creates.
+   */
+  public declareService(service: Service): boolean {
+    if (this.registry.has(service) || this.substitutions.has(service)) {
+      return false;
+    }
+    if (!this.isDeferrable(service)) {
+      return false;
+    }
+    this.declared.add(service);
+    return true;
+  }
+
+  /**
+   * Whether a class is declared and not created yet.
+   */
+  public isDeclared(service: Service): boolean {
+    return this.declared.has(service);
+  }
+
+  /**
+   * The classes declared and not created yet, in declaration order.
+   */
+  public declaredServices(): Service[] {
+    return [...this.declared];
   }
 
   /**
@@ -528,6 +687,13 @@ export class Alepha {
     });
     this.events = this.inject(EventManager);
     this.events.logFn = () => this.log;
+    this.events.registered = () => {
+      if (this.primitiveInits === 0) {
+        this.containerGraph.listened(
+          this.containerGraph.ownerOf(this.pendingInstantiations),
+        );
+      }
+    };
     this.context = this.inject(AlsProvider);
     this.codec = this.inject(CodecManager);
   }
@@ -833,6 +999,7 @@ export class Alepha {
         this.seedCoreServices();
         this.primitiveRegistry = new Map();
         this.pendingInstantiations = [];
+        this.containerGraph.clear();
         this.events.clear();
         delete (target as WithModule)[MODULE];
 
@@ -1086,6 +1253,7 @@ export class Alepha {
     this.seedCoreServices();
     this.primitiveRegistry = new Map();
     this.pendingInstantiations = [];
+    this.containerGraph.clear();
     this.substitutions = new Map();
     this.cacheEnv = new Map();
     this.cacheEnvOwner = new Map();
@@ -1253,6 +1421,11 @@ export class Alepha {
       return this;
     }
 
+    // A pure class the build list names is declared, not created (#Q3402).
+    if (this.declareService(entry)) {
+      return this;
+    }
+
     this.inject(entry);
 
     return this;
@@ -1345,6 +1518,13 @@ export class Alepha {
       });
     }
 
+    if (!transient && registry === this.registry) {
+      this.containerGraph.injected(
+        service,
+        this.containerGraph.injectorOf(this.pendingInstantiations),
+      );
+    }
+
     if (!transient) {
       // the requested type is searched in the container
       const match = registry.get(service);
@@ -1363,7 +1543,15 @@ export class Alepha {
       // container. Refusing it after start makes `lifetime: "scoped"` unusable at
       // the only time it matters (while handling a request), so the guard must
       // apply only when we are instantiating into the global registry itself.
-      if (this.started && registry === this.registry) {
+      // The lock refuses an unknown class, not a declared one (#Q3402): a
+      // class a module declared is created on first use, and so is what it
+      // creates while it is being created.
+      if (
+        this.started &&
+        registry === this.registry &&
+        !this.declared.has(service) &&
+        this.lateCreations === 0
+      ) {
         const mod = (service as WithModule)[MODULE]?.name;
         throw new ContainerLockedError(
           `Container is locked. No more services can be added. Attempted to inject '${service.name}' from '${parent?.name}'. ${mod ? `Module '${mod}' is not registered ?` : ""}`,
@@ -1382,7 +1570,19 @@ export class Alepha {
       return this.inject(service, { parent, lifetime });
     }
 
-    const instance: T = this.new(service, opts.args);
+    const late = this.started && this.declared.has(service);
+    if (late) {
+      this.lateCreations++;
+    }
+    let instance: T;
+    try {
+      instance = this.new(service, opts.args);
+    } finally {
+      if (late) {
+        this.lateCreations--;
+      }
+    }
+    this.declared.delete(service);
 
     const definition: ServiceDefinition<T> = {
       parents: [parent],
@@ -1402,10 +1602,16 @@ export class Alepha {
       // propagate the current module
       __alephaRef.parent = instance.constructor as Service;
 
-      instance.register(this);
-
-      // restore the previous $get context
-      __alephaRef.parent = parent;
+      // What the module creates is its registration, even when an injection
+      // pulled it in while another class was under construction (#Q3395).
+      this.containerGraph.openFrame(this.pendingInstantiations.length);
+      try {
+        instance.register(this);
+      } finally {
+        this.containerGraph.closeFrame();
+        // restore the previous $get context
+        __alephaRef.parent = parent;
+      }
     }
 
     return instance;
@@ -1901,6 +2107,23 @@ export class Alepha {
   }
 
   /**
+   * Which classes are pure controllers, and why the others are not (#Q3395).
+   *
+   * One entry per class holding a table primitive (`$action`, `$page`,
+   * `$tool`, ...). A class is pure when it holds no `$hook`, no boot
+   * primitive and registers no listener while constructed, when nothing but
+   * registration and other pure classes injects it, and when no class it
+   * alone creates is a boot class. A pure entry carries its late closure: the
+   * classes that exist only because pure classes created them.
+   *
+   * Valid on a loaded container that never started: it reads what
+   * construction recorded, nothing `configure` or `start` does.
+   */
+  public purity(): PurityEntry[] {
+    return this.containerGraph.purity();
+  }
+
+  /**
    * Get all primitives of the specified type.
    */
   public primitives<TPrimitive extends Primitive>(
@@ -1987,13 +2210,33 @@ export class Alepha {
 
   protected processPrimitive(value: Primitive, propertyKey = "") {
     value.config.propertyKey = propertyKey;
+    // Refused before its onInit runs, so a boot primitive's side effects
+    // never happen after start (#Q3402).
+    if (
+      this.lateCreations > 0 &&
+      ContainerGraph.sideOf(value.constructor as Service<Primitive>) === "boot"
+    ) {
+      const owner = this.containerGraph.ownerOf(this.pendingInstantiations);
+      throw new AlephaError(
+        `Cannot create '${owner?.name ?? "unknown"}' after start: it holds ${ContainerGraph.kindName(value.constructor as Service<Primitive>)} '${propertyKey}', which acts at boot. A class created on first use holds no boot primitive; list the class in a module to create it at boot.`,
+      );
+    }
     // `onInit` is protected: a primitive must not invoke it on itself, and the
     // container is the only legitimate caller. Naming the shape would need a
     // double cast (protected vs public are not assignable), which says less
     // than this comment does.
-    (value as any).onInit();
+    this.primitiveInits++;
+    try {
+      (value as any).onInit();
+    } finally {
+      this.primitiveInits--;
+    }
 
     const kind = value.constructor as Service;
+    this.containerGraph.primitive(
+      this.containerGraph.ownerOf(this.pendingInstantiations),
+      kind as Service<Primitive>,
+    );
     const existing = this.primitiveRegistry.get(kind);
     if (existing) {
       existing.push(value);

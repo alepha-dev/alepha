@@ -1,10 +1,8 @@
-import { $hook, $inject, Alepha, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
-import { $head, type Head } from "alepha/react/head";
 import { $page, ReactRouter, Redirection } from "alepha/react/router";
-import { $manifest, $robots } from "alepha/react/sitemap";
-import { $secure, currentUserAtom } from "alepha/security";
+import { $secure } from "alepha/security";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
@@ -27,9 +25,6 @@ import { ProjectRouter } from "./ProjectRouter.ts";
 import { ReportsTabRegistry } from "./registries/ReportsTabRegistry.ts";
 import { storeHomeOverview } from "./services/homeOverviewWrite.ts";
 import { canInProject } from "./services/projectRank.ts";
-import { ReportsCsv } from "./services/ReportsCsv.ts";
-import { ReportsDrillDown } from "./services/ReportsDrillDown.ts";
-import { ReportsSummaryMarkdown } from "./services/ReportsSummaryMarkdown.ts";
 import { ReportsUrlQuery } from "./services/ReportsUrlQuery.ts";
 
 /**
@@ -51,92 +46,8 @@ export class CoreRouter {
   dateTime = $inject(DateTimeProvider);
 
   reportsTabs = $inject(ReportsTabRegistry);
-  // Read by components through `useInject`, which cannot construct a service
-  // once the container is locked, so the module's boot has to.
   reportsUrl = $inject(ReportsUrlQuery);
-  reportsCsv = $inject(ReportsCsv);
-  reportsDrillDown = $inject(ReportsDrillDown);
-  reportsMarkdown = $inject(ReportsSummaryMarkdown);
   reportsSummaryApi = $client<ReportsSummaryController>();
-
-  constructor() {
-    this.reportsTabs.register({
-      route: "reportsSummary",
-      labelKey: "project.reports.nav.summary",
-      order: 5,
-      filters: ["period"],
-    });
-  }
-
-  head = $head(() => {
-    const head: Head = {
-      title: "Alepha Lore",
-      description:
-        "Alepha Lore - project and knowledge management for builders.",
-    };
-
-    head.link = [
-      {
-        rel: "icon",
-        href: "/favicon.png",
-        type: "image/png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        rel: "icon",
-        href: "/favicon-light.png",
-        type: "image/png",
-        media: "(prefers-color-scheme: light)",
-      },
-    ];
-
-    head.meta = [
-      { name: "theme-color", content: "#010409" },
-      {
-        name: "keywords",
-        content:
-          "Alepha Lore, project management, task tracking, knowledge management, MCP, AI, quests, open-source",
-      },
-    ];
-
-    return head;
-  });
-
-  /**
-   * A self-hosted Lore has its own `PUBLIC_URL`, or none, and answers for its
-   * own host. `/auth` and `/account` are worth no crawler's time: every unknown
-   * URL leads to the login page.
-   */
-  robots = $robots({ disallow: ["/auth", "/account"] });
-
-  manifest = $manifest({
-    name: "Lore",
-    shortName: "Lore",
-    description:
-      "Alepha Lore: planning memory, telemetry and deployments for Alepha applications.",
-    display: "standalone",
-    startUrl: "/",
-    backgroundColor: "#010409",
-    themeColor: "#010409",
-    orientation: "portrait",
-    icons: [{ src: "/logo-512x512.png", sizes: "512x512", type: "image/png" }],
-    screenshots: [
-      {
-        src: "/screenshot-1.png",
-        type: "image/png",
-        sizes: "1280x605",
-        formFactor: "wide",
-        label: "App Overview",
-      },
-      {
-        src: "/screenshot-2.png",
-        type: "image/png",
-        sizes: "365x800",
-        formFactor: "narrow",
-        label: "Quest Detail",
-      },
-    ],
-  });
 
   layout = $page({
     children: () => [
@@ -177,25 +88,6 @@ export class CoreRouter {
   });
 
   // -------------------------------------------------------------------------------------------------------------------
-
-  onFetchError = $hook({
-    on: "client:request:error",
-    handler: async ({ error }) => {
-      const loginPath = this.router.path("login");
-      if (
-        this.alepha.isBrowser() &&
-        isHttpError(error, 401) &&
-        this.router.state.url.pathname !== loginPath
-      ) {
-        this.alepha.store.set(currentUserAtom, undefined);
-        await this.router.push(loginPath as `/${string}`, {
-          query: {
-            redirect: this.router.state.url.pathname,
-          },
-        });
-      }
-    },
-  });
 
   // -------------------------------------------------------------------------------------------------------------------
 

@@ -295,6 +295,42 @@ describe("artifacts", () => {
     });
   });
 
+  describe("the build list", () => {
+    /**
+     * `surface` (#Q3401) runs past the column's 64 KB on Lore itself. Stored,
+     * it would drop the whole manifest, and with it every field a deploy
+     * reads; the archive's own `manifest.json` keeps it instead.
+     */
+    it("keeps the manifest in the column without its surface, however large", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const manifest = {
+        manifestVersion: 2,
+        project: "my-app",
+        runtimes: [{ runtime: "node", entry: "index.node.js" }],
+        secrets: [{ name: "SIGIL_KEY" }],
+        surface: {
+          version: 1,
+          classes: Array.from({ length: 2000 }, (_, i) => ({
+            key: `acme.api:Controller${i}`,
+            pure: true,
+          })),
+        },
+      };
+
+      const result = await push(projectId, owner, {
+        file: await packedArtifact({ manifest }),
+      });
+      const row = await ctx.rows.artifacts.findById(result.data.artifact.id);
+      const stored = JSON.parse(row!.manifest!);
+
+      expect(JSON.stringify(manifest).length).toBeGreaterThan(65_536);
+      expect(stored.surface).toBeUndefined();
+      expect(stored.secrets).toEqual([{ name: "SIGIL_KEY" }]);
+    });
+  });
+
   describe("the runtime", () => {
     /**
      * The whole reason `runtime` is a column rather than part of a filename.

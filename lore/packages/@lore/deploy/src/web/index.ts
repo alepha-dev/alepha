@@ -33,7 +33,7 @@ export const LoreDeployWeb = $module({
     // The pages; its part of opening a project and
     // of the project shell, on core's registries, which nothing else would
     // construct; and its dashboard metrics' declarative half.
-    alepha.inject(DeployRouter);
+    alepha.with(DeployRouter);
     alepha.inject(DeployProjectLoader);
     alepha.inject(DeployShell);
     alepha.inject(DeployDashboardMetrics);

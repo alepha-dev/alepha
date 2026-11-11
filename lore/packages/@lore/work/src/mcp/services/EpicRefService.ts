@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import type { EpicResource } from "../../api/schemas/epicResourceSchema.ts";
@@ -28,7 +28,16 @@ export interface EpicRef {
  * entirely when the row has no epic, which is the common case.
  */
 export class EpicRefService {
-  protected readonly epicController = $inject(EpicController);
+  protected readonly alepha = $inject(Alepha);
+
+  /**
+   * Resolved on use, never held as a field: a field would make `EpicController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected epicController(): EpicController {
+    return this.alepha.inject(EpicController);
+  }
 
   /**
    * `epicId -> EpicRef` for every epic in a project.
@@ -39,7 +48,7 @@ export class EpicRefService {
    * `quest_list` page and every `quest_get` of a quest in an epic (#Q2635).
    */
   async mapFor(projectId: number): Promise<Map<number, EpicRef>> {
-    const projectEpics = await this.epicController.getEpicRefs({
+    const projectEpics = await this.epicController().getEpicRefs({
       params: { projectId },
     });
     return new Map(

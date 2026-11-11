@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -84,6 +85,11 @@ export interface PermissionPrimitiveOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class PermissionPrimitive extends Primitive<PermissionPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: fills the permission registry, read at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly securityProvider = $inject(SecurityProvider);
 
   public get name(): string {

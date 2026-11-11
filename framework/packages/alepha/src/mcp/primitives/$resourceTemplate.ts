@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   AlephaError,
@@ -193,6 +194,11 @@ export interface ResourceTemplateHandlerArgs<T extends ZObject> {
 export class ResourceTemplatePrimitive<T extends ZObject> extends Primitive<
   ResourceTemplatePrimitiveOptions<T>
 > {
+  /**
+   * `table` for the pure controller rule: served on request: the MCP server reads it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly mcpServer = $inject(McpServerProvider);
 
   /**

@@ -752,6 +752,8 @@ describe("FolioTree", () => {
 
       await screen.findByText("Rename");
       expect(screen.queryByText("Encrypt")).toBeNull();
+      // Its matching item instead (#Q3423): Unlock, which opens the folio.
+      expect(screen.getByText("Unlock")).not.toBeNull();
     });
 
     /**

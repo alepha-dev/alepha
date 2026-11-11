@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   AlephaError,
@@ -170,6 +171,11 @@ export class CookiePrimitive<T extends ZType>
   extends Primitive<CookiePrimitiveOptions<T>>
   implements AbstractCookiePrimitive<T>
 {
+  /**
+   * `boot` for the pure controller rule: a keyed cookie registers listeners at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
 
   protected onInit() {

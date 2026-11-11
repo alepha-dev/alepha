@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { KIND } from "alepha/internal";
@@ -73,6 +74,11 @@ export interface SitemapPrimitiveOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by $robots and the prerender at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly router = $inject(ServerRouterProvider);
   protected readonly pageProvider = $inject(ReactPageProvider);
   protected readonly dateTime = $inject(DateTimeProvider);

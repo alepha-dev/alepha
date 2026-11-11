@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 import { HeadProvider } from "alepha/react/head";
@@ -21,6 +22,11 @@ export const $manifest = (
 };
 
 export class ManifestPrimitive extends Primitive<ManifestPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: adds to the global head at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly head = $inject(HeadProvider);
 
   protected onInit() {

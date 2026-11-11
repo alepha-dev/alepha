@@ -105,7 +105,11 @@ export const parseField = (
 
   // Structural classification via zod guards (the schema is a real zod schema,
   // not a JSON-Schema object — `schema.type`/`schema.enum` no longer apply).
-  const isEnum = z.schema.isEnum(schema);
+  // A union of string literals is a closed set of values as much as an
+  // `z.enum` is, and renders as the same select (#Q3425): written either way,
+  // the field offers its choices instead of a free text box.
+  const literalOptions = stringLiteralOptions(schema);
+  const isEnum = z.schema.isEnum(schema) || literalOptions !== undefined;
   const isArray = z.schema.isArray(schema);
   const isObject = z.schema.isObject(schema);
   const isInteger = z.schema.isInteger(schema);
@@ -172,7 +176,7 @@ export const parseField = (
     isArray,
     isObject,
     isArrayOfObjects,
-    enum: isEnum ? z.schema.enumOptions(schema) : undefined,
+    enum: isEnum ? (literalOptions ?? z.schema.enumOptions(schema)) : undefined,
     iconHint,
     constraints,
     testId: (input.props as Record<string, unknown>)["data-testid"] as
@@ -254,4 +258,25 @@ const inferIconHint = (params: {
   if (type === "string") return "text";
 
   return undefined;
+};
+
+/**
+ * The values of a union whose every member is a string literal
+ * (`z.union([z.literal("a"), z.literal("b")])`), or `undefined` for any other
+ * schema.
+ */
+const stringLiteralOptions = (schema: unknown): string[] | undefined => {
+  if (!z.schema.isUnion(schema)) return undefined;
+  const values: string[] = [];
+  for (const option of z.schema.options(schema)) {
+    if (!z.schema.isLiteral(option)) return undefined;
+    const literals = (option as any)?._zod?.def?.values as
+      | unknown[]
+      | undefined;
+    if (!literals?.every((value) => typeof value === "string")) {
+      return undefined;
+    }
+    values.push(...(literals as string[]));
+  }
+  return values.length > 0 ? values : undefined;
 };

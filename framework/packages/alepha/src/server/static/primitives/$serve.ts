@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { createPrimitive, Primitive } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
@@ -145,6 +146,11 @@ export interface CacheControlOptions {
   immutable: boolean;
 }
 
-export class ServePrimitive extends Primitive<ServePrimitiveOptions> {}
+export class ServePrimitive extends Primitive<ServePrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by ServerStaticProvider at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+}
 
 $serve[KIND] = ServePrimitive;

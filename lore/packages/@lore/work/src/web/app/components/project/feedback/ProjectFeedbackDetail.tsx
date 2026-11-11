@@ -393,6 +393,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <FeedbackThread
             feedbackId={feedback.id}
             projectId={feedback.projectId}
+            reporterUserId={feedback.reporterUserId}
             currentUserId={currentUser?.id}
             isOwner={can("feedback:triage")}
           />

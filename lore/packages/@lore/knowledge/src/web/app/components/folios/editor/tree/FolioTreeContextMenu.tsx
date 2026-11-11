@@ -14,6 +14,7 @@ import {
   FolderPlus,
   Link2,
   Lock,
+  LockOpen,
   Pencil,
   Pin,
   PinOff,
@@ -214,6 +215,17 @@ const FolioTreeContextMenu = (
               {tr("folios.editor.tree.encrypt")}
             </ContextMenuItem>
           )}
+          {/* The matching item on a protected folio (#Q3423): Unlock opens it,
+              where the locked panel asks for the passphrase. Not a decrypt in
+              place, for the reason the file doc gives against "Remove
+              protection": the tree holds only ciphertext. */}
+          {node.data.kind === "protected" &&
+            node.id !== props.currentFolioId && (
+              <ContextMenuItem onClick={handleOpen}>
+                <LockOpen className="size-4" />
+                {tr("folios.protected.unlock")}
+              </ContextMenuItem>
+            )}
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"

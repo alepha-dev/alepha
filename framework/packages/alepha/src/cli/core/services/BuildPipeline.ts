@@ -1,4 +1,4 @@
-import { $inject, $store, Alepha, AlephaError } from "alepha";
+import { $inject, $store, Alepha, AlephaError, type AppSurface } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 
@@ -22,6 +22,7 @@ import { BuildSbomTask } from "../tasks/BuildSbomTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
 import type { BuildTask, BuildTaskContext } from "../tasks/BuildTask.ts";
+import { AppSurfaceCollector } from "./AppSurfaceCollector.ts";
 import { BuildFreshness } from "./BuildFreshness.ts";
 import { BuildManifestReader } from "./BuildManifestReader.ts";
 import { BuildSlices } from "./BuildSlices.ts";
@@ -69,6 +70,7 @@ export class BuildPipeline {
   protected readonly freshness = $inject(BuildFreshness);
   protected readonly slices = $inject(BuildSlices);
   protected readonly sbom = $inject(SbomBuilder);
+  protected readonly surfaces = $inject(AppSurfaceCollector);
 
   /**
    * Build pipeline: tasks run sequentially in this order.
@@ -246,6 +248,21 @@ export class BuildPipeline {
     // in-process reads the same record the bundles carry.
     this.metaResolver.install(meta);
 
+    // The build list (#Q3401), computed once from the loaded app and handed
+    // to the server bundle and to the manifest alike. A prebuilt deploy has
+    // no app to read and takes the manifest's.
+    let surface: AppSurface | undefined;
+    if (appAlepha) {
+      surface = this.surfaces.collect(appAlepha);
+      // Informative: the report names what an author can fix, it never
+      // fails a build.
+      for (const line of this.surfaces.report(surface)) {
+        this.log.info(line);
+      }
+    } else if (manifest?.surface) {
+      surface = manifest.surface as unknown as AppSurface;
+    }
+
     const ctx: BuildTaskContext = {
       // Cast: when manifest mode is active, BuildCloudflareTask reads
       // from ctx.manifest and never dereferences ctx.alepha. Bundle
@@ -259,6 +276,7 @@ export class BuildPipeline {
       hasClient,
       meta,
       manifest,
+      surface,
       define: request.define,
       flags: {
         prebuilt: request.prebuilt,

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   createPrimitive,
@@ -76,6 +77,11 @@ export interface WebhookPrimitiveOptions<T extends ZObject> {
 export class WebhookPrimitive<T extends ZObject = ZObject> extends Primitive<
   WebhookPrimitiveOptions<T>
 > {
+  /**
+   * `boot` for the pure controller rule: registers itself at init, read by OpenAPI.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly webhooks = $inject(WebhookService);
 
   public get name(): string {

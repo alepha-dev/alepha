@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 import { type ServerRequest, ServerRouterProvider } from "alepha/server";
@@ -65,6 +66,11 @@ export interface RobotsPrimitiveOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class RobotsPrimitive extends Primitive<RobotsPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by the prerender at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly router = $inject(ServerRouterProvider);
 
   protected get path(): string {

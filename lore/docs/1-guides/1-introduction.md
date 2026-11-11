@@ -52,10 +52,10 @@ set first, then only the sections those capabilities own - a section a project
 has turned off is absent rather than empty, so an agent is never told a project
 tracks something it does not.
 
-A connected app, whether Claude over MCP or the `lore` command after
+A connected app, whether an agent over MCP or the `lore` command after
 `lore login`, reaches what a project member can do and nothing more. Its access
 is limited to the project surfaces (quests, folios, feedback, apps, deploys and
-the rest), so an administrator who connects Claude does not hand it the admin
+the rest), so an administrator who connects an agent does not hand it the admin
 pages. Those stay reachable from a signed-in session. Neither kind of
 connection can create or revoke API keys or change account settings. An API
 key (`LORE_API_KEY`) is not narrowed this way: it carries its owner's roles,

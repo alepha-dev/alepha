@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   ActionToolSchema,
@@ -94,6 +95,13 @@ export const $ai = (options: AiPrimitiveOptions): AiPrimitive =>
  * A tool the browser runs (`navigate`, `fillForm`): calling it pauses the
  * turn with a `client_tool` event, and the result comes back on resume.
  */
+/**
+ * What `$ai({ tools })` takes: actions, MCP tools and client tools.
+ */
+export type AiToolList = Array<
+  ActionPrimitive<any> | ToolPrimitive<any> | AiClientTool
+>;
+
 export const clientTool = (
   name: string,
   options: { description: string; schema: ZType },
@@ -127,8 +135,13 @@ export interface AiPrimitiveOptions {
    *
    * An action takes `{ params, query, body }` for the parts it declares; a
    * `$tool` takes its own `schema.params`. Both run as the turn's user.
+   *
+   * A function is called once, on the first turn (or the first read of
+   * `definitions`), instead of when the class is created. Use it when the
+   * tools live on classes the app should not create at boot: the classes
+   * holding them are then created on that first use.
    */
-  tools?: Array<ActionPrimitive<any> | ToolPrimitive<any> | AiClientTool>;
+  tools?: AiToolList | (() => AiToolList);
 
   /**
    * The tools this user is offered on a turn, by name: what the model sees.
@@ -303,6 +316,11 @@ export interface AiTurnResult {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by the AI provider at start.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly provider = $inject(AiProvider);
   protected readonly toolSchema = $inject(AiToolSchema);
   protected readonly actionToolSchema = $inject(ActionToolSchema);
@@ -311,9 +329,15 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
 
   /**
    * The tools by name, with their vendor definitions. Built and checked at
-   * init, so a bad name or a missing description fails at start.
+   * init when `tools` is a list, so a bad name or a missing description fails
+   * at start; on first use when it is a function.
    */
-  protected tools = new Map<string, AiTool>();
+  protected built?: Map<string, AiTool>;
+
+  protected get tools(): Map<string, AiTool> {
+    this.built ??= this.buildTools();
+    return this.built;
+  }
 
   public get name(): string {
     return this.options.name ?? `${this.config.propertyKey}`;
@@ -328,9 +352,20 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
   }
 
   protected onInit(): void {
-    for (const tool of this.options.tools ?? []) {
+    if (typeof this.options.tools !== "function") {
+      this.built = this.buildTools();
+    }
+  }
+
+  protected buildTools(): Map<string, AiTool> {
+    const tools = new Map<string, AiTool>();
+    const list =
+      typeof this.options.tools === "function"
+        ? this.options.tools()
+        : (this.options.tools ?? []);
+    for (const tool of list) {
       const entry = this.toTool(tool);
-      if (this.tools.has(entry.definition.name)) {
+      if (tools.has(entry.definition.name)) {
         throw new AiConfigError(
           {},
           {
@@ -338,8 +373,9 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
           },
         );
       }
-      this.tools.set(entry.definition.name, entry);
+      tools.set(entry.definition.name, entry);
     }
+    return tools;
   }
 
   /**

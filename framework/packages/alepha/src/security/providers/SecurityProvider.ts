@@ -5,10 +5,12 @@ import {
   AlephaError,
   AppNotStartedError,
   ContainerLockedError,
+  type Service,
 } from "alepha";
 import { SecretProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
 import { ForbiddenError } from "alepha/server";
+import type { JSONWebKeySet, JWTPayload, JWTVerifyOptions } from "jose";
 
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";
@@ -16,11 +18,6 @@ import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 import { RealmNotFoundError } from "../errors/RealmNotFoundError.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver, UserInfo } from "../interfaces/IssuerResolver.ts";
-import type {
-  JSONWebKeySet,
-  JWTPayload,
-  JWTVerifyOptions,
-} from "../interfaces/Jose.ts";
 import type {
   OidcIssuerSource,
   TokenExpectation,
@@ -55,6 +52,39 @@ export class SecurityProvider {
    * The permissions configured for the security provider.
    */
   protected readonly permissions: Permission[] = [];
+
+  /**
+   * Which class declared each `$secure` permission string, for the build
+   * list (#Q3416).
+   */
+  protected readonly permissionOwners = new Map<string, Set<Service>>();
+
+  /**
+   * The permission strings a class declared through `$secure`.
+   */
+  public permissionsDeclaredBy(service: Service): string[] {
+    const names: string[] = [];
+    for (const [name, owners] of this.permissionOwners) {
+      if (owners.has(service)) {
+        names.push(name);
+      }
+    }
+    return names;
+  }
+
+  /**
+   * Registers the permissions the build list says pure controllers declare,
+   * before any role is validated against the registry: a pure controller is
+   * created on first use, and its `$secure` would otherwise register them
+   * only then (#Q3416). A constructor, so every field above is set.
+   */
+  constructor() {
+    for (const entry of this.alepha.surface?.classes ?? []) {
+      for (const name of entry.permissions ?? []) {
+        this.createPermission(name);
+      }
+    }
+  }
 
   /**
    * The realm this provider invents so a test container has somewhere to put
@@ -366,9 +396,28 @@ export class SecurityProvider {
    *
    * @param raw - The permission to add.
    */
-  public createPermission(raw: Permission | string): Permission {
+  public createPermission(
+    raw: Permission | string,
+    declaredBy?: Service,
+  ): Permission {
     if (this.alepha.isStarted()) {
+      // A class created on first use declares permissions the build list
+      // already registered at boot (#Q3416): answer the known one, and keep
+      // refusing a permission nobody declared.
+      const name = typeof raw === "string" ? raw : this.permissionToString(raw);
+      const known = this.permissions.find(
+        (it) => this.permissionToString(it) === name,
+      );
+      if (known) {
+        return known;
+      }
       throw new ContainerLockedError();
+    }
+
+    if (declaredBy && typeof raw === "string") {
+      const owners = this.permissionOwners.get(raw) ?? new Set();
+      owners.add(declaredBy);
+      this.permissionOwners.set(raw, owners);
     }
 
     let permission: Permission;

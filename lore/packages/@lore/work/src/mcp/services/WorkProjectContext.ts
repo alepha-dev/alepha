@@ -1,5 +1,5 @@
 import { ProjectContextRegistry } from "@lore/core/mcp";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
@@ -23,10 +23,27 @@ export class WorkProjectContext {
    */
   public static readonly AREA_DESCRIPTION_MAX_CHARS = 160;
 
+  protected readonly alepha = $inject(Alepha);
   protected readonly registry = $inject(ProjectContextRegistry);
   protected readonly areaService = $inject(AreaService);
-  protected readonly epicController = $inject(EpicController);
-  protected readonly releaseController = $inject(ReleaseController);
+
+  /**
+   * Resolved on use, never held as a field: a field would make `EpicController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected epicController(): EpicController {
+    return this.alepha.inject(EpicController);
+  }
+
+  /**
+   * Resolved on use, never held as a field: a field would make `ReleaseController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected releaseController(): ReleaseController {
+    return this.alepha.inject(ReleaseController);
+  }
 
   constructor() {
     // The `areas` table is the list. Only `name` + `description` cross the
@@ -62,8 +79,8 @@ export class WorkProjectContext {
         // already knowing what `0.28.0` is meant to contain; published ones
         // are dropped, since this index is for planning into.
         const [epics, openReleases] = await Promise.all([
-          this.epicController.getEpics({ params: { projectId } }),
-          this.releaseController.getOpenReleaseProgress({
+          this.epicController().getEpics({ params: { projectId } }),
+          this.releaseController().getOpenReleaseProgress({
             params: { projectId },
           }),
         ]);

@@ -9,9 +9,8 @@ import { LoreAiToolset } from "./LoreAiToolset.ts";
  * Lore's in-app assistant: its prompt and its tools (#E120).
  *
  * It lives in `apps/lore`, not in `@lore/core`, because its tools come from
- * `@lore/work` and `@lore/knowledge`, and `$ai` reads `tools` once, at init:
- * the class declaring it must inject them, and the app is the one place
- * those modules meet.
+ * `@lore/work` and `@lore/knowledge`, and the app is the one place those
+ * modules meet.
  *
  * - `system` is a function of the user: the rules, who asks, today.
  * - The project is not in the prompt: it rides in the page context of each
@@ -30,7 +29,9 @@ export class LoreAiAssistant {
     // one.
     model: "@cf/mistralai/mistral-small-3.1-24b-instruct",
     system: ({ user }) => this.prompt.system(user),
-    tools: this.toolset.tools,
+    // A function, read on the first turn: the tool classes and controllers
+    // behind the toolset are created then, not at boot (#Q3398).
+    tools: () => this.toolset.tools,
     allow: (ctx) => this.access.offered(ctx),
     maxTokens: 1024,
   });

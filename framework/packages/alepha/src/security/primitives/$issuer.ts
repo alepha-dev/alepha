@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   Alepha,
@@ -14,10 +15,10 @@ import {
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
+import type { JSONWebKeySet, JWTPayload } from "jose";
 
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";
-import type { JSONWebKeySet, JWTPayload } from "../interfaces/Jose.ts";
 import type { OidcIssuerSource } from "../interfaces/OidcIssuerSource.ts";
 import { JwtProvider, type SigningConfig } from "../providers/JwtProvider.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
@@ -260,6 +261,11 @@ export interface IssuerOidc {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: creates its realm at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly alepha = $inject(Alepha);
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);

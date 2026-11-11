@@ -5,7 +5,11 @@ import type { ToolPrimitive } from "alepha/mcp";
 import type { ActionPrimitive } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { LoreAiToolAccess, LoreAiToolset } from "@/assistant/index.ts";
+import {
+  LoreAiAssistant,
+  LoreAiToolAccess,
+  LoreAiToolset,
+} from "@/assistant/index.ts";
 
 import { bootAssistant } from "./fixtures/bootAssistant.ts";
 
@@ -95,6 +99,36 @@ describe("the assistant's read tools", () => {
       )!.tool as ActionPrimitive<any>;
       expect(action.method, name).toBe("GET");
     }
+    await alepha.stop();
+  });
+
+  it("offers every tool in declaration order, off-project, reads, then writes, to the vendor", async ({
+    expect,
+  }) => {
+    const { alepha } = await boot();
+    const toolset = alepha.inject(LoreAiToolset);
+    const assistant = alepha.inject(LoreAiAssistant).assistant;
+    expect(assistant.definitions.map((tool) => tool.name)).toEqual([
+      "project_list",
+      ...READ_SET,
+      ...WRITE_SET,
+    ]);
+    expect(toolset.tools.map((tool) => tool.name)).toEqual([
+      "project_list",
+      ...READ_SET,
+      ...WRITE_SET,
+    ]);
+    await alepha.stop();
+  });
+
+  it("builds its tables once, on first read, and keeps them (#Q3398)", async ({
+    expect,
+  }) => {
+    const { alepha } = await boot();
+    const toolset = alepha.inject(LoreAiToolset);
+    expect(toolset.inProject).toBe(toolset.inProject);
+    expect(toolset.offProject).toBe(toolset.offProject);
+    expect(toolset.writes).toBe(toolset.writes);
     await alepha.stop();
   });
 

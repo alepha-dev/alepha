@@ -3,7 +3,7 @@
 Every surface that names a piece of work can hand it to a coding agent. An
 **Agent Prompts** menu appears on epics, quests and feedback, and on the
 Quests page, the feedback inbox and the blights inbox, and a click
-copies a ready prompt for Claude Code, Codex or anything else that reads a
+copies a ready prompt for your coding agent, or anything else that reads a
 paste.
 
 **It starts off.** The switch is **Settings ▸ Quests ▸ Features ▸ Agent prompts**, one

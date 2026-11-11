@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $atom,
   $inject,
@@ -292,6 +293,11 @@ export class CachePrimitive<
   TReturn = any,
   TParameter extends any[] = any[],
 > extends Primitive<CachePrimitiveOptions<TReturn, TParameter>> {
+  /**
+   * `inert` for the pure controller rule: does nothing until it is called.
+   */
+  public static override readonly side: PrimitiveSide = "inert";
+
   protected readonly settings = $store(cacheOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly tracer = $inject(Tracer);

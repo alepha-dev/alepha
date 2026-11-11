@@ -44,7 +44,6 @@ import {
   $auth,
   type AccessToken,
   type AuthPrimitive,
-  type OAuthClientConfiguration,
   type WithSecondFactorFn,
 } from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
@@ -715,7 +714,7 @@ export class ServerAuthProvider {
         provider: query.provider,
         realm: query.realm,
       });
-      const oauth = (await provider.getOAuth()) as Configuration | undefined;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         throw new SecurityError(
           `Auth provider '${query.provider}' does not support OAuth2`,
@@ -897,7 +896,7 @@ export class ServerAuthProvider {
     }
 
     const provider = this.provider(authorizationCode);
-    const oauth = (await provider.getOAuth()) as Configuration | undefined;
+    const oauth = await provider.getOAuth();
     if (!oauth) {
       throw new SecurityError(
         `Auth provider '${provider.name}' does not support OAuth2`,
@@ -1074,7 +1073,7 @@ export class ServerAuthProvider {
         }
       }
 
-      const oauth = (await provider.getOAuth()) as Configuration | undefined;
+      const oauth = await provider.getOAuth();
       if (!oauth) {
         reply.redirect(redirect, 302);
         return;
@@ -1164,7 +1163,7 @@ export class ServerAuthProvider {
    * token. A failure is logged and never blocks the logout.
    */
   protected async revokeTokens(
-    oauth: OAuthClientConfiguration,
+    oauth: Configuration,
     tokens: Tokens,
     provider: string,
   ): Promise<void> {
@@ -1176,7 +1175,7 @@ export class ServerAuthProvider {
       return;
     }
     try {
-      await tokenRevocation(oauth as Configuration, token, {
+      await tokenRevocation(oauth, token, {
         token_type_hint: tokens.refresh_token
           ? "refresh_token"
           : "access_token",

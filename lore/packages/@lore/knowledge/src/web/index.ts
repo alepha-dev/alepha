@@ -32,7 +32,7 @@ export const LoreKnowledgeWeb = $module({
     // The pages, and Knowledge's part of the project shell (sidebar,
     // settings, create menu, references, the epic's Folios tab, the document
     // sink) on core's registries, which nothing else would construct.
-    alepha.inject(KnowledgeRouter);
+    alepha.with(KnowledgeRouter);
     // The Knowledge dashboard metrics' descriptors (#Q2658).
     alepha.inject(KnowledgeDashboardMetrics);
     alepha.inject(KnowledgeShell);

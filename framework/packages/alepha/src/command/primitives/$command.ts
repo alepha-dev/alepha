@@ -1,6 +1,7 @@
 import type * as fs from "node:fs/promises";
 import type { glob } from "node:fs/promises";
 
+import type { PrimitiveSide } from "alepha";
 import {
   type Async,
   createPrimitive,
@@ -352,6 +353,11 @@ export class CommandPrimitive<
   A extends ZType = ZType,
   E extends ZObject = ZObject,
 > extends Primitive<CommandPrimitiveOptions<T, A, E>> {
+  /**
+   * `boot` for the pure controller rule: read by CliProvider at run.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   public readonly flags = this.options.flags ?? z.object({});
   public readonly env = this.options.env ?? z.object({});
   public readonly aliases = this.options.aliases ?? [];

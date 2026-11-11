@@ -203,13 +203,15 @@ export interface SecureGuardContext {
  * ```
  */
 export function $secure(options?: SecureOptions): SecureMiddleware {
-  const { alepha } = $context();
+  const { alepha, service } = $context();
   const securityProvider = alepha.inject(SecurityProvider);
 
-  // Register declared permissions at definition time
+  // Register declared permissions at definition time, naming the class that
+  // declares them: the build lists a pure controller's permissions so they
+  // are registered at boot without creating it (#Q3416).
   if (options?.permissions?.length) {
     for (const perm of options.permissions) {
-      securityProvider.createPermission(perm);
+      securityProvider.createPermission(perm, service);
     }
   }
 

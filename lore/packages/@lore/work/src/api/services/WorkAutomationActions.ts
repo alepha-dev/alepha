@@ -5,7 +5,7 @@ import {
   type AutomationMutationState,
 } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $repository, sql } from "alepha/orm";
 import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
@@ -22,14 +22,23 @@ import { QuestService } from "./QuestService.ts";
  * only changes their commit boundary.
  */
 export class WorkAutomationActions {
+  protected readonly alepha = $inject(Alepha);
   protected readonly registry = $inject(AutomationDomainActions);
-  protected readonly api = $inject(QuestController);
   protected readonly quests = $repository(quests);
   protected readonly releases = $repository(releases);
   protected readonly projects = $repository(projects);
   protected readonly edit = $inject(QuestEditAccess);
   protected readonly service = $inject(QuestService);
   protected readonly access = $inject(AutomationAccess);
+
+  /**
+   * Resolved on use, never held as a field: a field would make `QuestController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected api(): QuestController {
+    return this.alepha.inject(QuestController);
+  }
   constructor() {
     for (const kind of ["createQuest", "assignRelease", "addTag"] as const)
       this.registry.register(kind, { prepare: (input) => this.prepare(input) });
@@ -79,7 +88,7 @@ export class WorkAutomationActions {
         target: { table: "quests", mode: "create" },
         result,
         condition: sql`(SELECT COUNT(*) FROM quests WHERE project_id = ${rule.projectId} AND deleted_at IS NULL) < ${cap}`,
-        invoke: () => this.api.createQuest({ body }, { user }),
+        invoke: () => this.api().createQuest({ body }, { user }),
       };
     }
     const quest = await this.quests.getOne({
@@ -119,7 +128,7 @@ export class WorkAutomationActions {
         result,
         condition: sql`EXISTS (SELECT 1 FROM releases WHERE id = ${release.id} AND project_id = ${rule.projectId} AND released_at IS NULL) AND EXISTS (SELECT 1 FROM quests WHERE id = ${quest.id} AND project_id = ${rule.projectId} AND (release_id IS NULL OR release_id = ${release.id}))`,
         invoke: () =>
-          this.api.updateQuestById(
+          this.api().updateQuestById(
             {
               params: { id: quest.id },
               body: { releaseId: release.id, expectedVersion: quest.version },
@@ -140,7 +149,7 @@ export class WorkAutomationActions {
       target,
       result,
       invoke: () =>
-        this.api.updateQuestById(
+        this.api().updateQuestById(
           {
             params: { id: quest.id },
             body: { tags, expectedVersion: quest.version },

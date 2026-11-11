@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   Alepha,
@@ -66,6 +67,11 @@ export class BrowserCookiePrimitive<T extends ZType>
   extends Primitive<CookiePrimitiveOptions<T>>
   implements AbstractCookiePrimitive<T>
 {
+  /**
+   * `boot` for the pure controller rule: a keyed cookie registers listeners at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected cookieParser = $inject(CookieParser);
   protected alepha = $inject(Alepha);
   protected dateTimeProvider = $inject(DateTimeProvider);

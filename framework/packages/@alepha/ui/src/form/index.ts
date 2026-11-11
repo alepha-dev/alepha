@@ -55,6 +55,11 @@ export {
   useFormFieldA11y,
 } from "./FormField.tsx";
 export {
+  FORM_FIELD_DESCRIPTION_INLINE_MAX,
+  FormFieldDescriptionTip,
+  type FormFieldDescriptionTipProps,
+} from "./FormFieldDescriptionTip.tsx";
+export {
   FormFieldAutoSaveProvider,
   type FormFieldAutoSaveProviderProps,
   useFormFieldAutoSave,

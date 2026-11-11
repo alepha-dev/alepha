@@ -6,12 +6,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
+  useToast,
 } from "@alepha/ui";
+import { Control } from "@alepha/ui/form";
 import type { I18n } from "@lore/core/web";
+import { z } from "alepha";
+import { useFieldValue, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { type FormEvent, useState } from "react";
 
 export interface FolioPassphraseDialogProps {
   open: boolean;
@@ -26,9 +27,9 @@ export interface FolioPassphraseDialogProps {
    */
   requireConfirm?: boolean;
   /**
-   * Perform the crypto + persistence. Return an error message to surface
-   * inside the dialog (e.g. "wrong passphrase"), or `null` on success —
-   * the dialog then resets and closes itself.
+   * Perform the crypto + persistence. Return an error message, toasted
+   * while the dialog stays open (e.g. "wrong passphrase"), or `null` on
+   * success: the dialog then resets and closes itself.
    *
    * The passphrase is the only thing handed up; all crypto lives in the
    * caller so this component stays a dumb modal form.
@@ -46,47 +47,49 @@ export interface FolioPassphraseDialogProps {
  *
  * The plaintext passphrase never leaves this component except through the
  * `onSubmit` callback; it is cleared from state on close.
+ *
+ * The fields are `@alepha/ui`'s password `Control`, with the show/hide eye
+ * (#Q3422). A mismatch, a weak passphrase or a refused one is an error toast
+ * (#Q3421), where it was a small red line under the form, easy to miss; the
+ * dialog stays open so the reader can try again.
  */
 const FolioPassphraseDialog = (props: FolioPassphraseDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const [passphrase, setPassphrase] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [working, setWorking] = useState(false);
+  const toast = useToast();
 
-  const close = () => {
-    setPassphrase("");
-    setConfirm("");
-    setError(null);
-    setWorking(false);
-    props.onOpenChange(false);
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!passphrase) return;
-    if (props.requireConfirm) {
-      if (passphrase !== confirm) {
-        setError(tr("folios.protected.passphrase-mismatch"));
-        return;
+  const form = useForm({
+    schema: z.object({
+      passphrase: z.string(),
+      confirm: z.string().optional(),
+    }),
+    initialValues: { passphrase: "", confirm: "" },
+    handler: async ({ passphrase, confirm }) => {
+      if (!passphrase) return;
+      if (props.requireConfirm) {
+        if (passphrase !== confirm) {
+          toast.error(tr("folios.protected.passphrase-mismatch"));
+          return;
+        }
+        if (passphrase.length < 8) {
+          toast.error(tr("folios.protected.passphrase-weak"));
+          return;
+        }
       }
-      if (passphrase.length < 8) {
-        setError(tr("folios.protected.passphrase-weak"));
-        return;
-      }
-    }
-    setWorking(true);
-    setError(null);
-    try {
       const err = await props.onSubmit(passphrase);
       if (err) {
-        setError(err);
+        toast.error(err);
         return;
       }
       close();
-    } finally {
-      setWorking(false);
-    }
+    },
+  });
+  const state = useFormState(form);
+  const [passphraseValue] = useFieldValue(form.input.passphrase);
+  const passphrase = (passphraseValue as string | undefined) ?? "";
+
+  const close = () => {
+    form.reset();
+    props.onOpenChange(false);
   };
 
   return (
@@ -103,50 +106,33 @@ const FolioPassphraseDialog = (props: FolioPassphraseDialogProps) => {
             <DialogDescription>{props.description}</DialogDescription>
           )}
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="folio-passphrase-dialog" className="text-xs">
-              {tr("folios.protected.passphrase")}
-            </Label>
-            <Input
-              id="folio-passphrase-dialog"
-              type="password"
-              autoComplete={props.requireConfirm ? "new-password" : "off"}
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.currentTarget.value)}
-              disabled={working}
-            />
-          </div>
+        <form {...form.props} className="flex flex-col gap-3">
+          <Control
+            input={form.input.passphrase}
+            password
+            label={tr("folios.protected.passphrase")}
+            autoComplete={props.requireConfirm ? "new-password" : "off"}
+            disabled={state.loading}
+          />
           {props.requireConfirm && (
             <>
-              <div className="flex flex-col gap-1">
-                <Label
-                  htmlFor="folio-passphrase-dialog-confirm"
-                  className="text-xs"
-                >
-                  {tr("folios.protected.passphrase-confirm")}
-                </Label>
-                <Input
-                  id="folio-passphrase-dialog-confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.currentTarget.value)}
-                  disabled={working}
-                />
-              </div>
+              <Control
+                input={form.input.confirm}
+                password
+                label={tr("folios.protected.passphrase-confirm")}
+                autoComplete="new-password"
+                disabled={state.loading}
+              />
               <p className="text-muted-foreground text-xs italic">
                 {tr("folios.protected.create-warning")}
               </p>
             </>
           )}
-          {error && (
-            <p className="text-danger-text text-xs" role="alert">
-              {error}
-            </p>
-          )}
           <DialogFooter>
-            <Button type="submit" disabled={working || passphrase.length === 0}>
+            <Button
+              type="submit"
+              disabled={state.loading || passphrase.length === 0}
+            >
               {props.submitLabel}
             </Button>
           </DialogFooter>

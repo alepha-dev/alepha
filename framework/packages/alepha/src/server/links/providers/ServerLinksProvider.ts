@@ -5,6 +5,7 @@ import {
   $inject,
   $store,
   Alepha,
+  AlephaError,
   MIDDLEWARE_PROTECTED,
   type MiddlewareMetadata,
   TimeoutError,
@@ -26,6 +27,7 @@ import {
   HttpError,
   type ClientRequestOptions,
   type RequestConfigSchema,
+  ServerSurfaceProvider,
   ServerTimingProvider,
   serverApiOptions,
 } from "alepha/server";
@@ -35,6 +37,12 @@ import { type HttpClientLink, LinkProvider } from "./LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./RemotePrimitiveProvider.ts";
 
 export class ServerLinksProvider {
+  /**
+   * Stable id, so a container loaded in another module graph (the build's)
+   * can reach this provider by name.
+   */
+  public static readonly id: string = "alepha.server.links.ServerLinksProvider";
+
   protected readonly serverApi = $store(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly linkProvider = $inject(LinkProvider);
@@ -93,6 +101,44 @@ export class ServerLinksProvider {
             options: ClientRequestOptions = {},
           ) => action.run(config, options),
         });
+      }
+
+      // The actions of classes declared and not created yet (#Q3403), from
+      // the build list: the same row, `secured` included, so `/api/_links`
+      // answers without creating them. The local handler creates the class
+      // on its first call; the schema is read, creating it, only when the
+      // schemas endpoint asks.
+      const surface = this.alepha.inject(ServerSurfaceProvider);
+      for (const { action: row } of surface.declaredActions()) {
+        if (row.kind === "sse") {
+          continue;
+        }
+        const link: Record<string, unknown> = {
+          name: row.name,
+          group: row.group,
+          contentType: row.contentType,
+          secured: row.secured,
+          method: row.method === "GET" ? undefined : row.method,
+          prefix: this.prefix,
+          path: row.path,
+          handler: (
+            config: ClientRequestEntry<RequestConfigSchema>,
+            options: ClientRequestOptions = {},
+          ) => {
+            const action = surface.resolveAction(row);
+            if (!action) {
+              throw new AlephaError(
+                `Action '${row.name}' is listed but its class registered no such action`,
+              );
+            }
+            return action.run(config, options);
+          },
+        };
+        Object.defineProperty(link, "schema", {
+          enumerable: true,
+          get: () => surface.resolveAction(row)?.options.schema,
+        });
+        this.linkProvider.registerLink(link as any);
       }
 
       // convert all $sse to local links
@@ -684,7 +730,7 @@ export class ServerLinksProvider {
    * any caller who may see the action, and another middleware declaring the
    * flag must not publish whatever else its options hold.
    */
-  protected securedOptions(
+  public securedOptions(
     middlewares: MiddlewareMetadata[],
   ): boolean | SecureOptions | undefined {
     const guard = middlewares.find(

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   AlephaError,
   createPrimitive,
@@ -263,6 +264,11 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
 export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
   TopicPrimitiveOptions<T>
 > {
+  /**
+   * `boot` for the pure controller rule: read by TopicProvider at start.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   public readonly provider = this.$provider();
   protected readonly log = $logger();
 

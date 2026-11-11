@@ -1,7 +1,7 @@
 import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { QuestResource } from "../../../../../../api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "../../../../atoms/currentAreasAtom.ts";
@@ -11,6 +11,7 @@ import QuestlineDialog from "./QuestlineDialog.tsx";
 import { QuestlineLayout, type QuestlineNode } from "./questlineLayout.ts";
 import QuestlineStatBar from "./QuestlineStatBar.tsx";
 import QuestlineTrack from "./QuestlineTrack.tsx";
+import { useGraphFullscreen } from "./useGraphFullscreen.ts";
 import { useQuestlineViewport } from "./useQuestlineViewport.ts";
 
 export interface QuestlineProps {
@@ -41,6 +42,8 @@ const Questline = (props: QuestlineProps) => {
   const [areas] = useStore(currentAreasAtom);
   const [open, setOpen] = useState<QuestlineNode<QuestResource> | null>(null);
   const viewport = useQuestlineViewport();
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useGraphFullscreen(fullscreenRef);
 
   // The dialog mounts `QuestView` behind a chunk boundary, and it opens on a
   // click. Warm it while the map is being read so the click lands on a chunk
@@ -83,7 +86,12 @@ const Questline = (props: QuestlineProps) => {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // The root is what full screen fills (#Q3450): bar and board together,
+    // on the page's background rather than the browser's black.
+    <div
+      ref={fullscreenRef}
+      className="bg-background flex min-h-0 flex-1 flex-col"
+    >
       <QuestlineStatBar
         tracks={tracks}
         areaColor={areaColor}
@@ -93,6 +101,7 @@ const Questline = (props: QuestlineProps) => {
           onZoomOut: viewport.zoomOut,
           onReset: viewport.reset,
         }}
+        fullscreen={fullscreen}
       />
 
       {/* `overflow-clip`, not `overflow-hidden`: hidden is still a scroll
