@@ -19,6 +19,7 @@ import type { AutomationController } from "../../../../../api/controllers/Automa
 import type { AutomationPresetDescriptor } from "../../../../../api/schemas/automationPresetDescriptorSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationPresetSetup from "./AutomationPresetSetup.tsx";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
@@ -32,6 +33,8 @@ const AutomationGalleryPage = () => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
   const { tr } = useI18n<I18n, "en">();
+  // The trail ends with this page (#Q3408).
+  usePageCrumb("projectAutomationGallery", tr("automation.new"));
   const labels = useAutomationLabels();
   const [selected, setSelected] = useState<AutomationPresetDescriptor>();
   const catalogue = useQuery(

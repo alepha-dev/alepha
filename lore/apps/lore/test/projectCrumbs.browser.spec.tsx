@@ -1,10 +1,17 @@
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n, ProjectShellRegistry } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  I18n,
+  pageCrumbAtom,
+  ProjectShellRegistry,
+  ProjectTrail,
+} from "@lore/core/web";
 import { currentEstateAtom, DeployShell } from "@lore/deploy/web";
 import { currentAreaAtom, WorkShell } from "@lore/work/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { ReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";
 
 /**
@@ -15,12 +22,25 @@ import { describe, it } from "vitest";
  * (Project > section) comes from `ProjectView`; these are the leaves the
  * modules contribute, read the way `ProjectView` reads them.
  */
+/**
+ * Paths without a route table: the trail's labels are what these specs read.
+ */
+class PathRouter extends ReactRouter<any> {
+  public override path(name: string): any {
+    return `/${name}`;
+  }
+}
+
 describe("the leaf crumb of a detail page", () => {
   const setup = async () => {
-    const alepha = Alepha.create().with(AlephaLogger).with(AlephaReactI18n);
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaReactI18n)
+      .with({ provide: ReactRouter, use: PathRouter });
     alepha.inject(I18n);
     alepha.inject(WorkShell);
     alepha.inject(DeployShell);
+    alepha.inject(ProjectTrail);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
@@ -96,5 +116,48 @@ describe("the leaf crumb of a detail page", () => {
     ]);
     // Nothing leaks onto the list it belongs to.
     expect(leaves("projectSettingsAreas")).toEqual([]);
+  });
+
+  it("the title is the trail the breadcrumb draws, joined", async ({
+    expect,
+  }) => {
+    const { alepha } = await setup();
+    alepha.store.set(currentAreaAtom, {
+      id: 3,
+      projectId: 7,
+      name: "alepha/api/users",
+      description: "",
+      createdAt: "2026-09-01T10:00:00.000Z",
+      updatedAt: "2026-09-01T10:00:00.000Z",
+      questCount: 0,
+      openQuestCount: 0,
+    });
+    const trail = alepha.inject(ProjectTrail);
+
+    const crumbs = trail.crumbs("projectSettingsArea", { areaId: "3" });
+
+    expect(crumbs[0]).toEqual({ label: "MCS", href: "/project" });
+    expect(crumbs.at(-1)).toEqual({ label: "alepha/api/users" });
+    expect(trail.title("projectSettingsArea", { areaId: "3" })).toBe(
+      crumbs.map((crumb) => crumb.label).join(" › "),
+    );
+  });
+
+  it("a leaf a page names for itself lands on that page only", async ({
+    expect,
+  }) => {
+    const { alepha } = await setup();
+    const trail = alepha.inject(ProjectTrail);
+    alepha.store.set(pageCrumbAtom, {
+      routeName: "projectAutomationDetail",
+      label: "Notify on deploy",
+    });
+
+    expect(trail.title("projectAutomationDetail", {})).toMatch(
+      / › Notify on deploy$/,
+    );
+    expect(trail.title("projectAutomations", {})).not.toContain(
+      "Notify on deploy",
+    );
   });
 });

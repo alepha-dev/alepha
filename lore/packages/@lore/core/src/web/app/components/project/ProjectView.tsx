@@ -1,13 +1,17 @@
 import { AppShell, type NavGroup } from "@alepha/ui/shell";
 import { useAlepha, useInject, useStore } from "alepha/react";
+import { useHead } from "alepha/react/head";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { Cog } from "lucide-react";
+import { useEffect } from "react";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { pageCrumbAtom } from "../../atoms/pageCrumbAtom.ts";
 import { projectCreateOpenAtom } from "../../atoms/projectCreateOpenAtom.ts";
 import { ProjectShellRegistry } from "../../registries/ProjectShellRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { ProjectTrail } from "../../services/ProjectTrail.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
@@ -24,11 +28,7 @@ import ProjectInboxButton from "./ProjectInboxButton.tsx";
 import ProjectRail from "./ProjectRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
-import {
-  ROUTES_FULL_WIDTH,
-  SECTION_HREF_ROUTES,
-  SECTION_LABEL_KEYS,
-} from "./projectViewRoutes.ts";
+import { ROUTES_FULL_WIDTH } from "./projectViewRoutes.ts";
 import { visibleSettingsTabs } from "./settings/projectSettingsSections.ts";
 
 const ProjectView = () => {
@@ -39,6 +39,7 @@ const ProjectView = () => {
   const router = useRouter<any>();
   const alepha = useAlepha();
   const shell = useInject(ProjectShellRegistry);
+  const trail = useInject(ProjectTrail);
   const { tr } = useI18n<I18n, "en">();
   const name = routerState.name ?? "";
   const aside = shell.asideFor(name);
@@ -50,6 +51,16 @@ const ProjectView = () => {
   // subscribed to once: the registered functions read them through
   // `context.get`, never through a hook (#E75, #Q2624).
   useAtomsVersion(shell.reads());
+  // A leaf a page names once its own read answers (`usePageCrumb`), and the
+  // title that follows it. The head computed the title at the end of the
+  // navigation (`ProjectRouter.trailTitle`); a leaf landing after that
+  // re-applies it here, from the same trail.
+  useStore(pageCrumbAtom);
+  const [, setHead] = useHead();
+  const title = project ? trail.title(name, routerState.params) : undefined;
+  useEffect(() => {
+    if (title) setHead({ title });
+  }, [title, setHead]);
 
   if (!project) {
     return null;
@@ -185,42 +196,9 @@ const ProjectView = () => {
     settingsItem,
   );
 
-  const breadcrumbs: { label: string; href?: string }[] = [
-    {
-      label: project.title,
-      href: router.path("project", { params: { projectSlug } }),
-    },
-  ];
-  // Kanban is a view of `projectQuests`, not its own section anymore
-  // (Task 8) — the breadcrumb reads "Quests" whichever view is active,
-  // same as the sidebar's single Quests entry.
-  const sectionKey = SECTION_LABEL_KEYS[name];
-  if (sectionKey) {
-    const sectionRoute = SECTION_HREF_ROUTES[name];
-    const sectionHref = sectionRoute
-      ? router.path(sectionRoute, { params: { projectSlug } })
-      : undefined;
-    breadcrumbs.push({
-      label: tr(sectionKey),
-      href: sectionHref,
-    });
-  }
-  // A settings page adds its section, "Project › Settings › Quests", since
-  // the sidebar group is now the only other thing naming it (#Q2565).
-  if (activeSettings) {
-    breadcrumbs.push({ label: tr(activeSettings.section.labelKey) });
-  }
-  // A detail page's own leaf (an instance, `#2`, `#1208`, a release tag,
-  // `#F12`), each contributed by the module that owns the page.
-  for (const contribution of shell.crumbContributions()) {
-    const crumb = contribution.crumb({
-      ...context,
-      projectSlug,
-      path: (route, params) =>
-        router.path(route, { params: { projectSlug, ...params } }),
-    });
-    if (crumb) breadcrumbs.push(crumb);
-  }
+  // The trail is `ProjectTrail`'s, which the document title reads too
+  // (#Q3408): one computation, so the header and the tab cannot disagree.
+  const breadcrumbs = trail.crumbs(name, routerState.params);
 
   return (
     <>
