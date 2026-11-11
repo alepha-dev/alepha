@@ -1,18 +1,15 @@
-import { Button } from "@alepha/ui";
 import { useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
-import { LogIn, Sparkles } from "lucide-react";
+import { useRouter } from "alepha/react/router";
 import { useEffect } from "react";
 
 import type { HomeBoardResource } from "../../../../api/schemas/homeBoardSchema.ts";
 import { realmSettingsAtom } from "../../atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import PageHeader from "../shared/header/PageHeader.tsx";
-import LoreLogo from "../shared/LoreLogo.tsx";
 import HomeBoard from "./HomeBoard.tsx";
+import HomeWelcome from "./HomeWelcome.tsx";
 
 export interface HomeProps {
   /**
@@ -91,136 +88,31 @@ const Home = (props: HomeProps) => {
   }
 
   return (
-    <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-y-auto">
-      <PageHeader showHome={false} />
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
-        <Hero
-          createPath={createPath}
-          // Dropped when the primary button IS sign in: two links to the same
-          // page, one of them asking whether you are already registered, only
-          // reads as a mistake.
-          loginPath={auth.user || !registrationAllowed ? undefined : loginPath}
-          welcomeTitle={tr("home.title")}
-          subtitle={tr("home.subtitle")}
-          createLabel={
-            registrationAllowed || auth.user
-              ? tr("home.start-first-project")
-              : tr("home.sign-in")
-          }
-          note={
-            registrationAllowed || auth.user
-              ? undefined
-              : tr("home.registration-closed")
-          }
-          // Sparkles is "make something new". A sign-in button that wears it
-          // promises the wrong thing.
-          createIcon={registrationAllowed || auth.user ? "create" : "signIn"}
-          alreadyRegistered={tr("home.already-registered")}
-          createDisabled={createDisabled}
-          createDisabledLabel={
-            createDisabled && maxProjects
-              ? tr("home.create-project.max", {
-                  args: [String(maxProjects)],
-                })
-              : undefined
-          }
-        />
-      </div>
-    </div>
+    <HomeWelcome
+      cta={{
+        createPath,
+        // Dropped when the primary button IS sign in: two links to the same
+        // page, one of them asking whether you are already registered, only
+        // reads as a mistake.
+        loginPath: auth.user || !registrationAllowed ? undefined : loginPath,
+        createLabel:
+          registrationAllowed || auth.user
+            ? tr("home.start-first-project")
+            : tr("home.sign-in"),
+        note:
+          registrationAllowed || auth.user
+            ? undefined
+            : tr("home.registration-closed"),
+        createIcon: registrationAllowed || auth.user ? "create" : "signIn",
+        alreadyRegistered: tr("home.already-registered"),
+        createDisabled,
+        createDisabledLabel:
+          createDisabled && maxProjects
+            ? tr("home.create-project.max", { args: [String(maxProjects)] })
+            : undefined,
+      }}
+    />
   );
 };
 
 export default Home;
-
-/* ────────────────────────────────────────────────────────────────────────
- * Hero
- * ──────────────────────────────────────────────────────────────────────── */
-
-interface HeroProps {
-  createPath: string;
-  loginPath?: string;
-  welcomeTitle: string;
-  subtitle: string;
-  createLabel: string;
-  createIcon?: "create" | "signIn";
-  /**
-   * A line under the button, explaining a state the button cannot. Today
-   * that is only "signups are closed": without it, a hero whose call to
-   * action quietly became Sign in looks like a page that lost a button.
-   */
-  note?: string | number;
-  alreadyRegistered: string;
-  createDisabled?: boolean;
-  createDisabledLabel?: string;
-}
-
-const Hero = (props: HeroProps) => {
-  const greeting = props.welcomeTitle;
-  const CtaIcon = props.createIcon === "signIn" ? LogIn : Sparkles;
-
-  return (
-    <div className="flex flex-col items-center gap-6 md:flex-row md:items-center md:gap-10">
-      <div className="flex shrink-0 items-center justify-center p-4">
-        <img
-          src="/lore-start.webp"
-          alt="Lore"
-          className="size-48 object-contain md:size-56 dark:hidden"
-        />
-        <img
-          src="/lore-start-light.webp"
-          alt="Lore"
-          className="hidden size-48 object-contain md:size-56 dark:block"
-        />
-      </div>
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <LoreLogo size={28} className="animate-floating size-7" />
-          <span className="text-muted-foreground text-xs tracking-widest uppercase">
-            Alepha Lore
-          </span>
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-          {greeting}
-        </h1>
-        <p className="text-muted-foreground max-w-xl text-base">
-          {props.subtitle}
-        </p>
-        <div className="mt-2 flex flex-col items-start gap-2">
-          {props.createDisabled ? (
-            <Button size="lg" disabled className="h-12 px-12 text-base">
-              <CtaIcon className="size-5" />
-              {props.createLabel}
-            </Button>
-          ) : (
-            <Button
-              href={props.createPath}
-              size="lg"
-              className="h-12 px-12 text-base"
-            >
-              <CtaIcon className="size-5" />
-              {props.createLabel}
-            </Button>
-          )}
-          {props.createDisabled && props.createDisabledLabel && (
-            <span className="text-muted-foreground text-xs">
-              {props.createDisabledLabel}
-            </span>
-          )}
-          {props.note && (
-            <span className="text-muted-foreground max-w-md text-xs">
-              {props.note}
-            </span>
-          )}
-          {props.loginPath && (
-            <Link
-              href={props.loginPath}
-              className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
-            >
-              {props.alreadyRegistered}
-            </Link>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};

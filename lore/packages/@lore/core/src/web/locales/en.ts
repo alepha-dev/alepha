@@ -189,8 +189,27 @@ export default {
 
   "home.nav": "Home",
   "home.title": "Welcome",
-  "home.subtitle":
-    "Plan your work as quests, invite the people working on them, and keep the decisions and the notes that go with it in one place.",
+  "home.welcome.title": "Time to make great things",
+  "home.welcome.subtitle":
+    "Plan the work, remember the decisions, ship the apps. One place for the people who build it.",
+  "home.pillar.plan.title": "Plan",
+  "home.pillar.plan.description":
+    "The work ahead, grouped into epics and releases, on a board and a roadmap.",
+  "home.pillar.remember.title": "Remember",
+  "home.pillar.remember.description":
+    "A wiki of linked notes that keeps the decisions and the reasons behind them.",
+  "home.pillar.ship.title": "Ship",
+  "home.pillar.ship.description":
+    "Deploy your apps, then follow their errors, vitals and uptime.",
+  "home.feature.agents.title": "Agents",
+  "home.feature.agents.description":
+    "Your AI agents work in Lore over MCP and the CLI, with your permissions.",
+  "home.feature.automations.title": "Automations",
+  "home.feature.automations.description":
+    "Rules that act when something happens, or on a schedule.",
+  "home.feature.selfHost.title": "Self-hosting",
+  "home.feature.selfHost.description":
+    "Open source, and runs anywhere from one Docker image.",
   "home.create-project": "New Project",
   "home.create-project.max": "Limit reached ($1)",
   "project.create.limit.title": "You have reached the project limit",

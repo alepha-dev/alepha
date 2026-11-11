@@ -196,8 +196,27 @@ export default {
 
   "home.nav": "Accueil",
   "home.title": "Bienvenue dans l’aventure Lore",
-  "home.subtitle":
-    "Organisez votre travail sous forme de quêtes, invitez les personnes qui y participent, et gardez au même endroit les décisions et les notes qui vont avec.",
+  "home.welcome.title": "Il est temps de créer de grandes choses",
+  "home.welcome.subtitle":
+    "Planifiez le travail, gardez les décisions, livrez les applications. Un seul endroit pour celles et ceux qui le construisent.",
+  "home.pillar.plan.title": "Planifier",
+  "home.pillar.plan.description":
+    "Le travail à venir, réparti en épopées et en versions, sur un tableau et une feuille de route.",
+  "home.pillar.remember.title": "Se souvenir",
+  "home.pillar.remember.description":
+    "Un wiki de notes reliées, qui garde les décisions et leurs raisons.",
+  "home.pillar.ship.title": "Livrer",
+  "home.pillar.ship.description":
+    "Déployez vos applications, puis suivez leurs erreurs, leurs performances et leur disponibilité.",
+  "home.feature.agents.title": "Agents",
+  "home.feature.agents.description":
+    "Vos agents IA travaillent dans Lore via MCP et la CLI, avec vos permissions.",
+  "home.feature.automations.title": "Automatisations",
+  "home.feature.automations.description":
+    "Des règles qui agissent sur un événement, ou selon un calendrier.",
+  "home.feature.selfHost.title": "Auto-hébergement",
+  "home.feature.selfHost.description":
+    "Open source, et tourne partout à partir d’une seule image Docker.",
   "home.create-project": "Lancer un nouveau projet",
   "home.create-project.max": "Limite atteinte ($1)",
   "project.create.limit.title": "Vous avez atteint la limite de projets",
