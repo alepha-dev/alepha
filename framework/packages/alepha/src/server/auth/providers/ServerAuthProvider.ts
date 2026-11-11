@@ -43,6 +43,7 @@ import {
   $auth,
   type AccessToken,
   type AuthPrimitive,
+  type OAuthClientConfiguration,
   type WithSecondFactorFn,
 } from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
@@ -1187,7 +1188,7 @@ export class ServerAuthProvider {
    * token. A failure is logged and never blocks the logout.
    */
   protected async revokeTokens(
-    oauth: Configuration,
+    oauth: OAuthClientConfiguration,
     tokens: Tokens,
     provider: string,
   ): Promise<void> {
@@ -1199,7 +1200,7 @@ export class ServerAuthProvider {
       return;
     }
     try {
-      await tokenRevocation(oauth, token, {
+      await tokenRevocation(oauth as Configuration, token, {
         token_type_hint: tokens.refresh_token
           ? "refresh_token"
           : "access_token",
