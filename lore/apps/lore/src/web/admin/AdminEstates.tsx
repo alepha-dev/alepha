@@ -7,11 +7,14 @@ import {
 } from "@alepha/ui/table";
 import type { AdminEstateController } from "@lore/deploy/api";
 import type { AdminEstateResource } from "@lore/deploy/schemas";
+import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Trash2 } from "lucide-react";
-import { useCallback } from "react";
+import { FolderInput, Home, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+
+import AdminEstateAssignDialog from "./AdminEstateAssignDialog.tsx";
 
 /**
  * Instance-wide estates list, mounted into the shared admin shell by
@@ -35,7 +38,17 @@ export const AdminEstates = () => {
       placeholder: "Search estates…",
       control: { inputProps: { "aria-label": "Search estates by slug" } },
     },
+    // The estates the migration could not place (#E126): the ones to assign.
+    home: {
+      schema: z.array(z.string()),
+      label: "Home",
+      icon: Home,
+      items: [{ value: "none", label: "No home" }],
+      control: { clearLabel: "Any home" },
+    },
   } satisfies DataTableFilterFields;
+  const [assigning, setAssigning] = useState<AdminEstateResource>();
+  const refreshRef = useRef<() => void>(() => {});
 
   const fetcher = useCallback(
     async (params: {
@@ -50,6 +63,7 @@ export const AdminEstates = () => {
           size: params.size,
           sort: params.sort,
           search: params.filters?.search || undefined,
+          ...(params.filters?.home?.includes("none") ? { homeless: true } : {}),
         },
       });
     },
@@ -81,6 +95,17 @@ export const AdminEstates = () => {
         fetch={fetcher}
         filters={{ fields: filterFields }}
         rowActions={(estate) => [
+          {
+            label: "Assign to project",
+            icon: FolderInput,
+            onClick: (
+              _estate: AdminEstateResource,
+              { refresh }: { refresh: () => void },
+            ) => {
+              refreshRef.current = refresh;
+              setAssigning(estate);
+            },
+          },
           {
             label: "Delete estate",
             icon: Trash2,
@@ -197,6 +222,14 @@ export const AdminEstates = () => {
             ),
           },
         }}
+      />
+      <AdminEstateAssignDialog
+        key={assigning?.id ?? "none"}
+        estate={assigning}
+        onOpenChange={(open) => {
+          if (!open) setAssigning(undefined);
+        }}
+        onAssigned={() => refreshRef.current()}
       />
     </AdminPage>
   );

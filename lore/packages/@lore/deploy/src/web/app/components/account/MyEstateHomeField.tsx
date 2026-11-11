@@ -61,7 +61,7 @@ const MyEstateHomeField = (props: MyEstateHomeFieldProps) => {
         value: String(project.id),
         label: project.title,
       }))}
-      data-testid="estate-create-project"
+      inputProps={{ "data-testid": "estate-create-project" }}
     />
   );
 };

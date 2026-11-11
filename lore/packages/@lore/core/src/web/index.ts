@@ -220,6 +220,11 @@ export {
   renderPromptTemplate,
 } from "./app/prompts/renderPromptTemplate.ts";
 export { AccountDeletionRegistry } from "./app/registries/AccountDeletionRegistry.ts";
+export {
+  type ProjectBlocker,
+  type ProjectBlockedAct,
+  ProjectBlockerRegistry,
+} from "./app/registries/ProjectBlockerRegistry.ts";
 export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
 export {
   type DashboardPickerContext,

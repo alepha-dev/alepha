@@ -101,6 +101,26 @@ const BayLayout = () => {
             <Badge variant={estate.online ? "default" : "outline"}>
               {estate.online ? tr("estates.online") : tr("estates.offline")}
             </Badge>
+            {/* The home project, whose members manage the estate (#E126). */}
+            {estate.project && (
+              <span
+                className="text-muted-foreground text-sm"
+                data-testid="bay-home"
+              >
+                {estate.project.slug ? (
+                  <Link
+                    href={router.path("projectSettingsEstates", {
+                      params: { projectSlug: estate.project.slug },
+                    })}
+                    className="hover:text-foreground underline-offset-4 hover:underline"
+                  >
+                    {tr("bay.home", { args: [estate.project.title] })}
+                  </Link>
+                ) : (
+                  tr("bay.home", { args: [estate.project.title] })
+                )}
+              </span>
+            )}
           </div>
         </div>
       }

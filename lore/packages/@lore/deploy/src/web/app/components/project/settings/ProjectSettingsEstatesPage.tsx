@@ -25,8 +25,10 @@ import type {
   LentEstateResource,
   ProjectEstateController,
 } from "../../../../../api/controllers/ProjectEstateController.ts";
+import type { OwnedEstateResource } from "../../../../../api/schemas/ownedEstateResourceSchema.ts";
 import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.tsx";
+import ProjectSettingsHomeEstateRow from "./ProjectSettingsHomeEstateRow.tsx";
 
 /**
  * Where this project can deploy: the estates that have been lent to it.
@@ -72,6 +74,37 @@ const ProjectSettingsEstatesPage = () => {
       onSuccess: (res) => setItems(res.items),
     },
     [api, project?.id],
+  );
+
+  // The estates this project is the home of (#E126), lent here or not: the
+  // ones its members manage. The list above it is what it may deploy onto.
+  const home = useQuery(
+    {
+      enabled: project !== undefined,
+      key: ["project-home-estates", project?.id],
+      handler: () =>
+        api.listHomeEstates({ params: { projectId: project?.id as number } }),
+    },
+    [api, project?.id],
+  );
+  const homeItems = home.data?.items;
+  const lentIds = new Set((items ?? []).map((item) => item.id));
+  const borrowed = (items ?? []).filter((item) => !item.isHome);
+
+  const lendAction = useAction<[estate: OwnedEstateResource], void>(
+    {
+      handler: async (_ctx, estate) => {
+        if (!project) return;
+        const lent = await api.attachEstate({
+          params: { projectId: project.id },
+          body: { estateId: estate.id },
+        });
+        setItems((current) => [lent, ...(current ?? [])]);
+        await home.refetch();
+        toaster.success(tr("estates.toast.attached"));
+      },
+    },
+    [api, project, home, toaster, tr],
   );
 
   const detachAction = useAction<[estate: LentEstateResource], void>(
@@ -151,15 +184,53 @@ const ProjectSettingsEstatesPage = () => {
               )}
             </div>
           </CardContent>
+        </Card>
 
-          {items !== undefined && items.length === 0 && (
+        <span className="mt-4 text-sm" data-testid="home-estates-title">
+          {tr("estates.home.title")}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          {tr("estates.home.description")}
+        </span>
+        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
+          {homeItems !== undefined && homeItems.length === 0 && (
+            <CardContent className="px-4 py-6">
+              <span className="text-muted-foreground text-sm">
+                {tr("estates.home.empty")}
+              </span>
+            </CardContent>
+          )}
+          {(homeItems ?? []).map((estate) => (
+            <ProjectSettingsHomeEstateRow
+              key={estate.id}
+              estate={estate}
+              lentHere={lentIds.has(estate.id)}
+              {...(canLend
+                ? {
+                    onLend: (item: OwnedEstateResource) =>
+                      void lendAction.run(item),
+                  }
+                : {})}
+              busy={lendAction.loading || detachAction.loading}
+            />
+          ))}
+        </Card>
+
+        <span className="mt-4 text-sm" data-testid="borrowed-estates-title">
+          {tr("estates.borrowed.title")}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          {tr("estates.borrowed.description")}
+        </span>
+        <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
+          {items !== undefined && borrowed.length === 0 && (
             <CardContent className="px-4 py-6">
               <span className="text-muted-foreground text-sm">
                 {tr("estates.project.empty")}
               </span>
             </CardContent>
           )}
-          {(items ?? []).map((estate) => (
+          {borrowed.map((estate) => (
             <ProjectSettingsEstateRow
               key={estate.id}
               estate={estate}
@@ -167,7 +238,7 @@ const ProjectSettingsEstatesPage = () => {
               // the estate's home project, which the server sends in `can`.
               canDetach={canLend || estate.can.includes("estate:lend")}
               onDetach={(item) => void detachAction.run(item)}
-              busy={detachAction.loading}
+              busy={detachAction.loading || lendAction.loading}
             />
           ))}
         </Card>
@@ -179,6 +250,8 @@ const ProjectSettingsEstatesPage = () => {
         held={items ?? []}
         onAttached={(estate, secret) => {
           setItems((current) => [estate, ...(current ?? [])]);
+          // A new estate is created here, its home: the group above shows it.
+          void home.refetch();
           if (secret) setFreshSecret(secret);
         }}
       />

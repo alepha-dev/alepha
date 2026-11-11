@@ -21,6 +21,9 @@ import type { ProjectEstateController } from "../../../../api/controllers/Projec
 import type { EstateLoan } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
 import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
 import MyEstateSecretDialog from "../account/MyEstateSecretDialog.tsx";
+import BayMoveDialog from "./BayMoveDialog.tsx";
+import BaySettingsHome from "./BaySettingsHome.tsx";
+import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
 
 /**
  * The switches, the lending and the credential, for one machine.
@@ -58,6 +61,7 @@ const BaySettings = () => {
   const projectEstateApi = useClient<ProjectEstateController>();
   const [estate, setEstate] = useStore(currentEstateAtom);
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
+  const [moving, setMoving] = useState(false);
 
   // One `useAction` per write, the way `MyEstateDrawer` sends the same four
   // (#E59, #Q2329). A refusal is not caught here: the root
@@ -183,6 +187,14 @@ const BaySettings = () => {
     return null;
   }
 
+  // What the reader's rank in the home project lets them do, as the server
+  // computed it (#Q3279). The server is the authority; this decides what to
+  // draw.
+  const canUpdate = estate.can.includes("estate:update");
+  const canDelete = estate.can.includes("estate:delete");
+  const canLend = estate.can.includes("estate:lend");
+  const readOnly = !canUpdate && !canDelete;
+
   const update = updateAction.run;
   const rotate = rotateAction.run;
   const remove = removeAction.run;
@@ -190,79 +202,95 @@ const BaySettings = () => {
 
   return (
     <AccountPage variant="form" className="gap-4">
-      <Card>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="flex flex-col gap-0.5">
-              <span>{tr("account.estates.switch.deploys")}</span>
-              <span className="text-muted-foreground text-xs">
-                {tr("account.estates.switch.deploys.description")}
+      <BaySettingsHome
+        estate={estate}
+        busy={busy}
+        {...(canDelete ? { onMove: () => setMoving(true) } : {})}
+      />
+      {readOnly && (
+        <BaySettingsReadOnly
+          projectTitle={estate.project?.title ?? tr("estates.project.noHome")}
+        />
+      )}
+      {canUpdate && (
+        <Card>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span>{tr("account.estates.switch.deploys")}</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.estates.switch.deploys.description")}
+                </span>
               </span>
-            </span>
-            <Switch
-              checked={estate.deployAllowed}
-              disabled={busy}
-              onCheckedChange={(value) => void update({ deployAllowed: value })}
-              aria-label={tr("account.estates.switch.deploys")}
-              data-testid="bay-settings-deploys"
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="flex flex-col gap-0.5">
-              <span>{tr("account.estates.switch.series")}</span>
-              <span className="text-muted-foreground text-xs">
-                {tr("account.estates.switch.series.description")}
-              </span>
-            </span>
-            <Switch
-              checked={estate.collectSeries}
-              disabled={busy}
-              onCheckedChange={(value) => void update({ collectSeries: value })}
-              aria-label={tr("account.estates.switch.series")}
-              data-testid="bay-settings-series"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="flex flex-col gap-0.5">
-              <span>{tr("account.estates.interval")}</span>
-              <span className="text-muted-foreground text-xs">
-                {tr("account.estates.interval.description")}
-              </span>
-            </span>
-            <div className="flex flex-wrap gap-1" role="group">
-              {INTERVALS.map((seconds) => (
-                <Button
-                  key={seconds}
-                  type="button"
-                  size="sm"
-                  variant={
-                    estate.statsIntervalSeconds === seconds
-                      ? "solid"
-                      : "outlined"
-                  }
-                  disabled={busy}
-                  aria-pressed={estate.statsIntervalSeconds === seconds}
-                  onClick={() => {
-                    if (estate.statsIntervalSeconds !== seconds) {
-                      void update({ statsIntervalSeconds: seconds });
-                    }
-                  }}
-                >
-                  {seconds < 3600
-                    ? tr("account.estates.interval.minutes", {
-                        args: [String(seconds / 60)],
-                      })
-                    : tr("account.estates.interval.hours", {
-                        args: [String(seconds / 3600)],
-                      })}
-                </Button>
-              ))}
+              <Switch
+                checked={estate.deployAllowed}
+                disabled={busy}
+                onCheckedChange={(value) =>
+                  void update({ deployAllowed: value })
+                }
+                aria-label={tr("account.estates.switch.deploys")}
+                data-testid="bay-settings-deploys"
+              />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span>{tr("account.estates.switch.series")}</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.estates.switch.series.description")}
+                </span>
+              </span>
+              <Switch
+                checked={estate.collectSeries}
+                disabled={busy}
+                onCheckedChange={(value) =>
+                  void update({ collectSeries: value })
+                }
+                aria-label={tr("account.estates.switch.series")}
+                data-testid="bay-settings-series"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span>{tr("account.estates.interval")}</span>
+                <span className="text-muted-foreground text-xs">
+                  {tr("account.estates.interval.description")}
+                </span>
+              </span>
+              <div className="flex flex-wrap gap-1" role="group">
+                {INTERVALS.map((seconds) => (
+                  <Button
+                    key={seconds}
+                    type="button"
+                    size="sm"
+                    variant={
+                      estate.statsIntervalSeconds === seconds
+                        ? "solid"
+                        : "outlined"
+                    }
+                    disabled={busy}
+                    aria-pressed={estate.statsIntervalSeconds === seconds}
+                    onClick={() => {
+                      if (estate.statsIntervalSeconds !== seconds) {
+                        void update({ statsIntervalSeconds: seconds });
+                      }
+                    }}
+                  >
+                    {seconds < 3600
+                      ? tr("account.estates.interval.minutes", {
+                          args: [String(seconds / 60)],
+                        })
+                      : tr("account.estates.interval.hours", {
+                          args: [String(seconds / 3600)],
+                        })}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/*
         The projects this estate is lent to (#E68). A table rather than rows in
@@ -317,48 +345,68 @@ const BaySettings = () => {
               ),
             },
           }}
-          rowActions={(loan) => [
-            {
-              label: tr("estates.detach.action"),
-              icon: Unlink,
-              destructive: true,
-              disabled: () => busy,
-              onClick: () => void detach(loan),
-            },
-          ]}
+          rowActions={(loan) =>
+            canLend
+              ? [
+                  {
+                    label: tr("estates.detach.action"),
+                    icon: Unlink,
+                    destructive: true,
+                    disabled: () => busy,
+                    onClick: () => void detach(loan),
+                  },
+                ]
+              : []
+          }
         />
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col gap-3">
-          <p className="text-muted-foreground text-xs">
-            {tr("bay.settings.rotate.warning")}
-          </p>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={busy}
-              onClick={() => void rotate()}
-              data-testid="bay-settings-rotate"
-            >
-              <RefreshCw className="size-4" />
-              {tr("account.estates.rotate")}
-            </Button>
-            <Button
-              variant="outlined"
-              intent="danger"
-              size="sm"
-              disabled={busy}
-              onClick={() => void remove()}
-              data-testid="bay-settings-delete"
-            >
-              <Trash2 className="size-4" />
-              {tr("account.estates.delete")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {(canUpdate || canDelete) && (
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            {canUpdate && (
+              <p className="text-muted-foreground text-xs">
+                {tr("bay.settings.rotate.warning")}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {canUpdate && (
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void rotate()}
+                  data-testid="bay-settings-rotate"
+                >
+                  <RefreshCw className="size-4" />
+                  {tr("account.estates.rotate")}
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="outlined"
+                  intent="danger"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void remove()}
+                  data-testid="bay-settings-delete"
+                >
+                  <Trash2 className="size-4" />
+                  {tr("account.estates.delete")}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <BayMoveDialog
+        open={moving}
+        onOpenChange={setMoving}
+        estate={estate}
+        loans={estate.projects}
+        onMoved={(moved) => setEstate({ ...moved, projects: estate.projects })}
+      />
 
       <MyEstateSecretDialog
         secret={freshSecret}

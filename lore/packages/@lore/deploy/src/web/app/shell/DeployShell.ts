@@ -2,6 +2,7 @@ import {
   ROUTES_APP,
   lazyPart,
   AccountDeletionRegistry,
+  ProjectBlockerRegistry,
   AgentPromptRegistry,
   DashboardPickerRegistry,
   ProjectShellRegistry,
@@ -21,6 +22,7 @@ import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
+import { useHomeEstatesBlocker } from "../components/project/settings/useHomeEstatesBlocker.ts";
 import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
 
 /**
@@ -36,6 +38,7 @@ export class DeployShell {
   protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
+  protected readonly blockers = $inject(ProjectBlockerRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
 
   constructor() {
@@ -253,6 +256,14 @@ export class DeployShell {
       key: "owned-estates",
       order: 20,
       useLine: useOwnedEstatesDeletionLine,
+    });
+
+    // A project that is the home of an estate is not deleted and keeps Apps
+    // (#Q3280); the page says so before the click (#Q3281).
+    this.blockers.register({
+      key: "home-estates",
+      order: 20,
+      useLine: useHomeEstatesBlocker,
     });
 
     this.reports.register({

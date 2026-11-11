@@ -84,6 +84,9 @@ const estate = (over: Record<string, unknown> = {}) => ({
   statsIntervalSeconds: 900,
   secretPrefix: "est_weFZU3NK",
   projects: [],
+  // The home project's owner holds every estate permission (#E126).
+  project: { id: 7, title: "Acme" },
+  can: ["estate:read", "estate:update", "estate:delete", "estate:lend"],
   createdAt: "2026-09-01T10:00:00.000Z",
   updatedAt: "2026-09-01T10:00:00.000Z",
   ...over,

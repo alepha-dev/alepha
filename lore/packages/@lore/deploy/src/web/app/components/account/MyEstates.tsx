@@ -1,11 +1,12 @@
 import { Badge, Button, TimeAgo, useToast } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
-import { DataTable } from "@alepha/ui/table";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import type { I18n } from "@lore/core/web";
+import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Cloud, Plus, Server } from "lucide-react";
+import { Cloud, FolderKanban, Plus, Server } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "../../../../api/controllers/EstateController.ts";
@@ -110,11 +111,41 @@ const MyEstates = () => {
     toaster.success(tr("account.estates.toast.created"));
   };
 
+  // One option per home project the list holds: the estates of several
+  // projects sit on one page since #E126, so the reader can narrow to one.
+  const projectItems = [
+    ...new Map(
+      (items ?? []).flatMap((estate) =>
+        estate.project
+          ? [[String(estate.project.id), estate.project.title] as const]
+          : [],
+      ),
+    ).entries(),
+  ].map(([value, label]) => ({ value, label }));
+  const filterFields = {
+    project: {
+      schema: z.array(z.string()),
+      label: tr("account.estates.filter.project"),
+      icon: FolderKanban,
+      items: projectItems,
+      hidden: projectItems.length <= 1,
+      control: { clearLabel: tr("account.estates.filter.allProjects") },
+    },
+  } satisfies DataTableFilterFields;
+
   return (
     <AccountPage variant="table">
-      <DataTable<OwnedEstateResource>
+      <DataTable<OwnedEstateResource, typeof filterFields>
         className="min-h-0 flex-1"
         data={items ?? []}
+        filters={{ fields: filterFields }}
+        filter={(estate, values) => {
+          const wanted = values.project;
+          return (
+            !wanted?.length ||
+            (!!estate.project && wanted.includes(String(estate.project.id)))
+          );
+        }}
         rowKey={(estate) => estate.id}
         // ⚠️ Two behaviours in one list, stated here rather than left to be
         // discovered: a `bay` row opens its console, which is where its
@@ -158,6 +189,29 @@ const MyEstates = () => {
           description: tr("account.estates.create.description"),
         }}
         columns={{
+          project: {
+            label: tr("account.estates.col.project"),
+            sortable: true,
+            cell: (estate) => (
+              <span
+                className="flex flex-col text-sm"
+                data-testid="my-estate-project"
+              >
+                <span>
+                  {estate.project?.title ?? tr("estates.project.noHome")}
+                </span>
+                {/* A reader who may only look is told so on the row. */}
+                {!estate.can.includes("estate:update") && (
+                  <span
+                    className="text-muted-foreground text-xs"
+                    data-testid="my-estate-readonly"
+                  >
+                    {tr("account.estates.readOnly")}
+                  </span>
+                )}
+              </span>
+            ),
+          },
           type: {
             label: tr("account.estates.col.kind"),
             sortable: true,

@@ -250,6 +250,12 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   const detach = detachAction.run;
   // Page-wide: every control of the drawer waits while any write runs, since
   // `run()` drops a call made while its own is in flight.
+  // What the reader's rank in the home project lets them do, computed by the
+  // server (#Q3279): the controls the rank does not allow stay visible and
+  // say so by being disabled; the server refuses them anyway.
+  const canUpdate = estate?.can.includes("estate:update") ?? false;
+  const canDelete = estate?.can.includes("estate:delete") ?? false;
+  const canLend = estate?.can.includes("estate:lend") ?? false;
   const busy =
     updateAction.loading ||
     rotateAction.loading ||
@@ -361,7 +367,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                 </span>
                 <Switch
                   checked={estate.deployAllowed}
-                  disabled={busy}
+                  disabled={!canUpdate || busy}
                   onCheckedChange={(value) => {
                     void update({ deployAllowed: value });
                   }}
@@ -379,7 +385,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   </span>
                   <Switch
                     checked={estate.collectSeries}
-                    disabled={busy}
+                    disabled={!canUpdate || busy}
                     onCheckedChange={(value) => {
                       void update({ collectSeries: value });
                     }}
@@ -407,7 +413,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                             ? "solid"
                             : "outlined"
                         }
-                        disabled={busy}
+                        disabled={!canUpdate || busy}
                         aria-pressed={estate.statsIntervalSeconds === seconds}
                         onClick={() => {
                           if (estate.statsIntervalSeconds !== seconds) {
@@ -457,7 +463,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                     type="password"
                     autoComplete="off"
                     value={token}
-                    disabled={busy}
+                    disabled={!canUpdate || busy}
                     onChange={(event) => setToken(event.target.value)}
                     placeholder={tr("estates.cloudflare.token.placeholder")}
                     aria-label={tr("estates.credential.replace")}
@@ -494,7 +500,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   <Button
                     variant="outlined"
                     size="sm"
-                    disabled={busy || token.trim().length < 40}
+                    disabled={!canUpdate || busy || token.trim().length < 40}
                     onClick={() => {
                       void replace();
                     }}
@@ -506,7 +512,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   <Button
                     variant="minimal"
                     size="sm"
-                    disabled={busy}
+                    disabled={!canUpdate || busy}
                     onClick={() => {
                       void recheck();
                     }}
@@ -546,7 +552,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   <Button
                     variant="minimal"
                     size="sm"
-                    disabled={busy}
+                    disabled={!canLend || busy}
                     aria-label={tr("estates.detach.action")}
                     onClick={() => {
                       void detach(loan);
@@ -579,7 +585,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                 <Button
                   variant="outlined"
                   size="sm"
-                  disabled={busy}
+                  disabled={!canUpdate || busy}
                   onClick={() => {
                     void rotate();
                   }}
@@ -593,7 +599,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                 variant="outlined"
                 intent="danger"
                 size="sm"
-                disabled={busy}
+                disabled={!canDelete || busy}
                 onClick={() => {
                   void remove();
                 }}

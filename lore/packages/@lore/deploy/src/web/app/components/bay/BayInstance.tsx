@@ -44,6 +44,8 @@ const BayInstance = () => {
   const routerState = useRouterState();
   const { estate, data, refetch } = useBayInventory();
   const [openEstate] = useStore(currentEstateAtom);
+  // Asking for a tail, reading one, and the backup verbs all need
+  // `estate:update` in the home project (#Q3279).
   const canTail = openEstate?.can.includes("estate:update") ?? false;
 
   const app = String(routerState.params?.app ?? "");
@@ -259,7 +261,7 @@ const BayInstance = () => {
         </Card>
       )}
 
-      {reported?.backups && (
+      {reported?.backups && canTail && (
         <BayBackups
           app={app}
           env={env}

@@ -2525,6 +2525,47 @@ export default {
   "bay.settings.rotate.warning":
     "La rotation révoque le secret actuel immédiatement. La machine est refusée à sa prochaine connexion et reste hors ligne jusqu'à ce que vous relanciez `bay connector set` dessus avec le nouveau.",
   "bay.open": "Ouvrir la console",
+  "bay.home": "Appartient à $1",
+  "bay.settings.home":
+    "Appartient à $1, dont les membres le gèrent, chacun selon son rang",
+  "bay.settings.addedBy": "Ajouté par $1",
+  "bay.settings.provisionedBy":
+    "Provisionné par $1, dont le compte cloud détient le serveur",
+  "bay.settings.readOnly":
+    "Vous pouvez consulter ce domaine : ce qui y tourne, les commandes envoyées, son CPU et sa mémoire.",
+  "bay.settings.readOnly.how":
+    "Le modifier demande estate:update dans $1, le déplacer ou le supprimer estate:delete. Le propriétaire du projet les accorde par un rang.",
+  "bay.move.action": "Déplacer vers un autre projet",
+  "bay.move.title": "Déplacer $1 vers un autre projet",
+  "bay.move.project": "Projet",
+  "bay.move.none": "Aucun autre projet où vous pouvez créer un domaine.",
+  "bay.move.taken":
+    "Ce projet a déjà un domaine nommé $1, et un slug ne change jamais.",
+  "bay.move.keeps":
+    "Son slug, sa machine, son secret et ses commandes restent tels quels.",
+  "bay.move.loans": "Toujours prêté à : $1",
+  "bay.move.submit": "Déplacer",
+  "bay.move.toast": "Déplacé vers $1",
+  "bay.move.serverElsewhere":
+    "Le serveur reste dans le compte cloud de la personne qui l'a provisionné, qui n'est pas membre du nouveau projet.",
+  "account.estates.col.project": "Projet",
+  "account.estates.filter.project": "Projet",
+  "account.estates.filter.allProjects": "Tous les projets",
+  "account.estates.readOnly": "Consultation seulement",
+  "estates.home.title": "Domaines de ce projet",
+  "estates.home.description": "Ses membres les gèrent, chacun selon son rang.",
+  "estates.home.empty": "Ce projet n'est le propriétaire d'aucun domaine.",
+  "estates.home.lentHere": "Prêté à ce projet",
+  "estates.home.notLentHere": "Pas prêté à ce projet",
+  "estates.home.lentTo": "prêté à $1 autre(s) projet(s)",
+  "estates.home.lend": "Prêter à ce projet",
+  "estates.borrowed.title": "Domaines prêtés à ce projet",
+  "estates.borrowed.description":
+    "Les domaines d'autres projets sur lesquels celui-ci peut déployer. Leur projet propriétaire les gère.",
+  "estates.blocker.delete":
+    "Ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord, d'autres projets peuvent y déployer.",
+  "estates.blocker.apps":
+    "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
   "bay.back": "Tous les domaines",
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
@@ -2653,9 +2694,9 @@ export default {
   "account.estates.toast.rotated": "Secret changé",
   "account.estates.toast.deleted": "Domaine supprimé",
   "account.delete.estates.one":
-    "1 domaine que vous possédez sera également supprimé et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
+    "1 domaine qui n'appartient à aucun projet est encore rattaché à votre compte : il sera supprimé avec lui et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
   "account.delete.estates.many":
-    "$1 domaines que vous possédez seront également supprimés et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
+    "$1 domaines qui n'appartiennent à aucun projet sont encore rattachés à votre compte : ils seront supprimés avec lui et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
@@ -3525,11 +3566,14 @@ export default {
   "permission.quality.read": "Lire la couverture et les totaux de tests",
   "permission.quality.push": "Enregistrer la couverture et les totaux de tests",
   "permission.group.estate": "Hébergements",
-  "permission.estate.read": "Voir les hébergements prêtés au projet",
-  "permission.estate.update": "Modifier un hébergement",
+  "permission.estate.read":
+    "Voir les hébergements du projet et leur console, et ceux qui lui sont prêtés",
+  "permission.estate.update":
+    "Modifier un hébergement du projet : ses réglages, son secret, son jeton, ses commandes et ses journaux",
   "permission.estate.lend": "Prêter un hébergement au projet, et le reprendre",
-  "permission.estate.create": "Créer un hébergement",
-  "permission.estate.delete": "Supprimer un hébergement",
+  "permission.estate.create": "Ajouter un hébergement au projet",
+  "permission.estate.delete":
+    "Supprimer un hébergement du projet, ou le déplacer vers un autre",
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
