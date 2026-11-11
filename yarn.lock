@@ -8258,6 +8258,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"oidc-example@workspace:framework/apps/examples/oidc":
+  version: 0.0.0-use.local
+  resolution: "oidc-example@workspace:framework/apps/examples/oidc"
+  dependencies:
+    "@playwright/test": "npm:^1.65.0"
+    alepha: "workspace:^"
+    react: "npm:^19.3.1"
+    react-dom: "npm:^19.3.1"
+    vite: "npm:^8.3.7"
+  languageName: unknown
+  linkType: soft
+
 "on-exit-leak-free@npm:^2.1.0":
   version: 2.1.2
   resolution: "on-exit-leak-free@npm:2.1.2"

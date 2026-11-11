@@ -1015,7 +1015,7 @@ export class ServerAuthProvider {
         post_logout_redirect_uri: z.text().optional(),
       }),
     },
-    handler: async ({ query, reply, cookies }) => {
+    handler: async ({ query, reply, cookies, url }) => {
       const redirect = this.validateRedirectUri(
         query.post_logout_redirect_uri ?? "/",
       );
@@ -1057,7 +1057,16 @@ export class ServerAuthProvider {
       const params = new URLSearchParams();
       const idToken = tokens?.id_token;
 
-      params.set("post_logout_redirect_uri", redirect);
+      // The provider redirects the browser itself, so it needs an absolute
+      // URL (OpenID Connect RP-Initiated Logout 1.0, section 2): a relative
+      // one resolves against the provider's origin, and Keycloak refuses it
+      // as unregistered. The same rule as `redirect_uri` on login.
+      params.set(
+        "post_logout_redirect_uri",
+        redirect.startsWith("/")
+          ? `${url.protocol}//${url.host}${redirect}`
+          : redirect,
+      );
       if (idToken) {
         params.set("id_token_hint", idToken);
       }
