@@ -56,11 +56,13 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
    * Records an intent; nothing is written until the handler resolves. Then,
    * in place of the success write, the row goes back to `scheduled` with the
    * new `scheduledAt` and payload, `attempt` reset to 0, the same `id` and
-   * `key`, and is dispatched delayed like a push with `delay`. A stage or
-   * iteration counter in the payload is what turns a multi-step process into
-   * one job switching on `payload.stage`, and a durable loop into a handler
-   * that reschedules itself until its limit.
+   * `key`, and is dispatched delayed like a push with `delay`. It is the
+   * tool for a durable loop over a changing payload (a poll that backs off,
+   * a handler that reschedules itself with `round + 1` until its limit). A
+   * fixed sequence with side effects is {@link JobSteps} instead.
    *
+   * - Every reschedule clears the run's steps: the next pass is a new
+   *   iteration and runs every `step.run` again.
    * - The write is guarded on `running`: a cancel that landed during the
    *   handler wins and the reschedule is dropped.
    * - A handler that throws after calling it takes the retry path on the
