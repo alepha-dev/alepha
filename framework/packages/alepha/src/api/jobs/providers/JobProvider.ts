@@ -931,7 +931,7 @@ export class JobProvider {
         maxAttempts: fields.attempt,
         startedAt: fields.startedAt.toISOString(),
         completedAt: this.dt.nowISOString(),
-        error: fields.error?.message,
+        error: fields.error ? this.rowError(fields.error.message) : undefined,
         logs: this.logBuffer.snapshot(),
         triggeredBy: fields.triggeredBy,
         triggeredByName: fields.triggeredByName,
@@ -1619,8 +1619,12 @@ export class JobProvider {
     const ms = Math.max(0, Math.round(this.dt.nowMillis() - startedMs));
 
     const entry: JobStep = { at: this.dt.nowISOString(), ms };
-    if (result !== undefined) entry.result = result;
+    if (result !== undefined) {
+      this.assertStepResult(registration.name, name, result);
+      entry.result = result;
+    }
     const steps = { ...run.steps, [name]: entry };
+    this.assertStepSizes(registration.name, name, entry, steps);
     await this.writeStep(
       registration,
       executionId,
@@ -1634,6 +1638,92 @@ export class JobProvider {
       executionId,
     });
     return result;
+  }
+
+  /**
+   * Refuse a step result that would not come back the same from the row:
+   * only what JSON keeps structurally is accepted (strings, finite numbers,
+   * booleans, `null`, arrays and plain objects, recursively; a property whose
+   * value is `undefined` is dropped, as JSON drops it). A `Date`, a `Map`, a
+   * class instance, a `bigint` or a non-finite number would hand the first
+   * pass one value and every replay another. Throws inside the handler, so
+   * the run takes its retry path with the reason on the row.
+   */
+  protected assertStepResult(
+    jobName: string,
+    stepName: string,
+    value: unknown,
+    path = "result",
+    seen: Set<object> = new Set(),
+  ): void {
+    const refuse = (what: string): never => {
+      throw new AlephaError(
+        `Job '${jobName}', step '${stepName}': ${path} is ${what}, which a step cannot store. Step results are JSON: return plain objects, arrays, strings, finite numbers, booleans and null (a date as date.toISOString()).`,
+      );
+    };
+    if (value === null) return;
+    switch (typeof value) {
+      case "string":
+      case "boolean":
+        return;
+      case "number":
+        if (!Number.isFinite(value)) refuse(String(value));
+        return;
+      case "bigint":
+        return refuse("a bigint");
+      case "function":
+        return refuse("a function");
+      case "symbol":
+        return refuse("a symbol");
+      case "undefined":
+        return refuse("undefined");
+    }
+    const object = value as object;
+    if (seen.has(object)) refuse("a circular reference");
+    seen.add(object);
+    if (Array.isArray(object)) {
+      object.forEach((item, i) =>
+        this.assertStepResult(jobName, stepName, item, `${path}[${i}]`, seen),
+      );
+    } else {
+      const proto = Object.getPrototypeOf(object);
+      if (proto !== Object.prototype && proto !== null) {
+        refuse(`a ${object.constructor?.name ?? "class instance"}`);
+      }
+      for (const [key, item] of Object.entries(object)) {
+        if (item === undefined) continue;
+        this.assertStepResult(jobName, stepName, item, `${path}.${key}`, seen);
+      }
+    }
+    seen.delete(object);
+  }
+
+  /**
+   * Hold a step's result and the run's whole `steps` record to
+   * `jobConfig.stepResultMaxBytes` and `jobConfig.stepsMaxBytes`.
+   */
+  protected assertStepSizes(
+    jobName: string,
+    stepName: string,
+    entry: JobStep,
+    steps: Record<string, JobStep>,
+  ): void {
+    const bytes = (value: unknown) =>
+      new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    if (entry.result !== undefined) {
+      const size = bytes(entry.result);
+      if (size > this.config.stepResultMaxBytes) {
+        throw new AlephaError(
+          `Job '${jobName}', step '${stepName}': its result is ${size} bytes of JSON, over jobConfig.stepResultMaxBytes (${this.config.stepResultMaxBytes}). Store large data elsewhere and return its id.`,
+        );
+      }
+    }
+    const total = bytes(steps);
+    if (total > this.config.stepsMaxBytes) {
+      throw new AlephaError(
+        `Job '${jobName}', step '${stepName}': the run's steps would be ${total} bytes of JSON, over jobConfig.stepsMaxBytes (${this.config.stepsMaxBytes}). Store large data elsewhere and return its id.`,
+      );
+    }
   }
 
   /**
@@ -2063,7 +2153,10 @@ export class JobProvider {
             }
 
             if (parkAgain) {
-              await this.park(jobName, executionId, parkAgain, fence);
+              // A reschedule is a new iteration: the steps start over, or
+              // every `step.run` of the next pass would return the old
+              // results and do nothing. A wait that keeps them is a sleep.
+              await this.park(jobName, executionId, parkAgain, fence, null);
               return;
             }
 
@@ -2114,7 +2207,7 @@ export class JobProvider {
                   ["running"],
                   {
                     status: "cancelled",
-                    error: err.message,
+                    error: this.rowError(err.message),
                     completedAt: this.dt.nowISOString(),
                     key: null,
                     logs: this.logBuffer.snapshot(),
@@ -2172,7 +2265,7 @@ export class JobProvider {
                   ["running"],
                   {
                     status: "error",
-                    error: err.message,
+                    error: this.rowError(err.message),
                     completedAt: this.dt.nowISOString(),
                     key: null,
                     logs: this.logBuffer.snapshot(),
@@ -2384,7 +2477,7 @@ export class JobProvider {
         ["running"],
         {
           status: "scheduled",
-          error: error.message,
+          error: this.rowError(error.message),
           scheduledAt: nextScheduledAt,
           logs,
         },
@@ -2407,7 +2500,7 @@ export class JobProvider {
           ["running"],
           {
             status: "error",
-            error: error.message,
+            error: this.rowError(error.message),
             completedAt: this.dt.nowISOString(),
             key: null,
             logs,
@@ -3237,6 +3330,23 @@ export class JobProvider {
       signal.reason instanceof AbortedError &&
       this.alepha.context.isAbortError(error, signal)
     );
+  }
+
+  /**
+   * The longest error message the row's `error` column holds: it is a
+   * `z.text()`, which caps there.
+   */
+  protected readonly maxRowErrorLength = 255;
+
+  /**
+   * An error message cut to fit the row. A longer one failed the write that
+   * records the failure, which left the row `running` until the sweep took
+   * it for a crash: the error a reader needed was the one that was lost.
+   */
+  protected rowError(message: string): string {
+    return message.length <= this.maxRowErrorLength
+      ? message
+      : `${message.slice(0, this.maxRowErrorLength - 3)}...`;
   }
 
   protected getRegistration(name: string): JobRuntimeRegistration {
