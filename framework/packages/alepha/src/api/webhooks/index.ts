@@ -8,6 +8,7 @@ import { WebhookEndpointService } from "./services/WebhookEndpointService.ts";
 import { WebhookSecretService } from "./services/WebhookSecretService.ts";
 import { WebhookService } from "./services/WebhookService.ts";
 import { HttpWebhookTransport } from "./transports/HttpWebhookTransport.ts";
+import { MemoryWebhookTransport } from "./transports/MemoryWebhookTransport.ts";
 import { WebhookTransport } from "./transports/WebhookTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -29,6 +30,7 @@ export * from "./services/WebhookEndpointService.ts";
 export * from "./services/WebhookSecretService.ts";
 export * from "./services/WebhookService.ts";
 export * from "./transports/HttpWebhookTransport.ts";
+export * from "./transports/MemoryWebhookTransport.ts";
 export * from "./transports/WebhookTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -93,14 +95,14 @@ export const AlephaApiWebhooks = $module({
     WebhookJobs,
     WebhookService,
   ],
-  variants: [HttpWebhookTransport],
+  variants: [HttpWebhookTransport, MemoryWebhookTransport],
   register: (alepha) => {
     // `optional`: an app (or a spec) that substituted the transport first
-    // keeps its own.
+    // keeps its own. Under test nothing leaves the process by default.
     alepha.with({
       optional: true,
       provide: WebhookTransport,
-      use: HttpWebhookTransport,
+      use: alepha.isTest() ? MemoryWebhookTransport : HttpWebhookTransport,
     });
   },
 });

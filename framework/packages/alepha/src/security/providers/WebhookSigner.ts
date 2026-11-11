@@ -3,11 +3,11 @@ import { AlephaError } from "alepha";
 /**
  * The headers a signed webhook request carries.
  */
-export interface WebhookSignatureHeaders {
+export type WebhookSignatureHeaders = {
   "webhook-id": string;
   "webhook-timestamp": string;
   "webhook-signature": string;
-}
+};
 
 /**
  * Signs webhook requests the Standard Webhooks way
