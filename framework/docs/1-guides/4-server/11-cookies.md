@@ -175,8 +175,9 @@ request headers are capped, at 16 KB in total by default on Node and 8 KB for th
 `Cookie` header on a default nginx. Past that a request fails with a 431 or a 400,
 before any of your code runs. The server logs a warning naming the cookie and its
 size once a client's cookies pass about 6 KB. A very large value belongs in a
-server-side session, with only an ID in the cookie, see
-[Authentication](/docs/guides-security-authentication).
+server-side session, with only an ID in the cookie. For the sign-in session that
+is the session store, see
+[Authentication](/docs/guides-security-authentication#the-session-store).
 
 ## In the browser
 

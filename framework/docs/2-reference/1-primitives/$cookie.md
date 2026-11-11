@@ -24,7 +24,8 @@ on every request. Node caps all of a request's headers at 16 KB and a default
 nginx its `Cookie` header at 8 KB, past which a request fails with 431 or 400.
 The server logs a warning when a client's cookies pass about 6 KB. A very large
 value, such as a big token set, belongs in a server-side session with only an
-ID in the cookie.
+ID in the cookie: for the sign-in session that is
+`serverAuthOptions.sessionStore` of `alepha/server/auth`.
 
 ## Options
 

@@ -412,7 +412,7 @@ export class ServerCookiesProvider {
       if (this.warnedCookies.has(name)) continue;
       this.warnedCookies.add(name);
       this.log.warn(
-        `Cookies for this client total ${total} bytes, near the 8 KB a default nginx accepts and the 16 KB Node does. "${name}" is ${size} bytes of that. A large value belongs in a server-side session, with only its ID in the cookie.`,
+        `Cookies for this client total ${total} bytes, near the 8 KB a default nginx accepts and the 16 KB Node does. "${name}" is ${size} bytes of that. A large value belongs in a server-side session, with only its ID in the cookie${name.endsWith(".tokens") ? ": turn on serverAuthOptions.sessionStore" : ""}.`,
       );
     }
   }
@@ -479,6 +479,23 @@ export class ServerCookiesProvider {
   }
 
   // --- Crypto & Parsing ---
+
+  /**
+   * Encrypt a value with the key an `encrypt: true` cookie uses
+   * (AES-256-GCM, from `APP_SECRET`): for a value kept server-side that must
+   * be no less protected than it was in the cookie.
+   */
+  public encryptValue(text: string): string {
+    return this.encrypt(text);
+  }
+
+  /**
+   * The inverse of {@link ServerCookiesProvider.encryptValue}. Throws on a
+   * value that was altered or encrypted with another key.
+   */
+  public decryptValue(text: string): string {
+    return this.decrypt(text);
+  }
 
   protected encrypt(text: string): string {
     const iv = randomBytes(this.IV_LENGTH);
