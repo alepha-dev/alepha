@@ -160,7 +160,6 @@ export default {
   "header.actions.colorMode.dark": "Dark",
   "header.actions.colorMode.light": "Light",
   "header.actions.search": "Search",
-  "header.actions.repository": "Repository",
 
   "spotlight.title": "Search",
   "spotlight.description": "Find quests and folios in this project.",
@@ -961,7 +960,7 @@ export default {
     "Nudge whoever holds a quest that has gone quiet.",
   "project.capability.work.option.agentPrompts.label": "Agent prompts",
   "project.capability.work.option.agentPrompts.description":
-    "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for Claude Code or Codex; nothing is sent anywhere.",
+    "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for your coding agent; nothing is sent anywhere.",
   "project.capability.knowledge.label": "Write and keep knowledge",
   "project.capability.knowledge.description":
     "Wiki linked folios, files, revisions.",
@@ -2903,11 +2902,11 @@ export default {
   "agentPrompts.triageBlights": "Triage the blights",
   "agentPrompts.workLooseQuests": "Work the loose quests",
   "agentPrompts.copied":
-    "Prompt for $1 copied. Paste it into Claude Code or Codex.",
+    "Prompt for $1 copied. Paste it into your coding agent.",
   // A surface-scoped prompt has no reference to name, so it says nothing
   // about one rather than standing the project title in its place.
   "agentPrompts.copied.surface":
-    "Prompt copied. Paste it into Claude Code or Codex.",
+    "Prompt copied. Paste it into your coding agent.",
   "agentPrompts.settings.title": "Agent prompts",
   "agentPrompts.settings.description":
     "The text each Agent Prompts entry puts on the clipboard. The prompts are written in English on purpose: their words are the tool names an agent calls.",

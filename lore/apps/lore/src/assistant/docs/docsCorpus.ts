@@ -536,7 +536,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Agent prompts",
     section: "Agent prompts",
     url: "https://alepha.dev/lore/docs/guides-agent-prompts",
-    text: "Every surface that names a piece of work can hand it to a coding agent. An\n**Agent Prompts** menu appears on epics, quests and feedback, and on the\nQuests page, the feedback inbox and the blights inbox, and a click\ncopies a ready prompt for Claude Code, Codex or anything else that reads a\npaste.\n\n**It starts off.** The switch is **Settings ▸ Quests ▸ Features ▸ Agent prompts**, one\nclick, once, per project. Until you turn it on the menus are not there, and\nthat is deliberate: a project that does not hand work to agents should not\ncarry a menu that does.\n\nNothing is ever sent anywhere. The prompt is rendered in your browser and\nput on your clipboard, and Lore neither transmits it nor keeps a copy of\nwhat you pasted.",
+    text: "Every surface that names a piece of work can hand it to a coding agent. An\n**Agent Prompts** menu appears on epics, quests and feedback, and on the\nQuests page, the feedback inbox and the blights inbox, and a click\ncopies a ready prompt for your coding agent, or anything else that reads a\npaste.\n\n**It starts off.** The switch is **Settings ▸ Quests ▸ Features ▸ Agent prompts**, one\nclick, once, per project. Until you turn it on the menus are not there, and\nthat is deliberate: a project that does not hand work to agents should not\ncarry a menu that does.\n\nNothing is ever sent anywhere. The prompt is rendered in your browser and\nput on your clipboard, and Lore neither transmits it nor keeps a copy of\nwhat you pasted.",
   },
   {
     guide: "Agent prompts",
