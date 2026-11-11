@@ -70,6 +70,10 @@ export interface PushOptions {
    * what lets `sendNotification` keep `retry: 3` for the asynchronous
    * majority while an auth call site opts one send out of the retry
    * machinery.
+   *
+   * **Inside a transaction it still runs before the commit.** Every other
+   * push waits for the outermost commit to dispatch; an inline push runs the
+   * handler in the caller, on purpose, so call it after the commit.
    */
   inline?: boolean;
 }
@@ -1043,9 +1047,13 @@ export class JobProvider {
       if (inline) {
         await this.runInline(registration, executionId);
       } else if (status === "pending") {
-        await this.dispatch(name, executionId);
+        await this.dispatchAfterCommit(name, () =>
+          this.dispatch(name, executionId),
+        );
       } else if (status === "scheduled" && scheduledAt) {
-        await this.dispatchDelayed(name, executionId, scheduledAt);
+        await this.dispatchAfterCommit(name, () =>
+          this.dispatchDelayed(name, executionId, scheduledAt),
+        );
       }
       return executionId;
     }
@@ -1067,9 +1075,13 @@ export class JobProvider {
       // queue send is exactly the hand-off `inline` exists to skip.
       await this.runInline(registration, execution.id);
     } else if (status === "pending") {
-      await this.dispatch(name, execution.id);
+      await this.dispatchAfterCommit(name, () =>
+        this.dispatch(name, execution.id),
+      );
     } else if (status === "scheduled" && scheduledAt) {
-      await this.dispatchDelayed(name, execution.id, scheduledAt);
+      await this.dispatchAfterCommit(name, () =>
+        this.dispatchDelayed(name, execution.id, scheduledAt),
+      );
     }
     return execution.id;
   }
@@ -1341,24 +1353,26 @@ export class JobProvider {
 
     if (bulk.length > 0) {
       const created = await this.executions.createMany(bulk);
-      // Collect pending rows so we hand them to the dispatcher in a single
-      // batch — the queue dispatcher can fan them out in one network call.
-      const toDispatch: Array<{ jobName: string; executionId: string }> = [];
-      for (const exec of created) {
-        ids.push(exec.id);
-        if (exec.status === "pending" && !this.stopping) {
-          toDispatch.push({ jobName: name, executionId: exec.id });
-        } else if (
-          exec.status === "scheduled" &&
-          exec.scheduledAt &&
-          !this.stopping
-        ) {
-          await this.dispatchDelayed(name, exec.id, exec.scheduledAt);
+      for (const exec of created) ids.push(exec.id);
+      await this.dispatchAfterCommit(name, async () => {
+        // Collect pending rows so we hand them to the dispatcher in a single
+        // batch — the queue dispatcher can fan them out in one network call.
+        const toDispatch: Array<{ jobName: string; executionId: string }> = [];
+        for (const exec of created) {
+          if (exec.status === "pending" && !this.stopping) {
+            toDispatch.push({ jobName: name, executionId: exec.id });
+          } else if (
+            exec.status === "scheduled" &&
+            exec.scheduledAt &&
+            !this.stopping
+          ) {
+            await this.dispatchDelayed(name, exec.id, exec.scheduledAt);
+          }
         }
-      }
-      if (toDispatch.length > 0) {
-        await this.dispatchMany(toDispatch);
-      }
+        if (toDispatch.length > 0) {
+          await this.dispatchMany(toDispatch);
+        }
+      });
     }
 
     this.log.debug(`pushMany '${name}': ${ids.length} jobs created`, {
@@ -1367,6 +1381,49 @@ export class JobProvider {
     });
 
     return ids;
+  }
+
+  /**
+   * Run a push's dispatch once the caller's transaction has committed.
+   *
+   * A push inside `transactional()` writes its row in that transaction, so
+   * the dispatch has to wait for the OUTERMOST commit
+   * (`DatabaseProvider.afterCommit`): dispatched at once, a direct worker ran
+   * the handler on the caller's still-open transaction (its side effect
+   * survived a rollback), and a queue worker claimed on another connection,
+   * missed the uncommitted row and left it to the sweep. A rollback discards
+   * the callback with the row.
+   *
+   * Outside a transaction, and on a driver without one (D1, or
+   * `DATABASE_TRANSACTIONS=false`), the dispatch runs in place and awaited,
+   * exactly as before, its failure reaching the caller as it always did.
+   *
+   * Inside one, the failure is contained like {@link dispatchSafe}: by the
+   * time the callback runs the caller's transaction has committed, and an
+   * `afterCommit` callback that throws would reach the caller anyway, after
+   * the fact. The row is committed and `pending`, so a dispatch that could
+   * not be arranged costs latency (the sweep re-dispatches it), never an
+   * error. The transaction's store keys are cleared by then, so the worker
+   * does not inherit `alepha.orm.tx`.
+   */
+  protected async dispatchAfterCommit(
+    jobName: string,
+    dispatch: () => Promise<void>,
+  ): Promise<void> {
+    if (this.alepha.get("alepha.orm.afterCommit") === undefined) {
+      await dispatch();
+      return;
+    }
+    await this.executions.provider.afterCommit(async () => {
+      try {
+        await dispatch();
+      } catch (e) {
+        this.log.warn(
+          `Failed to dispatch ${jobName} after the commit; the sweep will re-dispatch it`,
+          e,
+        );
+      }
+    });
   }
 
   /**
