@@ -45,7 +45,7 @@ export const AdminNotificationsPreviewBody = (
     };
 
     return (
-      <div className="px-4 pb-6">
+      <div>
         <p className="text-muted-foreground text-sm">
           {reasons[preview.reason ?? ""] ??
             tr("admin.notifications.previewUnavailable", {
@@ -57,7 +57,7 @@ export const AdminNotificationsPreviewBody = (
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-6">
+    <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-xs">
         {tr("admin.notifications.previewLive", {
           default:
@@ -97,7 +97,14 @@ export const AdminNotificationsPreviewBody = (
           tomorrow - is text and renders as text, with no per-channel branch
           to add. */}
       {preview.channel === "email" ? (
-        <div className="min-h-96 flex-1 overflow-hidden rounded border">
+        // A definite height, not `flex-1`: inside the dialog's scrolling body
+        // a flex child has no height to fill, and the frame collapsed to a
+        // strip (#Q3428). The frame scrolls the message itself; it is white
+        // in either scheme because that is what a mail client shows.
+        <div
+          className="h-[60vh] overflow-hidden rounded-lg border"
+          data-testid="notification-preview-frame"
+        >
           <EmailBodyFrame html={preview.body ?? ""} />
         </div>
       ) : (

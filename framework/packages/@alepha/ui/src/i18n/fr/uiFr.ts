@@ -819,6 +819,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.notifications.tabDetails": "Détails",
   "admin.notifications.tabPreview": "Aperçu",
   "admin.notifications.tabRaw": "Brut",
+  "admin.notifications.tabs": "Vue",
   "admin.notifications.colCategory": "Catégorie",
   "admin.notifications.colChannel": "Canal",
   "admin.notifications.colRecipient": "Destinataire",

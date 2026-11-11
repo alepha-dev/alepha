@@ -3,12 +3,12 @@ import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "../core/Sheet.tsx";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../core/Dialog.tsx";
 import { AdminNotificationsDetailTabs } from "./AdminNotificationsDetailTabs.tsx";
 import { notificationTemplateLabel } from "./adminNotificationsTemplateLabel.ts";
 
@@ -23,7 +23,7 @@ export interface AdminNotificationsDetailProps {
 }
 
 /**
- * Everything known about one message.
+ * Everything known about one message, in a dialog (#Q3428; it was a drawer).
  *
  * ⚠️ **Renders with half the data missing, on purpose.** The receipt lives
  * 90 days and the outbox row it points at lives 7, so `variables` and `logs`
@@ -55,29 +55,31 @@ export const AdminNotificationsDetail = (
   );
 
   return (
-    <Sheet
+    <Dialog
       open={Boolean(props.notificationId)}
       onOpenChange={(open) => {
         if (!open) props.onClose();
       }}
     >
-      {/* Wider than the rest of the admin's sheets: this one has to fit a
-          rendered email, and an email is authored for a real column width. */}
-      <SheetContent className="flex w-full flex-col overflow-hidden sm:max-w-3xl">
-        <SheetHeader>
+      {/* Wide and tall: it has to fit a rendered email, and an email is
+          authored for a real column width (about 600px). One height for all
+          three views, so switching does not resize a centred dialog under
+          the pointer. The body scrolls, the header stays. */}
+      <DialogContent className="flex h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
+        <DialogHeader>
           {/* Humanized through the same helper the list uses. Showing
               `invitationInvite` here while the row that opened it says
               "Invitation invite" makes one template look like two. The raw
               name stays reachable in the Raw tab. */}
-          <SheetTitle title={detail?.template}>
+          <DialogTitle title={detail?.template}>
             {detail?.template
               ? notificationTemplateLabel(detail.template)
               : tr("admin.notifications.detailTitle", {
                   default: "Notification",
                 })}
-          </SheetTitle>
-          <SheetDescription>{detail?.contact ?? ""}</SheetDescription>
-        </SheetHeader>
+          </DialogTitle>
+          <DialogDescription>{detail?.contact ?? ""}</DialogDescription>
+        </DialogHeader>
 
         {detail && props.notificationId ? (
           // Keyed on the row AND the requested tab: the sheet stays mounted
@@ -92,7 +94,7 @@ export const AdminNotificationsDetail = (
             initialTab={props.initialTab ?? "details"}
           />
         ) : null}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 };
