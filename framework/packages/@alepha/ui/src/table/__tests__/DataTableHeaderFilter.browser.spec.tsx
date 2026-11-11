@@ -75,7 +75,7 @@ describe("DataTableHeaderFilter", () => {
     window.localStorage.clear();
   });
 
-  const mount = async () => {
+  const mount = async (fields: DataTableFilterFields = filterFields) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     await alepha.start();
     const seen: Array<Filters | undefined> = [];
@@ -83,7 +83,7 @@ describe("DataTableHeaderFilter", () => {
       <AlephaContext.Provider value={alepha}>
         <DataTable<Row, typeof filterFields>
           columns={columns}
-          filters={{ fields: filterFields }}
+          filters={{ fields: fields as typeof filterFields }}
           fetch={async ({ filters }) => {
             seen.push({ ...filters });
             return {
@@ -148,6 +148,22 @@ describe("DataTableHeaderFilter", () => {
     );
 
     await waitFor(() => expect(table.last()?.reviewer).toBe("u-2"));
+  });
+
+  it("keeps a menu: false filter out of the add menu, its funnel still there", async () => {
+    await mount(
+      Object.fromEntries(
+        Object.entries(filterFields).map(([key, field]) => [
+          key,
+          key === "search" ? field : { ...field, menu: false },
+        ]),
+      ) as DataTableFilterFields,
+    );
+
+    expect(funnel("status")).toBeTruthy();
+    expect(funnel("owner")).toBeTruthy();
+    // Every field is in a header or locked: nothing left to add.
+    expect(screen.queryByRole("button", { name: "Add filters" })).toBeNull();
   });
 
   it("filters from the header, lights the funnel, and still shows the filter on the bar", async () => {
