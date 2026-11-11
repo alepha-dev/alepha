@@ -465,6 +465,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.audits.layerScoped": "Par ressource",
   "admin.audits.ok": "OK",
   "admin.audits.statusAll": "Tous les statuts",
+  "admin.audits.actorAll": "Tous les auteurs",
   "admin.audits.dateAll": "Toute date",
   "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",

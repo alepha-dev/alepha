@@ -23,6 +23,7 @@ const columns = {
   title: { label: "Title", cell: (r: Row) => r.title },
   status: { label: "Status", cell: (r: Row) => r.status },
   owner: { label: "Owner", cell: (r: Row) => r.owner },
+  reviewer: { label: "Reviewer", cell: () => "-" },
 };
 
 const filterFields = {
@@ -38,6 +39,20 @@ const filterFields = {
     ],
   },
   owner: { schema: z.string(), label: "Owner", column: "owner" },
+  // A string whose options the server searches: a user picker (#Q3432).
+  reviewer: {
+    schema: z.string(),
+    label: "Reviewer",
+    column: "reviewer",
+    control: {
+      loaderThreshold: 0,
+      items: async (search: string) =>
+        [
+          { value: "u-1", label: "ada@example.com" },
+          { value: "u-2", label: "bob@example.com" },
+        ].filter((u) => u.label.includes(search)),
+    },
+  },
 } satisfies DataTableFilterFields;
 
 type Filters = DataTableFilterValues<typeof filterFields>;
@@ -119,6 +134,18 @@ describe("DataTableHeaderFilter", () => {
     expect(
       screen.getByRole("combobox", { name: "Filter: Status" }),
     ).toBeTruthy();
+  });
+
+  it("opens a string filter with a control.items loader as a list, and filters by the value (#Q3432)", async () => {
+    const table = await mount();
+
+    expect(
+      screen.getByRole("combobox", { name: "Filter: Reviewer" }),
+    ).toBeTruthy();
+    fireEvent.keyDown(funnel("reviewer")!, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "bob@example.com" }));
+
+    await waitFor(() => expect(table.last()?.reviewer).toBe("u-2"));
   });
 
   it("filters from the header, lights the funnel, and still shows the filter on the bar", async () => {

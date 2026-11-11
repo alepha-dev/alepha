@@ -278,6 +278,12 @@ export interface ControlProps {
     | SelectOption[]
     | ((query: string) => SelectOption[] | Promise<SelectOption[]>);
   /**
+   * Forwarded to `ControlSelect`: the option count above which a function
+   * `items` is called on every search instead of once. `0` always searches
+   * the server, for a list (users, say) that is never all loaded at once.
+   */
+  loaderThreshold?: number;
+  /**
    * Whether the field offers a way back to empty.
    *
    * On a `ControlSelect`, `true` adds a synthetic "none" row that resets the
@@ -583,6 +589,7 @@ export const Control = (props: ControlProps) => {
         clearable={merged.clearable}
         clearLabel={merged.clearLabel}
         countLabel={merged.countLabel}
+        loaderThreshold={merged.loaderThreshold}
         maxTriggerLength={merged.maxTriggerLength}
         // Dropped here until now, so a picker that needed to name its own
         // empty state ("Pick an epic…") could not be a `Control` at all.
