@@ -462,7 +462,7 @@ export default {
   "board.filter.noRelease": "None",
   "board.filter.epic": "Epic",
   "board.filter.allEpics": "All epics",
-  "board.filter.noEpic": "No epic",
+  "board.filter.noEpic": "None",
   "board.table.epic": "Epic",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by another quest",

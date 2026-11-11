@@ -610,7 +610,7 @@ export default {
   "board.filter.noRelease": "Aucune",
   "board.filter.epic": "Épopée",
   "board.filter.allEpics": "Toutes les épopées",
-  "board.filter.noEpic": "Aucune épopée",
+  "board.filter.noEpic": "Aucune",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par une autre quête",
