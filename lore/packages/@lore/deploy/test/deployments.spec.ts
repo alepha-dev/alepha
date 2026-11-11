@@ -833,6 +833,33 @@ describe("a deployment", () => {
       ]);
     });
 
+    it("starts the run before the pre-work, so a refusal there is timed from the start (#Q3387)", async ({
+      expect,
+    }) => {
+      const { project, instance } = await world();
+      const rows = alepha.inject(TestRows).deployments;
+      const row = await rows.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      });
+      // A copy the pre-work cannot find: the first thing it reads.
+      await expect(
+        alepha
+          .inject(DeployService)
+          .run({ ...row, instanceId: crypto.randomUUID() }),
+      ).rejects.toThrow(/gone/);
+
+      const texts = ((await rows.findById(row.id))?.log ?? []).map(
+        (it) => it.text,
+      );
+      expect(texts[0]).toMatch(/Started after/);
+      expect(texts.at(-1)).toMatch(/Failed: /);
+    });
+
     it("never throws, so a lost line cannot fail a deploy", async ({
       expect,
     }) => {

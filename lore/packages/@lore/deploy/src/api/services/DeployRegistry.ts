@@ -56,8 +56,18 @@ export class DeployRegistry {
   public static readonly MAX_LOG_LINES = 200;
 
   protected forget(deploymentId: string | undefined): void {
-    if (deploymentId) this.open.delete(deploymentId);
+    if (deploymentId) {
+      this.open.delete(deploymentId);
+      this.startedHere.delete(deploymentId);
+    }
   }
+
+  /**
+   * The runs this process has started, so a second `started` for one is a
+   * no-op. Kept apart from the open logs: a line written while a run is still
+   * queued (waiting for a slot) opens its log without starting it.
+   */
+  protected readonly startedHere = new Set<string>();
 
   /**
    * The run is picked up: status `running`, and a first line saying how long
@@ -69,6 +79,18 @@ export class DeployRegistry {
    * through all the same.
    */
   public async started(deploymentId?: string): Promise<void> {
+    // Already started by this process (`DeployService.run` starts the row the
+    // moment it takes a slot, then the runner asks again): once is the line.
+    if (deploymentId && this.startedHere.has(deploymentId)) {
+      return;
+    }
+    if (deploymentId) {
+      this.startedHere.add(deploymentId);
+      if (this.startedHere.size > DeployRegistry.MAX_OPEN_LOGS) {
+        const oldest = this.startedHere.values().next().value;
+        if (oldest !== undefined) this.startedHere.delete(oldest);
+      }
+    }
     const now = this.dateTime.nowMillis();
     await this.patch(deploymentId, {
       status: "running",

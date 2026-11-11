@@ -301,6 +301,11 @@ export class DeployService {
 
     this.running++;
     try {
+      // ⚠️ **"Started" the moment the slot is taken** (#Q3387), before the
+      // gate, the artifact read, the name and the secrets: that pre-work used
+      // to be counted as queue wait, so the log blamed the queue for Lore's
+      // own work. The runner's own `started` is then a no-op.
+      await this.registry.started(row.id);
       const instance = await this.instances.findById(row.instanceId);
       if (!instance) {
         throw new BadRequestError(
