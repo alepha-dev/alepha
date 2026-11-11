@@ -37,8 +37,12 @@ export class AutomationBatchRepository<
    * Prepare the normal driver's insert codecs without writing before the
    * caller's native receipt batch. This seam deliberately dispatches no job.
    */
-  public insertStatement(data: Parameters<Repository<T>["create"]>[0]) {
-    return this.rawInsert().values(this.cast(data, true)).getSQL();
+  public insertStatement(
+    data: Parameters<Repository<T>["create"]>[0],
+    returning = false,
+  ) {
+    const query = this.rawInsert().values(this.cast(data, true));
+    return (returning ? query.returning(this.pgTable) : query).getSQL();
   }
   public scalar(
     where: Parameters<Repository<T>["updateOne"]>[0],

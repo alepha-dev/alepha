@@ -1,4 +1,4 @@
-import { $repository, type PgQueryWhere, sql } from "alepha/orm";
+import { $repository, type PgQueryWhere } from "alepha/orm";
 
 import { epics } from "../entities/epics.ts";
 import { quests } from "../entities/quests.ts";
@@ -125,31 +125,5 @@ export class EpicVisibilityService {
       { epicId: { isNull: true } },
       { epicId: { notInArray: drafts.map((epic) => epic.id) } },
     ];
-  }
-
-  /**
-   * The same membership test as a raw SQL fragment, for callers that
-   * hand-write their predicates instead of using a repository where-object.
-   *
-   * Returns `undefined` when the project has no draft epic — trap 2 — and
-   * the caller must then omit the clause entirely rather than substitute
-   * anything for it.
-   *
-   * This answers only "is this quest outside every draft epic". Whether
-   * that is the right question for a given aggregate is the caller's policy
-   * decision, not this method's: see `ProjectReportsService.questScope`,
-   * which exempts completed quests from it.
-   */
-  draftEpicSqlPredicate(draftEpicIds: number[]) {
-    if (draftEpicIds.length === 0) {
-      return undefined;
-    }
-
-    const column = this.quests.table.epicId;
-
-    return sql`(${column} IS NULL OR ${column} NOT IN (${sql.join(
-      draftEpicIds.map((id) => sql`${id}`),
-      sql`, `,
-    )}))`;
   }
 }

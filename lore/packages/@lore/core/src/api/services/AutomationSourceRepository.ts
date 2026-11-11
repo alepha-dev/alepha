@@ -1,10 +1,5 @@
 import { $inject, type Infer, type ZObject, z } from "alepha";
-import {
-  type EntityPrimitive,
-  Repository,
-  sql,
-  type SQLLike,
-} from "alepha/orm";
+import { type EntityPrimitive, Repository, type SQLLike } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import type { AutomationEvent } from "../entities/automationEvents.ts";
@@ -56,18 +51,16 @@ export class AutomationSourceRepository<
         tableName: this.tableName,
         data,
       });
-      const predicate = this.toSQL(this.withDeletedAt(where, {}));
-      const mutation = this.rawInsert()
-        .values(this.cast(data, true))
-        .returning(this.pgTable)
-        .getSQL();
       const rows = await this.commit(
         event,
-        sql`NOT EXISTS (SELECT 1 FROM ${this.table} WHERE ${predicate})`,
-        mutation,
+        this.notExists(where),
+        this.insertStatement(data, true),
         event.generatedIdField
           ? {
-              [event.generatedIdField]: sql`(SELECT ${this.col(this.id.key as keyof Infer<T>)} FROM ${this.table} WHERE ${predicate})`,
+              [event.generatedIdField]: this.scalar(
+                where,
+                this.id.key as keyof Infer<T>,
+              ),
             }
           : undefined,
       );
@@ -95,21 +88,15 @@ export class AutomationSourceRepository<
       const row: Record<string, unknown> = { ...data };
       if (Object.hasOwn(z.schema.shape(this.entity.schema), "updatedAt"))
         row.updatedAt = this.dateTimeProvider.nowISOString();
-      const values = this.cast(row, false) as Record<string, unknown>;
-      delete values[this.id.key as string];
-      this.withVersionBump(values);
-      const predicate = this.toSQL(this.withDeletedAt(where, {}));
       // RETURNING gives the changed row without reusing a now-false transition
       // predicate. It is also available from D1's prepared native batch.
-      const mutation = this.rawUpdate()
-        .set(values)
-        .where(predicate)
-        .returning(this.pgTable)
-        .getSQL();
       const rows = await this.commit(
         event,
-        sql`EXISTS (SELECT 1 FROM ${this.table} WHERE ${predicate})`,
-        mutation,
+        this.exists(where),
+        this.updateStatement(
+          where,
+          row as Parameters<Repository<T>["updateOne"]>[1],
+        ),
       );
       await this.invalidateCache({});
       const entity = this.result(rows);
