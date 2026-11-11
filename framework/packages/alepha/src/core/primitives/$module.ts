@@ -93,6 +93,11 @@ export const $module = (options: ModulePrimitiveOptions): Service<Module> => {
       }
 
       for (const service of services) {
+        // A pure class the build list names is declared, not created: its
+        // first use creates it (#Q3402).
+        if (alepha.declareService(service)) {
+          continue;
+        }
         alepha.inject(service, {
           parent: this.constructor as Service<Module>,
         });

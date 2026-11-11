@@ -2,6 +2,7 @@ import { KIND } from "alepha/internal";
 
 import type { Hooks } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import type { PrimitiveSide } from "../helpers/ContainerGraph.ts";
 import { HookNamePolicy } from "../helpers/HookNamePolicy.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import type { Async } from "../interfaces/Async.ts";
@@ -85,6 +86,11 @@ export interface HookOptions<T extends keyof Hooks> {
 export class HookPrimitive<T extends keyof Hooks> extends Primitive<
   HookOptions<T>
 > {
+  /**
+   * `boot` for the pure controller rule: registers a listener at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected callCount = 0;
 
   public get called(): number {

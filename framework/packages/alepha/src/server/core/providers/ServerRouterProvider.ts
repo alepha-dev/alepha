@@ -36,6 +36,7 @@ import type {
   ServerRoute,
   ServerRouteInput,
   ServerRouteMatcher,
+  ServerRouteRequestHandler,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRequestParser } from "../services/ServerRequestParser.ts";
 import { ServerTimingProvider } from "./ServerTimingProvider.ts";
@@ -186,6 +187,32 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   }
 
   /**
+   * A stand-in for a route of a class not created yet (#Q3403): listed among
+   * the routes (CORS reads them), and matched by the trie with `onHit` as
+   * its raw handler. The class's real route, created with the same method
+   * and path, replaces both.
+   */
+  public createPlaceholder(
+    method: string,
+    path: string,
+    onHit: ServerRouteRequestHandler,
+  ): void {
+    const route = {
+      method: method.toUpperCase() as RouteMethod,
+      path,
+      placeholder: true,
+      silent: true,
+      handler: new PipelineHandler(() => undefined),
+    } as ServerRoute;
+    this.routes.push(route);
+    this.push({
+      path: `/${route.method}/${path}`.replace(/\/+/g, "/"),
+      placeholder: true,
+      handler: onHit,
+    });
+  }
+
+  /**
    * Create a new server route.
    *
    * Accepts both `PipelineHandler` and plain handler functions.
@@ -203,9 +230,26 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     route.method ??= "GET";
     route.method = route.method.toUpperCase() as RouteMethod;
 
+    // A real route takes its placeholder's place (#Q3402): in the list here,
+    // and in the trie below, where pushing the same path replaces the node's
+    // route.
+    if (!route.placeholder) {
+      const index = this.routes.findIndex(
+        (it) =>
+          it.placeholder &&
+          it.method === route.method &&
+          it.path === route.path,
+      );
+      if (index !== -1) {
+        this.routes.splice(index, 1);
+      }
+    }
+
     this.routes.push(route);
 
-    for (const entry of this.globalMiddlewareRegistry) {
+    for (const entry of route.placeholder
+      ? []
+      : this.globalMiddlewareRegistry) {
       if (this.matchesPattern(route.path, entry.pattern)) {
         if (this.matchesMiddlewareFilter(route, entry)) {
           route.handler.use(...entry.middleware);

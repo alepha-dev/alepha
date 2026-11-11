@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -31,6 +32,11 @@ export interface IntervalPrimitiveOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class IntervalPrimitive extends Primitive<IntervalPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: starts its timer at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   public called = 0;

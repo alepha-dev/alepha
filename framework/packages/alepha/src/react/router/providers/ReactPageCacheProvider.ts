@@ -13,7 +13,7 @@ import {
 import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $action } from "alepha/server";
+import { $action, serverApiOptions } from "alepha/server";
 
 import type {
   PageInvalidation,
@@ -655,6 +655,13 @@ export class ReactPageCacheProvider {
       this.routeMap = new Map();
       for (const action of this.alepha.primitives($action)) {
         this.routeMap.set(`${action.method} ${action.route.path}`, action.name);
+      }
+      // The actions of classes not created yet, from the build list (#Q3403).
+      const prefix = this.alepha.store.get(serverApiOptions)?.prefix ?? "";
+      for (const row of this.alepha.surface?.actions ?? []) {
+        if (this.alepha.declaredByKey(row.class)) {
+          this.routeMap.set(`${row.method} ${prefix}${row.path}`, row.name);
+        }
       }
     }
     return this.routeMap;

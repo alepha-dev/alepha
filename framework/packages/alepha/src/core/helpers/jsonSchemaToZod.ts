@@ -24,6 +24,17 @@ export const jsonSchemaToZod = (schema: any): ZType => {
   if (typeof schema?.description === "string") {
     doc.description = schema.description;
   }
+  // A `$control` hint that serialized (the object form: a function one never
+  // reaches JSON) comes back too, so a generated form rebuilt from JSON Schema
+  // renders the field the way its schema asked, a creatable multi-select for
+  // an open-ended list (#Q3424).
+  if (
+    schema?.$control &&
+    typeof schema.$control === "object" &&
+    !Array.isArray(schema.$control)
+  ) {
+    doc.$control = schema.$control;
+  }
   return Object.keys(doc).length > 0 ? (zod.meta(doc) as ZType) : zod;
 };
 

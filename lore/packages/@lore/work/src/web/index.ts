@@ -57,8 +57,8 @@ export const LoreWorkWeb = $module({
     // references, tabs, prompts, pickers), on core's registries, which
     // nothing else would construct; and its dashboard metrics' declarative
     // half, which the browser needs to draw the tiles.
-    alepha.inject(WorkRouter);
-    alepha.inject(WorkAccountRouter);
+    alepha.with(WorkRouter);
+    alepha.with(WorkAccountRouter);
     alepha.inject(WorkProjectLoader);
     alepha.inject(WorkShell);
     alepha.inject(WorkDashboardMetrics);

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { type Async, createPrimitive, Primitive } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
@@ -277,6 +278,11 @@ export type ProxyPrimitiveOptions = {
  */
 export type ProxyForwardedCredential = "cookie" | "authorization";
 
-export class ProxyPrimitive extends Primitive<ProxyPrimitiveOptions> {}
+export class ProxyPrimitive extends Primitive<ProxyPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by ServerProxyProvider at configure.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+}
 
 $proxy[KIND] = ProxyPrimitive;

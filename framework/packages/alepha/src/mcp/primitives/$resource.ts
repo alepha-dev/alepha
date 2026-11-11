@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -163,6 +164,11 @@ export interface ResourcePrimitiveOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
+  /**
+   * `table` for the pure controller rule: served on request: the MCP server reads it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly mcpServer = $inject(McpServerProvider);
 
   /**

@@ -12,6 +12,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Toaster } from "../../core/Toaster.tsx";
 import { DialogProvider } from "../../core/useDialog.tsx";
+import { ActionErrorToaster } from "../../shell/ActionErrorToaster.tsx";
 import { AdminUsers } from "../AdminUsers.tsx";
 
 const user = (over: Partial<UserEntity>): UserEntity => ({
@@ -40,6 +41,8 @@ class Links extends LinkProvider {
   };
   public denied: string[] = [];
   public users: UserEntity[] = [user({})];
+  public roles: Array<{ name: string; default?: boolean }> = [];
+  public failUpdate = false;
 
   override client(): any {
     const page = (content: unknown[]) => ({
@@ -58,7 +61,12 @@ class Links extends LinkProvider {
     });
     const actions: Record<string, any> = {
       findUsers: async () => page(this.users),
-      findRoles: async () => [],
+      findRoles: async () => this.roles,
+      updateUser: async (args: any) => {
+        this.calls.push({ name: "updateUser", args });
+        if (this.failUpdate) throw new Error("Role change refused");
+        return user({ ...args.body });
+      },
       getRealmConfig: async () => ({ settings: this.settings }),
       createUser: async (args: any) => {
         this.calls.push({ name: "createUser", args });
@@ -112,6 +120,7 @@ describe("AdminUsers", () => {
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <Toaster visibleToasts={20} />
+          <ActionErrorToaster />
           <AdminUsers />
         </DialogProvider>
       </AlephaContext.Provider>,
@@ -135,6 +144,48 @@ describe("AdminUsers", () => {
       return input!;
     });
   };
+
+  /**
+   * A role change says whether it saved (#Q3433).
+   */
+  describe("changing a role", () => {
+    const toggleAdmin = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "user" }));
+      const row = (await screen.findByText("admin")).closest("label")!;
+      fireEvent.click(row.querySelector('[role="checkbox"]')!);
+      return row;
+    };
+    const roles = (links: Links) => {
+      links.roles = [{ name: "user", default: true }, { name: "admin" }];
+    };
+
+    it("toasts a success once the change is saved", async () => {
+      const links = await mount(roles);
+
+      await toggleAdmin();
+
+      expect(
+        await screen.findByText("Roles of ada@example.app saved"),
+      ).toBeTruthy();
+      expect(links.calls.at(-1)?.args.body.roles).toEqual(["user", "admin"]);
+    });
+
+    it("toasts the error and leaves the checkbox as it was when it fails", async () => {
+      await mount((links) => {
+        roles(links);
+        links.failUpdate = true;
+      });
+
+      const row = await toggleAdmin();
+
+      expect(await screen.findByText(/Role change refused/)).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          row.querySelector('[role="checkbox"]')!.getAttribute("aria-checked"),
+        ).toBe("false"),
+      );
+    });
+  });
 
   it("creates a user from the dialog, sets the password, and reloads the table", async () => {
     const links = await mount();

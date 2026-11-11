@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 import type { ServiceAccountPrimitive } from "alepha/security";
@@ -83,6 +84,11 @@ export interface RemotePrimitiveOptions {
 }
 
 export class RemotePrimitive extends Primitive<RemotePrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by RemotePrimitiveProvider at start.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   public get name(): string {
     return this.options.name ?? this.config.propertyKey;
   }

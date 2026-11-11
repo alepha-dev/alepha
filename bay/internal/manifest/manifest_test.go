@@ -83,6 +83,27 @@ func TestIgnoresFieldsMeantForOtherConsumers(t *testing.T) {
 	}
 }
 
+func TestIgnoresTheBuildList(t *testing.T) {
+	// `surface` is the build's list of controllers and primitives (#Q3401):
+	// the runtime and Lore read it, Bay deploys the same with or without it.
+	m, err := read(t, `{
+		"manifestVersion": 2,
+		"project": "lore",
+		"runtimes": [{"runtime": "node", "entry": "index.node.js"}],
+		"surface": {
+			"version": 1,
+			"classes": [{"key": "lore.work.api:QuestController", "pure": true}],
+			"actions": [{"name": "getQuests", "group": "QuestController", "method": "GET", "path": "/quests", "class": "lore.work.api:QuestController"}]
+		}
+	}`)
+	if err != nil {
+		t.Fatalf("the build list should be ignored, got: %v", err)
+	}
+	if m.Entry != "index.node.js" {
+		t.Fatalf("entry = %q, want index.node.js", m.Entry)
+	}
+}
+
 func TestRejectsExactVersionPin(t *testing.T) {
 	// An exact pin recreates the very problem Bay owning the runtime solves:
 	// patching a CVE would need a rebuild and a redeploy per app.

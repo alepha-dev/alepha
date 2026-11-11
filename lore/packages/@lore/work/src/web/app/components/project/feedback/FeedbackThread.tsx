@@ -48,6 +48,11 @@ export interface FeedbackThreadProps {
    * comment, because deleting is moderation.
    */
   isOwner?: boolean;
+  /**
+   * The item's reporter. Their comments stay plain text; everyone else's
+   * render as Markdown (#Q3451, see `FeedbackThreadBody`).
+   */
+  reporterUserId?: string;
 }
 
 /**
@@ -66,8 +71,9 @@ export interface FeedbackThreadProps {
  * an unsolicited-message channel. The copy under the box says which case the
  * reader is in.
  *
- * The body is still plain text with no markdown - see `FeedbackThreadBody`
- * for what that costs and what it keeps.
+ * A body renders by its author (#Q3451): the reporter's own words stay plain
+ * text, and a reply from the team or an agent renders as Markdown. See
+ * `FeedbackThreadBody` for why the line sits there.
  */
 const FeedbackThread = (props: FeedbackThreadProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -249,16 +255,26 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                   </button>
                 )}
               </div>
-              {/* Still plain text, deliberately: a reporter is an outsider
-                  and this body is shown to the project owner, the same
-                  reason a blight's fields are never rendered as markdown.
-                  The one exception is a resolved mention, which becomes an
-                  element rather than markup. */}
+              {/* The reporter's words stay plain text, deliberately: a
+                  reporter is an outsider and this body is shown to the
+                  project owner, the same reason a blight's fields are never
+                  rendered as markdown. A reply from the team or an agent
+                  renders as Markdown (#Q3451). */}
               {comment.body && (
                 <FeedbackThreadBody
                   body={comment.body}
                   members={members}
                   projectSlug={project?.slug}
+                  markdown={
+                    props.projectId !== undefined &&
+                    comment.authorId !== undefined &&
+                    comment.authorId !== props.reporterUserId
+                      ? {
+                          projectId: props.projectId,
+                          feedbackId: props.feedbackId,
+                        }
+                      : undefined
+                  }
                 />
               )}
               {comment.attachmentUrls && comment.attachmentUrls.length > 0 && (
@@ -303,13 +319,13 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
             `LoreEditor`, so this reads like an oversight and has been swept
             for once already.
 
-            It is not. `FeedbackThreadBody` renders this body as PLAIN TEXT
-            on purpose - a reporter is an outsider and the body is shown to
-            the project owner - so a format toolbar here would produce
-            syntax the reader sees literally, and would put pressure on the
-            renderer to start interpreting outsider input. The editor and
-            the renderer are one decision; changing only this half is the
-            wrong half. */}
+            It is not. `FeedbackThreadBody` renders the REPORTER's words as
+            PLAIN TEXT on purpose - a reporter is an outsider and the body is
+            shown to the project owner - so a format toolbar here would hand
+            the reporter syntax they then see literally. The team's and an
+            agent's replies do render as Markdown (#Q3451), so this box
+            accepts it as typed text; a toolbar is still the wrong half
+            to change while the reporter's half stays plain. */}
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

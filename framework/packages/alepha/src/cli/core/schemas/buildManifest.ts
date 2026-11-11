@@ -191,6 +191,13 @@ export const buildManifestSchema = z
      */
     optionsHash: z.string().optional(),
     /**
+     * What the app is made of (#Q3401): each controller's purity and every
+     * primitive a runtime needs without creating its class. The server
+     * bundle carries the same list. Kept loose: a reader acts on the fields
+     * it knows and drops the rest.
+     */
+    surface: z.record(z.text(), z.any()).optional(),
+    /**
      * Worker deploy metadata, present for a workerd slice. Captures config,
      * channels and bindings so deployers do not need to boot the app.
      */

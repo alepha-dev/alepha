@@ -32,6 +32,7 @@ import { ServerMultipartProvider } from "./providers/ServerMultipartProvider.ts"
 import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerRouterProvider } from "./providers/ServerRouterProvider.ts";
+import { ServerSurfaceProvider } from "./providers/ServerSurfaceProvider.ts";
 import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
 import { ServerVersionProvider } from "./providers/ServerVersionProvider.ts";
 import type {
@@ -133,6 +134,7 @@ export * from "./providers/ServerMultipartProvider.ts";
 export * from "./providers/ServerNotReadyProvider.ts";
 export * from "./providers/ServerProvider.ts";
 export * from "./providers/ServerRouterProvider.ts";
+export * from "./providers/ServerSurfaceProvider.ts";
 export * from "./helpers/staticPage.ts";
 export * from "./helpers/webRequest.ts";
 export * from "./providers/ServerTimingProvider.ts";
@@ -195,6 +197,7 @@ export const AlephaServer = $module({
     UserAgentParser,
     ServerRequestParser,
     ServerRouterProvider,
+    ServerSurfaceProvider,
   ],
   variants: [
     ServerProvider,

@@ -153,6 +153,39 @@ describe("$ai", () => {
     expect(tools[2].inputSchema.required).toEqual(["params"]);
   });
 
+  it("takes tools as a function, called once on first use and not at init", async ({
+    expect,
+  }) => {
+    // The class holding the tools exists (the lock refuses a new one after
+    // start); what the function defers is reading it.
+    const alepha = Alepha.create()
+      .with(AlephaSecurity)
+      .with(AlephaAi)
+      .with(InvoiceApi);
+    let calls = 0;
+
+    class LazyAssistant {
+      support = $ai({
+        system: "You help with invoices.",
+        tools: () => {
+          calls++;
+          const api = alepha.inject(InvoiceApi);
+          return [api.list, api.create];
+        },
+      });
+    }
+
+    const assistant = alepha.inject(LazyAssistant);
+    await alepha.start();
+    expect(calls).toBe(0);
+
+    await assistant.support.run({ messages: ask("hi"), user: member });
+    await assistant.support.run({ messages: ask("again"), user: member });
+    const ai = alepha.inject(AiProvider) as MemoryAiProvider;
+    expect(calls).toBe(1);
+    expect(ai.last!.tools!.map((t) => t.name)).toEqual(["list", "create"]);
+  });
+
   it("throws at start on a tool name a vendor would refuse, or a missing description", async ({
     expect,
   }) => {

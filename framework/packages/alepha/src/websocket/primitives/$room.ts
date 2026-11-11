@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { ActorHostRegistry } from "alepha/actor";
 import { KIND } from "alepha/internal";
@@ -85,6 +86,11 @@ export class RoomPrimitive<
   TServer extends TWSObject,
   TState,
 > extends Primitive<RoomPrimitiveOptions<TClient, TServer, TState>> {
+  /**
+   * `boot` for the pure controller rule: registers its room and actor host at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly webSocketServerProvider = $inject(WebSocketServerProvider);
 
   protected onInit() {

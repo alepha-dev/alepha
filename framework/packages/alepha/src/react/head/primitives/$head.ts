@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -18,6 +19,11 @@ export type HeadPrimitiveOptions = Head | (() => Head) | HeadAfterPages;
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class HeadPrimitive extends Primitive<HeadPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: adds to the global head at init, read by every render.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly provider = $inject(HeadProvider);
   protected onInit() {
     if (typeof this.options === "object" && "afterPages" in this.options) {

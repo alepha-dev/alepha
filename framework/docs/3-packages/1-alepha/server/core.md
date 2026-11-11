@@ -44,6 +44,7 @@ Convention-driven HTTP server with automatic validation and type inference.
 - [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) - On every request, this provider checks if the server is ready.
 - [`ServerProvider`](/docs/reference-providers-serverprovider) - Base server provider to handle incoming requests and route them.
 - [`ServerRouterProvider`](/docs/reference-providers-serverrouterprovider) - Main router for all routes server side.
+- [`ServerSurfaceProvider`](/docs/reference-providers-serversurfaceprovider) - The HTTP surface of the classes a module declared and has not created
 - [`ServerVersionProvider`](/docs/reference-providers-serverversionprovider) - Registers `GET /version`, answering "what is running here?".
 
 ### Environment Variables

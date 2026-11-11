@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   createPrimitive,
@@ -190,6 +191,11 @@ export interface StorageAccessOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class StoragePrimitive extends Primitive<StoragePrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by FileService and the build through alepha.primitives.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   /**
    * Megabytes a storage takes when it declares no {@link
    * StoragePrimitiveOptions.maxSize}.

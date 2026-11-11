@@ -70,6 +70,18 @@ class Links extends LinkProvider {
   override client(): any {
     const actions: Record<string, any> = {
       listJobs: async () => JOBS,
+      getJobStats: async () => ({
+        windowHours: 24,
+        ok: 12,
+        error: 2,
+        cancelled: 0,
+        running: 1,
+        waiting: 3,
+        lastError: {
+          jobName: "deploys.run",
+          completedAt: "2026-09-13T11:00:00.000Z",
+        },
+      }),
       triggerJob: async () => ({ ok: true }),
     };
     return new Proxy({} as Record<string, unknown>, {
@@ -171,26 +183,39 @@ describe("AdminJobs", () => {
     }
   });
 
-  it("prints the retention rule, marks a default, and explains it in full", async () => {
+  it("tags retention default or custom, and explains the policy on focus (#Q3430)", async () => {
     await mount();
 
-    const cron = rowOf("system.users.purge-expired-sessions");
-    expect(cron.textContent).toContain("OK: last 24 · Errors: 30 days");
-    expect(cron.textContent).toContain("default");
-    const phrase = Array.from(cron.querySelectorAll("[title]")).find((el) =>
-      el.getAttribute("title")?.startsWith("Successes"),
+    const tag = (name: string) =>
+      rowOf(name).querySelector('[data-testid="job-retention"]') as HTMLElement;
+    expect(tag("system.users.purge-expired-sessions").textContent).toBe(
+      "default",
     );
-    expect(phrase?.getAttribute("title")).toBe(
-      "Successes: last 24. Failures and cancellations: 30 days. Default for a job that runs up to hourly.",
-    );
+    expect(tag("deploys.run").textContent).toBe("custom");
+    expect(tag("images.make-thumbnail").textContent).toBe("default");
+    // The long policy line is gone from the row.
+    expect(rowOf("deploys.run").textContent).not.toContain("OK: 30 days");
 
-    const declared = rowOf("deploys.run");
-    expect(declared.textContent).toContain("OK: 30 days · Errors: 30 days");
-    expect(declared.textContent).not.toContain("default");
+    fireEvent.focus(tag("system.users.purge-expired-sessions"));
+    expect(
+      await screen.findByText(
+        "Successes: last 24. Failures and cancellations: 30 days. Default for a job that runs up to hourly.",
+      ),
+    ).toBeTruthy();
+  });
 
-    expect(rowOf("images.make-thumbnail").textContent).toContain(
-      "OK: not kept · Errors: 30 days",
-    );
+  it("draws the last 24 hours above the table, from the stats call (#Q3431)", async () => {
+    await mount();
+
+    const panel = await screen.findByRole("region", { name: "Last 24 hours" });
+    await waitFor(() => {
+      expect(panel.textContent).toContain("Failed");
+      expect(panel.textContent).toContain("2");
+      expect(panel.textContent).toContain("Succeeded");
+      expect(panel.textContent).toContain("12");
+      expect(panel.textContent).toContain("deploys.run");
+      expect(panel.textContent).toContain("3 waiting");
+    });
   });
 
   it("says in the OK and Errors headers that they count kept rows", async () => {

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, AlephaError, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -126,6 +127,11 @@ export interface AuditCoalesceOptions {
  * ```
  */
 export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: registers its audit type at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly auditService = $inject(AuditService);
 
   /**

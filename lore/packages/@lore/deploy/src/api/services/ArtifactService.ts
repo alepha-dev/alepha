@@ -617,7 +617,14 @@ export class ArtifactService {
   }
 
   protected serialise(manifest: ArtifactManifest): string | undefined {
-    const json = JSON.stringify(manifest);
+    // `surface`, the build list of controllers and primitives (#Q3401), is
+    // left out of the column: it runs past 64 KB on Lore itself (136 KB,
+    // 2026-11-11), which would drop the whole manifest and every field a
+    // deploy reads from it. The archive's own `manifest.json` keeps it.
+    const { surface: _surface, ...stored } = manifest as ArtifactManifest & {
+      surface?: unknown;
+    };
+    const json = JSON.stringify(stored);
     return json.length > ArtifactService.MAX_MANIFEST_BYTES ? undefined : json;
   }
 

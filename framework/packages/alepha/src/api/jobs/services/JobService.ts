@@ -12,6 +12,7 @@ import type { JobExecutionQuery } from "../schemas/jobExecutionQuerySchema.ts";
 import type { JobExecutionResource } from "../schemas/jobExecutionResourceSchema.ts";
 import type { JobExecutionRow } from "../schemas/jobExecutionRowSchema.ts";
 import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
+import type { JobStats } from "../schemas/jobStatsSchema.ts";
 import type { JobStep } from "../schemas/jobStepSchema.ts";
 import type { JobStepView } from "../schemas/jobStepViewSchema.ts";
 
@@ -168,6 +169,53 @@ export class JobService {
       });
     }
     return result;
+  }
+
+  /**
+   * The Jobs page banner's figures (#Q3431): runs finished in the last
+   * `windowHours` by outcome, plus what is running and waiting now, and the
+   * latest failure. Counts through the repository rather than raw SQL, so the
+   * time comparison is the ORM's on every driver.
+   */
+  public async getStats(windowHours = 24): Promise<JobStats> {
+    const since = this.dt.now().subtract(windowHours, "hour").toISOString();
+    const finished = (status: "ok" | "error" | "cancelled") =>
+      this.executions.count({
+        status: { eq: status },
+        completedAt: { gte: since },
+      });
+    const [ok, error, cancelled, running, waiting, lastErrors] =
+      await Promise.all([
+        finished("ok"),
+        finished("error"),
+        finished("cancelled"),
+        this.executions.count({ status: { eq: "running" } }),
+        this.executions.count({
+          status: { inArray: ["pending", "scheduled"] },
+        }),
+        this.executions.findMany({
+          where: { status: { eq: "error" }, completedAt: { gte: since } },
+          orderBy: [{ column: "completedAt", direction: "desc" }],
+          limit: 1,
+          columns: ["jobName", "completedAt"],
+        }),
+      ]);
+    const last = lastErrors[0];
+    return {
+      windowHours,
+      ok,
+      error,
+      cancelled,
+      running,
+      waiting,
+      lastError:
+        last?.completedAt !== undefined
+          ? {
+              jobName: last.jobName,
+              completedAt: String(last.completedAt),
+            }
+          : undefined,
+    };
   }
 
   /**

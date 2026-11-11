@@ -157,4 +157,23 @@ describe("jsonSchemaToZod", () => {
     expect(roundTripped.safeParse(valid).success).toBe(true);
     expect(roundTripped.safeParse({ label: "no-id" }).success).toBe(false);
   });
+
+  it("should carry an object $control across a round trip (#Q3424)", () => {
+    const original = z.object({
+      blocklist: z.array(z.text()).meta({
+        description: "Reserved usernames",
+        $control: { createNewEntry: true },
+      }),
+      mode: z.enum(["none", "required"]),
+    });
+
+    const back = jsonSchemaToZod(z.toJSONSchema(original)) as any;
+
+    expect(z.schema.meta(back.shape.blocklist)).toEqual({
+      description: "Reserved usernames",
+      $control: { createNewEntry: true },
+    });
+    // And a closed set stays one, which is what renders it as a select.
+    expect(z.schema.isEnum(z.schema.unwrap(back.shape.mode))).toBe(true);
+  });
 });

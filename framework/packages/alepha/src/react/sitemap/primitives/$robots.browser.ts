@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -16,6 +17,11 @@ export const $robots = (
 };
 
 export class RobotsPrimitive extends Primitive<RobotsPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by the prerender at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected onInit() {
     // no-op in the browser
   }

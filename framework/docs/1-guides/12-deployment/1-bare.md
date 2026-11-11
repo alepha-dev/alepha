@@ -77,6 +77,33 @@ A build with several runtimes has one `index.<runtime>.js` and one `server/<runt
 
 If no React frontend is present, only the server slice is built.
 
+### What the app is made of
+
+`alepha build` loads your app once, without starting it, and lists what it is made of: every class holding an `$action`, a `$route`, a `$page` or an MCP tool, and every such primitive with what a reader needs to find it (name, method, path without the API prefix, the class holding it). The list is written to `manifest.json` as `surface`, and the same list is baked into every server slice.
+
+The build also prints how many of those classes are **pure controllers**, and names each one that is not, with the reason:
+
+```txt
+119 of 131 controllers are pure
+  acme.api:QuestController: holds a $storage
+  acme.api:FileController: injected by UploadService
+```
+
+A pure controller holds actions, pages or tools and nothing that acts at boot (no `$hook`, no `$job`, no `$storage`, ...), and nothing but other pure controllers injects it. The report is informative only: it never fails a build. A class is named by its module and its class name (`acme.api:QuestController`), or by its class name alone when no module lists it.
+
+### Pure controllers are created on first use
+
+In a production build, a pure controller that a module lists in `services` (or passes to `alepha.with`) is not created at boot. The router is filled from the list, and the first request that matches one of the controller's routes creates it, then answers. A cron tick, a queue message or a request to another route never pays for it, which is what makes a cold start cheaper on Workers. `/api/_links`, CORS preflight and server-side `$client` calls are answered from the list too; a `$client` call or an `alepha.inject` of the controller creates it. OpenAPI (`$swagger`) needs every schema, so it creates every controller once.
+
+What an author has to know:
+
+- A pure controller's constructor and field initialisers run on its first request, not at boot. Work that must happen at boot goes in a `$hook`, which makes the class a boot class by itself.
+- A controller holding a `$hook` or another boot primitive, or held as a field by a service, is created at boot: slower, never an error. Resolve a controller where you call it (`this.alepha.inject(QuestController)`) rather than holding it as a field.
+- A module that creates a controller with `alepha.inject(X)` in `register` creates it at boot: `inject` returns the instance. Use `services` or `alepha.with(X)`.
+- For now, a class holding a `$page`, an MCP tool or an action with `mcp` is still created at boot.
+- The build report names every controller that is not pure, and why.
+- `ALEPHA_EAGER=true` creates every class at boot, as in dev, without a rebuild: the way out if late creation ever has a side effect. Dev and tests always create every class at boot.
+
 Database migrations stay in your project's `migrations/` directory, outside `dist/`. In production the app applies them itself at boot, reading `migrations/<provider>/` relative to the directory it starts in, so run `node dist` from the project root, or copy `migrations/` next to wherever it starts ([`alepha image`](/docs/guides-deployment-docker) copies them into the image for you). An app that declares entities but finds no migrations refuses to boot rather than fail on its first query; set `DATABASE_SYNC=false` if the schema is managed outside the app. `alepha db migrations apply` applies them ahead of a deploy instead. See [Migrations](/docs/guides-persistence-migrations).
 
 ## Static File Headers

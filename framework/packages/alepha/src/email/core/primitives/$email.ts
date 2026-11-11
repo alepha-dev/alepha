@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   AlephaError,
   createPrimitive,
@@ -70,6 +71,11 @@ export interface EmailPrimitiveOptions {
  * ```
  */
 export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
+  /**
+   * `inert` for the pure controller rule: does nothing until it is called.
+   */
+  public static override readonly side: PrimitiveSide = "inert";
+
   protected readonly provider = this.$provider();
   protected readonly headerPolicy = this.alepha.inject(EmailHeaderPolicy);
 

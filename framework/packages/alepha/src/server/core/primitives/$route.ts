@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   createPrimitive,
@@ -43,6 +44,11 @@ export interface RoutePrimitiveOptions<
 export class RoutePrimitive<
   TConfig extends RequestConfigSchema,
 > extends PipelinePrimitive<RoutePrimitiveOptions<TConfig>> {
+  /**
+   * `table` for the pure controller rule: served on request: the router dispatches to it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
   protected onInit() {

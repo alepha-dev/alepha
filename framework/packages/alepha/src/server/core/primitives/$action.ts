@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $atom,
   $inject,
@@ -385,6 +386,11 @@ export class ActionPrimitive<
 > extends PipelinePrimitive<
   ActionPrimitiveOptions<TConfig, readonly Middleware[], TErrors>
 > {
+  /**
+   * `table` for the pure controller rule: served on request: the router dispatches to it.
+   */
+  public static override readonly side: PrimitiveSide = "table";
+
   protected readonly log = $logger();
 
   /**

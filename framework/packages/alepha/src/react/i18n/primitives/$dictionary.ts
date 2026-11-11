@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, type Async, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -88,6 +89,11 @@ export interface DictionaryPrimitiveOptions<
 export class DictionaryPrimitive<
   T extends Record<string, DictionaryEntry>,
 > extends Primitive<DictionaryPrimitiveOptions<T>> {
+  /**
+   * `boot` for the pure controller rule: registers its translations at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected provider = $inject(I18nProvider);
   protected onInit() {
     this.provider.registry.push({

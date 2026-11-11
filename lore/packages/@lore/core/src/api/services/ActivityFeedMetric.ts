@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 
 import { ProjectController } from "../controllers/ProjectController.ts";
@@ -18,9 +18,9 @@ import type {
  * names actors the same way.
  */
 export class ActivityFeedMetric implements DashboardMetricResolver {
+  protected readonly alepha = $inject(Alepha);
   protected readonly dashboard = $inject(DashboardMetricRegistry);
   protected readonly catalog = $inject(DashboardMetricCatalog);
-  protected readonly projects = $inject(ProjectController);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   constructor() {
@@ -28,6 +28,15 @@ export class ActivityFeedMetric implements DashboardMetricResolver {
   }
 
   readonly metric = "activityFeed";
+
+  /**
+   * Resolved on use, never held as a field: a field would make `ProjectController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected projects(): ProjectController {
+    return this.alepha.inject(ProjectController);
+  }
 
   /**
    * The typed reference prefix per resource kind, for the row's chip.
@@ -56,7 +65,7 @@ export class ActivityFeedMetric implements DashboardMetricResolver {
         continue;
       }
       // The board's window: the feed slot's data gate is "anything in it".
-      const page = await this.projects.activityPage(project.id, {
+      const page = await this.projects().activityPage(project.id, {
         size: 8,
         after: this.dateTime
           .now()

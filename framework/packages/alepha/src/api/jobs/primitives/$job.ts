@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   type Async,
@@ -413,6 +414,11 @@ export interface JobPrimitiveOptions<
 export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
   JobPrimitiveOptions<T>
 > {
+  /**
+   * `boot` for the pure controller rule: registers its schedule with the job provider at init.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly jobProvider = $inject(JobProvider);
 
   public get name(): string {

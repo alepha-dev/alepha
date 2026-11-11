@@ -13,7 +13,6 @@ import { ProjectShellRegistry } from "../../registries/ProjectShellRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectTrail } from "../../services/ProjectTrail.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
-import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import { useAtomsVersion } from "../shared/useAtomsVersion.ts";
 import {
@@ -263,16 +262,6 @@ const ProjectView = () => {
                     <>
                       <ProjectActionsCreateButton />
                       <HeaderSearchButton />
-                      {/* ⚠️ Hidden below `sm`, like the three settings controls
-                      inside the cluster (feedback #P2144). It is the one of
-                      the four that is safe to simply drop: an outbound link
-                      to the project's repository, which a phone reader can
-                      reach from the project's own settings. `contents` so
-                      the button stays a direct child of the flex row and
-                      keeps its gap. */}
-                      <span className="hidden sm:contents">
-                        <HeaderRepositoryButton />
-                      </span>
                       <ProjectInboxButton />
                     </>
                   }

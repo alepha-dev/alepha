@@ -28,6 +28,12 @@ export class EventManager {
   public logFn?: () => LoggerInterface | undefined;
 
   /**
+   * Called on every listener registration, so the container can tell which
+   * class registered one while it was constructed (#Q3395).
+   */
+  public registered?: (event: string) => void;
+
+  /**
    * Three-list storage for hooks, split by priority tier.
    */
   protected events: Record<
@@ -63,6 +69,7 @@ export class EventManager {
     hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
   ): () => void {
     HookNamePolicy.assertCurrent(event);
+    this.registered?.(event as string);
     if (!this.events[event]) {
       this.events[event] = { first: [], normal: [], last: [] };
     }

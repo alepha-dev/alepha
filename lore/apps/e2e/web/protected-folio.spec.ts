@@ -116,7 +116,7 @@ test.describe("Protected folio", () => {
         .click();
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 5_000 });
-      await dialog.getByLabel(/^passphrase$/i).fill(passphrase);
+      await dialog.getByLabel(/^passphrase\*?$/i).fill(passphrase);
       await dialog.getByLabel(/confirm passphrase/i).fill(passphrase);
       await dialog.getByRole("button", { name: /^encrypt$/i }).click();
       // After encryption the folio is protected AND unlocked (key cached),
@@ -179,9 +179,10 @@ test.describe("Protected folio", () => {
       await page.getByRole("button", { name: /^unlock$/i }).click();
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 5_000 });
-      await dialog.getByLabel(/^passphrase$/i).fill(wrongPassphrase);
+      await dialog.getByLabel(/^passphrase\*?$/i).fill(wrongPassphrase);
       await dialog.getByRole("button", { name: /^unlock$/i }).click();
-      await expect(dialog.getByText(/wrong passphrase/i)).toBeVisible({
+      // A toast since #Q3421, outside the dialog, which stays open.
+      await expect(page.getByText(/wrong passphrase/i).first()).toBeVisible({
         timeout: 30_000,
       });
       await expect(page.getByText(`LOOTBAG-${t}`)).toHaveCount(0);
@@ -190,7 +191,7 @@ test.describe("Protected folio", () => {
     await test.step("right passphrase reveals the original markdown", async () => {
       // The unlock dialog is still open from the failed attempt.
       const dialog = page.getByRole("dialog");
-      await dialog.getByLabel(/^passphrase$/i).fill(passphrase);
+      await dialog.getByLabel(/^passphrase\*?$/i).fill(passphrase);
       await dialog.getByRole("button", { name: /^unlock$/i }).click();
       await expect(dialog).toBeHidden({ timeout: 30_000 });
       await expect(page.getByText(`LOOTBAG-${t}`).first()).toBeVisible({

@@ -1,4 +1,4 @@
-import { $hook, $inject } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { ServerRequest, ServerRoute } from "alepha/server";
 import {
@@ -23,7 +23,7 @@ import { FileService } from "../services/FileService.ts";
  */
 export class StorageMultipartCapProvider {
   protected readonly files = $inject(FileService);
-  protected readonly controller = $inject(FileController);
+  protected readonly alepha = $inject(Alepha);
   protected readonly caps = $inject(MultipartCapProvider);
   protected readonly log = $logger();
 
@@ -104,9 +104,13 @@ export class StorageMultipartCapProvider {
    *
    * Reading it from the action also means a change of URL cannot leave the two
    * disagreeing, which a literal here would have allowed.
+   *
+   * The controller is resolved here, on use, and never held as a field: a
+   * field would make it injected by a boot service, so it could never be a
+   * pure controller created on its first request (#Q3397).
    */
   protected owns(route: ServerRoute): boolean {
-    const upload = this.controller.uploadFile.route;
+    const upload = this.alepha.inject(FileController).uploadFile.route;
     return route.method === upload.method && route.path === upload.path;
   }
 

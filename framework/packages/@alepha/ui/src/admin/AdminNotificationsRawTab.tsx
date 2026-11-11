@@ -46,7 +46,7 @@ export const AdminNotificationsRawTab = (
   const present = blocks.filter((block) => block.value !== undefined);
 
   return (
-    <div className="space-y-6 px-4 pb-6 text-sm">
+    <div className="space-y-6 text-sm">
       {present.map((block) => (
         <div key={block.label}>
           <div className="text-muted-foreground text-xs">{block.label}</div>

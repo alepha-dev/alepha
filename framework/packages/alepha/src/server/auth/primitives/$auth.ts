@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   $inject,
   AlephaError,
@@ -303,6 +304,11 @@ export interface OAuth2Options {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
+  /**
+   * `boot` for the pure controller rule: read by ServerAuthProvider at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   protected readonly tokenNormalizer = $inject(OAuthTokenNormalizer);
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);

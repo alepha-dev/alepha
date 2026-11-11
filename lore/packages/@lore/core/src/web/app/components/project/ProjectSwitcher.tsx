@@ -18,6 +18,7 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import { ProjectRailCard } from "./ProjectRailCard.tsx";
 import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
 
 /**
@@ -54,15 +55,14 @@ const ProjectSwitcher = () => {
             render={<div />}
             className="hover:text-foreground active:text-foreground cursor-default hover:bg-transparent active:bg-transparent"
           >
-            <ProjectIcon
-              fileId={project.icon}
-              title={project.title}
-              seed={project.slug}
-              className="size-8 rounded-lg"
+            {/* The rail's card, compact (#Q3420): image, title and, under
+                it, the repository, which used to be an icon among the
+                header's actions. No second line without a repository. */}
+            <ProjectRailCard
+              compact
+              project={project}
+              title={<span className="font-semibold">{project.title}</span>}
             />
-            <span className="truncate font-semibold group-data-[collapsible=icon]:hidden">
-              {project.title}
-            </span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

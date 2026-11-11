@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import {
   createPrimitive,
   Primitive,
@@ -133,6 +134,11 @@ export class ChannelPrimitive<
   TClient extends TWSObject,
   TServer extends TWSObject,
 > extends Primitive<ChannelPrimitiveOptions<TClient, TServer>> {
+  /**
+   * `boot` for the pure controller rule: part of the websocket surface wired at boot.
+   */
+  public static override readonly side: PrimitiveSide = "boot";
+
   // Channels are just schema definitions - no initialization logic needed
 }
 

@@ -1,3 +1,4 @@
+import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
@@ -58,6 +59,11 @@ export interface SequencePrimitiveOptions {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class SequencePrimitive extends Primitive<SequencePrimitiveOptions> {
+  /**
+   * `inert` for the pure controller rule: does nothing until it is called.
+   */
+  public static override readonly side: PrimitiveSide = "inert";
+
   protected readonly provider = $inject(SequenceProvider);
 
   public get name(): string {
