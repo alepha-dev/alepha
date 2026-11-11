@@ -54,20 +54,21 @@ cookie jar with `{ cookies }`.
 
 ## Options
 
-| Option     | Default                | What it does                                                                                                    |
-| ---------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `schema`   |                        | Validates the value, and types it.                                                                              |
-| `name`     | the property key       | The cookie's name, before the prefix below.                                                                     |
-| `path`     | `/`                    | The path it applies to.                                                                                         |
-| `domain`   |                        | The domain it applies to.                                                                                       |
-| `ttl`      | none: a session cookie | Maps to `Max-Age`.                                                                                              |
-| `secure`   | `true` in production   | Adds `Secure`, on a request whose URL is `https`. Behind a proxy that means it sent `x-forwarded-proto: https`. |
-| `httpOnly` | not set                | Hide it from client-side scripts.                                                                               |
-| `sameSite` | `lax`                  | `strict`, `lax` or `none`.                                                                                      |
-| `sign`     | `false`                | Refuse a value that was tampered with.                                                                          |
-| `encrypt`  | `false`                | Hide the value from the browser.                                                                                |
-| `compress` | `false`                | Deflate the value.                                                                                              |
-| `key`      |                        | Keep the cookie and the atom of that key in step.                                                               |
+| Option          | Default                | What it does                                                                                                    |
+| --------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `schema`        |                        | Validates the value, and types it.                                                                              |
+| `name`          | the property key       | The cookie's name, before the prefix below.                                                                     |
+| `path`          | `/`                    | The path it applies to.                                                                                         |
+| `domain`        |                        | The domain it applies to.                                                                                       |
+| `ttl`           | none: a session cookie | Maps to `Max-Age`.                                                                                              |
+| `secure`        | `true` in production   | Adds `Secure`, on a request whose URL is `https`. Behind a proxy that means it sent `x-forwarded-proto: https`. |
+| `httpOnly`      | not set                | Hide it from client-side scripts.                                                                               |
+| `sameSite`      | `lax`                  | `strict`, `lax` or `none`.                                                                                      |
+| `sign`          | `false`                | Refuse a value that was tampered with.                                                                          |
+| `encrypt`       | `false`                | Hide the value from the browser.                                                                                |
+| `compress`      | `false`                | Deflate the value.                                                                                              |
+| `key`           |                        | Keep the cookie and the atom of that key in step.                                                               |
+| `browserPrefix` |                        | `__Host-`, `__Secure-`, `__Host-Http-` or `__Http-`: a name prefix the browser enforces, see below.             |
 
 ⚠️ **`httpOnly` is off unless you set it.** A cookie holding anything sensitive
 should say `httpOnly: true`.
@@ -81,8 +82,51 @@ A `$cookie` is prefixed with the app's name, lowercased: `theme` in an app named
 `shop` is sent as `shop.theme`. Cookies are scoped by host and path and not
 by port, so without the prefix two apps on `localhost` would overwrite each other's.
 
-The app's name is `APP_NAME`, else the build's app name, else `app`. Changing it
-renames every cookie, so existing ones stop being read.
+The app's name is `APP_NAME`, else the build's app name, else `app`, with any
+character a cookie name cannot hold (a space, a slash) replaced by `-`: an app
+named `My App` sends `my-app.theme`. Changing it renames every cookie, so
+existing ones stop being read.
+
+### Browser prefixes
+
+`browserPrefix` puts a prefix the browser itself enforces in front of that
+name:
+
+```typescript
+session = $cookie({
+  name: "session",
+  httpOnly: true,
+  browserPrefix: "__Host-Http-",
+  schema: z.object({ id: z.text() }),
+});
+```
+
+| Prefix         | The browser accepts the cookie only with    |
+| -------------- | ------------------------------------------- |
+| `__Secure-`    | `Secure`                                    |
+| `__Host-`      | `Secure`, no `Domain`, `Path=/`             |
+| `__Http-`      | `Secure`, `HttpOnly`                        |
+| `__Host-Http-` | `Secure`, `HttpOnly`, no `Domain`, `Path=/` |
+
+`__Host-` is what stops a sibling subdomain from planting a cookie of the same
+name for the parent domain; encryption stops a forged value, not the replay of
+the attacker's own valid one. `__Http-` adds that no script can set it. A
+browser that does not know `__Host-Http-` still enforces it as `__Host-`.
+
+A browser drops a prefixed cookie that comes without `Secure`, so the prefix is
+applied only on the responses that carry it: over https as the server sees it,
+when `secure` is not off. Over plain http (a built app run on
+`http://localhost`, a proxy that does not send `x-forwarded-proto`) the cookie
+keeps its bare name, `shop.session`, unhardened. A read looks up the name that
+matches the request's scheme, and an https request that still carries the bare
+name has it expired.
+
+A declaration the browser would reject is refused at start: `secure: false`, a
+`__Host-` form with `domain` or a `path` other than `/`, an `Http-` form
+without `httpOnly`.
+
+The session cookies of `alepha/server/auth`, `tokens` and `authorizationCode`,
+use `__Host-Http-`.
 
 ## Signing and encrypting
 

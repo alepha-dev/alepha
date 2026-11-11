@@ -113,6 +113,7 @@ export class ServerAuthProvider {
     name: "authorizationCode",
     ttl: [15, "minutes"],
     httpOnly: true,
+    browserPrefix: "__Host-Http-",
     encrypt: true,
     schema: z.object({
       provider: z.text(),
@@ -129,6 +130,10 @@ export class ServerAuthProvider {
     name: "tokens",
     ttl: [30, "days"],
     httpOnly: true,
+    // RFC 10017 section 6.1.3.2: `__Host-Http-`, so no sibling subdomain
+    // and no script can plant a session of its own under this name. Over
+    // https only; plain http keeps the bare name (see `browserPrefix`).
+    browserPrefix: "__Host-Http-",
     compress: true,
     encrypt: true,
     schema: tokensSchema,
