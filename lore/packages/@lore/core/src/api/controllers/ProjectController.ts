@@ -306,7 +306,14 @@ export class ProjectController {
           )
           .optional(),
       }),
-      response: projectResourceSchema,
+      response: projectResourceSchema.extend({
+        /**
+         * Whether the project landed on the creator's dock (#E139). `false`
+         * when the dock was already full: the project exists all the same,
+         * and the client says so with a link to manage pins.
+         */
+        pinned: z.boolean(),
+      }),
     },
     handler: async ({ body, user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
@@ -426,7 +433,20 @@ export class ProjectController {
         description: project.title,
       });
 
-      return this.projectMapper.toResource(project, rows);
+      // After the owner row: a pin is refused for a non-member. Never fatal,
+      // the project is made and a missing pin is a toast, not a failure.
+      const pinned = await this.dock
+        .pin(user.id, project.id)
+        .then((outcome) => outcome.pinned)
+        .catch((error: unknown) => {
+          this.log.warn("createProject: could not pin the new project", {
+            projectId: project.id,
+            error,
+          });
+          return false;
+        });
+
+      return { ...this.projectMapper.toResource(project, rows), pinned };
     },
   });
 

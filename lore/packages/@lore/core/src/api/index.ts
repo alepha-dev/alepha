@@ -37,6 +37,7 @@ import { SearchController } from "./controllers/SearchController.ts";
 import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+import { UserDockHooks } from "./hooks/UserDockHooks.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
@@ -331,6 +332,7 @@ export const LoreCoreApi = $module({
     // Each user's dock of pinned projects (#E139): the rail's order.
     UserDockService,
     UserDockController,
+    UserDockHooks,
   ],
   register: (alepha) => {
     alepha.with({

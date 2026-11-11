@@ -179,6 +179,15 @@ const ProjectCreate = () => {
       }
 
       storeHomeOverview(alepha, await client.getHomeOverview());
+      if (!project.pinned) {
+        // Created all the same; the dock just had no slot left (#E139).
+        toaster.info(tr("dock.full"), {
+          action: {
+            label: tr("dock.full.manage"),
+            onClick: () => void router.push("accountProjects"),
+          },
+        });
+      }
 
       await router.push("project", {
         params: { projectSlug: project.slug },

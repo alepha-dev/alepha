@@ -1870,6 +1870,8 @@ export default {
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
   "account.projects.see-all": "Tous les projets",
+  "dock.full": "Votre dock est plein : ce projet n'a pas été épinglé.",
+  "dock.full.manage": "Gérer les épingles",
   "account.projects.filter.role": "Rôle",
   "account.projects.filter.allRoles": "Tous les rôles",
   "account.projects.filter.archived": "Archivés",

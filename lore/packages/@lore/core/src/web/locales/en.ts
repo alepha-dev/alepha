@@ -1881,6 +1881,8 @@ export default {
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.see-all": "All projects",
+  "dock.full": "Your dock is full, so this project was not pinned.",
+  "dock.full.manage": "Manage pins",
   "account.projects.filter.role": "Role",
   "account.projects.filter.allRoles": "All roles",
   "account.projects.filter.archived": "Archived",
