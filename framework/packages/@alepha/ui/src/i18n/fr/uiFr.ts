@@ -185,6 +185,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
 
   // Object control: nested groups.
   "controlObject.clear": "Vider",
+  "form.field.moreInfo": "À propos de ce champ",
   "controlObject.collapse": "Replier",
   "controlObject.expand": "Déplier",
   "controlObject.initialize": "Initialiser",
