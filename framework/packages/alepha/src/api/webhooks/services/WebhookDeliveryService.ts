@@ -12,11 +12,11 @@ import {
   type WebhookEndpointEntity,
   webhookEndpointEntity,
 } from "../entities/webhookEndpointEntity.ts";
-import type { WebhookDisabledReason } from "../schemas/webhookDisabledReasonSchema.ts";
 import {
   WebhookTransport,
   type WebhookTransportResponse,
 } from "../transports/WebhookTransport.ts";
+import { WebhookHealthService } from "./WebhookHealthService.ts";
 import { WebhookSecretService } from "./WebhookSecretService.ts";
 
 /**
@@ -57,6 +57,7 @@ export class WebhookDeliveryService {
   protected readonly signer = $inject(WebhookSigner);
   protected readonly transport = $inject(WebhookTransport);
   protected readonly secretService = $inject(WebhookSecretService);
+  protected readonly health = $inject(WebhookHealthService);
   protected readonly deliveries = $repository(webhookDeliveryEntity);
   protected readonly endpoints = $repository(webhookEndpointEntity);
 
@@ -82,7 +83,7 @@ export class WebhookDeliveryService {
 
     const secrets = await this.readSecrets(endpoint);
     if (!secrets) {
-      await this.disable(endpoint, "secret");
+      await this.health.disable(endpoint, "secret");
       await this.deliveries.updateById(delivery.id, {
         status: "failed",
         error: "secret unreadable",
@@ -114,10 +115,15 @@ export class WebhookDeliveryService {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "network error";
-      await this.recordFailure(delivery, endpoint, count, attempt.final, {
-        error: message.slice(0, 1000),
-      });
-      throw new AlephaError(`Webhook delivery to ${host} failed: ${message}`);
+      await this.failAttempt(
+        delivery,
+        endpoint,
+        count,
+        attempt.final,
+        { error: message.slice(0, 1000) },
+        `Webhook delivery to ${host} failed: ${message}`,
+      );
+      return;
     }
 
     const now = this.dateTime.nowISOString();
@@ -155,14 +161,41 @@ export class WebhookDeliveryService {
     if (response.status === 410) {
       // The endpoint first: a reader who sees the delivery `failed` sees
       // the endpoint already disabled.
-      await this.disable(endpoint, "gone");
+      await this.health.disable(endpoint, "gone");
       await this.recordFailure(delivery, endpoint, count, true, failure);
       return;
     }
-    await this.recordFailure(delivery, endpoint, count, attempt.final, failure);
-    throw new AlephaError(
+    await this.failAttempt(
+      delivery,
+      endpoint,
+      count,
+      attempt.final,
+      failure,
       `Webhook delivery to ${host} answered ${response.status}`,
     );
+  }
+
+  /**
+   * A failed attempt that may be retried: recorded, then thrown so the job
+   * retries on its curve. Unless the endpoint has been failing for
+   * `disableAfterDays`: then it is disabled with reason `failing`, the
+   * delivery is failed, and nothing is thrown, so nothing retries.
+   */
+  protected async failAttempt(
+    delivery: WebhookDeliveryEntity,
+    endpoint: WebhookEndpointEntity,
+    count: number,
+    final: boolean,
+    outcome: Parameters<WebhookDeliveryService["recordFailure"]>[4],
+    message: string,
+  ): Promise<void> {
+    if (this.health.failingTooLong(endpoint)) {
+      await this.health.disable(endpoint, "failing");
+      await this.recordFailure(delivery, endpoint, count, true, outcome);
+      return;
+    }
+    await this.recordFailure(delivery, endpoint, count, final, outcome);
+    throw new AlephaError(message);
   }
 
   /**
@@ -210,24 +243,6 @@ export class WebhookDeliveryService {
       host: this.hostOf(endpoint.url),
       attempt,
       final,
-    });
-  }
-
-  /**
-   * Disable an endpoint the module can no longer deliver to.
-   */
-  protected async disable(
-    endpoint: WebhookEndpointEntity,
-    reason: WebhookDisabledReason,
-  ): Promise<void> {
-    await this.endpoints.updateById(endpoint.id, {
-      status: "disabled",
-      disabledReason: reason,
-    });
-    this.log.warn("Webhook endpoint disabled", {
-      endpointId: endpoint.id,
-      host: this.hostOf(endpoint.url),
-      reason,
     });
   }
 

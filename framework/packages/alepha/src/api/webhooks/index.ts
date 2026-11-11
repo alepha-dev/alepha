@@ -2,9 +2,11 @@ import { $module } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 
 import { WebhookJobs } from "./jobs/WebhookJobs.ts";
+import { WebhookNotifications } from "./notifications/WebhookNotifications.ts";
 import { $webhook } from "./primitives/$webhook.ts";
 import { WebhookDeliveryService } from "./services/WebhookDeliveryService.ts";
 import { WebhookEndpointService } from "./services/WebhookEndpointService.ts";
+import { WebhookHealthService } from "./services/WebhookHealthService.ts";
 import { WebhookSecretService } from "./services/WebhookSecretService.ts";
 import { WebhookService } from "./services/WebhookService.ts";
 import { HttpWebhookTransport } from "./transports/HttpWebhookTransport.ts";
@@ -16,6 +18,7 @@ import { WebhookTransport } from "./transports/WebhookTransport.ts";
 export * from "./entities/webhookDeliveryEntity.ts";
 export * from "./entities/webhookEndpointEntity.ts";
 export * from "./jobs/WebhookJobs.ts";
+export * from "./notifications/WebhookNotifications.ts";
 export * from "./primitives/$webhook.ts";
 export * from "./schemas/createWebhookEndpointSchema.ts";
 export * from "./schemas/webhookDeliveryStatusSchema.ts";
@@ -24,9 +27,11 @@ export * from "./schemas/webhookEndpointResourceSchema.ts";
 export * from "./schemas/webhookEndpointStatusSchema.ts";
 export * from "./schemas/webhookEndpointWithSecretSchema.ts";
 export * from "./schemas/webhookEnvelopeSchema.ts";
+export * from "./schemas/webhookOptionsAtom.ts";
 export * from "./schemas/webhookSendOptionsSchema.ts";
 export * from "./services/WebhookDeliveryService.ts";
 export * from "./services/WebhookEndpointService.ts";
+export * from "./services/WebhookHealthService.ts";
 export * from "./services/WebhookSecretService.ts";
 export * from "./services/WebhookService.ts";
 export * from "./transports/HttpWebhookTransport.ts";
@@ -62,6 +67,19 @@ declare module "alepha" {
       attempt: number;
       final: boolean;
     };
+    /**
+     * The module disabled an endpoint by itself: the receiver answered
+     * `410 Gone` (`gone`), it kept failing for `disableAfterDays`
+     * (`failing`), or its secret no longer decrypts (`secret`). Emitted on
+     * every automatic disable, so an app can alert its own way. Names the
+     * host, never the URL.
+     */
+    "webhooks:endpoint:disabled": {
+      endpointId: string;
+      host: string;
+      reason: "gone" | "failing" | "secret";
+      scope?: string;
+    };
   }
 }
 
@@ -91,11 +109,19 @@ export const AlephaApiWebhooks = $module({
   services: [
     WebhookSecretService,
     WebhookEndpointService,
+    WebhookHealthService,
     WebhookDeliveryService,
     WebhookJobs,
     WebhookService,
   ],
-  variants: [HttpWebhookTransport, MemoryWebhookTransport],
+  // `WebhookNotifications` is never registered here: the module stays
+  // usable without `alepha/api/notifications`. An app turns the disabled
+  // notice on with `alepha.with(WebhookNotifications)`.
+  variants: [
+    HttpWebhookTransport,
+    MemoryWebhookTransport,
+    WebhookNotifications,
+  ],
   register: (alepha) => {
     // `optional`: an app (or a spec) that substituted the transport first
     // keeps its own. Under test nothing leaves the process by default.

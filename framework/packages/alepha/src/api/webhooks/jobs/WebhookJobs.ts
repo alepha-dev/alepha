@@ -2,12 +2,14 @@ import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 
 import { WebhookDeliveryService } from "../services/WebhookDeliveryService.ts";
+import { WebhookHealthService } from "../services/WebhookHealthService.ts";
 
 /**
  * The jobs of the webhooks module.
  */
 export class WebhookJobs {
   protected readonly delivery = $inject(WebhookDeliveryService);
+  protected readonly health = $inject(WebhookHealthService);
 
   /**
    * The eight attempts of {@link deliver}: the first and seven retries.
@@ -42,6 +44,24 @@ export class WebhookJobs {
         attempt,
         final: attempt >= this.maxAttempts,
       });
+    },
+  });
+
+  /**
+   * The hourly upkeep of the log: deletes deliveries past
+   * `webhookOptions.retentionDays`, clears previous secrets whose overlap
+   * has expired, and fails deliveries stuck `pending` with no job left to
+   * move them (a cancel from the Jobs admin, a run that died on its last
+   * attempt). Bounded batches.
+   */
+  public readonly purgeOld = $job({
+    name: "system.webhooks.purge-old",
+    cron: "0 * * * *",
+    description:
+      "Deletes old webhook deliveries, clears expired secrets and fails stuck deliveries.",
+    timeout: [60, "seconds"],
+    handler: async () => {
+      await this.health.purge();
     },
   });
 }
