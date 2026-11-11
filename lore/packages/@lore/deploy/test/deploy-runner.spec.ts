@@ -137,8 +137,9 @@ describe("deploying an artifact from inside the Worker", () => {
     } = {};
 
     const provision = {
-      ensureD1: async (name: string) => {
+      ensureD1: async (name: string, options?: { knownId?: string }) => {
         calls.push(`provision:d1:${name}`);
+        if (options?.knownId) calls.push(`known:d1:${options.knownId}`);
         return { uuid: "db-uuid", name };
       },
       ensureR2: async (name: string) => {
@@ -414,6 +415,20 @@ describe("deploying an artifact from inside the Worker", () => {
       _headers: headers,
       _redirects: redirects,
     });
+  });
+
+  it("hands provision the database id the copy's last deploy recorded (#Q3386)", async ({
+    expect,
+  }) => {
+    const { runner, calls } = await withFakeCloudflare(await packed());
+
+    await runner.run(
+      request({
+        known: { d1: { name: "acme-my-app-east-preview", id: "db-recorded" } },
+      }) as never,
+    );
+
+    expect(calls).toContain("known:d1:db-recorded");
   });
 
   it("leaves the node slice out of the isolate, and keeps the workerd one (#Q3383)", async ({

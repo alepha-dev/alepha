@@ -81,6 +81,16 @@ export interface DeployRequest {
   deploymentId?: string;
 
   /**
+   * The D1 and KV ids this copy's last deploy recorded (#Q3386), so
+   * `provision` checks each by id instead of listing the estate's account.
+   * A hint: each is verified, and a missing one is recreated.
+   */
+  known?: {
+    d1?: { name: string; id: string };
+    kv?: { name: string; id: string };
+  };
+
+  /**
    * The copy's environment, opened.
    *
    * ⚠️ **Uploaded WITH the script, not after it**, as `secret_text` bindings
@@ -237,7 +247,8 @@ export class DeployRunner {
       const adapter = alepha
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)
-        .withSecrets(request.secrets ?? {});
+        .withSecrets(request.secrets ?? {})
+        .withKnownResources(request.known ?? {});
       const assets = this.assetsOf(manifest, open, deployment, configTexts);
       if (assets) {
         adapter.useAssets(assets);

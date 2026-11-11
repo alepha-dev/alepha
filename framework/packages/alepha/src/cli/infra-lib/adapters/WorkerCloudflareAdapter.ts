@@ -152,6 +152,27 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   }
 
   /**
+   * What the previous deploy of this copy recorded it provisioned
+   * ({@link provisionedResources}), so `provision` checks each resource by
+   * its id instead of listing the account (#Q3386).
+   *
+   * ⚠️ **A hint, never a fact.** Each id is checked against Cloudflare and
+   * used only when the resource it names still exists under the expected
+   * name; a deleted one falls back to the listing and is recreated.
+   */
+  public withKnownResources(
+    known: Pick<WorkerCloudflareAdapter["provisionedResources"], "d1" | "kv">,
+  ): this {
+    this.knownResources = known;
+    return this;
+  }
+
+  protected knownResources: Pick<
+    WorkerCloudflareAdapter["provisionedResources"],
+    "d1" | "kv"
+  > = {};
+
+  /**
    * The set {@link withSecrets} was given, empty until it is called.
    */
   protected appSecrets: Record<string, string> = {};
@@ -229,7 +250,13 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         handler: async () => {
           // `weur`, as the CLI: without a hint Cloudflare places it near
           // this Worker's colo, which may be anywhere (#Q2954).
-          const database = await api.ensureD1(name, { locationHint: "weur" });
+          const database = await api.ensureD1(name, {
+            locationHint: "weur",
+            knownId:
+              this.knownResources.d1?.name === name
+                ? this.knownResources.d1.id
+                : undefined,
+          });
           // The shape `BuildCloudflareTask.enhanceD1` parses. It is a URL
           // rather than two variables because that is what the task reads and
           // what a node deploy sets.
@@ -256,7 +283,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       tasks.push({
         name: `provision kv (${name})`,
         handler: async () => {
-          const namespace = await api.ensureKV(name);
+          const namespace = await api.ensureKV(name, {
+            knownId:
+              this.knownResources.kv?.name === name
+                ? this.knownResources.kv.id
+                : undefined,
+          });
           if (this.jurisdictionOf()) {
             await this.warnGlobalLeftBehind(api, "kv", ctx.naming.kv());
           }

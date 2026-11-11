@@ -109,8 +109,19 @@ export class CloudflareProvisionClient {
    */
   public async ensureD1(
     name: string,
-    options: { locationHint?: string } = {},
+    options: { locationHint?: string; knownId?: string } = {},
   ): Promise<CloudflareD1> {
+    // ⚠️ The id a previous deploy recorded, checked by id (#Q3386): one GET
+    // instead of a listing that pages 100 at a time, which on an account
+    // holding a database per tenant is several calls. Only a hint: a database
+    // deleted since, or renamed, falls through to the listing and is
+    // recreated when it is not there.
+    if (options.knownId) {
+      const known = await this.getD1(options.knownId);
+      if (known?.name === name) {
+        return known;
+      }
+    }
     const existing = (await this.listD1()).find((it) => it.name === name);
     if (existing) {
       return existing;
@@ -127,6 +138,16 @@ export class CloudflareProvisionClient {
     return await this.fetch<CloudflareD1>(
       `/accounts/${this.accountId}/d1/database`,
       { method: "POST", body },
+    );
+  }
+
+  /**
+   * One database by id, or `undefined` when the account has none by that id.
+   */
+  public async getD1(uuid: string): Promise<CloudflareD1 | undefined> {
+    return await this.fetch<CloudflareD1 | undefined>(
+      `/accounts/${this.accountId}/d1/database/${encodeURIComponent(uuid)}`,
+      { missing: "undefined" },
     );
   }
 
@@ -310,7 +331,14 @@ export class CloudflareProvisionClient {
     name: string,
     options: { locationHint?: string } = {},
   ): Promise<void> {
-    if ((await this.listR2()).some((it) => it.name === name)) {
+    // ⚠️ By name, one GET (#Q3386): a bucket's name is its id, so there is
+    // nothing to list. The listing pages 1,000 at a time and was a call on
+    // every deploy.
+    const existing = await this.fetch<unknown>(
+      `/accounts/${this.accountId}/r2/buckets/${encodeURIComponent(name)}`,
+      { missing: "undefined" },
+    );
+    if (existing !== undefined) {
       return;
     }
     const body: Record<string, unknown> = { name };
@@ -329,7 +357,20 @@ export class CloudflareProvisionClient {
     );
   }
 
-  public async ensureKV(title: string): Promise<CloudflareKV> {
+  public async ensureKV(
+    title: string,
+    options: { knownId?: string } = {},
+  ): Promise<CloudflareKV> {
+    // The id a previous deploy recorded, checked by id, as for D1 (#Q3386).
+    if (options.knownId) {
+      const known = await this.fetch<CloudflareKV | undefined>(
+        `/accounts/${this.accountId}/storage/kv/namespaces/${encodeURIComponent(options.knownId)}`,
+        { missing: "undefined" },
+      );
+      if (known?.title === title) {
+        return known;
+      }
+    }
     const existing = (await this.listKV()).find((it) => it.title === title);
     if (existing) {
       return existing;
@@ -707,6 +748,11 @@ export class CloudflareProvisionClient {
       method?: string;
       body?: unknown;
       query?: Record<string, string>;
+      /**
+       * `"undefined"` answers `undefined` for a 404 instead of throwing: a
+       * lookup by id or name, where absence is an answer.
+       */
+      missing?: "undefined";
     } = {},
   ): Promise<T> {
     const { method = "GET", body, query } = options;
@@ -731,6 +777,11 @@ export class CloudflareProvisionClient {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+
+    if (options.missing === "undefined" && response.status === 404) {
+      await response.body?.cancel();
+      return undefined as T;
+    }
 
     // A 5xx from Cloudflare or a proxy in front of it answers HTML or nothing,
     // and `response.json()` then throws a bare SyntaxError naming neither the

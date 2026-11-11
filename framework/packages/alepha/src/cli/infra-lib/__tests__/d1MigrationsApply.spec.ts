@@ -182,6 +182,25 @@ describe("d1MigrationsApply", () => {
     return { sql: api.imported, bookkeeping: api.sql, call };
   };
 
+  it("reads the bookkeeping in ONE query when nothing is pending (#Q3386)", async ({
+    expect,
+  }) => {
+    const { sql, bookkeeping, call } = capture(
+      ["0001_init/migration.sql"],
+      ["0001_init"],
+    );
+
+    await call();
+
+    // The create-if-missing and the select travel together: one round trip
+    // on a deploy that changed no migration, read from the database itself.
+    expect(bookkeeping).toHaveLength(1);
+    expect(bookkeeping[0]).toMatch(
+      /CREATE TABLE IF NOT EXISTS d1_migrations.*SELECT name FROM d1_migrations;$/s,
+    );
+    expect(sql).toEqual([]);
+  });
+
   it("sends a migration file through the import flow, never the query one", async ({
     expect,
   }) => {

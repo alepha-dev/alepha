@@ -568,6 +568,16 @@ class FakeCloudflareAccount {
       ],
       ["POST", /^\/d1\/database$/, async () => this.createD1(await json())],
       [
+        "GET",
+        /^\/d1\/database\/([^/]+)$/,
+        ([id]) => {
+          const found = this.databases.find((it) => it.uuid === id);
+          return found
+            ? this.ok({ uuid: found.uuid, name: found.name })
+            : this.refuse(`No D1 database ${id}.`, 404);
+        },
+      ],
+      [
         "POST",
         /^\/d1\/database\/([^/]+)\/query$/,
         async ([id]) => this.queryD1(id, await json()),
@@ -585,6 +595,14 @@ class FakeCloudflareAccount {
       ["POST", /^\/r2\/buckets$/, async () => this.createR2(await json())],
       [
         "GET",
+        /^\/r2\/buckets\/([^/]+)$/,
+        ([name]) =>
+          this.buckets.includes(decodeURIComponent(name!))
+            ? this.ok({ name: decodeURIComponent(name!) })
+            : this.refuse(`No bucket ${name}.`, 404),
+      ],
+      [
+        "GET",
         /^\/storage\/kv\/namespaces$/,
         () => this.page(url, this.namespaces),
       ],
@@ -592,6 +610,16 @@ class FakeCloudflareAccount {
         "POST",
         /^\/storage\/kv\/namespaces$/,
         async () => this.createKV(await json()),
+      ],
+      [
+        "GET",
+        /^\/storage\/kv\/namespaces\/([^/]+)$/,
+        ([id]) => {
+          const found = this.namespaces.find((it) => it.id === id);
+          return found
+            ? this.ok(found)
+            : this.refuse(`No namespace ${id}.`, 404);
+        },
       ],
       ["GET", /^\/queues$/, () => this.page(url, this.queues)],
       ["POST", /^\/queues$/, async () => this.createQueue(await json())],
@@ -687,12 +715,21 @@ class FakeCloudflareAccount {
       return this.refuse(`No D1 database ${id}.`, 404);
     }
     try {
-      if (/^\s*select\b/i.test(body.sql)) {
-        const results = database.sqlite.prepare(body.sql).all();
-        return this.ok([{ results, success: true, meta: {} }]);
-      }
-      database.sqlite.exec(body.sql);
-      return this.ok([{ results: [], success: true, meta: {} }]);
+      // One result per statement, as D1's query endpoint answers a batch of
+      // them joined by semicolons.
+      const statements = body.sql
+        .split(/;\s*(?=\S|$)/)
+        .map((it) => it.trim())
+        .filter(Boolean);
+      const answers = statements.map((statement) => {
+        if (/^\s*select\b/i.test(statement)) {
+          const results = database.sqlite.prepare(statement).all();
+          return { results, success: true, meta: {} };
+        }
+        database.sqlite.exec(statement);
+        return { results: [], success: true, meta: {} };
+      });
+      return this.ok(answers);
     } catch (error) {
       return this.refuse((error as Error).message);
     }
