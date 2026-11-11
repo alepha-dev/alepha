@@ -267,7 +267,13 @@ const cleanup = async (): Promise<void> => {
     await Shell.run("docker", ["rm", "-fv", ...containers]);
   }
   const volumes = (
-    await Shell.run("docker", ["volume", "ls", "-q", "--filter", `label=${LABEL}`])
+    await Shell.run("docker", [
+      "volume",
+      "ls",
+      "-q",
+      "--filter",
+      `label=${LABEL}`,
+    ])
   ).output
     .split("\n")
     .filter(Boolean);
@@ -322,12 +328,20 @@ describe("alepha image on real Docker", () => {
     await mkdir(PROJECT, { recursive: true });
 
     const tarball = join(WORK, "alepha.tgz");
-    await Shell.ok("yarn", ["workspace", "alepha", "pack", "-o", tarball], ROOT);
+    await Shell.ok(
+      "yarn",
+      ["workspace", "alepha", "pack", "-o", tarball],
+      ROOT,
+    );
     await writeFile(
       join(PROJECT, "package.json"),
       `${JSON.stringify({ name: "image-e2e", version: "1.0.0", private: true }, null, 2)}\n`,
     );
-    await Shell.ok("npm", ["install", "--no-audit", "--no-fund", tarball], PROJECT);
+    await Shell.ok(
+      "npm",
+      ["install", "--no-audit", "--no-fund", tarball],
+      PROJECT,
+    );
     await Shell.ok(CLI, ["init"], PROJECT);
 
     // ⚠️ A port chosen here, never one Docker picks (`127.0.0.1::5000`).
