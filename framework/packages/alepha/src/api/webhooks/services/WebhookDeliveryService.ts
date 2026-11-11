@@ -149,6 +149,11 @@ export class WebhookDeliveryService {
 
     const now = this.dateTime.nowISOString();
     if (response.status >= 200 && response.status < 300) {
+      await this.endpoints.updateById(endpoint.id, {
+        lastDeliveryAt: now,
+        lastSuccessAt: now,
+        failingSince: null as any,
+      });
       await this.deliveries.updateById(delivery.id, {
         status: "delivered",
         attempt: count,
@@ -157,11 +162,6 @@ export class WebhookDeliveryService {
         durationMs: response.durationMs,
         deliveredAt: now,
         error: null as any,
-      });
-      await this.endpoints.updateById(endpoint.id, {
-        lastDeliveryAt: now,
-        lastSuccessAt: now,
-        failingSince: null as any,
       });
       await this.alepha.events.emit("webhooks:delivery:success", {
         deliveryId: delivery.id,
@@ -236,6 +236,12 @@ export class WebhookDeliveryService {
     },
   ): Promise<void> {
     const now = this.dateTime.nowISOString();
+    // The endpoint first: a reader who sees the attempt on the delivery sees
+    // its effect on the endpoint already.
+    await this.endpoints.updateById(endpoint.id, {
+      lastDeliveryAt: now,
+      ...(endpoint.failingSince ? {} : { failingSince: now }),
+    });
     await this.deliveries.updateById(delivery.id, {
       attempt: count,
       responseStatus: outcome.responseStatus ?? (null as any),
@@ -243,10 +249,6 @@ export class WebhookDeliveryService {
       durationMs: outcome.durationMs ?? (null as any),
       error: outcome.error,
       ...(final ? { status: "failed" as const } : {}),
-    });
-    await this.endpoints.updateById(endpoint.id, {
-      lastDeliveryAt: now,
-      ...(endpoint.failingSince ? {} : { failingSince: now }),
     });
     await this.emitError(delivery, endpoint, count, final);
   }
