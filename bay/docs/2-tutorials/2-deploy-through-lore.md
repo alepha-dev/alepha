@@ -37,7 +37,10 @@ apps** capability.
 
 ## 3. Enrol the server as an estate
 
-An **estate** is a machine you lend to a project. **Local:**
+An **estate** is a machine that belongs to a project, which lends it to the
+projects that deploy onto it. Run this in the project's directory, or pass
+`-p <project>`, and the estate is created in that project and lent there.
+**Local:**
 
 ```bash
 npx lore estate add myvps --label "My VPS" --allow-deploys

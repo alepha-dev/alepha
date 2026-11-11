@@ -1,24 +1,48 @@
 # Estates
 
 An estate is a place Lore deploys to: a machine running Bay, or a Cloudflare
-account. It belongs to you, not to a project, and you lend it to the projects
-that may deploy onto it. This page explains the two kinds, how to add one, and
-how a project and its apps come to use it.
+account. It belongs to a project, its **home**, whose members manage it, each
+by their rank. The home lends it to the projects that may deploy onto it,
+itself included. This page explains the two kinds, who can do what, how to add
+one, and how other projects come to use it.
 
 ## Two kinds
 
-| Kind           | What it is                                                      | How Lore reaches it                                                                                                    |
-| -------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Bay**        | A server of yours running [Bay](/bay/docs/guides-introduction). | Bay dials out to Lore over a websocket, with a secret Lore minted. Nothing on the machine needs an open port for Lore. |
-| **Cloudflare** | A Cloudflare account, where apps run as Workers.                | Lore calls Cloudflare's API with a token you minted and the account id.                                                |
+| Kind           | What it is                                             | How Lore reaches it                                                                                                    |
+| -------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **Bay**        | A server running [Bay](/bay/docs/guides-introduction). | Bay dials out to Lore over a websocket, with a secret Lore minted. Nothing on the machine needs an open port for Lore. |
+| **Cloudflare** | A Cloudflare account, where apps run as Workers.       | Lore calls Cloudflare's API with a token somebody minted and the account id.                                           |
 
-Both are owned by a user. Deleting your account deletes your estates, and any
-app copy that pointed at one is left with no estate.
+## Who can do what
+
+Five permissions decide it, all read in the estate's home project:
+
+| Permission      | Lets a member                                                                                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `estate:read`   | See the project's estates and open their consoles: what runs on a machine, the commands sent to it, its CPU and memory.                                         |
+| `estate:update` | Change one: allow deploys, the stats switches, the label and expiry, rotate its secret or replace its token, send it commands, and ask for and read a log tail. |
+| `estate:create` | Add an estate to the project, by hand or by buying a server.                                                                                                    |
+| `estate:delete` | Delete an estate of the project, or move it to another project.                                                                                                 |
+| `estate:lend`   | Lend an estate to another project, and take a loan back.                                                                                                        |
+
+By default the project's owner can do everything and a plain member can look:
+`estate:read` is in the Member rank, the other four are not. A rank is how more
+people are let in: the **Admin** preset of the Ranks page carries all five. A
+log tail is under `estate:update`, with asking for one, because a machine runs
+the apps of every project that borrows it.
+
+Nobody else sees an estate's console. A member of a project that only borrows an
+estate sees that it exists and whether it is up, and deploys onto it; they
+cannot open it, change it or read its logs.
 
 ## Adding an estate
 
-Your estates live on the **Estates** page of your account, under **Lore**
-(`/account/estates`). It lists every estate you own, across every project.
+Estates are added inside a project with **Apps** on, by somebody whose rank
+there grants `estate:create`: from the project's **Settings ▸ Apps ▸ Estates**,
+from the **Estates** page of your account (`/account/estates`, which asks for
+the project), or with the CLI. Whichever way, the estate belongs to that
+project and is lent to it. The Estates page of your account lists the estates
+of every project where your rank lets you read them.
 
 ### A server bought for you
 
@@ -44,12 +68,12 @@ In about three minutes, with no SSH and no page:
 4. The command waits until the machine is online (`--timeout`, 300 seconds by
    default) and prints its address, its price, and what to run next.
 
-The estate is named with three random words unless you pass `--name`. It
-accepts deploys (`--no-allow-deploys` for a stats-only machine). `--project`
-lends it to that project, creating the project when it does not exist; without
-it the estate is lent to none, and you lend it later with
-`lore estate lend <slug> --project <project>` (`unlend` withdraws it). Run it without
-`--provider` to list the providers and what each needs.
+`--project` is required: the estate belongs to that project, which is created
+with Apps on when it does not exist. An existing project with Apps off is
+refused before any server is bought. The estate is named with three random
+words unless you pass `--name`, and it accepts deploys (`--no-allow-deploys`
+for a stats-only machine). Run it without `--provider` to list the providers
+and what each needs.
 
 If anything fails after the server exists, the command terminates it before
 answering; if that fails too, it keeps the estate and prints the command that
@@ -57,13 +81,14 @@ finishes the job, so no server bills where you cannot see it.
 
 A provisioned estate carries its server: the Estates page marks it with its
 provider and type, and its console and `lore estate get` show the server, its
-zone, its hourly price and an estimate of what it has cost so far.
+zone, its hourly price and an estimate of what it has cost so far. The server
+lives in the cloud account of whoever ran `lore estate provision`, and the
+console names that person.
 
 ### A Bay estate
 
-Create the estate on the Estates page, from a project's **Settings ▸ Apps ▸
-Estates** (which also lends it to that project), or from a project directory
-with the CLI:
+Create the estate from the project's **Settings ▸ Apps ▸ Estates**, from your
+account's Estates page, or from a project directory with the CLI:
 
 ```bash
 lore estate add my-vps --label "My VPS"
@@ -100,9 +125,9 @@ domain of its own can use its IP through sslip.io, as above: the name resolves
 to the IP and Bay gets a real certificate for it.
 
 ⚠️ The secret is shown **once**. Lore keeps only a hash of it, so it cannot
-show it again; if you lose it, rotate the estate to mint a new one
+show it again; if it is lost, rotate the estate to mint a new one
 (`lore estate rotate my-vps`, or the console) and run the command again. The
-old secret stops working the moment you rotate.
+old secret stops working the moment it is rotated.
 
 A script reads the secret as JSON instead of from the sentence:
 
@@ -118,35 +143,43 @@ lore estate wait my-vps --timeout 120
 ```
 
 It exits `0` once the machine is online and `1` on timeout, printing the last
-state it saw. `lore estate get my-vps` reads the same estate once, with what the
-machine reports running; a machine that never connected says so. See
-[The Lore connector](/bay/docs/guides-lore-connector) in the Bay documentation
-for the machine's side.
+state it saw. `lore estate get my-vps` reads the same estate once, with its home
+project and what the machine reports running; a machine that never connected
+says so. See [The Lore connector](/bay/docs/guides-lore-connector) in the Bay
+documentation for the machine's side.
+
+A slug is unique inside a home project: two projects may both have an `ovh-1`.
+When a command could mean two estates of one slug, it refuses and names their
+projects; `--home <project>` picks one.
 
 ### A Cloudflare estate
 
-Paste an API token and your 32-character account id into the creation dialog.
+Paste an API token and its 32-character account id into the creation dialog.
 Lore checks the token against the account before it creates anything, and again
 every night. Which token to mint, and with which permissions, is the whole of
 [The Cloudflare token](/lore/docs/guides-cloudflare-token).
 
 ## Accepting deploys
 
-A new Bay estate does **not** accept deploys. Turn **Allow deploys** on when you
-are ready, on the **Settings** tab of its
-[console](#the-console-of-a-bay-estate), or pass `--allow-deploys` to
+A new Bay estate does **not** accept deploys. Somebody with `estate:update`
+turns **Allow deploys** on when it is ready, on the **Settings** tab of its
+[console](#the-console-of-a-bay-estate), or passes `--allow-deploys` to
 `lore estate add`. A Cloudflare estate accepts deploys from creation, and the
 same switch turns them off. From a shell, `lore estate update my-vps
 --allow-deploys` (or `--no-allow-deploys`) does the same, and `--label` renames
 it.
 
-The console's **Settings** tab also has:
+The console's **Settings** tab also has, for whoever the rank allows:
 
+- the estate's home project and who added it, with **Move to another project**;
 - **Rotate secret**, to replace the estate's secret;
 - **Keep a history of CPU and memory** and **Stats interval**, for the machine's
   stats;
 - the projects it is lent to, each with **Detach**;
 - **Delete**.
+
+A member who may only look sees a Settings tab that says so, and which
+permission would let them do more.
 
 A Cloudflare estate has no console: clicking it on the Estates page opens a
 drawer with **Allow deploys** and:
@@ -157,42 +190,56 @@ drawer with **Allow deploys** and:
 - **Delete**.
 
 A token that has expired or that Cloudflare refuses shows as
-**credential invalid**, and deploys are refused until you replace it.
+**credential invalid**, and deploys are refused until it is replaced.
 
-## Lending an estate to a project
+## Lending an estate to another project
 
-An estate does nothing for a project until it is lent to it. Lend it from the
-project's **Settings ▸ Apps ▸ Estates**, where you can pick one you own or
-create a new one; `lore estate add` lends the estate it creates to the current
-project. `lore estate list` shows the estates a project
-can use, and whether each is connected.
+An estate is lent to its home when it is created. For another project to deploy
+onto it, lend it there: from that project's **Settings ▸ Apps ▸ Estates**, or
+from a shell:
 
-Withdrawing a loan is refused while an app copy of that project still deploys
-onto the estate: move or delete that copy first.
+```bash
+lore estate lend my-vps --project shop
+```
+
+Lending takes `estate:lend` in both projects, since the borrower's members can
+then run code on the machine. They deploy there and do nothing else. The
+project's Estates tab shows two groups: the estates it is the home of, and the
+ones it borrows, each naming its home. `lore estate list` says the same, for
+every estate the project can deploy onto.
+
+Withdrawing a loan (`lore estate unlend`, or **Detach**) takes `estate:lend` on
+either side, and is refused while an app copy of that project still deploys onto
+the estate: move or delete that copy first.
 
 Then each app copy picks its estate on its own **Settings** tab, or an agent
-sets it with `app_instance_update`. A deploy never asks you which machine: it
-goes where the copy says. See [Deploying an app](/lore/docs/guides-deploying). A
+sets it with `app_instance_update`. A deploy never asks which machine: it goes
+where the copy says. See [Deploying an app](/lore/docs/guides-deploying). A
 stack names its estate itself: `lore stack create --estate` sets its default,
 and `lore stack deploy --estate` overrides that on an environment's first
 deploy.
 
-## A throwaway estate
+## Moving an estate to another project
 
-A server bought for a test keeps billing until somebody deletes it. Give its
-estate a time to live and Lore says when it is overdue:
+An estate changes home from its console's **Settings ▸ Move to another
+project**, or from a shell:
 
 ```bash
-lore estate add tmp-vps --allow-deploys --ttl 2h --output json
-lore estate update tmp-vps --ttl 1d    # extend, from now
-lore estate update tmp-vps --ttl none  # keep it
+lore estate move my-vps --to platform --yes
 ```
 
-`--ttl` takes a number and `m`, `h` or `d`. Past the expiry the estate shows
-**overdue** on the Estates page and in `lore estate list`, and you are told once,
-in the header bell and by email (category Estates). Extending or clearing the TTL
-re-arms that. Lore stops nothing and deletes nothing: deleting the estate and the
-server stays your call.
+It takes `estate:delete` in the home it leaves and `estate:create` in the one it
+joins, which must have Apps on. Its slug, its machine, its secret, its commands
+and its loans stay: the previous home keeps deploying there through its loan,
+and the move prints the loans that remain. A slug the new home already holds is
+refused, since a slug never changes. A provisioned server stays in the cloud
+account that bought it.
+
+## When a member leaves
+
+Nothing changes for the estate. It belongs to the project, not to the person
+who added it, so it stays, and the people whose rank allows it keep managing
+it.
 
 ## Deleting an estate
 
@@ -203,8 +250,9 @@ a shell:
 lore estate delete my-vps --yes
 ```
 
-The slug is one of the estates you own: `lore estate delete` never acts on an
-estate someone else lent to the project. Without `--yes` it asks first, and with
+It takes `estate:delete` in the estate's home project, and the slug resolves
+among the estates the project is the home of: `lore estate delete` never acts
+on an estate the project only borrows. Without `--yes` it asks first, and with
 no terminal to ask on it refuses rather than wait. `--output json` prints
 `{ ok, id, slug, revoked }` for a script, with `server` and `terminated` for a
 provisioned one.
@@ -213,17 +261,24 @@ Deleting is refused while an app copy, a stack or a stack environment, in any
 project, still deploys onto the estate; the refusal names each one. Repoint or
 remove them first.
 
-For an estate you added by hand, nothing on the machine stops: Lore forgets the
+For an estate added by hand, nothing on the machine stops: Lore forgets the
 connection, and for a Bay estate the secret is revoked, so the connector holding
 it is refused on its next dial. Delete the server with its provider afterwards.
 
 For an estate `lore estate provision` bought, `lore estate delete` also
-terminates the server with its IP and its disk, through the same provider CLI.
-Lore is asked first whether it would accept the delete, so a refused delete
-destroys nothing; if the terminate fails, the estate is kept and the command
-that finishes is printed. `--keep-server` deletes the estate and leaves the
-server running. Deleting from the page cannot terminate the server, since Lore
-holds no key to your cloud account: the dialog says so and gives the command.
+terminates the server with its IP and its disk, through the same provider CLI,
+as long as the CLI of whoever runs it can reach that server: it lives in the
+cloud account of whoever provisioned it. Lore is asked first whether it would
+accept the delete, so a refused delete destroys nothing; if the terminate fails,
+the estate is kept and the command that finishes is printed. `--keep-server`
+deletes the estate and leaves the server running. Deleting from the page cannot
+terminate the server, since Lore holds no key to a cloud account: the dialog
+says so and gives the command.
+
+A project that is the home of an estate cannot be deleted, and cannot turn Apps
+off: other projects may deploy onto its estates, and nobody could manage them
+any more. Its danger zone and its Apps switch name the estates in the way; move
+or delete them first.
 
 ## The console of a Bay estate
 
@@ -236,12 +291,54 @@ Clicking a Bay estate on the Estates page opens its console, with four tabs:
 | Commands | What Lore has asked it to do, and how each went.                                 |
 | Settings | The estate's own settings.                                                       |
 
-The console is for the estate's owner only: a project member who deploys onto
-your estate does not see your machine.
+Every member of the estate's home project can open its console and look: what
+runs on it, the commands sent to it, its CPU and memory. That is what a plain
+Member gets. Acting on it (a restart, a switch, a rotation, a log tail) takes
+`estate:update`, which the project's owner holds and a rank can grant; nobody
+reads a log without the permission to act.
+
+A member of a project that only borrows the estate does not see the machine:
+they see that it exists and whether it is up.
+
+## Who is told
+
+When a Cloudflare token stops working, or a throwaway estate is past its expiry,
+every member of the estate's home project whose rank grants `estate:update` is
+told, the project's owner among them: the people who can fix it. See
+[Notifications](/lore/docs/guides-notifications).
+
+## For an instance admin
+
+The admin area's **Estates** page lists every estate of the instance, with its
+home project, who created it, and the projects it is lent to. An admin can
+delete one, and assign one a home: **Assign to project** offers the projects it
+is lent to first. Assigning touches no loan, and the admin still reads no
+credential.
+
+An estate can have **no home**. Nobody but an admin can open it, it keeps
+deploying through its loans, and it is still tied to the account of the person
+who created it: deleting that account deletes the estate, and the account
+deletion dialog says so. Assigning it a home ends both.
+
+### Upgrading an instance
+
+Upgrading to a Lore that homes estates in projects gives each existing estate a
+home where the person who managed it keeps managing it: a project with Apps on
+that this person owns, preferring one the estate is already lent to. An estate
+that was lent only to a project its creator does not own comes out of the
+upgrade with **no home**. It keeps deploying, and nobody but an admin can open
+it until it is assigned.
+
+So after the upgrade, once: open the admin area's **Estates** page, filter on
+**No home**, and assign each estate listed, normally to the project it is lent
+to (`lore estate assign <estate id> --to <project>` does the same from a
+shell). That project's owner then manages it.
 
 ## Agents and estates
 
-There is no MCP tool for estates, on purpose. An agent deploys a copy it names
-by app and environment, and the copy already knows its estate, so no deploy tool
-takes a machine. `app_instance_update` can point a copy at an estate lent to the
-project (`estateId`), and an agent never sees an estate's secret.
+No MCP tool creates, moves, assigns or deletes an estate, on purpose: those
+stay a person's acts. An agent deploys a copy it names by app and environment,
+and the copy already knows its estate, so no deploy tool takes a machine.
+`app_instance_update` can point a copy at an estate lent to the project
+(`estateId`), `estate_stats` reads an estate's CPU and memory, and an agent
+never sees an estate's secret.

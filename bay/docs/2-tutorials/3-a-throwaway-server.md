@@ -27,22 +27,26 @@ alepha deploy
 
 `provision` drives your own `scw`, so Lore holds no key to your cloud account.
 It names the estate with three random words (or `--name`), creates the project
-when it does not exist and lends the estate to it, creates the server with
+when it does not exist, makes the estate belong to it and lends it there,
+creates the server with
 cloud-init that installs Bay with a one-time enrolment secret and an sslip.io
 base domain, and returns once the machine is online, about three minutes
 later. `alepha deploy` says which estate it deploys to and ends with the app's
 address. When you are done:
 
 ```bash
-lore project delete hello-world --confirm hello-world   # the app and its copies go, and free the estate
-lore estate delete <its-name> --yes                     # terminates the server, its IP and its disk
+lore apps instance delete --app hello-world --env production --yes -p hello-world   # the copy goes, and frees the estate
+lore estate delete <its-name> -p hello-world --yes                                  # terminates the server, its IP and its disk
+lore project delete hello-world --confirm hello-world                               # the project last
 ```
 
-The project goes first: an estate is refused while a copy still deploys to it,
-and the refusal says how to remove one. If `hello-world` already exists,
-`provision` says so and lends the estate to it, and warns when that project
-cannot deploy apps yet; a scratch project of its own is the safer choice for a
-throwaway server, since deleting it takes everything in it.
+The copy goes first: an estate is refused while a copy still deploys to it, and
+the refusal says how to remove one. The project goes last: a project that is
+the home of an estate cannot be deleted. If `hello-world` already exists, the
+estate belongs to it; `provision` refuses it when it does not have Apps on,
+before buying anything, and warns when it cannot deploy apps yet. A scratch
+project of its own is the safer choice for a throwaway server, since deleting
+it takes everything in it.
 
 The rest of this page is the long way, with the provider's CLI in your own
 hands: what `provision` does for you, one step at a time.

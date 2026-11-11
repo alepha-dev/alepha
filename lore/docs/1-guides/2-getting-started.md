@@ -53,6 +53,10 @@ lets their account do, what their rank grants in this project, and which
 capabilities the project has on. A rank cannot reach into a capability that is
 off.
 
+The project's [estates](/lore/docs/guides-estates), the machines it deploys to,
+follow the same rule: a Member can look at them, and the owner, or a rank such
+as Admin, can change, add, move or delete them.
+
 ## 4. Install the command line
 
 The `lore` command drives a project from a terminal or a CI job. It needs
