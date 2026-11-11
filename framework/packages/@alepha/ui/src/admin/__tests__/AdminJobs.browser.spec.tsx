@@ -70,6 +70,18 @@ class Links extends LinkProvider {
   override client(): any {
     const actions: Record<string, any> = {
       listJobs: async () => JOBS,
+      getJobStats: async () => ({
+        windowHours: 24,
+        ok: 12,
+        error: 2,
+        cancelled: 0,
+        running: 1,
+        waiting: 3,
+        lastError: {
+          jobName: "deploys.run",
+          completedAt: "2026-09-13T11:00:00.000Z",
+        },
+      }),
       triggerJob: async () => ({ ok: true }),
     };
     return new Proxy({} as Record<string, unknown>, {
@@ -190,6 +202,20 @@ describe("AdminJobs", () => {
         "Successes: last 24. Failures and cancellations: 30 days. Default for a job that runs up to hourly.",
       ),
     ).toBeTruthy();
+  });
+
+  it("draws the last 24 hours above the table, from the stats call (#Q3431)", async () => {
+    await mount();
+
+    const panel = await screen.findByRole("region", { name: "Last 24 hours" });
+    await waitFor(() => {
+      expect(panel.textContent).toContain("Failed");
+      expect(panel.textContent).toContain("2");
+      expect(panel.textContent).toContain("Succeeded");
+      expect(panel.textContent).toContain("12");
+      expect(panel.textContent).toContain("deploys.run");
+      expect(panel.textContent).toContain("3 waiting");
+    });
   });
 
   it("says in the OK and Errors headers that they count kept rows", async () => {

@@ -44,7 +44,7 @@ const POLL_MS = 30_000;
  */
 export const AdminJobs = () => {
   const client = useClient<AdminJobController>();
-  const { tr } = useI18n();
+  const { l, tr } = useI18n();
   const toast = useToast();
   const retention = useJobRetentionLabels();
   const router = useRouter<any>();
@@ -178,6 +178,55 @@ export const AdminJobs = () => {
         filter={matchesJobFilters}
         onRowClick={(j) => open(j)}
         filters={{ fields: filterFields }}
+        // Execution figures over the last 24 hours (#Q3431), the same
+        // collapsible panel as Admin > Files', from one server call. They
+        // count kept runs, like the OK and Errors columns: retention trims
+        // successes hardest, so a figure is a floor, as the hints say.
+        summary={{
+          title: tr("admin.jobs.statsTitle", { default: "Last 24 hours" }),
+          onError: () => {},
+          fetch: async ({ signal }) => {
+            const stats = await client.getJobStats({}, { request: { signal } });
+            return [
+              {
+                label: tr("admin.jobs.statsError", { default: "Failed" }),
+                value: String(stats.error),
+                tone: stats.error > 0 ? "danger" : "neutral",
+                hint: stats.lastError
+                  ? tr("admin.jobs.statsLastError", {
+                      default: `Last: ${stats.lastError.jobName}, ${l(stats.lastError.completedAt, { date: "fromNow" })}`,
+                      args: [
+                        stats.lastError.jobName,
+                        l(stats.lastError.completedAt, { date: "fromNow" }),
+                      ],
+                    })
+                  : undefined,
+              },
+              {
+                label: tr("admin.jobs.statsOk", { default: "Succeeded" }),
+                value: String(stats.ok),
+                tone: "success",
+                hint: tr("admin.jobs.statsKeptHint", {
+                  default: "Runs still kept, not every run",
+                }),
+              },
+              {
+                label: tr("admin.jobs.statsCancelled", {
+                  default: "Cancelled",
+                }),
+                value: String(stats.cancelled),
+              },
+              {
+                label: tr("admin.jobs.statsRunning", { default: "Running" }),
+                value: String(stats.running),
+                hint: tr("admin.jobs.statsWaiting", {
+                  default: `${stats.waiting} waiting`,
+                  args: [String(stats.waiting)],
+                }),
+              },
+            ];
+          },
+        }}
         columns={{
           name: {
             label: tr("admin.jobs.colName", { default: "Name" }),

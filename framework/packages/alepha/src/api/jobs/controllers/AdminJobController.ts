@@ -6,6 +6,7 @@ import { jobExecutionQuerySchema } from "../schemas/jobExecutionQuerySchema.ts";
 import { jobExecutionResourceSchema } from "../schemas/jobExecutionResourceSchema.ts";
 import { jobExecutionRowSchema } from "../schemas/jobExecutionRowSchema.ts";
 import { jobRegistrationSchema } from "../schemas/jobRegistrationSchema.ts";
+import { jobStatsSchema } from "../schemas/jobStatsSchema.ts";
 import { triggerJobSchema } from "../schemas/triggerJobSchema.ts";
 import { JobService } from "../services/JobService.ts";
 
@@ -27,6 +28,21 @@ export class AdminJobController {
       response: z.array(jobRegistrationSchema),
     },
     handler: () => this.jobService.listJobs(),
+  });
+
+  /**
+   * Execution figures over the last 24 hours, for the page's banner
+   * (#Q3431): one call, aggregated server-side.
+   */
+  public readonly getJobStats = $action({
+    method: "GET",
+    path: `${this.url}/stats`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:job:read"] })],
+    schema: {
+      response: jobStatsSchema,
+    },
+    handler: () => this.jobService.getStats(24),
   });
 
   public readonly listExecutions = $action({
