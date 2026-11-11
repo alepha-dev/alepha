@@ -1,5 +1,6 @@
 import { $context, AlephaError, z } from "alepha";
 import { $logger } from "alepha/logger";
+import { ServerHelmetProvider } from "alepha/server";
 
 import type { CaptchaProvider } from "./CaptchaProvider.ts";
 
@@ -95,6 +96,20 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
     "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
   /**
+   * What the widget needs under a Content Security Policy: its script and
+   * the iframe the challenge runs in, both from one host.
+   *
+   * Taken from Cloudflare's Turnstile CSP reference,
+   * https://developers.cloudflare.com/turnstile/reference/content-security-policy/
+   * (`script-src` and `frame-src` `https://challenges.cloudflare.com`; the
+   * widget calls nothing from the page itself, so no `connect-src`).
+   */
+  public static readonly CSP_SOURCES: Record<string, string[]> = {
+    "script-src": ["https://challenges.cloudflare.com"],
+    "frame-src": ["https://challenges.cloudflare.com"],
+  };
+
+  /**
    * @see CaptchaProvider.configured
    */
   public readonly configured = true;
@@ -134,6 +149,18 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
     this.siteKey = env.TURNSTILE_SITE_KEY;
     this.expectedHostname = env.TURNSTILE_EXPECTED_HOSTNAME;
     this.expectedAction = env.TURNSTILE_EXPECTED_ACTION;
+
+    // This provider exists only when Turnstile is the configured captcha, so
+    // that is when its hosts join the policy: an app on another provider
+    // gets none. Helmet sends them only while the CSP is on.
+    if (alepha.has(ServerHelmetProvider)) {
+      const helmet = alepha.inject(ServerHelmetProvider);
+      for (const [directive, sources] of Object.entries(
+        TurnstileCaptchaProvider.CSP_SOURCES,
+      )) {
+        helmet.addCspSource(directive, ...sources);
+      }
+    }
   }
 
   public getSiteKey(): string {

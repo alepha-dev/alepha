@@ -106,6 +106,13 @@ class Analytics {
 }
 ```
 
+Two framework modules load a third-party script, and add their hosts the same way, only when they are the provider in use:
+
+- **Turnstile** (`alepha/captcha`), when `TurnstileCaptchaProvider` is the captcha: `https://challenges.cloudflare.com` in `script-src` and `frame-src`.
+- **Stripe** (`@alepha/payments-stripe`), when it is the payment provider: `https://js.stripe.com` and `https://*.js.stripe.com` in `script-src` and `frame-src`, `https://hooks.stripe.com` in `frame-src` (3-D Secure), `https://api.stripe.com` in `connect-src`.
+
+The lists are `TurnstileCaptchaProvider.CSP_SOURCES` and `StripePaymentProvider.CSP_SOURCES`, taken from each provider's CSP documentation. An app on the in-memory payment provider, or with no captcha configured, gets none of them. Any other third-party host (analytics, a tag manager, a font CDN for `connect-src`) is yours to declare with `addCspSource`, as above.
+
 A directive is matched in kebab-case or camelCase (`scriptSrc` and `script-src` are one directive). Nothing registered is sent while the CSP is off. Register at `configure`: the header is built once and cached, and `alepha build` writes the same policy into `dist/public/_headers` when it configures the app (a prerendered page or a static site). One line of that file holds 2000 characters, about 30 script hashes beside the built-in policy; the build says how many sources a policy over the limit holds.
 
 ### Body Parser

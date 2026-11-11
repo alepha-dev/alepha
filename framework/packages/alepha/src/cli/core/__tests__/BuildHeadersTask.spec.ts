@@ -1,4 +1,5 @@
 import { Alepha, AlephaError } from "alepha";
+import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import {
   AlephaServer,
   type HelmetOptions,
@@ -381,6 +382,33 @@ describe("BuildHeadersTask", () => {
       expect(policy).toBe(helmet.getHeaders()["content-security-policy"]);
       expect(policy).toContain(`script-src 'self' ${hash}`);
       expect(policy).toContain("frame-src 'self' https://frames.example.com");
+    });
+
+    it("carries the hosts a configured third-party module registered", async ({
+      expect,
+    }) => {
+      const { task, fs } = setup();
+      await withPublic(fs);
+      const app = Alepha.create({
+        env: {
+          LOG_LEVEL: "silent",
+          TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+        },
+      })
+        .with(AlephaServer)
+        .with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+      app.store.mut(helmetOptions, (old) => ({
+        ...old,
+        contentSecurityPolicy: {},
+      }));
+      app.inject(CaptchaProvider);
+
+      await build(task, { app });
+
+      expect(fs.getFileContent(HEADERS)).toContain(
+        "frame-src 'self' https://challenges.cloudflare.com",
+      );
     });
 
     it("refuses a policy over one line, saying how many sources it holds", async ({
