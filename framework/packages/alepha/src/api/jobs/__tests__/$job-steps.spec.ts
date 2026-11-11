@@ -1,5 +1,7 @@
 import { $hook, AlephaError, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { MemoryTraceProvider } from "alepha/tracing";
 import { describe, it } from "vitest";
 
 import {
@@ -368,6 +370,438 @@ describe.each(jobStepsDialects)("job steps, step.run on $name", (dialect) => {
     expect(ok?.attempt).toBe(1);
     expect(provider.stops).toBe(0);
     expect(renewalsAfterWrite).toBeGreaterThanOrEqual(2);
+    await alepha.stop();
+  });
+});
+
+describe.each(jobStepsDialects)("job steps, step.sleep on $name", (dialect) => {
+  /**
+   * Exposes the local promotion, to run a sleeping row before its time the
+   * way a replica with a fast clock would.
+   */
+  class EarlyPromotion extends JobProvider {
+    public promoteNow(jobName: string, executionId: string) {
+      return this.dispatchScheduled(jobName, executionId);
+    }
+  }
+
+  it("parks for an hour, runs nothing early, then resumes after the wait exactly once", async ({
+    expect,
+  }) => {
+    const alepha = dialect.create();
+    const calls = { before: 0, after: 0 };
+    const events = { success: 0, error: 0, end: 0 };
+    class App {
+      executions = $repository(jobExecutionEntity);
+      onSuccess = $hook({
+        on: "job:success",
+        handler: () => {
+          events.success++;
+        },
+      });
+      onError = $hook({
+        on: "job:error",
+        handler: () => {
+          events.error++;
+        },
+      });
+      onEnd = $hook({
+        on: "job:end",
+        handler: () => {
+          events.end++;
+        },
+      });
+      work = $job({
+        name: "steps.sleep-hour",
+        description: "Sleeps an hour between two steps.",
+        schema: idSchema,
+        retention: { ok: { last: 10 } },
+        handler: async ({ step }) => {
+          await step.run("before", async () => {
+            calls.before++;
+          });
+          await step.sleep("cool-off", [1, "hour"]);
+          await step.run("after", async () => {
+            calls.after++;
+          });
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+    const dt = alepha.inject(DateTimeProvider);
+
+    const id = await app.work.push({ id: "x" }, { key: "sleep-hour" });
+    const parked = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.["cool-off"],
+      { label: "parked in the sleep" },
+    );
+    const until = parked!.steps!["cool-off"].until!;
+    expect(parked?.scheduledAt).toBe(until);
+    expect(parked?.attempt).toBe(0);
+    expect(parked?.key).toBe("sleep-hour");
+    expect(parked?.steps?.before).toBeDefined();
+    expect(new Date(until).getTime() - dt.nowMillis()).toBeGreaterThan(
+      59 * 60_000,
+    );
+    await waitFor(
+      () => events.end,
+      (n) => n === 1,
+      { label: "job:end of the sleeping pass" },
+    );
+    expect(events).toEqual({ success: 0, error: 0, end: 1 });
+    // Sleeping and keyed: a second push lands on the same execution.
+    expect(await app.work.push({ id: "x" }, { key: "sleep-hour" })).toBe(id);
+
+    await dt.travel([59, "minute"]);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(calls).toEqual({ before: 1, after: 0 });
+    expect((await app.executions.findById(id))?.status).toBe("scheduled");
+
+    await dt.travel([2, "minute"]);
+    const ok = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "ok",
+      { label: "resumed and finished" },
+    );
+    expect(calls).toEqual({ before: 1, after: 1 });
+    expect(ok?.steps?.["cool-off"]?.until).toBe(until);
+    expect(ok?.steps?.after).toBeDefined();
+    await waitFor(
+      () => events.success,
+      (n) => n === 1,
+      { label: "one job:success" },
+    );
+    expect(events.error).toBe(0);
+    await alepha.stop();
+  });
+
+  it("sleeps past the timer's 24 hour ceiling and is promoted by the sweep", async ({
+    expect,
+  }) => {
+    const alepha = dialect.create();
+    let after = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.sleep-long",
+        description: "Sleeps a day and a half.",
+        schema: idSchema,
+        retention: { ok: { last: 10 } },
+        handler: async ({ step }) => {
+          await step.sleep("long", [36, "hour"]);
+          await step.run("after", async () => {
+            after++;
+          });
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+
+    const id = await app.work.push({ id: "x" });
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.long,
+      { label: "parked" },
+    );
+    await alepha.inject(DateTimeProvider).travel([37, "hour"]);
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "ok",
+      { label: "promoted by the sweep and finished" },
+    );
+    expect(after).toBe(1);
+    await alepha.stop();
+  });
+
+  it("is cancelled cleanly by key while it sleeps", async ({ expect }) => {
+    const alepha = dialect.create();
+    let after = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.sleep-cancel",
+        description: "Sleeps, then is cancelled.",
+        schema: idSchema,
+        handler: async ({ step }) => {
+          await step.sleep("wait", [1, "hour"]);
+          await step.run("after", async () => {
+            after++;
+          });
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+
+    const id = await app.work.push({ id: "x" }, { key: "cart-1" });
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.wait,
+      { label: "parked" },
+    );
+    expect(await app.work.cancelByKey("cart-1")).toBe(id);
+    await alepha.inject(DateTimeProvider).travel([2, "hour"]);
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await app.executions.findById(id);
+    expect(row?.status).toBe("cancelled");
+    expect(row?.steps?.wait).toBeDefined();
+    expect(after).toBe(0);
+    await alepha.stop();
+  });
+
+  it("runs two sleeps in one handler, each step once", async ({ expect }) => {
+    const alepha = dialect.create();
+    const calls: string[] = [];
+    let wakeAt = new Date(0);
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.sleep-twice",
+        description: "Two sleeps, three steps.",
+        schema: idSchema,
+        retention: { ok: { last: 10 } },
+        handler: async ({ step }) => {
+          await step.run("one", async () => {
+            calls.push("one");
+          });
+          await step.sleep("first-wait", [10, "minute"]);
+          await step.run("two", async () => {
+            calls.push("two");
+          });
+          await step.sleepUntil("second-wait", wakeAt);
+          await step.run("three", async () => {
+            calls.push("three");
+          });
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+    const dt = alepha.inject(DateTimeProvider);
+    wakeAt = new Date(dt.nowMillis() + 3 * 60 * 60_000);
+
+    const id = await app.work.push({ id: "x" });
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.["first-wait"],
+      { label: "first sleep" },
+    );
+    await dt.travel([11, "minute"]);
+    const second = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.["second-wait"],
+      { label: "second sleep" },
+    );
+    expect(second?.scheduledAt).toBe(wakeAt.toISOString());
+    expect(calls).toEqual(["one", "two"]);
+    await dt.travel([3, "hour"]);
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "ok",
+      { label: "finished" },
+    );
+    expect(calls).toEqual(["one", "two", "three"]);
+    await alepha.stop();
+  });
+
+  it("parks again for the remainder when it runs before its wake instant", async ({
+    expect,
+  }) => {
+    const alepha = dialect.create((a) =>
+      a.with({ provide: JobProvider, use: EarlyPromotion }),
+    );
+    let after = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.sleep-early",
+        description: "Woken before its time.",
+        schema: idSchema,
+        handler: async ({ step }) => {
+          await step.sleep("wait", [1, "hour"]);
+          await step.run("after", async () => {
+            after++;
+          });
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+    const provider = alepha.inject(EarlyPromotion);
+
+    const id = await app.work.push({ id: "x" });
+    const parked = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.wait,
+      { label: "parked" },
+    );
+    const until = parked!.steps!.wait.until!;
+    // A replica whose clock is ahead promotes it now.
+    await app.executions.updateById(id, {
+      scheduledAt: new Date(0).toISOString(),
+    });
+    await provider.promoteNow("steps.sleep-early", id);
+    const again = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && r.scheduledAt === until,
+      { label: "parked again for the remainder" },
+    );
+    expect(again?.steps?.wait?.until).toBe(until);
+    expect(after).toBe(0);
+    await alepha.stop();
+  });
+
+  it("fails loudly when the handler swallows the sleep and calls another step", async ({
+    expect,
+  }) => {
+    const alepha = dialect.create();
+    let after = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.swallow-step",
+        description: "Catches around a sleep.",
+        schema: idSchema,
+        handler: async ({ step }) => {
+          try {
+            await step.sleep("wait", [1, "hour"]);
+          } catch {
+            // swallowed
+          }
+          await step.run("after", async () => {
+            after++;
+          });
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+
+    const id = await app.work.push({ id: "x" });
+    const dead = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "error",
+      { label: "failed" },
+    );
+    expect(dead?.error).toMatch(/continued after step\.sleep\('wait'\)/);
+    expect(after).toBe(0);
+    await alepha.stop();
+  });
+
+  it("fails loudly when the handler swallows the sleep and resolves", async ({
+    expect,
+  }) => {
+    const alepha = dialect.create();
+    let successes = 0;
+    let ranOn = false;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      onSuccess = $hook({
+        on: "job:success",
+        handler: () => {
+          successes++;
+        },
+      });
+      work = $job({
+        name: "steps.swallow-resolve",
+        description: "Catches around a sleep and returns.",
+        schema: idSchema,
+        handler: async ({ step }) => {
+          try {
+            await step.sleep("wait", [1, "hour"]);
+          } catch {
+            // swallowed
+          }
+          ranOn = true;
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+
+    const id = await app.work.push({ id: "x" });
+    const dead = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "error",
+      { label: "failed" },
+    );
+    expect(ranOn).toBe(true);
+    expect(dead?.error).toMatch(/continued after step\.sleep/);
+    expect(successes).toBe(0);
+    await alepha.stop();
+  });
+
+  it("leaves no exception on the run's span", async ({ expect }) => {
+    const alepha = dialect.create();
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.sleep-span",
+        description: "Sleeps once.",
+        schema: idSchema,
+        handler: async ({ step }) => {
+          await step.sleep("wait", [1, "hour"]);
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    const traces = alepha.inject(MemoryTraceProvider);
+    await dialect.start(alepha);
+
+    const id = await app.work.push({ id: "x" });
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled" && !!r.steps?.wait,
+      { label: "parked" },
+    );
+    const span = await waitFor(
+      () => traces.spans().find((s) => s.name === "job steps.sleep-span"),
+      (s) => !!s?.ended,
+      { label: "span ended" },
+    );
+    expect(span?.status).not.toBe("error");
+    expect(span?.exception).toBeUndefined();
+    await alepha.stop();
+  });
+
+  it("parks only once the handler's finally blocks have finished", async ({
+    expect,
+  }) => {
+    const alepha = dialect.create();
+    let statusInFinally: string | undefined;
+    let finallyDone = false;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        name: "steps.sleep-finally",
+        description: "Awaits in a finally around a sleep.",
+        schema: idSchema,
+        handler: async ({ step, executionId }) => {
+          try {
+            await step.sleep("wait", [1, "hour"]);
+          } finally {
+            await new Promise((r) => setTimeout(r, 100));
+            statusInFinally = (await this.executions.findById(executionId))
+              ?.status;
+            finallyDone = true;
+          }
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await dialect.start(alepha);
+
+    const id = await app.work.push({ id: "x" });
+    await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled",
+      { label: "parked" },
+    );
+    expect(finallyDone).toBe(true);
+    expect(statusInFinally).toBe("running");
     await alepha.stop();
   });
 });

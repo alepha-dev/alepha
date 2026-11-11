@@ -114,6 +114,23 @@ export interface JobSteps {
    * idempotency key to the service it calls.
    */
   run: <R>(name: string, fn: () => Async<R>) => Promise<R>;
+
+  /**
+   * Wait `duration` before the rest of the handler runs, durably.
+   *
+   * On the first pass the handler is unwound (the call throws a signal the
+   * job catches; never `catch` around it), then the row is parked as
+   * `scheduled` until the wake instant, like a delayed push: visible and
+   * cancellable in the admin, and no attempt is spent. On the pass after
+   * the wake instant the call returns at once, and the steps before it
+   * return their stored results.
+   */
+  sleep: (name: string, duration: DurationLike) => Promise<void>;
+
+  /**
+   * {@link sleep} until `date` instead of for a duration.
+   */
+  sleepUntil: (name: string, date: Date) => Promise<void>;
 }
 
 export interface JobRescheduleOptions<T extends ZType = ZType> {

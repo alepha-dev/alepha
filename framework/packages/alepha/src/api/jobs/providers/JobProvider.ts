@@ -1462,6 +1462,11 @@ export class JobProvider {
     executionId: string,
     next: RescheduleIntent,
     fence?: JobClaimFence,
+    /**
+     * The `steps` the parked row carries: the run's record plus the sleep's
+     * entry for a `step.sleep`. Left out, the column is not touched.
+     */
+    steps?: Record<string, JobStep> | null,
   ): Promise<void> {
     const parked = await this.guardedUpdate(
       executionId,
@@ -1472,8 +1477,9 @@ export class JobProvider {
         payload: next.payload,
         attempt: 0,
         redispatchCount: 0,
+        ...(steps === undefined ? {} : { steps }),
       },
-      "reschedule",
+      steps ? "sleep" : "reschedule",
       fence,
     );
     if (!parked) return;
@@ -1506,6 +1512,8 @@ export class JobProvider {
     };
     return {
       run: async () => refuse(),
+      sleep: async () => refuse(),
+      sleepUntil: async () => refuse(),
     };
   }
 
@@ -1522,6 +1530,15 @@ export class JobProvider {
     return {
       run: (name, fn) =>
         this.runStep(registration, executionId, run, abortController, name, fn),
+      sleep: async (name, duration) =>
+        this.sleepStep(
+          registration,
+          run,
+          name,
+          this.dt.now().add(this.dt.duration(duration)).toISOString(),
+        ),
+      sleepUntil: async (name, date) =>
+        this.sleepStep(registration, run, name, date.toISOString()),
     };
   }
 
@@ -1536,6 +1553,9 @@ export class JobProvider {
     name: string,
   ): void {
     const jobName = registration.name;
+    if (run.suspend) {
+      throw this.continuedAfterSleep(jobName, run);
+    }
     if (this.alepha.get("alepha.orm.tx")) {
       throw new AlephaError(
         `Job '${jobName}' called step '${name}' inside a transaction. The step's record would join it and roll back with a later throw, while the step's work stays done. Open the transaction inside the step's function instead, where it commits before the result is recorded.`,
@@ -1614,6 +1634,62 @@ export class JobProvider {
       executionId,
     });
     return result;
+  }
+
+  /**
+   * `step.sleep` and `step.sleepUntil`: return at once when the run's record
+   * says the wait is over, otherwise record the wait on the activation and
+   * unwind the handler with the run's suspend signal. Nothing is written
+   * here: the row is parked once the handler has unwound (see
+   * `processQueueExecution`), with the sleep's entry in its `steps`.
+   *
+   * A stored wait whose `until` is still ahead (the row ran early, through
+   * clock skew between replicas) parks again for the remainder, keeping the
+   * stored `until`.
+   */
+  protected async sleepStep(
+    registration: JobRuntimeRegistration,
+    run: JobStepRun,
+    name: string,
+    until: string,
+  ): Promise<void> {
+    this.assertStepCall(registration, run, name);
+    if (run.rescheduled) {
+      throw new AlephaError(
+        `Job '${registration.name}' called step.sleep('${name}') after reschedule() in the same run. One of them parks the row, not both: a reschedule starts the steps over, a sleep keeps them.`,
+      );
+    }
+    const existing = run.steps[name];
+    if (existing && existing.until === undefined) {
+      throw new AlephaError(
+        `Job '${registration.name}' called a sleep '${name}', but this run recorded '${name}' as a step.run. One name, one kind of step.`,
+      );
+    }
+    const entry: JobStep = existing ?? {
+      at: this.dt.nowISOString(),
+      ms: 0,
+      until,
+    };
+    if (new Date(entry.until!).getTime() <= this.dt.nowMillis()) {
+      return;
+    }
+    const signal = new AlephaError(
+      `Job '${registration.name}' is sleeping in step '${name}' until ${entry.until}. This is the signal that unwinds the handler: do not catch it.`,
+    );
+    run.suspend = { name, entry, signal, intercepted: false };
+    throw signal;
+  }
+
+  /**
+   * The error of a handler that went on after `step.sleep` threw: it caught
+   * the signal. Thrown by every later `step.*` or `reschedule()` call, and
+   * recorded as the run's failure when the handler resolves or throws
+   * anything else.
+   */
+  protected continuedAfterSleep(jobName: string, run: JobStepRun): AlephaError {
+    return new AlephaError(
+      `Job '${jobName}': the handler continued after step.sleep('${run.suspend?.name}'). A sleep unwinds the handler by throwing; do not catch around it.`,
+    );
   }
 
   /**
@@ -1921,30 +1997,70 @@ export class JobProvider {
           try {
             await this.traceRun(jobName, executionId, execution.attempt, () =>
               this.underRunSignal(abortController.signal, () =>
-                this.withTimeout(opts.timeout, (signal) =>
-                  opts.handler({
-                    payload: execution.payload,
-                    attempt: execution.attempt,
-                    now,
-                    signal,
-                    executionId,
-                    step,
-                    reschedule: (options) => {
-                      if (inline) {
-                        throw new AlephaError(
-                          `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                this.withTimeout(opts.timeout, async (signal) => {
+                  try {
+                    await opts.handler({
+                      payload: execution.payload,
+                      attempt: execution.attempt,
+                      now,
+                      signal,
+                      executionId,
+                      step,
+                      reschedule: (options) => {
+                        if (inline) {
+                          throw new AlephaError(
+                            `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                          );
+                        }
+                        if (run.suspend) {
+                          throw this.continuedAfterSleep(jobName, run);
+                        }
+                        parkAgain = this.rescheduleIntent(
+                          registration,
+                          execution.payload,
+                          options,
                         );
-                      }
-                      parkAgain = this.rescheduleIntent(
-                        registration,
-                        execution.payload,
-                        options,
-                      );
-                    },
-                  }),
-                ),
+                        run.rescheduled = true;
+                      },
+                    });
+                  } catch (error) {
+                    // A `step.sleep` unwinding the handler. Caught here,
+                    // inside the span and the timeout, so neither sees a
+                    // failure: a sleeping run is not a failed one.
+                    if (run.suspend && error === run.suspend.signal) {
+                      run.suspend.intercepted = true;
+                      return;
+                    }
+                    throw error;
+                  }
+                }),
               ),
             );
+
+            if (run.suspend) {
+              // The handler resolved on its own after a sleep threw: it
+              // caught the signal and carried on. Its remaining code ran
+              // without waiting, so this is a failure, never a success.
+              if (!run.suspend.intercepted) {
+                throw this.continuedAfterSleep(jobName, run);
+              }
+              // Only now, once the handler, its middleware and its
+              // `finally` blocks have unwound, is the row parked: the order
+              // `reschedule` has, and a row that is claimable again only
+              // when this activation is done with it.
+              const sleep = run.suspend;
+              await this.park(
+                jobName,
+                executionId,
+                {
+                  scheduledAt: sleep.entry.until!,
+                  payload: execution.payload,
+                },
+                fence,
+                { ...run.steps, [sleep.name]: sleep.entry },
+              );
+              return;
+            }
 
             if (parkAgain) {
               await this.park(jobName, executionId, parkAgain, fence);
@@ -1982,8 +2098,7 @@ export class JobProvider {
               { catch: true },
             );
           } catch (error) {
-            const err =
-              error instanceof Error ? error : new Error(String(error));
+            let err = error instanceof Error ? error : new Error(String(error));
 
             if (abortController.signal.aborted) {
               let current = await this.executions.findById(executionId);
@@ -2029,6 +2144,13 @@ export class JobProvider {
                 if (inline) throw err;
                 return;
               }
+            }
+
+            // Anything but the sleep's own signal reaching here after a sleep
+            // was signalled means the handler caught the signal and went on:
+            // the failure is that, whatever it then threw.
+            if (run.suspend && !run.suspend.intercepted) {
+              err = this.continuedAfterSleep(jobName, run);
             }
 
             if (inline) {
@@ -3172,5 +3294,20 @@ export interface JobStepRun {
    * The step whose function is running, while one is.
    */
   inStep?: string;
+  /**
+   * Set when a `step.sleep` threw its signal: the wait to park once the
+   * handler has unwound. `intercepted` is set when the signal itself came
+   * out of the handler; a handler that finished any other way caught it.
+   */
+  suspend?: {
+    name: string;
+    entry: JobStep;
+    signal: AlephaError;
+    intercepted: boolean;
+  };
+  /**
+   * Set by `reschedule()`: a sleep after it is refused.
+   */
+  rescheduled?: boolean;
   lease: JobLeaseState;
 }
