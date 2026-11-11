@@ -63,10 +63,13 @@ export const LoreCoreWeb = $module({
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
     alepha.inject(CoreWebBoot);
-    alepha.inject(CoreRouter);
-    alepha.inject(AutomationRouter);
-    alepha.inject(AccountRouter);
-    alepha.inject(LoreAccountRouter);
+    // Routers with `alepha.with`, not `alepha.inject`: it is the same
+    // registration today, and it returns nothing the caller reads, so a
+    // build list can declare a pure router without creating it (#Q3417).
+    alepha.with(CoreRouter);
+    alepha.with(AutomationRouter);
+    alepha.with(AccountRouter);
+    alepha.with(LoreAccountRouter);
 
     // Lore's `quests.createdBy` cascades, so deleting an account also deletes
     // every quest it authored, including inside other people's projects. The
