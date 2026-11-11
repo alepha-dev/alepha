@@ -2367,6 +2367,8 @@ export default {
   "estates.project.notAllowed":
     "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
+  "estates.project.home": "appartient à ce projet",
+  "estates.project.noHome": "aucun projet",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
   "bay.nav.commands": "Commandes",
@@ -2608,6 +2610,13 @@ export default {
   "account.estates.create": "Créer un domaine",
   "account.estates.create.description":
     "Son secret est affiché une seule fois, à la création. Il ne peut pas être récupéré ensuite, seulement renouvelé.",
+  "account.estates.create.project": "Projet",
+  "account.estates.create.project.description":
+    "Le projet auquel le domaine appartient. Ses membres le gèrent, chacun selon son rang.",
+  "account.estates.create.project.only":
+    "Dans $1, le seul projet où vous pouvez créer un domaine.",
+  "account.estates.create.none":
+    "Vous ne pouvez créer de domaine dans aucun projet : un domaine appartient à un projet où Apps est activé, et votre rang doit y accorder estate:create.",
   "account.estates.create.submit": "Créer",
   "account.estates.new": "Nouveau domaine",
   "account.estates.secretPrefix": "secret $1…",

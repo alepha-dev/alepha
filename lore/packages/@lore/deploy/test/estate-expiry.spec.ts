@@ -14,6 +14,7 @@ import {
   LoreDeployApi,
 } from "../src/api/index.ts";
 import { estates } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 class EstateRepositories {
@@ -72,10 +73,7 @@ describe("estate expiry", () => {
     expect,
   }) => {
     const user = await owner();
-    const minted = await controller.createEstate(
-      { body: { slug: "tmp-1" } },
-      { user },
-    );
+    const minted = await createTestEstate(alepha, user, { slug: "tmp-1" });
 
     const set = await controller.updateEstate(
       { params: { estateId: minted.id }, body: { ttlSeconds: 7200 } },
@@ -107,10 +105,7 @@ describe("estate expiry", () => {
     expect,
   }) => {
     const user = await owner();
-    const minted = await controller.createEstate(
-      { body: { slug: "tmp-2" } },
-      { user },
-    );
+    const minted = await createTestEstate(alepha, user, { slug: "tmp-2" });
     await repos.estates.updateById(minted.id, {
       expiresAt: new Date(dateTime.nowMillis() - 1000).toISOString(),
     });

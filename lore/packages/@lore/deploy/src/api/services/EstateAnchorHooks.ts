@@ -1,9 +1,9 @@
 import { projects } from "@lore/core/schemas";
-import { $hook } from "alepha";
-import { organizationMembers } from "alepha/api/organizations";
+import { $hook, $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { estates } from "../entities/estates.ts";
+import { EstateService } from "./EstateService.ts";
 
 /**
  * Keeps a homed estate's `ownerUserId` on its home project's owner (#Q3278).
@@ -28,7 +28,7 @@ import { estates } from "../entities/estates.ts";
 export class EstateAnchorHooks {
   protected readonly estates = $repository(estates);
   protected readonly projects = $repository(projects);
-  protected readonly members = $repository(organizationMembers);
+  protected readonly service = $inject(EstateService);
 
   protected readonly onOwnershipTransferred = $hook({
     on: "organization:ownership:transferred",
@@ -79,7 +79,7 @@ export class EstateAnchorHooks {
       ...new Set(anchored.map((row) => row.projectId as number)),
     ];
     for (const projectId of projectIds) {
-      const owner = await this.ownerOf(projectId);
+      const owner = await this.service.ownerOf(projectId);
       if (!owner || owner === userId) continue;
       await this.estates.updateMany(
         { ownerUserId: { eq: userId }, projectId: { eq: projectId } },
@@ -87,20 +87,5 @@ export class EstateAnchorHooks {
         { touch: false },
       );
     }
-  }
-
-  /**
-   * The user id of a project's owner, or undefined for a project with none.
-   */
-  public async ownerOf(projectId: number): Promise<string | undefined> {
-    const project = await this.projects.findById(projectId);
-    if (!project?.organizationId) return undefined;
-    const owner = await this.members.findOne({
-      where: {
-        organizationId: { eq: project.organizationId },
-        rank: { eq: "owner" },
-      },
-    });
-    return owner?.userId;
   }
 }

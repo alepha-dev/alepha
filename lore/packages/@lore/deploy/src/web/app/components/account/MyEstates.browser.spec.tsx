@@ -15,7 +15,9 @@ import { CLOUDFLARE_TOKEN_TEMPLATE } from "../../../../api/schemas/cloudflareTok
 import MyEstates from "./MyEstates.tsx";
 
 /**
- * Answers `listMyEstates` and `createEstate`, and records what was asked.
+ * Answers `listMyEstates`, `listEstateHomeChoices` and `createProjectEstate`,
+ * and records what was asked. An answer that is a function is called with
+ * the calls so far, so the list can change once something was created.
  * Substitution rather than `vi.mock`, per `AGENTS.md`.
  */
 class RecordingLinkProvider extends LinkProvider {
@@ -29,7 +31,9 @@ class RecordingLinkProvider extends LinkProvider {
         get: (_target, prop: string) => {
           const call = async () => {
             this.calls.push(prop);
-            const answer = this.responses[prop];
+            const scripted = this.responses[prop];
+            const answer =
+              typeof scripted === "function" ? scripted(this.calls) : scripted;
             // A scripted refusal, so a case can drive the "the dialog stays
             // open with the message beside the field" path the same way the
             // server drives it: an error whose `data.field` survived the
@@ -59,6 +63,16 @@ const SECRET = "est_thisIsTheOnlyTimeItExists";
 const CF_ACCOUNT = "0123456789abcdef0123456789abcdef";
 
 const CF_TOKEN = `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`;
+
+/**
+ * The list before and after a create: empty, then holding the created row,
+ * which is what the page reads back once the create returned.
+ */
+const afterCreate =
+  (row: unknown) =>
+  (calls: string[]): unknown => ({
+    items: row && calls.includes("createProjectEstate") ? [row] : [],
+  });
 
 const estate = (over: Record<string, unknown> = {}) => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -116,7 +130,12 @@ describe("MyEstates", () => {
     await alepha.inject(I18nProvider).setLang("en");
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
-    links.responses = responses;
+    // One project to create in by default: an estate belongs to a project
+    // (#E126), so the Add button shows only when there is one.
+    links.responses = {
+      listEstateHomeChoices: { items: [{ id: 7, title: "Acme" }] },
+      ...responses,
+    };
     return {
       links,
       ...render(
@@ -191,13 +210,13 @@ describe("MyEstates", () => {
     expect,
   }) => {
     const { findByTestId, getByTestId, queryByText, findByText } = await show({
-      listMyEstates: { items: [] },
-      createEstate: { ...estate(), secret: SECRET },
+      listMyEstates: afterCreate(estate()),
+      createProjectEstate: { ...estate(), secret: SECRET },
     });
 
     await findByText(/Create an estate/);
 
-    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(await findByTestId("estate-create-open"));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "ovh-1" },
     });
@@ -256,12 +275,12 @@ describe("MyEstates", () => {
     };
     const { getByRole, getByTestId, queryByTestId, findByText, findByTestId } =
       await show({
-        listMyEstates: { items: [] },
-        createEstate: cloudflare,
+        listMyEstates: afterCreate(cloudflare),
+        createProjectEstate: cloudflare,
       });
 
     await findByText(/Create an estate/);
-    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(await findByTestId("estate-create-open"));
     /*
      * ⚠️ By ROLE and accessible name, not by a `data-testid`. The two
      * segments are a `Segmented` control now (#Q2049), whose items are
@@ -303,11 +322,11 @@ describe("MyEstates", () => {
      * root-relative href would satisfy any substring check against the
      * path, which is exactly the bug.
      */
-    const { getByRole, getByTestId, findByTestId } = await show({
+    const { getByRole, findByTestId } = await show({
       listMyEstates: { items: [] },
     });
 
-    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(await findByTestId("estate-create-open"));
     fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
 
     const guide = await findByTestId("estate-create-guide");
@@ -331,11 +350,11 @@ describe("MyEstates", () => {
      * ⚠️ Asserted on the DECODED JSON, not on a substring of the encoded
      * blob: a test on the raw string passes for a URL no browser can parse.
      */
-    const { getByTestId, getByRole, findByTestId, findByText } = await show({
+    const { getByRole, findByTestId, findByText } = await show({
       listMyEstates: { items: [] },
     });
 
-    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(await findByTestId("estate-create-open"));
     fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
 
     const mint = await findByTestId("estate-create-mint");
@@ -363,11 +382,11 @@ describe("MyEstates", () => {
       { data: { field: "token" } },
     );
     const { getByRole, getByTestId, findByTestId } = await show({
-      listMyEstates: { items: [] },
-      createEstate: refusal,
+      listMyEstates: afterCreate(undefined),
+      createProjectEstate: refusal,
     });
 
-    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(await findByTestId("estate-create-open"));
     fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "cf-1" },

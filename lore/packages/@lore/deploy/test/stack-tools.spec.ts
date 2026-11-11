@@ -3,12 +3,9 @@ import { AlephaMcp } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  EstateController,
-  StackController,
-  StackVariableController,
-} from "../src/api/index.ts";
+import { StackController, StackVariableController } from "../src/api/index.ts";
 import { LoreDeployMcp, StackTools } from "../src/mcp/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import {
   bootStackSpec,
   createEnvironment,
@@ -61,19 +58,15 @@ describe("stack MCP tools", () => {
 
   const arrange = async () => {
     const w = await stackWorld(alepha);
-    const minted = (
-      await alepha
-        .inject(EstateController)
-        .createEstate.fetch(
-          { body: { slug: `bay-${crypto.randomUUID().slice(0, 6)}` } },
-          { user: w.user },
-        )
-    ).data;
+    const minted = await createTestEstate(
+      alepha,
+      w.user,
+      { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
+      {
+        projectId: w.project.id,
+      },
+    );
     await w.rows.estates.updateById(minted.id, { deployAllowed: true });
-    await w.rows.grants.create({
-      estateId: minted.id,
-      projectId: w.project.id,
-    });
     const stack = await createStack(alepha, w, {
       name: "umami",
       estateId: minted.id,

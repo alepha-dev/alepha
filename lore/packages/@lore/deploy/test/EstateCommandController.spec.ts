@@ -18,6 +18,7 @@ import {
   type Estate,
   estates,
 } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class Repos {
@@ -71,7 +72,7 @@ const createEstate = async (
   slug: string,
   deployAllowed: boolean,
 ): Promise<Estate> => {
-  const minted = await ctx.estateApi.createEstate({ body: { slug } }, { user });
+  const minted = await createTestEstate(ctx.alepha, user, { slug });
   await ctx.repos.estates.updateById(minted.id, { deployAllowed });
   return ctx.repos.estates.getOne({ where: { id: { eq: minted.id } } });
 };
@@ -274,7 +275,7 @@ describe("EstateCommandController, enqueuing by hand", () => {
         { user: stranger },
       ),
     ).rejects.toThrow(ForbiddenError);
-    // And the owner's estate is not theirs to command at all.
+    // And an estate of a project they are not in is not theirs to command.
     await expect(
       ctx.commands.enqueueEstateCommand(
         {
@@ -283,7 +284,7 @@ describe("EstateCommandController, enqueuing by hand", () => {
         },
         { user: stranger },
       ),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("answers 404 for an artifact that does not exist", async ({ expect }) => {
@@ -578,7 +579,7 @@ describe("EstateCommandController, logs", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("answers a non-owner as if the estate did not exist", async ({
+  it("refuses a log tail to a non-member of the home project", async ({
     expect,
   }) => {
     const ada = await createUser(ctx);
@@ -598,6 +599,6 @@ describe("EstateCommandController, logs", () => {
         { params: { estateId: estate.id, commandId: command.id } },
         { user: grace },
       ),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ForbiddenError);
   });
 });

@@ -63,8 +63,7 @@ const INTERVALS = [300, 900, 1800, 3600, 21_600, 86_400];
  * moves as-is rather than being rewritten in the same pass.
  *
  * ⚠️ **A drawer is not a permission boundary.** Every action here is enforced
- * server-side on the row's owner (`EstateService.loadOwned` answers 404 for
- * anyone else). This decides what to draw and nothing more, which is exactly
+ * server-side by the rank of the estate's home project. This decides what to draw and nothing more, which is exactly
  * as true now that it is hidden behind a click as it was when it was on the
  * page.
  *

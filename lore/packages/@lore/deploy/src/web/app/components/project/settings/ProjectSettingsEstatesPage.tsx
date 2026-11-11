@@ -163,12 +163,9 @@ const ProjectSettingsEstatesPage = () => {
             <ProjectSettingsEstateRow
               key={estate.id}
               estate={estate}
-              // ⚠️ `ownedByViewer`, not a comparison of `estate.owner.id`
-              // against the session. The server answers that question now,
-              // once, and the row's console link reads the same flag - so the
-              // two cannot come to disagree about who owns a machine. It is
-              // also what retired `useAuth` from this page.
-              canDetach={canLend || estate.ownedByViewer}
+              // Either side of the loan may end it: `estate:lend` here, or in
+              // the estate's home project, which the server sends in `can`.
+              canDetach={canLend || estate.can.includes("estate:lend")}
               onDetach={(item) => void detachAction.run(item)}
               busy={detachAction.loading}
             />

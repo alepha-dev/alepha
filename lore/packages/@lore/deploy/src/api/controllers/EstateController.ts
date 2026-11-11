@@ -1,14 +1,19 @@
-import { LoreAudits } from "@lore/core/api";
+import { $ownsProject, LoreAudits } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
+import { organizationMembers } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $rateLimit } from "alepha/rate-limit";
-import { $secure } from "alepha/security";
+import {
+  $secure,
+  OwnedResourceProvider,
+  type UserAccountToken,
+} from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { estates } from "../entities/estates.ts";
+import { type Estate, estates } from "../entities/estates.ts";
 import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
-import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
 import { estateEnrolmentSchema } from "../schemas/estateEnrolmentSchema.ts";
 import {
   type EstateInventoryResource,
@@ -40,14 +45,22 @@ export type {
 };
 
 /**
- * Owner-facing CRUD for estates: the deploy destinations a user owns, across
- * every project, managed from `/account/estates`.
+ * One estate, managed by the members of its home project (epic #E126): the
+ * console at `/account/estates/:estateId` and the list across every project
+ * the caller can read estates in.
  *
- * Every route here is scoped to the caller's own rows. There is no member
- * view and no project in the path: what a project may do with an estate it
- * has been lent is the lending's business (#1837), and the instance-wide
- * backstop is the admin's (#1838). Both read the same masked resource, and
- * neither can read a secret, the owner included.
+ * Every action on `/estates/:estateId` goes through `$ownsProject` on the
+ * estate row, which walks it to its home project by `projectId`, reads the
+ * membership and checks the rank: `estate:read` to look, `estate:update` to
+ * change or command it, `estate:delete` to delete it. Every write also
+ * passes `capability: "apps"`; reads pass none, by Lore's rule that turning a
+ * capability off hides and never refuses a read. A non-member gets 403, not
+ * the 404 the old owner filter answered: an estate id is a UUID, so nothing
+ * can be enumerated, and one gate matters more than the hidden 404. An estate
+ * with no home has a null `projectId`, and the gate refuses it to everybody.
+ *
+ * Creating one is the project's (`ProjectEstateController.createProjectEstate`):
+ * an estate cannot exist without a home.
  *
  * Both types are created here, and the difference is what a credential is.
  * A `bay` secret is one Lore mints and hands back once, so it is rotated; a
@@ -64,6 +77,44 @@ export class EstateController {
   protected readonly stats = $inject(EstateStatsService);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly owned = $inject(OwnedResourceProvider);
+  protected readonly projects = $repository(projects);
+  protected readonly members = $repository(organizationMembers);
+
+  /**
+   * The gate on one estate, by its home project's rank. A write names the
+   * Apps capability, as every other Deploy write does; a read names none.
+   * Declared above the actions: a field initializer reading a field declared
+   * below it sees `undefined`.
+   */
+  protected ownsEstate = (requires: string, write = false) =>
+    $ownsProject({
+      repository: () => this.estates,
+      param: "estateId",
+      requires,
+      ...(write
+        ? { capability: { key: "apps" as const, action: "manage an estate" } }
+        : {}),
+    });
+
+  /**
+   * The estate the gate just read.
+   */
+  protected estate(): Estate {
+    return this.owned.get<Estate>();
+  }
+
+  protected async reread(id: string): Promise<Estate> {
+    return this.estates.getById(id);
+  }
+
+  protected async presentOne(
+    estate: Estate,
+    user: UserAccountToken,
+  ): Promise<EstateResource> {
+    const [resource] = await this.service.present([estate], user);
+    return resource!;
+  }
 
   /**
    * The polite limit on {@link refreshEstate}, keyed per estate. Declared
@@ -76,9 +127,12 @@ export class EstateController {
   });
 
   /**
-   * Every estate the caller owns, newest first, each with the projects it
-   * is lent to: the one fact the owner's page needs that the row does not
-   * hold (#1838).
+   * The estates of every project where the caller's rank grants
+   * `estate:read`, newest first, each with its home project, the projects
+   * it is lent to and what the caller may do with it.
+   *
+   * One read of the caller's memberships and one of the projects behind
+   * them; the permissions are computed once per project.
    */
   listMyEstates = $action({
     use: [$secure({ permissions: ["estate:read"] })],
@@ -88,67 +142,100 @@ export class EstateController {
       response: z.object({ items: z.array(ownedEstateResourceSchema) }),
     },
     handler: async ({ user }) => {
-      const items = await this.estates.findMany({
-        where: { ownerUserId: { eq: user.id } },
-        orderBy: [{ column: "createdAt", direction: "desc" }],
+      const memberships = await this.members.findMany({
+        where: { userId: { eq: user.id } },
+        columns: ["organizationId"],
       });
-      return { items: await this.service.withLoans(items) };
-    },
-  });
-
-  /**
-   * Enrol a deploy destination.
-   *
-   * Two shapes behind one route (`createEstateBodySchema`): a `bay` estate,
-   * whose secret Lore mints and hands back exactly once, or a `cloudflare`
-   * estate, whose token the owner pastes and Lore checks before writing
-   * anything. Both go through `EstateService`, shared with the
-   * create-from-inside-a-project flow (#1837), so the two entry points
-   * cannot disagree about normalisation, uniqueness or the audit row.
-   *
-   * ⚠️ `secret` is present only when Lore minted one, so it is **absent** on
-   * a cloudflare create rather than empty. That is what #1865's "the reveal
-   * dialog does not open" rests on: an absent field, not a falsy string.
-   */
-  createEstate = $action({
-    use: [$secure({ permissions: ["estate:create"] })],
-    method: "POST",
-    path: "/estates",
-    schema: {
-      body: createEstateBodySchema,
-      response: mintedEstateSchema,
-    },
-    handler: async ({ body, user }) => {
-      if (body.type === "cloudflare") {
-        const { estate } = await this.service.createCloudflare(user, body);
-        return this.service.toResource(estate);
+      const organizationIds = memberships.map((row) => row.organizationId);
+      const homes = organizationIds.length
+        ? await this.projects.findMany({
+            where: { organizationId: { inArray: organizationIds } },
+            columns: ["id"],
+          })
+        : [];
+      const readable: number[] = [];
+      for (const home of homes) {
+        const can = await this.service.estatePermissionsIn(home.id, user);
+        if (can.includes("estate:read")) {
+          readable.push(home.id);
+        }
       }
-
-      const { estate, secret } = await this.service.createBay(user, body);
-      return { ...this.service.toResource(estate), secret };
+      const items = readable.length
+        ? await this.estates.findMany({
+            where: { projectId: { inArray: readable } },
+            orderBy: [{ column: "createdAt", direction: "desc" }],
+          })
+        : [];
+      return { items: await this.service.withLoans(items, user) };
     },
   });
 
   /**
-   * One estate the caller owns, with the projects it is lent to and what the
-   * machine last reported.
+   * The projects the caller may create an estate in: where their effective
+   * permissions hold `estate:create`, which also means the Apps capability is
+   * on. What the account page's Add dialog offers.
+   */
+  listEstateHomeChoices = $action({
+    use: [$secure()],
+    method: "GET",
+    path: "/estates/homes",
+    schema: {
+      response: z.object({
+        items: z.array(
+          z.object({
+            id: z.integer(),
+            title: z.string(),
+            slug: z.string().optional(),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ user }) => {
+      const memberships = await this.members.findMany({
+        where: { userId: { eq: user.id } },
+        columns: ["organizationId"],
+      });
+      const organizationIds = memberships.map((row) => row.organizationId);
+      const candidates = organizationIds.length
+        ? await this.projects.findMany({
+            where: { organizationId: { inArray: organizationIds } },
+            columns: ["id", "title", "slug"],
+            orderBy: [{ column: "title", direction: "asc" }],
+          })
+        : [];
+      const items = [];
+      for (const project of candidates) {
+        const can = await this.service.estatePermissionsIn(project.id, user);
+        if (can.includes("estate:create")) {
+          items.push({
+            id: project.id,
+            title: project.title,
+            ...(project.slug ? { slug: project.slug } : {}),
+          });
+        }
+      }
+      return { items };
+    },
+  });
+
+  /**
+   * One estate, with its home project, the projects it is lent to and what
+   * the machine last reported.
    *
-   * The owned shape rather than the bare resource: this route is owner-gated
-   * like every sibling, and the console's Settings tab needs the loans it
-   * detaches from. Resolved through the same `withLoans` the list uses, so
-   * there is one place that knows how a loan is shaped.
+   * The full shape rather than the bare resource: the console's Settings tab
+   * needs the loans it detaches from. Resolved through the same `withLoans`
+   * the list uses, so there is one place that knows how a loan is shaped.
    */
   getEstate = $action({
-    use: [$secure({ permissions: ["estate:read"] })],
+    use: [this.ownsEstate("estate:read")],
     method: "GET",
     path: "/estates/:estateId",
     schema: {
       params: z.object({ estateId: z.uuid() }),
       response: ownedEstateResourceSchema,
     },
-    handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
-      const [owned] = await this.service.withLoans([estate]);
+    handler: async ({ user }) => {
+      const [owned] = await this.service.withLoans([this.estate()], user);
       return owned!;
     },
   });
@@ -159,25 +246,21 @@ export class EstateController {
    * ⚠️ A machine that has never connected answers `{ inventory: null }` and
    * NOT a 404. "Nothing reported yet" is a state the console renders, and the
    * `expected` list is still worth showing beside it: those are the instances
-   * Lore believes belong here. Only the estate itself 404s, through
-   * `loadOwned`, like every sibling in this controller.
+   * Lore believes belong here.
    *
-   * Owner only, deliberately. Sharing a read-only view with members of a
-   * project this estate is lent to is wanted later and is a filter on
-   * `reconcile`, not a change here.
+   * For the members of the home project. A member of a project the estate is
+   * only lent to is refused: what runs on a machine includes other
+   * projects' copies.
    */
   getEstateInventory = $action({
-    use: [$secure({ permissions: ["estate:read"] })],
+    use: [this.ownsEstate("estate:read")],
     method: "GET",
     path: "/estates/:estateId/inventory",
     schema: {
       params: z.object({ estateId: z.uuid() }),
       response: estateInventoryResourceSchema,
     },
-    handler: async ({ params, user }) =>
-      this.inventories.reconcile(
-        await this.service.loadOwned(params.estateId, user),
-      ),
+    handler: async () => this.inventories.reconcile(this.estate()),
   });
 
   /**
@@ -199,7 +282,7 @@ export class EstateController {
    * is; this route answers what the dataset holds either way.
    */
   getEstateStats = $action({
-    use: [$secure({ permissions: ["estate:read"] })],
+    use: [this.ownsEstate("estate:read")],
     method: "GET",
     path: "/estates/:estateId/stats",
     schema: {
@@ -219,8 +302,8 @@ export class EstateController {
         ),
       }),
     },
-    handler: async ({ params, query, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+    handler: async ({ query }) => {
+      const estate = this.estate();
       // Thirty days by default: the dataset rolls up by day, so a shorter
       // window is a handful of points and a longer one outlives the hot
       // retention.
@@ -260,7 +343,7 @@ export class EstateController {
    */
   refreshEstate = $action({
     use: [
-      $secure({ permissions: ["estate:update"] }),
+      this.ownsEstate("estate:update", true),
       this.refreshLimit.middleware({
         key: (input: { params: { estateId: string } }) =>
           `estate-refresh:${input.params.estateId}`,
@@ -272,8 +355,8 @@ export class EstateController {
       params: z.object({ estateId: z.uuid() }),
       response: z.object({ asked: z.boolean() }),
     },
-    handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+    handler: async () => {
+      const estate = this.estate();
       if (!this.service.isOnline(estate)) {
         throw new BadRequestError(
           `Estate "${estate.slug}" is not connected right now, so there is nothing to ask`,
@@ -295,7 +378,7 @@ export class EstateController {
    * because the label is what a rename is.
    */
   updateEstate = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "PATCH",
     path: "/estates/:estateId",
     schema: {
@@ -320,7 +403,7 @@ export class EstateController {
       response: estateResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
 
       await this.estates.updateById(estate.id, {
         ...(body.label === undefined
@@ -356,7 +439,7 @@ export class EstateController {
         metadata: { fields: Object.keys(body) },
       });
 
-      const updated = await this.service.loadOwned(params.estateId, user);
+      const updated = await this.reread(estate.id);
       // The machine caches what `welcome` told it, so a switch it acts on
       // (deploys, the gauge interval) is pushed as `config` the moment it
       // changes. Best effort: an offline machine learns it from its next
@@ -374,7 +457,7 @@ export class EstateController {
           this.service.welcomeFrame(updated, "config"),
         );
       }
-      return this.service.toResource(updated);
+      return this.presentOne(updated, user);
     },
   });
 
@@ -387,7 +470,7 @@ export class EstateController {
    * refused on its next dial (#1782) and nothing is handed over.
    */
   rotateEstate = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "POST",
     path: "/estates/:estateId/rotate",
     schema: {
@@ -395,7 +478,7 @@ export class EstateController {
       response: mintedEstateSchema,
     },
     handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       if (estate.type !== "bay") {
         throw new BadRequestError(
           "Only a bay estate holds a secret Lore minted; replace a cloudflare token with POST /estates/:estateId/credential",
@@ -419,8 +502,11 @@ export class EstateController {
         description: estate.slug,
       });
 
-      const rotated = await this.service.loadOwned(params.estateId, user);
-      return { ...this.service.toResource(rotated), secret: minted.secret };
+      const rotated = await this.reread(estate.id);
+      return {
+        ...(await this.presentOne(rotated, user)),
+        secret: minted.secret,
+      };
     },
   });
 
@@ -433,7 +519,7 @@ export class EstateController {
    * until a machine exchanges it.
    */
   createEstateEnrolment = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "POST",
     path: "/estates/:estateId/enrolment",
     schema: {
@@ -441,7 +527,7 @@ export class EstateController {
       response: estateEnrolmentSchema,
     },
     handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       if (estate.type !== "bay") {
         throw new BadRequestError(
           "Only a bay estate enrols a machine; a cloudflare estate holds a token instead",
@@ -466,7 +552,7 @@ export class EstateController {
    * record and nothing more: the CLI creates and terminates the server.
    */
   recordEstateProvision = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "POST",
     path: "/estates/:estateId/provision",
     schema: {
@@ -475,7 +561,7 @@ export class EstateController {
       response: estateResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       if (estate.type !== "bay") {
         throw new BadRequestError(
           "Only a bay estate runs on a server Lore provisions",
@@ -491,9 +577,7 @@ export class EstateController {
           : { hourlyPrice: body.hourlyPrice }),
         provisionedAt: new Date(this.dateTime.nowMillis()).toISOString(),
       });
-      return this.service.toResource(
-        await this.service.loadOwned(params.estateId, user),
-      );
+      return this.presentOne(await this.reread(estate.id), user);
     },
   });
 
@@ -512,7 +596,7 @@ export class EstateController {
    * says "Replace token"; the Activity filter does not grow a verb.
    */
   replaceEstateCredential = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "POST",
     path: "/estates/:estateId/credential",
     schema: {
@@ -521,13 +605,13 @@ export class EstateController {
       response: estateResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       const replaced = await this.service.replaceCredential(
         user,
         estate,
         body.token,
       );
-      return this.service.toResource(replaced);
+      return this.presentOne(replaced, user);
     },
   });
 
@@ -540,7 +624,7 @@ export class EstateController {
    * untouched and says so, exactly as the sweep does.
    */
   checkEstateCredential = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "POST",
     path: "/estates/:estateId/credential/check",
     schema: {
@@ -548,7 +632,7 @@ export class EstateController {
       response: estateResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       if (estate.type !== "cloudflare") {
         throw new BadRequestError(
           "Only a cloudflare estate has a token to check",
@@ -563,9 +647,7 @@ export class EstateController {
         throw new BadRequestError(check.message);
       }
 
-      return this.service.toResource(
-        await this.service.loadOwned(params.estateId, user),
-      );
+      return this.presentOne(await this.reread(estate.id), user);
     },
   });
 
@@ -576,7 +658,7 @@ export class EstateController {
    * server, so a delete Lore would refuse never destroys the machine first.
    */
   checkEstateDeletable = $action({
-    use: [$secure({ permissions: ["estate:delete"] })],
+    use: [this.ownsEstate("estate:delete")],
     method: "GET",
     path: "/estates/:estateId/deletable",
     schema: {
@@ -584,7 +666,7 @@ export class EstateController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       await this.service.assertUnreferenced(estate.id);
       return { ok: true };
     },
@@ -603,7 +685,7 @@ export class EstateController {
    * revokes; the lending join cascades with it.
    */
   deleteEstate = $action({
-    use: [$secure({ permissions: ["estate:delete"] })],
+    use: [this.ownsEstate("estate:delete", true)],
     method: "DELETE",
     path: "/estates/:estateId",
     schema: {
@@ -611,7 +693,7 @@ export class EstateController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const estate = await this.service.loadOwned(params.estateId, user);
+      const estate = this.estate();
       await this.service.assertUnreferenced(estate.id);
 
       await this.estates.deleteById(estate.id);
@@ -632,17 +714,18 @@ export class EstateController {
    * What deleting the caller's account would take with it.
    *
    * A question beside `UserDeletionHook.countMyAuthoredQuests`, for the same
-   * dialog: an account deletion cascades to its estates (the deliberate
-   * exception to the refuse-while-referenced rule, because it must not be
-   * blockable by other people's projects), so the number is stated before
-   * the click rather than discovered after it.
+   * dialog: an estate with no home is still anchored on the account of the
+   * person who created it, and goes with it (the deliberate exception to the
+   * refuse-while-referenced rule, because an account deletion must not be
+   * blockable by other people's projects). A homed estate outlives it. So
+   * only the first kind is counted, before the click rather than after.
    */
   countMyEstates = $action({
     use: [$secure()],
     method: "GET",
     path: "/users/me/estates",
     description:
-      "How many estates the caller owns, and how many projects they are lent to",
+      "How many estates with no project go with the caller's account, and how many projects they are lent to",
     schema: {
       response: z.object({ estates: z.integer(), projects: z.integer() }),
     },

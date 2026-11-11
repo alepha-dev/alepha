@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
 import {
+  createProjectViaWizard,
   newUserContext,
   registerAndVerify,
   signInAsAdmin,
@@ -78,6 +79,11 @@ test.describe("Estates", () => {
     test.setTimeout(120_000);
     const email = `estate-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
+    // An estate belongs to a project with Apps on (#E126): with one such
+    // project the Add dialog names it rather than asking.
+    await createProjectViaWizard(page, `Est${Date.now()}`.slice(0, 20), {
+      capabilities: ["apps"],
+    });
 
     await page.goto("/account/estates");
     await page.waitForLoadState("networkidle");
@@ -199,6 +205,9 @@ test.describe("Estates", () => {
 
     // The owner enrols in their own context; the admin looks from another.
     const owner = await newUserContext(browser, baseURL ?? "", "estate-owner");
+    await createProjectViaWizard(owner.page, `Adm${Date.now()}`.slice(0, 20), {
+      capabilities: ["apps"],
+    });
     await createEstate(owner.page, "hetzner");
     await owner.ctx.close();
 

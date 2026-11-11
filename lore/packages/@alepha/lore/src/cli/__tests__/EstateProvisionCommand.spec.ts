@@ -112,10 +112,6 @@ describe("lore estate provision", () => {
       },
       estates: {
         listMyEstates: async () => ({ items: [] }),
-        createEstate: async (request: unknown) => {
-          calls.push({ name: "createEstate", request });
-          return estate;
-        },
         updateEstate: async (request: unknown) => {
           calls.push({ name: "updateEstate", request });
           return { ...estate, deployAllowed: true };
@@ -200,28 +196,24 @@ describe("lore estate provision", () => {
     expect(out).toContain("lore estate delete tmp-vps --yes");
   });
 
-  it("needs no project, and says how to lend the estate later", async ({
+  it("refuses without --project before buying anything: an estate belongs to a project", async ({
     expect,
   }) => {
-    const { run, printed, calls } = create();
-    await run("--provider scaleway --name tmp-vps --no-allow-deploys");
-    expect(calls.map((call) => call.name)).toEqual([
-      "createEstate",
-      "createEstateEnrolment",
-      "recordEstateProvision",
-    ]);
-    expect(printed.join("\n")).toContain(
-      "lore estate lend tmp-vps --project <project>",
-    );
+    const { run, calls, shell } = create();
+    await expect(
+      run("--provider scaleway --name tmp-vps --no-allow-deploys"),
+    ).rejects.toThrow("needs --project");
+    expect(calls).toEqual([]);
+    expect(shell.wasCalled("scw instance server create")).toBe(false);
   });
 
   it("terminates the server and deletes the estate when a step after the create fails", async ({
     expect,
   }) => {
     const { run, calls, shell } = create({ recordFails: true });
-    await expect(run("--provider scaleway --name tmp-vps")).rejects.toThrow(
-      "Lore is down",
-    );
+    await expect(
+      run("--provider scaleway --name tmp-vps --project hello-world"),
+    ).rejects.toThrow("Lore is down");
     expect(
       shell.wasCalled(
         "scw instance server terminate srv-1 zone=fr-par-1 with-ip=true with-block=true",
@@ -235,7 +227,9 @@ describe("lore estate provision", () => {
   }) => {
     const { run, calls } = create({ neverOnline: true });
     await expect(
-      run("--provider scaleway --name tmp-vps --timeout 1"),
+      run(
+        "--provider scaleway --name tmp-vps --project hello-world --timeout 1",
+      ),
     ).rejects.toThrow("srv-1 is kept and still billing");
     expect(calls.map((call) => call.name)).not.toContain("deleteEstate");
   });

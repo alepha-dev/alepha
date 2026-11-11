@@ -9,6 +9,7 @@ import { Cloud, Plus, Server } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "../../../../api/controllers/EstateController.ts";
+import type { ProjectEstateController } from "../../../../api/controllers/ProjectEstateController.ts";
 import type { CreateEstateBody } from "../../../../api/schemas/createEstateBodySchema.ts";
 import type { OwnedEstateResource } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
 import MyEstateCreateDialog from "./MyEstateCreateDialog.tsx";
@@ -18,14 +19,13 @@ import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
 /**
  * The estates the signed-in user owns, across every project (#1838).
  *
- * An estate is personal: it is created here or from inside a project, and
- * lent to projects from their settings. This page is where the owner sees
- * all of them at once, with the switches and the secret, which no project
- * page shows because neither belongs to a project.
+ * An estate belongs to a project, its home (#E126): it is created here or
+ * from inside that project, and lent to other projects from their settings.
+ * This page lists the estates of every project where the caller's rank lets
+ * them read estates, with what each lets them do (`can`).
  *
- * Every action here is also enforced server-side on the row's owner
- * (`EstateService.loadOwned` answers 404 for anyone else); the page only
- * decides what to draw.
+ * Every action here is also enforced server-side by the home project's rank;
+ * the page only decides what to draw.
  *
  * ## The shape, and why it changed
  *
@@ -56,6 +56,7 @@ const MyEstates = () => {
   const toaster = useToast();
   const router = useRouter();
   const api = useClient<EstateController>();
+  const lending = useClient<ProjectEstateController>();
 
   const [items, setItems] = useState<OwnedEstateResource[] | undefined>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -65,13 +66,17 @@ const MyEstates = () => {
   // Local state seeded by the read, because create, the drawer's writes and
   // delete patch the list in place. A failed read is toasted by the root
   // `ActionErrorToaster`.
-  useQuery(
+  const list = useQuery(
     {
       handler: () => api.listMyEstates(),
       onSuccess: (res) => setItems(res.items),
     },
     [api],
   );
+  // Where the caller may create an estate: an estate belongs to a project
+  // (#E126). With none, the Add button is hidden and the page says why.
+  const homes = useQuery({ handler: () => api.listEstateHomeChoices() }, [api]);
+  const choices = homes.data?.items ?? [];
 
   // Resolved from the list rather than held as its own copy, so a switch
   // saved in the drawer redraws it from the same row the list shows.
@@ -86,10 +91,15 @@ const MyEstates = () => {
    * dialog awaits it from its own action and needs a refusal to reject, which
    * a `run()` resolving `undefined` would not do.
    */
-  const create = async (body: CreateEstateBody) => {
-    const minted = await api.createEstate({ body });
-    const { secret, ...estate } = minted;
-    setItems((current) => [{ ...estate, projects: [] }, ...(current ?? [])]);
+  const create = async (projectId: number, body: CreateEstateBody) => {
+    const minted = await lending.createProjectEstate({
+      params: { projectId },
+      body,
+    });
+    const { secret } = minted;
+    // Created and lent in its home in one step; the list is read again so
+    // the row carries its project and what the caller may do with it.
+    await list.refetch();
     setCreateOpen(false);
     // Present only when Lore minted one, so a cloudflare create leaves the
     // reveal dialog shut because the FIELD is absent, not because an empty
@@ -120,16 +130,25 @@ const MyEstates = () => {
         // through `estate-create-open`. "New estate" here, "Create" on the
         // dialog's submit: this opens a form, it does not perform the act.
         toolbar={
-          <Button
-            variant="solid"
-            intent="none"
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            data-testid="estate-create-open"
-          >
-            <Plus className="size-4" />
-            {tr("account.estates.new")}
-          </Button>
+          choices.length > 0 ? (
+            <Button
+              variant="solid"
+              intent="none"
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              data-testid="estate-create-open"
+            >
+              <Plus className="size-4" />
+              {tr("account.estates.new")}
+            </Button>
+          ) : homes.data ? (
+            <span
+              className="text-muted-foreground text-xs"
+              data-testid="estate-create-none"
+            >
+              {tr("account.estates.create.none")}
+            </span>
+          ) : undefined
         }
         // With no estates the empty state names the act the toolbar button
         // performs, the way "Create a key" did on API keys (feedback #P2140).
@@ -271,7 +290,7 @@ const MyEstates = () => {
                 ) : null}
                 {estate.overdue ? (
                   // Past the TTL it was given (#Q3138): still running, still
-                  // billing, until its owner deletes it.
+                  // billing, until somebody deletes it.
                   <Badge variant="destructive" data-testid="my-estate-overdue">
                     {tr("estates.overdue")}
                   </Badge>
@@ -308,6 +327,7 @@ const MyEstates = () => {
       <MyEstateCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        projects={choices}
         onSubmit={create}
       />
 

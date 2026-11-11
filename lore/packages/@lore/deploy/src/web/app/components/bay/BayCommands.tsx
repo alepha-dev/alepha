@@ -187,16 +187,20 @@ const BayCommands = (props: BayCommandsProps) => {
                     {command.reason}
                   </span>
                 )}
-                {command.kind === "logs" && command.resultFileId && (
-                  <a
-                    className="text-xs underline-offset-4 hover:underline"
-                    href={`/api/estates/${estateId}/commands/${command.id}/result`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {tr("bay.commands.result")}
-                  </a>
-                )}
+                {/* A stored tail needs `estate:update` to read (#Q3279): a
+                    machine runs other projects' copies too. */}
+                {command.kind === "logs" &&
+                  command.resultFileId &&
+                  openEstate?.can.includes("estate:update") && (
+                    <a
+                      className="text-xs underline-offset-4 hover:underline"
+                      href={`/api/estates/${estateId}/commands/${command.id}/result`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {tr("bay.commands.result")}
+                    </a>
+                  )}
               </span>
             ),
           },

@@ -3,7 +3,7 @@ import { type Infer, z } from "alepha";
 import { estates } from "../entities/estates.ts";
 
 /**
- * An estate as its owner's account page sees it.
+ * An estate as a member of its home project sees it.
  *
  * ⚠️ **A `pick` allowlist, never an `omit`.** It used to be the entity minus
  * `secretHash`, which meant the class doc's promise ("no future field added
@@ -32,7 +32,6 @@ export const estateResourceSchema = estates.schema
     id: true,
     createdAt: true,
     updatedAt: true,
-    ownerUserId: true,
     type: true,
     slug: true,
     label: true,
@@ -85,6 +84,30 @@ export const estateResourceSchema = estates.schema
      * `EstateCloudflareService.credentialStatus`.
      */
     credentialStatus: z.enum(["valid", "invalid"]).optional(),
+    /**
+     * The home project, whose members manage the estate by their rank
+     * (#E126). Absent for an estate with no home, which only the instance
+     * admin reaches.
+     */
+    project: z
+      .object({
+        id: z.integer(),
+        title: z.string(),
+        slug: z.string().optional(),
+      })
+      .optional(),
+    /**
+     * Who added or provisioned it. A provisioned server lives in that
+     * person's cloud account, which is why a page names them.
+     */
+    creator: z.object({ id: z.uuid(), name: z.string() }).optional(),
+    /**
+     * The caller's effective estate permissions in the home project
+     * (`estate:read`, `estate:update`, ...), computed server-side by
+     * `ProjectPermissions`: a page shows a control when this holds its
+     * permission, and never recomputes a rank.
+     */
+    can: z.array(z.string()),
   });
 
 export type EstateResource = Infer<typeof estateResourceSchema>;

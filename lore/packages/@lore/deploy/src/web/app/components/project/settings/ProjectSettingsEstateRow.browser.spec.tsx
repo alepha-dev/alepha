@@ -36,8 +36,9 @@ const anEstate = (over: Partial<LentEstateResource> = {}) =>
     online: true,
     deployAllowed: true,
     acceptedRuntimes: ["node"],
-    owner: { id: "00000000-0000-4000-8000-000000000001", name: "Feunard" },
-    ownedByViewer: true,
+    home: { id: 7, title: "Acme" },
+    isHome: false,
+    can: ["estate:read"],
     lentAt: "2026-09-01T10:00:00.000Z",
     ...over,
   }) as LentEstateResource;
@@ -72,7 +73,7 @@ describe("ProjectSettingsEstateRow", () => {
     );
   };
 
-  it("opens the console from the name, for the estate's owner", async () => {
+  it("opens the console from the name, for a member of its home project", async () => {
     await mount(anEstate());
 
     const link = screen.getByRole("link", { name: "ovh-1" });
@@ -81,7 +82,7 @@ describe("ProjectSettingsEstateRow", () => {
 
   it("leaves the name as plain text for a borrower", async () => {
     // The console 404s for them, so a link would dead-end.
-    const { container } = await mount(anEstate({ ownedByViewer: false }));
+    const { container } = await mount(anEstate({ can: [] }));
 
     expect(screen.queryByRole("link", { name: "ovh-1" })).toBeNull();
     expect(container.textContent).toContain("ovh-1");
@@ -100,7 +101,7 @@ describe("ProjectSettingsEstateRow", () => {
   });
 
   it("draws no Detach for a reader who may not withdraw the loan", async () => {
-    await mount(anEstate({ ownedByViewer: false }), false);
+    await mount(anEstate({ can: [] }), false);
 
     expect(screen.queryByRole("button", { name: "Detach" })).toBeNull();
   });

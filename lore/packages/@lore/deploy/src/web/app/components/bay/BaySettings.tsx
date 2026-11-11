@@ -31,8 +31,8 @@ import MyEstateSecretDialog from "../account/MyEstateSecretDialog.tsx";
  * misunderstanding.
  *
  * ⚠️ **A drawer is not a permission boundary, and neither is a page.** Every
- * action here is enforced server-side on the row's owner, and
- * `EstateService.loadOwned` answers 404 for anyone else. Moving the UI changes
+ * action here is enforced server-side by the rank of the estate's home
+ * project, and refused to anyone the rank does not let act. Moving the UI changes
  * what is drawn and nothing else; do not let the move quietly become a
  * permission change.
  *

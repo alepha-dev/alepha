@@ -96,10 +96,11 @@ export class DeployRouter {
     ],
     name: "bay",
     path: "/estates/:estateId",
-    // Owner-only, and the 404 comes from the server: `getEstate` goes through
-    // `EstateService.loadOwned`, which answers 404 for anyone else, so a
-    // non-owner gets a real not-found for the whole subtree rather than an
-    // empty console.
+    // For the members of the estate's home project, and the refusal comes
+    // from the server: `getEstate` goes through the home project's gate,
+    // which answers 403 to a non-member and 404 to an unknown id, so a
+    // stranger gets a real refusal for the whole subtree rather than an empty
+    // console.
     use: [$secure()],
     schema: { params: z.object({ estateId: z.string() }) },
     head: (props) => {

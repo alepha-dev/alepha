@@ -29,7 +29,7 @@ export class LoreEstateChoice {
    * guessed by a deploy.
    *
    * ⚠️ A slug, never an id, and resolved against the estates lent to THIS
-   * project. An estate is owned by a user and lent out, so a caller that could
+   * project. An estate belongs to its home project and is lent out, so a caller that could
    * name an arbitrary one could point a deploy at somebody else's cloud
    * account.
    */

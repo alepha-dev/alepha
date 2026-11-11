@@ -8,9 +8,10 @@ import { $repository } from "alepha/orm";
 
 import { estates } from "../entities/estates.ts";
 import { EstateNotifications } from "../notifications/EstateNotifications.ts";
+import { EstateService } from "../services/EstateService.ts";
 
 /**
- * Tells an estate's owner, once, that a throwaway estate is past the TTL it
+ * Tells the people who manage an estate, once, that a throwaway estate is past the TTL it
  * was given (#Q3138). Deletes nothing and stops nothing.
  *
  * ⚠️ The claim IS the update: `notifiedOverdueAt` is set by the same UPDATE
@@ -26,6 +27,7 @@ export class EstateExpiryJobs {
   protected readonly users = $repository(users);
   protected readonly notifications = $inject(EstateNotifications);
   protected readonly inbox = $inject(LoreInboxNotifications);
+  protected readonly service = $inject(EstateService);
 
   public readonly notifyOverdue = $job({
     name: "estates.notify-overdue",
@@ -61,32 +63,35 @@ export class EstateExpiryJobs {
     });
     const baseUrl = String(this.alepha.env.PUBLIC_URL ?? "");
     for (const estate of rows) {
-      const owner = await this.users.findOne({
-        where: { id: { eq: estate.ownerUserId } },
-      });
-      if (!owner) {
-        continue;
-      }
-      // Each channel on its own: one failed push must not cost the owner the
-      // other, nor the next owner theirs. The claim stays either way, so a
-      // failure is never retried into a second notification.
-      if (owner.email) {
-        await this.attempt(estate.slug, "email", () =>
-          this.notifications.overdue.push({
-            contact: owner.email!,
-            variables: {
-              estateSlug: estate.slug,
-              expiresAt: estate.expiresAt ?? now,
-              estatesUrl: `${baseUrl}/account/estates`,
-            },
-          }),
+      // Every member of the home project whose rank grants `estate:update`
+      // (#Q3279), or the anchor of an estate with no home. The claim above is
+      // one per estate: each recipient is told once, and one recipient's
+      // failed send costs no other recipient theirs.
+      const homeless = estate.projectId == null;
+      const recipients = await this.service.recipientsOf(estate);
+      const people = recipients.length
+        ? await this.users.findMany({ where: { id: { inArray: recipients } } })
+        : [];
+      for (const person of people) {
+        if (person.email) {
+          await this.attempt(estate.slug, "email", () =>
+            this.notifications.overdue.push({
+              contact: person.email!,
+              variables: {
+                estateSlug: estate.slug,
+                expiresAt: estate.expiresAt ?? now,
+                estatesUrl: `${baseUrl}/account/estates`,
+                homeless,
+              },
+            }),
+          );
+        }
+        await this.attempt(estate.slug, "inbox", () =>
+          this.overdueInbox(person.id, estate.slug),
         );
       }
-      await this.attempt(estate.slug, "inbox", () =>
-        this.overdueInbox(estate.ownerUserId, estate.slug),
-      );
     }
-    this.log.info("Notified owners of overdue estates", {
+    this.log.info("Notified the people who manage overdue estates", {
       estates: rows.length,
     });
     return rows.length;
@@ -100,7 +105,7 @@ export class EstateExpiryJobs {
     try {
       await push();
     } catch (error) {
-      this.log.warn("Could not tell an owner their estate is overdue", {
+      this.log.warn("Could not tell somebody an estate is overdue", {
         slug,
         channel,
         error,

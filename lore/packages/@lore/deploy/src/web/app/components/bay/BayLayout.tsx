@@ -34,8 +34,9 @@ import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
  * fill the area, the others are columns of cards.
  *
  * ⚠️ **This is not a permission boundary.** Every route in this tree
- * resolves through `EstateService.loadOwned`, which answers 404 for anyone
- * but the owner. This decides what to draw.
+ * resolves through the home project's gate, which refuses anyone who is not
+ * a member there; what a member may do is their rank's, carried as `can`.
+ * This decides what to draw.
  */
 const BayLayout = () => {
   const { tr } = useI18n<I18n, "en">();

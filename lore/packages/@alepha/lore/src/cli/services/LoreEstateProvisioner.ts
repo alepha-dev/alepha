@@ -225,16 +225,19 @@ export class LoreEstateProvisioner {
       );
     }
 
-    const project = plan.project
-      ? await this.ensureProject(plan.project, print)
-      : undefined;
+    // An estate belongs to a project since #E126: there is no estate
+    // without a home to create.
+    if (!plan.project) {
+      throw this.refusal(
+        "lore estate provision needs --project <slug>: an estate belongs to a project.",
+      );
+    }
+    const project = await this.ensureProject(plan.project, print);
 
-    const estate = project
-      ? await this.lending.createProjectEstate({
-          params: { projectId: project.id },
-          body: { slug },
-        })
-      : await this.estates.createEstate({ body: { slug } });
+    const estate = await this.lending.createProjectEstate({
+      params: { projectId: project.id },
+      body: { slug },
+    });
 
     let server: { serverId: string; publicIp: string } | undefined;
     try {

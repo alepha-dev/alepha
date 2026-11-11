@@ -22,16 +22,22 @@ import {
   estateErrorMessage,
 } from "../shared/estateCreateDraft.ts";
 import EstateCreateFields from "../shared/EstateCreateFields.tsx";
+import MyEstateHomeField from "./MyEstateHomeField.tsx";
 
 export interface MyEstateCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
+   * The projects the estate may be created in (#E126): an estate belongs to
+   * a project, so the dialog asks which.
+   */
+  projects: Array<{ id: number; title: string }>;
+  /**
    * Performs the create. It **rejects** on a refusal rather than reporting
    * it itself, because the message belongs beside the field it concerns and
    * this dialog is the only thing that knows where the fields are.
    */
-  onSubmit: (body: CreateEstateBody) => Promise<void>;
+  onSubmit: (projectId: number, body: CreateEstateBody) => Promise<void>;
 }
 
 /**
@@ -59,24 +65,29 @@ export interface MyEstateCreateDialogProps {
 const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [draft, setDraft] = useState<EstateCreateDraft>(emptyEstateDraft);
+  const [chosen, setChosen] = useState<number | undefined>();
+  // With one candidate there is nothing to choose.
+  const projectId =
+    props.projects.length === 1 ? props.projects[0]!.id : chosen;
   const [error, setError] = useState<
     { message: string; field?: "accountId" | "token" } | undefined
   >();
 
-  const valid = estateDraftValid(draft);
+  const valid = estateDraftValid(draft) && projectId !== undefined;
 
   const reset = () => {
     // The token never outlives the dialog that carried it.
     setDraft(emptyEstateDraft());
+    setChosen(undefined);
     setError(undefined);
   };
 
   const submitAction = useAction<[], void>(
     {
       handler: async () => {
-        if (!valid) return;
+        if (!valid || projectId === undefined) return;
         setError(undefined);
-        await props.onSubmit(estateDraftBody(draft));
+        await props.onSubmit(projectId, estateDraftBody(draft));
         reset();
       },
       // Kept open, with the sentence beside the field: the person hitting a
@@ -89,7 +100,7 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
           field: estateErrorField(caught),
         }),
     },
-    [valid, draft, props.onSubmit],
+    [valid, draft, projectId, props.onSubmit],
   );
   const busy = submitAction.loading;
   const submit = () => void submitAction.run();
@@ -118,6 +129,12 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
             submit();
           }}
         >
+          <MyEstateHomeField
+            projects={props.projects}
+            value={projectId}
+            onChange={setChosen}
+            busy={busy}
+          />
           <EstateCreateFields
             draft={draft}
             onChange={setDraft}

@@ -214,7 +214,7 @@ describe("BackupController", () => {
         },
         { user: w.user },
       ),
-    ).rejects.toThrow(/reserved to the estate's owner/);
+    ).rejects.toThrow(/reserved to the estate's home project/);
   });
 
   it("refuses a restore while the Bay is offline, and queues it once connected", async ({

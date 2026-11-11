@@ -1,9 +1,11 @@
 import { Badge, Card, CardContent, formatBytes } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import type { I18n } from "@lore/core/web";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 
+import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
 import BayActions from "./BayActions.tsx";
 import BayBackups from "./BayBackups.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
@@ -41,6 +43,8 @@ const BayInstance = () => {
   const router = useRouter();
   const routerState = useRouterState();
   const { estate, data, refetch } = useBayInventory();
+  const [openEstate] = useStore(currentEstateAtom);
+  const canTail = openEstate?.can.includes("estate:update") ?? false;
 
   const app = String(routerState.params?.app ?? "");
   const env = String(routerState.params?.env ?? "");
@@ -264,7 +268,8 @@ const BayInstance = () => {
         />
       )}
 
-      <BayLogTail app={app} env={env} />
+      {/* Asking for a tail and reading one need `estate:update` (#Q3279). */}
+      {canTail && <BayLogTail app={app} env={env} />}
     </AccountPage>
   );
 };

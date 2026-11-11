@@ -1,11 +1,15 @@
-import { ProjectLimits, ProjectSecurityService } from "@lore/core/api";
+import {
+  $ownsProject,
+  ProjectLimits,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { OwnedResourceProvider } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -17,6 +21,7 @@ import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
+import { type Estate, estates } from "../entities/estates.ts";
 import {
   BACKUP_KINDS_REFUSED_OFFLINE,
   backupCommandInput,
@@ -71,6 +76,29 @@ export class EstateCommandController {
   protected readonly limits = $inject(ProjectLimits);
   protected readonly instances = $repository(appInstances);
   protected readonly names = $inject(ResourceNameService);
+  protected readonly owned = $inject(OwnedResourceProvider);
+  protected readonly estateRows = $repository(estates);
+
+  /**
+   * The gate on the estate in the path, by its home project's rank (#Q3279).
+   * Listing the commands is `estate:read`; queueing one and reading a log
+   * tail's stored result are `estate:update`, since a machine runs the copies
+   * of every project that borrows it. Writes name the Apps capability.
+   */
+  protected ownsEstate = (requires: string, write = false) =>
+    $ownsProject({
+      repository: () => this.estateRows,
+      param: "estateId",
+      requires,
+      ...(write
+        ? {
+            capability: {
+              key: "apps" as const,
+              action: "send an estate a command",
+            },
+          }
+        : {}),
+    });
 
   /**
    * The queue and its history, newest first.
@@ -85,7 +113,7 @@ export class EstateCommandController {
    * command outlives them), and a name per row would be a query per row.
    */
   listEstateCommands = $action({
-    use: [$secure({ permissions: ["estate:read"] })],
+    use: [this.ownsEstate("estate:read")],
     method: "GET",
     path: "/estates/:estateId/commands",
     schema: {
@@ -94,7 +122,7 @@ export class EstateCommandController {
       response: z.object({ items: z.array(estateCommandListItemSchema) }),
     },
     handler: async ({ params, query, user }) => {
-      const estate = await this.estates.loadOwned(params.estateId, user);
+      const estate = this.owned.get<Estate>();
       const cap = await this.limits.maxCommandsPerEstate();
       const items = await this.commands.listFor(
         estate.id,
@@ -138,12 +166,12 @@ export class EstateCommandController {
   });
 
   /**
-   * Queue a command for one of the caller's estates. Pushed the instant it
+   * Queue a command for an estate. Pushed the instant it
    * is queued when the machine is connected, delivered on its next connect
    * otherwise.
    */
   enqueueEstateCommand = $action({
-    use: [$secure({ permissions: ["estate:update"] })],
+    use: [this.ownsEstate("estate:update", true)],
     method: "POST",
     path: "/estates/:estateId/commands",
     schema: {
@@ -173,7 +201,7 @@ export class EstateCommandController {
       response: estateCommandResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const estate = await this.estates.loadOwned(params.estateId, user);
+      const estate = this.owned.get<Estate>();
 
       if (body.kind === "logs") {
         // ⚠️ The one verb in this epic that refuses instead of queueing, and
@@ -337,7 +365,8 @@ export class EstateCommandController {
   });
 
   /**
-   * The answer a `logs` command uploaded, streamed back to the owner.
+   * The answer a `logs` command uploaded, streamed back. Under `estate:update`,
+   * like asking for one: a machine runs other projects' copies too.
    *
    * ⚠️ A row still pointing at a swept file is the NORMAL end state, not an
    * error: the blob expires after 24 hours and the framework's `FileJobs`
@@ -345,7 +374,7 @@ export class EstateCommandController {
    * rather than a 500 about a missing file.
    */
   getEstateCommandResult = $action({
-    use: [$secure({ permissions: ["estate:read"] })],
+    use: [this.ownsEstate("estate:update")],
     method: "GET",
     path: "/estates/:estateId/commands/:commandId/result",
     schema: {
@@ -353,7 +382,7 @@ export class EstateCommandController {
       response: z.file(),
     },
     handler: async ({ params, user, reply }) => {
-      const estate = await this.estates.loadOwned(params.estateId, user);
+      const estate = this.owned.get<Estate>();
       // Scoped on both in one query, so a command of another estate and one
       // that does not exist are the same empty result here too.
       const command = await this.rows.findOne({

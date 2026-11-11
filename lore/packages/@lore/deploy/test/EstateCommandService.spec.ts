@@ -21,6 +21,7 @@ import {
   type EstateCommandFrame,
   type EstateServerFrame,
 } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 /**
@@ -119,7 +120,7 @@ const createEstate = async (
   user: UserAccountToken,
   slug: string,
 ): Promise<Estate> => {
-  const minted = await ctx.estateApi.createEstate({ body: { slug } }, { user });
+  const minted = await createTestEstate(ctx.alepha, user, { slug });
   return ctx.repos.estates.getOne({ where: { id: { eq: minted.id } } });
 };
 

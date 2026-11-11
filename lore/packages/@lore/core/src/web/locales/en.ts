@@ -2372,6 +2372,8 @@ export default {
   "estates.project.add": "Add an estate",
   "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
+  "estates.project.home": "belongs to this project",
+  "estates.project.noHome": "no project",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
   "bay.nav.commands": "Commands",
@@ -2610,6 +2612,13 @@ export default {
   "account.estates.create": "Create an estate",
   "account.estates.create.description":
     "Its secret is shown once, at creation. It cannot be recovered afterwards, only rotated.",
+  "account.estates.create.project": "Project",
+  "account.estates.create.project.description":
+    "The project the estate belongs to. Its members manage it, each by their rank.",
+  "account.estates.create.project.only":
+    "In $1, the one project you can create an estate in.",
+  "account.estates.create.none":
+    "You can create an estate in no project: an estate belongs to a project with Apps on, and your rank there needs estate:create.",
   "account.estates.create.submit": "Create",
   "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",

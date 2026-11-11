@@ -110,24 +110,32 @@ export const AdminEstates = () => {
             label: "Type",
             cell: (estate) => <Badge variant="outline">{estate.type}</Badge>,
           },
-          ownerUserId: {
-            label: "Owner",
+          project: {
+            label: "Project",
+            cell: (estate) =>
+              estate.project ? (
+                <span>{estate.project.title}</span>
+              ) : (
+                <Badge variant="destructive">No home</Badge>
+              ),
+          },
+          creator: {
+            label: "Created by",
             /*
              * A real `<a href>` rather than a click handler, so the row keeps
              * cmd-click and "copy link address", like the projects table.
              */
-            cell: (estate) => (
-              <Link
-                href={`/admin/users/${estate.ownerUserId}`}
-                className="hover:text-foreground underline-offset-4 hover:underline"
-              >
-                {estate.ownerName ?? (
-                  <code className="text-muted-foreground text-xs">
-                    {estate.ownerUserId.slice(0, 8)}
-                  </code>
-                )}
-              </Link>
-            ),
+            cell: (estate) =>
+              estate.creator ? (
+                <Link
+                  href={`/admin/users/${estate.creator.id}`}
+                  className="hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  {estate.creator.name}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground text-xs">unknown</span>
+              ),
           },
           online: {
             label: "State",
@@ -159,10 +167,14 @@ export const AdminEstates = () => {
               </span>
             ),
           },
-          projectCount: {
+          loans: {
             label: "Lent to",
             cell: (estate) => (
-              <span className="tabular-nums">{estate.projectCount}</span>
+              <span className="text-xs">
+                {estate.loans.length
+                  ? estate.loans.map((project) => project.title).join(", ")
+                  : "none"}
+              </span>
             ),
           },
           lastSeenAt: {

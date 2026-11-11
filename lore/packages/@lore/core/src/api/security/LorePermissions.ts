@@ -132,6 +132,11 @@ export class LorePermissions {
     "sigil:manage",
     "blight:triage",
     "estate:lend",
+    // An estate belongs to its home project since #E126: who manages it is a
+    // rank question, and only the owner holds these until a rank says more.
+    "estate:create",
+    "estate:update",
+    "estate:delete",
     "feedback:triage",
     "automation:read",
     "automation:write",
@@ -141,11 +146,9 @@ export class LorePermissions {
   /**
    * Application-scope permissions that no project rank ever narrows.
    *
-   * There is no project to hold a rank in when a project is created, and an
-   * estate is owned by a USER and merely lent to a project - so creating,
-   * editing and deleting one happen on the owner's own account page, outside
-   * every project scope. Only the lending is per project, and that is
-   * `estate:lend`.
+   * There is no project to hold a rank in when a project is created. (An
+   * estate's three acts left this list with #E126: an estate belongs to its
+   * home project, so they are {@link OWNER_TODAY}'s.)
    */
   public static readonly OUT_OF_SCOPE = LoreRankBounds.OUT_OF_SCOPE;
 
@@ -503,11 +506,10 @@ export class LorePermissions {
   });
 
   /**
-   * Lending an estate to a project, and taking it back.
-   *
-   * ⚠️ An estate is owned by a USER and lent to a project, so `estate:create`
-   * and `estate:delete` are application-scope acts on the owner's own account
-   * page and no rank narrows them. Only the lending is per project.
+   * Lending an estate to a project, and taking it back. Asked in the home
+   * project and in the borrowing one, since a loan exposes the first to the
+   * second. `estate:create`, `estate:update` and `estate:delete` are ranks of
+   * the estate's home project (#E126).
    */
   estateLend = $permission({
     group: "estate",

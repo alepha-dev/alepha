@@ -8,13 +8,10 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import {
-  EstateController,
-  EstateStatsService,
-  LoreDeployApi,
-} from "../src/api/index.ts";
+import { EstateStatsService, LoreDeployApi } from "../src/api/index.ts";
 import { EstateTools, LoreDeployMcp } from "../src/mcp/index.ts";
 import { estates } from "../src/schemas/index.ts";
+import { createTestEstate } from "../src/testing/estates.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
 class EstateRepositories {
@@ -69,9 +66,7 @@ describe("estate MCP tools", () => {
 
   const arrange = async () => {
     const owner = await newUser();
-    const minted = await alepha
-      .inject(EstateController)
-      .createEstate({ body: { slug: "vps-ovh" } }, { user: owner });
+    const minted = await createTestEstate(alepha, owner, { slug: "vps-ovh" });
     const repo = repos.estates;
     await repo.updateById(minted.id, { collectSeries: true });
     const row = await repo.getOne({ where: { id: { eq: minted.id } } });

@@ -84,7 +84,7 @@ export type EstateInventoryExpectedApp = Infer<
  * ⚠️ `inventory` is nullable rather than absent-or-404. A machine that has
  * never connected has no row, and that is an answer the page renders
  * ("nothing reported yet") beside the `expected` list, which is still worth
- * showing. Only the estate itself 404s, through `loadOwned`.
+ * showing. Only the estate itself is refused, by its home project's gate.
  *
  * Every string on the way out is bounded by the frame schemas this reuses,
  * so `problems[]` items and `lastBackupError` carry their caps here without

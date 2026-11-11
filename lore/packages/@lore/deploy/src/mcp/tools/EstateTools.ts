@@ -12,10 +12,10 @@ import {
  * An estate's CPU and memory over time, for agents (#Q3047), the twin of
  * `lore estate stats`.
  *
- * ⚠️ Read-only, and the caller's own estates only. It names an estate, which
- * the deploy tools never do, because nothing here can act on one: it goes
- * through `getEstateStats`, whose `loadOwned` answers 404 to anyone but the
- * owner, so it cannot even confirm that somebody else's estate exists.
+ * ⚠️ Read-only. It names an estate, which the deploy tools never do, because
+ * nothing here can act on one: it goes through `getEstateStats`, gated on
+ * `estate:read` in the estate's home project, so it reads nothing of an
+ * estate whose project the caller is not in.
  */
 export class EstateTools {
   protected readonly estates = $inject(EstateController);

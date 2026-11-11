@@ -89,7 +89,11 @@ const ProjectSettingsEstatesAddDialog = (
   ).data?.items;
 
   const heldIds = new Set(props.held.map((item) => item.id));
-  const available = (mine ?? []).filter((item) => !heldIds.has(item.id));
+  // Only what the caller may lend from its home project (#E126): the server
+  // refuses the rest, so the picker does not offer it.
+  const available = (mine ?? []).filter(
+    (item) => !heldIds.has(item.id) && item.can.includes("estate:lend"),
+  );
 
   // Nothing left to lend: the only thing to offer is a new one. Derived
   // rather than stored, so it follows the list instead of lagging a render.

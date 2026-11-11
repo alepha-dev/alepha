@@ -49,7 +49,7 @@ const estateFieldSchema = z.object({ estateId: z.text() });
  *
  * `listProjectEstates` is the same read the project's own Estates settings page
  * does. The select never offers anything else, and the server validates against
- * `estate_projects` regardless: an estate is owned by a user and lent to a
+ * `estate_projects` regardless: an estate belongs to its home project and is lent to a
  * project, so resolving an id against `estates` directly would let a project
  * point at somebody else's cloud account.
  *

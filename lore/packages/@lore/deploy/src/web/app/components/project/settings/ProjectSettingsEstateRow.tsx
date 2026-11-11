@@ -23,16 +23,15 @@ export interface ProjectSettingsEstateRowProps {
 }
 
 /**
- * One estate lent to the project, as its members see it: the slug with the
- * owner's name beside it (two owners may both have `ovh-1`), whether the
+ * One estate lent to the project, as its members see it: the slug with its
+ * home project beside it (two projects may both have `ovh-1`), whether the
  * machine is up, and whether it accepts deploys or only reports stats.
  *
- * ⚠️ The slug is a link to the Bay console **only for the estate's owner**
- * (feedback #P2126). The console is owner-only and `EstateService.loadOwned`
- * answers 404 to anybody else, so a link on a borrower's row would be worse
- * than the inert text it replaced: it would promise a page that does not
- * exist for them. `ownedByViewer` is computed by the server for exactly this,
- * rather than compared here against the session.
+ * ⚠️ The slug is a link to the Bay console **only for a reader who may read
+ * it in the home project** (feedback #P2126, #E126). The console answers 403
+ * to a member of a project that only borrows the estate, so a link on their
+ * row would promise a page that does not exist for them. `can` is computed by
+ * the server for exactly this, never recomputed here.
  */
 const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -46,7 +45,7 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
     >
       <div className="flex min-w-0 grow flex-col gap-0.5">
         <span className="flex items-center gap-2 text-sm font-medium">
-          {estate.ownedByViewer ? (
+          {estate.can.includes("estate:read") ? (
             <Link
               href={router.path("bay", { params: { estateId: estate.id } })}
               className="truncate hover:underline"
@@ -63,7 +62,11 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
           )}
         </span>
         <span className="text-muted-foreground text-xs">
-          {tr("estates.project.lentBy", { args: [estate.owner.name] })}
+          {estate.isHome
+            ? tr("estates.project.home")
+            : tr("estates.project.lentBy", {
+                args: [estate.home?.title ?? tr("estates.project.noHome")],
+              })}
           {" · "}
           {estate.type === "cloudflare"
             ? tr("estates.type.cloudflare")

@@ -191,6 +191,13 @@ test.describe("The Bay console", () => {
       "GoodPassw0rd",
     );
 
+    // ⚠️ Apps asked for explicitly. The wizard's own defaults are Work and
+    // Knowledge, and an estate belongs to a project with Apps on (#E126):
+    // created first, so the estate is created in it, and lent to it in the
+    // same step. Creating an app instance is refused without Apps too.
+    const project = await createProjectViaWizard(page, "Bay Console", {
+      capabilities: ["apps"],
+    });
     const secret = await createEstateAndReadSecret(page, "ovh-console");
 
     // The row routes to the console for a `bay` estate rather than opening
@@ -204,25 +211,9 @@ test.describe("The Bay console", () => {
     const estateId = new URL(page.url()).pathname.split("/")[3];
     expect(estateId).toBeTruthy();
 
-    // Both sides of the reconciliation. The estate is lent to the project
-    // first: `AppService.setEstate` refuses a reference the project has no
-    // grant for, which is validation of the reference and not of the caller.
-    // ⚠️ Apps asked for explicitly. The wizard's own defaults are Work and
-    // Knowledge, and creating an app instance is refused on a project without
-    // the Apps capability - the console's whole subject is one, so the spec
-    // has to say the project does that.
-    const project = await createProjectViaWizard(page, "Bay Console", {
-      capabilities: ["apps"],
-    });
-    await apiCall(
-      page,
-      "attachEstate",
-      "POST",
-      { projectId: project.id },
-      {
-        estateId,
-      },
-    );
+    // Both sides of the reconciliation. The estate was lent to its home
+    // project when it was created there: `AppService.setEstate` refuses a
+    // reference the project has no grant for.
     for (const app of ["lore", "ghost"]) {
       await apiCall(
         page,
