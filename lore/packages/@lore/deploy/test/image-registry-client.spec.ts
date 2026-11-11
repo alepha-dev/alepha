@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
@@ -213,6 +216,46 @@ describe("ImageRegistryClient", () => {
       expect(child).toContain("b".repeat(64));
       expect(child).not.toContain("c".repeat(64));
       expect(child).not.toContain("d".repeat(64));
+    });
+  });
+
+  /**
+   * ⚠️ **Captured, not written by hand** (#Q3363). The index a registry served
+   * for Lore's own image once `alepha image --sbom --provenance --push` built
+   * it: one linux/amd64 image and the attestation manifest buildx attaches,
+   * which carries `unknown/unknown` and points at the image by
+   * `vnd.docker.reference.digest`. Lore reads ghcr only, so this is the
+   * closest the spec can get to the release without pushing one. Regenerate
+   * it with `node scripts/docker-attestations.ts --save`.
+   */
+  describe("the attested index Release pushes", () => {
+    const captured = readFileSync(
+      join(import.meta.dirname, "fixtures/registry/lore-attested-index.json"),
+      "utf8",
+    );
+    const amd64 = (
+      JSON.parse(captured) as {
+        manifests: Array<{
+          digest: string;
+          platform: { architecture: string };
+        }>;
+      }
+    ).manifests.find((it) => it.platform.architecture === "amd64")!.digest;
+
+    it("reads the amd64 image and never the attestation manifest", async ({
+      expect,
+    }) => {
+      const { client, registry } = setup();
+      registry
+        .healthy({ index: captured })
+        .on(`/manifests/${amd64}`, { status: 200, body: childManifest() });
+
+      const image = await client.read(REFERENCE);
+
+      expect(image.runtime).toBe("node");
+      expect(registry.calls[2].url).toContain(amd64);
+      // The document stored is the index as served, attestation included.
+      expect(JSON.parse(image.document).manifests).toHaveLength(2);
     });
   });
 

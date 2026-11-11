@@ -22,6 +22,18 @@ export default defineConfig({
     from: "node:26-alpine",
     tag: "ghcr.io/alepha-dev/lore",
     oci: true,
+    // The evidence a buyer's security review asks for (#E134): an SBOM
+    // attestation, read from `build.sbom`'s `dist/sbom.cdx.json` which the
+    // image also carries, and a `mode=max` provenance. Both live in the image
+    // index, so the image is built with `--push` (`image:release`): Verify
+    // Lore and Release push it to a registry on the runner first.
+    //
+    // ⚠️ `mode=max` records build arguments: nothing secret goes in `args`.
+    //
+    // linux/amd64 only, set by the runner rather than `platforms` (folio
+    // #F1338): no arm64 image.
+    sbom: true,
+    provenance: true,
     // All four are config because none can be derived: `package.json` is
     // `private: true` with no description and no license, and `source` must
     // never come from the git remote (a fork would publish the wrong URL,
@@ -81,6 +93,11 @@ export default defineConfig({
     // `dist/package.json` points at, what `alepha image` packages, and what a
     // self-hosted deployer spawns. The Worker takes its slice by name.
     runtime: ["node", "workerd"],
+    // `dist/sbom.cdx.json`, for the image's SBOM attestation (#E134). At the
+    // root of `dist/`, outside `public/`: neither the Worker's assets nor the
+    // Node server's static files serve it, and `lore artifacts push` archives
+    // it like any other file.
+    sbom: true,
     cloudflare: {
       config: {
         /**
