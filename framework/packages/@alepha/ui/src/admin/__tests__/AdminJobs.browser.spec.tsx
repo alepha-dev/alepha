@@ -171,26 +171,25 @@ describe("AdminJobs", () => {
     }
   });
 
-  it("prints the retention rule, marks a default, and explains it in full", async () => {
+  it("tags retention default or custom, and explains the policy on focus (#Q3430)", async () => {
     await mount();
 
-    const cron = rowOf("system.users.purge-expired-sessions");
-    expect(cron.textContent).toContain("OK: last 24 · Errors: 30 days");
-    expect(cron.textContent).toContain("default");
-    const phrase = Array.from(cron.querySelectorAll("[title]")).find((el) =>
-      el.getAttribute("title")?.startsWith("Successes"),
+    const tag = (name: string) =>
+      rowOf(name).querySelector('[data-testid="job-retention"]') as HTMLElement;
+    expect(tag("system.users.purge-expired-sessions").textContent).toBe(
+      "default",
     );
-    expect(phrase?.getAttribute("title")).toBe(
-      "Successes: last 24. Failures and cancellations: 30 days. Default for a job that runs up to hourly.",
-    );
+    expect(tag("deploys.run").textContent).toBe("custom");
+    expect(tag("images.make-thumbnail").textContent).toBe("default");
+    // The long policy line is gone from the row.
+    expect(rowOf("deploys.run").textContent).not.toContain("OK: 30 days");
 
-    const declared = rowOf("deploys.run");
-    expect(declared.textContent).toContain("OK: 30 days · Errors: 30 days");
-    expect(declared.textContent).not.toContain("default");
-
-    expect(rowOf("images.make-thumbnail").textContent).toContain(
-      "OK: not kept · Errors: 30 days",
-    );
+    fireEvent.focus(tag("system.users.purge-expired-sessions"));
+    expect(
+      await screen.findByText(
+        "Successes: last 24. Failures and cancellations: 30 days. Default for a job that runs up to hourly.",
+      ),
+    ).toBeTruthy();
   });
 
   it("says in the OK and Errors headers that they count kept rows", async () => {

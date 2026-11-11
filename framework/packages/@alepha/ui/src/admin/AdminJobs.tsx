@@ -19,6 +19,12 @@ import { useMemo, useState } from "react";
 
 import TimeAgo from "../core/TimeAgo.tsx";
 import { Badge } from "../core/Badge.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../core/Tooltip.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { DataTable } from "../table/DataTable.tsx";
 import type { DataTableFilterFields } from "../table/dataTableTypes.ts";
@@ -198,20 +204,40 @@ export const AdminJobs = () => {
           },
           retention: {
             label: tr("admin.jobs.colRetention", { default: "Retention" }),
+            // One tag, "default" or "custom" (#Q3430): the policy text was
+            // the same long line on almost every row. The policy is the tag's
+            // tooltip, on hover and on focus.
             cell: (j) => (
-              <span
-                className="text-muted-foreground inline-flex items-center gap-1.5 text-xs"
-                title={retention.sentence(j.retention)}
-              >
-                {retention.short(j.retention)}
-                {retention.isDefault(j.retention) && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {tr("admin.jobs.retention.default", {
-                      default: "default",
-                    })}
-                  </Badge>
-                )}
-              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="focus-visible:ring-ring/50 rounded-md outline-none focus-visible:ring-2"
+                        data-testid="job-retention"
+                      />
+                    }
+                  >
+                    <Badge
+                      variant={
+                        retention.isDefault(j.retention) ? "outline" : "secondary"
+                      }
+                    >
+                      {retention.isDefault(j.retention)
+                        ? tr("admin.jobs.retention.default", {
+                            default: "default",
+                          })
+                        : tr("admin.jobs.retention.custom", {
+                            default: "custom",
+                          })}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                    {retention.sentence(j.retention)}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ),
           },
           lastRun: {

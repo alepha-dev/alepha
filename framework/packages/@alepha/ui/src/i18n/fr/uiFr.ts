@@ -583,12 +583,12 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.jobs.payloadTitle": "Charge utile",
   "admin.jobs.retention.days": "$1 jours",
   "admin.jobs.retention.default": "par défaut",
+  "admin.jobs.retention.custom": "personnalisée",
   "admin.jobs.retention.last": "les $1 dernières",
   "admin.jobs.retention.lastWithinDays": "les $1 dernières sur $2 jours",
   "admin.jobs.retention.notKept": "non conservées",
   "admin.jobs.retention.sentence":
     "Réussites : $1. Échecs et annulations : $2.",
-  "admin.jobs.retention.short": "OK : $1 · Erreurs : $2",
   "admin.jobs.retention.source.daily":
     "Par défaut pour une tâche lancée au plus une fois par jour.",
   "admin.jobs.retention.source.frequent":
