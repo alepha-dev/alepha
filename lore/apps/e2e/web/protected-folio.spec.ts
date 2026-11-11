@@ -181,7 +181,8 @@ test.describe("Protected folio", () => {
       await expect(dialog).toBeVisible({ timeout: 5_000 });
       await dialog.getByLabel(/^passphrase$/i).fill(wrongPassphrase);
       await dialog.getByRole("button", { name: /^unlock$/i }).click();
-      await expect(dialog.getByText(/wrong passphrase/i)).toBeVisible({
+      // A toast since #Q3421, outside the dialog, which stays open.
+      await expect(page.getByText(/wrong passphrase/i).first()).toBeVisible({
         timeout: 30_000,
       });
       await expect(page.getByText(`LOOTBAG-${t}`)).toHaveCount(0);
