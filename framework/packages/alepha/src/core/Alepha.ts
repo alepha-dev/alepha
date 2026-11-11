@@ -13,6 +13,7 @@ import { coerceObject } from "./helpers/coerceStrings.ts";
 import { ContainerGraph, type PurityEntry } from "./helpers/ContainerGraph.ts";
 import { Primitive } from "./helpers/primitive.ts";
 import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
+import type { AppSurface } from "./interfaces/AppSurface.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import {
@@ -51,6 +52,7 @@ import { alephaEnvSchema } from "./schemas/alephaEnvSchema.ts";
  * {@link Alepha.meta} is shaped the way it is.
  */
 declare const __ALEPHA_META__: string | undefined;
+declare const __ALEPHA_SURFACE__: string | undefined;
 
 /**
  * Where an `$env` schema was declared.
@@ -452,6 +454,41 @@ export class Alepha {
   public get log(): LoggerInterface | undefined {
     return this.store.get("alepha.logger");
   }
+
+  /**
+   * The build list this container defers by (#Q3401, #Q3402): which classes
+   * are pure controllers, and every primitive a runtime needs without
+   * creating its class.
+   *
+   * Baked into a built server bundle by `alepha build`; absent in dev, in
+   * tests and in an app built before it, where every class is created at
+   * boot. A spec that wants late creation hands one over with
+   * {@link useSurface}. Nothing reads one implicitly anywhere else.
+   */
+  public get surface(): AppSurface | undefined {
+    if (this.surfaceList === undefined) {
+      this.surfaceList =
+        typeof __ALEPHA_SURFACE__ === "undefined"
+          ? null
+          : (JSON.parse(__ALEPHA_SURFACE__) as AppSurface);
+    }
+    return this.surfaceList ?? undefined;
+  }
+
+  /**
+   * Hand the container a build list, or take it away with `undefined`.
+   * Must be called before the modules register: a class is deferred, or
+   * not, when its module declares it.
+   */
+  public useSurface(surface: AppSurface | undefined): this {
+    this.surfaceList = surface ?? null;
+    return this;
+  }
+
+  /**
+   * `null` once read and absent; `undefined` before the first read.
+   */
+  protected surfaceList?: AppSurface | null;
 
   /**
    * The environment variables for the App.
