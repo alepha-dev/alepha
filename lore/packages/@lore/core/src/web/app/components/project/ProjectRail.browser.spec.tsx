@@ -12,7 +12,7 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 import { projectFixture } from "../../../../testing/projectFixture.ts";
 import { virtualClientFake } from "../../../../testing/virtualClientFake.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { recentProjectsAtom } from "../../atoms/recentProjectsAtom.ts";
+import { userDockAtom } from "../../atoms/userDockAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { I18n } from "../../services/I18n.ts";
 import ProjectRail from "./ProjectRail.tsx";
@@ -59,8 +59,9 @@ const row = (
 });
 
 /**
- * The project rail (#Q3366): two projects or more, at most ten, the ones this
- * browser opened last first, and the current one recorded as opened.
+ * The dock (#Q3366, #E139 #Q3437): the pinned projects in dock order, a faded
+ * temporary slot for an unpinned current project, and Home, New project and
+ * All projects fixed at the ends.
  */
 describe("ProjectRail", () => {
   beforeAll(() => {
@@ -78,7 +79,7 @@ describe("ProjectRail", () => {
   const mount = async (
     projects: ReturnType<typeof row>[],
     currentId: number,
-    opened: number[] = [],
+    dock: number[] = projects.map((it) => it.id),
     canCreate = true,
   ) => {
     alepha = Alepha.create()
@@ -104,7 +105,7 @@ describe("ProjectRail", () => {
       maxProjects: 50,
       canCreate,
     });
-    alepha.store.set(recentProjectsAtom, opened);
+    alepha.store.set(userDockAtom, dock);
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -145,7 +146,7 @@ describe("ProjectRail", () => {
   });
 
   it("disables New project once the quota is reached", async ({ expect }) => {
-    await mount([row(1, "Lore", "2026-01-01")], 1, [], false);
+    await mount([row(1, "Lore", "2026-01-01")], 1, [1], false);
 
     const create = screen.getByTestId("project-rail-create");
     expect(create.getAttribute("href")).toBeNull();
@@ -153,7 +154,7 @@ describe("ProjectRail", () => {
     expect(create.getAttribute("aria-label")).toContain("50");
   });
 
-  it("orders by opened, then by update, and marks the current one", async ({
+  it("draws the pins in dock order, not by update, and marks the current one", async ({
     expect,
   }) => {
     await mount(
@@ -163,7 +164,7 @@ describe("ProjectRail", () => {
         row(3, "Acme", "2026-01-01"),
       ],
       2,
-      [3],
+      [3, 1, 2],
     );
 
     expect(titles()).toEqual(["Acme", "Lore", "Club"]);
@@ -171,55 +172,74 @@ describe("ProjectRail", () => {
       .getAllByTestId("project-rail-item")
       .find((it) => it.getAttribute("aria-current") === "page");
     expect(current?.getAttribute("aria-label")).toBe("Club");
-    expect(screen.getByTestId("project-rail-all")).toBeTruthy();
+    expect(screen.queryByTestId("project-rail-temporary")).toBeNull();
   });
 
-  it("shows at most ten, and draws initials without an icon", async ({
+  it("draws up to twenty pins, and initials without an icon", async ({
     expect,
   }) => {
-    const projects = Array.from({ length: 12 }, (_, i) =>
+    const projects = Array.from({ length: 20 }, (_, i) =>
       row(i + 1, `Project ${i + 1}`, `2026-01-${String(30 - i)}`),
     );
-    await mount(projects, 12);
+    await mount(projects, 20);
 
-    expect(titles()).toHaveLength(10);
-    expect(titles()).toContain("Project 12");
+    expect(titles()).toHaveLength(20);
     expect(screen.getAllByTestId("project-monogram")[0].textContent).toBe("P1");
   });
 
-  it("keeps the order when a project is selected", async ({ expect }) => {
+  it("shows an unpinned current project in a faded temporary slot below the pins", async ({
+    expect,
+  }) => {
+    await mount(
+      [row(1, "Lore", "2026-01-03"), row(2, "Club", "2026-01-02")],
+      2,
+      [1],
+    );
+
+    expect(titles()).toEqual(["Lore"]);
+    const slot = screen.getByTestId("project-rail-temporary");
+    expect(slot.getAttribute("aria-label")).toBe("Club");
+    expect(slot.getAttribute("aria-current")).toBe("page");
+    expect(slot.className).toContain("opacity-50");
+    // Below the pins, inside the scrolling middle.
+    const pins = screen.getByTestId("project-rail-pins");
+    expect(pins.lastElementChild).toBe(slot);
+  });
+
+  it("keeps the fixed buttons with no pins at all", async ({ expect }) => {
+    await mount([row(1, "Lore", "2026-01-01")], 1, []);
+
+    expect(titles()).toEqual([]);
+    expect(screen.getByTestId("project-rail-temporary")).toBeTruthy();
+    expect(screen.getByTestId("project-rail-home")).toBeTruthy();
+    expect(screen.getByTestId("project-rail-create")).toBeTruthy();
+    expect(screen.getByTestId("project-rail-all")).toBeTruthy();
+  });
+
+  it("keeps the order when a project is selected, and drops the temporary slot", async ({
+    expect,
+  }) => {
     const app = await mount(
       [
         row(1, "Lore", "2026-01-03"),
         row(2, "Club", "2026-01-02"),
         row(3, "Acme", "2026-01-01"),
       ],
-      1,
+      3,
+      [1, 2],
     );
+    expect(screen.getByTestId("project-rail-temporary")).toBeTruthy();
 
-    // The first order is by update, and it is stored as shown.
-    expect(titles()).toEqual(["Lore", "Club", "Acme"]);
-    expect(app.store.get(recentProjectsAtom)).toEqual([1, 2, 3]);
-
-    // Selecting Acme moves nothing, now or on the next load.
-    act(() => {
-      app.store.set(currentProjectAtom, row(3, "Acme", "2026-01-01"));
+    await act(async () => {
+      app.store.set(currentProjectAtom, row(1, "Lore", "2026-01-03"));
     });
-    expect(titles()).toEqual(["Lore", "Club", "Acme"]);
-    expect(app.store.get(recentProjectsAtom)).toEqual([1, 2, 3]);
+    expect(titles()).toEqual(["Lore", "Club"]);
+    expect(screen.queryByTestId("project-rail-temporary")).toBeNull();
+    expect(app.store.get(userDockAtom)).toEqual([1, 2]);
   });
 
-  it("gives a project opened from outside the rail the last slot", async ({
-    expect,
-  }) => {
-    const projects = Array.from({ length: 11 }, (_, i) =>
-      row(i + 1, `Project ${i + 1}`, `2026-01-${String(30 - i)}`),
-    );
-    const app = await mount(projects, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-
-    expect(titles().at(-1)).toBe("Project 11");
-    expect(app.store.get(recentProjectsAtom)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 11,
-    ]);
+  it("ignores dock ids that are no longer a membership", async ({ expect }) => {
+    await mount([row(1, "Lore", "2026-01-01")], 1, [99, 1]);
+    expect(titles()).toEqual(["Lore"]);
   });
 });
