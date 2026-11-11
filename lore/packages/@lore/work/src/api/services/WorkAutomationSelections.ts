@@ -41,11 +41,13 @@ export class WorkAutomationSelections {
       if (typeof input.filters.tag !== "string")
         throw new BadRequestError("Tag must be text");
       const tag = input.filters.tag.trim().toLowerCase();
-      predicates.push(
-        this.quests.provider.dialect === "sqlite"
-          ? sql`EXISTS (SELECT 1 FROM json_each(${this.quests.table.tags}) WHERE value = ${tag})`
-          : sql`${this.quests.table.tags} @> ${JSON.stringify([tag])}::jsonb`,
-      );
+      // `tags` is JSON text on SQLite, where the ORM refuses array operators,
+      // and `text[]` on Postgres, where `arrayContains` is `@> ARRAY[...]`.
+      if (this.quests.provider.dialect === "sqlite")
+        predicates.push(
+          sql`EXISTS (SELECT 1 FROM json_each(${this.quests.table.tags}) WHERE value = ${tag})`,
+        );
+      else where.tags = { arrayContains: [tag] };
     }
     if (input.filters.area !== undefined) {
       if (typeof input.filters.area !== "string")
