@@ -1512,7 +1512,8 @@ export class Alepha {
       return this;
     }
 
-    const isSubstitution = typeof entry === "object";
+    // A lazy stand-in (#Q3407) is an object too, and no substitution.
+    const isSubstitution = typeof entry === "object" && !isLazyService(entry);
     if (isSubstitution) {
       if (entry.provide === entry.use) {
         this.inject(entry.provide);
@@ -1546,7 +1547,8 @@ export class Alepha {
     }
 
     // A pure class the build list names is declared, not created (#Q3402).
-    if (this.declareService(entry)) {
+    const service = entry as Service<T>;
+    if (this.declareService(service)) {
       return this;
     }
 
@@ -1555,7 +1557,7 @@ export class Alepha {
     // registered, not injected by the class under construction (#Q3404).
     this.containerGraph.openFrame(this.pendingInstantiations.length);
     try {
-      this.inject(entry);
+      this.inject(service);
     } finally {
       this.containerGraph.closeFrame();
     }

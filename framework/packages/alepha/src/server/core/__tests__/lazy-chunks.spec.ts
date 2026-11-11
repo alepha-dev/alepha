@@ -40,7 +40,9 @@ const surface: AppSurface = {
   prompts: [],
 };
 
-const boot = async (opts: { list?: boolean; failures?: number } = {}) => {
+const boot = async (
+  opts: { list?: boolean; failures?: number; via?: "module" | "with" } = {},
+) => {
   created = 0;
   let imports = 0;
   let failures = opts.failures ?? 0;
@@ -55,11 +57,23 @@ const boot = async (opts: { list?: boolean; failures?: number } = {}) => {
   });
   const alepha = Alepha.create({ env: { SERVER_PORT: 0 } });
   if (opts.list !== false) {
-    alepha.useSurface(surface);
+    // `alepha.with(X)` in a main file keys the class by its name alone.
+    alepha.useSurface(
+      opts.via === "with"
+        ? {
+            ...surface,
+            classes: [{ key: "QuestApi", pure: true }],
+            actions: surface.actions.map((it) => ({ ...it, class: "QuestApi" })),
+          }
+        : surface,
+    );
   }
-  alepha
-    .with(AlephaServer)
-    .with($module({ name: "acme.api", services: [lazy] }));
+  alepha.with(AlephaServer);
+  if (opts.via === "with") {
+    alepha.with(lazy);
+  } else {
+    alepha.with($module({ name: "acme.api", services: [lazy] }));
+  }
   await alepha.start();
   const host = alepha.inject(ServerProvider).hostname;
   return { alepha, host, imports: () => imports, QuestApi };
@@ -108,5 +122,17 @@ describe("lazy chunks", () => {
     const { alepha, QuestApi } = await boot();
     expect(alepha.inject(QuestApi)).toBeInstanceOf(QuestApi);
     await alepha.stop();
+  });
+
+  it("are declared when a main file passes them to alepha.with", async ({
+    expect,
+  }) => {
+    for (const list of [true, false]) {
+      const { alepha, host } = await boot({ via: "with", list });
+      expect(created).toBe(list ? 0 : 1);
+      expect(await (await fetch(`${host}/api/quests`)).text()).toBe("quests");
+      expect(created).toBe(1);
+      await alepha.stop();
+    }
   });
 });
