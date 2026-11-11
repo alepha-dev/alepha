@@ -2,14 +2,16 @@ import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * The repository link in the project topbar (feedback #2105).
+ * The repository link of a project (feedback #2105): a line under the
+ * project title at the top of its sidebar since #Q3420, where it was an icon
+ * in the topbar.
  *
  * Everything here is conditional on data, which is exactly what a unit render
  * cannot settle: the button reads `currentProjectAtom`, which only the real
  * project route fills, and it picks its icon from the stored URL's host. The
  * three cases that matter are therefore "no URL", "a GitHub URL" and "some
  * other host", and only the first is the common one - most projects have no
- * repository at all, and a dead icon in the topbar is worse than no icon.
+ * repository at all, and a dead link is worse than none.
  */
 const setRepositoryUrl = async (
   page: import("@playwright/test").Page,
@@ -31,7 +33,7 @@ const setRepositoryUrl = async (
     { projectId, repositoryUrl },
   );
 
-test.describe("the topbar repository link", () => {
+test.describe("the project sidebar's repository line (#Q3420)", () => {
   test("appears only with a repositoryUrl, and follows its host", async ({
     page,
   }) => {
@@ -48,7 +50,7 @@ test.describe("the topbar repository link", () => {
     // control is where it goes, and the tooltip that says so only exists on
     // hover.
     const link = (host: string) =>
-      page.locator(`header a[href*="${host}"], a[href*="${host}"]`).first();
+      page.locator(`[data-testid="project-title"] a[href*="${host}"]`).first();
 
     await test.step("a project with no repository shows nothing", async () => {
       await page.goto(`/${slug}`);
