@@ -2,7 +2,7 @@ import {
   AutomationDomainActions,
   type AutomationDomainHandler,
 } from "@lore/core/api";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
@@ -14,8 +14,17 @@ import { folios } from "../entities/folios.ts";
  * content can be replaced between the adapter's read and the controller gate.
  */
 export class KnowledgeAutomationActions {
+  protected readonly alepha = $inject(Alepha);
   protected readonly registry = $inject(AutomationDomainActions);
-  protected readonly api = $inject(FolioController);
+
+  /**
+   * Resolved on use, never held as a field: a field would make `FolioController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected api(): FolioController {
+    return this.alepha.inject(FolioController);
+  }
   protected readonly folios = $repository(folios);
   constructor() {
     this.registry.register("appendFolio", {
@@ -61,7 +70,7 @@ export class KnowledgeAutomationActions {
       target,
       result,
       invoke: () =>
-        this.api.update(
+        this.api().update(
           {
             params: { id: folio.id },
             body: { content, expectedVersion: folio.version },

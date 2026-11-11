@@ -22,7 +22,15 @@ export class KnowledgeProjectContext {
   protected readonly alepha = $inject(Alepha);
   protected readonly registry = $inject(ProjectContextRegistry);
   protected readonly resources = $inject(ResourceRegistry);
-  protected readonly folioController = $inject(FolioController);
+
+  /**
+   * Resolved on use, never held as a field: a field would make `FolioController`
+   * injected by a boot service, so it could never be a pure controller
+   * created on its first request (#Q3399).
+   */
+  protected folioController(): FolioController {
+    return this.alepha.inject(FolioController);
+  }
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
 
   constructor() {
@@ -40,7 +48,7 @@ export class KnowledgeProjectContext {
     // query: cheap on D1 (single LIKE-free indexed range scan). The index
     // rows carry no body; only the pinned ones do, read beside them, since
     // those are the only bodies this call returns (#Q2636).
-    const folios = await this.folioController.index({
+    const folios = await this.folioController().index({
       params: { projectId },
       query: { limit: cap + 1, pinnedContent: true },
     });
