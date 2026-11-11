@@ -301,11 +301,13 @@ test.describe("deploying through Lore", () => {
       ).toHaveCount(0);
     });
 
-    await test.step("the Sigil tab writes SIGIL_CONFIG, and only what differs (#Q3103)", async () => {
-      // No sigil yet: the copy collects nothing, so there is no Sigil tab.
-      const tabs = page.getByTestId("app-tabs");
-      const sigilTab = tabs.getByRole("link", { name: "Sigil", exact: true });
-      await expect(sigilTab).toHaveCount(0);
+    await test.step("the Settings tab's Sigil features write SIGIL_CONFIG, and only what differs (#Q3103)", async () => {
+      // No sigil yet: the copy collects nothing, so Settings has no section
+      // to configure it.
+      const settingsUrl = `/${slug}/apps/${appName}/${envName}/settings`;
+      await page.goto(settingsUrl);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByTestId("app-sigil-features")).toHaveCount(0);
 
       // The same endpoint the Settings tab's mint button calls: a sigil, with
       // its key sealed straight into this copy's environment.
@@ -321,11 +323,8 @@ test.describe("deploying through Lore", () => {
       );
       expect(minted).toBe(true);
 
-      await page.goto(`/${slug}/apps/${appName}/${envName}`);
+      await page.goto(settingsUrl);
       await page.waitForLoadState("networkidle");
-      await expect(sigilTab).toBeVisible({ timeout: 15_000 });
-      await sigilTab.click();
-      await expect(page).toHaveURL(/\/sigil$/);
 
       const card = page.getByTestId("app-sigil-features");
       await expect(card).toBeVisible({ timeout: 15_000 });
@@ -356,7 +355,7 @@ test.describe("deploying through Lore", () => {
       });
 
       // Every switch back at its default removes the variable altogether.
-      await page.goto(`/${slug}/apps/${appName}/${envName}/sigil`);
+      await page.goto(settingsUrl);
       await page.waitForLoadState("networkidle");
       await card.getByRole("switch", { name: /web vitals/i }).click();
       await card.getByRole("button", { name: "Save", exact: true }).click();

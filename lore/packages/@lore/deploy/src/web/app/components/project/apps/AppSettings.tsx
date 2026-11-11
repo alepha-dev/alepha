@@ -8,6 +8,7 @@ import AppSettingsDelete from "./AppSettingsDelete.tsx";
 import AppSettingsEstate from "./AppSettingsEstate.tsx";
 import AppSettingsRename from "./AppSettingsRename.tsx";
 import AppSettingsSigil from "./AppSettingsSigil.tsx";
+import AppSettingsSigilFeatures from "./AppSettingsSigilFeatures.tsx";
 import AppSettingsUrl from "./AppSettingsUrl.tsx";
 
 /**
@@ -62,6 +63,8 @@ const AppSettings = () => {
       </SettingsSection>
 
       <AppSettingsSigil />
+
+      <AppSettingsSigilFeatures />
 
       <AppSettingsEstate />
 

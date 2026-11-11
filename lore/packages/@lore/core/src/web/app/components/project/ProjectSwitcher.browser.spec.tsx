@@ -69,7 +69,27 @@ describe("ProjectSwitcher", () => {
     alepha = undefined;
   });
 
-  const open = async (currentId: number) => {
+  /**
+   * The menu is the phone's header (#Q3374): `useIsMobile` reads
+   * `matchMedia`, which the jsdom mock answers `false`, so the phone is set
+   * here by hand.
+   */
+  const setMobile = (mobile: boolean) => {
+    window.matchMedia = (query: string) =>
+      ({
+        matches: mobile,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+  };
+
+  const mount = async (currentId: number, mobile: boolean) => {
+    setMobile(mobile);
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -106,9 +126,22 @@ describe("ProjectSwitcher", () => {
         </SidebarProvider>
       </AlephaContext.Provider>,
     );
+  };
+
+  const open = async (currentId: number) => {
+    await mount(currentId, true);
     fireEvent.click(screen.getByTestId("project-switcher"));
     await screen.findByText("Acme");
   };
+
+  it("is a plain title on desktop, where the rail switches", async ({
+    expect,
+  }) => {
+    await mount(1, false);
+
+    expect(screen.getByTestId("project-title").textContent).toContain("Lore");
+    expect(screen.queryByTestId("project-switcher")).toBeNull();
+  });
 
   it("leaves an archived project out of the menu", async ({ expect }) => {
     await open(1);

@@ -386,7 +386,6 @@ export class DeployRouter {
       this.appArtifacts,
       this.appDeploy,
       this.appEnvironment,
-      this.appSigil,
       this.appBackups,
       this.appSettings,
     ],
@@ -740,23 +739,6 @@ export class DeployRouter {
       title: `${previous?.title ?? ""} › Environment`,
     }),
     lazy: () => import("./components/project/apps/AppEnvironment.tsx"),
-  });
-
-  /**
-   * What this copy's Sigil collects, as switches over its `SIGIL_CONFIG`
-   * (#Q3103), with an offer to redeploy so they apply.
-   *
-   * ⚠️ Unguarded in the router, like `appEnvironment`, whose endpoint it
-   * reads and writes: the tab self-hides on `apps.deploy` plus a sigil and
-   * somewhere to deploy, and the endpoints refuse server-side.
-   */
-  appSigil = $page({
-    name: "appSigil",
-    path: "/sigil",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Sigil`,
-    }),
-    lazy: () => import("./components/project/apps/AppSigil.tsx"),
   });
 
   appSettings = $page({

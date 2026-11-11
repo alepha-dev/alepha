@@ -79,6 +79,7 @@ describe("ProjectRail", () => {
     projects: ReturnType<typeof row>[],
     currentId: number,
     opened: number[] = [],
+    canCreate = true,
   ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -101,7 +102,7 @@ describe("ProjectRail", () => {
       totalCount: projects.length,
       ownedCount: projects.length,
       maxProjects: 50,
-      canCreate: true,
+      canCreate,
     });
     alepha.store.set(recentProjectsAtom, opened);
 
@@ -118,21 +119,38 @@ describe("ProjectRail", () => {
       .queryAllByTestId("project-rail-item")
       .map((it) => it.getAttribute("aria-label"));
 
-  it("is absent with a single project", async ({ expect }) => {
-    await mount([row(1, "Lore", "2026-01-01")], 1);
-
-    expect(screen.queryByTestId("project-rail")).toBeNull();
-  });
-
-  it("is absent when the only other project is archived", async ({
+  it("shows from a single project, with Home, New project and All projects", async ({
     expect,
   }) => {
+    await mount([row(1, "Lore", "2026-01-01")], 1);
+
+    expect(screen.getByTestId("project-rail")).toBeTruthy();
+    expect(titles()).toEqual(["Lore"]);
+    expect(screen.getByTestId("project-rail-home").getAttribute("href")).toBe(
+      "/",
+    );
+    expect(
+      screen.getByTestId("project-rail-create").getAttribute("href"),
+    ).toBeTruthy();
+    expect(screen.getByTestId("project-rail-all")).toBeTruthy();
+  });
+
+  it("leaves an archived project out", async ({ expect }) => {
     await mount(
       [row(1, "Lore", "2026-01-01"), row(2, "Old", "2026-01-02", "2026-02-01")],
       1,
     );
 
-    expect(screen.queryByTestId("project-rail")).toBeNull();
+    expect(titles()).toEqual(["Lore"]);
+  });
+
+  it("disables New project once the quota is reached", async ({ expect }) => {
+    await mount([row(1, "Lore", "2026-01-01")], 1, [], false);
+
+    const create = screen.getByTestId("project-rail-create");
+    expect(create.getAttribute("href")).toBeNull();
+    expect(create.getAttribute("aria-disabled")).toBe("true");
+    expect(create.getAttribute("aria-label")).toContain("50");
   });
 
   it("orders by opened, then by update, and marks the current one", async ({

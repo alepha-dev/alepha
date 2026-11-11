@@ -33,7 +33,7 @@ flowchart LR
   running -->|handler resolves| ok
   running -->|throws, retries left| scheduled
   running -->|throws, no retries left| error
-  running -->|"reschedule()"| scheduled
+  running -->|"reschedule() or step.sleep()"| scheduled
   running -->|"cancel()"| cancelled
   running -.->|lease expired, counts as a throw| scheduled
 ```
@@ -261,62 +261,52 @@ Its scan only runs when the list is empty, so a busy queue pays no extra round
 trip for the tier at all. `ZREM` is the claim, so two pollers racing the same
 due message agree on an owner instead of delivering it twice.
 
-## Waiting between stages: `reschedule`
+## Looping with `reschedule`
 
-Some work is a sequence with waits in it: remind after an hour, remind again a
-day later, give up after another. One job carries the whole sequence when its
-handler calls `reschedule()` instead of returning: the same execution row goes
-back to `scheduled` with a new `scheduledAt` and a new payload, keeps its `id`
-and its `key`, and its `attempt` starts over. A stage in the payload is what the
-handler switches on:
+A handler that calls `reschedule()` instead of returning parks its own
+execution again: the same row goes back to `scheduled` with a new
+`scheduledAt` and, optionally, a new payload, keeps its `id` and its `key`, and
+its `attempt` starts over. It is the tool for a loop over a changing payload,
+such as a poll that backs off until an export is ready:
 
-```typescript
-cartRecovery = $job({
-  name: "carts.recover",
-  description:
-    "Reminds a buyer about an abandoned cart, then marks it abandoned.",
-  schema: z.object({
-    cartId: z.uuid(),
-    stage: z.enum(["remind", "remindAgain", "abandon"]).optional(),
-  }),
-  retry: { retries: 3, backoff: { initial: [1, "minute"], factor: 4 } },
-  handler: async ({ payload, reschedule }) => {
-    if (!(await this.carts.isRecoverable(payload.cartId))) {
-      return; // converted or gone: the sequence ends here
-    }
-    switch (payload.stage ?? "remind") {
-      case "remind":
-        await this.mailer.remind(payload.cartId, 1);
-        reschedule({
-          delay: [23, "hour"],
-          payload: { ...payload, stage: "remindAgain" },
-        });
-        return;
-      case "remindAgain":
-        await this.mailer.remind(payload.cartId, 2);
-        reschedule({
-          delay: [24, "hour"],
-          payload: { ...payload, stage: "abandon" },
-        });
-        return;
-      case "abandon":
-        await this.carts.markAbandoned(payload.cartId);
-    }
-  },
-});
+```typescript check
+import { z } from "alepha";
+import { $job } from "alepha/api/jobs";
 
-// One push starts the sequence; the key makes a second push land on it.
-await this.cartRecovery.push({ cartId }, { key: cartId, delay: [1, "hour"] });
+class ExportApi {
+  async status(exportId: string): Promise<"ready" | "running"> {
+    return "ready";
+  }
+}
+
+class Exports {
+  api = new ExportApi();
+
+  waitForExport = $job({
+    name: "exports.wait-ready",
+    description: "Polls an export until it is ready, backing off each time.",
+    schema: z.object({ exportId: z.text(), round: z.integer().optional() }),
+    handler: async ({ payload, reschedule }) => {
+      if ((await this.api.status(payload.exportId)) === "ready") return;
+      const round = (payload.round ?? 0) + 1;
+      if (round > 10) return; // give up after ten rounds
+      reschedule({
+        delay: [Math.min(2 ** round, 60), "minute"],
+        payload: { ...payload, round },
+      });
+    },
+  });
+}
 ```
 
 The wait is persisted before any timer is armed, so a redeploy inside it loses
 nothing: the row's `scheduledAt` is the truth and the sweep is the backstop,
-exactly as for a delayed push. Each stage gets the job's full retry budget,
+exactly as for a delayed push. Each round gets the job's full retry budget,
 because `attempt` resets.
 
-A durable loop is the same shape with an iteration counter instead of a stage:
-the handler does its round, then reschedules itself with `iteration + 1` until
-it reaches its limit.
+**Use `reschedule` for a loop, and [steps](#steps) for a fixed sequence with
+side effects.** A reschedule is a new iteration: it clears the run's steps, so
+every `step.run` of the next pass runs again.
 
 The rules that keep it honest:
 
@@ -333,6 +323,215 @@ The rules that keep it honest:
 - It throws from a cron tick (no row to park) and from an
   [`inline`](#inline-when-a-retry-is-worse-than-a-failure) push (the caller is
   waiting for an outcome).
+- `step.sleep` after `reschedule()` in the same run is refused: one of them
+  parks the row, not both.
+
+## Steps
+
+A handler that does two things with side effects has a problem the moment the
+second one fails:
+
+```typescript check
+import { z } from "alepha";
+import { $job } from "alepha/api/jobs";
+
+declare const payments: { capture(orderId: string): Promise<void> };
+declare const mail: { sendReceipt(orderId: string): Promise<void> };
+
+class Orders {
+  settle = $job({
+    name: "orders.settle",
+    description: "Captures the payment, then sends the receipt.",
+    schema: z.object({ orderId: z.text() }),
+    retry: { retries: 3 },
+    handler: async ({ payload }) => {
+      await payments.capture(payload.orderId); // runs again on every retry
+      await mail.sendReceipt(payload.orderId); // fails: the job retries
+    },
+  });
+}
+```
+
+The retry captures the payment twice. `step` fixes it: a completed step's
+result is stored on the job's row, and when the handler runs again, that step
+returns the stored result instead of running.
+
+```typescript check
+import { z } from "alepha";
+import { $job } from "alepha/api/jobs";
+
+class Payments {
+  async capture(orderId: string) {
+    return { id: `ch_${orderId}` };
+  }
+}
+class Invoices {
+  async issue(orderId: string, chargeId: string) {
+    return { number: `INV-${orderId}-${chargeId}` };
+  }
+}
+class Mail {
+  async sendReceipt(orderId: string, invoice: string) {}
+}
+
+class Orders {
+  payments = new Payments();
+  invoices = new Invoices();
+  mail = new Mail();
+
+  settle = $job({
+    name: "orders.settle",
+    description: "Captures the payment, issues the invoice, sends the receipt.",
+    schema: z.object({ orderId: z.text() }),
+    retry: { retries: 3 },
+    handler: async ({ payload, step }) => {
+      const charge = await step.run("capture", () =>
+        this.payments.capture(payload.orderId),
+      );
+      const invoice = await step.run("invoice", () =>
+        this.invoices.issue(payload.orderId, charge.id),
+      );
+      await step.run("receipt", () =>
+        this.mail.sendReceipt(payload.orderId, invoice.number),
+      );
+    },
+  });
+}
+```
+
+A failing receipt retries the receipt alone: `capture` and `invoice` return
+what they returned the first time. A value computed in one step is available to
+the next as a plain variable, without being copied into the payload.
+
+### Waiting: `step.sleep`
+
+`step.sleep(name, duration)` and `step.sleepUntil(name, date)` wait durably
+between steps. The cart recovery of `@alepha/commerce` is this shape:
+
+```typescript check
+import { z } from "alepha";
+import { $job } from "alepha/api/jobs";
+
+class Carts {
+  async isRecoverable(cartId: string) {
+    return true;
+  }
+  async remind(cartId: string, n: 1 | 2) {}
+  async markAbandoned(cartId: string) {}
+}
+
+class CartRecovery {
+  carts = new Carts();
+
+  recover = $job({
+    name: "carts.recover",
+    description:
+      "Reminds a buyer about an abandoned cart, then marks it abandoned.",
+    schema: z.object({ cartId: z.uuid() }),
+    retry: { retries: 3, backoff: { initial: [1, "minute"], factor: 4 } },
+    handler: async ({ payload, step }) => {
+      // Asked again on every pass, before each stage.
+      if (!(await this.carts.isRecoverable(payload.cartId))) return;
+      await step.run("first-reminder", () =>
+        this.carts.remind(payload.cartId, 1),
+      );
+      await step.sleep("until-second", [23, "hour"]);
+      await step.run("second-reminder", () =>
+        this.carts.remind(payload.cartId, 2),
+      );
+      await step.sleep("until-abandon", [24, "hour"]);
+      await step.run("mark-abandoned", () =>
+        this.carts.markAbandoned(payload.cartId),
+      );
+    },
+  });
+}
+```
+
+A sleeping job is an ordinary `scheduled` row, visible and cancellable in the
+admin (`cancelByKey` cancels it like any parked row), and the sleep spends no
+attempt. It wakes as precisely as a delayed push does: see
+[What a transport does with a delay](#what-a-transport-does-with-a-delay).
+
+### The handler runs from the top
+
+**Every pass runs the handler from its first line; only steps are skipped.** A
+retry, a crash recovered by the sweep and a wake-up after a sleep all replay
+the handler, and every completed step returns its stored result. That is a
+feature: a guard such as "is this cart still recoverable?" sits once, before
+the first step and outside any step, precisely because it must be asked again
+after each wake.
+
+### The rules
+
+- **Names are unique in a run**, 1 to 64 characters of lower-case kebab
+  segments joined by dots. Name loop iterations:
+  ``step.run(`charge.${i}`, ...)``.
+- **Results are JSON and capped**: 64 KB per result and 512 KB per run
+  (`jobConfig.stepResultMaxBytes`, `jobConfig.stepsMaxBytes`). A `Date`, a
+  `Map`, a class instance or a `bigint` is refused, so return
+  `date.toISOString()`. Results are stored in clear: never return a secret.
+- **Do not `catch` around `step.sleep`.** It unwinds the handler by throwing;
+  a handler that catches it and carries on fails with an error saying so.
+- **Not inside a transaction.** The step's record would roll back with a later
+  throw while its work stays done. Open the transaction inside the step's
+  function instead.
+- **Not in a cron job**, with or without `retry` (push a queue job from the
+  cron), **nor in an `inline` push.**
+- **Any `reschedule()` starts the steps over.**
+- **`retries: n` is n + 1 tries of each step**: the retry budget starts over
+  when a step completes.
+
+### Retry from the admin resumes
+
+Retrying a failed or cancelled run from the admin creates a new execution that
+carries the steps the old one completed: they are not run again, and the run
+carries on at the step that failed. Two consequences: to run every step again,
+push the job again (or use Trigger with the payload), since the admin has no
+"retry from the start"; and a step whose stored result is what makes the next
+one fail is not re-run by Retry.
+
+### What steps are not
+
+| you may expect                                      | what you get                                                                                                                                                            |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| exactly-once steps                                  | at-least-once: a crash between a step finishing and its result being stored runs it again. Make the step idempotent, or pass an idempotency key to the service it calls |
+| parallel steps, child workflows, waiting for events | not provided. Push another job, or use `cancelByKey` and a re-check                                                                                                     |
+| compensation on failure                             | not provided. Write the undo as a step in a `catch` of your own, around `step.run` calls only                                                                           |
+| a workflow server                                   | none: the state is one column on a row in your own database, on every runtime                                                                                           |
+
+### Testing
+
+Poll the row until it is `scheduled` with the sleep's entry in its `steps`,
+then `travel()` past it. The promoting timer is armed once the handler has
+unwound, so a travel issued before the park computes the wait from the
+travelled clock. `travel()` also fires every cron in the container, the sweep
+included, which is what promotes a sleep longer than a day.
+
+```typescript check
+import { Alepha } from "alepha";
+import { jobExecutionEntity } from "alepha/api/jobs";
+import { DateTimeProvider } from "alepha/datetime";
+import { $repository } from "alepha/orm";
+
+class Probe {
+  executions = $repository(jobExecutionEntity);
+}
+
+const waitForSleep = async (alepha: Alepha, id: string, sleep: string) => {
+  const probe = alepha.inject(Probe);
+  for (;;) {
+    const row = await probe.executions.findById(id);
+    if (row?.status === "scheduled" && row.steps?.[sleep]) return;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+};
+
+export const wakeUp = async (alepha: Alepha, id: string) => {
+  await waitForSleep(alepha, id, "until-second");
+  await alepha.inject(DateTimeProvider).travel([24, "hour"]);
+};
+```
 
 ## `inline`: when a retry is worse than a failure
 
@@ -665,7 +864,9 @@ logs, and acts on them:
 | Delete terminal runs                | `DELETE /jobs/executions/:id`, `POST /jobs/executions/delete`         | `admin:job:delete`  |
 
 A retry is a new execution: the old row stays as it was, and the payload is
-pushed again (a cron job is triggered). Deleting only removes terminal rows: a
+pushed again (a cron job is triggered). A run that recorded
+[steps](#retry-from-the-admin-resumes) resumes: the steps it completed are not
+run again. Deleting only removes terminal rows: a
 `pending`, `scheduled` or `running` row is work the outbox still owns, so a
 single delete refuses it and the bulk delete skips it (and reports how many it
 skipped); cancel it first.

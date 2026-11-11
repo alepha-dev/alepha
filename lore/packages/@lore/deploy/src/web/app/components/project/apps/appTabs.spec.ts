@@ -9,7 +9,18 @@ import {
   appTabsFor,
   appTabsFrom,
   type GatedAppTab,
+  sigilConfigurable,
 } from "./appTabs.ts";
+
+const aBayEstate = () => ({
+  estateId: "00000000-0000-4000-8000-0000000000e1",
+  estate: {
+    id: "00000000-0000-4000-8000-0000000000e1",
+    slug: "ovh",
+    type: "bay" as const,
+    label: "OVH",
+  },
+});
 
 const anInstance = (
   kinds?: string[],
@@ -92,9 +103,7 @@ describe("the instance's tab set", () => {
     // where a deploy goes and where its variables end up, so a copy with
     // nowhere to deploy has neither a history nor anything to configure.
     // Choosing one on the Settings tab is what makes the pair appear.
-    expect(
-      routes(anInstance(undefined, { estateId: crypto.randomUUID() })),
-    ).toEqual([
+    expect(routes(anInstance(undefined, aBayEstate()))).toEqual([
       "app",
       "appArtifacts",
       "appDeploy",
@@ -118,31 +127,43 @@ describe("the instance's tab set", () => {
     expect(stacked).not.toContain("appBackups");
   });
 
-  it("adds Sigil only for a copy with a sigil that Lore deploys (#Q3103)", ({
+  it("adds Backups for a Bay estate only", ({ expect }) => {
+    // Backups are Bay's: a Cloudflare estate has nothing to back up.
+    expect(routes(anInstance(undefined, aBayEstate()))).toContain("appBackups");
+    const cloudflare = routes(
+      anInstance(undefined, {
+        estateId: aBayEstate().estateId,
+        estate: { ...aBayEstate().estate, type: "cloudflare" },
+      }),
+    );
+    expect(cloudflare).toContain("appDeploy");
+    expect(cloudflare).not.toContain("appBackups");
+  });
+
+  it("configures Sigil only for a copy with a sigil that Lore deploys (#Q3103)", ({
     expect,
   }) => {
     // A sigil alone is a copy Lore only hears from: what it sends is decided
     // in its own deploy, so there is nothing here to switch.
-    expect(routes(anInstance(["beacon"]))).not.toContain("appSigil");
+    expect(sigilConfigurable(anInstance(["beacon"]))).toBe(false);
     // Somewhere to deploy with no sigil collects nothing.
     expect(
-      routes(anInstance(undefined, { estateId: crypto.randomUUID() })),
-    ).not.toContain("appSigil");
-
-    const deployed = routes(
-      anInstance(["beacon"], { estateId: crypto.randomUUID() }),
-    );
-    expect(deployed.indexOf("appSigil")).toBe(
-      deployed.indexOf("appEnvironment") + 1,
-    );
+      sigilConfigurable(
+        anInstance(undefined, { estateId: crypto.randomUUID() }),
+      ),
+    ).toBe(false);
     expect(
-      routes(
+      sigilConfigurable(
+        anInstance(["beacon"], { estateId: crypto.randomUUID() }),
+      ),
+    ).toBe(true);
+    expect(
+      sigilConfigurable(
         anInstance(["beacon"], { stackEnvironmentId: crypto.randomUUID() }),
       ),
-    ).toContain("appSigil");
-    expect(APP_TABS.find((it) => it.route === "appSigil")?.option).toBe(
-      "deploy",
-    );
+    ).toBe(true);
+    // A Settings section, not a tab.
+    expect(APP_TABS.map((tab) => tab.route)).not.toContain("appSigil");
   });
 
   it("keeps Settings last in every combination", ({ expect }) => {
@@ -215,7 +236,7 @@ describe("the instance's tab set", () => {
       expect(APP_TABS.find((it) => it.route === route)?.option).toBe("deploy");
     }
 
-    const withEstate = anInstance(undefined, { estateId: crypto.randomUUID() });
+    const withEstate = anInstance(undefined, aBayEstate());
     const routesOf = (options: { track: boolean; deploy: boolean }) =>
       appTabsFor(withEstate, options).map((it) => it.route);
 

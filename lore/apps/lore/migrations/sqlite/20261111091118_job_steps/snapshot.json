@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "482ba723-dae4-444c-877d-25e3565ffcb9",
-  "prevIds": ["b37e0088-3954-48d1-9a13-d93dd133fe57"],
+  "id": "0c50514f-39a2-4157-92ce-d1acae7065ea",
+  "prevIds": ["d8161601-a9ca-4ce5-af6f-b89c64a362e2"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -4954,26 +4954,6 @@
     },
     {
       "table": "estates",
-      "name": "project_id",
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "estates",
-      "name": "created_by",
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "estates",
       "name": "type",
       "type": "text",
       "notNull": true,
@@ -6465,6 +6445,16 @@
     {
       "table": "job_executions",
       "name": "logs",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "job_executions",
+      "name": "steps",
       "type": "text",
       "notNull": false,
       "autoincrement": false,
@@ -12526,10 +12516,10 @@
     },
     {
       "table": "estates",
-      "name": "estates_project_id_slug_idx",
+      "name": "estates_owner_user_id_slug_idx",
       "columns": [
         {
-          "value": "project_id",
+          "value": "owner_user_id",
           "isExpression": false
         },
         {
@@ -15132,28 +15122,6 @@
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
-      "table": "estates",
-      "name": "fk_estates_project_id_projects_id_fk",
-      "columns": ["project_id"],
-      "tableTo": "projects",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
-      "table": "estates",
-      "name": "fk_estates_created_by_users_id_fk",
-      "columns": ["created_by"],
-      "tableTo": "users",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "SET NULL",
       "nameExplicit": false,
       "entityType": "fks"
     },
