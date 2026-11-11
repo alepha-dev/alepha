@@ -77,6 +77,15 @@ export class WebhookVerifier {
   /**
    * Verify a request from its headers and raw body. Resolves when it is
    * genuine, throws {@link InvalidWebhookSignatureError} when not.
+   *
+   * @example
+   * ```ts
+   * await verifier.verify({
+   *   headers: request.headers,
+   *   body: rawBody, // the bytes received, never JSON.stringify(parsed)
+   *   secret: [currentSecret, previousSecret],
+   * });
+   * ```
    */
   public async verify(options: WebhookVerifyOptions): Promise<void> {
     const id = this.header(options.headers, "webhook-id");

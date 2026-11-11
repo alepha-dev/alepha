@@ -1356,7 +1356,7 @@ export class JobProvider {
       for (const exec of created) ids.push(exec.id);
       await this.dispatchAfterCommit(name, async () => {
         // Collect pending rows so we hand them to the dispatcher in a single
-        // batch — the queue dispatcher can fan them out in one network call.
+        // batch: the queue dispatcher can fan them out in one network call.
         const toDispatch: Array<{ jobName: string; executionId: string }> = [];
         for (const exec of created) {
           if (exec.status === "pending" && !this.stopping) {

@@ -132,6 +132,18 @@ Each operation also carries what Alepha knows about it, under `x-alepha-*` keys.
 
 `x-alepha-security` is read from the middlewares' `meta`, not from their names: `$secure` sets `MIDDLEWARE_ROLES` and `MIDDLEWARE_PERMISSIONS` (comma-separated, exported from `alepha`) alongside `MIDDLEWARE_PROTECTED`, and a gate of your own documents itself by setting the same keys.
 
+## Webhooks
+
+An app that declares `$webhook` events gets an `x-webhooks` section in the
+document, one entry per event: a `POST` whose JSON body is the webhook
+envelope with the event's own `data` schema, the `webhook-id`,
+`webhook-timestamp` and `webhook-signature` headers, and a `2XX` response. It
+is an extension key, read by documentation tools for 3.0 documents, because
+the document stays OpenAPI 3.0 and the top-level `webhooks` field is a 3.1
+one. It is added before `rewrite` runs, so you can edit it there, and it is
+absent when the app declares no webhook. See the
+[webhooks guide](/docs/guides-features-webhooks).
+
 ## Security in OpenAPI
 
 Actions that carry the `$secure` middleware (`use: [$secure(...)]`) are documented with a Bearer JWT security requirement; the `bearerAuth` scheme is emitted whenever at least one such action exists. Actions without `$secure` carry no security requirement.

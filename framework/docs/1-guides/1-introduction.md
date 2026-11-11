@@ -187,6 +187,7 @@ Common infrastructure needs are built-in primitives:
 | Caching           | `$cache`   | Cache expensive computations                                         |
 | Distributed locks | `$lock`    | Coordinate across processes                                          |
 | Email             | `$email`   | Send transactional email                                             |
+| Webhooks          | `$webhook` | Signed, retried outbound events with a delivery log                  |
 
 Production builds compile to an optimized bundle deployable to Cloudflare, Bay, or any VPS.
 Declarations like `$job({ cron })` automatically map to native platform formats (Cloudflare Triggers).
