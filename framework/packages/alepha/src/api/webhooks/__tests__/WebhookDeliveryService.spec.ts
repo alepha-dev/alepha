@@ -13,6 +13,7 @@ import {
   webhookDeliveryEntity,
   webhookEndpointEntity,
 } from "alepha/api/webhooks";
+import { BackgroundTaskProvider } from "alepha/background";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider } from "alepha/orm";
@@ -122,6 +123,7 @@ class Events {
 
 class Shop {
   db = $inject(DatabaseProvider);
+  background = $inject(BackgroundTaskProvider);
   endpoints = $inject(WebhookEndpointService);
   delivery = $inject(WebhookDeliveryService);
   deliveries = $repository(webhookDeliveryEntity);
@@ -320,7 +322,7 @@ describe("webhook delivery", () => {
       await shop.paid.send({ orderId: "o1", total: 10 });
       await shop.endpointRows.updateById(endpoint.id, { status: "paused" });
     });
-    await sleep(100);
+    await shop.background.flush();
     const [row] = await shop.deliveries.findMany();
     expect(row.attempt).toBe(0);
     await shop.endpointRows.updateById(endpoint.id, { status: "active" });

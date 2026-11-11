@@ -41,6 +41,22 @@ export const webhookOptions = $atom({
       .integer()
       .min(1)
       .describe("Batches per duty per purge run; the rest waits an hour."),
+    allowPrivateDestinations: z
+      .boolean()
+      .describe(
+        "Deliver to private, loopback, link-local and local-name hosts in production too, for an app whose receivers live inside its own network. Off by default. Outside production those hosts are always allowed.",
+      ),
+    allowedPorts: z
+      .array(z.integer().min(1).max(65535))
+      .describe(
+        "Ports an endpoint URL may name in production, besides 443. Outside production any port is allowed.",
+      ),
+    maxPayloadBytes: z
+      .integer()
+      .min(1)
+      .describe(
+        "The largest serialised envelope `send` accepts, in bytes; a larger one fails before anything is written.",
+      ),
   }),
   default: {
     disableAfterDays: 5,
@@ -48,6 +64,9 @@ export const webhookOptions = $atom({
     stuckAfterHours: 72,
     purgeBatchSize: 500,
     maxPurgeBatches: 20,
+    allowPrivateDestinations: false,
+    allowedPorts: [],
+    maxPayloadBytes: 256 * 1024,
   },
   serverOnly: true,
 });

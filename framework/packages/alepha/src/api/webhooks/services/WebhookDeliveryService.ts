@@ -16,6 +16,7 @@ import {
   WebhookTransport,
   type WebhookTransportResponse,
 } from "../transports/WebhookTransport.ts";
+import { WebhookDestinationPolicy } from "./WebhookDestinationPolicy.ts";
 import { WebhookHealthService } from "./WebhookHealthService.ts";
 import { WebhookSecretService } from "./WebhookSecretService.ts";
 
@@ -58,6 +59,7 @@ export class WebhookDeliveryService {
   protected readonly transport = $inject(WebhookTransport);
   protected readonly secretService = $inject(WebhookSecretService);
   protected readonly health = $inject(WebhookHealthService);
+  protected readonly policy = $inject(WebhookDestinationPolicy);
   protected readonly deliveries = $repository(webhookDeliveryEntity);
   protected readonly endpoints = $repository(webhookEndpointEntity);
 
@@ -92,6 +94,28 @@ export class WebhookDeliveryService {
       return;
     }
 
+    const count = delivery.attempt + 1;
+    const host = this.hostOf(endpoint.url);
+
+    // The URL was valid when it was registered; the configuration or the
+    // DNS may have changed since. A refusal, or a lookup that fails, is a
+    // failed attempt with no request made, retried like any other.
+    try {
+      await this.policy.checkDelivery(endpoint.url);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "destination refused";
+      await this.failAttempt(
+        delivery,
+        endpoint,
+        count,
+        attempt.final,
+        { error: message.slice(0, 1000) },
+        `Webhook delivery to ${host} refused: ${message}`,
+      );
+      return;
+    }
+
     const body = JSON.stringify(delivery.payload);
     const headers = await this.signer.headers({
       id: delivery.eventId,
@@ -99,9 +123,6 @@ export class WebhookDeliveryService {
       body,
       secrets,
     });
-    const count = delivery.attempt + 1;
-    const host = this.hostOf(endpoint.url);
-
     let response: WebhookTransportResponse;
     try {
       response = await this.transport.send({

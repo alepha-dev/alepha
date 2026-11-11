@@ -1,13 +1,15 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, $store, Alepha, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { webhookDeliveryEntity } from "../entities/webhookDeliveryEntity.ts";
+import { WebhookPayloadTooLargeError } from "../errors/WebhookPayloadTooLargeError.ts";
 import { WebhookJobs } from "../jobs/WebhookJobs.ts";
 import type { WebhookPrimitive } from "../primitives/$webhook.ts";
 import type { WebhookEnvelope } from "../schemas/webhookEnvelopeSchema.ts";
+import { webhookOptions } from "../schemas/webhookOptionsAtom.ts";
 import type { WebhookSendOptions } from "../schemas/webhookSendOptionsSchema.ts";
 import { WebhookEndpointService } from "./WebhookEndpointService.ts";
 
@@ -32,6 +34,7 @@ export class WebhookService {
   protected readonly endpoints = $inject(WebhookEndpointService);
   protected readonly jobs = $inject(WebhookJobs);
   protected readonly deliveries = $repository(webhookDeliveryEntity);
+  protected readonly options = $store(webhookOptions);
 
   /**
    * The shape every event name has: dotted, lower-case kebab segments, at
@@ -92,6 +95,13 @@ export class WebhookService {
       data,
     ) as Record<string, unknown>;
     const envelope = this.envelope(webhook.name, validated);
+    const bytes = new TextEncoder().encode(JSON.stringify(envelope)).byteLength;
+    if (bytes > this.options.maxPayloadBytes) {
+      throw new WebhookPayloadTooLargeError({
+        bytes,
+        limit: this.options.maxPayloadBytes,
+      });
+    }
     const targets = await this.endpoints.subscribers(
       webhook.name,
       options?.scope,

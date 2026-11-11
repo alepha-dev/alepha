@@ -62,6 +62,7 @@ class Disabled {
 
 class Shop {
   db = $inject(DatabaseProvider);
+  background = $inject(BackgroundTaskProvider);
   endpoints = $inject(WebhookEndpointService);
   delivery = $inject(WebhookDeliveryService);
   health = $inject(WebhookHealthService);
@@ -111,7 +112,8 @@ const pendingDelivery = async (
     await shop.paid.send({ orderId: randomUUID() });
     await shop.endpointRows.updateById(endpoint.id, { status: "paused" });
   });
-  await new Promise((r) => setTimeout(r, 50));
+  // Its job has found the endpoint paused and ended, before it is resumed.
+  await shop.background.flush();
   await shop.endpointRows.updateById(endpoint.id, { status: "active" });
   const rows = await shop.deliveries.findMany({
     where: { endpointId: { eq: endpoint.id } },

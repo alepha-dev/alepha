@@ -1,4 +1,5 @@
 import { $inject, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
@@ -11,6 +12,7 @@ import { WebhookJobs } from "../jobs/WebhookJobs.ts";
 import type { CreateWebhookEndpoint } from "../schemas/createWebhookEndpointSchema.ts";
 import type { WebhookEndpointResource } from "../schemas/webhookEndpointResourceSchema.ts";
 import type { WebhookEndpointWithSecret } from "../schemas/webhookEndpointWithSecretSchema.ts";
+import { WebhookDestinationPolicy } from "./WebhookDestinationPolicy.ts";
 import { WebhookSecretService } from "./WebhookSecretService.ts";
 
 /**
@@ -24,6 +26,8 @@ import { WebhookSecretService } from "./WebhookSecretService.ts";
 export class WebhookEndpointService {
   protected readonly log = $logger();
   protected readonly secrets = $inject(WebhookSecretService);
+  protected readonly policy = $inject(WebhookDestinationPolicy);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly jobs = $inject(WebhookJobs);
   protected readonly endpoints = $repository(webhookEndpointEntity);
   protected readonly deliveries = $repository(webhookDeliveryEntity);
@@ -37,6 +41,7 @@ export class WebhookEndpointService {
   public async create(
     input: CreateWebhookEndpoint & { createdBy?: string },
   ): Promise<WebhookEndpointWithSecret> {
+    this.policy.checkUrl(input.url);
     const secret = this.secrets.generate();
     const row = await this.endpoints.create({
       url: input.url,
@@ -53,6 +58,59 @@ export class WebhookEndpointService {
       host: this.hostOf(row.url),
     });
     return { endpoint: this.toResource(row), secret };
+  }
+
+  /**
+   * Edit an endpoint's URL, description or events. A new URL goes through
+   * the destination policy's literal rules, refused on the `url` field.
+   */
+  public async update(
+    id: string,
+    input: { url?: string; description?: string; events?: string[] },
+  ): Promise<WebhookEndpointResource> {
+    if (input.url !== undefined) this.policy.checkUrl(input.url);
+    const row = await this.endpoints.updateById(id, {
+      ...(input.url !== undefined ? { url: input.url } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description }
+        : {}),
+      ...(input.events !== undefined
+        ? { events: this.normalizeEvents(input.events) }
+        : {}),
+    });
+    return this.toResource(row);
+  }
+
+  /**
+   * Give an endpoint a new secret and return it, in clear, this once.
+   *
+   * The current secret becomes the previous one and keeps signing beside
+   * the new one for 24 hours, so a receiver deploys the new secret without
+   * dropping a delivery. `expireNow` drops the old secret at once, for a
+   * leak. Rotating enables nothing: an endpoint disabled with reason
+   * `secret` is enabled by the operator after the rotation.
+   */
+  public async rotateSecret(
+    id: string,
+    options: { expireNow?: boolean } = {},
+  ): Promise<WebhookEndpointWithSecret> {
+    const row = await this.endpoints.getById(id);
+    const secret = this.secrets.generate();
+    const keepPrevious = !options.expireNow;
+    const updated = await this.endpoints.updateById(id, {
+      secret: await this.secrets.encrypt(secret),
+      secretPrefix: secret.slice(0, 10),
+      previousSecret: keepPrevious ? row.secret : (null as any),
+      previousSecretExpiresAt: keepPrevious
+        ? this.dateTime.now().add(24, "hours").toISOString()
+        : (null as any),
+    });
+    this.log.info("Webhook endpoint secret rotated", {
+      endpointId: id,
+      host: this.hostOf(row.url),
+      expireNow: !keepPrevious,
+    });
+    return { endpoint: this.toResource(updated), secret };
   }
 
   /**

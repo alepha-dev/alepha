@@ -1,87 +1,13 @@
 import { $module } from "alepha";
-import { AlephaApiJobs } from "alepha/api/jobs";
 
-import { WebhookJobs } from "./jobs/WebhookJobs.ts";
-import { WebhookNotifications } from "./notifications/WebhookNotifications.ts";
-import { $webhook } from "./primitives/$webhook.ts";
-import { WebhookDeliveryService } from "./services/WebhookDeliveryService.ts";
-import { WebhookEndpointService } from "./services/WebhookEndpointService.ts";
-import { WebhookHealthService } from "./services/WebhookHealthService.ts";
-import { WebhookSecretService } from "./services/WebhookSecretService.ts";
-import { WebhookService } from "./services/WebhookService.ts";
-import { HttpWebhookTransport } from "./transports/HttpWebhookTransport.ts";
-import { MemoryWebhookTransport } from "./transports/MemoryWebhookTransport.ts";
-import { WebhookTransport } from "./transports/WebhookTransport.ts";
+import { webhooksModuleOptions } from "./index.shared.ts";
+import { NodeWebhookAddressResolver } from "./services/NodeWebhookAddressResolver.ts";
+import { WebhookAddressResolver } from "./services/WebhookAddressResolver.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export * from "./entities/webhookDeliveryEntity.ts";
-export * from "./entities/webhookEndpointEntity.ts";
-export * from "./jobs/WebhookJobs.ts";
-export * from "./notifications/WebhookNotifications.ts";
-export * from "./primitives/$webhook.ts";
-export * from "./schemas/createWebhookEndpointSchema.ts";
-export * from "./schemas/webhookDeliveryStatusSchema.ts";
-export * from "./schemas/webhookDisabledReasonSchema.ts";
-export * from "./schemas/webhookEndpointResourceSchema.ts";
-export * from "./schemas/webhookEndpointStatusSchema.ts";
-export * from "./schemas/webhookEndpointWithSecretSchema.ts";
-export * from "./schemas/webhookEnvelopeSchema.ts";
-export * from "./schemas/webhookOptionsAtom.ts";
-export * from "./schemas/webhookSendOptionsSchema.ts";
-export * from "./services/WebhookDeliveryService.ts";
-export * from "./services/WebhookEndpointService.ts";
-export * from "./services/WebhookHealthService.ts";
-export * from "./services/WebhookSecretService.ts";
-export * from "./services/WebhookService.ts";
-export * from "./transports/HttpWebhookTransport.ts";
-export * from "./transports/MemoryWebhookTransport.ts";
-export * from "./transports/WebhookTransport.ts";
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-declare module "alepha" {
-  interface Hooks {
-    /**
-     * A delivery's receiver answered a 2xx. Emitted once per delivered
-     * delivery. Names the host, never the URL.
-     */
-    "webhooks:delivery:success": {
-      deliveryId: string;
-      endpointId: string;
-      eventType: string;
-      host: string;
-      attempt: number;
-    };
-    /**
-     * An attempt of a delivery failed: a non-2xx answer, no answer, or a
-     * secret that does not decrypt. Emitted on EVERY failed attempt;
-     * `final` says the delivery is now `failed` and will not be retried.
-     * Names the host, never the URL.
-     */
-    "webhooks:delivery:error": {
-      deliveryId: string;
-      endpointId: string;
-      eventType: string;
-      host: string;
-      attempt: number;
-      final: boolean;
-    };
-    /**
-     * The module disabled an endpoint by itself: the receiver answered
-     * `410 Gone` (`gone`), it kept failing for `disableAfterDays`
-     * (`failing`), or its secret no longer decrypts (`secret`). Emitted on
-     * every automatic disable, so an app can alert its own way. Names the
-     * host, never the URL.
-     */
-    "webhooks:endpoint:disabled": {
-      endpointId: string;
-      host: string;
-      reason: "gone" | "failing" | "secret";
-      scope?: string;
-    };
-  }
-}
+export * from "./index.shared.ts";
+export * from "./services/NodeWebhookAddressResolver.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -103,32 +29,16 @@ declare module "alepha" {
  * @module alepha.api.webhooks
  */
 export const AlephaApiWebhooks = $module({
-  name: "alepha.api.webhooks",
-  imports: [AlephaApiJobs],
-  primitives: [$webhook],
-  services: [
-    WebhookSecretService,
-    WebhookEndpointService,
-    WebhookHealthService,
-    WebhookDeliveryService,
-    WebhookJobs,
-    WebhookService,
-  ],
-  // `WebhookNotifications` is never registered here: the module stays
-  // usable without `alepha/api/notifications`. An app turns the disabled
-  // notice on with `alepha.with(WebhookNotifications)`.
-  variants: [
-    HttpWebhookTransport,
-    MemoryWebhookTransport,
-    WebhookNotifications,
-  ],
+  ...webhooksModuleOptions,
+  variants: [...webhooksModuleOptions.variants, NodeWebhookAddressResolver],
   register: (alepha) => {
-    // `optional`: an app (or a spec) that substituted the transport first
-    // keeps its own. Under test nothing leaves the process by default.
+    webhooksModuleOptions.register(alepha);
+    // Node and Bun resolve the host before each delivery, so a public name
+    // pointing at a private address is refused.
     alepha.with({
       optional: true,
-      provide: WebhookTransport,
-      use: alepha.isTest() ? MemoryWebhookTransport : HttpWebhookTransport,
+      provide: WebhookAddressResolver,
+      use: NodeWebhookAddressResolver,
     });
   },
 });

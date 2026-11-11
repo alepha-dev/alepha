@@ -10,6 +10,7 @@ import {
   webhookDeliveryEntity,
   webhookEndpointEntity,
 } from "alepha/api/webhooks";
+import { BackgroundTaskProvider } from "alepha/background";
 import { $repository, DatabaseProvider } from "alepha/orm";
 import { $route, AlephaServer, ServerProvider } from "alepha/server";
 import { afterAll, beforeAll, describe, it } from "vitest";
@@ -83,6 +84,7 @@ afterAll(async () => {
 
 class Shop {
   db = $inject(DatabaseProvider);
+  background = $inject(BackgroundTaskProvider);
   endpoints = $inject(WebhookEndpointService);
   delivery = $inject(WebhookDeliveryService);
   deliveries = $repository(webhookDeliveryEntity);
@@ -141,7 +143,8 @@ const attempt = async (kind: keyof typeof transports, answer: Answer) => {
     await shop.paid.send({ orderId: "o1" });
     await shop.endpointRows.updateById(endpoint.id, { status: "paused" });
   });
-  await new Promise((r) => setTimeout(r, 50));
+  // Its job has found the endpoint paused and ended, before it is resumed.
+  await shop.background.flush();
   await shop.endpointRows.updateById(endpoint.id, { status: "active" });
   const [row] = await shop.deliveries.findMany();
   const error = await shop.delivery
