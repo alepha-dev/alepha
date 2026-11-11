@@ -377,6 +377,7 @@ const connectorCli = (bay: Bay, args: string[]): Promise<Ran> =>
 const packApp = async (
   dir: string,
   marker: string,
+  app = "demo",
 ): Promise<{ path: string; bytes: Buffer }> => {
   const src = join(dir, `app-${marker}`);
   // ⚠️ The archive root is the CONTENTS, not a `dist/` wrapper, and a slice's
@@ -387,7 +388,7 @@ const packApp = async (
   await writeFile(
     join(src, "manifest.json"),
     JSON.stringify({
-      project: "demo",
+      project: app,
       runtimes: [
         { runtime: "node", entry: "index.node.js", runtimeVersion: "24" },
       ],
@@ -418,9 +419,10 @@ const artifactForm = (
   bytes: Buffer,
   force = false,
   tag = "1.0.0",
+  app = "demo",
 ): FormData => {
   const form = new FormData();
-  form.append("app", "demo");
+  form.append("app", app);
   form.append("tag", tag);
   if (force) form.append("force", "true");
   form.append(
@@ -1301,6 +1303,83 @@ describe("Bay connector against a real Lore", () => {
       "--yes",
     ]);
     expect(deleted.code, deleted.out).toBe(0);
+  });
+
+  it("deploys a copy of each project onto the estate, moves it, and both deploy again", async () => {
+    // #Q3284: the home project and the borrowing one each deploy a copy; the
+    // estate then moves to the borrower, and the previous home keeps
+    // deploying through its loan, with the machine none the wiser.
+    // Two copies named alike on one machine are ambiguous for the secret
+    // pull, which refuses them on purpose, so the home's copy is `homeapp`.
+    let pushes = 0;
+    const deployIn = async (target: number, marker: string, name: string) => {
+      const app = await packApp(work, marker, name);
+      pushes += 1;
+      const pushed = await ok<{ artifact: ArtifactRow }>(
+        call(lore, owner, "pushArtifact", {
+          params: { projectId: target },
+          form: artifactForm(app.bytes, false, `3.0.${pushes}`, name),
+        }),
+      );
+      const queued = await ok(
+        enqueue({
+          kind: "deploy",
+          artifactId: pushed.artifact.id,
+          environment: "production",
+        }),
+      );
+      const settled = await commandSettles(queued.id);
+      expect(settled.status, settled.reason).toBe("done");
+    };
+
+    // The home project's own copy: Apps with deploys, the copy pointed here.
+    await ok(
+      call(lore, owner, "setCapability", {
+        params: { projectId: homeId, key: "apps" },
+        body: { enabled: true, options: { track: true, deploy: true } },
+      }),
+    );
+    await ok(
+      call(lore, owner, "createApp", {
+        params: { projectId: homeId },
+        body: { app: "homeapp", env: "production" },
+      }),
+    );
+    await ok(
+      call(lore, owner, "updateApp", {
+        params: { projectId: homeId, app: "homeapp", env: "production" },
+        body: { estateId: estate.id },
+      }),
+    );
+    await deployIn(homeId, "home-before", "homeapp");
+    await deployIn(projectId, "borrower-before", "demo");
+
+    const moved = await ok<{
+      estate: { project?: { id: number }; slug: string };
+      loans: Array<{ id: number }>;
+    }>(
+      call(lore, owner, "moveEstate", {
+        params: { estateId: estate.id },
+        body: { projectId },
+      }),
+    );
+    expect(moved.estate.project?.id).toBe(projectId);
+    expect(moved.estate.slug).toBe("ovh-1");
+    expect(moved.loans.map((loan) => loan.id).sort((a, b) => a - b)).toEqual(
+      [homeId, projectId].sort((a, b) => a - b),
+    );
+
+    await deployIn(homeId, "home-after", "homeapp");
+    await deployIn(projectId, "borrower-after", "demo");
+    // The machine noticed nothing: still online, same estate.
+    expect((await readEstate()).online).toBe(true);
+    // The delete case below expects one copy on the estate, the borrower's.
+    await ok(
+      call(lore, owner, "updateApp", {
+        params: { projectId: homeId, app: "homeapp", env: "production" },
+        body: { estateId: null },
+      }),
+    );
   });
 
   it("rotating and then deleting the estate make the next dial a 401 that hands over nothing", async () => {
