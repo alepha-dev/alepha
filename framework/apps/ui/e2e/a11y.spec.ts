@@ -169,6 +169,15 @@ const storeMode = async (page: Page, mode: A11yMode) => {
  */
 const load = async (page: Page, url: string, mode: A11yMode) => {
   await storeMode(page, mode);
+  // The showcase draws its shortcut hint as "⌘" on a Mac and "Ctrl"
+  // elsewhere, two different nodes to axe. Pinned to CI's platform so a
+  // laptop finds what CI finds.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      get: () => "Linux x86_64",
+    });
+  });
   await page.goto(url);
   await page.addStyleTag({ content: NO_MOTION });
   await page.waitForLoadState("networkidle");

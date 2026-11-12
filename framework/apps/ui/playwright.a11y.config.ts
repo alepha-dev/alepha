@@ -19,4 +19,12 @@ export default defineConfig({
   // A retry would re-scan a page that already reported a finding and hide
   // nothing: the scan is deterministic, and a red page is red on purpose.
   retries: 0,
+  use: {
+    ...base.use,
+    // Pinned so a laptop and CI render the same page: a date the fixtures
+    // format into a `title` lands in axe's selector, and it moved with the
+    // machine's timezone.
+    timezoneId: "UTC",
+    locale: "en-US",
+  },
 });

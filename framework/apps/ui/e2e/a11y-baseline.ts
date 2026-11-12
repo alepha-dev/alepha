@@ -53,6 +53,15 @@ export interface A11yBaselineEntry {
 export const A11Y_BASELINE: A11yBaselineEntry[] = [
   // ── color-contrast ──
   {
+    page: "/",
+    modes: ["light", "light-cvd"],
+    rule: "color-contrast",
+    selector:
+      ".bg-muted.in-data-\\[slot\\=tooltip-content\\]\\:bg-background\\/20.in-data-\\[slot\\=tooltip-content\\]\\:text-background:nth-child(1)",
+    reason:
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+  },
+  {
     page: "/admin/jobs/:jobName",
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
@@ -422,7 +431,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     page: "/pages/organizations/members",
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
-    selector: ".flex-1.flex-col.min-w-0 > .text-xs.text-muted-foreground",
+    selector: ".flex-1.flex-col > .text-xs.text-muted-foreground",
     reason:
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
   },
@@ -430,7 +439,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     page: "/pages/organizations/members",
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
-    selector: 'span[title="Oct 10, 2026 12:00 PM"]',
+    selector: 'span[title="Oct 10, 2026 10:00 AM"]',
     reason:
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
   },
