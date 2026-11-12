@@ -45,7 +45,12 @@ export class DeployAttentionSources {
       items: open.map((blight) => ({
         weight: 35,
         row: {
-          title: blight.name || blight.message,
+          // A bare `Error` names nothing: the row read as a failed source
+          // on the board (#Q3524), so the message speaks for it instead.
+          title:
+            blight.name && blight.name !== "Error"
+              ? blight.name
+              : blight.message || blight.name,
           meta: String(blight.count),
           badge: "blight",
           state: "bad" as const,

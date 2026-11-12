@@ -157,6 +157,23 @@ describe("DashboardTileBody", () => {
       const parts = screen.getAllByTestId("tile-segment");
       expect(parts.map((it) => it.style.width)).toEqual(["75%", "25%"]);
     });
+
+    it("marks a release ready to publish beside its 100%", async ({
+      expect,
+    }) => {
+      await mount(
+        "progress",
+        value({ value: 100, detail: { readyToPublish: true } }),
+      );
+      expect(screen.getByTestId("tile-ready").textContent).toBe(
+        "Ready to publish",
+      );
+    });
+
+    it("draws no ready mark while work is left", async ({ expect }) => {
+      await mount("progress", value({ value: 75 }));
+      expect(screen.queryByTestId("tile-ready")).toBeNull();
+    });
   });
 
   describe("list and feed", () => {

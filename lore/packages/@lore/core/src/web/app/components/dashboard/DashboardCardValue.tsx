@@ -1,6 +1,6 @@
 import { cn, Skeleton } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, PartyPopper } from "lucide-react";
 
 import type { DashboardCardValue as CardValue } from "../../../../api/schemas/dashboardCardValueSchema.ts";
 import type { DashboardPresentation } from "../../../../api/schemas/DashboardMetricCatalog.ts";
@@ -60,6 +60,10 @@ const DashboardCardValue = (props: DashboardCardValueProps) => {
   }
 
   const delta = props.value.delta;
+  // Every quest of an open release done: the figure is 100, and the mark says
+  // it is waiting on a publish, a reason to celebrate rather than a number
+  // to move (#Q3524).
+  const ready = props.value.detail?.readyToPublish === true;
 
   return (
     <div className="mt-0.5 flex items-baseline gap-2">
@@ -70,6 +74,18 @@ const DashboardCardValue = (props: DashboardCardValueProps) => {
           <span className="text-muted-foreground text-[20px]">%</span>
         )}
       </span>
+      {ready && (
+        <span
+          data-testid="tile-ready"
+          className="text-success-text inline-flex items-center self-center"
+          title={tr("dashboard.footer.releaseOutlook.ready")}
+        >
+          <PartyPopper aria-hidden="true" className="size-5" />
+          <span className="sr-only">
+            {tr("dashboard.footer.releaseOutlook.ready")}
+          </span>
+        </span>
+      )}
       {/* The delta as a direction and a sign, never colour alone. Muted
           rather than red or green: whether more is better depends on the
           metric (more visitors, more blights), and the arrow says which way
