@@ -81,12 +81,15 @@ export interface ComputedDashboard {
  * gate). The first kept candidate fills its slot; a slot nobody fills
  * disappears and the layout closes up.
  *
- * ## One resolve
+ * ## One request, resolved in rank waves
  *
- * ⚠️ Every offered candidate of every slot is resolved in ONE pass of
- * `DashboardMetricRegistry`, grouped by metric (folio #1057), never slot by
- * slot. A candidate that loses to a better-ranked one costs part of a query
- * that runs anyway, not a round trip.
+ * ⚠️ The board is ONE request, and each wave is ONE grouped pass of
+ * `DashboardMetricRegistry` (folio #1057), never a request or a resolve per
+ * slot. A wave resolves the best remaining candidate of every slot still
+ * undecided, so a candidate that loses to a better-ranked one is never
+ * resolved (#Q3493, folio #F1411). That was the ONE resolve of every offered
+ * candidate until 2026-11-12: on D1 every query is a round trip, and the
+ * losing candidates were thirteen of a board's fifty-two.
  *
  * ## Nothing is written
  *
@@ -188,39 +191,94 @@ export class DashboardSlotRegistry {
       }
     }
 
-    const values =
-      offered.length > 0
-        ? await this.metrics.resolveForProject(
-            offered.map((it) => it.card),
-            user,
-            project,
-            capabilities,
-            windowDays,
-          )
-        : [];
-    const valueOf = new Map(values.map((it) => [it.cardId, it]));
+    // Rank waves (#Q3493): resolve only what the data gate still needs to
+    // see, until every slot is decided. Each wave is one grouped resolve.
+    const valueOf = new Map<number, DashboardCardValue>();
+    for (;;) {
+      const { needed } = this.select(slots, offered, valueOf);
+      if (needed.length === 0) break;
+      const values = await this.metrics.resolveForProject(
+        needed.map((it) => it.card),
+        user,
+        project,
+        capabilities,
+        windowDays,
+      );
+      for (const value of values) valueOf.set(value.cardId, value);
+      // A resolve that answered nothing for a card would loop forever:
+      // record it as failed, which the data gate drops.
+      for (const it of needed) {
+        if (!valueOf.has(it.card.id)) {
+          valueOf.set(it.card.id, {
+            cardId: it.card.id,
+            ok: false,
+            detail: {},
+            scopeNames: [],
+          } as DashboardCardValue);
+        }
+      }
+    }
 
-    // The data gate: the first candidate per slot whose value is kept.
-    // A metric that already filled an earlier slot is not drawn twice:
-    // "releases to publish" is a headline candidate AND a plan candidate.
+    const { winners } = this.select(slots, offered, valueOf);
     const cards: DashboardCardResource[] = [];
     const kept: DashboardCardValue[] = [];
-    const shown = new Set<string>();
-    for (const slot of slots) {
-      const winner = offered.find(({ candidate, card }) => {
-        if (candidate.slot !== slot || shown.has(candidate.metric)) {
-          return false;
-        }
-        const value = valueOf.get(card.id);
-        if (!value || !value.ok || value.empty) return false;
-        return candidate.keep ? candidate.keep(value) : true;
-      });
-      if (!winner) continue;
-      shown.add(winner.candidate.metric);
+    for (const winner of winners) {
       cards.push({ ...winner.card, position: cards.length });
       kept.push(valueOf.get(winner.card.id)!);
     }
-
     return { cards, values: kept };
+  }
+
+  /**
+   * The data gate over what is resolved so far: the first candidate per slot
+   * whose value is kept, a metric that already filled an earlier slot not
+   * drawn twice ("releases to publish" is a headline candidate AND a plan
+   * candidate).
+   *
+   * ## Waves (#Q3493)
+   *
+   * Each slot walks its candidates best first, as it always did, and stops
+   * at the first one not resolved yet: that one is `needed`, and resolving
+   * it is what moves the slot on. Every pass starts from scratch in slot
+   * order and commits nothing, so a later slot that briefly holds a metric
+   * an earlier slot ends up taking simply walks on in the next pass.
+   *
+   * The pass that needs nothing walked every slot over resolved values only,
+   * which is exactly what resolving every candidate at once and then walking
+   * would have done: the board is the same, and the candidates that lose to
+   * a better-ranked one are never resolved.
+   */
+  protected select(
+    slots: DashboardSlot[],
+    offered: Array<{
+      candidate: DashboardSlotCandidate;
+      card: DashboardCardResource;
+    }>,
+    valueOf: Map<number, DashboardCardValue>,
+  ) {
+    const winners: Array<{
+      candidate: DashboardSlotCandidate;
+      card: DashboardCardResource;
+    }> = [];
+    const needed: typeof winners = [];
+    const shown = new Set<string>();
+
+    for (const slot of slots) {
+      for (const it of offered.filter((o) => o.candidate.slot === slot)) {
+        if (shown.has(it.candidate.metric)) continue;
+        const value = valueOf.get(it.card.id);
+        if (!value) {
+          needed.push(it);
+          break;
+        }
+        if (!value.ok || value.empty) continue;
+        if (it.candidate.keep && !it.candidate.keep(value)) continue;
+        winners.push(it);
+        shown.add(it.candidate.metric);
+        break;
+      }
+    }
+
+    return { winners, needed };
   }
 }
