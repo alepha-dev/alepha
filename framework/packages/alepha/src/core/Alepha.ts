@@ -683,6 +683,33 @@ export class Alepha {
   }
 
   /**
+   * A class created through a static import while its module lists a lazy
+   * stand-in for it (#Q3483): another class `$inject`s it before its chunk
+   * was ever needed. The stand-in leaves the declared set, resolved to the
+   * created class, so nothing reads the class as declared AND created: the
+   * links registered its actions twice, and threw.
+   *
+   * Matched by name, and by module when the created class has one: a class
+   * of another module that happens to share the name is not this one.
+   */
+  protected retireStandIn(service: Service): void {
+    if (this.declared.size === 0) {
+      return;
+    }
+    const module = (service as WithModule)[MODULE];
+    for (const entry of this.declared) {
+      if (
+        isLazyService(entry) &&
+        entry.name === service.name &&
+        (!module || (entry as unknown as WithModule)[MODULE] === module)
+      ) {
+        this.adopt(entry, service);
+        return;
+      }
+    }
+  }
+
+  /**
    * A class injected before its chunk was imported through its stand-in
    * (another file imports it statically): it takes the stand-in's place, so
    * the lock admits it as declared.
@@ -1732,6 +1759,9 @@ export class Alepha {
 
     if (!transient) {
       registry.set(service, definition);
+      if (registry === this.registry) {
+        this.retireStandIn(service);
+      }
     }
 
     // [feature]: modules - it's just a way to group services together

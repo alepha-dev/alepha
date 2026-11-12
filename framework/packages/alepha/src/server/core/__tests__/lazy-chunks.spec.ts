@@ -1,4 +1,5 @@
-import { $module, Alepha, type AppSurface, lazyService } from "alepha";
+import { $inject, $module, Alepha, type AppSurface, lazyService } from "alepha";
+import { AlephaServerLinks } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import { $action, AlephaServer, ServerProvider } from "../index.ts";
@@ -41,7 +42,14 @@ const surface: AppSurface = {
 };
 
 const boot = async (
-  opts: { list?: boolean; failures?: number; via?: "module" | "with" } = {},
+  opts: {
+    list?: boolean;
+    failures?: number;
+    via?: "module" | "with";
+    links?: boolean;
+    staticImport?: boolean;
+    clash?: boolean;
+  } = {},
 ) => {
   created = 0;
   let imports = 0;
@@ -72,10 +80,29 @@ const boot = async (
     );
   }
   alepha.with(AlephaServer);
+  if (opts.links) {
+    alepha.with(AlephaServerLinks);
+  }
   if (opts.via === "with") {
     alepha.with(lazy);
   } else {
     alepha.with($module({ name: "acme.api", services: [lazy] }));
+  }
+  if (opts.staticImport) {
+    // Another class imports the controller statically and injects it, so
+    // it is created before start while its module lists the stand-in.
+    class Consumer {
+      api = $inject(QuestApi);
+    }
+    alepha.with(Consumer);
+  }
+  if (opts.clash) {
+    // Another class's action under the declared one's name: a genuine
+    // duplicate that only the deferred link build can see.
+    class Other {
+      list = $action({ method: "GET", path: "/other", handler: () => "x" });
+    }
+    alepha.with(Other);
   }
   await alepha.start();
   const host = alepha.inject(ServerProvider).hostname;
@@ -137,5 +164,36 @@ describe("lazy chunks", () => {
       expect(created).toBe(1);
       await alepha.stop();
     }
+  });
+
+  it("list an action once when another class created the class before start (#Q3483)", async ({
+    expect,
+  }) => {
+    const { alepha, host, imports } = await boot({
+      links: true,
+      staticImport: true,
+    });
+    expect(created).toBe(1);
+    const response = await fetch(`${host}/api/_links`);
+    expect(response.status).toBe(200);
+    const registry = (await response.json()) as {
+      actions: Record<string, unknown>;
+    };
+    expect(Object.keys(registry.actions)).toContain("list");
+    expect(await (await fetch(`${host}/api/quests`)).text()).toBe("quests");
+    expect(imports()).toBe(0);
+    expect(created).toBe(1);
+    await alepha.stop();
+  });
+
+  it("fail every links read on a duplicate, never serving a half-built map (#Q3483)", async ({
+    expect,
+  }) => {
+    const { alepha, host } = await boot({ links: true, clash: true });
+    for (const _ of [1, 2]) {
+      const response = await fetch(`${host}/api/_links`);
+      expect(response.status).toBe(500);
+    }
+    await alepha.stop();
   });
 });

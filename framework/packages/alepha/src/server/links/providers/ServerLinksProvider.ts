@@ -107,88 +107,122 @@ export class ServerLinksProvider {
     if (this.linksRegistered) {
       return;
     }
-    this.linksRegistered = true;
-    {
-      // convert all $action to local links
-      for (const action of this.alepha.primitives($action)) {
-        const bodyContentType = action.getBodyContentType();
-
-        this.linkProvider.registerLink({
-          name: action.name,
-          group: action.group,
-          schema: action.options.schema,
-          contentType:
-            bodyContentType && bodyContentType !== "application/json"
-              ? bodyContentType
-              : undefined,
-          secured: this.securedOptions(action.middlewares),
-          method: action.method === "GET" ? undefined : action.method,
-          prefix: action.prefix,
-          path: action.path,
-          // by local, we mean that it can be called directly via the handler
-          handler: (
-            config: ClientRequestEntry<RequestConfigSchema>,
-            options: ClientRequestOptions = {},
-          ) => action.run(config, options),
-        });
+    // Every link is built first and registered only once all of them are
+    // known to fit (#Q3483): a throw half-way used to leave the map partly
+    // built for the life of the process, every action after the failing one
+    // missing and no further error. Now nothing is registered, the flag
+    // stays down, and the next read fails the same way, loudly.
+    const links = this.collectLinks();
+    const names = new Set<string>();
+    for (const link of links) {
+      if (names.has(link.name) || this.linkProvider.hasLocalLink(link.name)) {
+        throw new AlephaError(
+          `Duplicate action name "${link.name}". Each action must have a unique name.`,
+        );
       }
-
-      // The actions of classes declared and not created yet (#Q3403), from
-      // the build list: the same row, `secured` included, so `/api/_links`
-      // answers without creating them. The local handler creates the class
-      // on its first call; the schema is read, creating it, only when the
-      // schemas endpoint asks.
-      const surface = this.alepha.inject(ServerSurfaceProvider);
-      for (const { action: row } of surface.declaredActions()) {
-        if (row.kind === "sse") {
-          continue;
-        }
-        const link: Record<string, unknown> = {
-          name: row.name,
-          group: row.group,
-          contentType: row.contentType,
-          secured: row.secured,
-          method: row.method === "GET" ? undefined : row.method,
-          prefix: this.prefix,
-          path: row.path,
-          handler: async (
-            config: ClientRequestEntry<RequestConfigSchema>,
-            options: ClientRequestOptions = {},
-          ) => {
-            const action = await surface.resolveActionAsync(row);
-            if (!action) {
-              throw new AlephaError(
-                `Action '${row.name}' is listed but its class registered no such action`,
-              );
-            }
-            return action.run(config, options);
-          },
-        };
-        Object.defineProperty(link, "schema", {
-          enumerable: true,
-          get: () => surface.resolveAction(row)?.options.schema,
-        });
-        this.linkProvider.registerLink(link as any);
-      }
-
-      // convert all $sse to local links
-      for (const sse of this.alepha.primitives($sse)) {
-        this.linkProvider.registerLink({
-          name: sse.name,
-          group: sse.group,
-          kind: "sse",
-          schema: {
-            body: sse.schema?.body,
-          },
-          method: "POST",
-          prefix: sse.prefix,
-          path: sse.path,
-          handler: async (config) => {
-            return sse.run(config as any) as any;
-          },
-        });
-      }
+      names.add(link.name);
     }
+    this.linksRegistered = true;
+    for (const link of links) {
+      this.linkProvider.registerLink(link as any);
+    }
+  }
+
+  /**
+   * Every action and `$sse` as a local link, and the build list's rows for
+   * the classes declared and not created yet. Registers nothing.
+   */
+  protected collectLinks(): Array<{ name: string } & Record<string, any>> {
+    const links: Array<{ name: string } & Record<string, any>> = [];
+    const created = new Set<string>();
+
+    // convert all $action to local links
+    for (const action of this.alepha.primitives($action)) {
+      const bodyContentType = action.getBodyContentType();
+      created.add(`${action.group}:${action.name}`);
+
+      links.push({
+        name: action.name,
+        group: action.group,
+        schema: action.options.schema,
+        contentType:
+          bodyContentType && bodyContentType !== "application/json"
+            ? bodyContentType
+            : undefined,
+        secured: this.securedOptions(action.middlewares),
+        method: action.method === "GET" ? undefined : action.method,
+        prefix: action.prefix,
+        path: action.path,
+        // by local, we mean that it can be called directly via the handler
+        handler: (
+          config: ClientRequestEntry<RequestConfigSchema>,
+          options: ClientRequestOptions = {},
+        ) => action.run(config, options),
+      });
+    }
+
+    // The actions of classes declared and not created yet (#Q3403), from
+    // the build list: the same row, `secured` included, so `/api/_links`
+    // answers without creating them. The local handler creates the class
+    // on its first call; the schema is read, creating it, only when the
+    // schemas endpoint asks.
+    const surface = this.alepha.inject(ServerSurfaceProvider);
+    for (const { action: row } of surface.declaredActions()) {
+      if (row.kind === "sse") {
+        continue;
+      }
+      // The same action, created since the list was read (#Q3483): it is
+      // already above. Another class's action of the same name is not
+      // skipped, and fails as the duplicate it is.
+      if (created.has(`${row.group}:${row.name}`)) {
+        continue;
+      }
+      const link: { name: string } & Record<string, any> = {
+        name: row.name,
+        group: row.group,
+        contentType: row.contentType,
+        secured: row.secured,
+        method: row.method === "GET" ? undefined : row.method,
+        prefix: this.prefix,
+        path: row.path,
+        handler: async (
+          config: ClientRequestEntry<RequestConfigSchema>,
+          options: ClientRequestOptions = {},
+        ) => {
+          const action = await surface.resolveActionAsync(row);
+          if (!action) {
+            throw new AlephaError(
+              `Action '${row.name}' is listed but its class registered no such action`,
+            );
+          }
+          return action.run(config, options);
+        },
+      };
+      Object.defineProperty(link, "schema", {
+        enumerable: true,
+        get: () => surface.resolveAction(row)?.options.schema,
+      });
+      links.push(link);
+    }
+
+    // convert all $sse to local links
+    for (const sse of this.alepha.primitives($sse)) {
+      links.push({
+        name: sse.name,
+        group: sse.group,
+        kind: "sse",
+        schema: {
+          body: sse.schema?.body,
+        },
+        method: "POST",
+        prefix: sse.prefix,
+        path: sse.path,
+        handler: async (config: unknown) => {
+          return sse.run(config as any) as any;
+        },
+      });
+    }
+    return links;
   }
 
   protected readonly onStart = $hook({
