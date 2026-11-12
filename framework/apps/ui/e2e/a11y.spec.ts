@@ -207,9 +207,7 @@ const compare = (page: string, findings: SeenFinding[]) => {
   const known = (f: SeenFinding) =>
     entries.some(
       (e) =>
-        e.rule === f.rule &&
-        selects(e, f.selector) &&
-        e.modes.includes(f.mode),
+        e.rule === f.rule && selects(e, f.selector) && e.modes.includes(f.mode),
     );
 
   const unknown = findings.filter((f) => !known(f));
@@ -224,7 +222,7 @@ const compare = (page: string, findings: SeenFinding[]) => {
       );
       if (!seen) {
         stale.push(
-          `${entry.page} [${mode}] ${entry.rule} ${entry.selector}: no finding matches this entry any more. Delete it, or this mode from it.`,
+          `${entry.page} [${mode}] ${entry.rule} ${String(entry.selector)}: no finding matches this entry any more. Delete it, or this mode from it.`,
         );
       }
     }
