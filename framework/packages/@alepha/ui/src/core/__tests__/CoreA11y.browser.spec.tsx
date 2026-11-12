@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { expectAccessible } from "alepha/testing/react";
+import { expectAccessible, renderWithAlepha } from "alepha/testing/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { Alert, AlertDescription, AlertTitle } from "../Alert.tsx";
@@ -200,7 +200,8 @@ describe("core primitives pass axe", () => {
   });
 
   it("inputs, textarea, label, checkbox, switch, slider, progress", async () => {
-    render(
+    // In an Alepha context: the slider reads the page's CSP nonce.
+    await renderWithAlepha(
       <main>
         <Label htmlFor="name">Name</Label>
         <Input id="name" />
