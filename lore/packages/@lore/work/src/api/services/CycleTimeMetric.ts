@@ -15,9 +15,10 @@ import { ProjectReportsService } from "./ProjectReportsService.ts";
 /**
  * Median hours from accepted to completed, hold time out (#Q2653, #Q2994).
  *
- * Every priority reads the Reports Overview KPI; one priority reads the
- * Quests tab's per-priority figure. Both are `ProjectReportsService` calls,
- * so the tile and the Reports page cannot disagree. No delta: Reports keeps
+ * `ProjectReportsService.medianCycleTimeHours` computes it from the same
+ * samples as the Reports Overview KPI (every priority) and the Quests tab's
+ * per-priority figure (one), so the tile and the Reports page cannot
+ * disagree. No delta: Reports keeps
  * no earlier window for this figure, and inventing one here would be the
  * second copy this quest exists to avoid.
  */
@@ -49,17 +50,13 @@ export class CycleTimeMetric implements DashboardMetricResolver {
         continue;
       }
       const { priority } = entry.filters as CycleTimeFilters;
-      const hours =
-        priority === "all"
-          ? (await this.reports.overview(project.id, this.reports.fixedQuery))
-              .kpis.medianCycleTimeHours
-          : ((
-              await this.reports.questsReport(
-                project.id,
-                this.reports.fixedQuery,
-              )
-            ).cycleTimeByPriority.find((row) => row.priority === priority)
-              ?.medianHours ?? 0);
+      // The median alone, never the whole Overview or Quests page it is a
+      // figure of (#Q3490): those were a dozen scans for one number.
+      const hours = await this.reports.medianCycleTimeHours(
+        project.id,
+        this.reports.fixedQuery,
+        priority === "all" ? undefined : priority,
+      );
       out.set(entry.card.id, {
         ...(hours > 0 ? {} : { empty: "noData" as const }),
         value: Math.round(hours),

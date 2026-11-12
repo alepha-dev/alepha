@@ -1,5 +1,6 @@
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
+import type { DashboardReadShare } from "./DashboardReadShare.ts";
 import type { ResolvedDashboardScope } from "./DashboardScopeService.ts";
 
 /**
@@ -23,6 +24,13 @@ export interface DashboardResolvable {
    */
   windowDays: number;
   evaluatedAt?: string;
+  /**
+   * The reads this board resolution shares between its metrics (#Q3490):
+   * one share for every entry of one `resolveOn` call. Optional because a
+   * resolver called outside a board (a spec, an automation) has nothing to
+   * share with, and reads directly.
+   */
+  reads?: DashboardReadShare;
 }
 
 /**

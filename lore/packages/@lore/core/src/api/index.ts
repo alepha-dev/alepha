@@ -416,6 +416,7 @@ export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 export { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+export { DashboardReadShare } from "./services/DashboardReadShare.ts";
 export { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 export { UserDockService } from "./services/UserDockService.ts";
 export {

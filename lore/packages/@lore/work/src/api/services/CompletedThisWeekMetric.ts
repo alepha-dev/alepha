@@ -47,9 +47,9 @@ export class CompletedThisWeekMetric implements DashboardMetricResolver {
         out.set(entry.card.id, { empty: "noData", detail: {} });
         continue;
       }
-      const completed = await this.reports.completedByDay(
+      const completed = await this.reports.tileCompletedByDay(
         project.id,
-        this.reports.fixedQuery,
+        entry.reads,
       );
       const thisWeek = this.series.total(completed, 7);
       const lastWeek = this.series.total(completed, 14) - thisWeek;

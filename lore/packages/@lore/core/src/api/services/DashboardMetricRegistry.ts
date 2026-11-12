@@ -17,6 +17,7 @@ import type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
+import { DashboardReadShare } from "./DashboardReadShare.ts";
 import {
   DashboardScopeService,
   type ResolvedDashboardScope,
@@ -230,6 +231,9 @@ export class DashboardMetricRegistry {
     // Group first, resolve second. Each card's scope is proven here, once —
     // a resolver never sees an id the caller may not read.
     const byMetric = new Map<string, DashboardResolvable[]>();
+    // One share for the whole board: tiles drawn from the same report read
+    // it once between them (#Q3490).
+    const reads = new DashboardReadShare();
 
     for (const card of cards) {
       const descriptor = this.catalog.find(card.metric);
@@ -266,6 +270,7 @@ export class DashboardMetricRegistry {
           filters: card.filters,
           windowDays,
           evaluatedAt,
+          reads,
         });
         byMetric.set(card.metric, group);
       } catch (error) {

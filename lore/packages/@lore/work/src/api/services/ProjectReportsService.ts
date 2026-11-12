@@ -1,4 +1,4 @@
-import { ReportStatistics } from "@lore/core/api";
+import { type DashboardReadShare, ReportStatistics } from "@lore/core/api";
 import { projects, type ReportsQuery } from "@lore/core/schemas";
 import {
   reportsOverviewSchema,
@@ -234,6 +234,32 @@ export class ProjectReportsService {
     );
   }
 
+  /**
+   * {@link createdByDay} and {@link completedByDay} at the {@link fixedQuery},
+   * for a dashboard tile: through the board's read share when the tile has
+   * one, so the tiles drawn from the same series read it once between them
+   * (#Q3490). The key is built here, once, so two tiles cannot spell it
+   * differently and miss each other.
+   */
+  tileCreatedByDay(
+    projectId: number,
+    reads?: DashboardReadShare,
+  ): Promise<Array<{ date: string; count: number }>> {
+    const read = () => this.createdByDay(projectId, this.fixedQuery);
+    return reads ? reads.once(`createdByDay:${projectId}`, read) : read();
+  }
+
+  /**
+   * See {@link tileCreatedByDay}.
+   */
+  tileCompletedByDay(
+    projectId: number,
+    reads?: DashboardReadShare,
+  ): Promise<Array<{ date: string; count: number }>> {
+    const read = () => this.completedByDay(projectId, this.fixedQuery);
+    return reads ? reads.once(`completedByDay:${projectId}`, read) : read();
+  }
+
   protected async completedDaily(
     where: PgQueryWhere<typeof quests.schema>,
   ): Promise<Array<{ date: string; count: number }>> {
@@ -367,6 +393,37 @@ export class ProjectReportsService {
       if (comment.authorId) active.add(comment.authorId);
     }
     return members.filter((member) => active.has(member.userId)).length;
+  }
+
+  /**
+   * Median cycle time in scope, in hours: of every completed quest, or of one
+   * priority's.
+   *
+   * The dashboard's Cycle time tile reads this (#Q3490). It used to read
+   * `overview()` for the first and `questsReport()` for the second, each a
+   * whole Reports page of a dozen sequential scans of the project's quests,
+   * to keep one figure. Same scope, window and samples as both, so the three
+   * cannot disagree.
+   */
+  async medianCycleTimeHours(
+    projectId: number,
+    query: ReportsQuery,
+    priority?: Quest["priority"],
+  ): Promise<number> {
+    const scope = this.questScope(
+      projectId,
+      await this.epicVisibility.draftEpicIds(projectId),
+      query,
+    );
+    const samples = await this.cycleSamples(scope, {
+      from: query.from,
+      to: query.to,
+    });
+    return this.stats.median(
+      samples
+        .filter((sample) => !priority || sample.priority === priority)
+        .map((sample) => sample.hours),
+    );
   }
 
   protected cycleFigures(samples: Array<{ hours: number }>) {
