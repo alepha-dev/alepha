@@ -1642,8 +1642,14 @@ export class Alepha {
     // `alepha.with` is a registration form wherever it is called (a module's
     // `register`, a `$realm`'s features, a helper): what it creates is
     // registered, not injected by the class under construction (#Q3404).
+    // A module registered here is reached by the class under construction
+    // in this frame (a `$page` or a `$rateLimit` registering its own module
+    // from its class), or by nothing: a registration (#Q3485).
     if (Module.is(service) && this.reachingModule === 0) {
-      this.containerGraph.moduleReached(service, null);
+      this.containerGraph.moduleReached(
+        service,
+        this.containerGraph.moduleReacherOf(this.pendingInstantiations),
+      );
     }
     this.containerGraph.openFrame(this.pendingInstantiations.length);
     try {
@@ -1743,6 +1749,21 @@ export class Alepha {
     }
 
     if (!transient && registry === this.registry) {
+      // Every injection of a module's class reaches that module, the one that
+      // creates the class or a later one (#Q3485): a module reached only by
+      // pure classes would arrive after the lock. A module's own `register`
+      // reaching its own services is not counted.
+      const reached = (service as WithModule)[MODULE];
+      if (
+        reached &&
+        typeof reached === "function" &&
+        !this.registeringModules.includes(reached)
+      ) {
+        this.containerGraph.moduleReached(
+          reached,
+          this.containerGraph.moduleReacherOf(this.pendingInstantiations),
+        );
+      }
       // A primitive's `onInit` registering a class (`$realm` passing its
       // features' controllers to `alepha.with`) is the framework's
       // registration, as a module's `register` is, not an injection by the
@@ -1792,18 +1813,6 @@ export class Alepha {
 
     const module = (service as WithModule)[MODULE];
     if (module && typeof module === "function") {
-      // Who reached the module, before `with` opens its registration frame
-      // and calls it a registration (#Q3485).
-      // Not a module's own `register` reaching its own services.
-      if (
-        registry === this.registry &&
-        !this.registeringModules.includes(module)
-      ) {
-        this.containerGraph.moduleReached(
-          module,
-          this.containerGraph.moduleReacherOf(this.pendingInstantiations),
-        );
-      }
       this.reachingModule++;
       try {
         this.with(module);
