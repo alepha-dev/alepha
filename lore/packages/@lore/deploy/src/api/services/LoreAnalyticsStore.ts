@@ -265,6 +265,13 @@ export class LoreAnalyticsStore {
    * groups do it — and never for a distinct count.
    */
   protected scope(window: LoreAnalyticsWindow) {
-    return sql`SELECT value FROM json_each(${JSON.stringify(window.sigilIds)})`;
+    const ids = JSON.stringify(window.sigilIds);
+    if (this.uniques.provider.dialect === "sqlite") {
+      return sql`SELECT value FROM json_each(${ids})`;
+    }
+    // Postgres has no `json_each` of that shape: the same single parameter,
+    // unpacked as text (cast through `text`, so the driver binds the JSON
+    // once) and compared as the uuid the column holds.
+    return sql`SELECT CAST(value AS uuid) FROM jsonb_array_elements_text(CAST(CAST(${ids} AS text) AS jsonb))`;
   }
 }
