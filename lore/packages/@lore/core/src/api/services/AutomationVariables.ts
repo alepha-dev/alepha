@@ -203,7 +203,7 @@ export class AutomationVariables {
               ...(this.predicateUses(rule.rule, key) ? { baseline: null } : {}),
               updatedAt: now,
             },
-            false,
+            { returning: false },
           ),
         );
       }
@@ -212,7 +212,7 @@ export class AutomationVariables {
           ? this.variableRows.updateStatement(
               { id: current.id, version: current.version },
               { value: parsed.data, updatedAt: now },
-              false,
+              { returning: false },
             )
           : this.variableRows.insertStatement({
               id: candidate.id,

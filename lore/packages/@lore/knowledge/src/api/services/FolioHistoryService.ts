@@ -335,7 +335,7 @@ export class FolioHistoryService {
           this.batch.updateStatement(
             { id: { inArray: ids } },
             { contentSnapshot: previousContent!, snapshotIsLive: false },
-            false,
+            { returning: false },
           ),
         ]
       : [];

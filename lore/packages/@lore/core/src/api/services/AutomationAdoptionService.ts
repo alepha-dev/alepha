@@ -321,7 +321,7 @@ export class AutomationAdoptionService {
                   version: previous.version + 1,
                   updatedAt: rule.createdAt,
                 },
-                false,
+                { returning: false },
               ),
             ],
             changedTables: ["automation_adoptions"],
@@ -372,7 +372,7 @@ export class AutomationAdoptionService {
           this.rows.updateStatement(
             { id: marker.id, version: marker.version, state: "pending" },
             { state: "adopted", adoptedAt: now, updatedAt: now },
-            false,
+            { returning: false },
           ),
         ],
         changedTables: ["automation_adoptions"],

@@ -96,7 +96,7 @@ export class AutomationLegacyJobRepository extends AutomationBatchRepository<
       await this.invalidateCache({});
       for (const table of fence.changedTables ?? [])
         await this.alepha.inject(DbCacheProvider).invalidateTable(table);
-      const entity = this.decodeRaw(batch[1][0]);
+      const entity = this.decodeRow(batch[1][0]);
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
         data,

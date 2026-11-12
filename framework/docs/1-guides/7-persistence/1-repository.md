@@ -729,6 +729,31 @@ await database.atomicBatch([
 
 Inside an open `$transactional()` block the statements join it instead of opening another. There is no cap on their number; a caller that wants one sets its own.
 
+A repository builds the statements of a batch without running them, with the casting, soft-delete filter and version handling of its own methods:
+
+- `insertStatement(data, { onConflictDoNothing })`: one row, returned;
+- `updateStatement(where, data, { touch, version, force, returning })`: `touch: false` leaves `updatedAt` alone, `version: false` leaves `db.version()` alone, `force` reaches soft-deleted rows;
+- `deleteStatement(where, { force })`: always a hard delete;
+- `exists(where)`, `notExists(where)` and `scalar(where, field)`, for a guard or a value in another statement;
+- `decodeRow(row)` reads a returned row back as an entity.
+
+```typescript
+const [, [claimed]] = await database.atomicBatch([
+  this.runs.updateStatement(
+    { id: runId },
+    { status: "running" },
+    { touch: false },
+  ),
+  this.receipts.insertStatement(
+    { id, runId, status: "claimed" },
+    { onConflictDoNothing: true },
+  ),
+]);
+const receipt = claimed ? this.receipts.decodeRow(claimed) : undefined;
+```
+
+A built statement emits no `:before` event: it is SQL, not a call. Once the batch has committed, each one invalidates its table's query cache and emits its `repository:*:after` event; `events: false` leaves both to the caller.
+
 Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time - `Promise.all`, two requests, a job racing a handler - never read or write through each other's transaction.
 
 ### After the commit

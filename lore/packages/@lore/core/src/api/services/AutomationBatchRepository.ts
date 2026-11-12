@@ -4,12 +4,13 @@ import {
   Repository,
   sql,
   type SQLLike,
+  type UpdateStatementOptions,
 } from "alepha/orm";
-import { getTableColumns, type PgTable } from "alepha/orm/drizzle";
 
 /**
- * Decodes native batch RETURNING rows using the same driver columns and entity
- * cleanup as an ordinary repository, without another database round trip.
+ * A repository for writes that sit in an automation's guarded batch: the
+ * framework's statement builders, with `touch: false` as the UPDATE default,
+ * plus the effect preparation the automation engine shares across entities.
  */
 export class AutomationBatchRepository<
   T extends ZObject,
@@ -34,27 +35,16 @@ export class AutomationBatchRepository<
     return BatchRepository;
   }
   /**
-   * Prepare the normal driver's insert codecs without writing before the
-   * caller's native receipt batch. This seam deliberately dispatches no job.
+   * The framework's statement builder, with the automation engine's default:
+   * an UPDATE in a guarded batch never stamps `updatedAt` unless the patch
+   * carries it, as the raw statements it replaced did not.
    */
-  public insertStatement(
-    data: Parameters<Repository<T>["create"]>[0],
-    returning = false,
+  public override updateStatement(
+    where: Parameters<Repository<T>["updateStatement"]>[0],
+    data: Parameters<Repository<T>["updateStatement"]>[1],
+    opts: UpdateStatementOptions = {},
   ) {
-    const query = this.rawInsert().values(this.cast(data, true));
-    return (returning ? query.returning(this.pgTable) : query).getSQL();
-  }
-  public scalar(
-    where: Parameters<Repository<T>["updateOne"]>[0],
-    field: keyof Infer<T>,
-  ): SQLLike {
-    return this.subquery(where, field, { limit: 1 });
-  }
-  public predicate(where: Parameters<Repository<T>["updateOne"]>[0]): SQLLike {
-    return this.toSQL(this.withDeletedAt(where, {}))!;
-  }
-  public notExists(where: Parameters<Repository<T>["updateOne"]>[0]): SQLLike {
-    return sql`NOT EXISTS (SELECT 1 FROM ${this.table} WHERE ${this.toSQL(this.withDeletedAt(where, {}))})`;
+    return super.updateStatement(where, data, { touch: false, ...opts });
   }
   public andConditions(conditions: SQLLike[]): SQLLike {
     return sql.join(
@@ -65,22 +55,6 @@ export class AutomationBatchRepository<
       sql` AND `,
     );
   }
-  public exists(where: Parameters<Repository<T>["updateOne"]>[0]): SQLLike {
-    return sql`EXISTS (SELECT 1 FROM ${this.table} WHERE ${this.toSQL(this.withDeletedAt(where, {}))})`;
-  }
-  public updateStatement(
-    where: Parameters<Repository<T>["updateOne"]>[0],
-    data: Parameters<Repository<T>["updateOne"]>[1],
-    returning = true,
-  ) {
-    const values = this.cast(data, false) as Record<string, unknown>;
-    delete values[this.id.key as string];
-    this.withVersionBump(values);
-    const query = this.rawUpdate()
-      .set(values)
-      .where(this.toSQL(this.withDeletedAt(where, {})));
-    return (returning ? query.returning(this.pgTable) : query).getSQL();
-  }
   public async prepareEffectCreate(
     data: Parameters<Repository<T>["create"]>[0],
   ) {
@@ -88,13 +62,9 @@ export class AutomationBatchRepository<
       tableName: this.tableName,
       data,
     });
-    return {
-      statement: this.rawInsert()
-        .values(this.cast(data, true))
-        .returning(this.pgTable)
-        .getSQL(),
-      data,
-    };
+    // `events: false`: `finishEffect` invalidates and emits once the effect
+    // is recorded, so a failing listener fails the effect, not the batch.
+    return { statement: this.insertStatement(data, { events: false }), data };
   }
   public async prepareEffectSave(entity: Infer<T>) {
     if (entity[this.id.key] == null)
@@ -120,19 +90,25 @@ export class AutomationBatchRepository<
       statement: this.updateStatement(
         where,
         row as Parameters<Repository<T>["updateOne"]>[1],
+        { events: false },
       ),
       condition: this.exists(where),
       where,
       data: row,
     };
   }
+  /**
+   * The entity an effect's statement returned, after its cache invalidation
+   * and `repository:*:after` event: the effect statements are built with
+   * `events: false` so these run here, once the effect is recorded.
+   */
   public async finishEffect(
     mode: "create" | "update",
     raw: Record<string, unknown>,
     data: object,
     where: unknown = {},
   ): Promise<Infer<T>> {
-    const entity = this.decodeRaw(raw);
+    const entity = this.decodeRow(raw);
     await this.invalidateCache({});
     if (mode === "create")
       await this.alepha.events.emit("repository:create:after", {
@@ -148,17 +124,5 @@ export class AutomationBatchRepository<
         entities: [entity],
       });
     return entity;
-  }
-  public decodeRaw(row: Record<string, unknown>): Infer<T> {
-    const mapped: Record<string, unknown> = {};
-    for (const [key, column] of Object.entries(
-      getTableColumns(this.pgTable as PgTable),
-    )) {
-      const value = Object.hasOwn(row, column.name)
-        ? row[column.name]
-        : row[key];
-      mapped[key] = value == null ? value : column.mapFromDriverValue(value);
-    }
-    return this.clean(mapped, this.entity.schema);
   }
 }

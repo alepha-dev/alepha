@@ -54,7 +54,7 @@ export class AutomationSourceRepository<
       const rows = await this.commit(
         event,
         this.notExists(where),
-        this.insertStatement(data, true),
+        this.insertStatement(data, { events: false }),
         event.generatedIdField
           ? {
               [event.generatedIdField]: this.scalar(
@@ -96,6 +96,7 @@ export class AutomationSourceRepository<
         this.updateStatement(
           where,
           row as Parameters<Repository<T>["updateOne"]>[1],
+          { events: false },
         ),
       );
       await this.invalidateCache({});
@@ -152,7 +153,7 @@ export class AutomationSourceRepository<
   protected result(rows: Record<string, unknown>[] | undefined): Infer<T> {
     if (!rows?.[0])
       throw new ConflictError("Source transition was already recorded");
-    return this.decodeRaw(rows[0]);
+    return this.decodeRow(rows[0]);
   }
 }
 export interface AutomationSourceEvent {

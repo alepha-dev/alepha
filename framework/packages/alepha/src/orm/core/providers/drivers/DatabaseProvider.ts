@@ -23,6 +23,7 @@ import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 import { DbError } from "../../errors/DbError.ts";
 import { DbTimeoutError } from "../../errors/DbTimeoutError.ts";
 import { DbTransactionUnsupportedError } from "../../errors/DbTransactionUnsupportedError.ts";
+import { afterBatchOf } from "../../helpers/afterBatch.ts";
 import { assertAttrsReachable } from "../../helpers/pgAttr.ts";
 import type { DbTransaction } from "../../interfaces/DbTransaction.ts";
 import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
@@ -960,6 +961,15 @@ export abstract class DatabaseProvider {
    * There is no statement cap: D1 accepts a long batch, and a caller that
    * wants a bound (one unit of work per request, say) enforces its own.
    *
+   * A statement built by a repository (`insertStatement`, `updateStatement`,
+   * `deleteStatement`) invalidates its table's query cache and emits its
+   * `repository:*:after` event once the batch has committed, through
+   * {@link afterCommit}: right after the batch, or after the surrounding
+   * transaction's COMMIT. A listener that throws then rejects this call
+   * although the batch has committed, as with `transactional()`; a caller
+   * that must tell the two apart builds its statements with
+   * `events: false` and emits once it holds the rows.
+   *
    * It is the primitive for writes that must land together on a database
    * without interactive transactions; a statement is a raw `sql` fragment.
    *
@@ -976,10 +986,16 @@ export abstract class DatabaseProvider {
     if (statements.length === 0) {
       return [];
     }
-    if (this.alepha.get("alepha.orm.tx")) {
-      return this.executeEach(statements);
+    const rows = this.alepha.get("alepha.orm.tx")
+      ? await this.executeEach(statements)
+      : await this.runAtomicBatch(statements);
+    for (const [index, statement] of statements.entries()) {
+      const hook = afterBatchOf(statement);
+      if (hook) {
+        await this.afterCommit(() => hook(rows[index] ?? []));
+      }
     }
-    return this.runAtomicBatch(statements);
+    return rows;
   }
 
   /**
