@@ -69,14 +69,15 @@ Postgres and Redis through it.
 
 ## Migrations for Postgres
 
-The app's migrations live in `migrations/<provider>/`, and a SQLite app only has
-`migrations/sqlite/`. Generate the Postgres ones once against a local Postgres, then commit them:
+Every app keeps `migrations/sqlite/` and `migrations/postgres/`: `alepha db migrations create`
+writes both, with no database to connect to, and `alepha db migrations check` fails when either
+drifts. An app that predates the second folder gets its first Postgres baseline with:
 
 ```bash
-DATABASE_URL=postgres://app:app@localhost:5432/app alepha db migrations create --name=initial_schema
+alepha db baseline create --provider postgres
 ```
 
-The app applies them itself at boot, as it does on SQLite. See [Migrations](/docs/guides-persistence-migrations).
+The app applies `migrations/postgres/` itself at boot, as it applies `migrations/sqlite/` on SQLite. See [Migrations](/docs/guides-persistence-migrations).
 
 ## Variables
 

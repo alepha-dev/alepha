@@ -1,0 +1,272 @@
+{
+  "type": "base",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "1d579902-9d66-4289-9e45-e0233c205e40",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "alepha_sequences"],
+      "writes": [
+        "s|tbl|public.alepha_sequences",
+        "n|tbl|public.alepha_sequences",
+        "e|tbl|public.alepha_sequences",
+        "n|rel|public.alepha_sequences",
+        "n|type|public.alepha_sequences",
+        "n|rel|public.alepha_sequences_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "views"],
+      "writes": [
+        "s|tbl|public.views",
+        "n|tbl|public.views",
+        "e|tbl|public.views",
+        "n|rel|public.views",
+        "n|type|public.views",
+        "n|rel|public.views_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "alepha_sequences",
+        "alepha_sequences_name_scope_idx"
+      ],
+      "writes": [
+        "s|idx|public.alepha_sequences_name_scope_idx",
+        "n|idx|public.alepha_sequences_name_scope_idx",
+        "e|idx|public.alepha_sequences_name_scope_idx",
+        "n|rel|public.alepha_sequences_name_scope_idx"
+      ],
+      "reads": [
+        "n|tbl|public.alepha_sequences",
+        "n|sch|public",
+        "n|col|public.alepha_sequences.name",
+        "n|col|public.alepha_sequences.scope"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": ["index", "public", "views", "name_idx"],
+      "writes": [
+        "s|idx|public.name_idx",
+        "n|idx|public.name_idx",
+        "e|idx|public.name_idx",
+        "n|rel|public.name_idx"
+      ],
+      "reads": ["n|tbl|public.views", "n|sch|public", "n|col|public.views.name"]
+    }
+  ],
+  "ddl": [
+    {
+      "schema": "public",
+      "name": "alepha_sequences",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "views",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "scope",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'default'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "value",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "views",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "views_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "views",
+      "name": "name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "views",
+      "name": "count",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "alepha_sequences_name_scope_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "scope",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "views",
+      "name": "name_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "alepha_sequences_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "views",
+      "name": "views_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    }
+  ]
+}

@@ -12,7 +12,7 @@ alepha db migrations create
 alepha db migrations apply
 ```
 
-Migrations are written to `migrations/<provider>/` - one directory per database provider (e.g. `migrations/postgres/`, `migrations/sqlite/`).
+Every app keeps two folders, `migrations/sqlite/` and `migrations/postgres/`. `migrations create`, `migrations check` and `baseline create` act on both, whatever `DATABASE_URL` says, and `--provider sqlite` or `--provider postgres` narrows them to one; `apply`, `push` and `studio` act on the database `DATABASE_URL` names.
 
 ## Common Flags
 

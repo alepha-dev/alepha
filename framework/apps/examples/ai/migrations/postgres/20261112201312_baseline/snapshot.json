@@ -1,0 +1,1817 @@
+{
+  "type": "base",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f07f4724-1668-404e-b84d-faaa3ca7e070",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
+  "footprints": [
+    {
+      "statementType": "create_enum",
+      "statementTarget": ["enum", "public", "ai_messages_role_enum"],
+      "writes": [
+        "s|enum|public.ai_messages_role_enum",
+        "n|enum|public.ai_messages_role_enum",
+        "e|enum|public.ai_messages_role_enum",
+        "n|type|public.ai_messages_role_enum"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_enum",
+      "statementTarget": ["enum", "public", "job_executions_status_enum"],
+      "writes": [
+        "s|enum|public.job_executions_status_enum",
+        "n|enum|public.job_executions_status_enum",
+        "e|enum|public.job_executions_status_enum",
+        "n|type|public.job_executions_status_enum"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "ai_conversations"],
+      "writes": [
+        "s|tbl|public.ai_conversations",
+        "n|tbl|public.ai_conversations",
+        "e|tbl|public.ai_conversations",
+        "n|rel|public.ai_conversations",
+        "n|type|public.ai_conversations",
+        "n|rel|public.ai_conversations_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "ai_messages"],
+      "writes": [
+        "s|tbl|public.ai_messages",
+        "n|tbl|public.ai_messages",
+        "e|tbl|public.ai_messages",
+        "n|rel|public.ai_messages",
+        "n|type|public.ai_messages",
+        "n|rel|public.ai_messages_pkey"
+      ],
+      "reads": ["n|sch|public", "n|enum|public.ai_messages_role_enum"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "alepha_sequences"],
+      "writes": [
+        "s|tbl|public.alepha_sequences",
+        "n|tbl|public.alepha_sequences",
+        "e|tbl|public.alepha_sequences",
+        "n|rel|public.alepha_sequences",
+        "n|type|public.alepha_sequences",
+        "n|rel|public.alepha_sequences_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "job_cron_claims"],
+      "writes": [
+        "s|tbl|public.job_cron_claims",
+        "n|tbl|public.job_cron_claims",
+        "e|tbl|public.job_cron_claims",
+        "n|rel|public.job_cron_claims",
+        "n|type|public.job_cron_claims",
+        "n|rel|public.job_cron_claims_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "job_executions"],
+      "writes": [
+        "s|tbl|public.job_executions",
+        "n|tbl|public.job_executions",
+        "e|tbl|public.job_executions",
+        "n|rel|public.job_executions",
+        "n|type|public.job_executions",
+        "n|rel|public.job_executions_pkey"
+      ],
+      "reads": ["n|sch|public", "n|enum|public.job_executions_status_enum"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "notes"],
+      "writes": [
+        "s|tbl|public.notes",
+        "n|tbl|public.notes",
+        "e|tbl|public.notes",
+        "n|rel|public.notes",
+        "n|type|public.notes",
+        "n|rel|public.notes_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "parameters"],
+      "writes": [
+        "s|tbl|public.parameters",
+        "n|tbl|public.parameters",
+        "e|tbl|public.parameters",
+        "n|rel|public.parameters",
+        "n|type|public.parameters",
+        "n|rel|public.parameters_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ai_conversations",
+        "ai_conversations_user_id_updated_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.ai_conversations_user_id_updated_at_idx",
+        "n|idx|public.ai_conversations_user_id_updated_at_idx",
+        "e|idx|public.ai_conversations_user_id_updated_at_idx",
+        "n|rel|public.ai_conversations_user_id_updated_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.ai_conversations",
+        "n|sch|public",
+        "n|col|public.ai_conversations.user_id",
+        "n|col|public.ai_conversations.updated_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ai_conversations",
+        "ai_conversations_updated_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.ai_conversations_updated_at_idx",
+        "n|idx|public.ai_conversations_updated_at_idx",
+        "e|idx|public.ai_conversations_updated_at_idx",
+        "n|rel|public.ai_conversations_updated_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.ai_conversations",
+        "n|sch|public",
+        "n|col|public.ai_conversations.updated_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ai_messages",
+        "ai_messages_user_id_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.ai_messages_user_id_created_at_idx",
+        "n|idx|public.ai_messages_user_id_created_at_idx",
+        "e|idx|public.ai_messages_user_id_created_at_idx",
+        "n|rel|public.ai_messages_user_id_created_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.ai_messages",
+        "n|sch|public",
+        "n|col|public.ai_messages.user_id",
+        "n|col|public.ai_messages.created_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ai_messages",
+        "ai_messages_conversation_id_seq_idx"
+      ],
+      "writes": [
+        "s|idx|public.ai_messages_conversation_id_seq_idx",
+        "n|idx|public.ai_messages_conversation_id_seq_idx",
+        "e|idx|public.ai_messages_conversation_id_seq_idx",
+        "n|rel|public.ai_messages_conversation_id_seq_idx"
+      ],
+      "reads": [
+        "n|tbl|public.ai_messages",
+        "n|sch|public",
+        "n|col|public.ai_messages.conversation_id",
+        "n|col|public.ai_messages.seq"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "alepha_sequences",
+        "alepha_sequences_name_scope_idx"
+      ],
+      "writes": [
+        "s|idx|public.alepha_sequences_name_scope_idx",
+        "n|idx|public.alepha_sequences_name_scope_idx",
+        "e|idx|public.alepha_sequences_name_scope_idx",
+        "n|rel|public.alepha_sequences_name_scope_idx"
+      ],
+      "reads": [
+        "n|tbl|public.alepha_sequences",
+        "n|sch|public",
+        "n|col|public.alepha_sequences.name",
+        "n|col|public.alepha_sequences.scope"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "job_executions",
+        "job_executions_status_scheduled_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.job_executions_status_scheduled_at_idx",
+        "n|idx|public.job_executions_status_scheduled_at_idx",
+        "e|idx|public.job_executions_status_scheduled_at_idx",
+        "n|rel|public.job_executions_status_scheduled_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.job_executions",
+        "n|sch|public",
+        "n|col|public.job_executions.status",
+        "n|col|public.job_executions.scheduled_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "job_executions",
+        "job_executions_status_updated_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.job_executions_status_updated_at_idx",
+        "n|idx|public.job_executions_status_updated_at_idx",
+        "e|idx|public.job_executions_status_updated_at_idx",
+        "n|rel|public.job_executions_status_updated_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.job_executions",
+        "n|sch|public",
+        "n|col|public.job_executions.status",
+        "n|col|public.job_executions.updated_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "job_executions",
+        "job_executions_job_name_status_scheduled_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.job_executions_job_name_status_scheduled_at_idx",
+        "n|idx|public.job_executions_job_name_status_scheduled_at_idx",
+        "e|idx|public.job_executions_job_name_status_scheduled_at_idx",
+        "n|rel|public.job_executions_job_name_status_scheduled_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.job_executions",
+        "n|sch|public",
+        "n|col|public.job_executions.job_name",
+        "n|col|public.job_executions.status",
+        "n|col|public.job_executions.scheduled_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "job_executions",
+        "job_executions_job_name_status_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.job_executions_job_name_status_created_at_idx",
+        "n|idx|public.job_executions_job_name_status_created_at_idx",
+        "e|idx|public.job_executions_job_name_status_created_at_idx",
+        "n|rel|public.job_executions_job_name_status_created_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.job_executions",
+        "n|sch|public",
+        "n|col|public.job_executions.job_name",
+        "n|col|public.job_executions.status",
+        "n|col|public.job_executions.created_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "job_executions",
+        "job_executions_job_name_started_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.job_executions_job_name_started_at_idx",
+        "n|idx|public.job_executions_job_name_started_at_idx",
+        "e|idx|public.job_executions_job_name_started_at_idx",
+        "n|rel|public.job_executions_job_name_started_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.job_executions",
+        "n|sch|public",
+        "n|col|public.job_executions.job_name",
+        "n|col|public.job_executions.started_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "job_executions",
+        "job_executions_job_name_key_idx"
+      ],
+      "writes": [
+        "s|idx|public.job_executions_job_name_key_idx",
+        "n|idx|public.job_executions_job_name_key_idx",
+        "e|idx|public.job_executions_job_name_key_idx",
+        "n|rel|public.job_executions_job_name_key_idx"
+      ],
+      "reads": [
+        "n|tbl|public.job_executions",
+        "n|sch|public",
+        "n|col|public.job_executions.job_name",
+        "n|col|public.job_executions.key"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "parameters",
+        "parameters_name_activation_date_idx"
+      ],
+      "writes": [
+        "s|idx|public.parameters_name_activation_date_idx",
+        "n|idx|public.parameters_name_activation_date_idx",
+        "e|idx|public.parameters_name_activation_date_idx",
+        "n|rel|public.parameters_name_activation_date_idx"
+      ],
+      "reads": [
+        "n|tbl|public.parameters",
+        "n|sch|public",
+        "n|col|public.parameters.name",
+        "n|col|public.parameters.activation_date"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "parameters",
+        "parameters_name_version_idx"
+      ],
+      "writes": [
+        "s|idx|public.parameters_name_version_idx",
+        "n|idx|public.parameters_name_version_idx",
+        "e|idx|public.parameters_name_version_idx",
+        "n|rel|public.parameters_name_version_idx"
+      ],
+      "reads": [
+        "n|tbl|public.parameters",
+        "n|sch|public",
+        "n|col|public.parameters.name",
+        "n|col|public.parameters.version"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "parameters",
+        "parameters_activation_date_idx"
+      ],
+      "writes": [
+        "s|idx|public.parameters_activation_date_idx",
+        "n|idx|public.parameters_activation_date_idx",
+        "e|idx|public.parameters_activation_date_idx",
+        "n|rel|public.parameters_activation_date_idx"
+      ],
+      "reads": [
+        "n|tbl|public.parameters",
+        "n|sch|public",
+        "n|col|public.parameters.activation_date"
+      ]
+    }
+  ],
+  "ddl": [
+    {
+      "schema": "public",
+      "name": "ai_conversations",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "ai_messages",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "alepha_sequences",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "job_cron_claims",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "job_executions",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "notes",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "parameters",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "ai_messages_role_enum",
+      "values": ["user", "assistant", "tool"],
+      "entityType": "enums"
+    },
+    {
+      "schema": "public",
+      "name": "job_executions_status_enum",
+      "values": ["pending", "running", "scheduled", "ok", "error", "cancelled"],
+      "entityType": "enums"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "user_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "title",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "pending_call_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "pending_call",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "conversation_id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "user_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "seq",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "role",
+      "type": "ai_messages_role_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "content",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "tool_calls",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "call_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "is_error",
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "vendor",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "model",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "input_tokens",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "output_tokens",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "scope",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'default'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "value",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_cron_claims",
+      "name": "id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_cron_claims",
+      "name": "job_name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_cron_claims",
+      "name": "instant",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_cron_claims",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "key",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "status",
+      "type": "job_executions_status_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'pending'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "attempt",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "max_attempts",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "redispatch_count",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "payload",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "scheduled_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "started_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "completed_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "error",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "logs",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "steps",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "triggered_by",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "triggered_by_name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "cancelled_by",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "cancelled_by_name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "notes",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "notes",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "notes",
+      "name": "text",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "content",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "schema_hash",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "activation_date",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "version",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "change_description",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "tags",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "creator_id",
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "creator_name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "previous_content",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "migration_log",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "ai_conversations_user_id_updated_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "updated_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "ai_conversations_updated_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "updated_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "ai_messages_user_id_created_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "ai_messages_conversation_id_seq_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "conversation_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "seq",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "alepha_sequences_name_scope_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "scope",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_status_scheduled_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "scheduled_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_status_updated_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "updated_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_job_name_status_scheduled_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "job_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "scheduled_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_job_name_status_created_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "job_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_job_name_started_at_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "job_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "started_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_job_name_key_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "job_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "key",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "parameters_name_activation_date_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "activation_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "parameters_name_version_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "version",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "parameters_activation_date_idx",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "activation_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "ai_conversations",
+      "name": "ai_conversations_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "ai_messages",
+      "name": "ai_messages_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "alepha_sequences",
+      "name": "alepha_sequences_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "job_cron_claims",
+      "name": "job_cron_claims_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "job_executions",
+      "name": "job_executions_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "notes",
+      "name": "notes_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "parameters",
+      "name": "parameters_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    }
+  ]
+}

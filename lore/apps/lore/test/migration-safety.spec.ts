@@ -29,7 +29,23 @@ import { describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
 
-const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");
+/**
+ * Both migration folders (#Q3507): Postgres honours `ON DELETE` as D1 does,
+ * so a `DROP TABLE` there detaches or empties the same children. Each folder
+ * carries its own baseline, generated on a different day.
+ */
+const FOLDERS = {
+  sqlite: {
+    path: join(import.meta.dirname, "../migrations/sqlite"),
+    baseline: "20261112161955_baseline",
+  },
+  postgres: {
+    path: join(import.meta.dirname, "../migrations/postgres"),
+    baseline: "20261112201552_baseline",
+  },
+} as const;
+
+type Folder = keyof typeof FOLDERS;
 
 /**
  * Every table this app's container serves a repository for, plus every table
@@ -114,13 +130,15 @@ const SANCTIONED_DROPS: Record<string, string[]> = {};
  * stray file are skipped: a migration is a directory holding a
  * `migration.sql`.
  */
-const migrationDirs = (): string[] =>
-  readdirSync(MIGRATIONS)
-    .filter((entry) => existsSync(join(MIGRATIONS, entry, "migration.sql")))
+const migrationDirs = (folder: Folder = "sqlite"): string[] =>
+  readdirSync(FOLDERS[folder].path)
+    .filter((entry) =>
+      existsSync(join(FOLDERS[folder].path, entry, "migration.sql")),
+    )
     .sort();
 
-const migrationSql = (dir: string): string =>
-  readFileSync(join(MIGRATIONS, dir, "migration.sql"), "utf8");
+const migrationSql = (dir: string, folder: Folder = "sqlite"): string =>
+  readFileSync(join(FOLDERS[folder].path, dir, "migration.sql"), "utf8");
 
 /**
  * Drop whole-line `--` comments so the scan reads statements, not prose.
@@ -158,7 +176,7 @@ const unsanctionedDrops = (
  * 2026-11-12 baseline (#Q3497), which creates the whole schema and drops
  * nothing. The refusal itself dates from #Q2602.
  */
-const CASCADE_BASELINE = "20261112161955_baseline";
+const CASCADE_BASELINE = FOLDERS.sqlite.baseline;
 
 /**
  * The slice of a drizzle-kit snapshot.json this guard reads: its foreign keys.
@@ -173,8 +191,13 @@ interface SnapshotDdl {
   }>;
 }
 
-const migrationSnapshot = (dir: string): SnapshotDdl =>
-  JSON.parse(readFileSync(join(MIGRATIONS, dir, "snapshot.json"), "utf8"));
+const migrationSnapshot = (
+  dir: string,
+  folder: Folder = "sqlite",
+): SnapshotDdl =>
+  JSON.parse(
+    readFileSync(join(FOLDERS[folder].path, dir, "snapshot.json"), "utf8"),
+  );
 
 /**
  * Every table a migration drops, bare or inside drizzle-kit's rebuild pattern
@@ -232,8 +255,9 @@ const dropViolations = (
   sql: string,
   previous: SnapshotDdl,
   sanctionedDrops: Record<string, string[]> = SANCTIONED_DROPS,
+  baseline: string = CASCADE_BASELINE,
 ): string[] => {
-  if (dir <= CASCADE_BASELINE) return [];
+  if (dir <= baseline) return [];
   const sanctioned = sanctionedDrops[dir] ?? [];
   return droppedTables(sql).flatMap((table) => {
     const children = destructiveChildren(table, previous);
@@ -250,9 +274,12 @@ const dropViolations = (
 };
 
 describe("migration safety", () => {
-  it("never drops a table this app owns, unsanctioned", async ({ expect }) => {
+  it("never drops a table this app owns, unsanctioned, in either folder", async ({
+    expect,
+  }) => {
     const guarded = [...(await entityTables())];
     const dirs = migrationDirs();
+    expect(migrationDirs("postgres").length).toBeGreaterThan(0);
 
     // A guard that silently scans nothing is worse than no guard. Both halves:
     // an empty migration directory, and an entity walk that imported nothing.
@@ -282,11 +309,17 @@ describe("migration safety", () => {
       expect(guarded, `${table} is no longer guarded`).toContain(table);
     }
 
-    for (const dir of dirs) {
-      expect(
-        unsanctionedDrops(dir, statementsOnly(migrationSql(dir)), guarded),
-        `${dir} drops a table this app owns without a SANCTIONED_DROPS entry`,
-      ).toEqual([]);
+    for (const folder of ["sqlite", "postgres"] as const) {
+      for (const dir of migrationDirs(folder)) {
+        expect(
+          unsanctionedDrops(
+            dir,
+            statementsOnly(migrationSql(dir, folder)),
+            guarded,
+          ),
+          `${folder}/${dir} drops a table this app owns without a SANCTIONED_DROPS entry`,
+        ).toEqual([]);
+      }
     }
   });
 
@@ -328,19 +361,43 @@ describe("migration safety", () => {
     ).toEqual(["sigils"]);
   });
 
-  it("never drops a table with children after the baseline, sanctioned or not", ({
+  it("never drops a table with children after the baseline, sanctioned or not, in either folder", ({
     expect,
   }) => {
-    const dirs = migrationDirs();
-    expect(dirs).toContain(CASCADE_BASELINE);
+    for (const folder of ["sqlite", "postgres"] as const) {
+      const { baseline } = FOLDERS[folder];
+      const dirs = migrationDirs(folder);
+      expect(dirs).toContain(baseline);
 
-    for (const dir of dirs.slice(dirs.indexOf(CASCADE_BASELINE) + 1)) {
-      const previous = migrationSnapshot(dirs[dirs.indexOf(dir) - 1]);
-      expect(
-        dropViolations(dir, migrationSql(dir), previous),
-        `${dir} drops a table it may not`,
-      ).toEqual([]);
+      for (const dir of dirs.slice(dirs.indexOf(baseline) + 1)) {
+        const previous = migrationSnapshot(dirs[dirs.indexOf(dir) - 1], folder);
+        expect(
+          dropViolations(
+            dir,
+            migrationSql(dir, folder),
+            previous,
+            SANCTIONED_DROPS,
+            baseline,
+          ),
+          `${folder}/${dir} drops a table it may not`,
+        ).toEqual([]);
+      }
     }
+  });
+
+  it("reads the postgres folder's foreign keys, so its cascade refusal bites", ({
+    expect,
+  }) => {
+    const { baseline } = FOLDERS.postgres;
+    const previous = migrationSnapshot(baseline, "postgres");
+    const [violation] = dropViolations(
+      "20990101000000_synthetic",
+      'DROP TABLE "projects" CASCADE;',
+      previous,
+      { "20990101000000_synthetic": ["projects"] },
+      baseline,
+    );
+    expect(violation).toMatch(/^projects has children it would wipe or detach/);
   });
 
   describe("the cascade refusal", () => {
