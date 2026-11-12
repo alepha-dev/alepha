@@ -56,7 +56,7 @@ describe("ArtifactManifest", () => {
     } as never;
   });
 
-  const show =async (shown: ArtifactResource, lang = "en") => {
+  const show = async (shown: ArtifactResource, lang = "en") => {
     cleanup();
     const alepha = Alepha.create()
       .with(AlephaLogger)
