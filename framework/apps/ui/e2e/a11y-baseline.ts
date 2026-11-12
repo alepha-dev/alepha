@@ -55,22 +55,4 @@ export interface A11yBaselineEntry {
  * entry. There is no wildcard: every entry names one page, one rule and one
  * selector.
  */
-export const A11Y_BASELINE: A11yBaselineEntry[] = [
-  // ── target-size ──
-  {
-    page: "/pages/admin/files",
-    modes: ["light", "dark", "light-cvd", "dark-cvd"],
-    rule: "target-size",
-    selector: "#base-ui-_r_1m_",
-    reason:
-      "A small bucket of the storage bar draws a 12x10 px button; a 24x24 px target needs a layout change of the usage bar, outside #E135's fix budget (tracked by #Q3488).",
-  },
-  {
-    page: "/pages/admin/files",
-    modes: ["light", "dark", "light-cvd", "dark-cvd"],
-    rule: "target-size",
-    selector: "#base-ui-_r_1o_",
-    reason:
-      "A small bucket of the storage bar draws a 12x10 px button; a 24x24 px target needs a layout change of the usage bar, outside #E135's fix budget (tracked by #Q3488).",
-  },
-];
+export const A11Y_BASELINE: A11yBaselineEntry[] = [];

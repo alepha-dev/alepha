@@ -56,6 +56,11 @@ describe("AdminFilesUsageCard", () => {
   const segment = (view: ReturnType<typeof render>, bucket: string) =>
     view.container.querySelector<HTMLElement>(`[data-bucket="${bucket}"]`);
 
+  const entry = (view: ReturnType<typeof render>, bucket: string) =>
+    view.container.querySelector<HTMLElement>(
+      `[data-legend-bucket="${bucket}"]`,
+    );
+
   // A segment's width in percent. jsdom, like a browser, serializes a CSS
   // percentage to six significant digits, so it is compared as a number.
   const width = (view: ReturnType<typeof render>, bucket: string) =>
@@ -134,12 +139,13 @@ describe("AdminFilesUsageCard", () => {
     expect(view.container.textContent).toContain(expected);
   });
 
-  it("opens a panel of that bucket's figures when a segment is clicked", async () => {
-    // Was a tooltip on both the segment and the legend entry: unreadable on a
-    // touch screen, and the same sentence twice.
+  it("opens a panel of that bucket's figures when its legend entry is clicked", async () => {
+    // Was a tooltip on both the segment and the legend entry (unreadable on a
+    // touch screen), then a click on the segment, a 12x10 px target for a
+    // small bucket (#Q3488).
     const view = await mount(stats(10 * GB));
 
-    fireEvent.click(segment(view, "backups")!);
+    fireEvent.click(entry(view, "backups")!);
 
     const panel = await screen.findByRole("dialog");
     expect(panel.textContent).toContain("50.0 MB");
@@ -152,18 +158,23 @@ describe("AdminFilesUsageCard", () => {
     expect(panel.textContent).toContain("25%");
   });
 
-  it("names each segment for a reader who cannot see the bar", async () => {
+  it("names each legend entry, and hides the decorative bar", async () => {
     const view = await mount(stats(10 * GB));
 
-    expect(segment(view, "artifacts")!.getAttribute("aria-label")).toBe(
-      "artifacts: 150.0 MB",
-    );
+    // Named by its visible text, so the name says what the eye reads.
+    expect(entry(view, "artifacts")!.hasAttribute("aria-label")).toBe(false);
+    expect(entry(view, "artifacts")!.textContent).toBe("artifacts150.0 MB");
+    expect(entry(view, "artifacts")!.className).toContain("min-h-6");
+    expect(
+      segment(view, "artifacts")!.parentElement!.getAttribute("aria-hidden"),
+    ).toBe("true");
+    expect(segment(view, "artifacts")!.tagName).toBe("DIV");
   });
 
   it("leaves the quota row out when there is no quota", async () => {
     const view = await mount(stats(0));
 
-    fireEvent.click(segment(view, "backups")!);
+    fireEvent.click(entry(view, "backups")!);
 
     const panel = await screen.findByRole("dialog");
     expect(panel.textContent).toContain("Share of used");

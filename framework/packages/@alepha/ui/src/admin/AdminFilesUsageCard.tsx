@@ -35,14 +35,13 @@ export type AdminFilesUsageMode = "quota" | "share";
  * space. Without one there is nothing to be a share of, and the bar is the
  * split between buckets alone.
  *
- * ⚠️ **A segment opens a panel on CLICK, and the legend says nothing on
- * hover.** Both were tooltips. A tooltip cannot be read on a touch screen,
- * it says one sentence where the figures want rows, and two of them on the
- * same bucket (segment and legend) is the same text twice. The panel is a
- * `Popover`, not a `DropdownMenu`: its rows are figures to read, and a menu
- * item announces itself as something to activate. Hovering either half still
- * dims the other buckets, which is what pairs a segment with its legend
- * entry.
+ * ⚠️ **A legend entry opens a panel on CLICK; the bar is decorative.**
+ * Both were tooltips, then the segments were the triggers: a tooltip cannot
+ * be read on a touch screen, and a small bucket's segment was a 12x10 px
+ * target (#Q3488). The panel is a `Popover`, not a `DropdownMenu`: its rows
+ * are figures to read, and a menu item announces itself as something to
+ * activate. Hovering either half still dims the other buckets, which is what
+ * pairs a segment with its legend entry.
  */
 export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
   const { stats, persistenceKey } = props;
@@ -74,13 +73,6 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
     (ofQuota ? Math.max(stats.quota, stats.totalSize) : stats.totalSize) || 1;
   const percent = (ratio: number) =>
     l(ratio, { number: { style: "percent", maximumFractionDigits: 1 } });
-
-  /**
-   * The accessible name of a segment: the bucket and its size, so the bar is
-   * readable without opening anything. The panel's rows follow it.
-   */
-  const segmentLabel = (bucket: BucketStats) =>
-    `${bucket.bucket}: ${formatBytes(bucket.totalSize)}`;
 
   const dim = (bucket: BucketStats) =>
     active !== undefined && active !== bucket.bucket && "opacity-30";
@@ -156,33 +148,56 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
       </div>
 
       {/*
-        Interactive, so NOT `aria-hidden`: each segment is a button naming its
-        bucket and size, and the panel behind it holds the same figures the
-        legend shows.
+        Decorative: the bar repeats what the legend says. Its segments were
+        the panel's triggers, and a small bucket drew a 12x10 px button, under
+        the 24x24 px target WCAG 2.5.8 asks (#Q3488). Hovering a segment
+        still picks its bucket out in the legend.
       */}
-      <div className="bg-muted flex h-2.5 w-full overflow-hidden rounded-full">
+      <div
+        aria-hidden
+        className="bg-muted flex h-2.5 w-full overflow-hidden rounded-full"
+      >
         {buckets.map((bucket, index) => (
-          <Popover key={bucket.bucket}>
-            <PopoverTrigger
-              render={
-                <button
-                  type="button"
-                  data-bucket={bucket.bucket}
-                  aria-label={segmentLabel(bucket)}
-                  style={{ width: `${(bucket.totalSize / scale) * 100}%` }}
-                  // A floor, so a bucket of a few kilobytes beside one of
-                  // gigabytes is still there to click.
-                  className={cn(
-                    "focus-visible:ring-ring/50 h-full min-w-3 transition-opacity outline-none focus-visible:ring-[3px]",
-                    BUCKET_COLORS[index % BUCKET_COLORS.length],
-                    dim(bucket),
-                  )}
-                  {...hover(bucket)}
-                />
-              }
-            />
-            <PopoverContent className="w-60 p-0">
-              <div className="flex items-center gap-2 px-3 py-2.5">
+          <div
+            key={bucket.bucket}
+            data-bucket={bucket.bucket}
+            style={{ width: `${(bucket.totalSize / scale) * 100}%` }}
+            // A floor, so a bucket of a few kilobytes beside one of
+            // gigabytes still shows.
+            className={cn(
+              "h-full min-w-3 transition-opacity",
+              BUCKET_COLORS[index % BUCKET_COLORS.length],
+              dim(bucket),
+            )}
+            onMouseEnter={() => setActive(bucket.bucket)}
+            onMouseLeave={() => setActive(undefined)}
+          />
+        ))}
+      </div>
+
+      {/*
+        The legend holds the controls: each entry is a button at least 24 px
+        tall, named by its own visible text (the bucket and its size, no
+        `aria-label` to drift from it, WCAG 2.5.3), and it opens the panel of
+        that bucket's figures.
+      */}
+      <ul className="flex flex-wrap gap-x-4 gap-y-1">
+        {buckets.map((bucket, index) => (
+          <li
+            key={bucket.bucket}
+            className={cn("flex transition-opacity", dim(bucket))}
+          >
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <button
+                    type="button"
+                    data-legend-bucket={bucket.bucket}
+                    className="focus-visible:ring-ring/50 hover:bg-muted -mx-1 flex min-h-6 items-center gap-1.5 rounded-sm px-1 text-sm outline-none focus-visible:ring-[3px]"
+                    {...hover(bucket)}
+                  />
+                }
+              >
                 <span
                   aria-hidden
                   className={cn(
@@ -190,82 +205,67 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
                     BUCKET_COLORS[index % BUCKET_COLORS.length],
                   )}
                 />
-                <span className="flex-1 truncate font-medium">
-                  {bucket.bucket}
-                </span>
-                <span className="font-mono text-xs tabular-nums">
+                <span>{bucket.bucket}</span>
+                <span className="text-muted-foreground font-mono text-xs">
                   {formatBytes(bucket.totalSize)}
                 </span>
-              </div>
-              <dl className="border-t px-3 py-2 text-sm">
-                <div className="flex items-baseline justify-between gap-3 py-0.5">
-                  <dt className="text-muted-foreground">
-                    {tr("admin.files.usageBucketFiles", { default: "Files" })}
-                  </dt>
-                  <dd className="tabular-nums">{l(bucket.fileCount)}</dd>
+                {!ofQuota && (
+                  <span
+                    data-testid="usage-share"
+                    className="text-muted-foreground text-xs tabular-nums"
+                  >
+                    {percent(bucket.totalSize / (stats.totalSize || 1))}
+                  </span>
+                )}
+              </PopoverTrigger>
+              <PopoverContent className="w-60 p-0">
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-2 shrink-0 rounded-full",
+                      BUCKET_COLORS[index % BUCKET_COLORS.length],
+                    )}
+                  />
+                  <span className="flex-1 truncate font-medium">
+                    {bucket.bucket}
+                  </span>
+                  <span className="font-mono text-xs tabular-nums">
+                    {formatBytes(bucket.totalSize)}
+                  </span>
                 </div>
-                {hasQuota && (
+                <dl className="border-t px-3 py-2 text-sm">
                   <div className="flex items-baseline justify-between gap-3 py-0.5">
                     <dt className="text-muted-foreground">
-                      {tr("admin.files.usageBucketShareQuota", {
-                        default: "Share of quota",
+                      {tr("admin.files.usageBucketFiles", { default: "Files" })}
+                    </dt>
+                    <dd className="tabular-nums">{l(bucket.fileCount)}</dd>
+                  </div>
+                  {hasQuota && (
+                    <div className="flex items-baseline justify-between gap-3 py-0.5">
+                      <dt className="text-muted-foreground">
+                        {tr("admin.files.usageBucketShareQuota", {
+                          default: "Share of quota",
+                        })}
+                      </dt>
+                      <dd className="tabular-nums">
+                        {percent(bucket.totalSize / stats.quota)}
+                      </dd>
+                    </div>
+                  )}
+                  <div className="flex items-baseline justify-between gap-3 py-0.5">
+                    <dt className="text-muted-foreground">
+                      {tr("admin.files.usageBucketShareUsed", {
+                        default: "Share of used",
                       })}
                     </dt>
                     <dd className="tabular-nums">
-                      {percent(bucket.totalSize / stats.quota)}
+                      {percent(bucket.totalSize / (stats.totalSize || 1))}
                     </dd>
                   </div>
-                )}
-                <div className="flex items-baseline justify-between gap-3 py-0.5">
-                  <dt className="text-muted-foreground">
-                    {tr("admin.files.usageBucketShareUsed", {
-                      default: "Share of used",
-                    })}
-                  </dt>
-                  <dd className="tabular-nums">
-                    {percent(bucket.totalSize / (stats.totalSize || 1))}
-                  </dd>
-                </div>
-              </dl>
-            </PopoverContent>
-          </Popover>
-        ))}
-      </div>
-
-      {/*
-        The legend is text, not controls: what a tooltip on it used to say is
-        one click away on the segment of the same colour, and an entry that
-        opened the same panel would be a second trigger for one thing.
-      */}
-      <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
-        {buckets.map((bucket, index) => (
-          <li
-            key={bucket.bucket}
-            className={cn(
-              "flex items-center gap-1.5 text-sm transition-opacity",
-              dim(bucket),
-            )}
-            {...hover(bucket)}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "size-2 shrink-0 rounded-full",
-                BUCKET_COLORS[index % BUCKET_COLORS.length],
-              )}
-            />
-            <span>{bucket.bucket}</span>
-            <span className="text-muted-foreground font-mono text-xs">
-              {formatBytes(bucket.totalSize)}
-            </span>
-            {!ofQuota && (
-              <span
-                data-testid="usage-share"
-                className="text-muted-foreground text-xs tabular-nums"
-              >
-                {percent(bucket.totalSize / (stats.totalSize || 1))}
-              </span>
-            )}
+                </dl>
+              </PopoverContent>
+            </Popover>
           </li>
         ))}
       </ul>

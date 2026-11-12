@@ -33,7 +33,7 @@ axe finds roughly half of real accessibility issues by its own figure. A green s
 | 2.4.3 Focus Order                                        | Keyboard specs (focus into overlays and back to the trigger)          |
 | 2.4.6 Headings and Labels                                | axe (structure), accessibility tree                                   |
 | 2.5.3 Label in Name                                      | axe on the rendered page                                              |
-| 2.5.8 Target Size (Minimum)                              | axe on the rendered page. Known gap below.                            |
+| 2.5.8 Target Size (Minimum)                              | axe on the rendered page                                              |
 | 3.3.1 Error Identification, 3.3.2 Labels or Instructions | axe (structure), accessibility tree of a form in error                |
 | 4.1.2 Name, Role, Value                                  | Lint, axe (structure and rendered page), accessibility tree           |
 
@@ -72,7 +72,6 @@ Not scanned under jsdom: `TimeAgo`, `Highlight`, `FileImage`, `BrandIcon` and `F
 ## Known gaps
 
 - **1.4.11 Non-text Contrast is not met** on the default palette for field borders and the focus ring. Against white, `--input` measures **1.26:1** and `--ring` **2.58:1**, where the criterion asks for 3:1. No automated layer checks this criterion: axe has no rule for it.
-- **2.5.8 Target Size.** The storage usage bar of the admin files page draws a small bucket as a 12 by 10 pixel button.
 - **Landmarks.** The shell nests the page's `main` inside its own, and the sidebar's navigation is not inside a `navigation` landmark. axe reports neither under the WCAG rules, and neither is fixed yet.
 
 ## What stays the application's responsibility
