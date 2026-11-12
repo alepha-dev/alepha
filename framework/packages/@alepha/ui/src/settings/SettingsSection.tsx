@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Card } from "../core/Card.tsx";
+import { outlineEntry } from "../core/PageOutline.tsx";
 import { cn } from "../core/utils.ts";
 import { settingsCardEdge } from "./settingsCardEdge.ts";
 import { SettingsHeading } from "./SettingsHeading.tsx";
@@ -24,6 +25,14 @@ export interface SettingsSectionProps {
    */
   children: ReactNode;
 
+  /**
+   * Makes the section a link target: `#id` in the address bar scrolls to it,
+   * and a {@link PageOutline} around the page lists it. Pick a stable,
+   * locale-free slug (`sigil`, `danger`), never one derived from the title,
+   * which changes with the language.
+   */
+  id?: string;
+
   className?: string;
 }
 
@@ -44,7 +53,11 @@ export interface SettingsSectionProps {
  */
 export const SettingsSection = (props: SettingsSectionProps) => {
   return (
-    <div className={cn("flex flex-col gap-2", props.className)}>
+    <div
+      id={props.id}
+      {...(props.id ? outlineEntry() : {})}
+      className={cn("flex scroll-mt-4 flex-col gap-2", props.className)}
+    >
       <SettingsHeading title={props.title} description={props.description} />
       <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
         {props.children}

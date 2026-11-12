@@ -2192,6 +2192,7 @@ export default {
   "insights.errors.worst.note":
     "Les compteurs sont le total de chaque défaillance depuis toujours, pas celui de la période. Le graphique ci-dessus, lui, correspond à la période.",
   "app.settings.general": "Général",
+  "app.settings.outline": "Sur cette page",
   "app.settings.rename.save": "Renommer",
   "app.settings.rename.confirmTitle": "Renommer $1 ?",
   "app.settings.rename.confirmDescription":

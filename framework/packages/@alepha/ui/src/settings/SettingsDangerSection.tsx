@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Card } from "../core/Card.tsx";
+import { outlineEntry } from "../core/PageOutline.tsx";
 import { cn } from "../core/utils.ts";
 import { settingsCardEdge } from "./settingsCardEdge.ts";
 
@@ -21,6 +22,11 @@ export interface SettingsDangerSectionProps {
    * {@link SettingsRow}s, each holding a `variant="destructive"` control.
    */
   children: ReactNode;
+
+  /**
+   * Link target, as on {@link SettingsSection}.
+   */
+  id?: string;
 
   className?: string;
 }
@@ -44,9 +50,15 @@ export const SettingsDangerSection = (props: SettingsDangerSectionProps) => {
   const { title = "Danger zone" } = props;
 
   return (
-    <div className={cn("flex flex-col gap-2", props.className)}>
+    <div
+      id={props.id}
+      {...(props.id ? outlineEntry() : {})}
+      className={cn("flex scroll-mt-4 flex-col gap-2", props.className)}
+    >
       <div className="flex flex-col gap-0.5">
-        <span className="text-danger-text text-sm">{title}</span>
+        <span data-outline-label className="text-danger-text text-sm">
+          {title}
+        </span>
         {props.description != null ? (
           <span className="text-muted-foreground text-xs">
             {props.description}

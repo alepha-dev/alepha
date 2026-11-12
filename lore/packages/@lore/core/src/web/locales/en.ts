@@ -2202,6 +2202,7 @@ export default {
   "insights.errors.worst.note":
     "Counts are each failure's all-time total, not this window's. The chart above is the window.",
   "app.settings.general": "General",
+  "app.settings.outline": "On this page",
   "app.settings.rename.save": "Rename",
   "app.settings.rename.confirmTitle": "Rename $1?",
   "app.settings.rename.confirmDescription":

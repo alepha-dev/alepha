@@ -225,6 +225,7 @@ const AppSettingsSigil = () => {
       )}
 
       <SettingsSection
+        id="sigil"
         title={tr("app.settings.credential")}
         description={
           sigil

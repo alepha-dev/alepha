@@ -94,7 +94,7 @@ const AppSettingsDelete = () => {
   const canManage = can("app:manage");
 
   return (
-    <SettingsDangerSection title={tr("app.settings.danger")}>
+    <SettingsDangerSection id="danger" title={tr("app.settings.danger")}>
       <SettingsRow
         label={tr("app.settings.delete.title")}
         description={tr("app.settings.delete.description")}

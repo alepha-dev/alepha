@@ -44,7 +44,9 @@ export const SettingsHeading = (props: SettingsHeadingProps) => {
   return (
     <div className={cn("flex flex-col gap-0.5", props.className)}>
       {props.title != null ? (
-        <span className="text-sm">{props.title}</span>
+        <span data-outline-label className="text-sm">
+          {props.title}
+        </span>
       ) : null}
       {props.description != null ? (
         <span className="text-muted-foreground text-xs">
