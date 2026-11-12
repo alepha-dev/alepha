@@ -351,6 +351,14 @@ export abstract class Repository<T extends ZObject> {
    * `notInArray`. The soft-delete filter is added like on any read, unless
    * `opts.force`.
    *
+   * Two more shapes, for a subquery used as a value rather than a set:
+   *
+   * - `opts.count` selects `COUNT(*)` of the matching rows (`column` is then
+   *   ignored), for a comparison (`` sql`${sub} < ${cap}` ``) or a computed
+   *   field;
+   * - `opts.limit`, `opts.offset` and `opts.orderBy` bound the rows, so
+   *   `limit: 1` with a `column` is a scalar subquery.
+   *
    * It correlates through a column of the outer query used as a comparison
    * value. The subquery's own table is always aliased (`<table>_sq`), so a
    * subquery over the outer query's own table works: its columns render as
@@ -377,12 +385,25 @@ export abstract class Repository<T extends ZObject> {
    *     epicId: { notInArray: epics.subquery({ status: { eq: "draft" } }, "id") },
    *   },
    * });
+   *
+   * // A guard: the project still has room for another quest.
+   * const room = sql`${quests.subquery(
+   *   { projectId: { eq: 1 } },
+   *   undefined,
+   *   { count: true },
+   * )} < ${500}`;
+   *
+   * // The newest quest's title, as a value.
+   * const latest = quests.subquery({ projectId: { eq: 1 } }, "title", {
+   *   orderBy: [{ column: "id", direction: "desc" }],
+   *   limit: 1,
+   * });
    * ```
    */
   public subquery(
     where: PgQueryWhereOrSQL<T>,
     column?: keyof Infer<T>,
-    opts: { force?: boolean } = {},
+    opts: SubqueryOptions<T> = {},
   ): SQL {
     const aliasName = `${this.tableName}_sq`;
     this.assertNoNestedSubquery(where, aliasName);
@@ -407,12 +428,29 @@ export abstract class Repository<T extends ZObject> {
       },
     );
 
-    const selection = column
-      ? { value: col(column as string) }
-      : { value: sql`1` };
+    const selection = opts.count
+      ? { value: count() }
+      : column
+        ? { value: col(column as string) }
+        : { value: sql`1` };
     let builder = this.provider.db.select(selection).from(inner);
     if (condition) {
       builder = builder.where(condition) as any;
+    }
+    if (opts.orderBy?.length) {
+      builder = builder.orderBy(
+        ...opts.orderBy.map((clause) =>
+          clause.direction === "desc"
+            ? desc(col(clause.column as string))
+            : asc(col(clause.column as string)),
+        ),
+      ) as any;
+    }
+    if (opts.limit !== undefined) {
+      builder = builder.limit(opts.limit) as any;
+    }
+    if (opts.offset !== undefined) {
+      builder = builder.offset(opts.offset) as any;
     }
 
     const result = sql`${builder}`;
@@ -3110,3 +3148,29 @@ export interface StatementOptions {
 type WithSQL<T> = {
   [P in keyof T]?: T[P] | SQL;
 };
+
+/**
+ * Options of {@link Repository.subquery}.
+ */
+export interface SubqueryOptions<T extends ZObject> {
+  /**
+   * Reach soft-deleted rows: the soft-delete filter is not added.
+   */
+  force?: boolean;
+  /**
+   * Select `COUNT(*)` of the matching rows instead of a column.
+   */
+  count?: boolean;
+  /**
+   * At most this many rows.
+   */
+  limit?: number;
+  /**
+   * Skip this many rows first.
+   */
+  offset?: number;
+  /**
+   * The order `limit` and `offset` read the rows in.
+   */
+  orderBy?: Array<{ column: keyof Infer<T>; direction?: "asc" | "desc" }>;
+}

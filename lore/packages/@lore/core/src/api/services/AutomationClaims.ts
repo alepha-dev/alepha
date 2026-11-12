@@ -772,7 +772,21 @@ export class AutomationClaims {
       const now = this.dateTime.nowISOString();
       await this.atomic.guarded(
         occurrence.projectId,
-        sql`${this.live(occurrence, token)} ${input.action.kind === "notify" ? sql`AND (SELECT COUNT(*) FROM automation_receipts WHERE kind = 'action' AND run_id = ${occurrence.runId} AND recipient_channel IS NOT NULL) < 100` : sql``}`,
+        sql`${this.live(occurrence, token)} ${
+          // At most 100 deliveries per run. An occurrence with no run yet
+          // has none, as the raw `run_id = NULL` counted.
+          input.action.kind === "notify" && occurrence.runId
+            ? sql`AND ${this.persistence.receipts.subquery(
+                {
+                  kind: "action",
+                  runId: occurrence.runId,
+                  recipientChannel: { isNotNull: true },
+                },
+                undefined,
+                { count: true },
+              )} < 100`
+            : sql``
+        }`,
         [
           sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, lease_token, lease_until, parent_id, run_id, input_hash, mode, action_index, row_index, delivery_key, recipient_user_id, recipient_channel, cursor, roster_complete, created_at, updated_at)
             VALUES (${actionId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${actionId}, 'action', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${token}, ${occurrence.leaseUntil ? this.database.timestamp(occurrence.leaseUntil) : null}, ${occurrence.id}, ${input.runId ?? occurrence.runId ?? null}, ${inputHash}, ${input.mode}, ${input.index}, ${input.row ?? null}, ${input.deliveryKey ?? null}, ${input.action.kind === "notify" ? input.action.recipient : null}, ${input.action.kind === "notify" ? input.action.channel : null}, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) ON CONFLICT DO NOTHING`,

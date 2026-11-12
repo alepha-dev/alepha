@@ -48,7 +48,7 @@ export class AutomationBatchRepository<
     where: Parameters<Repository<T>["updateOne"]>[0],
     field: keyof Infer<T>,
   ): SQLLike {
-    return sql`(SELECT ${this.table[field as keyof typeof this.table]} FROM ${this.table} WHERE ${this.toSQL(this.withDeletedAt(where, {}))} LIMIT 1)`;
+    return this.subquery(where, field, { limit: 1 });
   }
   public predicate(where: Parameters<Repository<T>["updateOne"]>[0]): SQLLike {
     return this.toSQL(this.withDeletedAt(where, {}))!;

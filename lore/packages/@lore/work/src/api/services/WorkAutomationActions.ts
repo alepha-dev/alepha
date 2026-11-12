@@ -87,7 +87,11 @@ export class WorkAutomationActions {
       return {
         target: { table: "quests", mode: "create" },
         result,
-        condition: sql`(SELECT COUNT(*) FROM quests WHERE project_id = ${rule.projectId} AND deleted_at IS NULL) < ${cap}`,
+        condition: sql`${this.quests.subquery(
+          { projectId: rule.projectId },
+          undefined,
+          { count: true },
+        )} < ${cap}`,
         invoke: () => this.api().createQuest({ body }, { user }),
       };
     }
