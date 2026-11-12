@@ -295,31 +295,6 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
-    page: "/pages/account/connections",
-    modes: ["light", "light-cvd"],
-    rule: "color-contrast",
-    selector: ".-mt-2.flex-wrap.rounded-t-none > div > p",
-    reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
-  },
-  {
-    page: "/pages/account/keys",
-    modes: ["light", "light-cvd"],
-    rule: "color-contrast",
-    selector:
-      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > .gap-2 > p",
-    reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
-  },
-  {
-    page: "/pages/account/sessions",
-    modes: ["light", "light-cvd"],
-    rule: "color-contrast",
-    selector: ".-mt-2.flex-wrap.rounded-t-none > div > p",
-    reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
-  },
-  {
     page: "/pages/admin/files",
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
@@ -332,7 +307,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
     selector:
-      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
+      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > .gap-2 > p",
     reason:
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
@@ -341,7 +316,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
     selector:
-      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
+      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > .gap-2 > p",
     reason:
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
@@ -420,7 +395,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
     selector:
-      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
+      ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > .gap-2 > p",
     reason:
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
