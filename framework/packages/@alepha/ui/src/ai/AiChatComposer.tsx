@@ -63,7 +63,7 @@ export const AiChatComposer = (props: AiChatComposerProps) => {
     >
       <div
         className={cn(
-          "border-border bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-2xl border py-2 pr-2 pl-3 transition-shadow focus-within:ring-3",
+          "border-border bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-2xl border py-2 ps-3 pe-2 transition-shadow focus-within:ring-3",
           blocked && "bg-muted/50",
         )}
       >

@@ -218,7 +218,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                       }
                     />
                   </div>
-                  <div className="bg-card absolute right-0 bottom-0 flex size-5 items-center justify-center rounded-full border">
+                  <div className="bg-card absolute end-0 bottom-0 flex size-5 items-center justify-center rounded-full border">
                     <Camera className="size-3" />
                   </div>
                 </button>

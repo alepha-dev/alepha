@@ -72,10 +72,10 @@ export const OrganizationInviteDialog = (
               {tr("organizations.invitations.email", { default: "Email" })}
             </Label>
             <div className="relative">
-              <Mail className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
+              <Mail className="text-muted-foreground absolute start-2 top-1/2 size-4 -translate-y-1/2" />
               <Input
                 id="organization-invite-email"
-                className="pl-8"
+                className="ps-8"
                 value={email}
                 placeholder="user@example.com"
                 onChange={(event) => setEmail(event.currentTarget.value)}

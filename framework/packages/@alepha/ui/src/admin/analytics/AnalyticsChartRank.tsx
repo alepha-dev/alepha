@@ -31,10 +31,10 @@ export const AnalyticsChartRank = (props: AnalyticsChartRankProps) => (
             className="bg-primary block h-full"
           />
         </span>
-        <span className="w-[78px] flex-none text-right font-mono text-[11.5px] tabular-nums">
+        <span className="w-[78px] flex-none text-end font-mono text-[11.5px] tabular-nums">
           {analyticsNumber(point.value)}
         </span>
-        <span className="text-muted-foreground w-10 flex-none text-right text-[11px] tabular-nums">
+        <span className="text-muted-foreground w-10 flex-none text-end text-[11px] tabular-nums">
           {Math.round(point.share * 100)}%
         </span>
       </div>

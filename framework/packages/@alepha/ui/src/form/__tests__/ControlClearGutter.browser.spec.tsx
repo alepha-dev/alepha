@@ -39,7 +39,7 @@ describe("Control clear gutter", () => {
     const input = container.querySelector("input") as HTMLInputElement;
 
     expect(container.querySelector('[data-slot="control-clear"]')).toBeNull();
-    expect(input.className).not.toMatch(/\bpr-9\b/);
+    expect(input.className).not.toMatch(/\bpe-9\b/);
   });
 
   it("reserves the gutter once the cross is drawn", async () => {
@@ -53,6 +53,6 @@ describe("Control clear gutter", () => {
         container.querySelector('[data-slot="control-clear"]'),
       ).toBeTruthy(),
     );
-    expect(input.className).toMatch(/\bpr-9\b/);
+    expect(input.className).toMatch(/\bpe-9\b/);
   });
 });

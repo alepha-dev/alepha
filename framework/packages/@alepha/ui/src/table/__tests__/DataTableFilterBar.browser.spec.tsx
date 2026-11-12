@@ -132,14 +132,14 @@ describe("DataTableFilterBar", () => {
 
     await waitFor(() => expect(slot("status")).toBeTruthy());
     // jsdom loads no Tailwind, so the rule is read off the classes: the label
-    // run still carries its `mr-*` for the in-field cross, and the box, which
+    // run still carries its `me-*` for the in-field cross, and the box, which
     // hides that cross, carries the rule that zeroes it.
     const label = slot("status")!.querySelector(
       '[data-slot="combobox-trigger"] [data-slot="trigger-label"]',
     ) as HTMLElement | null;
-    expect(label?.className).toMatch(/\bmr-\d/);
+    expect(label?.className).toMatch(/\bme-\d/);
     const box = slot("status")!.firstElementChild as HTMLElement;
-    expect(box.className).toContain('[&_[data-slot="trigger-label"]]:mr-0');
+    expect(box.className).toContain('[&_[data-slot="trigger-label"]]:me-0');
   });
 
   it("shows a filter holding only an operator, and keeps the operator", async () => {

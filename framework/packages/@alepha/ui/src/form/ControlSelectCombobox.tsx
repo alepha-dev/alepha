@@ -347,12 +347,12 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
         {(opt: ComboOption) =>
           opt.selectAll ? (
             <ComboboxItem key="__select_all__" value={opt}>
-              <ListChecks className="mr-2 size-4 shrink-0" />
+              <ListChecks className="me-2 size-4 shrink-0" />
               <span className="truncate font-medium">{opt.label}</span>
             </ComboboxItem>
           ) : opt.create ? (
             <ComboboxItem key={`__create__${opt.value}`} value={opt}>
-              <span className="mr-2">+</span>
+              <span className="me-2">+</span>
               {tr("controlSelect.create", {
                 default: `Create "${opt.query}"`,
                 args: [String(opt.query ?? "")],
@@ -361,7 +361,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
           ) : (
             <ComboboxItem key={opt.value} value={opt} disabled={opt.disabled}>
               {opt.icon && (
-                <span className="mr-2 flex shrink-0 items-center">
+                <span className="me-2 flex shrink-0 items-center">
                   {opt.icon}
                 </span>
               )}

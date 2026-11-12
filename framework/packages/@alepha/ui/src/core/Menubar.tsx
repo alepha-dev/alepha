@@ -93,7 +93,7 @@ const MenubarContent = (props: MenubarContentProps) => {
       alignOffset={alignOffset}
       sideOffset={sideOffset}
       className={cn(
-        "bg-popover text-popover-foreground ring-foreground/10 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 min-w-36 rounded-lg p-1 shadow-md ring-1 duration-100",
+        "bg-popover text-popover-foreground ring-foreground/10 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-start-2 data-[side=inline-start]:slide-in-from-end-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 min-w-36 rounded-lg p-1 shadow-md ring-1 duration-100",
         className,
       )}
       {...rest}
@@ -111,7 +111,7 @@ const MenubarItem = (props: MenubarItemProps) => {
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/menubar-item focus:bg-hover focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-[variant=destructive]:text-danger-text data-[variant=destructive]:focus:bg-danger/10 data-[variant=destructive]:focus:text-danger-text dark:data-[variant=destructive]:focus:bg-danger/20 data-[variant=destructive]:*:[svg]:text-danger-text! gap-1.5 rounded-md px-1.5 py-1 text-sm data-disabled:opacity-50 data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4",
+        "group/menubar-item focus:bg-hover focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-[variant=destructive]:text-danger-text data-[variant=destructive]:focus:bg-danger/10 data-[variant=destructive]:focus:text-danger-text dark:data-[variant=destructive]:focus:bg-danger/20 data-[variant=destructive]:*:[svg]:text-danger-text! gap-1.5 rounded-md px-1.5 py-1 text-sm data-disabled:opacity-50 data-inset:ps-7 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...rest}
@@ -130,13 +130,13 @@ const MenubarCheckboxItem = (props: MenubarCheckboxItemProps) => {
       data-slot="menubar-checkbox-item"
       data-inset={inset}
       className={cn(
-        "focus:bg-hover focus:text-accent-foreground focus:**:text-accent-foreground relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-1.5 pl-7 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-7 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "focus:bg-hover focus:text-accent-foreground focus:**:text-accent-foreground relative flex cursor-default items-center gap-1.5 rounded-md py-1 ps-7 pe-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:ps-7 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       checked={checked}
       {...rest}
     >
-      <span className="pointer-events-none absolute left-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
+      <span className="pointer-events-none absolute start-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
         <MenuPrimitive.CheckboxItemIndicator>
           <CheckIcon />
         </MenuPrimitive.CheckboxItemIndicator>
@@ -165,12 +165,12 @@ const MenubarRadioItem = (props: MenubarRadioItemProps) => {
       data-slot="menubar-radio-item"
       data-inset={inset}
       className={cn(
-        "focus:bg-hover focus:text-accent-foreground focus:**:text-accent-foreground relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-1.5 pl-7 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-7 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "focus:bg-hover focus:text-accent-foreground focus:**:text-accent-foreground relative flex cursor-default items-center gap-1.5 rounded-md py-1 ps-7 pe-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:ps-7 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...rest}
     >
-      <span className="pointer-events-none absolute left-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
+      <span className="pointer-events-none absolute start-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
         <MenuPrimitive.RadioItemIndicator>
           <CheckIcon />
         </MenuPrimitive.RadioItemIndicator>
@@ -193,7 +193,7 @@ const MenubarLabel = (props: MenubarLabelProps) => {
       data-slot="menubar-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-sm font-medium data-inset:pl-7",
+        "px-1.5 py-1 text-sm font-medium data-inset:ps-7",
         className,
       )}
       {...rest}
@@ -226,7 +226,7 @@ const MenubarShortcut = (props: MenubarShortcutProps) => {
     <DropdownMenuShortcut
       data-slot="menubar-shortcut"
       className={cn(
-        "text-muted-foreground group-focus/menubar-item:text-accent-foreground ml-auto text-xs tracking-widest",
+        "text-muted-foreground group-focus/menubar-item:text-accent-foreground ms-auto text-xs tracking-widest",
         className,
       )}
       {...rest}
@@ -253,7 +253,7 @@ const MenubarSubTrigger = (props: MenubarSubTriggerProps) => {
       data-slot="menubar-sub-trigger"
       data-inset={inset}
       className={cn(
-        "focus:bg-hover focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4",
+        "focus:bg-hover focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm data-inset:ps-7 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...rest}
@@ -271,7 +271,7 @@ const MenubarSubContent = (props: MenubarSubContentProps) => {
     <DropdownMenuSubContent
       data-slot="menubar-sub-content"
       className={cn(
-        "bg-popover text-popover-foreground ring-foreground/10 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 min-w-32 rounded-lg p-1 shadow-lg ring-1 duration-100",
+        "bg-popover text-popover-foreground ring-foreground/10 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-start-2 data-[side=inline-start]:slide-in-from-end-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 min-w-32 rounded-lg p-1 shadow-lg ring-1 duration-100",
         className,
       )}
       {...rest}

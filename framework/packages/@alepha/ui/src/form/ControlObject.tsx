@@ -223,7 +223,7 @@ export const ControlObject = (props: ControlObjectProps) => {
             {expanded ? (
               <ChevronDown className="size-4" />
             ) : (
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-4 rtl:-scale-x-100" />
             )}
           </Button>
         )}

@@ -77,7 +77,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
         render={
           <button
             type="button"
-            className="text-left text-sm hover:underline focus:outline-none focus-visible:underline"
+            className="text-start text-sm hover:underline focus:outline-none focus-visible:underline"
           />
         }
       >

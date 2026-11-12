@@ -138,7 +138,7 @@ export const MyOrganizations = (props: MyOrganizationsProps) => {
                   onClick={() => void props.onOpen(organization)}
                 >
                   {tr("organizations.mine.open", { default: "Open" })}
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-4 rtl:-scale-x-100" />
                 </Button>
               </CardContent>
             </Card>

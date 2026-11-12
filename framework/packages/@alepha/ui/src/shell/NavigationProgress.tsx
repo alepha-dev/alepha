@@ -92,7 +92,7 @@ export const NavigationProgress = (props: NavigationProgressProps) => {
     <div
       aria-hidden
       data-testid="navigation-progress"
-      className="pointer-events-none fixed top-0 right-0 left-0 z-50"
+      className="pointer-events-none fixed start-0 end-0 top-0 z-50"
       style={{ height }}
     >
       <div

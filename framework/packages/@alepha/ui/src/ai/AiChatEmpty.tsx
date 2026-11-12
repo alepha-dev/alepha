@@ -56,7 +56,7 @@ export const AiChatEmpty = (props: AiChatEmptyProps) => {
               onClick={() =>
                 props.onPick(suggestion.prompt ?? suggestion.label)
               }
-              className="border-border hover:bg-muted hover:border-foreground/20 focus-visible:ring-ring/50 flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors outline-none focus-visible:ring-3 disabled:opacity-50"
+              className="border-border hover:bg-muted hover:border-foreground/20 focus-visible:ring-ring/50 flex items-center gap-2.5 rounded-lg border px-3 py-2 text-start text-sm transition-colors outline-none focus-visible:ring-3 disabled:opacity-50"
             >
               {suggestion.icon && (
                 <span className="text-muted-foreground shrink-0 [&_svg]:size-4">

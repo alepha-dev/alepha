@@ -79,9 +79,9 @@ export const AdvancedSection = (props: AdvancedSectionProps) => {
         type="button"
         aria-expanded={expanded}
         onClick={() => setOpen((current) => !current)}
-        className="hover:bg-hover focus-visible:ring-ring/50 -mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-md px-2 py-[7px] text-left focus-visible:ring-[3px] focus-visible:outline-none"
+        className="hover:bg-hover focus-visible:ring-ring/50 -mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-md px-2 py-[7px] text-start focus-visible:ring-[3px] focus-visible:outline-none"
       >
-        <Caret className="text-muted-foreground size-3.5 flex-none" />
+        <Caret className="text-muted-foreground size-3.5 flex-none rtl:-scale-x-100" />
         <span className="min-w-0 flex-1">
           <ClauseLabel className="block">advanced</ClauseLabel>
           <span
@@ -98,7 +98,7 @@ export const AdvancedSection = (props: AdvancedSectionProps) => {
         )}
       </button>
       {expanded && (
-        <div className="border-border flex flex-col gap-3.5 border-l pl-[11px]">
+        <div className="border-border flex flex-col gap-3.5 border-s ps-[11px]">
           {/* `until` places a day window; an instant window has both ends. */}
           {!props.window.instant && (
             <div className="flex flex-col gap-[7px]">

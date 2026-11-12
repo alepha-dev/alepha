@@ -36,7 +36,7 @@ export const AdminParametersTreePane = (
 ) => {
   const { tr } = useI18n();
   return (
-    <div className="bg-card flex min-h-0 flex-col gap-2 rounded-l-lg border p-2">
+    <div className="bg-card flex min-h-0 flex-col gap-2 rounded-s-lg border p-2">
       <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-1 text-xs font-medium tracking-wide uppercase">
         <Settings2 className="size-3.5" />
         {tr("admin.parameters.treeTitle", { default: "Parameters" })}
@@ -45,7 +45,7 @@ export const AdminParametersTreePane = (
             type="button"
             variant="minimal"
             size="sm"
-            className="ml-auto h-6 gap-1 px-1.5 text-[11px] tracking-normal normal-case"
+            className="ms-auto h-6 gap-1 px-1.5 text-[11px] tracking-normal normal-case"
             aria-pressed={props.showOrphans}
             onClick={props.onToggleOrphans}
           >
@@ -72,7 +72,7 @@ export const AdminParametersTreePane = (
           </Button>
         )}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pe-2">
         {!props.nodes ? (
           // Loading — distinct from an empty (loaded) tree.
           ["t1", "t2", "t3", "t4", "t5"].map((k, i) => (

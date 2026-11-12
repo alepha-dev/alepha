@@ -1,3 +1,4 @@
+import { useI18n } from "alepha/react/i18n";
 import { useColorMode } from "alepha/react/ui";
 import {
   CircleCheckIcon,
@@ -17,10 +18,16 @@ const Toaster = (props: ToasterProps) => {
   // The colour scheme comes from `alepha/react/ui`, not from `next-themes`,
   // which is not a dependency here.
   const { mode } = useColorMode();
+  // The direction from the active language rather than sonner's own read of
+  // `<html dir>`, which is `ltr` on the server whatever the page says and so
+  // would not hydrate. The corner follows it: the end of the reading line.
+  const { dir } = useI18n();
 
   return (
     <Sonner
       theme={mode as ToasterProps["theme"]}
+      dir={dir}
+      position={dir === "rtl" ? "bottom-left" : "bottom-right"}
       className="toaster group"
       // A toast that carries an error is worth reading twice, so it can be
       // dismissed by hand rather than only timing out.

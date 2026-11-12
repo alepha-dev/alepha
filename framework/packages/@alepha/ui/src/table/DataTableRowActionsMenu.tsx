@@ -61,7 +61,7 @@ export const DataTableRowActionsMenu = <T,>(
             return (
               <DropdownMenuSub key={action.label}>
                 <DropdownMenuSubTrigger>
-                  {Icon && <Icon className="mr-2 size-4" />}
+                  {Icon && <Icon className="me-2 size-4" />}
                   {action.label}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>

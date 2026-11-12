@@ -6,6 +6,7 @@ import {
   memo,
   type MouseEvent,
   type ReactElement,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 
@@ -233,7 +234,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       // slot tracks this row's hover and selected background through it,
       // and a bare group here would also be captured by any `group-*`
       // utility inside the parts nested below.
-      "group/tree-row hover:bg-hover relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm outline-none select-none",
+      "group/tree-row hover:bg-hover relative flex cursor-default items-center gap-1 py-1 pe-2 text-sm outline-none select-none",
       // ⚠️ Named properties, never `transition-all`. This element is
       // also an HTML5 drag SOURCE that animates `opacity` while dragging
       // and carries the drop markers; a blanket transition puts all
@@ -244,6 +245,8 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       // drag source moves the browser's own drag image with it.
       !props.isDragging && !props.isRenaming && "active:translate-y-px",
       "focus-visible:bg-muted/60",
+      depth > 0 &&
+        "[background-image:repeating-linear-gradient(to_right,var(--border)_0_1px,transparent_1px_var(--tree-guide-step))] [background-position:var(--tree-guide-origin)_0] rtl:[background-image:repeating-linear-gradient(to_left,var(--border)_0_1px,transparent_1px_var(--tree-guide-step))] rtl:[background-position:right_var(--tree-guide-origin)_top_0]",
       isSelected && "bg-muted font-medium",
       props.isDragging && "opacity-45",
       props.dropHere === "inside" &&
@@ -251,21 +254,20 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
         "bg-primary/10 ring-primary/60 ring-1 ring-inset",
     ),
     style: {
-      paddingLeft: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px`,
+      paddingInlineStart: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px`,
       // Indent guides, as pure CSS: one hairline per ancestor level,
       // painted as a repeating gradient clipped to the indent area so it
       // can never run under the label. A background IMAGE, so the row's
       // background COLOUR (hover, selection) still shows through
-      // underneath.
+      // underneath. A background has no logical side, so the gradient and
+      // its origin are custom properties the `rtl:` classes in `className` flip.
       ...(depth > 0 && {
-        backgroundImage:
-          "repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px " +
-          `${INDENT_STEP_PX}px)`,
-        backgroundPosition: `${INDENT_GUIDE_ORIGIN_PX}px 0`,
+        "--tree-guide-origin": `${INDENT_GUIDE_ORIGIN_PX}px`,
+        "--tree-guide-step": `${INDENT_STEP_PX}px`,
         backgroundSize: `${depth * INDENT_STEP_PX}px 100%`,
         backgroundRepeat: "no-repeat",
       }),
-    },
+    } as CSSProperties,
   };
 
   const content = (
@@ -276,7 +278,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
         // render almost invisibly.
         <span
           aria-hidden
-          className="bg-primary pointer-events-none absolute inset-y-0 left-0 w-0.5"
+          className="bg-primary pointer-events-none absolute inset-y-0 start-0 w-0.5"
         />
       )}
       {props.dropHere === "before" && !props.isDropForbidden && (
@@ -301,7 +303,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
           style={{ width: DISCLOSURE_BOX_PX }}
         >
           {isCollapsed ? (
-            <ChevronRight className="size-3 opacity-60" />
+            <ChevronRight className="size-3 opacity-60 rtl:-scale-x-100" />
           ) : (
             <ChevronDown className="size-3 opacity-60" />
           )}

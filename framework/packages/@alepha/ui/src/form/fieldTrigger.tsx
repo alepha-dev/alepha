@@ -54,25 +54,25 @@ export const TRIGGER_SIZES: Record<
   }
 > = {
   default: {
-    trigger: "h-8 gap-1.5 py-2 pr-2 pl-2.5 text-sm",
+    trigger: "h-8 gap-1.5 py-2 pe-2 ps-2.5 text-sm",
     icon: "size-4",
     chevron: "[&>svg]:size-4",
-    clear: "-ml-8",
-    clearGap: "mr-6",
+    clear: "-ms-8",
+    clearGap: "me-6",
   },
   sm: {
-    trigger: "h-7 gap-1.5 py-1 pr-1.5 pl-2 text-sm",
+    trigger: "h-7 gap-1.5 py-1 pe-1.5 ps-2 text-sm",
     icon: "size-3.5",
     chevron: "[&>svg]:size-3.5",
-    clear: "-ml-7",
-    clearGap: "mr-5",
+    clear: "-ms-7",
+    clearGap: "me-5",
   },
   xs: {
     trigger: "h-6 gap-1 px-1 text-xs",
     icon: "size-3",
     chevron: "[&>svg]:size-3",
-    clear: "-ml-5",
-    clearGap: "mr-4",
+    clear: "-ms-5",
+    clearGap: "me-4",
   },
 };
 
@@ -156,12 +156,13 @@ export interface ControlClearButtonProps {
  * The button is IN FLOW, as the trigger's next flex sibling, and walks back
  * over it from there:
  *
- * - `clear` from {@link TRIGGER_SIZES} (`-ml-8` at the default size) is the
- *   offset from the trigger's right edge, the one number feedback #2113
+ * - `clear` from {@link TRIGGER_SIZES} (`-ms-8` at the default size) is the
+ *   offset from the trigger's end edge, the one number feedback #2113
  *   tuned per size.
  * - `-translate-x-full` is the button's own width, which the margin cannot
- *   know: a flex item's margin places its LEFT edge, and the offset above
- *   describes its right one.
+ *   know: a flex item's margin places its START edge, and the offset above
+ *   describes its end one. A transform has no logical side, so a
+ *   right-to-left page walks it the other way (`rtl:translate-x-full`).
  *
  * That is one number more than `absolute right-8` needed, and it buys the
  * thing `absolute` could not have: the reference is the TRIGGER, not the box
@@ -255,7 +256,7 @@ export const ControlClearButton = (props: ControlClearButtonProps) => {
         //   tier, and alpha fades toward the trigger's own surface, so
         //   it lightens in light mode and darkens in dark with no
         //   per-theme override.
-        "text-muted-foreground/60 hover:text-foreground focus-visible:text-foreground focus-visible:ring-ring/50 relative shrink-0 -translate-x-full rounded p-0.5 transition-colors outline-none focus-visible:ring-2",
+        "text-muted-foreground/60 hover:text-foreground focus-visible:text-foreground focus-visible:ring-ring/50 relative shrink-0 -translate-x-full rounded p-0.5 transition-colors outline-none focus-visible:ring-2 rtl:translate-x-full",
         size.clear,
       )}
       onClick={props.onClick}

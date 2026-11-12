@@ -41,7 +41,7 @@ const Calendar = (props: CalendarProps) => {
     ...rest
   } = props;
   const defaultClassNames = getDefaultClassNames();
-  const { lang } = useI18n();
+  const { lang, dir } = useI18n();
   const resolvedLocale = locale ?? LOCALE_BY_LANG[lang];
 
   return (
@@ -49,11 +49,12 @@ const Calendar = (props: CalendarProps) => {
       showOutsideDays={showOutsideDays}
       className={cn(
         "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
-        String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
-        String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className,
       )}
       captionLayout={captionLayout}
+      // The reading direction, unless the caller names one: react-day-picker
+      // then swaps its previous / next chevrons and its arrow keys itself.
+      dir={rest.dir ?? dir}
       locale={resolvedLocale}
       labels={{
         // The day's number first, then react-day-picker's own label: a
@@ -128,19 +129,19 @@ const Calendar = (props: CalendarProps) => {
           defaultClassNames.week_number,
         ),
         day: cn(
-          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)",
+          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)",
           rest.showWeekNumber
-            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
-            : "[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)",
+            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-s-(--cell-radius)"
+            : "[&:first-child[data-selected=true]_button]:rounded-s-(--cell-radius)",
           defaultClassNames.day,
         ),
         range_start: cn(
-          "bg-muted after:bg-muted relative isolate z-0 rounded-l-(--cell-radius) after:absolute after:inset-y-0 after:right-0 after:w-4",
+          "bg-muted after:bg-muted relative isolate z-0 rounded-s-(--cell-radius) after:absolute after:inset-y-0 after:end-0 after:w-4",
           defaultClassNames.range_start,
         ),
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn(
-          "bg-muted after:bg-muted relative isolate z-0 rounded-r-(--cell-radius) after:absolute after:inset-y-0 after:left-0 after:w-4",
+          "bg-muted after:bg-muted relative isolate z-0 rounded-e-(--cell-radius) after:absolute after:inset-y-0 after:start-0 after:w-4",
           defaultClassNames.range_end,
         ),
         // ⚠️ No fill. `bg-muted` here was the same fill a range endpoint
@@ -242,8 +243,10 @@ const CalendarDayButton = (props: CalendarDayButtonProps) => {
         // a pseudo-element rather than `underline`, whose offset collides
         // with the edge of a 28px cell. `bg-current` keeps it visible on a
         // selected today (primary-foreground on primary) and a plain one.
+        // Centred with a physical `left-1/2` on purpose: the same point in
+        // either reading direction.
         "data-[today=true]:after:pointer-events-none data-[today=true]:after:absolute data-[today=true]:after:bottom-1 data-[today=true]:after:left-1/2 data-[today=true]:after:h-0.5 data-[today=true]:after:w-3 data-[today=true]:after:-translate-x-1/2 data-[today=true]:after:rounded-full data-[today=true]:after:bg-current",
-        "group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) [&>span]:text-xs [&>span]:opacity-70",
+        "group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-e-(--cell-radius) data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-s-(--cell-radius) [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className,
       )}

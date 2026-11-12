@@ -69,7 +69,7 @@ export const Stepper = (props: StepperProps) => (
             disabled={!clickable}
             onClick={clickable ? () => props.onStepClick?.(index) : undefined}
             className={cn(
-              "flex min-w-0 items-start gap-2 text-left",
+              "flex min-w-0 items-start gap-2 text-start",
               clickable && "cursor-pointer",
               !clickable && "cursor-default",
             )}

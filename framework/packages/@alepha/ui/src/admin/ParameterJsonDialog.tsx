@@ -62,7 +62,7 @@ export const ParameterJsonDialog = (props: ParameterJsonDialogProps) => {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+          <DialogTitle className="flex items-center justify-between gap-2 pe-6">
             <span className="truncate">{props.title}</span>
             <Button
               type="button"

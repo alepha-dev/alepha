@@ -97,6 +97,10 @@
  * in any document without `viewport-fit=cover`, so the same markup serves the
  * website unchanged. Each sets the padding outright: put the inset on an
  * element of its own, not on one that has a padding utility already.
+ *
+ * `pl-safe` and `pr-safe` are physical on purpose: a notch is on a side of
+ * the device, not of the text, and a right-to-left page has it where a
+ * left-to-right one does.
  */
 @utility pt-safe {
   padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
@@ -775,7 +779,7 @@
   position: absolute;
   top: 0.25rem;
   bottom: 0.25rem;
-  left: 0;
+  inset-inline-start: 0;
   width: 3px;
   border-radius: 9999px;
   background-color: var(--sidebar-primary);

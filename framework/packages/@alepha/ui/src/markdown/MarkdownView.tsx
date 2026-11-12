@@ -163,12 +163,12 @@ export const MarkdownView = (props: MarkdownViewProps) => {
           ),
           p: ({ children }) => <p className="my-3">{children}</p>,
           ul: ({ children }) => (
-            <ul className="my-3 list-disc space-y-1 pl-5">{children}</ul>
+            <ul className="my-3 list-disc space-y-1 ps-5">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-3 list-decimal space-y-1 pl-5">{children}</ol>
+            <ol className="my-3 list-decimal space-y-1 ps-5">{children}</ol>
           ),
-          li: ({ children }) => <li className="pl-1">{children}</li>,
+          li: ({ children }) => <li className="ps-1">{children}</li>,
           a: ({ href, children }) =>
             props.renderLink ? (
               props.renderLink({ href, children })
@@ -232,7 +232,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             return <span {...rest}>{children}</span>;
           },
           blockquote: ({ children }) => (
-            <blockquote className="border-muted-foreground/30 my-3 border-l-2 pl-4 italic">
+            <blockquote className="border-muted-foreground/30 my-3 border-s-2 ps-4 italic">
               {children}
             </blockquote>
           ),
@@ -241,7 +241,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             <table className="my-4 border-collapse text-xs">{children}</table>
           ),
           th: ({ children }) => (
-            <th className="border-border border px-2 py-1 text-left font-medium">
+            <th className="border-border border px-2 py-1 text-start font-medium">
               {children}
             </th>
           ),

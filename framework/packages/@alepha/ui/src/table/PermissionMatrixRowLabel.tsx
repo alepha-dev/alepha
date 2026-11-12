@@ -29,7 +29,7 @@ export const PermissionMatrixRowLabel = (
 
   return (
     <Tooltip>
-      <TooltipTrigger className="decoration-muted-foreground/60 w-fit cursor-default text-left text-sm underline decoration-dotted underline-offset-4">
+      <TooltipTrigger className="decoration-muted-foreground/60 w-fit cursor-default text-start text-sm underline decoration-dotted underline-offset-4">
         {props.permission.label}
       </TooltipTrigger>
       <TooltipContent>{props.permission.description}</TooltipContent>

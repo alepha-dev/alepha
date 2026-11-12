@@ -39,7 +39,7 @@ export const AccountBackToSiteMenuItem = (
       render={<Link href={router.path(routeName)} />}
       data-testid="account-back-to-site"
     >
-      <ArrowLeft className="size-4" />
+      <ArrowLeft className="size-4 rtl:-scale-x-100" />
       {tr("account.nav.backToSite", { default: "Back to site" })}
     </DropdownMenuItem>
   );

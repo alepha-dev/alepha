@@ -76,7 +76,7 @@ export const SwaggerSchemaView = (props: SwaggerSchemaViewProps) => {
   const required = new Set<string>(schema.required ?? []);
 
   return (
-    <ul className={cn("flex flex-col", depth > 0 && "border-l pl-3")}>
+    <ul className={cn("flex flex-col", depth > 0 && "border-s ps-3")}>
       {properties.map(([name, field]) => {
         const resolved = props.spec.resolve(field);
         const description = field?.description ?? resolved?.description;
@@ -110,10 +110,10 @@ export const SwaggerSchemaView = (props: SwaggerSchemaViewProps) => {
             {expandable ? (
               <details className="group/field">
                 <summary className="hover:bg-hover flex cursor-pointer list-none items-start gap-1 rounded-sm [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="text-muted-foreground mt-1.5 size-3.5 shrink-0 transition-transform group-open/field:rotate-90" />
+                  <ChevronRight className="text-muted-foreground mt-1.5 size-3.5 shrink-0 transition-transform group-open/field:rotate-90 rtl:-scale-x-100 rtl:group-open/field:-rotate-90" />
                   {head}
                 </summary>
-                <div className="pb-1 pl-4">
+                <div className="ps-4 pb-1">
                   <SwaggerSchemaView
                     spec={props.spec}
                     schema={field}
@@ -122,7 +122,7 @@ export const SwaggerSchemaView = (props: SwaggerSchemaViewProps) => {
                 </div>
               </details>
             ) : (
-              <div className="flex items-start gap-1 pl-4.5">{head}</div>
+              <div className="flex items-start gap-1 ps-4.5">{head}</div>
             )}
           </li>
         );

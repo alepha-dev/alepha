@@ -16,7 +16,7 @@ export const SwaggerParameters = (props: SwaggerParametersProps) => {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-sm">
-        <thead className="text-muted-foreground bg-muted/40 text-left text-xs">
+        <thead className="text-muted-foreground bg-muted/40 text-start text-xs">
           <tr>
             <th className="px-3 py-2 font-medium">
               {tr("swagger.parameters.name", { default: "Name" })}
@@ -41,7 +41,7 @@ export const SwaggerParameters = (props: SwaggerParametersProps) => {
                 <td className="px-3 py-2 align-top">
                   <span className="font-mono">{param.name}</span>
                   {param.required && (
-                    <span className="text-danger-text ml-1" aria-hidden>
+                    <span className="text-danger-text ms-1" aria-hidden>
                       *
                     </span>
                   )}

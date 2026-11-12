@@ -64,7 +64,7 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
     // inverts awkwardly against a white container in dark mode).
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
       <div className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
-        <span className="pl-2 text-sm">
+        <span className="ps-2 text-sm">
           {tr("dataTable.selected", {
             count: selection.size,
             default: "{count} selected",

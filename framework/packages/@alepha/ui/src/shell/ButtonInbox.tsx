@@ -197,7 +197,7 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
             // easy to miss.
             <span
               data-testid="inbox-badge"
-              className="bg-danger text-danger-foreground absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium"
+              className="bg-danger text-danger-foreground absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium"
             >
               {count > 99 ? "99+" : count}
             </span>
@@ -266,7 +266,7 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
                 <span className="text-muted-foreground flex w-full items-center gap-2 text-xs">
                   <span>{dt.of(row.createdAt).fromNow()}</span>
                   {row.scopeLabel && (
-                    <span className="bg-muted ml-auto rounded px-1.5 py-0.5">
+                    <span className="bg-muted ms-auto rounded px-1.5 py-0.5">
                       {row.scopeLabel}
                     </span>
                   )}

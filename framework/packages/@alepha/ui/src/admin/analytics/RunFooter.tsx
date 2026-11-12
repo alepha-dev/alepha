@@ -83,7 +83,7 @@ export const RunFooter = (props: RunFooterProps) => {
         size="lg"
         loading={props.running}
         onClick={props.onRun}
-        className="h-9 flex-1 rounded-r-none text-[13.5px]"
+        className="h-9 flex-1 rounded-e-none text-[13.5px]"
       >
         <Play className="size-3.5" />
         {tr("admin.analytics.run", { default: "Run query" })}
@@ -96,7 +96,7 @@ export const RunFooter = (props: RunFooterProps) => {
         aria-expanded={open}
         title={tr("admin.analytics.more", { default: "More" })}
         onClick={() => setOpen((current) => !current)}
-        className="size-9 rounded-l-none p-0"
+        className="size-9 rounded-s-none p-0"
       >
         <ChevronUp className="size-3.5" />
       </Button>
@@ -106,7 +106,7 @@ export const RunFooter = (props: RunFooterProps) => {
           role="menu"
           tabIndex={-1}
           onKeyDown={onMenuKeyDown}
-          className="bg-popover ring-border absolute right-4 bottom-14 z-40 w-[186px] rounded-lg p-1.5 shadow-lg ring-1 ring-inset"
+          className="bg-popover ring-border absolute end-4 bottom-14 z-40 w-[186px] rounded-lg p-1.5 shadow-lg ring-1 ring-inset"
         >
           <button
             type="button"
@@ -115,7 +115,7 @@ export const RunFooter = (props: RunFooterProps) => {
               close();
               props.onRequest();
             }}
-            className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
+            className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-start text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
           >
             <Braces className="text-muted-foreground size-3.5" />
             {tr("admin.analytics.requestItem", { default: "Request…" })}
@@ -127,7 +127,7 @@ export const RunFooter = (props: RunFooterProps) => {
               close();
               props.onReset();
             }}
-            className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
+            className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-start text-[12.5px] focus-visible:ring-[3px] focus-visible:outline-none"
           >
             <RotateCcw className="text-muted-foreground size-3.5" />
             {tr("admin.analytics.resetItem", { default: "Reset query" })}

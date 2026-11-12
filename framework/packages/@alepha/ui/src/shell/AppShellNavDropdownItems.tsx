@@ -37,7 +37,7 @@ export const AppShellNavDropdownItems = (
     <>
       {props.items.map((child, ci) => {
         const badge = child.badge != null && child.badge !== false && (
-          <span className="text-muted-foreground ml-auto pl-2 text-xs tabular-nums">
+          <span className="text-muted-foreground ms-auto ps-2 text-xs tabular-nums">
             {child.badge}
           </span>
         );
@@ -61,7 +61,7 @@ export const AppShellNavDropdownItems = (
             <DropdownMenuItem key={child.href ?? ci} disabled>
               {renderNavIcon(child.icon, "size-4")}
               <span>{child.label}</span>
-              <Lock className="ml-auto size-3.5 opacity-70" />
+              <Lock className="ms-auto size-3.5 opacity-70" />
             </DropdownMenuItem>
           );
         }

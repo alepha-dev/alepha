@@ -103,7 +103,7 @@ export const SettingsNav = (props: SettingsNavProps) => {
     24px — half again the height of the text it sits next to.
   */
   const entry = cn(
-    "flex items-center gap-2 rounded-md px-2 text-left whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0",
+    "flex items-center gap-2 rounded-md px-2 text-start whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0",
     size === "sm" ? "h-7 text-xs" : "h-8 text-sm",
   );
 
@@ -169,7 +169,7 @@ export const SettingsNav = (props: SettingsNavProps) => {
                       // as one merged shape. Written as utilities here because
                       // that CSS keys off `[data-slot="sidebar-menu-button"]`,
                       // which this rail deliberately is not (see above).
-                      "bg-sidebar-accent text-sidebar-accent-foreground after:bg-sidebar-primary relative font-medium after:absolute after:top-1 after:bottom-1 after:left-0 after:w-[3px] after:rounded-full"
+                      "bg-sidebar-accent text-sidebar-accent-foreground after:bg-sidebar-primary relative font-medium after:absolute after:start-0 after:top-1 after:bottom-1 after:w-[3px] after:rounded-full"
                     : "text-muted-foreground hover:bg-hover",
                 )}
               >

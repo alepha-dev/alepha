@@ -171,7 +171,7 @@ export const DataTableFilterControl = (props: DataTableFilterControlProps) => {
         // only the button left 24px of blank between the value and the
         // chevron, widening every filter that holds a value.
         (props.onClear || props.onRemove) &&
-          '[&_[data-slot="combobox-clear"]]:hidden [&_[data-slot="control-clear"]]:hidden [&_[data-slot="trigger-label"]]:mr-0',
+          '[&_[data-slot="combobox-clear"]]:hidden [&_[data-slot="control-clear"]]:hidden [&_[data-slot="trigger-label"]]:me-0',
       )}
     >
       {/*

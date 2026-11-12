@@ -153,7 +153,7 @@ export const Spotlight = (props: SpotlightProps) => {
                   {entry.icon}
                   <span>{entry.label}</span>
                   {entry.description ? (
-                    <span className="text-muted-foreground ml-2 truncate text-xs">
+                    <span className="text-muted-foreground ms-2 truncate text-xs">
                       {entry.description}
                     </span>
                   ) : null}

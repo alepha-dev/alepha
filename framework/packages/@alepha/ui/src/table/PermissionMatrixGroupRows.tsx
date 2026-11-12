@@ -136,7 +136,7 @@ export const PermissionMatrixGroupRows = (
             return (
               <TableCell
                 key={column.key}
-                className="border-border/60 border-l pr-2! text-center"
+                className="border-border/60 border-s pe-2! text-center"
               >
                 {closed ? (
                   // The real checkbox underneath, with the padlock laid over

@@ -122,7 +122,7 @@ export const DetailLayout = (props: DetailLayoutProps) => {
           {props.notFound.message}
         </p>
         <Button variant="outlined" onClick={props.notFound.onBack}>
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-4 rtl:-scale-x-100" />
           {props.notFound.backLabel}
         </Button>
       </div>
@@ -153,7 +153,7 @@ export const DetailLayout = (props: DetailLayoutProps) => {
           a copy button, and read as undersized in a column that had room to
           spare. 16px gives it back 16px of card without letting the content
           touch the border. */}
-      <aside className="border-border bg-background hidden w-72 shrink-0 flex-col gap-4 overflow-auto border-r p-4 md:flex">
+      <aside className="border-border bg-background hidden w-72 shrink-0 flex-col gap-4 overflow-auto border-e p-4 md:flex">
         {props.aside}
       </aside>
 
@@ -219,7 +219,7 @@ export const DetailLayout = (props: DetailLayoutProps) => {
             />
           </div>
           {props.actions ? (
-            <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="ms-auto flex shrink-0 items-center gap-2">
               {props.actions}
             </div>
           ) : null}

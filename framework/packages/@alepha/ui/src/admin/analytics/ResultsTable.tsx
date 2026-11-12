@@ -141,8 +141,8 @@ export const ResultsTable = (props: ResultsTableProps) => {
                       className={cn(
                         "relative flex h-9 items-center",
                         measure
-                          ? "w-[132px] flex-none justify-end pl-2.5"
-                          : "min-w-40 flex-1 basis-40 pr-2.5",
+                          ? "w-[132px] flex-none justify-end ps-2.5"
+                          : "min-w-40 flex-1 basis-40 pe-2.5",
                       )}
                     >
                       {column === primary && (
@@ -150,7 +150,7 @@ export const ResultsTable = (props: ResultsTableProps) => {
                           style={{
                             width: `${Math.max(2, Math.round((Number(value ?? 0) / max) * 100))}%`,
                           }}
-                          className="bg-primary/25 absolute top-1/2 right-0 h-[18px] -translate-y-1/2 rounded-[3px]"
+                          className="bg-primary/25 absolute end-0 top-1/2 h-[18px] -translate-y-1/2 rounded-[3px]"
                         />
                       )}
                       <span

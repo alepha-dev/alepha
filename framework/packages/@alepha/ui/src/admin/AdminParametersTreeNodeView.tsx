@@ -36,9 +36,9 @@ export const AdminParametersTreeNodeView = (
         <button
           type="button"
           onClick={() => props.onSelect(node.path)}
-          style={{ paddingLeft: 8 + indent }}
+          style={{ paddingInlineStart: 8 + indent }}
           className={cn(
-            "hover:bg-hover flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors",
+            "hover:bg-hover flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1.5 pe-2 text-start text-sm transition-colors",
             isActive && "bg-accent text-accent-foreground font-medium",
             orphan && "text-muted-foreground",
           )}
@@ -49,7 +49,7 @@ export const AdminParametersTreeNodeView = (
             // Saved rows with no `$parameter` behind them: editing changes
             // nothing this process reads. Shown only once orphans are
             // revealed, so the badge never has to explain itself twice.
-            <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px]">
+            <Badge variant="outline" className="ms-1 px-1 py-0 text-[10px]">
               {tr("admin.parameters.orphan", { default: "orphan" })}
             </Badge>
           )}
@@ -77,11 +77,14 @@ export const AdminParametersTreeNodeView = (
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        style={{ paddingLeft: 4 + indent }}
-        className="hover:bg-hover text-muted-foreground flex items-center gap-1 rounded-md py-1.5 pr-2 text-left text-xs font-medium transition-colors"
+        style={{ paddingInlineStart: 4 + indent }}
+        className="hover:bg-hover text-muted-foreground flex items-center gap-1 rounded-md py-1.5 pe-2 text-start text-xs font-medium transition-colors"
       >
         <ChevronRight
-          className={cn("size-3.5 transition-transform", open && "rotate-90")}
+          className={cn(
+            "size-3.5 transition-transform rtl:-scale-x-100",
+            open && "rotate-90 rtl:-rotate-90",
+          )}
         />
         <span className="truncate">{label}</span>
       </button>

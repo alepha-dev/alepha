@@ -168,13 +168,13 @@ describe("Control size and minimal on a select", () => {
         return found;
       };
 
-      // A negative left MARGIN, because the button is in flow as the
+      // A negative start MARGIN, because the button is in flow as the
       // trigger's next flex sibling and walks back over it from the trigger's
-      // own right edge. The numbers are the ones feedback #2113 tuned; what
+      // own end edge. The numbers are the ones feedback #2113 tuned; what
       // changed with #Q2283 is what they are measured from.
-      expect(offsetAt(mount(alepha, <Probe clearable />))).toContain("-ml-8");
+      expect(offsetAt(mount(alepha, <Probe clearable />))).toContain("-ms-8");
       expect(offsetAt(mount(alepha, <Probe size="sm" clearable />))).toContain(
-        "-ml-7",
+        "-ms-7",
       );
     });
 

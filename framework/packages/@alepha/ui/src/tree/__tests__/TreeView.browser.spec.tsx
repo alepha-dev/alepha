@@ -121,11 +121,15 @@ describe("TreeView", () => {
     );
     expect(box, "the disclosure column's width").toBe(14);
 
-    const base = px(rowOf("Level0").style.paddingLeft);
+    const base = px(rowOf("Level0").style.paddingInlineStart);
     expect(base, "a depth-0 row's padding").toBe(8);
 
-    // A root-level row has nothing to guide back to.
-    expect(rowOf("Level0").style.backgroundImage).toBe("");
+    // A root-level row has nothing to guide back to. The gradient is a class,
+    // since its direction flips under `rtl:`; jsdom loads no Tailwind, so it
+    // is read off the class name.
+    expect(rowOf("Level0").className).not.toContain(
+      "repeating-linear-gradient",
+    );
 
     const expectedOrigin = base + box / 2;
 
@@ -135,20 +139,25 @@ describe("TreeView", () => {
       [3, "Leaf"],
     ] as const) {
       const row = rowOf(label);
-      expect(px(row.style.paddingLeft), `depth ${depth} padding`).toBe(
+      expect(px(row.style.paddingInlineStart), `depth ${depth} padding`).toBe(
         8 + depth * 13,
       );
 
       // The guides are one repeating gradient clipped to the indent area,
       // so "how many" is the width it is allowed to paint over.
-      expect(row.style.backgroundImage).toContain("repeating-linear-gradient");
+      expect(row.className).toContain("repeating-linear-gradient(to_right");
+      expect(row.className).toContain(
+        "rtl:[background-image:repeating-linear-gradient(to_left",
+      );
       // From the theme's border token, never a literal.
-      expect(row.style.backgroundImage).toContain("var(--border)");
+      expect(row.className).toContain("var(--border)");
       expect(row.style.backgroundSize, `depth ${depth} guide count`).toBe(
         `${depth * 13}px 100%`,
       );
 
-      const [originX] = row.style.backgroundPosition.split(" ");
+      // The origin is a custom property, read by `background-position` from
+      // the start edge in either direction.
+      const originX = row.style.getPropertyValue("--tree-guide-origin");
       // Every depth paints from the SAME origin: the guides repeat, they do
       // not restart per row, and that origin is the centre of a depth-0
       // disclosure column.

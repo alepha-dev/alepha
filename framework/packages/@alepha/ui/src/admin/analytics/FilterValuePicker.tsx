@@ -58,7 +58,7 @@ export const FilterValuePicker = (props: FilterValuePickerProps) => {
             default: "Back to dimensions",
           })}
         >
-          <ChevronLeft className="size-3.5" />
+          <ChevronLeft className="size-3.5 rtl:-scale-x-100" />
         </Button>
         <code className="min-w-0 flex-1 text-[12px] font-medium">
           {props.dim}
@@ -99,7 +99,7 @@ export const FilterValuePicker = (props: FilterValuePickerProps) => {
               >
                 {on && <Check className="text-primary-foreground size-2.5" />}
               </span>
-              <code className="min-w-0 flex-1 truncate text-left text-[12px]">
+              <code className="min-w-0 flex-1 truncate text-start text-[12px]">
                 {entry.value}
               </code>
               <span className="text-muted-foreground text-[10.5px] tabular-nums">

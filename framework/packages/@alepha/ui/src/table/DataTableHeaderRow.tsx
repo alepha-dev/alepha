@@ -126,7 +126,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                     props.headClassName,
                     def.className,
                     "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
-                    def.align === "right" && "text-right",
+                    def.align === "right" && "text-end",
                     def.align === "center" && "text-center",
                   )}
                   aria-sort={
@@ -252,14 +252,14 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                 disabled={index === 0}
                 onClick={() => moveColumn(key, -1)}
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft className="size-4 rtl:-scale-x-100" />
                 {tr("dataTable.moveLeft", { default: "Move left" })}
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={index === visibleCols.length - 1}
                 onClick={() => moveColumn(key, 1)}
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight className="size-4 rtl:-scale-x-100" />
                 {tr("dataTable.moveRight", {
                   default: "Move right",
                 })}

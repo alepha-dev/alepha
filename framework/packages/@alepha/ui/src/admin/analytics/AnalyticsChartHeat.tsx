@@ -16,7 +16,9 @@ export const AnalyticsChartHeat = (props: AnalyticsChartHeatProps) => (
         <span className="text-muted-foreground w-[52px] flex-none font-mono text-[10.5px]">
           {row.label}
         </span>
-        <span className="flex min-w-0 flex-1 gap-0.5">
+        {/* A time axis: hours run left to right in either direction, as the
+            tick row below and the other charts draw them. */}
+        <span dir="ltr" className="flex min-w-0 flex-1 gap-0.5">
           {row.cells.map((cell) => (
             <span
               key={cell.hour}
@@ -26,14 +28,16 @@ export const AnalyticsChartHeat = (props: AnalyticsChartHeatProps) => (
             />
           ))}
         </span>
-        <span className="text-muted-foreground w-[66px] flex-none text-right font-mono text-[10.5px] tabular-nums">
+        <span className="text-muted-foreground w-[66px] flex-none text-end font-mono text-[10.5px] tabular-nums">
           {analyticsCompact(row.total)}
         </span>
       </div>
     ))}
     <div className="mt-1 flex items-center gap-1.5">
       <span className="w-[52px] flex-none" />
-      <span className="relative h-3 min-w-0 flex-1">
+      {/* Physical `left` / `right` below on purpose: the hours row is
+          `dir="ltr"`, see above. */}
+      <span dir="ltr" className="relative h-3 min-w-0 flex-1">
         {[0, 6, 12, 18, 23].map((hour) => (
           <span
             key={hour}

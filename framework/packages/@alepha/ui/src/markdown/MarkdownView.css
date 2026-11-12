@@ -155,6 +155,9 @@
  * stay pinned to the frame. The result is a fade on the overflowing side
  * only, in pure CSS - without it a clipped diagram just looks truncated and
  * nobody discovers it scrolls.
+ *
+ * Physical `left` / `right` on purpose: the four layers are symmetric, so
+ * whichever edge overflows fades, in either reading direction.
  */
 .alepha-diagram-scroll {
   overflow-x: auto;
