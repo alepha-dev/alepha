@@ -9,7 +9,7 @@ import { Toaster } from "../Toaster.tsx";
 import { DialogProvider, useDialog } from "../useDialog.tsx";
 
 /**
- * Pins the standalone recipe documented on `AccountRouter` and `AdminRouter`.
+ * Pins the standalone recipe documented on `AdminRouter`.
  *
  * Neither shell mounts these providers itself - a second `<Toaster />` under
  * an application that already has one shows every toast twice - so the JSDoc

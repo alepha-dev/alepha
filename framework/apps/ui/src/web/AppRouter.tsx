@@ -40,11 +40,7 @@ export class AppRouter {
       this.authReset,
       this.authVerify,
       this.authMfa,
-      this.accountProfile,
-      this.accountSecurity,
-      this.accountSessions,
       this.accountKeys,
-      this.accountConnections,
       this.organizations,
       this.organizationMembers,
       this.organizationInvitations,
@@ -293,39 +289,11 @@ export class AppRouter {
     lazy: () => import("./pages/pages/auth/Mfa.tsx"),
   });
 
-  accountProfile = $page({
-    path: "/pages/account/profile",
-    static: true,
-    head: { title: "Profile - Alepha UI" },
-    lazy: () => import("./pages/pages/account/Profile.tsx"),
-  });
-
-  accountSecurity = $page({
-    path: "/pages/account/security",
-    static: true,
-    head: { title: "Security - Alepha UI" },
-    lazy: () => import("./pages/pages/account/Security.tsx"),
-  });
-
-  accountSessions = $page({
-    path: "/pages/account/sessions",
-    static: true,
-    head: { title: "Account sessions - Alepha UI" },
-    lazy: () => import("./pages/pages/account/Sessions.tsx"),
-  });
-
   accountKeys = $page({
     path: "/pages/account/keys",
     static: true,
     head: { title: "Account API keys - Alepha UI" },
     lazy: () => import("./pages/pages/account/Keys.tsx"),
-  });
-
-  accountConnections = $page({
-    path: "/pages/account/connections",
-    static: true,
-    head: { title: "Connections - Alepha UI" },
-    lazy: () => import("./pages/pages/account/Connections.tsx"),
   });
 
   organizations = $page({

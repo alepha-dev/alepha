@@ -168,11 +168,11 @@ export function isActivePath(current: string, href: string): boolean {
  *
  * That is not hypothetical. A page at `path: "/"` under a shell contributes no
  * segment of its own, and `ReactPageProvider.createMatch` collapses the result
- * (`/account` + `/` → `/account/` → `/account`), so its `match` comes out
+ * (`/admin` + `/` → `/admin/` → `/admin`), so its `match` comes out
  * **identical to the shell's**. The entry is then a path-prefix of every one of
- * its siblings, and lights up on all of them. `AccountRouter.profile` is
- * exactly this: Profile rendered active on Security, Sessions, API keys,
- * Connected apps and both Lore pages.
+ * its siblings, and lights up on all of them. The admin dashboard is exactly
+ * this, and so was the old account shell's Profile, rendered active on every
+ * other page of it.
  *
  * Deepest-wins rather than a narrower "an index entry must match exactly"
  * rule, because the narrow version breaks the case the loose predicate exists

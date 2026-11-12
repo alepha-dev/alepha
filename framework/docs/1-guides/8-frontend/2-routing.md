@@ -425,45 +425,47 @@ Two consequences to design around:
 
 A page with a `:param` in its path and no `schema.params` behaves the same way: its identity is compiled from the raw URL segment, so `/users/1` to `/users/2` remounts it and re-runs its loader.
 
-### Ready-made routers from `@alepha/ui`
+### Ready-made surfaces from `@alepha/ui`
 
-Three routers ship whole surfaces you can mount instead of rebuilding:
+Two routers and one dialog ship whole surfaces you can mount instead of
+rebuilding:
 
-| Router          | Surface                                                            | Extend with                           |
-| --------------- | ------------------------------------------------------------------ | ------------------------------------- |
-| `AuthRouter`    | `/auth/{login,register,reset-password,verify-email}`               | - (write your own to change the URLs) |
-| `AdminRouter`   | `/admin` - users, sessions, keys, jobs, audits, …                  | `$pageAdmin`                          |
-| `AccountRouter` | `/account` - profile, security, sessions, API keys, connected apps | `$pageAccount`                        |
+| Service         | Surface                                                                    | Extend with                           |
+| --------------- | -------------------------------------------------------------------------- | ------------------------------------- |
+| `AuthRouter`    | `/auth/{login,register,reset-password,verify-email}`                       | - (write your own to change the URLs) |
+| `AdminRouter`   | `/admin` - users, sessions, keys, jobs, audits, …                          | `$pageAdmin`                          |
+| `AccountDialog` | the account dialog - profile, security, sessions, API keys, connected apps | `$settingsSection`                    |
 
-`$pageAdmin` and `$pageAccount` are `$pageNav` already parented to their shell,
-so one call adds a page to the shared sidebar with no separate registration -
-the shell reads each page's own `nav` metadata. Both follow the same rules:
-put your pages in your own `nav.group` at `order: 100` to `999`, where they
-sort between the shell's built-in groups (the built-ins are parked at 1 and at
-1000 and up), and gate with `can: () => this.someApi.someAction.can()` rather
-than `permission` alone, because a permission is self-declaring and stays
-granted over an API that was never mounted.
+`$pageAdmin` is `$pageNav` already parented to the admin shell, so one call
+adds a page to its sidebar with no separate registration - the shell reads
+each page's own `nav` metadata. Put your pages in your own `nav.group` at
+`order: 100` to `999`, where they sort between the shell's built-in groups
+(the built-ins are parked at 1 and at 1000 and up), and gate with
+`can: () => this.someApi.someAction.can()` rather than `permission` alone,
+because a permission is self-declaring and stays granted over an API that was
+never mounted.
 
-Both shells are root routes with their own chrome: a `NavShell` sidebar
-derived from the route subtree, a topbar with a ⌘K search scoped to the shell,
-and the account menu. `/account`'s sidebar floats, and its menu carries a
-"Back to site" item. Do not adopt either layout into your own layout's
-`children`: each mounts its own `Toaster`, so every toast would show twice.
-Configure the chrome through the options atom instead:
+`/admin` is a root route with its own chrome: a `NavShell` sidebar derived
+from the route subtree, a topbar with a ⌘K search scoped to the shell, and the
+account menu. Do not adopt its layout into your own layout's `children`: it
+mounts its own `Toaster`, so every toast would show twice. Configure it
+through `adminRouterOptionsAtom` instead.
+
+The account is not a route: `AccountDialog` declares a settings dialog (see
+below) named `account`, with five sections. The user menu opens it, and a
+link made outside the app opens it with `?account=<section>`, as in
+`/?account=sessions`. Add a section with `$settingsSection` against
+`AccountDialog.dialog`, under the same order and `can` rules as an admin
+page; hide a built-in one or pass it props through `accountDialogOptionsAtom`:
 
 ```typescript
-import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
+import { accountDialogOptionsAtom } from "@alepha/ui/account";
 
-alepha.set(accountRouterOptionsAtom, {
-  brand: <MyBrand />, // defaults to the user's avatar and name
-  homeRouteName: "home", // where "Back to site" goes
-  hide: ["connections"], // pages this application does not offer
+alepha.set(accountDialogOptionsAtom, {
+  hide: ["connections"], // sections this application does not offer
+  pages: { security: { deleteWarning: "Your projects are deleted too." } },
 });
 ```
-
-An account page frames itself with `AccountPage`: `variant="table"` for a
-`DataTable` that fills the area, `variant="form"` for a centred column of
-cards.
 
 ### Settings dialogs
 

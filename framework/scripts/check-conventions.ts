@@ -1073,7 +1073,7 @@ if (jobTimeoutViolations.length > 0) {
  *    `organizations` imports only `core`, `form`, `table`, and `settings`;
  *    `ai` imports only `core`, `markdown` and `form`; and
  *    the module graph has no cycle. Specs are outside it
- *    (`AccountRouter.spec.ts` imports the admin router, legitimately), and
+ *    (`AdminRouter.spec.ts` imports another module's router, legitimately), and
  *    there is deliberately no allow-list of edges: an edge that is not a cycle
  *    is a design decision, not a violation.
  *

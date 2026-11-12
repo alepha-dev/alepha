@@ -77,8 +77,9 @@ interface DialogApi {
 
 /**
  * Context exemption: `useHasDialogProvider()` asks whether a provider is
- * ABOVE this point in the tree, and `AccountLayout` mounts its own only when
- * none is. An `$atom` cannot answer a question about tree position, and two
+ * ABOVE this point in the tree, so a standalone shell mounts its own only
+ * when none is, and so a nested provider leaves the registered hosts to the
+ * outermost one. An `$atom` cannot answer a question about tree position, and two
  * mounted hosts reading one atom would draw the same dialog twice.
  */
 const Ctx = createContext<DialogApi | null>(null);
@@ -293,7 +294,7 @@ export function useDialog(): DialogApi {
  * Whether a {@link DialogProvider} is already above this point.
  *
  * Lets a shell that is mounted standalone supply its own provider without
- * doubling the one an `AppShell` already put there. See `AccountLayout`.
+ * doubling the one an `AppShell` already put there.
  */
 export function useHasDialogProvider(): boolean {
   return useContext(Ctx) !== null;

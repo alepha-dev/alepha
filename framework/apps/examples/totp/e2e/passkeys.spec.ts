@@ -59,6 +59,17 @@ test.afterAll(async () => {
   await context.close();
 });
 
+/**
+ * The account's Security section: a dialog over the home page, opened by its
+ * link form, `?account=security`.
+ */
+const openSecurity = async () => {
+  await page.goto("/?account=security");
+  await expect(
+    page.locator("[data-slot=settings-dialog]").getByText("Sign-in methods"),
+  ).toBeVisible();
+};
+
 const signOut = async () => {
   await context.clearCookies();
 };
@@ -105,14 +116,15 @@ test("registers, then adds a passkey once the current password is right", async 
   await signInWithPassword();
   await expect(page).not.toHaveURL(/\/auth\/login/);
 
-  await page.goto("/account/security");
+  await openSecurity();
   await page.getByRole("button", { name: "Add a passkey" }).click();
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Add a passkey" })
     .click();
 
-  const proof = page.getByRole("dialog");
+  // The last dialog: the passkey proof stacks over the account dialog.
+  const proof = page.getByRole("dialog").last();
   await proof
     .getByRole("textbox", { name: "Current password" })
     .fill("wrong-password");
@@ -158,9 +170,10 @@ test("signs in with the password alone: a passkey raises no step", async () => {
 });
 
 test("clears the TOTP step with the passkey, the code field beside it", async () => {
-  await page.goto("/account/security");
+  await openSecurity();
   await page.getByRole("button", { name: "Set up" }).click();
-  const dialog = page.getByRole("dialog");
+  // The last dialog: the two-factor setup stacks over the account dialog.
+  const dialog = page.getByRole("dialog").last();
   await dialog.getByText("Cannot scan the code?").click();
   totpSecret = (await dialog
     .locator("p.font-mono")
@@ -180,7 +193,7 @@ test("clears the TOTP step with the passkey, the code field beside it", async ()
 });
 
 test("removes the passkey with the current password, and its sign-in is refused", async () => {
-  await page.goto("/account/security");
+  await openSecurity();
   // The passkey keeps the name the card pre-filled from the user agent.
   const removePasskey = page.getByRole("button", { name: /^Remove Chrome/ });
   await removePasskey.click();
@@ -188,7 +201,8 @@ test("removes the passkey with the current password, and its sign-in is refused"
     .getByRole("alertdialog")
     .getByRole("button", { name: "Remove" })
     .click();
-  const proof = page.getByRole("dialog");
+  // The last dialog: the passkey proof stacks over the account dialog.
+  const proof = page.getByRole("dialog").last();
   await proof.getByRole("textbox", { name: "Current password" }).fill(password);
   // Wait for the write itself: while a dialog is open the page behind it is
   // aria-hidden, so the row reads as gone before the DELETE has even left.

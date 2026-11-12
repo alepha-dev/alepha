@@ -1,5 +1,5 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
-import { AccountRouter } from "@alepha/ui/account";
+import { AccountDialog } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
@@ -58,13 +58,11 @@ export const ShopWeb = $module({
    * configured via `adminRouterOptionsAtom`, set from both `main.server.ts`
    * and `main.browser.ts` (see `./adminChrome.tsx`).
    *
-   * `AccountRouter` is the customer's own `/account` area: profile, security,
-   * sessions, API keys, connections. It is a root shell like `/admin`, with
-   * its own sidebar and a "Back to site" item, never adopted into the
-   * storefront layout (whose `Toaster` would show every toast twice). Its
-   * chrome is `./accountChrome.tsx`, set beside the admin one.
+   * `AccountDialog` is the customer's own account: profile, security,
+   * sessions, API keys, connections, a dialog over the storefront drawn by
+   * the layout's `DialogProvider` and opened from the account menu.
    */
-  services: [AppRouter, AuthRouter, AdminRouter, AccountRouter, ShopI18n],
+  services: [AppRouter, AuthRouter, AdminRouter, AccountDialog, ShopI18n],
   register: (alepha) => {
     // French is the atelier's own language, so it is the fallback rather than
     // the framework's default of English. `autoDetect` stays on: a first-time
@@ -91,15 +89,15 @@ export const ShopWeb = $module({
     i18n.routing = "prefix";
 
     /*
-     * …but only for the shop. `/admin` and `/account` are behind a sign-in, so
+     * …but only for the shop. `/admin` is behind a sign-in, so
      * there is no crawler to give a second URL to and nothing the prefix buys
      * — while switching language from the back office moved the operator to
      * `/en/admin`, which is a URL the storefront's SEO scheme invented for a
      * page no search engine will ever see.
      *
-     * Inside these two, language falls back to the `lang` cookie, exactly as it
+     * Inside it, language falls back to the `lang` cookie, exactly as it
      * works in an app that never turned prefix routing on.
      */
-    i18n.routingExclude = ["/admin", "/account"];
+    i18n.routingExclude = ["/admin"];
   },
 });

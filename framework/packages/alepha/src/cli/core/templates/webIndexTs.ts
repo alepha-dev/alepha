@@ -3,15 +3,14 @@ export interface WebIndexTsOptions {
 
   /**
    * Mount the `@alepha/ui` identity surface: `AuthRouter` (`/auth/*`),
-   * `AccountRouter` (`/account/*`) and `AdminRouter` (`/admin/*`).
+   * `AccountDialog` (the account, a dialog over the page, opened from the
+   * user menu or `?account=<section>`) and `AdminRouter` (`/admin/*`).
    *
-   * Neither router options atom is set here. Both default to `{}`, every
-   * field is optional, and the two defaults that would otherwise need
-   * spelling out already match what this scaffold mounts —
+   * No options atom is set here. Both default to `{}`, every field is
+   * optional, and the defaults already match what this scaffold mounts:
    * `homeRouteName: "home"` is `AppRouter.home`, and `loginRouteName:
-   * "login"` is the page `AuthRouter` itself declares. An application that
-   * wants its own chrome calls `alepha.set(adminRouterOptionsAtom, …)` from
-   * both entry points; a fresh project has no chrome to supply.
+   * "login"` is the page `AuthRouter` itself declares. A fresh project has no
+   * chrome to supply.
    */
   saas?: boolean;
 }
@@ -36,7 +35,7 @@ export const WebModule = $module({
 
   return (
     `
-import { AccountRouter } from "@alepha/ui/account";
+import { AccountDialog } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
@@ -47,18 +46,19 @@ import { AlephaReactUi } from "alepha/react/ui";
 import { AppRouter } from "./AppRouter.ts";
 
 /**
- * The three routers mount their own pages — /auth/*, /account/* and /admin/*
- * — so there is nothing to declare beyond listing them.
+ * The two routers mount their own pages (/auth/* and /admin/*), and
+ * AccountDialog declares the account dialog the user menu opens, drawn by the
+ * layout's DialogProvider: there is nothing to declare beyond listing them.
  *
- * Each page hides itself when the action behind it is missing from
- * /api/_links, so deleting a module from ApiModule removes its screens too
- * rather than leaving a link to a 404. Drop a router from this list when you
+ * Each page and section hides itself when the action behind it is missing
+ * from /api/_links, so deleting a module from ApiModule removes its screens
+ * too rather than leaving a link to a 404. Drop one from this list when you
  * want the whole surface gone.
  */
 export const WebModule = $module({
   name: "${appName}.web",
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, AuthRouter, AccountRouter, AdminRouter],
+  services: [AppRouter, AuthRouter, AccountDialog, AdminRouter],
 });
 `.trim() + "\n"
   );

@@ -117,7 +117,7 @@ products = $pageAdmin({
 
 `label` stays the English text and becomes the default passed to `tr()`, so a page whose key nobody translated renders exactly what it rendered before - never a raw key. `group` is untouched by the translation: it is the grouping _key_, and two pages are in the same section when they agree on it, in every language. Only `groupKey` decides what the heading says.
 
-`labelKey` and `groupKey` are `@alepha/ui`'s own additions to `$page`'s `nav`, available through `$pageNav`, `$pageAdmin` and `$pageAccount`. The framework's router never reads them.
+`labelKey` and `groupKey` are `@alepha/ui`'s own additions to `$page`'s `nav`, available through `$pageNav` and `$pageAdmin`, and on `$settingsSection` too. The framework's router never reads them.
 
 ## Lazy Loading
 
@@ -495,7 +495,7 @@ unprefixed with `routingExclude`, matched on a segment boundary. Inside them the
 language is carried by the cookie, as with the default routing:
 
 ```typescript
-i18n.options.routingExclude = ["/admin", "/account"];
+i18n.options.routingExclude = ["/admin"];
 ```
 
 Prefix routing requires the router module (`alepha/react/router`). Apps that are

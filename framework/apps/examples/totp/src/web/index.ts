@@ -1,4 +1,4 @@
-import { AccountRouter } from "@alepha/ui/account";
+import { AccountDialog } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
@@ -16,8 +16,9 @@ import { AppRouter } from "./AppRouter.tsx";
  * - `AuthRouter` mounts `/auth/login` and `/auth/register`, and carries the
  *   second-factor step. That step is one screen shared by both verifiers,
  *   which is why nothing about it is TOTP-specific.
- * - `AccountRouter` mounts `/account/*`. Its Security page is where enrollment,
- *   the recovery codes and the turn-off flow live.
+ * - `AccountDialog` declares the account dialog the user menu opens. Its
+ *   Security section is where enrollment, the recovery codes and the turn-off
+ *   flow live; `/?account=security` opens it from a link.
  * - `AdminRouter` mounts `/admin` and its built-in pages, including the user
  *   detail Security tab that clears a locked-out user's second factor.
  *
@@ -40,5 +41,5 @@ import { AppRouter } from "./AppRouter.tsx";
 export const TotpWeb = $module({
   name: "totp.web",
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, AuthRouter, AccountRouter, AdminRouter],
+  services: [AppRouter, AuthRouter, AccountDialog, AdminRouter],
 });

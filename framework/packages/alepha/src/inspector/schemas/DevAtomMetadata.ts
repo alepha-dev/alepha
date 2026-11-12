@@ -25,9 +25,9 @@ export const devAtomMetadataSchema = z.object({
    * Every panel reading this one document broke at once — the reported symptom
    * was "Couldn't load actions", from an atom two panels away.
    *
-   * `@alepha/ui`'s `adminRouterOptionsAtom` and `accountRouterOptionsAtom` are
-   * both `z.custom()` (they carry React nodes), so mounting either router was
-   * enough to trigger it. See `DevEnvMetadata.schema`, which is the same field
+   * `@alepha/ui`'s `adminRouterOptionsAtom` and `accountDialogOptionsAtom` are
+   * both `z.custom()` (they carry React nodes), so mounting either was enough
+   * to trigger it. See `DevEnvMetadata.schema`, which is the same field
    * fed by the same helper.
    */
   schema: z.any().optional(),

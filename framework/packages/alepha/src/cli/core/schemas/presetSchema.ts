@@ -11,8 +11,9 @@ import { type Infer, z } from "alepha";
  * repository costs more than the scaffolding it saves.
  *
  * - `default` — API module, web module, Tailwind. Nothing to configure.
- * - `saas` — the above plus `@alepha/ui`, `AuthRouter`, `AccountRouter`,
- *   `AdminRouter`, and the `$realm` that backs them.
+ * - `saas` — the above plus `@alepha/ui`, `AuthRouter`, `AccountDialog`,
+ *   `AdminRouter`, a layout with a `DialogProvider`, and the `$realm` that
+ *   backs them.
  */
 export const presetSchema = z.enum(["default", "saas"]);
 

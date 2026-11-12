@@ -1052,8 +1052,9 @@ test.describe("layout blocks", () => {
 });
 
 /**
- * Auth and Account are five pages each, not one page with a dropdown, because
- * that is what they are in an application that mounts them. Each entry below
+ * Auth is five pages, not one page with a dropdown, because that is what it
+ * is in an application that mounts it; API keys is the account section the
+ * showcase backs with an API of its own. Each entry below
  * is a route AND a sidebar link, and both have been wrong before.
  */
 const PAGE_SCREENS = [
@@ -1062,11 +1063,7 @@ const PAGE_SCREENS = [
   { path: "/pages/auth/reset", content: "Email" },
   { path: "/pages/auth/verify", content: "Sign in" },
   { path: "/pages/auth/mfa", content: "a•••@alepha.dev" },
-  { path: "/pages/account/profile", content: "ada@alepha.dev" },
-  { path: "/pages/account/security", content: "Sign-in methods" },
-  { path: "/pages/account/sessions", content: "Chrome" },
   { path: "/pages/account/keys", content: "CLI on my laptop" },
-  { path: "/pages/account/connections", content: "Lore MCP" },
 ] as const;
 
 test.describe("page showcases", () => {
@@ -1078,7 +1075,7 @@ test.describe("page showcases", () => {
 
       // A failed action is reported to the READER, not the console, so a page
       // can 200 with every assertion green while telling its visitor an action
-      // was not found. `/pages/account/security` did exactly that.
+      // was not found. The old account security showcase did exactly that.
       await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
     });
   }

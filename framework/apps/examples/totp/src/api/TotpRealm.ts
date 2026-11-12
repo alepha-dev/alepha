@@ -90,7 +90,7 @@ export class TotpRealm {
       /**
        * The setting this example is about.
        *
-       * `optional` lets a user enroll from `/account/security` when they choose
+       * `optional` lets a user enroll from the account's Security section when they choose
        * to, and challenges them at sign-in once they have. `required` would be
        * the same plus a UI obligation to push an unenrolled user through
        * enrollment. Deliberately not used here, because the demo is more

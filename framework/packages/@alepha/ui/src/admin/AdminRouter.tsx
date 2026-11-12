@@ -162,8 +162,7 @@ import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
  *
  * Several admin pages call `useDialog()`, which throws without a provider,
  * and raise toasts. `AppShell` mounts both; a standalone mount, or `AppShell`
- * with `embedded`, has to supply them. `AccountRouter`'s JSDoc explains why
- * the shells deliberately do not mount them themselves.
+ * with `embedded`, has to supply them.
  */
 export class AdminRouter {
   protected readonly options = $store(adminRouterOptionsAtom);
@@ -227,8 +226,7 @@ export class AdminRouter {
    * both resolve the subtree by this name.
    *
    * No index redirect: {@link dashboard} sits at `path: "/"`, so a bare
-   * `/admin` resolves to it directly — the same arrangement `AccountRouter`
-   * uses for `/account`. This used to throw a `Redirection` to an
+   * `/admin` resolves to it directly. This used to throw a `Redirection` to an
    * `indexPath` option because the shell had no index child and something had
    * to choose a first page; the dashboard is that page, so both the hop and
    * the option are gone. An application that wants different content at
