@@ -599,13 +599,15 @@ Both also take a subquery (see [Subqueries](#subqueries)); the "at least one val
 
 `contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
 
-### PostgreSQL Array Operators
+### Array Operators
 
 | Operator         | Description                                     |
 | ---------------- | ----------------------------------------------- |
 | `arrayContains`  | Column contains all elements of the given array |
 | `arrayContained` | Given array contains all elements of the column |
 | `arrayOverlaps`  | Column shares any element with the given array  |
+
+On SQLite and D1 an array column is JSON text: `arrayContains` tests each element with `json_each` there, so one where object serves both dialects. `arrayContained` and `arrayOverlaps` are Postgres only, and throw on SQLite.
 
 ### Logical Operators
 
