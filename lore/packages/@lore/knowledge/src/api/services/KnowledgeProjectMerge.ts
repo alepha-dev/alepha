@@ -4,14 +4,19 @@ import {
   ProjectMergeNumbers,
   type ProjectMergeRenumber,
   type ProjectMergeRewriter,
+  type ProjectMergeSequence,
   ProjectMergeService,
   type ProjectMergeStepPlan,
+  projectMergeWrite,
 } from "@lore/core/api";
 import { $inject, Alepha } from "alepha";
-import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
+import { $repository, type Repository, type SQLLike } from "alepha/orm";
 
 import { pinnedContentAtom } from "../atoms/pinnedContentAtom.ts";
-import { buildFolioSearchText } from "../entities/folios.ts";
+import { folioAttachments } from "../entities/folioAttachments.ts";
+import { folioDirectories } from "../entities/folioDirectories.ts";
+import { folioNames } from "../entities/folioNames.ts";
+import { buildFolioSearchText, folios } from "../entities/folios.ts";
 
 /**
  * Knowledge's step of a project merge, registered on core's
@@ -39,7 +44,10 @@ export class KnowledgeProjectMerge {
   protected readonly alepha = $inject(Alepha);
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly numbers = $inject(ProjectMergeNumbers);
-  protected readonly database = $inject(DatabaseProvider);
+  protected readonly folios = $repository(folios);
+  protected readonly directories = $repository(folioDirectories);
+  protected readonly attachments = $repository(folioAttachments);
+  protected readonly names = $repository(folioNames);
 
   constructor() {
     this.merge.registerStep({
@@ -68,27 +76,37 @@ export class KnowledgeProjectMerge {
         .filter((change) => change.kind === "folio" && change.field === "title")
         .map((change) => [String(change.id), change.to]),
     );
-    const rows = await this.database.execute(
-      sql`SELECT id, title, summary, content FROM folios WHERE project_id = ${context.sourceProjectId} AND protected = ${this.flag(false)}`,
+    const rows = await this.folios.findMany(
+      {
+        where: {
+          projectId: { eq: context.sourceProjectId },
+          protected: { eq: false },
+        },
+        columns: ["id", "title", "summary", "content"],
+      },
+      { force: true },
     );
-    const text = (value: unknown) => (typeof value === "string" ? value : "");
     const statements: SQLLike[] = [];
     for (const row of rows) {
-      const id = text(row.id);
-      const summary = text(row.summary);
-      const content = text(row.content);
+      const id = row.id;
+      const summary = row.summary ?? "";
+      const content = row.content ?? "";
       const nextSummary = rewriter.text(summary);
       const nextContent = rewriter.text(content);
       if (nextSummary === summary && nextContent === content) {
         continue;
       }
       const searchText = buildFolioSearchText({
-        title: titles.get(id) ?? text(row.title),
+        title: titles.get(id) ?? row.title,
         summary: nextSummary,
         content: nextContent,
       });
       statements.push(
-        sql`UPDATE folios SET summary = ${nextSummary}, content = ${nextContent}, search_text = ${searchText} WHERE id = ${id}`,
+        this.folios.updateStatement(
+          { id: { eq: id } },
+          { summary: nextSummary, content: nextContent, searchText },
+          projectMergeWrite,
+        ),
       );
     }
     return { rewritten: { folios: statements.length }, statements };
@@ -97,26 +115,28 @@ export class KnowledgeProjectMerge {
   /**
    * The tables that move whole and carry a per-project short id.
    */
-  protected static readonly numbered: NumberedTable[] = [
-    {
-      kind: "folio",
-      table: "folios",
-      idColumn: "id",
-      sequence: "folioShortId",
-    },
-    {
-      kind: "directory",
-      table: "folio_directories",
-      idColumn: "id",
-      sequence: "directoryShortId",
-    },
-    {
-      kind: "attachment",
-      table: "folio_blobs",
-      idColumn: "file_id",
-      sequence: "blobShortId",
-    },
-  ];
+  protected numbered(): NumberedTable[] {
+    return [
+      {
+        kind: "folio",
+        repository: this.folios,
+        idField: "id",
+        sequence: "folioShortId",
+      },
+      {
+        kind: "directory",
+        repository: this.directories,
+        idField: "id",
+        sequence: "directoryShortId",
+      },
+      {
+        kind: "attachment",
+        repository: this.attachments,
+        idField: "fileId",
+        sequence: "blobShortId",
+      },
+    ];
+  }
 
   protected async plan(
     context: ProjectMergeContext,
@@ -125,6 +145,7 @@ export class KnowledgeProjectMerge {
     const renumbered: ProjectMergeRenumber[] = [];
     const changed: ProjectMergeChange[] = [];
     const statements: SQLLike[] = [];
+    const sequences: ProjectMergeSequence[] = [];
 
     // Names and pins first: their statements touch rows by id, so the
     // order against the moves below does not matter, but reading them
@@ -137,32 +158,45 @@ export class KnowledgeProjectMerge {
     changed.push(...pins.changed);
     statements.push(...pins.statements);
 
-    for (const table of KnowledgeProjectMerge.numbered) {
+    for (const table of this.numbered()) {
       const source = await this.rows(table, context.sourceProjectId);
       const target = await this.rows(table, context.targetProjectId);
+      const name = table.repository.tableName;
       const numbering = await this.numbers.renumber({
         kind: table.kind,
-        table: table.table,
-        column: "short_id",
-        idColumn: table.idColumn,
+        repository: table.repository,
+        field: "shortId",
+        idField: table.idField,
         sequence: table.sequence,
         targetProjectId: context.targetProjectId,
         targetNumbers: target.map((row) => row.number),
         sourceRows: source,
       });
-      moved[table.table] = source.length;
+      moved[name] = source.length;
       renumbered.push(...numbering.renumbered);
+      sequences.push(...numbering.sequences);
       statements.push(
         ...numbering.statements,
-        sql`UPDATE ${sql.identifier(table.table)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`,
+        table.repository.updateStatement(
+          { projectId: { eq: context.sourceProjectId } },
+          { projectId: context.targetProjectId },
+          projectMergeWrite,
+        ),
       );
     }
 
     statements.push(
-      sql`UPDATE folio_names SET parent_directory_id = ${`root:${context.targetProjectId}`}, root_scope = ${String(context.targetProjectId)} WHERE parent_directory_id = ${`root:${context.sourceProjectId}`}`,
+      this.names.updateStatement(
+        { parentDirectoryId: { eq: `root:${context.sourceProjectId}` } },
+        {
+          parentDirectoryId: `root:${context.targetProjectId}`,
+          rootScope: String(context.targetProjectId),
+        },
+        projectMergeWrite,
+      ),
     );
 
-    return { moved, renumbered, joined: [], changed, statements };
+    return { moved, renumbered, joined: [], changed, statements, sequences };
   }
 
   /**
@@ -175,14 +209,18 @@ export class KnowledgeProjectMerge {
     changed: ProjectMergeChange[];
     statements: SQLLike[];
   }> {
-    const reserved = await this.database.execute(
-      sql`SELECT lower_name FROM folio_names WHERE parent_directory_id = ${`root:${context.targetProjectId}`}`,
+    const reserved = await this.names.findMany(
+      {
+        where: {
+          parentDirectoryId: { eq: `root:${context.targetProjectId}` },
+        },
+        columns: ["lowerName"],
+      },
+      { force: true },
     );
     const taken = new Set(
       [
-        ...reserved.map((row) =>
-          typeof row.lower_name === "string" ? row.lower_name : "",
-        ),
+        ...reserved.map((row) => row.lowerName),
         ...(await this.rootEntries(context.targetProjectId)).map(
           (entry) => entry.name,
         ),
@@ -216,15 +254,27 @@ export class KnowledgeProjectMerge {
               content: entry.content,
             });
         statements.push(
-          sql`UPDATE folios SET title = ${renamed}, search_text = ${searchText} WHERE id = ${id}`,
+          this.folios.updateStatement(
+            { id: { eq: id } },
+            { title: renamed, searchText },
+            projectMergeWrite,
+          ),
         );
       } else {
         statements.push(
-          sql`UPDATE folio_directories SET name = ${renamed} WHERE id = ${id}`,
+          this.directories.updateStatement(
+            { id: { eq: id } },
+            { name: renamed },
+            projectMergeWrite,
+          ),
         );
       }
       statements.push(
-        sql`UPDATE folio_names SET lower_name = ${renamed.trim().toLowerCase()} WHERE entity_id = ${id}`,
+        this.names.updateStatement(
+          { entityId: { eq: id } },
+          { lowerName: renamed.trim().toLowerCase() },
+          projectMergeWrite,
+        ),
       );
     }
     return { changed, statements };
@@ -234,21 +284,44 @@ export class KnowledgeProjectMerge {
    * A project's root folios and directories, oldest first.
    */
   protected async rootEntries(projectId: number): Promise<RootEntry[]> {
-    const folios = await this.database.execute(
-      sql`SELECT 'folio' AS kind, id, title AS name, summary, content, protected FROM folios WHERE project_id = ${projectId} AND directory_id IS NULL ORDER BY created_at, id`,
+    const oldest = [
+      { column: "createdAt", direction: "asc" },
+      { column: "id", direction: "asc" },
+    ] as const;
+    const folios = await this.folios.findMany(
+      {
+        where: { projectId: { eq: projectId }, directoryId: { isNull: true } },
+        columns: ["id", "title", "summary", "content", "protected"],
+        orderBy: [...oldest],
+      },
+      { force: true },
     );
-    const directories = await this.database.execute(
-      sql`SELECT 'directory' AS kind, id, name FROM folio_directories WHERE project_id = ${projectId} AND parent_id IS NULL ORDER BY created_at, id`,
+    const directories = await this.directories.findMany(
+      {
+        where: { projectId: { eq: projectId }, parentId: { isNull: true } },
+        columns: ["id", "name"],
+        orderBy: [...oldest],
+      },
+      { force: true },
     );
-    const text = (value: unknown) => (typeof value === "string" ? value : "");
-    return [...directories, ...folios].map((row) => ({
-      kind: row.kind === "folio" ? "folio" : "directory",
-      id: text(row.id),
-      name: text(row.name),
-      summary: text(row.summary),
-      content: text(row.content),
-      protected: row.protected === true || Number(row.protected) === 1,
-    }));
+    return [
+      ...directories.map((row) => ({
+        kind: "directory" as const,
+        id: row.id,
+        name: row.name,
+        summary: "",
+        content: "",
+        protected: false,
+      })),
+      ...folios.map((row) => ({
+        kind: "folio" as const,
+        id: row.id,
+        name: row.title,
+        summary: row.summary ?? "",
+        content: row.content ?? "",
+        protected: row.protected === true,
+      })),
+    ];
   }
 
   /**
@@ -272,16 +345,27 @@ export class KnowledgeProjectMerge {
     changed: ProjectMergeChange[];
     statements: SQLLike[];
   }> {
+    // The size is `content.length`, UTF-16 units, as `PinnedFolioFolder`
+    // spends the budget; SQL's `length()` counted characters, which the
+    // folder never did.
     const pinned = async (projectId: number) =>
       (
-        await this.database.execute(
-          sql`SELECT id, title, length(content) AS size, protected FROM folios WHERE project_id = ${projectId} AND pinned = ${this.flag(true)} ORDER BY updated_at DESC, id`,
+        await this.folios.findMany(
+          {
+            where: { projectId: { eq: projectId }, pinned: { eq: true } },
+            columns: ["id", "title", "content", "protected"],
+            orderBy: [
+              { column: "updatedAt", direction: "desc" },
+              { column: "id", direction: "asc" },
+            ],
+          },
+          { force: true },
         )
       ).map((row) => ({
-        id: String(row.id),
-        title: String(row.title),
-        size: Number(row.size ?? 0),
-        isProtected: row.protected === true || Number(row.protected) === 1,
+        id: row.id,
+        title: row.title,
+        size: (row.content ?? "").length,
+        isProtected: row.protected === true,
       }));
     const budget = this.alepha.store.get(pinnedContentAtom).maxChars;
     let used = (await pinned(context.targetProjectId))
@@ -303,20 +387,14 @@ export class KnowledgeProjectMerge {
         to: "false",
       });
       statements.push(
-        sql`UPDATE folios SET pinned = ${this.flag(false)} WHERE id = ${folio.id}`,
+        this.folios.updateStatement(
+          { id: { eq: folio.id } },
+          { pinned: false },
+          projectMergeWrite,
+        ),
       );
     }
     return { changed, statements };
-  }
-
-  /**
-   * A boolean as the driver binds it: SQLite stores 0 and 1.
-   */
-  protected flag(value: boolean): boolean | number {
-    if (this.database.dialect === "sqlite") {
-      return value ? 1 : 0;
-    }
-    return value;
   }
 
   /**
@@ -326,12 +404,20 @@ export class KnowledgeProjectMerge {
     table: NumberedTable,
     projectId: number,
   ): Promise<Array<{ id: string; number: number }>> {
-    const rows = await this.database.execute(
-      sql`SELECT ${sql.identifier(table.idColumn)} AS id, short_id FROM ${sql.identifier(table.table)} WHERE project_id = ${projectId} ORDER BY created_at, ${sql.identifier(table.idColumn)}`,
-    );
+    const rows = (await table.repository.findMany(
+      {
+        where: { projectId: { eq: projectId } },
+        columns: [table.idField, "shortId"],
+        orderBy: [
+          { column: "createdAt", direction: "asc" },
+          { column: table.idField, direction: "asc" },
+        ],
+      } as never,
+      { force: true },
+    )) as Record<string, unknown>[];
     return rows.map((row) => ({
-      id: String(row.id),
-      number: Number(row.short_id),
+      id: String(row[table.idField]),
+      number: Number(row.shortId),
     }));
   }
 }
@@ -353,7 +439,10 @@ interface RootEntry {
  */
 interface NumberedTable {
   kind: string;
-  table: string;
-  idColumn: string;
+  repository: Repository<any>;
+  /**
+   * The primary key field.
+   */
+  idField: string;
   sequence: string;
 }

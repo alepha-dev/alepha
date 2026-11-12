@@ -1,5 +1,5 @@
-import { $inject } from "alepha";
-import { type SQL, sql } from "drizzle-orm";
+import { $inject, AlephaError } from "alepha";
+import { isSQLWrapper, type SQL, sql } from "drizzle-orm";
 
 import { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
@@ -167,6 +167,101 @@ export class SqlExpressionProvider {
       return sql`((STRFTIME('%s', 'now') - ${sql.raw(String(seconds))}) * 1000)`;
     }
     return sql`(NOW() - ${sql.raw(String(seconds))} * INTERVAL '1 second')`;
+  }
+
+  /**
+   * The largest of two or more values: `MAX(a, b)` on SQLite, whose `MAX`
+   * with several arguments is the scalar one, `GREATEST(a, b)` on Postgres.
+   *
+   * ⚠️ NULL differs: SQLite answers NULL when any argument is NULL, Postgres
+   * ignores NULL arguments. Coalesce a nullable operand first when the two
+   * must agree.
+   *
+   * ```ts
+   * // An upsert that never lowers the stored value.
+   * await repo.upsert(row, {
+   *   target: ["name"],
+   *   set: { value: sqlx.greatest(repo.table.value, repo.excluded("value")) },
+   * });
+   * ```
+   */
+  public greatest(...values: [SqlLike, SqlLike, ...SqlLike[]]): SQL {
+    const list = sql.join(
+      values.map((value) => sql`${value}`),
+      sql`, `,
+    );
+    return this.isEpochMillis ? sql`MAX(${list})` : sql`GREATEST(${list})`;
+  }
+
+  /**
+   * The smallest of two or more values: `MIN(a, b)` on SQLite, `LEAST(a, b)`
+   * on Postgres. The NULL caveat of {@link greatest} holds.
+   */
+  public least(...values: [SqlLike, SqlLike, ...SqlLike[]]): SQL {
+    const list = sql.join(
+      values.map((value) => sql`${value}`),
+      sql`, `,
+    );
+    return this.isEpochMillis ? sql`MIN(${list})` : sql`LEAST(${list})`;
+  }
+
+  /**
+   * A JSON value with one path set: `json_set` on SQLite, `jsonb_set` on
+   * Postgres. `path` is the keys from the root (`["fields", "count"]`), each
+   * of letters, digits, `_` or `-`.
+   *
+   * `value` is either an SQL expression, stored as the JSON scalar it
+   * evaluates to (a subquery's number stays a number), or a plain value,
+   * stored as its JSON. A NULL expression stores JSON `null` on both.
+   *
+   * ```ts
+   * // A payload whose `fields.total` is counted by the same statement.
+   * const payload = sqlx.jsonSet(
+   *   sql`${JSON.stringify({ fields: {} })}`,
+   *   ["fields", "total"],
+   *   quests.subquery({ projectId: { eq: 1 } }, undefined, { count: true }),
+   * );
+   * ```
+   */
+  public jsonSet(target: SqlLike, path: string[], value: unknown): SQL {
+    if (
+      path.length === 0 ||
+      path.some((key) => !/^[A-Za-z0-9_-]+$/.test(key))
+    ) {
+      throw new AlephaError(
+        `Invalid JSON path ${JSON.stringify(path)}: keys are letters, digits, '_' or '-'`,
+      );
+    }
+    const expression = isSQLWrapper(value);
+    if (this.isEpochMillis) {
+      const stored = expression ? value : sql`json(${JSON.stringify(value)})`;
+      return sql`json_set(${target}, ${`$.${path.join(".")}`}, ${stored})`;
+    }
+    // Through `text`: a parameter cast straight to `jsonb` is typed jsonb,
+    // and the driver then JSON-encodes the already-encoded string, so the
+    // database receives a string scalar instead of the object.
+    const stored = expression
+      ? sql`COALESCE(to_jsonb(${value}), 'null'::jsonb)`
+      : sql`CAST(CAST(${JSON.stringify(value)} AS text) AS jsonb)`;
+    return sql`jsonb_set(CAST(CAST(${target} AS text) AS jsonb), ${`{${path.join(",")}}`}, ${stored})`;
+  }
+
+  /**
+   * A JSON array column with `value` appended: `json_insert(col, '$[#]', ...)`
+   * on SQLite, `col || jsonb_build_array(...)` on Postgres. `value` is stored
+   * as its JSON, so an object stays an object.
+   *
+   * ```ts
+   * await quests.updateById(id, {
+   *   history: sqlx.jsonArrayAppend(quests.table.history, { action: "pinged" }),
+   * });
+   * ```
+   */
+  public jsonArrayAppend(column: SqlLike, value: unknown): SQL {
+    const json = JSON.stringify(value);
+    return this.isEpochMillis
+      ? sql`json_insert(${column}, '$[#]', json(${json}))`
+      : sql`${column} || jsonb_build_array(CAST(CAST(${json} AS text) AS jsonb))`;
   }
 }
 

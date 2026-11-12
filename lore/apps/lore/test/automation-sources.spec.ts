@@ -4,7 +4,6 @@ import {
   AutomationEvents,
   AutomationOrigin,
   AutomationPersistence,
-  AutomationSqliteProvider,
 } from "@lore/core/api";
 import { DeployJobs, DeployRegistry } from "@lore/deploy/api";
 import { appInstances, deployments } from "@lore/deploy/schemas";
@@ -23,7 +22,13 @@ import {
   jobExecutionEntity,
 } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DatabaseProvider, type SQLLike, sql } from "alepha/orm";
+import {
+  DatabaseProvider,
+  NodeSqliteProvider,
+  $repository,
+  sql,
+  type SQLLike,
+} from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import type { UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -144,7 +149,7 @@ describe("Automation domain source integration", () => {
         LOG_LEVEL: "silent",
       },
     });
-    alepha.with({ provide: DatabaseProvider, use: AutomationSqliteProvider });
+    alepha.with({ provide: DatabaseProvider, use: NodeSqliteProvider });
     alepha.with({ provide: AutomationDatabase, use: SourceDatabase });
     alepha.with({ provide: JobQueueProvider, use: RecordingDispatcher });
     alepha.with({ provide: CronProvider, use: ManualCronProvider });

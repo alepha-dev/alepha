@@ -1,5 +1,4 @@
-import { $inject, z } from "alepha";
-import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 
 import {
   sigilUniquesDaily,
@@ -78,7 +77,6 @@ export interface LoreAnalyticsWindow {
  * already holds a repository on.
  */
 export class LoreAnalyticsStore {
-  protected readonly database = $inject(DatabaseProvider);
   protected readonly uniques = $repository(sigilUniquesDaily);
 
   /**
@@ -137,8 +135,8 @@ export class LoreAnalyticsStore {
    * Declared here, next to the table, because this is where the answer changes:
    * adding a dimension to `sigil_uniques_daily` (the way `traffic` was added in
    * 2026-08, with its own unique-index column and its own fold in
-   * `SigilJobs.collapseUniques`) means adding it here and to `trafficClause`'s
-   * neighbours, and the controller then narrows by it with no edit of its own.
+   * `SigilJobs.collapseUniques`) means adding it here and to `windowWhere`, and
+   * the controller then narrows by it with no edit of its own.
    */
   public static readonly FILTERS = ["sigilId", "traffic"];
 
@@ -154,30 +152,25 @@ export class LoreAnalyticsStore {
     // who used two apps — accepted: the alternative is keeping per-visitor
     // hashes indefinitely, and the whole point of the collapse
     // (`SigilJobs.collapseUniques`) is that they stop existing.
-    const [row] = await this.database.run(
-      sql`
-        SELECT
-          COUNT(DISTINCT CASE
-            WHEN ${this.uniques.table.visitorHash} <> ${UNIQUES_COLLAPSED_HASH}
-            THEN ${this.uniques.table.day} || '|' || ${this.uniques.table.visitorHash}
-          END)
-          + COALESCE(SUM(CASE
-            WHEN ${this.uniques.table.visitorHash} = ${UNIQUES_COLLAPSED_HASH}
-            THEN ${this.uniques.table.count} ELSE 0
-          END), 0) AS uniques
-        FROM ${this.uniques.table}
-        WHERE ${this.uniques.table.sigilId} IN (${this.scope(window)})
-          AND ${this.uniques.table.day} >= ${window.since}
-          ${
-            window.until
-              ? sql`AND ${this.uniques.table.day} <= ${window.until}`
-              : sql``
-          }
-          ${this.trafficClause(window.traffic)}
-      `,
-      z.object({ uniques: z.coerce.number() }),
-    );
-    return Number(row?.uniques) || 0;
+    const t = this.uniques.table;
+    const [row] = await this.uniques.aggregate({
+      select: {
+        hashed: {
+          countDistinct: {
+            expr: sql`${t.day} || '|' || ${t.visitorHash}`,
+            where: { visitorHash: { ne: UNIQUES_COLLAPSED_HASH } },
+          },
+        },
+        collapsed: {
+          sum: {
+            column: "count",
+            where: { visitorHash: { eq: UNIQUES_COLLAPSED_HASH } },
+          },
+        },
+      },
+      where: this.windowWhere(window),
+    });
+    return (row?.hashed.countDistinct ?? 0) + (row?.collapsed.sum ?? 0);
   }
 
   /**
@@ -190,37 +183,35 @@ export class LoreAnalyticsStore {
     window: LoreAnalyticsWindow,
   ): Promise<Array<{ day: string; uniques: number }>> {
     if (window.sigilIds.length === 0) return [];
-    const rows = await this.database.run(
-      sql`
-        SELECT
-          ${this.uniques.table.day} AS day,
-          COUNT(DISTINCT CASE
-            WHEN ${this.uniques.table.visitorHash} <> ${UNIQUES_COLLAPSED_HASH}
-            THEN ${this.uniques.table.visitorHash}
-          END)
-          + COALESCE(SUM(CASE
-            WHEN ${this.uniques.table.visitorHash} = ${UNIQUES_COLLAPSED_HASH}
-            THEN ${this.uniques.table.count} ELSE 0
-          END), 0) AS uniques
-        FROM ${this.uniques.table}
-        WHERE ${this.uniques.table.sigilId} IN (${this.scope(window)})
-          AND ${this.uniques.table.day} >= ${window.since}
-          ${
-            window.until
-              ? sql`AND ${this.uniques.table.day} <= ${window.until}`
-              : sql``
-          }
-          ${this.trafficClause(window.traffic)}
-        GROUP BY ${this.uniques.table.day}
-        ORDER BY ${this.uniques.table.day}
-      `,
-      z.object({ day: z.string(), uniques: z.coerce.number() }),
-    );
-    return rows.map((row) => ({ day: row.day, uniques: Number(row.uniques) }));
+    const rows = await this.uniques.aggregate({
+      select: {
+        day: true,
+        hashed: {
+          countDistinct: {
+            column: "visitorHash",
+            where: { visitorHash: { ne: UNIQUES_COLLAPSED_HASH } },
+          },
+        },
+        collapsed: {
+          sum: {
+            column: "count",
+            where: { visitorHash: { eq: UNIQUES_COLLAPSED_HASH } },
+          },
+        },
+      },
+      where: this.windowWhere(window),
+      groupBy: ["day"],
+      orderBy: "day",
+    });
+    return rows.map((row) => ({
+      day: row.day,
+      uniques: row.hashed.countDistinct + row.collapsed.sum,
+    }));
   }
 
   /**
-   * The `AND traffic …` term, or nothing at all for `all`.
+   * The window as a where object: its sigils, its days, and the traffic
+   * filter, which is nothing at all for `all`.
    *
    * `humans` is expressed as **not a bot** rather than as an equality, which
    * is the honest definition and the one that survives a value nobody has
@@ -232,15 +223,21 @@ export class LoreAnalyticsStore {
    * goes through `AnalyticsFilter`, which deliberately offers equality and set
    * membership only, on a seam two backends have to honour. This is SQL
    * against one table.
+   *
+   * The sigil set stays an SQL fragment: see {@link scope}.
    */
-  protected trafficClause(traffic: TrafficFilter | undefined) {
-    if (traffic === "bots") {
-      return sql`AND ${this.uniques.table.traffic} = ${"bot"}`;
-    }
-    if (traffic === "humans") {
-      return sql`AND ${this.uniques.table.traffic} <> ${"bot"}`;
-    }
-    return sql``;
+  protected windowWhere(window: LoreAnalyticsWindow) {
+    return {
+      and: [sql`${this.uniques.table.sigilId} IN (${this.scope(window)})`],
+      day: window.until
+        ? { gte: window.since, lte: window.until }
+        : { gte: window.since },
+      ...(window.traffic === "bots"
+        ? { traffic: { eq: "bot" } }
+        : window.traffic === "humans"
+          ? { traffic: { ne: "bot" } }
+          : {}),
+    };
   }
 
   /**
@@ -268,6 +265,13 @@ export class LoreAnalyticsStore {
    * groups do it — and never for a distinct count.
    */
   protected scope(window: LoreAnalyticsWindow) {
-    return sql`SELECT value FROM json_each(${JSON.stringify(window.sigilIds)})`;
+    const ids = JSON.stringify(window.sigilIds);
+    if (this.uniques.provider.dialect === "sqlite") {
+      return sql`SELECT value FROM json_each(${ids})`;
+    }
+    // Postgres has no `json_each` of that shape: the same single parameter,
+    // unpacked as text (cast through `text`, so the driver binds the JSON
+    // once) and compared as the uuid the column holds.
+    return sql`SELECT CAST(value AS uuid) FROM jsonb_array_elements_text(CAST(CAST(${ids} AS text) AS jsonb))`;
   }
 }

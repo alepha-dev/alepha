@@ -112,7 +112,7 @@ export class AutomationEvents {
           ],
         );
         rows = batch[1];
-        event = batch[2][0] ? this.eventRows.decodeRaw(batch[2][0]) : undefined;
+        event = batch[2][0] ? this.eventRows.decodeRow(batch[2][0]) : undefined;
       } catch {
         const recorded = await this.persistence.events.findOne({
           where: { projectId: input.projectId, identity: input.identity },

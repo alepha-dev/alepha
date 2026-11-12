@@ -60,6 +60,7 @@ import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import { DbError } from "../errors/DbError.ts";
 import { DbTimeoutError } from "../errors/DbTimeoutError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
+import { withAfterBatch } from "../helpers/afterBatch.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
   AggregateOp,
@@ -351,6 +352,14 @@ export abstract class Repository<T extends ZObject> {
    * `notInArray`. The soft-delete filter is added like on any read, unless
    * `opts.force`.
    *
+   * Two more shapes, for a subquery used as a value rather than a set:
+   *
+   * - `opts.count` selects `COUNT(*)` of the matching rows (`column` is then
+   *   ignored), for a comparison (`` sql`${sub} < ${cap}` ``) or a computed
+   *   field;
+   * - `opts.limit`, `opts.offset` and `opts.orderBy` bound the rows, so
+   *   `limit: 1` with a `column` is a scalar subquery.
+   *
    * It correlates through a column of the outer query used as a comparison
    * value. The subquery's own table is always aliased (`<table>_sq`), so a
    * subquery over the outer query's own table works: its columns render as
@@ -377,12 +386,25 @@ export abstract class Repository<T extends ZObject> {
    *     epicId: { notInArray: epics.subquery({ status: { eq: "draft" } }, "id") },
    *   },
    * });
+   *
+   * // A guard: the project still has room for another quest.
+   * const room = sql`${quests.subquery(
+   *   { projectId: { eq: 1 } },
+   *   undefined,
+   *   { count: true },
+   * )} < ${500}`;
+   *
+   * // The newest quest's title, as a value.
+   * const latest = quests.subquery({ projectId: { eq: 1 } }, "title", {
+   *   orderBy: [{ column: "id", direction: "desc" }],
+   *   limit: 1,
+   * });
    * ```
    */
   public subquery(
     where: PgQueryWhereOrSQL<T>,
     column?: keyof Infer<T>,
-    opts: { force?: boolean } = {},
+    opts: SubqueryOptions<T> = {},
   ): SQL {
     const aliasName = `${this.tableName}_sq`;
     this.assertNoNestedSubquery(where, aliasName);
@@ -407,12 +429,29 @@ export abstract class Repository<T extends ZObject> {
       },
     );
 
-    const selection = column
-      ? { value: col(column as string) }
-      : { value: sql`1` };
+    const selection = opts.count
+      ? { value: count() }
+      : column
+        ? { value: col(column as string) }
+        : { value: sql`1` };
     let builder = this.provider.db.select(selection).from(inner);
     if (condition) {
       builder = builder.where(condition) as any;
+    }
+    if (opts.orderBy?.length) {
+      builder = builder.orderBy(
+        ...opts.orderBy.map((clause) =>
+          clause.direction === "desc"
+            ? desc(col(clause.column as string))
+            : asc(col(clause.column as string)),
+        ),
+      ) as any;
+    }
+    if (opts.limit !== undefined) {
+      builder = builder.limit(opts.limit) as any;
+    }
+    if (opts.offset !== undefined) {
+      builder = builder.offset(opts.offset) as any;
     }
 
     const result = sql`${builder}`;
@@ -1077,6 +1116,201 @@ export abstract class Repository<T extends ZObject> {
     }
 
     return entity;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Statement builders, for `DatabaseProvider.atomicBatch`
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * An INSERT of one row, as a statement for
+   * {@link DatabaseProvider.atomicBatch} rather than a write run now.
+   *
+   * The row is cast exactly as {@link create} casts it, and the statement
+   * returns it (`RETURNING`). It emits no `repository:create:before` event:
+   * it is SQL, not a call. Once the batch has committed, the table's query
+   * cache is invalidated and `repository:create:after` fires with the row.
+   *
+   * `onConflictDoNothing` makes a row that collides with a unique key a
+   * no-op: the statement then returns no row, and the event does not fire.
+   *
+   * @example
+   * ```ts
+   * await database.atomicBatch([
+   *   receipts.insertStatement({ id, status: "claimed" }, { onConflictDoNothing: true }),
+   *   runs.updateStatement({ id: runId }, { status: "running" }, { touch: false }),
+   * ]);
+   * ```
+   */
+  public insertStatement(
+    data: Infer<TObjectInsert<T>>,
+    opts: InsertStatementOptions = {},
+  ): SQL {
+    const insert = this.rawInsert().values(this.cast(data ?? {}, true));
+    const statement = (
+      opts.onConflictDoNothing ? insert.onConflictDoNothing() : insert
+    )
+      .returning(this.pgTable)
+      .getSQL();
+    if (opts.events === false) {
+      return statement;
+    }
+    return withAfterBatch(statement, async (rows) => {
+      await this.invalidateCache({});
+      for (const row of rows) {
+        await this.alepha.events.emit("repository:create:after", {
+          tableName: this.tableName,
+          data,
+          entity: this.decodeRow(row),
+        });
+      }
+    });
+  }
+
+  /**
+   * An UPDATE of every row `where` selects, as a statement for
+   * {@link DatabaseProvider.atomicBatch}.
+   *
+   * Cast as {@link updateMany} casts it, with the same soft-delete filter
+   * (`force` reaches deleted rows). By default it also writes what
+   * `updateMany` writes beside the patch, and each can be turned off for a
+   * write that is bookkeeping rather than an edit:
+   *
+   * - `touch: false` leaves `db.updatedAt()` alone;
+   * - `version: false` leaves `db.version()` alone.
+   *
+   * It returns the changed rows unless `returning: false`. No
+   * `repository:update:before` event; once the batch has committed, the
+   * query cache is invalidated and `repository:update:after` fires with the
+   * returned rows.
+   */
+  public updateStatement(
+    where: PgQueryWhereOrSQL<T>,
+    data: WithSQL<Infer<TObjectUpdate<T>>>,
+    opts: UpdateStatementOptions = {},
+  ): SQL {
+    const row: Record<string, unknown> = { ...(data as object) };
+    const updatedAtField = getAttrFields(
+      this.entity.schema,
+      PG_UPDATED_AT,
+    )?.[0];
+    if (updatedAtField && opts.touch !== false) {
+      row[updatedAtField.key] =
+        opts.now ?? this.dateTimeProvider.nowISOString();
+    }
+    const values = this.cast(row as never, false) as Record<string, unknown>;
+    delete values[this.id.key as string];
+    if (opts.version !== false) {
+      this.withVersionBump(values);
+    }
+    const scoped = this.withDeletedAt(where, opts);
+    const update = this.rawUpdate()
+      .set(values as PgUpdateSetSource<PgTableWithColumns<any>>)
+      .where(this.toSQL(scoped));
+    const statement = (
+      opts.returning === false ? update : update.returning(this.pgTable)
+    ).getSQL();
+    if (opts.events === false) {
+      return statement;
+    }
+    return withAfterBatch(statement, async (rows) => {
+      await this.invalidateCache({});
+      await this.alepha.events.emit("repository:update:after", {
+        tableName: this.tableName,
+        where: scoped,
+        data,
+        entities: rows.map((it) => this.decodeRow(it)),
+      });
+    });
+  }
+
+  /**
+   * A DELETE of every row `where` selects, as a statement for
+   * {@link DatabaseProvider.atomicBatch}.
+   *
+   * Always a HARD delete, on a soft-deleting table too: a statement that
+   * sets `deletedAt` is an {@link updateStatement}. The soft-delete filter
+   * still scopes `where` unless `force`, so by default it removes live rows
+   * only; pass `force` to remove deleted ones as well. It returns the
+   * removed keys only, and once the batch has committed the query cache is
+   * invalidated and `repository:delete:after` fires with them. With
+   * `events: false` it returns nothing and does neither.
+   */
+  public deleteStatement(
+    where: PgQueryWhereOrSQL<T>,
+    opts: { force?: boolean; events?: boolean } = {},
+  ): SQL {
+    const scoped = this.withDeletedAt(where, opts);
+    const remove = this.rawDelete().where(this.toSQL(scoped));
+    if (opts.events === false) {
+      return remove.getSQL();
+    }
+    // Only the key comes back: a delete can remove many rows, and D1 caps
+    // the size of a result.
+    const key = this.col(this.id.key as keyof Infer<T>);
+    const statement = remove.returning({ [key.name]: key }).getSQL();
+    return withAfterBatch(statement, async (rows) => {
+      await this.invalidateCache({});
+      await this.alepha.events.emit("repository:delete:after", {
+        tableName: this.tableName,
+        where: scoped,
+        ids: rows.map((it) => it[key.name] as string | number),
+      });
+    });
+  }
+
+  /**
+   * `EXISTS (...)` over this table, for a guard or a condition: true when
+   * `where` selects a row. The soft-delete filter applies unless `force`.
+   * Built on {@link subquery}, so it correlates the same way.
+   */
+  public exists(
+    where: PgQueryWhereOrSQL<T>,
+    opts: { force?: boolean } = {},
+  ): SQL {
+    return sql`EXISTS ${this.subquery(where, undefined, opts)}`;
+  }
+
+  /**
+   * `NOT EXISTS (...)` over this table: the negation of {@link exists}.
+   */
+  public notExists(
+    where: PgQueryWhereOrSQL<T>,
+    opts: { force?: boolean } = {},
+  ): SQL {
+    return sql`NOT EXISTS ${this.subquery(where, undefined, opts)}`;
+  }
+
+  /**
+   * One column of the first row `where` selects, as a value
+   * (`(SELECT col ... LIMIT 1)`): a generated id read back inside the same
+   * batch, say. The soft-delete filter applies unless `force`.
+   */
+  public scalar(
+    where: PgQueryWhereOrSQL<T>,
+    field: keyof Infer<T>,
+    opts: { force?: boolean } = {},
+  ): SQL {
+    return this.subquery(where, field, { ...opts, limit: 1 });
+  }
+
+  /**
+   * Decode a row as the driver returned it, keyed by column name, into an
+   * entity: what a statement of {@link DatabaseProvider.atomicBatch}
+   * answers, read back with the same column mappers and cleanup as a
+   * repository read.
+   */
+  public decodeRow(row: Record<string, unknown>): Infer<T> {
+    const mapped: Record<string, unknown> = {};
+    for (const [key, column] of Object.entries(
+      getTableColumns(this.pgTable as PgTable),
+    )) {
+      const value = Object.hasOwn(row, column.name)
+        ? row[column.name]
+        : row[key];
+      mapped[key] = value == null ? value : column.mapFromDriverValue(value);
+    }
+    return this.clean(mapped, this.entity.schema);
   }
 
   /**
@@ -2073,6 +2307,19 @@ export abstract class Repository<T extends ZObject> {
    * rendered again (Postgres would refuse it once the expression binds a
    * parameter), so it may not be spelled like a column. `min` / `max` over an
    * expression are typed and decoded as the expression's `SQL<T>`.
+   *
+   * `countDistinct` counts distinct values, `COUNT(DISTINCT x)`. With a
+   * `where` it counts the distinct values of the matching rows only:
+   *
+   * @example
+   * ```ts
+   * await visits.aggregate({
+   *   select: {
+   *     visitors: { countDistinct: { column: "visitorId", where: { bot: false } } },
+   *   },
+   * });
+   * // -> [{ visitors: { countDistinct: 42 } }]
+   * ```
    */
   public async aggregate<S extends AggregateSelect<T>>(
     query: AggregateQuery<T, S>,
@@ -2094,6 +2341,8 @@ export abstract class Repository<T extends ZObject> {
         switch (op) {
           case "count":
             return count(column);
+          case "countDistinct":
+            return countDistinct(column);
           case "sum":
             return sum(column);
           case "avg":
@@ -2316,7 +2565,10 @@ export abstract class Repository<T extends ZObject> {
               // that through Number() turned every non-numeric min/max into NaN.
               // Their empty-set answer stays null, because SQL has none.
               result[col][op] =
-                op === "count" || op === "sum" || op === "avg"
+                op === "count" ||
+                op === "countDistinct" ||
+                op === "sum" ||
+                op === "avg"
                   ? value != null
                     ? Number(value)
                     : 0
@@ -3110,3 +3362,76 @@ export interface StatementOptions {
 type WithSQL<T> = {
   [P in keyof T]?: T[P] | SQL;
 };
+
+/**
+ * Options of {@link Repository.subquery}.
+ */
+export interface SubqueryOptions<T extends ZObject> {
+  /**
+   * Reach soft-deleted rows: the soft-delete filter is not added.
+   */
+  force?: boolean;
+  /**
+   * Select `COUNT(*)` of the matching rows instead of a column.
+   */
+  count?: boolean;
+  /**
+   * At most this many rows.
+   */
+  limit?: number;
+  /**
+   * Skip this many rows first.
+   */
+  offset?: number;
+  /**
+   * The order `limit` and `offset` read the rows in.
+   */
+  orderBy?: Array<{ column: keyof Infer<T>; direction?: "asc" | "desc" }>;
+}
+
+/**
+ * Options of {@link Repository.insertStatement}.
+ */
+export interface InsertStatementOptions {
+  /**
+   * A row colliding with a unique key is skipped (`ON CONFLICT DO NOTHING`).
+   */
+  onConflictDoNothing?: boolean;
+  /**
+   * `false` leaves the post-commit cache invalidation and `:after` event to
+   * the caller, which runs both itself once it has decoded the rows. A
+   * failing `:after` listener then fails that caller, not the batch.
+   */
+  events?: boolean;
+}
+
+/**
+ * Options of {@link Repository.updateStatement}.
+ */
+export interface UpdateStatementOptions {
+  /**
+   * Stamp `db.updatedAt()`. Defaults to `true`.
+   */
+  touch?: boolean;
+  /**
+   * Bump `db.version()`. Defaults to `true`.
+   */
+  version?: boolean;
+  /**
+   * Reach soft-deleted rows.
+   */
+  force?: boolean;
+  /**
+   * Return the changed rows. Defaults to `true`.
+   */
+  returning?: boolean;
+  /**
+   * The instant `touch` stamps. Defaults to now.
+   */
+  now?: string;
+  /**
+   * `false` leaves the post-commit cache invalidation and `:after` event to
+   * the caller; see {@link InsertStatementOptions.events}.
+   */
+  events?: boolean;
+}

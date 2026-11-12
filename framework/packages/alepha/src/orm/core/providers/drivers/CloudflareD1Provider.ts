@@ -1,4 +1,5 @@
 import { $env, $hook, $inject, AlephaError, z } from "alepha";
+import { sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
@@ -287,6 +288,27 @@ export class CloudflareD1Provider extends DatabaseProvider {
    */
   public override get supportsTransactions(): boolean {
     return false;
+  }
+
+  /**
+   * The binding's native `batch()`: D1 runs the prepared statements as one
+   * implicit transaction, on the primary, and rolls them all back when one
+   * fails.
+   */
+  protected override async runAtomicBatch(
+    statements: SQLLike[],
+  ): Promise<Array<Record<string, unknown>[]>> {
+    if (!this.drizzleDb) {
+      throw new AlephaError("D1 database not initialized");
+    }
+    const db = this.drizzleDb;
+    // `all()` prepares a lazy query; `batch()` runs them together.
+    const queries = statements.map((statement) =>
+      db.all(typeof statement === "string" ? sql.raw(statement) : statement),
+    );
+    return (await db.batch(queries as never)) as Array<
+      Record<string, unknown>[]
+    >;
   }
 
   /**

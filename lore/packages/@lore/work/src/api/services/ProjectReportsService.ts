@@ -5,16 +5,14 @@ import {
   reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "@lore/core/schemas";
-import { $inject, type Infer, z } from "alepha";
+import { $inject, type Infer } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   $repository,
-  DatabaseProvider,
   type PgQueryWhere,
   SqlExpressionProvider,
-  sql,
 } from "alepha/orm";
 
 import { questComments } from "../entities/questComments.ts";
@@ -39,7 +37,6 @@ export class ProjectReportsService {
   protected readonly members = $repository(organizationMembers);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
-  protected readonly database = $inject(DatabaseProvider);
   protected readonly sqlx = $inject(SqlExpressionProvider);
   protected readonly epicVisibility = $inject(EpicVisibilityService);
   /**
@@ -842,36 +839,27 @@ export class ProjectReportsService {
     const organizationId = (
       await this.projects.getOne({ where: { id: { eq: projectId } } })
     ).organizationId!;
-    const userName = sql`
-				COALESCE(
-					NULLIF(TRIM(
-						COALESCE(${this.users.table.firstName}, '') || ' ' || COALESCE(${this.users.table.lastName}, '')
-					), ''),
-					${this.users.table.username}
-				)
-			`;
-    const rows = await this.database.run(
-      sql`
-					SELECT
-						${this.members.table.userId} as user_id,
-						${userName} as name,
-						${this.users.table.picture} as picture
-					FROM ${this.members.table}
-					LEFT JOIN ${this.users.table}
-						ON ${this.users.table.id} = ${this.members.table.userId}
-					WHERE ${this.members.table.organizationId} = ${organizationId}
-				`,
-      z.object({
-        user_id: z.string(),
-        name: z.string().nullish(),
-        picture: z.string().nullish(),
-      }),
-    );
-    return rows.map((row) => ({
-      userId: String(row.user_id),
-      name: row.name ?? String(row.user_id).slice(0, 8),
-      picture: row.picture ?? undefined,
-    }));
+    const rows = await this.members.findMany({
+      where: { organizationId: { eq: organizationId } },
+      columns: ["userId"],
+      with: {
+        user: {
+          type: "left",
+          join: users,
+          on: ["userId", users.cols.id],
+          columns: ["firstName", "lastName", "username", "picture"],
+        },
+      },
+    });
+    return rows.map((row) => {
+      const user = row.user;
+      const full = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+      return {
+        userId: row.userId,
+        name: full || user?.username || row.userId.slice(0, 8),
+        picture: user?.picture ?? undefined,
+      };
+    });
   }
 }
 

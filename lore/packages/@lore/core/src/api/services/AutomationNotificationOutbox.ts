@@ -9,8 +9,9 @@ import {
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 
+import { automationReceipts } from "../entities/automationReceipts.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationNotificationSender } from "./AutomationNotificationSender.ts";
@@ -28,6 +29,7 @@ export class AutomationNotificationOutbox {
   protected readonly database = $inject(AutomationDatabase);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly deliveries = $repository(notificationDeliveryEntity);
+  protected readonly receipts = $repository(automationReceipts);
   protected readonly executions = $inject(
     AutomationBatchRepository.of(jobExecutionEntity),
   );
@@ -68,7 +70,25 @@ export class AutomationNotificationOutbox {
     return {
       id,
       statements: [
-        sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, run_id, parent_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${marker}, 0, ${input.projectId}, ${input.automationId}, ${input.runId ?? null}, ${input.operationId ?? null}, ${marker}, 'job_origin', 'committed', ${id}, 0, ${this.database.timestamp(now)}, ${this.database.timestamp(this.time.now().add(90, "days").toISOString())}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
+        this.receipts.insertStatement({
+          id: marker,
+          projectId: input.projectId,
+          automationId: input.automationId,
+          runId: input.runId,
+          parentId: input.operationId,
+          identity: marker,
+          kind: "job_origin",
+          status: "committed",
+          occurrenceId: id,
+          ruleRevision: 0,
+          occurredAt: now,
+          replayUntil: this.time.now().add(90, "days").toISOString(),
+          cursor: 0,
+          queueAttempts: 0,
+          rosterComplete: false,
+          createdAt: now,
+          updatedAt: now,
+        }),
         this.executions.insertStatement({
           id,
           createdAt: now,

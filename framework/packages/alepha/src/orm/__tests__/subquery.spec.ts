@@ -276,6 +276,67 @@ const testColumnAndSqlValues = async (alepha: Alepha) => {
   );
 };
 
+/**
+ * A subquery as a value: a count compared against a cap, a count as a
+ * computed column, and a bounded scalar.
+ */
+const testCountAndLimit = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+  const ids = await seed(app, alepha.inject(DateTimeProvider).nowISOString());
+
+  // Seven live quests in project 1; the soft-deleted one is not counted.
+  const live = app.quests.subquery({ projectId: { eq: 1 } }, undefined, {
+    count: true,
+  });
+  const [{ n }] = await app.quests.query(
+    sql`SELECT ${live} AS n`,
+    z.object({ n: z.coerce.number() }),
+  );
+  expect(n).toBe(7);
+  const all = app.quests.subquery({ projectId: { eq: 1 } }, undefined, {
+    count: true,
+    force: true,
+  });
+  const [{ m }] = await app.quests.query(
+    sql`SELECT ${all} AS m`,
+    z.object({ m: z.coerce.number() }),
+  );
+  expect(m).toBe(8);
+
+  // As a guard: epics whose open quests are fewer than one.
+  const empty = await app.epics.findMany({
+    where: {
+      and: [
+        sql`${app.quests.subquery(
+          {
+            epicId: { eq: app.epics.table.id },
+            completedAt: { isNull: true },
+            shelvedAt: { isNull: true },
+          },
+          undefined,
+          { count: true },
+        )} < ${1}`,
+      ],
+    },
+    orderBy: "id",
+  });
+  expect(sorted(empty.map((e) => e.id))).toEqual(sorted([ids.e1, ids.e4]));
+
+  // A scalar: the newest live quest's title, then the one before it.
+  const newest = (offset?: number) =>
+    app.quests.subquery({ projectId: { eq: 1 } }, "title", {
+      orderBy: [{ column: "id", direction: "desc" }],
+      limit: 1,
+      offset,
+    });
+  const [titles] = await app.quests.query(
+    sql`SELECT ${newest()} AS first, ${newest(1)} AS second`,
+    z.object({ first: z.string(), second: z.string() }),
+  );
+  expect(titles).toEqual({ first: "unblocked", second: "blocked" });
+};
+
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
 const postgres = () => Alepha.create().with(AlephaOrmPostgres);
@@ -319,5 +380,13 @@ describe("Repository.subquery", () => {
 
   it("eq / ne / gt / gte / lt / lte take a column or an SQL fragment (postgres)", async () => {
     await testColumnAndSqlValues(postgres());
+  });
+
+  it("count, limit, offset and orderBy make a value subquery (sqlite)", async () => {
+    await testCountAndLimit(sqlite());
+  });
+
+  it("count, limit, offset and orderBy make a value subquery (postgres)", async () => {
+    await testCountAndLimit(postgres());
   });
 });

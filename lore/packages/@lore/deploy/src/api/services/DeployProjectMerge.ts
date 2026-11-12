@@ -6,12 +6,25 @@ import {
   type ProjectMergeStepPlan,
   type ProjectMergeTable,
   ProjectMergeTables,
+  projectMergeWrite,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { $inject } from "alepha";
-import { $repository, sql, type SQLLike } from "alepha/orm";
+import { $repository, type SQLLike } from "alepha/orm";
 
+import { appInstances } from "../entities/appInstances.ts";
+import { artifacts } from "../entities/artifacts.ts";
+import { blightIgnoreRules } from "../entities/blightIgnoreRules.ts";
+import { blights } from "../entities/blights.ts";
+import { deployments } from "../entities/deployments.ts";
+import { estateProjects } from "../entities/estateProjects.ts";
 import { estates } from "../entities/estates.ts";
+import { monitors } from "../entities/monitors.ts";
+import { qualityRuns } from "../entities/qualityRuns.ts";
+import { registryCredentials } from "../entities/registryCredentials.ts";
+import { sigils } from "../entities/sigils.ts";
+import { stackDeployments } from "../entities/stackDeployments.ts";
+import { stacks } from "../entities/stacks.ts";
 import { EstateService } from "./EstateService.ts";
 
 /**
@@ -43,13 +56,13 @@ export class DeployProjectMerge {
   protected static readonly moved: ProjectMergeTable[] = [
     {
       kind: "sigil",
-      table: "sigils",
+      entity: sigils,
       keys: ["name"],
       onCollision: "refuse",
     },
     {
       kind: "app instance",
-      table: "app_instances",
+      entity: appInstances,
       keys: ["app", "env"],
       onCollision: "refuse",
     },
@@ -59,60 +72,61 @@ export class DeployProjectMerge {
       // newest push, which is the target's once CI reports there. The
       // source's row goes; its bytes stay in the bucket, unreferenced.
       kind: "artifact",
-      table: "artifacts",
+      entity: artifacts,
       keys: ["app", "tag", "runtime", "format"],
       onCollision: "keepTarget",
     },
     {
       kind: "blight",
-      table: "blights",
+      entity: blights,
       keys: ["fingerprint"],
       onCollision: "refuse",
     },
-    { kind: "blight ignore rule", table: "blight_ignore_rules" },
-    { kind: "deployment", table: "deployments" },
+    { kind: "blight ignore rule", entity: blightIgnoreRules },
+    { kind: "deployment", entity: deployments },
     {
       kind: "stack",
-      table: "stacks",
+      entity: stacks,
       keys: ["name"],
       onCollision: "refuse",
     },
-    { kind: "stack deployment", table: "stack_deployments" },
-    { kind: "monitor", table: "monitors" },
+    { kind: "stack deployment", entity: stackDeployments },
+    { kind: "monitor", entity: monitors },
     {
       // The estates the source is the home of (#Q3278): a slug is unique
       // per home project and never rewritten, since a machine's config may
       // record it, so one the target already holds is a conflict.
       kind: "estate",
-      table: "estates",
+      entity: estates,
       keys: ["slug"],
       onCollision: "refuse",
     },
     {
       kind: "estate loan",
-      table: "estate_projects",
-      keys: ["estate_id"],
+      entity: estateProjects,
+      keys: ["estateId"],
       onCollision: "keepTarget",
     },
     {
       kind: "registry credential",
-      table: "registry_credentials",
+      entity: registryCredentials,
       keys: ["host"],
       onCollision: "keepTarget",
     },
     {
       kind: "quality run",
-      table: "quality_runs",
+      entity: qualityRuns,
       keys: ["branch", "day"],
       onCollision: "keepTarget",
     },
   ];
 
   constructor() {
+    this.tables.prepare(DeployProjectMerge.moved);
     this.merge.registerStep({
       order: 30,
       name: "deploy",
-      tables: DeployProjectMerge.moved.map((table) => table.table),
+      tables: DeployProjectMerge.moved.map((table) => table.entity.name),
       plan: (context) => this.plan(context),
     });
   }
@@ -126,7 +140,7 @@ export class DeployProjectMerge {
     const statements: SQLLike[] = [];
     for (const table of DeployProjectMerge.moved) {
       const result = await this.tables.move(context, table);
-      moved[table.table] = result.moved;
+      moved[table.entity.name] = result.moved;
       changed.push(...result.changed);
       conflicts.push(...result.conflicts);
       statements.push(...result.statements);
@@ -155,8 +169,21 @@ export class DeployProjectMerge {
       }
       const owner = await this.estateService.ownerOf(context.targetProjectId);
       if (owner) {
+        // Filtered on the TARGET, after the move, on purpose: by the time it
+        // runs the source's homed estates belong to the target, and it
+        // repoints them all. The target's own estates are rewritten to the
+        // value they already hold, since `EstateAnchorHooks` keeps every
+        // homed estate's `owner_user_id` on its home project's owner, so only
+        // the moved ones change. `owner_user_id` is the cascade anchor
+        // (#Q3278), not a stale owner column. It is a statement of the merge
+        // batch (`updateStatement`), never an `estates.updateMany`, which
+        // would run at once, outside the batch, and break its atomicity.
         statements.push(
-          sql`UPDATE estates SET owner_user_id = ${owner} WHERE project_id = ${context.targetProjectId}`,
+          this.estates.updateStatement(
+            { projectId: { eq: context.targetProjectId } },
+            { ownerUserId: owner },
+            projectMergeWrite,
+          ),
         );
       }
     }

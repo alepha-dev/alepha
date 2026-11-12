@@ -74,7 +74,7 @@ import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
  * existed.
  *
  * Deliberately does NOT inject `EpicVisibilityService`. The backlog gate
- * it owns (`applyBacklogGate` / `draftEpicSqlPredicate`) governs the
+ * it owns (`applyBacklogGate`) governs the
  * PROJECT's listing surfaces (quest list, Kanban, Reports denominators) —
  * never an epic's own view of itself. See `computeProgressOf` below.
  */

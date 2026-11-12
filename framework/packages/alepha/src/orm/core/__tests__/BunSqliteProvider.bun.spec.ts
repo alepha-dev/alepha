@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 
 import { Alepha, z } from "alepha";
 
-import { $entity, $repository, DatabaseProvider, db } from "../index.ts";
+import { $entity, $repository, DatabaseProvider, db, sql } from "../index.ts";
 import {
   BunSqliteProvider,
   bunSqliteOptions,
@@ -54,6 +54,34 @@ describe("BunSqliteProvider", () => {
 
     return alepha.inject(TestApp);
   };
+
+  it("runs an atomic batch all or nothing", async () => {
+    setup();
+    await alepha.start();
+    const database = alepha.inject(DatabaseProvider);
+    await database.execute(
+      sql`CREATE TABLE atomic_bun (id INTEGER PRIMARY KEY, n INTEGER NOT NULL UNIQUE)`,
+    );
+    const rows = await database.atomicBatch([
+      sql`INSERT INTO atomic_bun (id, n) VALUES (1, 1) RETURNING n`,
+      sql`INSERT INTO atomic_bun (id, n) VALUES (2, 2) RETURNING n`,
+    ]);
+    expect(rows.map((it) => Number(it[0].n))).toEqual([1, 2]);
+    const failed = await database
+      .atomicBatch([
+        sql`INSERT INTO atomic_bun (id, n) VALUES (3, 3)`,
+        sql`INSERT INTO atomic_bun (id, n) VALUES (4, 1)`,
+      ])
+      .then(
+        () => false,
+        () => true,
+      );
+    expect(failed).toBe(true);
+    const [{ n }] = await database.execute(
+      sql`SELECT COUNT(*) AS n FROM atomic_bun`,
+    );
+    expect(Number(n)).toBe(2);
+  });
 
   it("should start and stop cleanly", async () => {
     setup();

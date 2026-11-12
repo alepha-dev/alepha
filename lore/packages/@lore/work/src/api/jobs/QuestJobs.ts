@@ -1,11 +1,11 @@
-import { AutomationLegacyQueue } from "@lore/core/api";
+import { AutomationLegacyQueue, AutomationPersistence } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 
 import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";
@@ -17,6 +17,7 @@ export class QuestJobs {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
+  protected readonly automations = $inject(AutomationPersistence);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly questNotifications = $inject(QuestNotifications);
@@ -72,9 +73,11 @@ export class QuestJobs {
       // Filter adopted policies before LIMIT, so their due rows cannot starve fallback projects.
       const due = await this.quests.findMany({
         where: {
-          and: [
-            sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${this.quests.table.projectId} AND policy = 'quest-reminders' AND state = 'adopted')`,
-          ],
+          notExists: this.automations.adoptions.subquery({
+            projectId: { eq: this.quests.table.projectId },
+            policy: "quest-reminders",
+            state: "adopted",
+          }),
           reminderNextAt: { lte: now, isNotNull: true },
           reminderInterval: { isNotNull: true },
           acceptedBy: { isNotNull: true },

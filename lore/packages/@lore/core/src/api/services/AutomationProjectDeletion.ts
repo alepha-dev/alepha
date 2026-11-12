@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { DbCacheProvider, sql } from "alepha/orm";
+import { DbCacheProvider } from "alepha/orm";
 
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -34,12 +34,25 @@ export class AutomationProjectDeletion {
           { force: true },
         );
         if (!any) return;
-        const rules = sql`SELECT id FROM automations WHERE project_id = ${projectId}`;
+        // Hard deletes, soft-deleted rules included (`force`), and with no
+        // RETURNING (`events: false`): the caches go below, table by table.
+        const { receipts, runs, adoptions, rules } = this.persistence;
+        const scope = () => ({
+          or: [
+            { projectId: { eq: projectId } },
+            {
+              automationId: {
+                inArray: rules.subquery({ projectId }, "id", { force: true }),
+              },
+            },
+          ],
+        });
+        const quiet = { events: false };
         await this.database.batch([
-          sql`DELETE FROM automation_receipts WHERE project_id = ${projectId} OR automation_id IN (${rules})`,
-          sql`DELETE FROM automation_runs WHERE project_id = ${projectId} OR automation_id IN (${rules})`,
-          sql`DELETE FROM automation_adoptions WHERE project_id = ${projectId} OR automation_id IN (${rules})`,
-          sql`DELETE FROM automations WHERE project_id = ${projectId}`,
+          receipts.deleteStatement(scope(), quiet),
+          runs.deleteStatement(scope(), quiet),
+          adoptions.deleteStatement(scope(), quiet),
+          rules.deleteStatement({ projectId }, { ...quiet, force: true }),
         ]);
         for (const table of [
           "automation_receipts",

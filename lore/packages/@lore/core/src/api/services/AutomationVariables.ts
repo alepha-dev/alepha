@@ -203,7 +203,7 @@ export class AutomationVariables {
               ...(this.predicateUses(rule.rule, key) ? { baseline: null } : {}),
               updatedAt: now,
             },
-            false,
+            { returning: false },
           ),
         );
       }
@@ -212,7 +212,7 @@ export class AutomationVariables {
           ? this.variableRows.updateStatement(
               { id: current.id, version: current.version },
               { value: parsed.data, updatedAt: now },
-              false,
+              { returning: false },
             )
           : this.variableRows.insertStatement({
               id: candidate.id,
@@ -293,7 +293,10 @@ export class AutomationVariables {
         projectId,
         sql`${this.variableRows.exists({ id: row.id, version })} AND ${this.approvals.consumers(row.id, projectId, [])}`,
         [
-          sql`DELETE FROM automation_variables WHERE id = ${row.id} AND version = ${version}`,
+          this.variableRows.deleteStatement(
+            { id: row.id, version },
+            { events: false },
+          ),
           this.audit.statement(projectId, user, "variable_delete", row.id, {
             key,
             version,

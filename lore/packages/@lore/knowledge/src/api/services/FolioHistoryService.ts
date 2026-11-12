@@ -1,4 +1,4 @@
-import { AutomationBatchRepository, AutomationDatabase } from "@lore/core/api";
+import { AutomationBatchRepository } from "@lore/core/api";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -88,7 +88,6 @@ export class FolioHistoryService {
   protected readonly batch = $inject(
     AutomationBatchRepository.of(folioRevisions),
   );
-  protected readonly database = $inject(AutomationDatabase);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -336,7 +335,7 @@ export class FolioHistoryService {
           this.batch.updateStatement(
             { id: { inArray: ids } },
             { contentSnapshot: previousContent!, snapshotIsLive: false },
-            false,
+            { returning: false },
           ),
         ]
       : [];
@@ -357,9 +356,23 @@ export class FolioHistoryService {
             pinned: false,
           }),
     ];
+    // The head is still the head as it was read: unchanged, and no
+    // revision ordered after it by (at, id).
     const condition = head
-      ? sql`EXISTS (SELECT 1 FROM folio_revisions WHERE id = ${head.id} AND folio_id = ${folio.id} AND at = ${this.database.timestamp(head.at)} AND pinned = ${head.pinned ? sql`TRUE` : sql`FALSE`} AND snapshot_is_live = ${head.snapshotIsLive ? sql`TRUE` : sql`FALSE`}) AND NOT EXISTS (SELECT 1 FROM folio_revisions WHERE folio_id = ${folio.id} AND (at > ${this.database.timestamp(head.at)} OR (at = ${this.database.timestamp(head.at)} AND id > ${head.id})))`
-      : sql`NOT EXISTS (SELECT 1 FROM folio_revisions WHERE folio_id = ${folio.id})`;
+      ? sql`EXISTS ${this.revisions.subquery({
+          id: head.id,
+          folioId: folio.id,
+          at: head.at,
+          pinned: head.pinned,
+          snapshotIsLive: head.snapshotIsLive,
+        })} AND NOT EXISTS ${this.revisions.subquery({
+          folioId: folio.id,
+          or: [
+            { at: { gt: head.at } },
+            { at: { eq: head.at }, id: { gt: head.id } },
+          ],
+        })}`
+      : sql`NOT EXISTS ${this.revisions.subquery({ folioId: folio.id })}`;
     return {
       before,
       after,

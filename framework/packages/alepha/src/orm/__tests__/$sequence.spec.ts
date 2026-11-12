@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { $sequence } from "../core/primitives/$sequence.ts";
 import { DatabaseProvider } from "../core/providers/drivers/DatabaseProvider.ts";
+import { SequenceProvider } from "../core/providers/SequenceProvider.ts";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 describe("$sequence", () => {
@@ -48,6 +49,34 @@ describe("$sequence", () => {
     await app.perCampaign.reset(42, "campaign-1");
     expect(await app.perCampaign.current("campaign-1")).toBe(42);
     expect(await app.perCampaign.next("campaign-1")).toBe(43);
+  });
+});
+
+describe("SequenceProvider.raise", () => {
+  const raises = async (alepha: Alepha) => {
+    const sequences = alepha.inject(SequenceProvider);
+    await alepha.start();
+
+    // A sequence never advanced: created at the floor.
+    expect(await sequences.raise("merge", "p1", 5)).toBe(5);
+    expect(await sequences.peek("merge", "p1")).toBe(5);
+    // Raised above, then a lower floor leaves it alone.
+    expect(await sequences.raise("merge", "p1", 9)).toBe(9);
+    expect(await sequences.raise("merge", "p1", 3)).toBe(9);
+    expect(await sequences.peek("merge", "p1")).toBe(9);
+    // The next number handed out is above the raised one.
+    expect(await sequences.advance("merge", "p1")).toBe(10);
+    // Another scope is untouched.
+    expect(await sequences.peek("merge", "p2")).toBeNull();
+    await alepha.stop();
+  };
+
+  it("never lowers a value (sqlite)", async () => {
+    await raises(Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }));
+  });
+
+  it("never lowers a value (postgres)", async () => {
+    await raises(Alepha.create().with(AlephaOrmPostgres));
   });
 });
 
