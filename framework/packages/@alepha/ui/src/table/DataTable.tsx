@@ -14,6 +14,7 @@ import type { DataTableBaseProps } from "./dataTableBaseProps.ts";
 import { DataTableBody } from "./DataTableBody.tsx";
 import { DataTableBulkBar } from "./DataTableBulkBar.tsx";
 import { DATA_TABLE_CELL_PADDING } from "./dataTableCellPadding.ts";
+import { DataTableCompactPager } from "./DataTableCompactPager.tsx";
 import type { DataTableFilterBarField } from "./DataTableFilterBar.tsx";
 import { dataTableFilterBarFields } from "./dataTableFilterFields.ts";
 import { DataTableFooter, PAGE_SIZES } from "./DataTableFooter.tsx";
@@ -447,13 +448,14 @@ export const DataTable = <
   const hasHelp =
     props.help != null && props.help !== false && props.help !== "";
   const showToolbar =
-    Boolean(props.filters) ||
-    Boolean(props.leading) ||
-    Boolean(props.toolbar) ||
-    Boolean(props.actions?.length) ||
-    hasHelp ||
-    !props.hideColumnPicker ||
-    !props.hideActionsMenu;
+    !props.hideToolbar &&
+    (Boolean(props.filters) ||
+      Boolean(props.leading) ||
+      Boolean(props.toolbar) ||
+      Boolean(props.actions?.length) ||
+      hasHelp ||
+      !props.hideColumnPicker ||
+      !props.hideActionsMenu);
   // Drawn while a first fetch is out (its placeholders), and after that only
   // with something in it: a summary with no card and no content is no band.
   // A function is called on every render, which only builds its element: the
@@ -470,7 +472,13 @@ export const DataTable = <
     (summary.cards === undefined ||
       summary.cards.length > 0 ||
       hasSummaryContent);
-  const cellPadding = DATA_TABLE_CELL_PADDING[props.cellPadding ?? "normal"];
+  // `density="compact"` defaults the padding to `small` and the type to
+  // `text-xs`; an explicit `cellPadding` keeps the padding half its own.
+  const compact = props.density === "compact";
+  const cellPadding =
+    DATA_TABLE_CELL_PADDING[
+      props.cellPadding ?? (compact ? "small" : "normal")
+    ];
   const squareRight = props.squareRight
     ? DATA_TABLE_SQUARE_RIGHT[`${props.squareRight}`]
     : undefined;
@@ -489,8 +497,12 @@ export const DataTable = <
   // `pagination={false}` holds for static rows only: a fetched table is
   // paged by the server, and hiding its pager would hide rows.
   const unpaged = props.pagination === false && Boolean(props.data);
+  // `"compact"` swaps the footer for the small pager under the rows, for a
+  // static and a fetched table alike: rows stay reachable, the band goes.
+  const compactPager = props.pagination === "compact";
   const showFooter =
     !unpaged &&
+    !compactPager &&
     ((props.pageSizes ?? PAGE_SIZES).length > 0 ||
       Boolean(meta?.totalPages && meta.totalPages > 1));
   const showTabs = Boolean(props.tabs?.length);
@@ -633,7 +645,12 @@ export const DataTable = <
               unit test sees it (jsdom computes no layout) and it is invisible
               on a table long enough to fill its own container, which is why
               it reached e2e rather than review. */}
-          <Table className={cn(isEmptyState && "h-full")}>
+          <Table
+            className={cn(
+              isEmptyState && "h-full",
+              compact && "text-xs [&_th]:text-xs",
+            )}
+          >
             {/* `bg-muted`, fully opaque, NOT the base header's `bg-muted/50`:
                 this header is sticky, so anything translucent lets the rows
                 scroll visibly through the column labels. Same tint, no
@@ -708,6 +725,10 @@ export const DataTable = <
         <span aria-live="polite" className="sr-only">
           {orderAnnouncement}
         </span>
+
+        {compactPager && (
+          <DataTableCompactPager meta={meta} setPage={setPage} />
+        )}
 
         {showFooter && (
           <DataTableFooter

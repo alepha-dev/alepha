@@ -116,9 +116,38 @@ export interface DataTableBaseProps<
    * ⚠️ Static `data` only. A `fetch` table is paged by the server, so it
    * keeps its footer whatever this says: hiding it would hide rows.
    *
+   * `"compact"` replaces the footer with a small pager under the rows:
+   * "Page 2 of 5" and two chevrons, no size picker, no numbered pages, no
+   * band, and nothing at all while the rows fit on one page. Static rows and
+   * a `fetch` table alike, so it is the setting for a server-paginated list
+   * laid inside something small, a settings dialog above all.
+   *
    * @default true
    */
-  pagination?: boolean;
+  pagination?: boolean | "compact";
+  /**
+   * Hide the toolbar band entirely: no search, no filter bar, no column
+   * picker, no actions menu, no `actions`, `toolbar`, `leading` or `help`.
+   *
+   * For a table inside a dialog or a settings section, where the section's
+   * own heading already names the list and the band is chrome over five
+   * rows. Whatever the caller still needs (a "New" button) goes in the
+   * surrounding section instead.
+   *
+   * @default false
+   */
+  hideToolbar?: boolean;
+  /**
+   * How tight the rows sit: `"normal"`, or `"compact"`, which defaults the
+   * cell padding to `small` and sets the header and rows in a smaller type.
+   * An explicit {@link cellPadding} still wins over the padding half.
+   *
+   * With `hideToolbar` and `pagination="compact"`, it is what makes a table
+   * light enough for a dialog.
+   *
+   * @default "normal"
+   */
+  density?: "normal" | "compact";
   /**
    * Shade every other row, for a wide table whose rows are hard to follow
    * across.
