@@ -64,7 +64,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".bg-muted.in-data-\\[slot\\=tooltip-content\\]\\:bg-background\\/20.in-data-\\[slot\\=tooltip-content\\]\\:text-background:nth-child(1)",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/admin/jobs/:jobName",
@@ -72,7 +72,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".-mt-2.justify-between.rounded-t-none > .gap-2 > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/admin/jobs/:jobName",
@@ -80,7 +80,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'span[data-tone="neutral"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/admin/users/:userId",
@@ -88,7 +88,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".hover\\:underline",
     reason:
-      "text-primary on the card background is under 4.5:1 in dark mode; the fix is a --primary token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "text-primary on the card background is under 4.5:1 in dark mode; the fix is a --primary token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/buttons#palette",
@@ -97,7 +97,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       "#base-ui-_r_1_-0 > .flex-1.flex-col.min-w-0 > .truncate.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/buttons#palette",
@@ -105,7 +105,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".gap-1\\.5.items-center.flex:nth-child(3) > kbd",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/data-table/addons",
@@ -114,7 +114,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       '.hover\\:bg-\\[color-mix\\(in_oklab\\,var\\(--muted\\)\\,transparent_40\\%\\)\\].rounded-t-\\[0\\.625rem\\][role="tab"]:nth-child(2) > .rounded-full.px-1\\.5.tabular-nums',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/data-table/addons",
@@ -123,7 +123,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".justify-between.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\].-mt-2 > .gap-2 > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/data-table/addons",
@@ -131,7 +131,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".rounded-t-md > .truncate",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/data-table/basic",
@@ -140,7 +140,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > .gap-2 > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -149,7 +149,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(2) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -158,7 +158,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(3) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -167,7 +167,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(4) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -176,7 +176,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(5) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -185,7 +185,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".hover\\:bg-transparent:nth-child(1) > .py-1\\.5.tracking-wide.uppercase > .gap-2",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -194,7 +194,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".hover\\:bg-transparent:nth-child(5) > .py-1\\.5.tracking-wide.uppercase > .gap-2",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/permission-matrix",
@@ -203,7 +203,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".hover\\:bg-transparent:nth-child(9) > .py-1\\.5.tracking-wide.uppercase > .gap-2",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/plate",
@@ -211,7 +211,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'a[href="/blocks/plate?tab=artifacts"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/plate",
@@ -219,7 +219,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'a[href="/blocks/plate?tab=changelog"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/plate",
@@ -227,7 +227,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'a[href="/blocks/plate?tab=contents"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/plate",
@@ -236,7 +236,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       'a[href="/blocks/plate?tab=contents"] > .bg-foreground\\/10.h-\\[18px\\].min-w-\\[18px\\]',
     reason:
-      "The plate tab count, --muted-foreground on bg-foreground/10: 3.52:1 light, 4.33:1 dark; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "The plate tab count, --muted-foreground on bg-foreground/10: 3.52:1 light, 4.33:1 dark; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/plate",
@@ -244,7 +244,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'a[href="/blocks/plate?tab=flow"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/shell",
@@ -252,7 +252,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".size-7.bg-muted.text-xs",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/shell",
@@ -260,7 +260,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: "p:nth-child(3) > code",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/sidebar",
@@ -268,7 +268,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: "p:nth-child(3) > code:nth-child(1)",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/sidebar",
@@ -276,7 +276,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: "p:nth-child(3) > code:nth-child(2)",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/sidebar",
@@ -284,7 +284,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: "p:nth-child(5) > code:nth-child(1)",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/blocks/sidebar",
@@ -292,7 +292,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: "p:nth-child(5) > code:nth-child(2)",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/account/connections",
@@ -300,7 +300,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".-mt-2.flex-wrap.rounded-t-none > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/account/keys",
@@ -309,7 +309,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > .gap-2 > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/account/sessions",
@@ -317,7 +317,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".-mt-2.flex-wrap.rounded-t-none > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/files",
@@ -325,7 +325,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".rounded-t-md > .truncate",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/jobs",
@@ -334,7 +334,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/keys",
@@ -343,7 +343,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/notifications",
@@ -352,7 +352,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/notifications",
@@ -360,7 +360,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'span[data-tone="neutral"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/payments",
@@ -368,7 +368,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".-mt-2.flex-wrap.rounded-t-none > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/payments",
@@ -377,7 +377,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       'tr:nth-child(5) > td:nth-child(5) > .border-border.bg-muted[data-tone="neutral"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/payments",
@@ -386,7 +386,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       'tr:nth-child(6) > td:nth-child(5) > .border-border.bg-muted[data-tone="neutral"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/payments",
@@ -395,7 +395,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       'tr:nth-child(8) > td:nth-child(5) > .border-border.bg-muted[data-tone="neutral"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/payments",
@@ -404,7 +404,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       'tr:nth-child(9) > td:nth-child(5) > .border-border.bg-muted[data-tone="neutral"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/sessions",
@@ -413,7 +413,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/admin/webhooks",
@@ -422,7 +422,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".-mt-2.rounded-t-none.shadow-\\[inset_0_1px_0_0_var\\(--bevel\\)\\] > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/invitations",
@@ -430,7 +430,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: ".-mt-2.flex-wrap.rounded-t-none > div > p",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/members",
@@ -442,7 +442,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
       ".flex-1.flex-col.min-w-0 > .text-xs.text-muted-foreground",
     ],
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/members",
@@ -450,7 +450,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "color-contrast",
     selector: 'span[title="Oct 10, 2026 10:00 AM"]',
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/ranks",
@@ -459,7 +459,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(2) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/ranks",
@@ -468,7 +468,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(3) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/ranks",
@@ -477,7 +477,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".h-auto.min-w-36:nth-child(4) > .gap-1.flex-col > .font-normal.text-xs.text-muted-foreground",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/ranks",
@@ -486,7 +486,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".hover\\:bg-transparent:nth-child(1) > .py-1\\.5.tracking-wide.uppercase > .gap-2",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/ranks",
@@ -495,7 +495,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".hover\\:bg-transparent:nth-child(4) > .py-1\\.5.tracking-wide.uppercase > .gap-2",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   {
     page: "/pages/organizations/ranks",
@@ -504,7 +504,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     selector:
       ".hover\\:bg-transparent:nth-child(8) > .py-1\\.5.tracking-wide.uppercase > .gap-2",
     reason:
-      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
+      "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (tracked by #Q3487).",
   },
   // ── target-size ──
   {
@@ -513,7 +513,7 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "target-size",
     selector: "#base-ui-_r_1m_",
     reason:
-      "A small bucket of the storage bar draws a 12x10 px button; a 24x24 px target needs a layout change of the usage bar, outside #E135's fix budget (gap recorded on #Q3349).",
+      "A small bucket of the storage bar draws a 12x10 px button; a 24x24 px target needs a layout change of the usage bar, outside #E135's fix budget (tracked by #Q3488).",
   },
   {
     page: "/pages/admin/files",
@@ -521,6 +521,6 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     rule: "target-size",
     selector: "#base-ui-_r_1o_",
     reason:
-      "A small bucket of the storage bar draws a 12x10 px button; a 24x24 px target needs a layout change of the usage bar, outside #E135's fix budget (gap recorded on #Q3349).",
+      "A small bucket of the storage bar draws a 12x10 px button; a 24x24 px target needs a layout change of the usage bar, outside #E135's fix budget (tracked by #Q3488).",
   },
 ];
