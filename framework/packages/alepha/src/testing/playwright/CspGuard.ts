@@ -120,12 +120,15 @@ export class CspGuard {
         return;
       }
       if (
-        /violates the following Content Security Policy directive/.test(text)
+        /violates the following Content Security Policy directive|requires 'Trusted(HTML|Script|ScriptURL)' assignment/.test(
+          text,
+        )
       ) {
         // The browser's own report. It repeats one the listener already
         // made, so it only counts when the listener saw nothing.
-        const directive =
-          text.match(/directive:? ["']([a-z-]+)/i)?.[1] ?? "unknown";
+        const directive = /requires 'Trusted/.test(text)
+          ? "require-trusted-types-for"
+          : (text.match(/directive:? ["']([a-z-]+)/i)?.[1] ?? "unknown");
         const blockedURI =
           text.match(
             /(?:Loading|Framing|Connecting to) (?:the \w+ )?'([^']+)'/,

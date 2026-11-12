@@ -28,6 +28,7 @@ export const helmetOptions = $atom({
     contentSecurityPolicy: z
       .object({
         directives: z.record(z.string(), z.any()).optional(),
+        trustedTypes: z.union([z.boolean(), z.array(z.string())]).optional(),
       })
       .optional(),
     referrerPolicy: z
@@ -92,6 +93,14 @@ export interface CspOptions {
    * without turning off the rest of helmet.
    */
   directives?: CspDirectives;
+  /**
+   * Turn on Trusted Types: `require-trusted-types-for 'script'` and
+   * `trusted-types alepha`, appended to the effective policy. A DOM sink
+   * that runs code then takes only a value a policy made: the framework's
+   * own go through its `alepha` policy (`TrustedTypes` in `alepha/react`).
+   * Pass a list to allow more policy names, the app's own. Off by default.
+   */
+  trustedTypes?: boolean | string[];
 }
 
 export interface HstsOptions {
@@ -112,6 +121,12 @@ export class ServerHelmetProvider {
    * The configuration options loaded from the atom.
    */
   protected readonly options = $store(helmetOptions);
+
+  /**
+   * The framework's Trusted Types policy name, `TrustedTypes.POLICY_NAME` in
+   * `alepha/react` (which the server cannot import).
+   */
+  public static readonly TRUSTED_TYPES_POLICY = "alepha";
 
   protected defaultCspDirectives(): CspDirectives {
     return {
@@ -418,6 +433,16 @@ export class ServerHelmetProvider {
       const directives = this.effectiveCspDirectives(
         csp.directives ?? this.defaultCspDirectives(),
       );
+      if (csp.trustedTypes && directives.size > 0) {
+        directives.set("require-trusted-types-for", ["'script'"]);
+        directives.set(
+          "trusted-types",
+          this.mergeSources(directives.get("trusted-types") ?? [], [
+            ServerHelmetProvider.TRUSTED_TYPES_POLICY,
+            ...(Array.isArray(csp.trustedTypes) ? csp.trustedTypes : []),
+          ]),
+        );
+      }
       this.cachedCspDirectives = directives;
       const value = this.serializeCsp(directives);
       // An empty map means no header. Sending `content-security-policy:` with

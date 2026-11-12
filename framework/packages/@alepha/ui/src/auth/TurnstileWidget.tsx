@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+import { TrustedTypes } from "alepha/react";
 import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
 
 /**
@@ -45,8 +46,10 @@ const loadTurnstile = (): Promise<void> => {
       return;
     }
     const s = document.createElement("script");
-    s.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    // A fixed URL, through the framework's Trusted Types policy.
+    s.src = TrustedTypes.scriptURL(
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+    );
     s.async = true;
     s.dataset.turnstile = "1";
     s.onload = () => resolve();

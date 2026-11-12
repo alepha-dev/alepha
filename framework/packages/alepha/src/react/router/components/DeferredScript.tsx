@@ -1,4 +1,4 @@
-import { useAlepha, useInject } from "alepha/react";
+import { TrustedTypes, useAlepha, useInject } from "alepha/react";
 import { use } from "react";
 
 import {
@@ -33,7 +33,7 @@ const DeferredScript = (props: DeferredScriptProps) => {
     return (
       <script
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: "" }}
+        dangerouslySetInnerHTML={{ __html: TrustedTypes.html("") }}
       />
     );
   }

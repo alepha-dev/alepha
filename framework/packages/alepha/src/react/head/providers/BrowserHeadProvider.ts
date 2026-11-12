@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { TrustedTypes } from "alepha/react";
 
 import type { Head, HeadLink, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
@@ -246,7 +247,7 @@ export class BrowserHeadProvider {
       if (this.findInlineScriptByContent(document, script)) return;
       const el = document.createElement("script");
       this.applyNonce(document, el);
-      el.textContent = script;
+      el.textContent = TrustedTypes.script(script);
       document.head.appendChild(el);
       return;
     }
@@ -269,12 +270,16 @@ export class BrowserHeadProvider {
       if (value === true) {
         el.setAttribute(key, "");
       } else if (value !== undefined && value !== false) {
-        el.setAttribute(key, String(value));
+        // A script's `src` is a Trusted Types sink.
+        el.setAttribute(
+          key,
+          key === "src" ? TrustedTypes.scriptURL(String(value)) : String(value),
+        );
       }
     }
     if (content) {
       this.applyNonce(document, el);
-      el.textContent = content;
+      el.textContent = TrustedTypes.script(content);
     }
     document.head.appendChild(el);
   }

@@ -170,4 +170,29 @@ describe("ServerHelmetProvider CSP sources", () => {
       "upgrade-insecure-requests",
     );
   });
+  it("adds Trusted Types to the effective policy, default or custom, with extra policy names", ({
+    expect,
+  }) => {
+    const plain = appWith({ contentSecurityPolicy: { trustedTypes: true } });
+    const csp = parse(plain.helmet.getHeaders()["content-security-policy"]);
+    expect(csp["require-trusted-types-for"]).toEqual(["'script'"]);
+    expect(csp["trusted-types"]).toEqual(["alepha"]);
+
+    const custom = appWith({
+      contentSecurityPolicy: {
+        directives: { defaultSrc: ["'self'"], trustedTypes: ["legacy"] },
+        trustedTypes: ["mine"],
+      },
+    });
+    const customCsp = parse(
+      custom.helmet.getHeaders()["content-security-policy"],
+    );
+    expect(customCsp["trusted-types"]).toEqual(["legacy", "alepha", "mine"]);
+    expect(customCsp["require-trusted-types-for"]).toEqual(["'script'"]);
+
+    const off = appWith({ contentSecurityPolicy: {} });
+    expect(off.helmet.getHeaders()["content-security-policy"]).not.toContain(
+      "trusted-types",
+    );
+  });
 });

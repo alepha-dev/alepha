@@ -51,7 +51,9 @@ const alepha = Alepha.create({
 // first violation, so it stays true.
 alepha.store.mut(helmetOptions, (old) => ({
   ...old,
-  contentSecurityPolicy: {},
+  // Trusted Types too (#Q3320): the framework's DOM sinks go through its
+  // `alepha` policy, and the suite fails on any other.
+  contentSecurityPolicy: { trustedTypes: true },
 }));
 
 if (process.env.STRIPE_SECRET_KEY) {
