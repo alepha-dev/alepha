@@ -5,7 +5,7 @@ import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import {
   AlephaServer,
@@ -50,7 +50,7 @@ const setup = async (options: { broken?: boolean } = {}) => {
     alepha = alepha.with({ provide: ApiKeyService, use: BrokenApiKeyService });
   }
   alepha = alepha
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaServer)
     .with(AlephaSecurity)
     .with(AlephaApiKeys)

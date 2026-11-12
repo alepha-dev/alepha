@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha, z } from "alepha";
 import { BackgroundTaskProvider } from "alepha/background";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -29,7 +29,7 @@ class TestApp {
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaServer)
     .with(AlephaSecurity)
     .with(AlephaApiKeys);

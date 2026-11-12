@@ -5,8 +5,7 @@ import { jobExecutionEntity } from "alepha/api/jobs";
 import { PaymentService } from "alepha/api/payments";
 import { DateTimeProvider } from "alepha/datetime";
 import { MemoryEmailProvider } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -71,7 +70,7 @@ const waitForParked = async (
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceRecovery);
 
   const ctx = {

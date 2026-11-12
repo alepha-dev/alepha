@@ -1,6 +1,9 @@
 import { Alepha } from "alepha";
-import { CloudflareD1Provider, DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  CloudflareD1Provider,
+  DatabaseProvider,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { Miniflare } from "miniflare";
 import { afterAll } from "vitest";
 
@@ -90,7 +93,7 @@ export const jobStepsDialects: JobStepsDialect[] = [
   {
     name: "postgres",
     create: (with_ = identity) =>
-      with_(Alepha.create().with(AlephaOrmPostgres)).with(AlephaApiJobs),
+      with_(Alepha.create().with(AlephaOrmTestPostgres)).with(AlephaApiJobs),
     start: async (alepha) => {
       await alepha.start();
     },

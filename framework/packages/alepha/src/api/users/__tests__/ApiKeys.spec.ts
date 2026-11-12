@@ -3,7 +3,7 @@ import { ApiKeyService } from "alepha/api/keys";
 import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ForbiddenError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -15,7 +15,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);

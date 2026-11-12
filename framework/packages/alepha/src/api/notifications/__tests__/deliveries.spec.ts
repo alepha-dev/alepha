@@ -13,8 +13,7 @@ import {
   type CloudflareEmailSendResult,
   SEND_EMAIL_DEFAULT_BINDING,
 } from "alepha/email/cloudflare";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -67,7 +66,7 @@ const boot = async (
   configure?.(alepha);
 
   alepha
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiJobs)

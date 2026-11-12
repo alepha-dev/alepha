@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -16,7 +16,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => {
       return { realm: $realm({ features: { parameters: true } }) };
@@ -34,7 +34,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => {
       return { realm: $realm() };
@@ -51,7 +51,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => {
       return { realm: $realm({ features: { parameters: true } }) };
@@ -80,7 +80,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => {
       return {
@@ -104,7 +104,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => {
       return { realm: $realm({ features: { parameters: true } }) };
@@ -142,7 +142,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     expect,
   }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => {
       return { realm: $realm({ features: { parameters: true } }) };

@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const counters = $entity({
   name: "test_upsert_many_counters",
@@ -197,7 +197,7 @@ describe("upsertMany", () => {
 
   it("throws on a soft-deleted conflict, as upsert does (postgres)", async () => {
     await testRefusesSoftDeletedConflict(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -207,7 +207,7 @@ describe("upsertMany", () => {
 
   it("overwrites a soft-deleted row under force (postgres)", async () => {
     await testForceOverwritesSoftDeleted(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -217,7 +217,7 @@ describe("upsertMany", () => {
 
   it("accumulates counters through excluded (postgres)", async () => {
     await testAccumulatesThroughExcluded(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -227,7 +227,7 @@ describe("upsertMany", () => {
 
   it("defaults each conflicting row to its own values (postgres)", async () => {
     await testDefaultSetUsesEachRowsOwnValues(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -236,7 +236,9 @@ describe("upsertMany", () => {
   });
 
   it("rejects duplicate conflict targets in one batch (postgres)", async () => {
-    await testDuplicateTargetsPostgres(Alepha.create().with(AlephaOrmPostgres));
+    await testDuplicateTargetsPostgres(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
   });
 
   it("applies duplicate conflict targets sequentially (sqlite)", async () => {
@@ -291,7 +293,7 @@ describe("upsertMany on reserved-word columns", () => {
 
   it("quotes the generated excluded reference (postgres)", async () => {
     await testQuotesReservedWordColumns(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 });

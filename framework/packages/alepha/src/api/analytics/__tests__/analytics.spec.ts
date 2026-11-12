@@ -5,8 +5,8 @@ import {
   DatabaseProvider,
   NodeSqliteProvider,
   nodeSqliteOptions,
+  AlephaOrmTestPostgres,
 } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
 // Imported through the module entry, not the primitive file directly:
@@ -275,7 +275,7 @@ describe("$analytics.recordMany with rows sharing a bucket and dimensions", () =
       "postgres",
       () =>
         Alepha.create()
-          .with(AlephaOrmPostgres)
+          .with(AlephaOrmTestPostgres)
           .with({ provide: AnalyticsProvider, use: OrmAnalyticsProvider }),
     ],
     [

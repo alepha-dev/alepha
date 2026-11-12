@@ -1,6 +1,6 @@
 import { Alepha, jsonSchemaToZod, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -25,7 +25,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -47,7 +47,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -83,7 +83,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -116,7 +116,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -144,7 +144,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -177,7 +177,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -204,7 +204,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -237,7 +237,7 @@ describe("$parameter", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -262,7 +262,7 @@ describe("$parameter", () => {
   });
 
   it("should promote cached next to current when time passes", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
 
     class AppConfig {
@@ -312,7 +312,7 @@ describe("$parameter", () => {
 
 describe("ParameterProvider", () => {
   it("should build parameter tree from names", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -356,7 +356,7 @@ describe("ParameterProvider", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(Live);
     await alepha.start();
@@ -393,7 +393,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should calculate statuses correctly", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -417,7 +417,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should calculate future and next statuses", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -455,7 +455,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should detect schema migration", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -474,7 +474,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should store previous content for rollback", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -487,7 +487,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should get all parameter names", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -504,7 +504,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should load current and next from database", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -530,7 +530,7 @@ describe("ParameterProvider", () => {
   });
 
   it("should resolve the version in force at a given instant", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -609,7 +609,7 @@ describe("Cross-instance sync", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with({
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres).with({
       provide: ParameterProvider,
       use: ExternalWriteParameterProvider,
     });
@@ -657,7 +657,7 @@ describe("Cross-instance sync", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -722,7 +722,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -757,7 +757,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -798,7 +798,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -847,7 +847,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -886,7 +886,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -921,7 +921,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -963,7 +963,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -998,7 +998,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1034,7 +1034,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1065,7 +1065,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1096,7 +1096,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(Config);
     await alepha.start();
@@ -1143,7 +1143,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(Config);
     await alepha.start();
@@ -1179,7 +1179,7 @@ describe("Schema migration", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(Config);
     await alepha.start();
@@ -1213,7 +1213,7 @@ describe("Schema migration", () => {
 
 describe("getParameterNames (distinct query)", () => {
   it("should return unique names even with multiple versions", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1235,7 +1235,7 @@ describe("getParameterNames (distinct query)", () => {
   });
 
   it("should return names in sorted order", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1258,7 +1258,7 @@ describe("getParameterNames (distinct query)", () => {
 
 describe("getVersion (direct lookup)", () => {
   it("should return a specific version without loading all history", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1275,7 +1275,7 @@ describe("getVersion (direct lookup)", () => {
   });
 
   it("should return null for non-existent version", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1288,7 +1288,7 @@ describe("getVersion (direct lookup)", () => {
   });
 
   it("should allow calculating status for a single version", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1308,7 +1308,7 @@ describe("getVersion (direct lookup)", () => {
 
 describe("save (status calculation without re-fetch)", () => {
   it("should return correct status for immediate save", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1322,7 +1322,7 @@ describe("save (status calculation without re-fetch)", () => {
   });
 
   it("should return correct status for scheduled save", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1344,7 +1344,7 @@ describe("save (status calculation without re-fetch)", () => {
   });
 
   it("should mark older versions as expired after new immediate save", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1374,7 +1374,7 @@ describe("save (status calculation without re-fetch)", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1407,7 +1407,7 @@ describe("save (status calculation without re-fetch)", () => {
 
 describe("rollback error path", () => {
   it("should throw AlephaError when rolling back to non-existent version", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1421,7 +1421,7 @@ describe("rollback error path", () => {
   });
 
   it("should throw AlephaError when rolling back a parameter that does not exist", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1439,7 +1439,7 @@ describe("rollback error path", () => {
 
 describe("getCurrentWithDefault", () => {
   it("should return nulls for unregistered parameter", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1462,7 +1462,7 @@ describe("getCurrentWithDefault", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1509,7 +1509,7 @@ describe("getCurrentWithDefault", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1569,7 +1569,7 @@ describe("getCurrentWithDefault", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1599,7 +1599,7 @@ describe("getCurrentWithDefault", () => {
 
 describe("getCurrentValue", () => {
   it("should return null for unregistered parameter", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1616,7 +1616,7 @@ describe("getCurrentValue", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1641,7 +1641,7 @@ describe("getCurrentValue", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1665,7 +1665,7 @@ describe("getCurrentValue", () => {
 
 describe("activateNow logic", () => {
   it("should return current version as-is when already current", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1684,7 +1684,7 @@ describe("activateNow logic", () => {
   });
 
   it("should reject activating an expired version", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1703,7 +1703,7 @@ describe("activateNow logic", () => {
   });
 
   it("should activate a future version by creating a new immediate version", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1762,7 +1762,7 @@ describe("set with scheduled activation", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1803,7 +1803,7 @@ describe("set with scheduled activation", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1839,7 +1839,7 @@ describe("set with scheduled activation", () => {
 
 describe("buildTree edge cases", () => {
   it("should handle single-segment name (no dots)", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1857,7 +1857,7 @@ describe("buildTree edge cases", () => {
   });
 
   it("should handle name that is both a folder and a leaf", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1881,7 +1881,7 @@ describe("buildTree edge cases", () => {
   });
 
   it("should handle deeply nested names", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1911,7 +1911,7 @@ describe("buildTree edge cases", () => {
 
 describe("loadCurrentAndNext tie-breaking", () => {
   it("should pick highest version when multiple versions have the same activationDate", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -1943,7 +1943,7 @@ describe("doLoad subscriber notification", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -1980,7 +1980,7 @@ describe("doLoad subscriber notification", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2014,7 +2014,7 @@ describe("reloadNextInBackground", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2053,7 +2053,7 @@ describe("reloadNextInBackground", () => {
 
 describe("ParameterTreeNode children structure", () => {
   it("should produce correctly typed children at runtime despite z.any() schema", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -2104,7 +2104,7 @@ describe("save validation", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2133,7 +2133,7 @@ describe("save validation", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2161,7 +2161,7 @@ describe("save validation", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2192,7 +2192,7 @@ describe("$parameter.name fallback", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(MySettings);
     await alepha.start();
@@ -2210,7 +2210,7 @@ describe("$parameter.name fallback", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(MySettings);
     await alepha.start();
@@ -2234,7 +2234,7 @@ describe("delete", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2263,7 +2263,7 @@ describe("delete", () => {
   });
 
   it("should be a no-op for non-existent parameter", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -2280,7 +2280,7 @@ describe("delete", () => {
 
 describe("getHistory pagination", () => {
   it("should respect limit and offset", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -2309,7 +2309,7 @@ describe("getHistory pagination", () => {
   });
 
   it("should return all when no limit specified", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     await alepha.start();
 
@@ -2338,7 +2338,7 @@ describe("$parameter.getVersion", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2371,7 +2371,7 @@ describe("tags", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2402,7 +2402,7 @@ describe("set idempotency", () => {
       });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiParameters);
     alepha.with(AppConfig);
     await alepha.start();
@@ -2456,7 +2456,7 @@ describe("$parameter — load failure recovery", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: ParameterProvider, use: FlakyParameterProvider })
       .with(AlephaApiParameters)
       .with(AppConfig);
@@ -2490,7 +2490,7 @@ describe("$parameter — cross-instance delete", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiParameters)
       .with(AppConfig);
     await alepha.start();

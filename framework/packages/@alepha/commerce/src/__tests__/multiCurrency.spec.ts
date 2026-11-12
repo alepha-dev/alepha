@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AdminProductController } from "../admin/controllers/AdminProductController.ts";
@@ -43,7 +43,7 @@ class WithTheStates extends AddressRulesProvider {
 
 const setup = async (options: { rates?: boolean } = {}) => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({ provide: AddressRulesProvider, use: WithTheStates });
   if (options.rates) {
     alepha.with({ provide: ExchangeRateProvider, use: EuroPerDollar });

@@ -4,8 +4,7 @@ import { $inject, Alepha } from "alepha";
 import { $storage } from "alepha/api/files";
 import { PaymentService } from "alepha/api/payments";
 import { MemoryEmailProvider } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { ServerProvider } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
@@ -36,7 +35,7 @@ class Shelf {
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceDownloads)
     .with(AlephaCommerceNotifications)
     .with(AlephaCommerceSettlement);

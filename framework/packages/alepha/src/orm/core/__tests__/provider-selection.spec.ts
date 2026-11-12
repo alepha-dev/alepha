@@ -1,15 +1,19 @@
 import { Alepha } from "alepha";
-import { DatabaseProvider, DbUrlError, NodeSqliteProvider } from "alepha/orm";
+import {
+  AlephaOrm,
+  DatabaseProvider,
+  DbUrlError,
+  NodeSqliteProvider,
+} from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../index.ts";
-import { CloudflareHyperdriveProvider } from "../providers/CloudflareHyperdriveProvider.ts";
-import { NodePostgresProvider } from "../providers/NodePostgresProvider.ts";
+import { CloudflareHyperdriveProvider } from "../providers/drivers/CloudflareHyperdriveProvider.ts";
+import { NodePostgresProvider } from "../providers/drivers/NodePostgresProvider.ts";
 
-describe("DATABASE_URL selects the provider", () => {
+describe("AlephaOrm: DATABASE_URL selects the provider", () => {
   const providerFor = (url: string | undefined) => {
     const alepha = Alepha.create({ env: { DATABASE_URL: url } }).with(
-      AlephaOrmPostgres,
+      AlephaOrm,
     );
     return alepha.inject(DatabaseProvider);
   };
@@ -32,6 +36,10 @@ describe("DATABASE_URL selects the provider", () => {
       CloudflareHyperdriveProvider,
     );
     expect(providerFor("sqlite://:memory:")).toBeInstanceOf(NodeSqliteProvider);
+  });
+
+  it("selects SQLite when no URL is set", ({ expect }) => {
+    expect(providerFor(undefined)).toBeInstanceOf(NodeSqliteProvider);
   });
 
   it("refuses an unknown scheme at register time", ({ expect }) => {

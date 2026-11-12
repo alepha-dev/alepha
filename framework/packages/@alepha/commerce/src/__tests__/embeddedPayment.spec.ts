@@ -6,7 +6,7 @@ import {
   PaymentProvider,
   PaymentService,
 } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -32,7 +32,7 @@ class RedirectOnlyProvider extends MemoryPaymentProvider {
 }
 
 const setup = async (embedded = true) => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   if (embedded) {
     alepha.with({
       provide: CheckoutPaymentProvider,
@@ -233,7 +233,7 @@ describe("embedded payment", () => {
 describe("a provider with no embedded field", () => {
   const setupRedirectOnly = async () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: PaymentProvider, use: RedirectOnlyProvider })
       .with({
         provide: CheckoutPaymentProvider,

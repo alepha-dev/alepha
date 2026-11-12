@@ -1,9 +1,9 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
 import { Drizzle } from "../drizzle/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * `hitCount` is stored as `hit_count`: a property whose physical name differs,
@@ -96,7 +96,7 @@ const testUnknownKeyThrows = async (alepha: Alepha) => {
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 describe("Repository.excluded", () => {
   it("accumulates a counter through excluded() (sqlite)", async () => {

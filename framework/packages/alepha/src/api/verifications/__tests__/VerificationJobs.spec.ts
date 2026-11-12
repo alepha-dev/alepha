@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -15,7 +14,7 @@ class Db {
 }
 
 const alepha = Alepha.create()
-  .with(AlephaOrmPostgres)
+  .with(AlephaOrmTestPostgres)
   .with(AlephaApiVerification);
 const db = alepha.inject(Db);
 

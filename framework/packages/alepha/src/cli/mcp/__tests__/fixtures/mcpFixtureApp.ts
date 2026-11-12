@@ -11,8 +11,7 @@ import {
 } from "alepha/email";
 import { AlephaInspector } from "alepha/inspector";
 import { $logger } from "alepha/logger";
-import { $entity, $repository, db } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $entity, $repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { $secure, AlephaSecurity } from "alepha/security";
 import { $action, HttpError } from "alepha/server";
@@ -142,7 +141,7 @@ export const startFixture = async (
     .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
     .with({ provide: EmailProvider, use: LocalEmailProvider })
     .with({ provide: SmsProvider, use: LocalSmsProvider })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiJobs)
     .with(AlephaSecurity)
     .with(AlephaReactRouter)

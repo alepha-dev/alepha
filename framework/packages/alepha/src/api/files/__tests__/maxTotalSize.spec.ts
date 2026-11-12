@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 
 import { Alepha } from "alepha";
 import { FileTooLargeError } from "alepha/bucket";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
@@ -38,7 +38,7 @@ describe("filesOptions.maxTotalSize", () => {
     options: { maxTotalSize?: number; env?: Record<string, string> } = {},
   ) => {
     const alepha = Alepha.create({ env: options.env })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiFiles);
     const media = alepha.inject(Media);
     const files = alepha.inject(FileService);

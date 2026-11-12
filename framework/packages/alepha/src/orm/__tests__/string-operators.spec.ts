@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testCombiningStringOperators,
   testContainsOperator,
@@ -21,7 +21,7 @@ describe("string-operators", () => {
       );
     });
     it("should perform case insensitive substring matching (postgres)", async () => {
-      await testContainsOperator(Alepha.create().with(AlephaOrmPostgres));
+      await testContainsOperator(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -32,7 +32,7 @@ describe("string-operators", () => {
       );
     });
     it("should perform case insensitive prefix matching (postgres)", async () => {
-      await testStartsWithOperator(Alepha.create().with(AlephaOrmPostgres));
+      await testStartsWithOperator(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -43,7 +43,7 @@ describe("string-operators", () => {
       );
     });
     it("should perform case insensitive suffix matching (postgres)", async () => {
-      await testEndsWithOperator(Alepha.create().with(AlephaOrmPostgres));
+      await testEndsWithOperator(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -55,7 +55,7 @@ describe("string-operators", () => {
     });
     it("should combine string operators with other filters (postgres)", async () => {
       await testCombiningStringOperators(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -68,7 +68,7 @@ describe("string-operators", () => {
     });
     it("should handle special characters (postgres)", async () => {
       await testStringOperatorsSpecialChars(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -81,7 +81,7 @@ describe("string-operators", () => {
     });
     it("should work on optional fields (postgres)", async () => {
       await testStringOperatorsOptionalFields(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -94,7 +94,7 @@ describe("string-operators", () => {
     });
     it("should properly escape SQL wildcards (postgres)", async () => {
       await testStringOperatorsEscapeWildcards(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -107,7 +107,7 @@ describe("string-operators", () => {
     });
     it("should prevent wildcard injection (postgres)", async () => {
       await testWildcardInjectionPrevention(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });

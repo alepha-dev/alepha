@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const tickets = $entity({
   name: "test_update_explicit_undefined",
@@ -46,6 +46,8 @@ describe("update with an explicit undefined", () => {
   });
 
   it("leaves a defaulted column untouched (postgres)", async () => {
-    await testExplicitUndefinedIsANoop(Alepha.create().with(AlephaOrmPostgres));
+    await testExplicitUndefinedIsANoop(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
   });
 });

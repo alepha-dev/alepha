@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -26,7 +26,7 @@ import { ShippingService } from "../shipping/services/ShippingService.ts";
 
 const setup = async (locale: string) => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceShipping)
     .with(AlephaCommerceInvoicing)
     .with(AlephaCommerceNotifications)

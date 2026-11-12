@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -46,7 +46,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error", PARAMETERS_CACHE_TTL_MS: "1000" },
   })
     .with({ provide: ParameterProvider, use: StallingParameterProvider })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiParameters)
     .with(DeadLoadParameters);
   await alepha.start();

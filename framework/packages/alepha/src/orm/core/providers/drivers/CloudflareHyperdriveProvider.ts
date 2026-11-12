@@ -1,9 +1,10 @@
 import { $env, $hook, $inject, AlephaError, AlsProvider, z } from "alepha";
-import { DatabaseProvider, DatabaseUrlParser, type SQLLike } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
-import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
+import { DatabaseUrlParser } from "../../services/DatabaseUrlParser.ts";
+import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
+import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 /**
  * ALS key under which the per-request drizzle instance is memoised.

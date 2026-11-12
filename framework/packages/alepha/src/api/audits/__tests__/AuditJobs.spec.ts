@@ -1,7 +1,6 @@
 import { $module, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { $audit, AlephaApiAudits, AuditJobs, audits } from "../index.ts";
@@ -24,7 +23,7 @@ class Db {
 }
 
 const alepha = Alepha.create()
-  .with(AlephaOrmPostgres)
+  .with(AlephaOrmTestPostgres)
   .with(AlephaApiAudits)
   .with($module({ name: "test.audits.jobs", services: [ShortAudits] }));
 

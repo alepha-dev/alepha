@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -52,7 +52,7 @@ class Templates {
 
 const boot = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiJobs)

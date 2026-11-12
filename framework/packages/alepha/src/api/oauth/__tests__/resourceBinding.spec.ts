@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { Alepha, z } from "alepha";
 import { $tool, AlephaMcp, StreamableHttpMcpTransport } from "alepha/mcp";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -63,7 +63,7 @@ const boot = async () => {
 
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
     .with(AlephaServer)
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaOAuth)
     .with(AlephaMcp)
     .with(StreamableHttpMcpTransport)

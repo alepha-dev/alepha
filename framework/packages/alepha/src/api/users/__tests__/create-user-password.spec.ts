@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -26,7 +26,7 @@ const suffix = () => Math.random().toString(36).slice(2, 8);
 describe("createUser with a password", () => {
   const boot = async () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();

@@ -8,8 +8,7 @@ import {
   MemoryDestinationProvider,
   LogDestinationProvider,
 } from "alepha/logger";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, SecurityProvider, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
@@ -184,7 +183,7 @@ describe("OAuthController", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -209,7 +208,7 @@ describe("OAuthController", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -243,7 +242,7 @@ describe("OAuthController", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -274,7 +273,7 @@ describe("OAuthController", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -310,7 +309,7 @@ describe("OAuthController", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -354,7 +353,7 @@ describe("OAuthController connectionsPath", () => {
     const alepha = Alepha.create()
       .with({ provide: OAuthController, use: TestOAuthController })
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -393,7 +392,7 @@ describe("OAuthController authorize + token", () => {
 
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -594,7 +593,7 @@ describe("OAuthController refresh_token grant", () => {
 
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -1040,7 +1039,7 @@ describe("OAuth consent cannot be skipped by the request", () => {
 
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -1153,7 +1152,7 @@ describe("OAuth consent decision checks where it came from", () => {
 
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -1243,7 +1242,9 @@ describe("OAuth bearer tokens are access tokens only", () => {
       issuer = $issuer({ name: "users", secret: "test-secret" });
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaOAuth);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
       resource: "/mcp",
@@ -1316,7 +1317,7 @@ describe("device authorization grant", () => {
   const boot = async () => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -1438,7 +1439,7 @@ describe("device approval page", () => {
 
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -1933,7 +1934,7 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
         use: MemoryDestinationProvider,
       })
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -1989,7 +1990,7 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
       })
       .with({ provide: OAuthController, use: TestOAuthController })
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -2033,7 +2034,7 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
     const alepha = Alepha.create()
       .with({ provide: ActorProvider, use: BrokenActorProvider })
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",
@@ -2056,7 +2057,7 @@ describe("OAuthController fails closed on scopes", () => {
   const boot = async () => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaOAuth);
     alepha.set(oauthOptions, {
       realm: "users",

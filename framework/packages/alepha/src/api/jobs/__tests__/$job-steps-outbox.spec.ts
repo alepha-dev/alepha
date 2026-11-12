@@ -1,7 +1,11 @@
 import { $inject, Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, $transactional, DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  $transactional,
+  DatabaseProvider,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -36,7 +40,7 @@ async function waitFor<T>(
 }
 
 const makeApp = () =>
-  Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+  Alepha.create().with(AlephaOrmTestPostgres).with(AlephaApiJobs);
 
 const idSchema = z.object({ id: z.text() });
 
@@ -70,7 +74,7 @@ describe("job steps and the outbox", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: JobProvider, use: RecordingProvider })
       .with(AlephaApiJobs);
     let after = 0;

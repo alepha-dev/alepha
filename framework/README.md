@@ -109,7 +109,7 @@ The code above did not change. What sits underneath it did:
 
 | Primitive     | On Cloudflare                          | In Docker                                                                      |
 | ------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `$repository` | D1                                     | SQLite, or Postgres with `alepha/orm/postgres`                                 |
+| `$repository` | D1, or Postgres through Hyperdrive     | SQLite, or Postgres when `DATABASE_URL` says `postgres://`                     |
 | `$storage`    | R2                                     | S3 (`S3_ENDPOINT`) or the local disk                                           |
 | `$job`        | an outbox in D1, Cron Triggers, Queues | an outbox in the database, delivered in-process or through Redis (`REDIS_URL`) |
 | `$cache`      | Cache API or KV                        | Redis (`REDIS_URL`) or memory                                                  |

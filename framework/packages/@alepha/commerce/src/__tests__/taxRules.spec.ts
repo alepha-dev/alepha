@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -58,7 +58,7 @@ const fr = {
 const setup = async (config: Record<string, any> = {}) => {
   const alepha = Alepha.create()
     .with({ provide: VatNumberChecker, use: FakeChecker })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommercePromotions)
     .with(AlephaCommerceShipping)
     .with(AlephaCommerceInvoicing);

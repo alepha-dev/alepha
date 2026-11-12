@@ -12,18 +12,23 @@ import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
 import { BunSqliteProvider } from "./providers/drivers/BunSqliteProvider.ts";
 import { CloudflareD1Provider } from "./providers/drivers/CloudflareD1Provider.ts";
+import { CloudflareHyperdriveProvider } from "./providers/drivers/CloudflareHyperdriveProvider.ts";
 import { DatabaseProvider } from "./providers/drivers/DatabaseProvider.ts";
+import { NodePostgresProvider } from "./providers/drivers/NodePostgresProvider.ts";
 import { NodeSqliteProvider } from "./providers/drivers/NodeSqliteProvider.ts";
+import { PostgresProvider } from "./providers/drivers/PostgresProvider.ts";
 import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 import { SequenceProvider } from "./providers/SequenceProvider.ts";
 import { databaseEnvSchema } from "./schemas/databaseEnvSchema.ts";
 import { DatabaseUrlParser } from "./services/DatabaseUrlParser.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
+import { PostgresModelBuilder } from "./services/PostgresModelBuilder.ts";
 import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
 import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 import { SqliteTypeAuditService } from "./services/SqliteTypeAuditService.ts";
+import { TestPostgresRegistration } from "./testing/AlephaOrmTestPostgres.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -157,7 +162,10 @@ export const SqliteProvider = NodeSqliteProvider;
  * - `$entity` schema definitions with Zod + `db` column helpers
  * - `Repository` CRUD, pagination, joins, and optimistic locking
  * - Introspection-based dev schema sync, file-based production migrations
- * - SQLite by default; Postgres via `alepha/orm/postgres`
+ * - SQLite by default, Postgres when `DATABASE_URL` says so: `postgres://`
+ *   or `postgresql://` on Node and Bun, `hyperdrive://` on Cloudflare
+ *   Workers, `d1://` for Cloudflare D1. The Postgres drivers are loaded on
+ *   connect, so a SQLite app never evaluates them.
  *
  * @module alepha.orm
  */
@@ -185,6 +193,13 @@ export const AlephaOrm = $module({
     NodeSqliteProvider,
     BunSqliteProvider,
     CloudflareD1Provider,
+    PostgresProvider,
+    NodePostgresProvider,
+    CloudflareHyperdriveProvider,
+    // A variant rather than a service: only a Postgres provider (or the
+    // offline migration generator) asks for it, so a SQLite app never
+    // builds one.
+    PostgresModelBuilder,
   ],
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(databaseEnvSchema);
@@ -192,19 +207,50 @@ export const AlephaOrm = $module({
     const kind = new DatabaseUrlParser().kind(env.DATABASE_URL);
     const isBun = alepha.isBun();
 
-    if (kind === "d1") {
-      alepha.with({
-        optional: true,
-        provide: DatabaseProvider,
-        use: CloudflareD1Provider,
-      });
-    } else {
-      // SQLite is the default for core
-      alepha.with({
-        optional: true,
-        provide: DatabaseProvider,
-        use: isBun ? BunSqliteProvider : NodeSqliteProvider,
-      });
-    }
+    alepha.with({
+      optional: true,
+      provide: DatabaseProvider,
+      use:
+        kind === "d1"
+          ? CloudflareD1Provider
+          : kind === "hyperdrive"
+            ? CloudflareHyperdriveProvider
+            : kind === "postgres"
+              ? // Bun resolves the `bun` barrel, whose register picks
+                // BunPostgresProvider: this one never reaches `drizzle-orm/bun-sql`,
+                // which a workerd build cannot resolve.
+                NodePostgresProvider
+              : // No URL, or a SQLite one: SQLite is the default.
+                isBun
+                ? BunSqliteProvider
+                : NodeSqliteProvider,
+    });
   },
+});
+
+/**
+ * Runs one spec on Postgres instead of the SQLite default.
+ *
+ * A spec gets an in-memory SQLite database when it names no `DATABASE_URL`.
+ * Registering this module points it at the Postgres server
+ * `POSTGRES_TEST_URL` names instead (a spec that names its own `DATABASE_URL`
+ * keeps it), through the same provider `DATABASE_URL=postgres://...` would
+ * select. Each run still gets a schema of its own, so specs on one server do
+ * not see each other's rows. It registers `AlephaOrm` where it stands.
+ *
+ * Refused outside `NODE_ENV=test`, and when `POSTGRES_TEST_URL` is needed and
+ * not set.
+ *
+ * @example
+ * ```ts
+ * // POSTGRES_TEST_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres
+ * const alepha = Alepha.create().with(AlephaOrmTestPostgres);
+ * ```
+ *
+ * @module alepha.orm.test-postgres
+ */
+export const AlephaOrmTestPostgres = $module({
+  name: "alepha.orm.test-postgres",
+  register: (alepha: Alepha) =>
+    new TestPostgresRegistration().register(alepha, AlephaOrm),
 });

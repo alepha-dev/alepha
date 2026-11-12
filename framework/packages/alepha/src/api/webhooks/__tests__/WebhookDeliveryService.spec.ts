@@ -16,8 +16,11 @@ import {
 import { BackgroundTaskProvider } from "alepha/background";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  DatabaseProvider,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { $route, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -139,7 +142,7 @@ class Shop {
 
 const boot = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({ provide: WebhookTransport, use: HttpWebhookTransport })
     .with(AlephaApiWebhooks)
     .with(Events);

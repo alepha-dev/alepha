@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -34,7 +34,7 @@ describe("alepha/api/users - session filters", () => {
 
   const setup = async () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();

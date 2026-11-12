@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { OAuthClientService } from "alepha/api/oauth";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, JwtProvider } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -25,7 +25,7 @@ const SESSION_REQUIRED = "requires a signed-in session";
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
     .with(AlephaServer)
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaSecurity)
     .with(AlephaEmail)
     .with(AlephaApiUsers);

@@ -1,8 +1,8 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { DatabaseProvider } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAfterCommitDiscardedOnRollback,
   testAfterCommitIsolation,
@@ -27,7 +27,7 @@ describe("$transactional", () => {
     );
   });
   it("should wrap handler in a database transaction (postgres)", async () => {
-    await testWrapsInTransaction(Alepha.create().with(AlephaOrmPostgres));
+    await testWrapsInTransaction(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("should rollback all operations on error (sqlite)", async () => {
@@ -36,7 +36,7 @@ describe("$transactional", () => {
     );
   });
   it("should rollback all operations on error (postgres)", async () => {
-    await testRollbackOnError(Alepha.create().with(AlephaOrmPostgres));
+    await testRollbackOnError(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   describe("DATABASE_TRANSACTIONS=false", () => {
@@ -102,7 +102,7 @@ describe("$transactional", () => {
     );
   });
   it("rolls back a raw query() UPDATE with the block (postgres)", async () => {
-    await testRawQueryRollsBack(Alepha.create().with(AlephaOrmPostgres));
+    await testRawQueryRollsBack(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("should support nesting / reuse outer tx (sqlite)", async () => {
@@ -111,7 +111,7 @@ describe("$transactional", () => {
     );
   });
   it("should support nesting / reuse outer tx (postgres)", async () => {
-    await testNesting(Alepha.create().with(AlephaOrmPostgres));
+    await testNesting(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("should compose with other middleware (sqlite)", async () => {
@@ -120,7 +120,9 @@ describe("$transactional", () => {
     );
   });
   it("should compose with other middleware (postgres)", async () => {
-    await testComposeWithMiddleware(Alepha.create().with(AlephaOrmPostgres));
+    await testComposeWithMiddleware(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
   });
 
   // A single SQLite connection keeps both writes inside the active transaction.
@@ -131,7 +133,7 @@ describe("$transactional", () => {
     );
   });
   it("should bypass implicit tx with tx: null (postgres)", async () => {
-    await testBypassImplicitTx(Alepha.create().with(AlephaOrmPostgres));
+    await testBypassImplicitTx(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("Repository.transaction rolls back async work (sqlite)", async () => {
@@ -141,7 +143,7 @@ describe("$transactional", () => {
   });
   it("Repository.transaction rolls back async work (postgres)", async () => {
     await testRepositoryTransactionAsyncRollback(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -151,7 +153,9 @@ describe("$transactional", () => {
     );
   });
   it("concurrent transactional blocks are serialized (postgres)", async () => {
-    await testConcurrentTransactionals(Alepha.create().with(AlephaOrmPostgres));
+    await testConcurrentTransactionals(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
   });
 
   it("should work with DatabaseProvider.transactional() directly (sqlite)", async () => {
@@ -161,7 +165,7 @@ describe("$transactional", () => {
   });
   it("should work with DatabaseProvider.transactional() directly (postgres)", async () => {
     await testDatabaseProviderTransactional(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -172,7 +176,7 @@ describe("$transactional", () => {
   });
   it("afterCommit waits for the outermost commit (postgres)", async () => {
     await testAfterCommitWaitsForOutermostCommit(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -183,7 +187,7 @@ describe("$transactional", () => {
   });
   it("afterCommit is discarded on rollback (postgres)", async () => {
     await testAfterCommitDiscardedOnRollback(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -192,7 +196,7 @@ describe("$transactional", () => {
   // gating would turn into a deadlock. Queue isolation is context-based, not
   // driver-based, so one driver proves it.
   it("afterCommit queues are isolated across concurrent transactions (postgres)", async () => {
-    await testAfterCommitIsolation(Alepha.create().with(AlephaOrmPostgres));
+    await testAfterCommitIsolation(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("afterCommit runs immediately outside a transaction (sqlite)", async () => {
@@ -202,7 +206,7 @@ describe("$transactional", () => {
   });
   it("afterCommit runs immediately outside a transaction (postgres)", async () => {
     await testAfterCommitWithoutTransaction(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 });

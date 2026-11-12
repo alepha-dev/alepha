@@ -1,6 +1,6 @@
 import { $module, Alepha } from "alepha";
 import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { $audit, AlephaApiAudits, AuditService } from "../index.ts";
@@ -20,7 +20,7 @@ class FolioAudits {
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
   alepha.with(AlephaDateTime);
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaApiAudits);
   alepha.with($module({ name: "test.coalesce", services: [FolioAudits] }));
   await alepha.start();
@@ -232,7 +232,7 @@ describe("alepha/api/audits - coalescing", () => {
       }
       const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
       alepha.with(AlephaDateTime);
-      alepha.with(AlephaOrmPostgres);
+      alepha.with(AlephaOrmTestPostgres);
       alepha.with(AlephaApiAudits);
 
       // At REGISTRATION, which is when `onInit` runs - so the container never
@@ -255,7 +255,7 @@ describe("alepha/api/audits - coalescing", () => {
       }
       const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
       alepha.with(AlephaDateTime);
-      alepha.with(AlephaOrmPostgres);
+      alepha.with(AlephaOrmTestPostgres);
       alepha.with(AlephaApiAudits);
 
       expect(() =>
@@ -272,7 +272,7 @@ describe("alepha/api/audits - coalescing", () => {
     }
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
     alepha.with(AlephaDateTime);
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiAudits);
     alepha.with($module({ name: "test.plain", services: [Plain] }));
     await alepha.start();

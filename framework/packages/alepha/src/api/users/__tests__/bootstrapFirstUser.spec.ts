@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -15,7 +15,7 @@ import {
 const setup = async () => {
   const alepha = Alepha.create();
 
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiVerification);
@@ -320,7 +320,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
       expect,
     }) => {
       const alepha = Alepha.create({ env: { ALEPHA_SERVERLESS: "true" } });
-      alepha.with(AlephaOrmPostgres);
+      alepha.with(AlephaOrmTestPostgres);
       alepha.with(AlephaSecurity);
       alepha.with(AlephaApiUsers);
       await alepha.start();

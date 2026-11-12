@@ -1,6 +1,5 @@
 import { $hook, Alepha } from "alepha";
-import { DbEntityNotFoundError } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { DbEntityNotFoundError, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -53,7 +52,7 @@ const setup = async (options: { hook?: any } = {}) => {
     env: { LOG_LEVEL: "error" },
   });
 
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaSecurity);
   if (options.hook) {

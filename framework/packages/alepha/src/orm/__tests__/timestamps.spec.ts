@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testBulkInsertsWithTimestamps,
   testTimestampFormats,
@@ -17,7 +17,7 @@ describe("timestamps", () => {
       );
     });
     it("should handle timestamps correctly (postgres)", async () => {
-      await testTimestamps(Alepha.create().with(AlephaOrmPostgres));
+      await testTimestamps(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -28,7 +28,7 @@ describe("timestamps", () => {
       );
     });
     it("should create proper indexes on timestamp fields (postgres)", async () => {
-      await testTimestampIndexes(Alepha.create().with(AlephaOrmPostgres));
+      await testTimestampIndexes(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -39,7 +39,7 @@ describe("timestamps", () => {
       );
     });
     it("should handle timestamps with different formats (postgres)", async () => {
-      await testTimestampFormats(Alepha.create().with(AlephaOrmPostgres));
+      await testTimestampFormats(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -51,7 +51,7 @@ describe("timestamps", () => {
     });
     it("should handle bulk inserts with timestamps (postgres)", async () => {
       await testBulkInsertsWithTimestamps(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });

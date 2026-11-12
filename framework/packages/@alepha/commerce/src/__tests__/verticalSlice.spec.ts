@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { $inject, $module, Alepha, z } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -54,7 +54,7 @@ const GiftCardModule = $module({
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout)
     .with(GiftCardModule);
 

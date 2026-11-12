@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { PaymentController } from "../controllers/PaymentController.ts";
@@ -17,7 +17,7 @@ describe("PaymentMethodService", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const controller = alepha.inject(PaymentController);
     await alepha.start();
@@ -32,7 +32,7 @@ describe("PaymentMethodService", () => {
 
   it("should add a payment method", async ({ expect }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
@@ -45,7 +45,7 @@ describe("PaymentMethodService", () => {
 
   it("should list payment methods for a user", async ({ expect }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
@@ -59,7 +59,7 @@ describe("PaymentMethodService", () => {
 
   it("should remove a payment method", async ({ expect }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
@@ -73,7 +73,7 @@ describe("PaymentMethodService", () => {
 
   it("should set a default payment method", async ({ expect }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
@@ -92,7 +92,7 @@ describe("PaymentMethodService", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();
@@ -107,7 +107,7 @@ describe("PaymentMethodService", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const service = alepha.inject(PaymentMethodService);
     await alepha.start();

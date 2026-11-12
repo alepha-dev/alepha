@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
@@ -27,7 +27,7 @@ class StrictRealms {
 
 const boot = async (realms: new () => unknown) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(realms as never);
   await alepha.start();

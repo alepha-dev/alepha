@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -41,7 +41,7 @@ class SignedPaymentProvider extends MemoryPaymentProvider {
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({ provide: PaymentProvider, use: SignedPaymentProvider })
     .with(AlephaApiPayments);
   const payments = alepha.inject(PaymentService);

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -27,7 +27,7 @@ const address = {
  */
 const withShipping = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceShipping);
 
   const ctx = {
@@ -49,7 +49,7 @@ const withShipping = async () => {
  */
 const withoutShipping = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout);
   const ctx = {
     alepha,
@@ -387,7 +387,7 @@ describe("shipping in the checkout", () => {
 describe("shipping rate codes", () => {
   it("refuses a second rate with the same code", async ({ expect }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaCommerceShipping);
     const shipping = alepha.inject(ShippingService);
     await alepha.start();

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -24,7 +24,7 @@ const admin: UserAccountToken = {
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout)
     .with(AlephaCommerceAdmin);
 
@@ -57,7 +57,7 @@ const setupWithRefusingRail = async () => {
   // swap once a service has been resolved.
   const alepha = Alepha.create()
     .with({ provide: PaymentService, use: RefusingPaymentService })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout)
     .with(AlephaCommerceAdmin);
 

@@ -7,8 +7,7 @@ import {
   MemoryAiProvider,
 } from "alepha/ai";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import {
   $secure,
   AlephaSecurity,
@@ -84,7 +83,7 @@ const boot = async (
   const alepha = (
     db === "sqlite"
       ? Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } })
-      : Alepha.create().with(AlephaOrmPostgres)
+      : Alepha.create().with(AlephaOrmTestPostgres)
   )
     .with({ provide: SecurityProvider, use: HeaderSecurityProvider })
     .with(AlephaSecurity);

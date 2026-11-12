@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
@@ -47,7 +47,7 @@ const boot = async (env: Record<string, string> = {}) => {
       ...env,
     },
   })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaServer)

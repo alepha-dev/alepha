@@ -7,8 +7,7 @@ import {
   WebhookEndpointService,
 } from "alepha/api/webhooks";
 import { BackgroundTaskProvider } from "alepha/background";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { WebhookVerifier } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -82,7 +81,7 @@ class BrokenPayloads extends CommerceWebhookPayloads {
 }
 
 const boot = async (options: { broken?: boolean } = {}) => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   if (options.broken) {
     alepha.with({ provide: CommerceWebhookPayloads, use: BrokenPayloads });
   }

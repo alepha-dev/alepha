@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -40,7 +40,7 @@ const admin: UserAccountToken = {
  */
 const setup = async (extraKinds: Array<typeof PlainKindHandler> = []) => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout)
     .with(AlephaCommerceAdmin);
 

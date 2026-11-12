@@ -147,7 +147,11 @@ const sharedTestOptions = () => ({
     // fails only on a machine that is not already in Europe/Paris, which is
     // to say it passes locally and fails on CI.
     TZ: "Europe/Paris",
-    DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
+    // No DATABASE_URL: a spec runs on in-memory SQLite unless it names its
+    // database. A spec that runs on Postgres registers
+    // `AlephaOrmTestPostgres`, which reads this one (#Q3470), the way
+    // REDIS_URL left this list in #E79.
+    POSTGRES_TEST_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
     S3_ENDPOINT: "http://127.0.0.1:19090",
     // Not us-east-1: s3mini's createBucket always sends a LocationConstraint,
     // and a real S3 server refuses one naming the default region. It must

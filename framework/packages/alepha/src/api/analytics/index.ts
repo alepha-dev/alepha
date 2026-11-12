@@ -97,7 +97,7 @@ export const AlephaApiAnalytics = $module({
  * `JobProvider` holds a real `$repository(jobExecutionEntity)`, so
  * `alepha/api/jobs` always needs a working `DatabaseProvider`, in every
  * environment including tests (see `$job.spec.ts` / `AuditJobs.spec.ts`,
- * which both explicitly attach `AlephaOrmPostgres` for exactly this reason).
+ * which both attach a database, `AlephaOrmTestPostgres`, for exactly this reason).
  *
  * Folding `imports: [AlephaApiJobs]` and `services: [AnalyticsRollupJobs]`
  * into `AlephaApiAnalytics` was tried first, and it broke `analytics.spec.ts`

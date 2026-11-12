@@ -8,8 +8,7 @@ import {
   PaymentService,
 } from "alepha/api/payments";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -148,7 +147,7 @@ describe("checkout reconciliation", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaCommerceSettlement);
     const ctx = injectCtx(alepha);
     await alepha.start();
@@ -183,7 +182,7 @@ describe("checkout reconciliation", () => {
     async ({ expect }) => {
       const alepha = Alepha.create()
         .with({ provide: PaymentProvider, use: PaidButWebhooklessProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaCommerceSettlement);
       const ctx = injectCtx(alepha);
       await alepha.start();
@@ -229,7 +228,7 @@ describe("checkout reconciliation", () => {
     { timeout: 30_000 },
     async ({ expect }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaCommerceSettlement);
       const ctx = injectCtx(alepha);
       await alepha.start();
@@ -265,7 +264,7 @@ describe("checkout reconciliation", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaCommerceCheckout);
     const ctx = injectCtx(alepha);
     await alepha.start();
@@ -293,7 +292,7 @@ describe("checkout reconciliation", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: PaymentProvider, use: PaidButWebhooklessProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaCommerceCheckout);
     const ctx = injectCtx(alepha);
     await alepha.start();
@@ -335,7 +334,7 @@ describe("checkout reconciliation", () => {
     async ({ expect }) => {
       const alepha = Alepha.create()
         .with({ provide: CheckoutService, use: FlakySettleCheckoutService })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaCommerceSettlement);
       const ctx = injectCtx(alepha);
       await alepha.start();

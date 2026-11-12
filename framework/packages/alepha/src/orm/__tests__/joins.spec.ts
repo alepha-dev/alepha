@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testCombineBaseAndJoinedTableFilters,
   testComplexWhereWithMultipleJoinFilters,
@@ -43,7 +43,7 @@ describe("joins", () => {
       );
     });
     it("should do simple left join (postgres)", async () => {
-      await testSimpleLeftJoin(Alepha.create().with(AlephaOrmPostgres));
+      await testSimpleLeftJoin(Alepha.create().with(AlephaOrmTestPostgres));
     });
 
     it("should do left join with tuple syntax (sqlite)", async () => {
@@ -52,7 +52,9 @@ describe("joins", () => {
       );
     });
     it("should do left join with tuple syntax (postgres)", async () => {
-      await testLeftJoinTupleSyntax(Alepha.create().with(AlephaOrmPostgres));
+      await testLeftJoinTupleSyntax(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should do left join with sql wrapper (sqlite)", async () => {
@@ -61,7 +63,7 @@ describe("joins", () => {
       );
     });
     it("should do left join with sql wrapper (postgres)", async () => {
-      await testLeftJoinSqlWrapper(Alepha.create().with(AlephaOrmPostgres));
+      await testLeftJoinSqlWrapper(Alepha.create().with(AlephaOrmTestPostgres));
     });
 
     it("should do inner join (sqlite)", async () => {
@@ -70,7 +72,7 @@ describe("joins", () => {
       );
     });
     it("should do inner join (postgres)", async () => {
-      await testInnerJoin(Alepha.create().with(AlephaOrmPostgres));
+      await testInnerJoin(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -82,7 +84,7 @@ describe("joins", () => {
     });
     it("should join user with manager (postgres)", async () => {
       await testSelfReferencingJoinWithManager(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -93,7 +95,7 @@ describe("joins", () => {
     });
     it("should find users without manager (postgres)", async () => {
       await testSelfReferencingJoinWithoutManager(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -105,7 +107,7 @@ describe("joins", () => {
       );
     });
     it("should join user with profile and city (postgres)", async () => {
-      await testMultipleJoins(Alepha.create().with(AlephaOrmPostgres));
+      await testMultipleJoins(Alepha.create().with(AlephaOrmTestPostgres));
     });
 
     it("should support multiple joins with different types (sqlite)", async () => {
@@ -115,7 +117,7 @@ describe("joins", () => {
     });
     it("should support multiple joins with different types (postgres)", async () => {
       await testMultipleJoinsWithDifferentTypes(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -128,7 +130,7 @@ describe("joins", () => {
     });
     it("should nest 2 levels: user -> city -> country (postgres)", async () => {
       await testNestedJoin2LevelsUserCityCountry(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -139,7 +141,7 @@ describe("joins", () => {
     });
     it("should nest 2 levels: post -> author -> city (postgres)", async () => {
       await testNestedJoin2LevelsPostAuthorCity(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -150,7 +152,7 @@ describe("joins", () => {
     });
     it("should handle multiple nested joins with manager and cities (postgres)", async () => {
       await testMultipleNestedJoinsWithManagerAndCities(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -161,7 +163,7 @@ describe("joins", () => {
     });
     it("should nest 3 levels: post -> author -> city -> country (postgres)", async () => {
       await testNestedJoin3LevelsPostAuthorCityCountry(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -172,7 +174,7 @@ describe("joins", () => {
     });
     it("should handle deeply nested self-reference: user -> manager -> manager (postgres)", async () => {
       await testDeeplyNestedSelfReference(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -185,7 +187,7 @@ describe("joins", () => {
     });
     it("should filter by joined table column (postgres)", async () => {
       await testFilterByJoinedTableColumn(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -196,7 +198,7 @@ describe("joins", () => {
     });
     it("should filter by nested joined table column (postgres)", async () => {
       await testFilterByNestedJoinedTableColumn(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -207,7 +209,7 @@ describe("joins", () => {
     });
     it("should combine base and joined table filters (postgres)", async () => {
       await testCombineBaseAndJoinedTableFilters(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -218,7 +220,7 @@ describe("joins", () => {
     });
     it("should filter by self-referencing join (postgres)", async () => {
       await testFilterBySelfReferencingJoin(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -230,7 +232,9 @@ describe("joins", () => {
       );
     });
     it("should find multiple entities with joins (postgres)", async () => {
-      await testFindMultipleWithJoins(Alepha.create().with(AlephaOrmPostgres));
+      await testFindMultipleWithJoins(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should find with joins and limit (sqlite)", async () => {
@@ -239,7 +243,9 @@ describe("joins", () => {
       );
     });
     it("should find with joins and limit (postgres)", async () => {
-      await testFindWithJoinsAndLimit(Alepha.create().with(AlephaOrmPostgres));
+      await testFindWithJoinsAndLimit(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should find with joins and offset (sqlite)", async () => {
@@ -248,7 +254,9 @@ describe("joins", () => {
       );
     });
     it("should find with joins and offset (postgres)", async () => {
-      await testFindWithJoinsAndOffset(Alepha.create().with(AlephaOrmPostgres));
+      await testFindWithJoinsAndOffset(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -260,7 +268,7 @@ describe("joins", () => {
     });
     it("should handle post with author, comments, and comment authors (postgres)", async () => {
       await testPostWithAuthorCommentsAndCommentAuthors(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -270,7 +278,9 @@ describe("joins", () => {
       );
     });
     it("should handle join with null foreign key (postgres)", async () => {
-      await testJoinWithNullForeignKey(Alepha.create().with(AlephaOrmPostgres));
+      await testJoinWithNullForeignKey(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should handle complex where with multiple join filters and operators (sqlite)", async () => {
@@ -280,7 +290,7 @@ describe("joins", () => {
     });
     it("should handle complex where with multiple join filters and operators (postgres)", async () => {
       await testComplexWhereWithMultipleJoinFilters(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -292,7 +302,7 @@ describe("joins", () => {
       );
     });
     it("should paginate with joins (postgres)", async () => {
-      await testPaginateWithJoins(Alepha.create().with(AlephaOrmPostgres));
+      await testPaginateWithJoins(Alepha.create().with(AlephaOrmTestPostgres));
     });
 
     it("should count with a relation-key filter (sqlite)", async () => {
@@ -302,7 +312,7 @@ describe("joins", () => {
     });
     it("should count with a relation-key filter (postgres)", async () => {
       await testPaginateCountWithJoinFilter(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -313,7 +323,7 @@ describe("joins", () => {
     });
     it("should not let a fan-out join inflate the total (postgres)", async () => {
       await testPaginateCountWithFanOutJoin(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -324,7 +334,7 @@ describe("joins", () => {
     });
     it("should paginate with nested joins (postgres)", async () => {
       await testPaginateWithNestedJoins(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -337,7 +347,7 @@ describe("joins", () => {
     });
     it("should return empty result for inner join with no matching records (postgres)", async () => {
       await testInnerJoinNoMatchingRecords(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -348,7 +358,7 @@ describe("joins", () => {
     });
     it("should join same table multiple times with aliases (postgres)", async () => {
       await testSameTableJoinedMultipleTimesWithAliases(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -359,7 +369,7 @@ describe("joins", () => {
     });
     it("should return empty result set with joins (postgres)", async () => {
       await testEmptyResultSetWithJoins(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });

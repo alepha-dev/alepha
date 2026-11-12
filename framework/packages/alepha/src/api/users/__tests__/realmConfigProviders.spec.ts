@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerEtag } from "alepha/server/etag";
@@ -32,7 +32,7 @@ describe("alepha/api/users - /realms/config authentication methods", () => {
       // container without it answers 500. Lore gets it through
       // `alepha/react/router`; a server-only app would not.
       .with(AlephaServerEtag)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaSecurity)
       .with(() => ({
         realm: $realm({

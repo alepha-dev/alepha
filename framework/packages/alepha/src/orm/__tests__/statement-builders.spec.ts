@@ -1,4 +1,5 @@
 import { $hook, Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,7 +9,6 @@ import {
   db,
   sql,
 } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const notes = $entity({
   name: "test_statement_builder_notes",
@@ -185,6 +185,6 @@ describe("Repository statement builders", () => {
   });
 
   it("insert, update, delete, exists and scalar in an atomic batch (postgres)", async () => {
-    await builders(Alepha.create().with(AlephaOrmPostgres));
+    await builders(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

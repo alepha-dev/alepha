@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha, z } from "alepha";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import {
   $issuer,
   $permission,
@@ -57,7 +56,7 @@ class TestApp {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaServer)
     .with(AlephaSecurity)
     .with(AlephaApiKeys);

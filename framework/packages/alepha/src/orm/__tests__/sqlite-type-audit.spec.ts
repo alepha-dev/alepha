@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,7 +10,6 @@ import {
   sql,
   SqliteTypeAuditService,
 } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const events = $entity({
   name: "audit_events",
@@ -143,7 +143,7 @@ describe("SqliteTypeAuditService", () => {
   });
 
   it("has nothing to say about postgres, which refuses the value at the wire", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     alepha.inject(App);
     await alepha.start();
     const provider = alepha

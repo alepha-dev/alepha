@@ -7,8 +7,7 @@ import {
   LocalFileStorageProvider,
   MemoryFileStorageProvider,
 } from "alepha/bucket";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
@@ -33,7 +32,7 @@ const testFileServiceOperations = async (
   provider: Service<FileStorageProvider>,
 ) => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({
       provide: FileStorageProvider,
       use: provider,
@@ -141,7 +140,7 @@ describe("FileService", () => {
 
   it("removes the orphaned blob when uploadFile's metadata write fails", async () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
@@ -182,7 +181,7 @@ describe("FileService", () => {
 
   it("removes the orphaned blob when uploading through $storage.upload", async () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
@@ -220,7 +219,7 @@ describe("FileService", () => {
 
   it("uploadFile reads a stream-backed file once (no empty blob, real size)", async () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
@@ -262,7 +261,7 @@ describe("FileService", () => {
 
   it("upload hook reads a stream-backed file once (real size + checksum)", async () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
@@ -312,7 +311,7 @@ describe("FileService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 

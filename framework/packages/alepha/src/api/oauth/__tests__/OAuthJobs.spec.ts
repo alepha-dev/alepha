@@ -1,8 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { oauthClientEntity } from "../entities/oauthClientEntity.ts";
@@ -22,7 +21,9 @@ describe("OAuthJobs.purgeAbandonedClients", () => {
   }
 
   const setup = async (sessions: string[] = []) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiJobs);
     const jobs = alepha.inject(OAuthJobs);
     const repos = alepha.inject(TestRepositories);
     const service = alepha.inject(OAuthClientService);

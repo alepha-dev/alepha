@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AdminOrderController } from "../admin/controllers/AdminOrderController.ts";
@@ -24,7 +24,7 @@ const setup = async (invoiceService = InvoiceService) => {
     alepha.with({ provide: InvoiceService, use: invoiceService });
   }
   alepha
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceInvoicing)
     .with(AlephaCommerceSettlement)
     .with(AlephaCommerceAdmin);

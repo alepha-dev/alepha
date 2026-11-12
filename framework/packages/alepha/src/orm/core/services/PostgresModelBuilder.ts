@@ -1,22 +1,6 @@
 import { $inject, AlephaError, type ZObject, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import {
-  type EntityPrimitive,
-  getAttr,
-  hasAttr,
-  ModelBuilder,
-  PG_CREATED_AT,
-  PG_GENERATED,
-  PG_IDENTITY,
-  PG_PRIMARY_KEY,
-  PG_REF,
-  PG_UPDATED_AT,
-  type PgGeneratedOptions,
-  type PgIdentityOptions,
-  type PgRefOptions,
-  type SequencePrimitive,
-} from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
 import {
@@ -35,8 +19,23 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+import {
+  PG_CREATED_AT,
+  PG_GENERATED,
+  PG_IDENTITY,
+  PG_PRIMARY_KEY,
+  PG_REF,
+  PG_UPDATED_AT,
+  type PgGeneratedOptions,
+  type PgIdentityOptions,
+  type PgRefOptions,
+} from "../constants/PG_SYMBOLS.ts";
+import { getAttr, hasAttr } from "../helpers/pgAttr.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
+import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { byte } from "../types/byte.ts";
 import { schema } from "../types/jsonb.ts";
+import { ModelBuilder } from "./ModelBuilder.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
   protected readonly dialect = "postgresql" as const;

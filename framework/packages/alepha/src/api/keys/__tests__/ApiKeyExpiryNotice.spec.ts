@@ -9,8 +9,7 @@ import {
 import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -46,7 +45,7 @@ class NoApiKeyJobs {}
 const setup = async (options: { notifications: boolean }) => {
   const alepha = Alepha.create()
     .with({ provide: ApiKeyJobs, use: NoApiKeyJobs })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaServer)
     .with(AlephaSecurity)
     .with(AlephaApiKeys);

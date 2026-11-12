@@ -1,9 +1,9 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
 import { DrizzleKitProvider } from "../core/providers/DrizzleKitProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * The shape of Lore's `quests_open_idx`, plus a value that has to be inlined
@@ -153,7 +153,7 @@ describe("partial index where-object", () => {
   });
 
   it("compiles, inlines values and does not drift (postgres)", async () => {
-    await testCompiledPredicate(Alepha.create().with(AlephaOrmPostgres), {
+    await testCompiledPredicate(Alepha.create().with(AlephaOrmTestPostgres), {
       test_index_where_open_idx: OPEN_PG,
       test_index_where_status_idx: STATUS_PG,
       test_index_where_raw_idx: "deleted_at IS NULL",

@@ -7,7 +7,7 @@ import {
   LocalFileStorageProvider,
   MemoryFileStorageProvider,
 } from "alepha/bucket";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
@@ -24,7 +24,7 @@ const testStorageOperations = async (
   provider: Service<FileStorageProvider>,
 ) => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({
       provide: FileStorageProvider,
       use: provider,
@@ -109,7 +109,7 @@ describe("$storage", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
@@ -136,7 +136,7 @@ describe("$storage", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
       .with(AlephaApiFiles);
 
@@ -174,7 +174,7 @@ describe("$storage", () => {
 
     const boot = async () => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with({ provide: FileStorageProvider, use: MemoryFileStorageProvider })
         .with(AlephaApiFiles);
       const app = alepha.inject(TwoStorages);

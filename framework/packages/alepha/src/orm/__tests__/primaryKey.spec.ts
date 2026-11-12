@@ -1,14 +1,14 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { DbError } from "../core/errors/DbError.ts";
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 const UUID_V7_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -105,7 +105,7 @@ describe("primaryKey", () => {
       );
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -133,7 +133,7 @@ describe("primaryKey", () => {
       );
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -162,7 +162,7 @@ describe("primaryKey", () => {
       );
     }
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 

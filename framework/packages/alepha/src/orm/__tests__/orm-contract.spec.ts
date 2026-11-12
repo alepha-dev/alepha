@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { $inject, Alepha, AlephaError, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,7 +13,6 @@ import {
   PG_REF,
 } from "../core/index.ts";
 import { DatabaseProvider } from "../core/providers/drivers/DatabaseProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * The ORM contract frozen by #Q2659: `db.*` helpers leave the schema they are
@@ -59,7 +59,7 @@ describe("db.* helpers", () => {
     }
 
     it("still makes a foreign key: an orphan insert is refused", async () => {
-      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -69,7 +69,7 @@ describe("db.* helpers", () => {
     });
 
     it("defaults onDelete from the column as declared: set null", async () => {
-      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -150,7 +150,7 @@ describe("row locks and the query cache", () => {
   });
 
   it("takes the row lock on PostgreSQL", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -168,7 +168,7 @@ describe("nested transactions", () => {
   describe.each([
     {
       dialect: "postgres",
-      create: () => Alepha.create().with(AlephaOrmPostgres),
+      create: () => Alepha.create().with(AlephaOrmTestPostgres),
     },
     {
       dialect: "sqlite",

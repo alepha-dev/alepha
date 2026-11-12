@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -8,7 +8,7 @@ import { AlephaApiUsers, RealmProvider } from "../index.ts";
 describe("alepha/api/users - RealmProvider", () => {
   it("should return settings via getSettings()", async ({ expect }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();
@@ -24,7 +24,7 @@ describe("alepha/api/users - RealmProvider", () => {
 
   it("should reject realm names containing dots", async ({ expect }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();
@@ -37,7 +37,7 @@ describe("alepha/api/users - RealmProvider", () => {
 
   it("should return custom settings when configured", async ({ expect }) => {
     const alepha = Alepha.create();
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();

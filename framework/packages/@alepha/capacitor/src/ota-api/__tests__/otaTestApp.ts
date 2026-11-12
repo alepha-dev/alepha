@@ -3,8 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrm } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrm, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, type UserAccountToken } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 
@@ -71,7 +70,7 @@ export const createOtaTestApp = async (
   substitute?.(alepha);
   alepha
     .with(AlephaServer)
-    .with(dialect === "postgres" ? AlephaOrmPostgres : AlephaOrm)
+    .with(dialect === "postgres" ? AlephaOrmTestPostgres : AlephaOrm)
     .with(AlephaApiKeys)
     .with(AlephaCapacitorOtaApi)
     .with(Host);

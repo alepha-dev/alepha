@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -7,7 +8,6 @@ import {
   db,
   DbVersionMismatchError,
 } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const doc = $entity({
   name: "version_docs",
@@ -114,6 +114,6 @@ describe("db.version()", () => {
     suite(() => Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }));
   });
   describe("postgres", () => {
-    suite(() => Alepha.create().with(AlephaOrmPostgres));
+    suite(() => Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

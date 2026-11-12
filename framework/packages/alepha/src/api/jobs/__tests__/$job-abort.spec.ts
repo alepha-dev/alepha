@@ -1,7 +1,6 @@
 import { $hook, Alepha, TimeoutError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -21,7 +20,7 @@ import {
 describe("$job aborted runs", () => {
   const makeApp = () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     alepha.store.mut(jobConfig, (c) => ({ ...c, drainTimeout: 50 }));

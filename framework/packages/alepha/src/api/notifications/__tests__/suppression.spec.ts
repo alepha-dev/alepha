@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms, MemorySmsProvider } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -48,7 +48,7 @@ const boot = async (
   configure?: (alepha: ReturnType<typeof Alepha.create>) => void,
 ) => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiJobs);

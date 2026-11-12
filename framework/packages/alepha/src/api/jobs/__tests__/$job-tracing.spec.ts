@@ -1,6 +1,5 @@
 import { $inject, Alepha, z } from "alepha";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import {
   $action,
@@ -43,7 +42,7 @@ describe("background tracing", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue)
       .with(AlephaServer);
@@ -128,7 +127,9 @@ describe("background tracing", () => {
   it("opens a cron root per tick, with the job run as its child", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiJobs);
     class App {
       tick = $job({
         name: "tracing.tick",

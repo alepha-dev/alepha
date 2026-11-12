@@ -3,8 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { OAuthClientService, oauthOptions } from "alepha/api/oauth";
 import { AlephaEmail } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -29,7 +28,7 @@ describe("sessions.resource", () => {
   it("keeps a grant's resource across refresh at /oauth/token and /_auth/refresh", async () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaSecurity)
       .with(AlephaEmail)
       .with(AlephaApiUsers);

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -29,7 +29,7 @@ const waitForMail = async (mail: MemoryEmailProvider, count: number) => {
 const setup = async () => {
   // Settlement drives both emails: they are its jobs.
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceNotifications)
     .with(AlephaCommerceSettlement);
 

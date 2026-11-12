@@ -1,7 +1,10 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DbEntityNotFoundError } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  DbEntityNotFoundError,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -58,7 +61,7 @@ class App {
 const boot = async () => {
   const alepha = Alepha.create()
     .with({ provide: JobProvider, use: TestJobProvider })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiJobs);
   const app = alepha.inject(App);
   await alepha.start();

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { MemoryDestinationProvider } from "alepha/logger";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { AlephaOAuth, OAuthScopeResolver, oauthOptions } from "../index.ts";
@@ -8,7 +8,7 @@ import { AlephaOAuth, OAuthScopeResolver, oauthOptions } from "../index.ts";
 const setup = async (
   scopes: Record<string, { label: string; permissions?: string[] }>,
 ) => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaOAuth);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres).with(AlephaOAuth);
   alepha.set(oauthOptions, { ...oauthOptions.options.default, scopes });
   await alepha.start();
   return {

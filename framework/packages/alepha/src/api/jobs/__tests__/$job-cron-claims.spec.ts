@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -30,7 +29,7 @@ const boot = async (driver: "postgres" | "sqlite" = "postgres") => {
   const base =
     driver === "sqlite"
       ? Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } })
-      : Alepha.create().with(AlephaOrmPostgres);
+      : Alepha.create().with(AlephaOrmTestPostgres);
   const alepha = base
     .with({ provide: JobProvider, use: TestJobProvider })
     .with(AlephaApiJobs);

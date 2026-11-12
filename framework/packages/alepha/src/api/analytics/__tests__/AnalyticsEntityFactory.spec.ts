@@ -1,6 +1,5 @@
 import { Alepha, type ZType, z } from "alepha";
-import { DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { DatabaseProvider, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { AnalyticsEntityFactory } from "../services/AnalyticsEntityFactory.ts";
@@ -162,13 +161,9 @@ describe("AnalyticsEntityFactory", () => {
   });
 
   it("registers its tables with the database so migrations can see them", async () => {
-    // The root `vitest.config.ts` pins `DATABASE_URL` to the docker-compose
-    // Postgres for every test in the repo, so `alepha/orm`'s own SQLite
-    // default (auto-selected the moment `DatabaseProvider` is injected)
-    // rejects that URL outright. `AlephaOrmPostgres` is the module every
-    // other DB-backed spec in this repo pulls in for exactly that reason —
-    // see e.g. `packages/alepha/src/api/users/__tests__/RealmProvider.spec.ts`.
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    // On Postgres, as the rest of the analytics suite: the rollup tables
+    // are built for both dialects and this one checks the Postgres model.
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const database = alepha.inject(DatabaseProvider);
     const {
       tables: [raw, rolled],

@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testCombinedFilters,
   testEmptyResultWithJoins,
@@ -27,7 +27,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should join player with team (postgres)", async () => {
-      await testLeftJoinPlayerWithTeam(Alepha.create().with(AlephaOrmPostgres));
+      await testLeftJoinPlayerWithTeam(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -39,7 +41,7 @@ describe("orm showcase: entities + joins", () => {
     });
     it("should return undefined when FK is null (postgres)", async () => {
       await testLeftJoinReturnsUndefinedWhenFkNull(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -51,7 +53,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should exclude rows without match (postgres)", async () => {
-      await testInnerJoinExcludesNulls(Alepha.create().with(AlephaOrmPostgres));
+      await testInnerJoinExcludesNulls(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -62,7 +66,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should filter by joined table column (postgres)", async () => {
-      await testFilterOnJoinedTable(Alepha.create().with(AlephaOrmPostgres));
+      await testFilterOnJoinedTable(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -73,7 +79,7 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should combine base and join table filters (postgres)", async () => {
-      await testCombinedFilters(Alepha.create().with(AlephaOrmPostgres));
+      await testCombinedFilters(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -85,7 +91,7 @@ describe("orm showcase: entities + joins", () => {
     });
     it("should order and limit with joins (postgres)", async () => {
       await testJoinWithOrderByAndLimit(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -97,7 +103,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should paginate with joins (postgres)", async () => {
-      await testPaginationWithJoins(Alepha.create().with(AlephaOrmPostgres));
+      await testPaginationWithJoins(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -108,7 +116,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should OR across base and joined table (postgres)", async () => {
-      await testOrFilterAcrossTables(Alepha.create().with(AlephaOrmPostgres));
+      await testOrFilterAcrossTables(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -120,7 +130,7 @@ describe("orm showcase: entities + joins", () => {
     });
     it("should throw when not found via getOne (postgres)", async () => {
       await testGetOneWithJoinThrowsWhenNotFound(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -131,7 +141,7 @@ describe("orm showcase: entities + joins", () => {
     });
     it("should return undefined via findOne (postgres)", async () => {
       await testFindOneWithJoinReturnsUndefined(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -143,7 +153,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should return empty array when no matches (postgres)", async () => {
-      await testEmptyResultWithJoins(Alepha.create().with(AlephaOrmPostgres));
+      await testEmptyResultWithJoins(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should filter with operators on joined table (sqlite)", async () => {
@@ -153,7 +165,7 @@ describe("orm showcase: entities + joins", () => {
     });
     it("should filter with operators on joined table (postgres)", async () => {
       await testMultipleOperatorsOnJoinedFilter(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
 
@@ -163,7 +175,7 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should handle offset with inner join (postgres)", async () => {
-      await testJoinWithOffset(Alepha.create().with(AlephaOrmPostgres));
+      await testJoinWithOffset(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -174,7 +186,9 @@ describe("orm showcase: entities + joins", () => {
       );
     });
     it("should eager-load relations on PK lookup (postgres)", async () => {
-      await testGetByIdWithRelations(Alepha.create().with(AlephaOrmPostgres));
+      await testGetByIdWithRelations(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 });

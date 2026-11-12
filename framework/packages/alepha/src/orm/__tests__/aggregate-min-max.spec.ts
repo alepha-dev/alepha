@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const readings = $entity({
   name: "test_aggregate_readings",
@@ -92,7 +92,9 @@ describe("aggregate min/max keep the column type", () => {
   });
 
   it("returns strings and timestamps, not NaN (postgres)", async () => {
-    await testMinMaxKeepTheColumnType(Alepha.create().with(AlephaOrmPostgres));
+    await testMinMaxKeepTheColumnType(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
   });
 
   it("answers null over an empty set (sqlite)", async () => {
@@ -102,6 +104,6 @@ describe("aggregate min/max keep the column type", () => {
   });
 
   it("answers null over an empty set (postgres)", async () => {
-    await testEmptySet(Alepha.create().with(AlephaOrmPostgres));
+    await testEmptySet(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

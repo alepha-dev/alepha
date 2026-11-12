@@ -1,7 +1,6 @@
 import { $inject, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $role, AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { ConflictError, ForbiddenError, NotFoundError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -105,7 +104,7 @@ const nowIso = (app: OpsApp): string => app.now.now().toISOString();
 
 const boot = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaSecurity)
     .with(AlephaApiJobs);
   alepha.inject(Roles);

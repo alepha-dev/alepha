@@ -1,5 +1,6 @@
 import { AbortedError, Alepha, TimeoutError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -12,7 +13,6 @@ import {
 } from "../core/index.ts";
 import { FakeD1 } from "../core/providers/drivers/__tests__/fakeD1.ts";
 import { CloudflareD1Provider } from "../core/providers/drivers/CloudflareD1Provider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * A statement's `timeout`, and `DATABASE_TIMEOUT` as its default on every
@@ -65,7 +65,7 @@ describe("ORM timeout", () => {
       expect,
     }) => {
       const { alepha, app, time } = await boot(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
       await app.notes.create({ title: "slow" });
 
@@ -93,7 +93,7 @@ describe("ORM timeout", () => {
     }) => {
       const { alepha, app, time } = await boot(
         Alepha.create({ env: { DATABASE_TIMEOUT: 1000 } }).with(
-          AlephaOrmPostgres,
+          AlephaOrmTestPostgres,
         ),
       );
       await app.notes.create({ title: "slow" });
@@ -122,7 +122,7 @@ describe("ORM timeout", () => {
       expect,
     }) => {
       const { alepha, app } = await boot(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
       const gone = new AbortController();
       gone.abort(new AbortedError("client gone"));

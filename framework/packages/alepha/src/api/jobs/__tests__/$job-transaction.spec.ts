@@ -1,6 +1,9 @@
 import { $inject, Alepha, z } from "alepha";
-import { $repository, DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  DatabaseProvider,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -57,7 +60,7 @@ interface Run {
 }
 
 const boot = async (mode: Mode, name: string) => {
-  let alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+  let alepha = Alepha.create().with(AlephaOrmTestPostgres).with(AlephaApiJobs);
   if (mode === "queue") alepha = alepha.with(AlephaApiJobsQueue);
   const runs: Run[] = [];
   const state = { committed: false };
@@ -196,7 +199,7 @@ describe("$job pushed inside a transaction", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: DirectJobDispatcher, use: FailingDispatcher })
       .with(AlephaApiJobs);
     class App {

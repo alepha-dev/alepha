@@ -1,13 +1,16 @@
 import { randomBytes } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { DatabaseProvider, DbMigrationError } from "alepha/orm";
+import {
+  DatabaseProvider,
+  DbMigrationError,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { sql } from "drizzle-orm";
 import postgres from "postgres";
 import { describe, expect, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../index.ts";
-import { NodePostgresProvider } from "../providers/NodePostgresProvider.ts";
+import { NodePostgresProvider } from "../providers/drivers/NodePostgresProvider.ts";
 
 /**
  * Two instances booting at once on one database: the second waits for the
@@ -78,7 +81,7 @@ const reset = (lockTimeout = 300_000) => {
 const container = () =>
   Alepha.create()
     .with({ provide: DatabaseProvider, use: LockProbeProvider })
-    .with(AlephaOrmPostgres);
+    .with(AlephaOrmTestPostgres);
 
 const causes = (error: unknown): unknown[] => {
   const chain: unknown[] = [];
@@ -95,7 +98,7 @@ describe("Postgres migration lock", () => {
     reset();
     // Test mode creates each container's schema at start, before the lock.
     // Created here, so two containers sharing one do not race on the catalog.
-    const admin = postgres(String(process.env.DATABASE_URL), { max: 1 });
+    const admin = postgres(String(process.env.POSTGRES_TEST_URL), { max: 1 });
     await admin.unsafe(`CREATE SCHEMA IF NOT EXISTS "${probe.schema}"`);
     await admin.end();
     const first = container();
@@ -118,7 +121,7 @@ describe("Postgres migration lock", () => {
   it("fails the boot with a DbMigrationError naming the lock when the wait times out", async () => {
     reset(300);
     const key = `alepha:migrate:${probe.schema}`;
-    const holder = postgres(String(process.env.DATABASE_URL), { max: 1 });
+    const holder = postgres(String(process.env.POSTGRES_TEST_URL), { max: 1 });
 
     try {
       await holder.unsafe("SELECT pg_advisory_lock(hashtext($1))", [key]);

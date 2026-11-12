@@ -1,4 +1,5 @@
 import { $hook, AbortedError, Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -12,7 +13,6 @@ import {
   NodeSqliteProvider,
   nodeSqliteOptions,
 } from "../core/providers/drivers/NodeSqliteProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * Reads inherit the ambient signal; writes and transactions are never cut
@@ -46,7 +46,7 @@ describe("ORM cancellation", () => {
   };
 
   const postgres = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     await alepha.start();
     return { alepha, app };

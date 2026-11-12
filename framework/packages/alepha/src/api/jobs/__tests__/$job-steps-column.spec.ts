@@ -1,6 +1,5 @@
 import { Alepha } from "alepha";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AlephaApiJobs, jobExecutionEntity } from "../index.ts";
@@ -15,7 +14,9 @@ describe("job_executions.steps", () => {
   it("stores a steps record and reads it back, and stays null otherwise", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiJobs);
     class App {
       executions = $repository(jobExecutionEntity);
     }

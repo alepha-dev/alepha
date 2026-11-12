@@ -351,7 +351,7 @@ await dateTime.travel([2, "hours"]); // jump forward
 
 Without a `DATABASE_URL`, a test container uses an in-memory SQLite database, fresh for each container.
 
-Alepha can also run tests against real Postgres, with the `alepha/orm/postgres` module (`AlephaOrmPostgres`) registered. Under test, each container creates its own throwaway schema (`test_alepha_<epoch>_<random>`), runs the migrations into it, and drops it on stop; schemas older than an hour left by a crashed run are swept on the next start.
+Alepha can also run tests against real Postgres: set `DATABASE_URL` to a `postgres://` URL for the whole run, or register `AlephaOrmTestPostgres` (from `alepha/orm`) in one spec to run it on the server `POSTGRES_TEST_URL` names. Under test, each container creates its own throwaway schema (`test_alepha_<epoch>_<random>`), runs the migrations into it, and drops it on stop; schemas older than an hour left by a crashed run are swept on the next start.
 
 Point `DATABASE_URL` at your test database via the `env` block of `vite.config.ts`'s `test` section (the scaffolded config doesn't set one):
 

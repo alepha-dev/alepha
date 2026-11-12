@@ -2,7 +2,7 @@ import { Alepha, AlephaError } from "alepha";
 import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -32,7 +32,7 @@ describe("registration and password reset during a counter outage", () => {
   const boot = async () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
     alepha.with({ provide: ActorProvider, use: BrokenActorProvider });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaEmail);
     alepha.with(AlephaApiVerification);

@@ -3,8 +3,8 @@ import {
   DatabaseProvider,
   NodeSqliteProvider,
   nodeSqliteOptions,
+  AlephaOrmTestPostgres,
 } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
 import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
@@ -20,7 +20,7 @@ const dataset = {
 
 describe("OrmAnalyticsProvider", () => {
   it("adds to an existing bucket rather than inserting a duplicate row", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     await alepha.start();
@@ -46,7 +46,7 @@ describe("OrmAnalyticsProvider", () => {
   });
 
   it("reads across the raw and rolled tables in one query", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     await alepha.start();
@@ -70,7 +70,7 @@ describe("OrmAnalyticsProvider", () => {
   });
 
   it("registers a dataset's tables idempotently, and a second call is a no-op", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     provider.register(dataset);
@@ -93,7 +93,7 @@ describe("OrmAnalyticsProvider", () => {
     // `register()` call is an app bug: it declared a dataset it never
     // registered, and the failure needs to be loud and specific rather than
     // a bare "relation does not exist" from Postgres.
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     await alepha.start();
 
@@ -113,7 +113,7 @@ describe("OrmAnalyticsProvider", () => {
     // forwards request-controlled keys into `where` without checking them
     // against the dataset's declared dimensions would otherwise let an
     // attacker splice arbitrary SQL text in as a column reference.
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     await alepha.start();
@@ -153,7 +153,7 @@ describe("OrmAnalyticsProvider", () => {
       slots: { dimensions: ["appId", "path"], measures: ["count"] },
     };
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(multiWordDataset);
     await alepha.start();
@@ -192,7 +192,7 @@ describe("OrmAnalyticsProvider", () => {
     // interface contract (pinned by `MemoryAnalyticsProvider`) is that an
     // empty match stays an empty result, so "no data" and "measured zero"
     // remain distinguishable.
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     await alepha.start();
@@ -235,7 +235,7 @@ describe("OrmAnalyticsProvider", () => {
     // because every one of them runs on the runtime where the table is not
     // declared. Schema must not vary by runtime; the floor table is now
     // unconditional.
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     await alepha.start();
@@ -258,7 +258,7 @@ describe("OrmAnalyticsProvider", () => {
     // owns the storage and the monotonic guarantee — `registerPruneFloors()`
     // called explicitly, the same way only `WaeAnalyticsProvider.register()`
     // ever calls it in real use.
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     provider.registerPruneFloors();
@@ -291,7 +291,7 @@ describe("OrmAnalyticsProvider", () => {
       slots: { dimensions: ["app"], measures: ["count"] },
     };
 
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     provider.register(otherDataset);
@@ -309,7 +309,7 @@ describe("OrmAnalyticsProvider", () => {
   });
 
   it("registerPruneFloors is idempotent", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
     provider.registerPruneFloors();
@@ -330,7 +330,7 @@ describe("OrmAnalyticsProvider", () => {
 describe.each([
   {
     dialect: "postgres",
-    boot: () => Alepha.create().with(AlephaOrmPostgres),
+    boot: () => Alepha.create().with(AlephaOrmTestPostgres),
   },
   {
     dialect: "sqlite",
@@ -448,7 +448,7 @@ describe.each([
 });
 
 analyticsConformance("orm", async (datasets) => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   const provider = alepha.inject(OrmAnalyticsProvider);
   for (const dataset of datasets) provider.register(dataset);
   await alepha.start();

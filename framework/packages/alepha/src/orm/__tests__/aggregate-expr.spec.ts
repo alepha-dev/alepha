@@ -1,10 +1,10 @@
 import { $inject, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
 import { SqlExpressionProvider } from "../core/providers/SqlExpressionProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const quests = $entity({
   name: "test_agg_expr_quests",
@@ -285,7 +285,7 @@ const testRefusals = async (alepha: Alepha) => {
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 describe("aggregate over expressions", () => {
   it("groups burn-up counts by day (sqlite)", async () => {

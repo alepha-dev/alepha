@@ -1,7 +1,7 @@
 import { Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { MemoryDestinationProvider } from "alepha/logger";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 // Imported through the module entry, not the primitive/job files directly —
@@ -25,7 +25,7 @@ import {
  * `../index.ts`. `$job` always needs a real `DatabaseProvider` (job
  * execution tracking is never test-substituted), so — exactly like
  * `$job.spec.ts` and `AuditJobs.spec.ts` — this container attaches
- * `AlephaOrmPostgres` explicitly. `AnalyticsProvider` itself is unaffected:
+ * `AlephaOrmTestPostgres` explicitly. `AnalyticsProvider` itself is unaffected:
  * `alepha.isTest()` still selects `MemoryAnalyticsProvider` for the datasets
  * below regardless of which ORM driver is attached.
  *
@@ -38,7 +38,7 @@ import {
  * throws `TooLateSubstitutionError`.
  */
 const makeApp = (provider?: new () => AnalyticsProvider) => {
-  let alepha = Alepha.create().with(AlephaOrmPostgres);
+  let alepha = Alepha.create().with(AlephaOrmTestPostgres);
   if (provider) {
     alepha = alepha.with({ provide: AnalyticsProvider, use: provider });
   }

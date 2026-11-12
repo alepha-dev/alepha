@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * Four correctness findings from the framework review, each verified against
@@ -45,7 +45,7 @@ class App {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with(
-    AlephaOrmPostgres,
+    AlephaOrmTestPostgres,
   );
   const app = alepha.inject(App);
   await alepha.start();

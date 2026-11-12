@@ -4,7 +4,7 @@ import { Alepha, z } from "alepha";
 import { OAuthClientService, oauthOptions } from "alepha/api/oauth";
 import { AlephaEmail } from "alepha/email";
 import { $tool, AlephaMcp, StreamableHttpMcpTransport } from "alepha/mcp";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $secure, AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -48,7 +48,7 @@ class TestApp {
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } })
     .with(AlephaServer)
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaSecurity)
     .with(AlephaEmail)
     .with(AlephaApiUsers)

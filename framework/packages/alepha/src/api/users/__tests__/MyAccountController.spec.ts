@@ -1,5 +1,5 @@
 import { $hook, Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -41,7 +41,7 @@ class CleanupHook {
 
 const setup = async (options: { hook?: any; withPassword?: boolean } = {}) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
   if (options.hook) {

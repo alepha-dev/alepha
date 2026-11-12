@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import type { PaymentIntentEntity } from "../entities/paymentIntents.ts";
@@ -36,7 +36,7 @@ class StaleReadPaymentService extends PaymentService {
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
     .with({ provide: PaymentService, use: StaleReadPaymentService })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiPayments);
   const payments = alepha.inject(PaymentService) as StaleReadPaymentService;
   await alepha.start();

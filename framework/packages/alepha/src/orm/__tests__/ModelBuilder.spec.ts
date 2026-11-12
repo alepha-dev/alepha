@@ -1,12 +1,12 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { $entity } from "../core/primitives/$entity.ts";
 import { db } from "../core/providers/DatabaseTypeProvider.ts";
+import { PostgresModelBuilder } from "../core/services/PostgresModelBuilder.ts";
 import { SqliteModelBuilder } from "../core/services/SqliteModelBuilder.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
-import { PostgresModelBuilder } from "../postgres/services/PostgresModelBuilder.ts";
 import {
   testComplexRelationships,
   testExpressionIndex,
@@ -869,7 +869,9 @@ describe("ModelBuilder", () => {
     });
 
     it("should handle all entity options correctly (postgres)", async () => {
-      await testModelBuilderFeatures(Alepha.create().with(AlephaOrmPostgres));
+      await testModelBuilderFeatures(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should handle complex nested relationships (sqlite)", async () => {
@@ -879,7 +881,9 @@ describe("ModelBuilder", () => {
     });
 
     it("should handle complex nested relationships (postgres)", async () => {
-      await testComplexRelationships(Alepha.create().with(AlephaOrmPostgres));
+      await testComplexRelationships(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
 
     it("should enforce LOWER expression unique index (sqlite)", async () => {
@@ -889,7 +893,7 @@ describe("ModelBuilder", () => {
     });
 
     it("should enforce LOWER expression unique index (postgres)", async () => {
-      await testExpressionIndex(Alepha.create().with(AlephaOrmPostgres));
+      await testExpressionIndex(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 

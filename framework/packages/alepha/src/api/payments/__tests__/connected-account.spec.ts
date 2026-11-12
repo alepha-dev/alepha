@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { JobProvider } from "alepha/api/jobs";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { paymentIntents } from "../entities/paymentIntents.ts";
@@ -107,7 +106,7 @@ class TestRepos {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({ provide: PaymentProvider, use: AccountScopedProvider })
     .with(AlephaApiPayments)
     .with(TestRepos);

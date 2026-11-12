@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAggregateBasic,
   testAggregateHaving,
@@ -19,7 +19,7 @@ import {
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 // =============================================================================
 // Feature 1: Partial Indexes

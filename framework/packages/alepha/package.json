@@ -315,12 +315,6 @@
       "import": "./src/orm/drizzle/index.ts",
       "default": "./src/orm/drizzle/index.ts"
     },
-    "./orm/postgres": {
-      "types": "./src/orm/postgres/index.ts",
-      "bun": "./src/orm/postgres/index.bun.ts",
-      "import": "./src/orm/postgres/index.ts",
-      "default": "./src/orm/postgres/index.ts"
-    },
     "./queue": {
       "types": "./src/queue/core/index.ts",
       "workerd": "./src/queue/core/index.workerd.ts",
@@ -840,12 +834,6 @@
         "types": "./dist/orm/drizzle/index.d.ts",
         "import": "./dist/orm/drizzle/index.js",
         "default": "./dist/orm/drizzle/index.js"
-      },
-      "./orm/postgres": {
-        "types": "./dist/orm/postgres/index.d.ts",
-        "bun": "./dist/orm/postgres/index.bun.js",
-        "import": "./dist/orm/postgres/index.js",
-        "default": "./dist/orm/postgres/index.js"
       },
       "./queue": {
         "types": "./dist/queue/core/index.d.ts",

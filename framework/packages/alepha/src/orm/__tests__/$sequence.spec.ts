@@ -1,10 +1,10 @@
 import { $inject, Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $sequence } from "../core/primitives/$sequence.ts";
 import { DatabaseProvider } from "../core/providers/drivers/DatabaseProvider.ts";
 import { SequenceProvider } from "../core/providers/SequenceProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 describe("$sequence", () => {
   class App {
@@ -13,7 +13,7 @@ describe("$sequence", () => {
     perCampaign = $sequence();
   }
 
-  const alepha = Alepha.create().with(AlephaOrmPostgres);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   const app = alepha.inject(App);
 
   it("should generate sequential numbers", async () => {
@@ -76,7 +76,7 @@ describe("SequenceProvider.raise", () => {
   });
 
   it("never lowers a value (postgres)", async () => {
-    await raises(Alepha.create().with(AlephaOrmPostgres));
+    await raises(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });
 
@@ -97,7 +97,7 @@ describe("$sequence inside $transactional", () => {
     db = $inject(DatabaseProvider);
   }
 
-  const alepha = Alepha.create().with(AlephaOrmPostgres);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   const app = alepha.inject(App);
 
   it("commits the increment together with the surrounding tx", async () => {

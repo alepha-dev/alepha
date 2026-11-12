@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { checkoutConfig } from "../checkout/checkoutConfigAtom.ts";
@@ -19,7 +19,7 @@ class TestCheckoutController extends CheckoutController {
 const setup = async (baseUrl?: string) => {
   const alepha = Alepha.create()
     .with({ provide: CheckoutController, use: TestCheckoutController })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout);
   if (baseUrl !== undefined) {
     alepha.store.mut(checkoutConfig, (c) => ({ ...c, baseUrl }));

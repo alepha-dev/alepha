@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * Identifier lookups were written with `ilike`, which is a PATTERN match: `_`
@@ -24,7 +24,7 @@ class App {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with(
-    AlephaOrmPostgres,
+    AlephaOrmTestPostgres,
   );
   const app = alepha.inject(App);
   await alepha.start();

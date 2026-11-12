@@ -1,9 +1,9 @@
 import { $inject, Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
 import { DatabaseProvider } from "../core/providers/drivers/DatabaseProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * `opts.cache` must never serve rows a transaction did not commit, nor keep
@@ -29,7 +29,7 @@ class Rollback extends Error {}
 const cache = { ttl: 60_000 };
 
 describe("query cache and transactions", () => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres);
   const app = alepha.inject(App);
 
   it("does not cache a read made inside a transaction that rolls back", async () => {

@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AlephaCommerceCart } from "../cart/index.ts";
@@ -23,7 +22,7 @@ class Ledger {
 const setup = async (backend: "postgres" | "sqlite" = "postgres") => {
   const alepha =
     backend === "postgres"
-      ? Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerceCart)
+      ? Alepha.create().with(AlephaOrmTestPostgres).with(AlephaCommerceCart)
       : Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }).with(
           AlephaCommerceCart,
         );

@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const items = $entity({
   name: "test_offset_items",
@@ -41,7 +41,7 @@ describe("findMany offset without limit", () => {
   });
 
   it("returns all remaining rows (postgres)", async () => {
-    await testOffsetWithoutLimit(Alepha.create().with(AlephaOrmPostgres));
+    await testOffsetWithoutLimit(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });
 
@@ -78,7 +78,7 @@ describe("aggregate offset without limit", () => {
 
   it("returns the remaining groups (postgres)", async () => {
     await testAggregateOffsetWithoutLimit(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 });

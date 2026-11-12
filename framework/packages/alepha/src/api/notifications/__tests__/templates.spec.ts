@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaSms } from "alepha/sms";
 import { describe, expect, it } from "vitest";
@@ -46,7 +46,7 @@ class Templates {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaSecurity)

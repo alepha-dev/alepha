@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { LinkProvider } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
@@ -32,7 +32,7 @@ import {
  */
 const registeredActions = async (features?: { avatars: boolean }) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(() => ({ realm: $realm(features ? { features } : undefined) }));
   await alepha.start();
@@ -54,7 +54,7 @@ const operator: UserAccountToken = {
  */
 const withAvatar = async (username: string) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(() => ({ realm: $realm({ features: { avatars: true } }) }));
   await alepha.start();
@@ -169,7 +169,7 @@ describe("alepha/api/users - AdminAvatarController", () => {
     // editing their roles or their email, and an operator trusted with one is
     // not automatically trusted with the other.
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(() => ({ realm: $realm({ features: { avatars: true } }) }));
     await alepha.start();

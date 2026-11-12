@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * it re-exports. Everything else from drizzle is `alepha/orm/drizzle`, outside
  * semver (#Q2656).
  *
- * This emits the declarations of `alepha/orm` and `alepha/orm/postgres` with
+ * This emits the declarations of `alepha/orm` (Postgres included since #Q3470) with
  * the real compiler, `stripInternal` on, and walks every `.d.ts` they reach
  * through relative imports. A member tagged `@internal` (driver plumbing such
  * as `DatabaseProvider.db`) is stripped first: it is not part of the frozen
@@ -62,7 +62,7 @@ describe("alepha/orm public declarations", () => {
         },
         files: [
           join(srcDir, "orm/core/index.ts"),
-          join(srcDir, "orm/postgres/index.ts"),
+          join(srcDir, "orm/core/index.bun.ts"),
         ],
       }),
     );
@@ -84,7 +84,7 @@ describe("alepha/orm public declarations", () => {
    */
   const drizzleNames = (): string[] => {
     const ormDir = join(outDir, "orm");
-    const queue = ["orm/core/index.d.ts", "orm/postgres/index.d.ts"].map(
+    const queue = ["orm/core/index.d.ts", "orm/core/index.bun.d.ts"].map(
       (entry) => join(outDir, entry),
     );
     const seen = new Set<string>();

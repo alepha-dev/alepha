@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { AbortedError, Alepha, z } from "alepha";
 import { $entity, $repository, DatabaseProvider, db, sql } from "alepha/orm";
 
-import { BunPostgresProvider } from "../providers/BunPostgresProvider.ts";
+import { BunPostgresProvider } from "../providers/drivers/BunPostgresProvider.ts";
 
 // -------------------------------------------------------------------------------------------------------------------
 

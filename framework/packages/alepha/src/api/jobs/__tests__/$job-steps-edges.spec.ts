@@ -1,7 +1,6 @@
 import { $hook, Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -39,7 +38,7 @@ async function waitFor<T>(
 }
 
 const makeApp = () =>
-  Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+  Alepha.create().with(AlephaOrmTestPostgres).with(AlephaApiJobs);
 
 const fast: JobRetryBackoff = { initial: [5, "millisecond"], jitter: false };
 const idSchema = z.object({ id: z.text() });
@@ -161,7 +160,7 @@ describe("job steps at the edges", () => {
       expect,
     }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with({ provide: JobProvider, use: CountingProvider })
         .with(AlephaApiJobs);
       let ran = 0;

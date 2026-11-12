@@ -1,7 +1,6 @@
 import { $hook, Alepha, AlephaError } from "alepha";
 import { AlephaApiUsers, RealmProvider, UserService } from "alepha/api/users";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { ConflictError, ForbiddenError } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -51,7 +50,7 @@ const setup = async (options: { failingMembers?: boolean } = {}) => {
   }
 
   alepha
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiUsers)
     .with(AlephaApiOrganizations)
     .with(Repositories)

@@ -4,7 +4,7 @@ import { Alepha, AlephaError } from "alepha";
 import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { CacheProvider } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import {
   AlephaSecurity,
   CryptoProvider,
@@ -94,7 +94,7 @@ const setup = async (options?: {
 
   // One instance: its limiters are declared once per container.
   alepha.with({ provide: SessionService, use: TestSessionService });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
 

@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { AlephaCommerce } from "../index.ts";
@@ -22,7 +22,9 @@ const here = dirname(fileURLToPath(import.meta.url));
  */
 describe("VAT without checkout", () => {
   it("computes from the core module alone", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerce);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaCommerce);
     const vat = alepha.inject(VatCalculator);
     await alepha.start();
 

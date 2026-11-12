@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
@@ -8,7 +8,7 @@ import { AddressService } from "../checkout/services/AddressService.ts";
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceCheckout);
   const addresses = alepha.inject(AddressService);
   const rules = alepha.inject(AddressRulesProvider);
@@ -144,7 +144,7 @@ describe("EU address validation", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       // Before the module: a substitution recorded after the service has been
       // instantiated throws TooLateSubstitutionError.
       .with({ provide: AddressRulesProvider, use: SwissRules })

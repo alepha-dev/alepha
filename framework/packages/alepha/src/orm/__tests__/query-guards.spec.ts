@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const items = $entity({
   name: "test_query_guard_items",
@@ -133,7 +133,7 @@ describe("query guards", () => {
     });
 
     it("should still allow arrayContains on postgres", async () => {
-      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 

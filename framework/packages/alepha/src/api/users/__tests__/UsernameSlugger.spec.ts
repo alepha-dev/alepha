@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +8,7 @@ import { AlephaApiUsers, RealmProvider, UsernameSlugger } from "../index.ts";
 
 const setup = async (realmSettings?: Record<string, unknown>) => {
   const alepha = Alepha.create();
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
 

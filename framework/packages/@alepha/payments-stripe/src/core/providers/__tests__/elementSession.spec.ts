@@ -7,8 +7,7 @@ import {
   paymentIntents,
 } from "alepha/api/payments";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import Stripe from "stripe";
 import { describe, it } from "vitest";
 
@@ -100,7 +99,7 @@ const setup = async () => {
       STRIPE_CONNECT_WEBHOOK_SECRET: CONNECT_SECRET,
     },
   })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with({ provide: PaymentProvider, use: FakeStripeProvider })
     .with(AlephaApiPayments)
     .with(TestRepos);

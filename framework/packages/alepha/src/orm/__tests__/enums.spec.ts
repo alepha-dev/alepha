@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, DrizzleKitProvider, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 // Test 1: z.enum with mode: "text" (should map to TEXT column)
 const textEnumEntity = $entity({
@@ -74,7 +74,7 @@ const conflictEnumEntity2 = $entity({
 
 describe("enums - z.enum with mode: 'text' (TEXT column)", () => {
   it("should create TEXT columns for z.enum fields with mode: 'text'", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository = $repository(textEnumEntity);
@@ -98,7 +98,7 @@ describe("enums - z.enum with mode: 'text' (TEXT column)", () => {
   });
 
   it("should allow inserting and querying with text enum values", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository = $repository(textEnumEntity);
@@ -124,7 +124,7 @@ describe("enums - z.enum with mode: 'text' (TEXT column)", () => {
 
 describe("enums - z.enum (real PG ENUM type)", () => {
   it("should create real PostgreSQL ENUM types for z.enum fields", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository = $repository(pgEnumEntity);
@@ -149,7 +149,7 @@ describe("enums - z.enum (real PG ENUM type)", () => {
   });
 
   it("should allow inserting and querying with pg enum values", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository = $repository(pgEnumEntity);
@@ -175,7 +175,7 @@ describe("enums - z.enum (real PG ENUM type)", () => {
 
 describe("enums - mixed text and pg enum in same table", () => {
   it("should handle both TEXT and PG ENUM types in the same table", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository = $repository(mixedEnumEntity);
@@ -207,7 +207,7 @@ describe("enums - mixed text and pg enum in same table", () => {
   });
 
   it("should allow inserting and querying with mixed enum values", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository = $repository(mixedEnumEntity);
@@ -233,7 +233,7 @@ describe("enums - mixed text and pg enum in same table", () => {
 
 describe("enums - shared enum with custom name across tables", () => {
   it("should reuse the same PG ENUM type across multiple tables", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository1 = $repository(sharedEnumEntity1);
@@ -267,7 +267,7 @@ describe("enums - shared enum with custom name across tables", () => {
   });
 
   it("should allow both tables to use the shared enum values", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     class App {
       repository1 = $repository(sharedEnumEntity1);
@@ -302,7 +302,7 @@ describe("enums - shared enum with custom name across tables", () => {
 
 describe("enums - conflict detection with different values", () => {
   it("should throw error when same enum name has different values", async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
 
     expect(() =>
       alepha.with(() => ({

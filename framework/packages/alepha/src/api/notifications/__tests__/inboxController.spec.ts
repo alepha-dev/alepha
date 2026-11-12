@@ -1,8 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail } from "alepha/email";
-import { $repository, AlephaOrm } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrm, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { AlephaSms } from "alepha/sms";
@@ -34,7 +33,9 @@ const ENGINES = [
   {
     name: "postgres",
     boot: () =>
-      Alepha.create({ env: { LOG_LEVEL: "error" } }).with(AlephaOrmPostgres),
+      Alepha.create({ env: { LOG_LEVEL: "error" } }).with(
+        AlephaOrmTestPostgres,
+      ),
   },
   {
     name: "sqlite",

@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it, test } from "vitest";
 
 import { sessions } from "../entities/sessions.ts";
@@ -14,7 +13,7 @@ describe("UserJobs", () => {
   describe("purgeExpiredSessions", () => {
     test("deletes expired sessions", async ({ expect }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
 
       class TestRepositories {
@@ -65,7 +64,7 @@ describe("UserJobs", () => {
 
     test("no-op when no expired sessions exist", async ({ expect }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
 
       class TestRepositories {
@@ -101,7 +100,7 @@ describe("UserJobs", () => {
       expect,
     }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs)
         .with(AlephaApiUsers);
 
@@ -180,7 +179,7 @@ describe("UserJobs bounded session purge", () => {
   const setup = async () => {
     const alepha = Alepha.create()
       .with({ provide: UserJobs, use: SmallBatchUserJobs })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class TestRepositories {

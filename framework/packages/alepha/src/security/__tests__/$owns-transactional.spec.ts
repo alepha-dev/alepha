@@ -1,6 +1,11 @@
 import { Alepha, z } from "alepha";
-import { $entity, $repository, $transactional, db } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $entity,
+  $repository,
+  $transactional,
+  db,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -95,7 +100,7 @@ const cases = [
     "sqlite",
     () => Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
   ],
-  ["postgres", () => Alepha.create().with(AlephaOrmPostgres)],
+  ["postgres", () => Alepha.create().with(AlephaOrmTestPostgres)],
 ] as const;
 
 describe("$owns after $transactional(), called in-process", () => {

@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -19,7 +19,7 @@ const setup = async (
   mfa?: { totp?: string; emailCode?: string },
 ) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
   await alepha.start();

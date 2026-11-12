@@ -17,7 +17,10 @@ Type-safe data layer over Drizzle ORM.
 - `$entity` schema definitions with Zod + `db` column helpers
 - `Repository` CRUD, pagination, joins, and optimistic locking
 - Introspection-based dev schema sync, file-based production migrations
-- SQLite by default; Postgres via `alepha/orm/postgres`
+- SQLite by default, Postgres when `DATABASE_URL` says so: `postgres://`
+  or `postgresql://` on Node and Bun, `hyperdrive://` on Cloudflare
+  Workers, `d1://` for Cloudflare D1. The Postgres drivers are loaded on
+  connect, so a SQLite app never evaluates them.
 
 ## API Reference
 

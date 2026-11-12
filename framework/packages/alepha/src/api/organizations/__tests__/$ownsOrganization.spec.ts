@@ -1,7 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers, RealmProvider } from "alepha/api/users";
-import { $entity, $repository, db } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $entity, $repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { $action, ForbiddenError } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -56,7 +55,7 @@ describe("$ownsOrganization", () => {
     expect,
   }) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiUsers)
       .with(AlephaApiOrganizations)
       .with(OrganizationGateApp);

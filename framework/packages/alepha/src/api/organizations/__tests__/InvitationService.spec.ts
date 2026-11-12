@@ -2,8 +2,7 @@ import { $hook, Alepha } from "alepha";
 import { AlephaApiUsers, RealmProvider } from "alepha/api/users";
 import { VerificationService } from "alepha/api/verifications";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -59,7 +58,7 @@ const setup = async (options: { full?: boolean } = {}) => {
     });
   }
   alepha
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiUsers)
     .with(AlephaApiOrganizations)
     .with(InvitationHooksProbe)

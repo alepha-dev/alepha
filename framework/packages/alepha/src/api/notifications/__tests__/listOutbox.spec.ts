@@ -1,8 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiJobs, jobExecutionEntity } from "alepha/api/jobs";
 import { AlephaEmail } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaSms } from "alepha/sms";
 import { describe, expect, it } from "vitest";
@@ -35,7 +34,7 @@ class Executions {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaSecurity)

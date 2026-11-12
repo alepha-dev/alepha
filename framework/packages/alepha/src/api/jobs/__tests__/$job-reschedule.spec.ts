@@ -1,7 +1,6 @@
 import { $hook, Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -17,7 +16,7 @@ import {
  * local promoting timer is what `travel()` fires.
  */
 const makeApp = () =>
-  Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+  Alepha.create().with(AlephaOrmTestPostgres).with(AlephaApiJobs);
 
 /**
  * Poll `fn` until `predicate` holds, or throw on timeout. Fixed sleeps race
@@ -449,7 +448,7 @@ describe("$job — per-job retry backoff", () => {
     // The substitution has to precede the module that registers the service.
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: HalfJitterJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     await alepha.start();
     const provider = alepha.inject(JobProvider) as HalfJitterJobProvider;

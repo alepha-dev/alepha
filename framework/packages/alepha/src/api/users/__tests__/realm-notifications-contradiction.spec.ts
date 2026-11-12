@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -22,7 +22,7 @@ import { $realm, AlephaApiUsers, RealmProvider } from "../index.ts";
 describe("alepha/api/users - realm notification contradictions", () => {
   const container = async () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();
@@ -100,7 +100,7 @@ describe("alepha/api/users - realm notification contradictions", () => {
    */
   it("surfaces through $realm too", async ({ expect }) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
 

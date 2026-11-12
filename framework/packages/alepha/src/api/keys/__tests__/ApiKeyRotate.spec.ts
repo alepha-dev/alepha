@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -48,7 +48,7 @@ class TestApp {
 const setup = async (options: Partial<ApiKeyOptions> = {}) => {
   const alepha = Alepha.create()
     .with({ provide: ApiKeyService, use: RacingApiKeyService })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaServer)
     .with(AlephaSecurity)
     .with(AlephaApiKeys);

@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
@@ -28,7 +28,7 @@ const suffix = () => Math.random().toString(36).slice(2, 8);
 describe("the users API and a realm it would drop", () => {
   const setup = async () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaApiUsers);
     alepha.with(AlephaSecurity);
     await alepha.start();

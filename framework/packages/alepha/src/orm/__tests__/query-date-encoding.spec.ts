@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testDateComparisonsInComplexQueries,
   testDateEncodingWithNotInArray,
@@ -18,7 +18,9 @@ describe("query-date-encoding", () => {
       );
     });
     it("should handle date filters with Dayjs objects (postgres)", async () => {
-      await testDateFiltersWithDayjs(Alepha.create().with(AlephaOrmPostgres));
+      await testDateFiltersWithDayjs(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -29,7 +31,7 @@ describe("query-date-encoding", () => {
       );
     });
     it("should handle mixed date formats (postgres)", async () => {
-      await testMixedDateFormats(Alepha.create().with(AlephaOrmPostgres));
+      await testMixedDateFormats(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -41,7 +43,7 @@ describe("query-date-encoding", () => {
     });
     it("should handle date comparisons in complex queries (postgres)", async () => {
       await testDateComparisonsInComplexQueries(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -53,7 +55,7 @@ describe("query-date-encoding", () => {
       );
     });
     it("should handle null date values (postgres)", async () => {
-      await testNullDateValues(Alepha.create().with(AlephaOrmPostgres));
+      await testNullDateValues(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -65,7 +67,7 @@ describe("query-date-encoding", () => {
     });
     it("should handle date encoding with notInArray (postgres)", async () => {
       await testDateEncodingWithNotInArray(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });

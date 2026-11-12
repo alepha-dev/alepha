@@ -1,7 +1,11 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DbEntityNotFoundError, DbError } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  DbEntityNotFoundError,
+  DbError,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import {
   MemoryQueueProvider,
   QueueDelayNotSupportedError,
@@ -62,7 +66,7 @@ describe("$job — long-delay hardening", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     let calls = 0;
@@ -95,7 +99,7 @@ describe("$job — long-delay hardening", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     let calls = 0;
@@ -132,7 +136,7 @@ describe("$job — sweep guards", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     let calls = 0;
@@ -175,7 +179,7 @@ describe("$job — lease heartbeat", () => {
   it("keeps renewing through a transient DB error", async ({ expect }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     await alepha.start();
@@ -204,7 +208,7 @@ describe("$job — retention", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
 
@@ -242,7 +246,7 @@ describe("$job — key dedup under concurrency", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     class ConcurrentKeyApp {
@@ -277,7 +281,7 @@ describe("$job — key dedup under concurrency", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     class RaceLoserApp {
@@ -311,7 +315,7 @@ describe("$job — lease renewal for long-running jobs", () => {
   const makeLeaseApp = () => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     class LeaseApp {
@@ -386,7 +390,7 @@ describe("$job — lease renewal for long-running jobs", () => {
 
   it("renews the lease while the handler runs", async ({ expect }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     class SlowApp {
@@ -466,7 +470,7 @@ describe("$job — the sweep table", () => {
       // later phase looking at `pending` would find nothing and the test
       // would pass whether or not the phases overlap.
       .with({ provide: DirectJobDispatcher, use: SilentJobDispatcher })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class SweepTableApp {
@@ -560,7 +564,7 @@ describe("$job — the sweep is bounded", () => {
 
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     alepha.store.mut(jobConfig, (c) => ({ ...c, sweepBatchSize: 3 }));
 
@@ -646,7 +650,7 @@ describe("$job — the sweep is bounded", () => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
       .with({ provide: DirectJobDispatcher, use: BlackHoleJobDispatcher })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     alepha.store.mut(jobConfig, (c) => ({
       ...c,
@@ -715,7 +719,7 @@ describe("$job — inline", () => {
       let ran = false;
       let finished = false;
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
       if (queued) alepha.with(AlephaApiJobsQueue);
 
@@ -752,7 +756,7 @@ describe("$job — inline", () => {
     }) => {
       const alepha = Alepha.create()
         .with({ provide: JobProvider, use: TestJobProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
       if (queued) alepha.with(AlephaApiJobsQueue);
 
@@ -799,7 +803,7 @@ describe("$job — inline", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     let calls = 0;
@@ -838,7 +842,9 @@ describe("$job — inline", () => {
   });
 
   it("a normal push on the same job still retries", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiJobs);
 
     class RetryingApp {
       executions = $repository(jobExecutionEntity);
@@ -870,7 +876,7 @@ describe("$job — inline", () => {
     expect,
   }) => {
     const withCron = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     class CronApp {
       work = $job({
@@ -886,7 +892,7 @@ describe("$job — inline", () => {
     );
 
     const withRetry = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     class RetryApp {
       work = $job({
@@ -906,7 +912,9 @@ describe("$job — inline", () => {
   it("refuses inline on pushMany, and inline with a delay", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiJobs);
 
     class FanOutApp {
       work = $job({
@@ -971,7 +979,7 @@ describe("$job — retries have real backoff", () => {
     }) => {
       const alepha = Alepha.create()
         .with({ provide: JobProvider, use: FixedJitterJobProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
       if (queued) alepha.with(AlephaApiJobsQueue);
       // 120 ms ceiling instead of 5 s, so the test does not have to wait out
@@ -1028,7 +1036,7 @@ describe("$job — retries have real backoff", () => {
   it("grows the ceiling exponentially and caps it", async ({ expect }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: FixedJitterJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     alepha.store.mut(jobConfig, (c) => ({
       ...c,
@@ -1061,7 +1069,7 @@ describe("$job — retries have real backoff", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     alepha.store.mut(jobConfig, (c) => ({ ...c, retryBackoffBase: 100_000 }));
     class App {
@@ -1092,7 +1100,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
       .with({ provide: QueueProvider, use: NoDelayQueueProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
 
@@ -1145,7 +1153,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
       .with({ provide: QueueProvider, use: NoDelayQueueProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     // No sweep at all, so nothing but the timer can deliver this.
@@ -1205,7 +1213,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
     // No sweep, so only the transport's own delay can move this row.
@@ -1259,7 +1267,7 @@ describe("$job — delaySeconds on the dispatch interface", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "0 0 1 1 *" }));
 
@@ -1317,7 +1325,7 @@ describe("$job — trim is proportional to the work done", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class NoisyApp {
@@ -1360,7 +1368,7 @@ describe("$job — trim is proportional to the work done", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class QuietApp {
@@ -1402,7 +1410,7 @@ describe("$job — trim is proportional to the work done", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     let ticks = 0;
@@ -1455,7 +1463,7 @@ describe("$job: rows of unregistered jobs are purged", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class PurgeApp {
@@ -1509,7 +1517,7 @@ describe("$job: rows of unregistered jobs are purged", () => {
   it("purges past one chunk in a single tick", async ({ expect }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class ChunkApp {
@@ -1550,7 +1558,7 @@ describe("$job: rows of unregistered jobs are purged", () => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
       .with({ provide: DirectJobDispatcher, use: BlackHoleJobDispatcher })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class StillHereApp {
@@ -1617,7 +1625,7 @@ describe("$job: rows of unregistered jobs are purged", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: TestJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
 
     class NoJobsApp {
@@ -1647,7 +1655,9 @@ describe("$job: rows of unregistered jobs are purged", () => {
   it("names the internal crons system.jobs.sweep and system.jobs.trim", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+    const alepha = Alepha.create()
+      .with(AlephaOrmTestPostgres)
+      .with(AlephaApiJobs);
     alepha.inject(JobProvider);
     const { CronProvider } = await import("alepha/scheduler");
     const names = alepha

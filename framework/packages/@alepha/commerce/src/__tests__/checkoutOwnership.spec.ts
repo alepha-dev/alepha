@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
 import type { Cookies } from "alepha/server/cookies";
 import { describe, it } from "vitest";
@@ -32,7 +32,7 @@ const address = {
  */
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceShipping);
   const ctx = {
     alepha,

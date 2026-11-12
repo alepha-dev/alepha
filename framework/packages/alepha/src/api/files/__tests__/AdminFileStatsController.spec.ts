@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
@@ -29,7 +29,7 @@ describe("AdminFileStatsController", () => {
   ) => any;
 
   const setup = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     const ctrl = alepha.inject(AdminFileStatsController);
     const service = alepha.inject(FileService);

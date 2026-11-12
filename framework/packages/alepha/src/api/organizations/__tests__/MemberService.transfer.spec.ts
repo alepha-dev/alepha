@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaApiUsers, RealmProvider } from "alepha/api/users";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -40,7 +40,7 @@ const drivers = {
       },
     }),
   postgres: () =>
-    Alepha.create({ env: { LOG_LEVEL: "error" } }).with(AlephaOrmPostgres),
+    Alepha.create({ env: { LOG_LEVEL: "error" } }).with(AlephaOrmTestPostgres),
 };
 
 const suite = (create: () => Alepha) => {

@@ -1,8 +1,7 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { MemoryDestinationProvider } from "alepha/logger";
-import { $entity, Repository, db } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $entity, Repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { AlephaApiAnalytics } from "../index.workerd.ts";
@@ -81,7 +80,7 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
  * means every test constructs it through a real `Alepha` container rather
  * than `new WaeAnalyticsProvider({ ... })` — and because `cold` is a hard
  * `$inject(OrmAnalyticsProvider)` rather than a substitutable
- * `AnalyticsProvider`, that container needs `AlephaOrmPostgres` wired even
+ * `AnalyticsProvider`, that container needs `AlephaOrmTestPostgres` wired even
  * for tests that never touch `cold`, the same as every
  * `OrmAnalyticsProvider.spec.ts` test does. Docker/Postgres are already a
  * hard requirement of this repo's test suite for that reason.
@@ -109,7 +108,7 @@ const build = async (
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
       CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
     },
-  }).with(AlephaOrmPostgres);
+  }).with(AlephaOrmTestPostgres);
 
   const provider = alepha.inject(Provider);
   alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
@@ -200,7 +199,7 @@ describe("WaeAnalyticsProvider", () => {
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
-    }).with(AlephaOrmPostgres);
+    }).with(AlephaOrmTestPostgres);
     const provider = alepha.inject(TestWaeAnalyticsProvider);
     // No `alepha.set("cloudflare.env", ...)` — the binding is never found.
     await alepha.start();
@@ -389,7 +388,7 @@ describe("WaeAnalyticsProvider", () => {
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
-    }).with(AlephaOrmPostgres);
+    }).with(AlephaOrmTestPostgres);
 
     const provider = alepha.inject(TestWaeAnalyticsProvider);
     alepha.set("cloudflare.env", { [hyphenated]: provider.fakeEngine });
@@ -683,7 +682,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
     })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({
         provide: OrmAnalyticsProvider,
         use: CountingOrmAnalyticsProvider,
@@ -1196,7 +1195,7 @@ describe("WaeAnalyticsProvider — forwarding what cold can take", () => {
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
-    }).with(AlephaOrmPostgres);
+    }).with(AlephaOrmTestPostgres);
     const parentRows = alepha.inject(Repository.of(parents));
     const provider = alepha.inject(TestWaeAnalyticsProvider);
     alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
@@ -1246,10 +1245,10 @@ describe("WaeAnalyticsProvider selection", () => {
       env: {
         NODE_ENV: "production",
         CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
+        // Production refuses a test module, so the URL is named here.
+        DATABASE_URL: process.env.POSTGRES_TEST_URL,
       },
-    })
-      .with(AlephaOrmPostgres)
-      .with(AlephaApiAnalytics);
+    }).with(AlephaApiAnalytics);
 
     expect(alepha.inject(AnalyticsProvider)).toBeInstanceOf(
       WaeAnalyticsProvider,
@@ -1257,9 +1256,12 @@ describe("WaeAnalyticsProvider selection", () => {
   });
 
   it("falls back to OrmAnalyticsProvider when no dataset is configured, so D1-only stays a valid deployment", () => {
-    const alepha = Alepha.create({ env: { NODE_ENV: "production" } })
-      .with(AlephaOrmPostgres)
-      .with(AlephaApiAnalytics);
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        DATABASE_URL: process.env.POSTGRES_TEST_URL,
+      },
+    }).with(AlephaApiAnalytics);
 
     expect(alepha.inject(AnalyticsProvider)).toBeInstanceOf(
       OrmAnalyticsProvider,
@@ -1276,7 +1278,7 @@ analyticsConformance(
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
-    }).with(AlephaOrmPostgres);
+    }).with(AlephaOrmTestPostgres);
 
     const provider = alepha.inject(TestWaeAnalyticsProvider);
     alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });

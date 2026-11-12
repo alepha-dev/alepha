@@ -6,8 +6,7 @@ import { Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import { describe, it, onTestFinished } from "vitest";
 
@@ -38,7 +37,7 @@ const forceDue = async (repo: any, jobName: string) => {
 
 const makeApp = () =>
   Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiJobs)
     .with(AlephaApiJobsQueue);
 
@@ -46,7 +45,7 @@ const makeApp = () =>
  * App without `AlephaApiJobsQueue` — exercises *direct* mode.
  */
 const makeAppDirect = () =>
-  Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+  Alepha.create().with(AlephaOrmTestPostgres).with(AlephaApiJobs);
 
 /**
  * `randomFraction` pinned to one half, so the first retry sits 2.5 s away.
@@ -68,7 +67,7 @@ class HalfJitterJobProvider extends JobProvider {
 const makeAppPinnedJitter = () =>
   Alepha.create()
     .with({ provide: JobProvider, use: HalfJitterJobProvider })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiJobs)
     .with(AlephaApiJobsQueue);
 
@@ -860,7 +859,7 @@ describe("$job — cron lock (multi-instance)", () => {
         // Substitute the LockProvider BEFORE AlephaApiJobs imports AlephaLock,
         // otherwise the module's default `optional` MemoryLockProvider wins.
         .with({ provide: LockProvider, use: SharedMemoryLockProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
 
     const a = make();
@@ -902,7 +901,7 @@ describe("$job — cron lock (multi-instance)", () => {
         // Substitute the LockProvider BEFORE AlephaApiJobs imports AlephaLock,
         // otherwise the module's default `optional` MemoryLockProvider wins.
         .with({ provide: LockProvider, use: SharedMemoryLockProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
 
     const a = make();
@@ -942,7 +941,7 @@ describe("$job — cron lock (multi-instance)", () => {
     const make = () =>
       Alepha.create()
         .with({ provide: LockProvider, use: SharedMemoryLockProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
 
     const a = make();
@@ -1196,7 +1195,7 @@ describe("$job - cron overlap (same process)", () => {
     const make = () =>
       Alepha.create()
         .with({ provide: LockProvider, use: SharedMemoryLockProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs);
     const a = make();
     const b = make();
@@ -1267,7 +1266,7 @@ describe("$job - cron overlap (same process)", () => {
     }
     const alepha = Alepha.create()
       .with({ provide: LockProvider, use: HeldReleaseLockProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     const app = alepha.inject(App);
     await alepha.start();
@@ -1453,7 +1452,7 @@ describe("$job — cron + retry (outbox path)", () => {
   }) => {
     const alepha = Alepha.create()
       .with({ provide: JobProvider, use: HalfJitterJobProvider })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs);
     let attempts = 0;
     class App {

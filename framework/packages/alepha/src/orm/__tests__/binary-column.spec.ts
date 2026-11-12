@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const blobs = $entity({
   name: "test_binary_blobs",
@@ -44,6 +44,6 @@ describe("binary columns", () => {
   });
 
   it("should round-trip bytes (postgres)", async () => {
-    await testBinaryRoundTrip(Alepha.create().with(AlephaOrmPostgres));
+    await testBinaryRoundTrip(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

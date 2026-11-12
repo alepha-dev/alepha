@@ -1,7 +1,6 @@
 import { $hook, $inject, Alepha, z } from "alepha";
 import { $tool, AlephaMcp, McpServerProvider } from "alepha/mcp";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import {
   MemoryQueueProvider,
   QueueCodec,
@@ -44,7 +43,7 @@ describe("ambient signal of background work", () => {
       expect,
     }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs)
         .with(AlephaApiJobsQueue);
       let same: boolean | undefined;
@@ -69,7 +68,7 @@ describe("ambient signal of background work", () => {
 
     it("aborts the outbound fetch of a cancelled job", async ({ expect }) => {
       const alepha = Alepha.create()
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaApiJobs)
         .with(AlephaApiJobsQueue)
         .with(AlephaServer);

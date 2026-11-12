@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
@@ -17,7 +17,7 @@ describe("alepha/api/oauth - $realm oauth feature", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaSecurity)
       .with(() => ({ realm: $realm({ features: { oauth: true } }) }));
     await alepha.start();
@@ -38,7 +38,7 @@ describe("alepha/api/oauth - $realm oauth feature", () => {
   }) => {
     const alepha = Alepha.create()
       .with(AlephaServer)
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaSecurity)
       .with(() => ({ realm: $realm() }));
     await alepha.start();

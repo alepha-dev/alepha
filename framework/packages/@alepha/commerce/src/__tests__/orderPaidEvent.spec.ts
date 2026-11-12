@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { $hook, $inject, Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { DatabaseProvider, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -44,7 +43,7 @@ class OrderPaidProbe {
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceNotifications);
 
   const ctx = {

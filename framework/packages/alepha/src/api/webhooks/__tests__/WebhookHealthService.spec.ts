@@ -22,8 +22,11 @@ import { BackgroundTaskProvider } from "alepha/background";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { $repository, DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  DatabaseProvider,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { users } from "../../users/entities/users.ts";
@@ -79,7 +82,7 @@ class Shop {
 }
 
 const boot = async (options: { notifications?: boolean } = {}) => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres).with(Disabled);
+  const alepha = Alepha.create().with(AlephaOrmTestPostgres).with(Disabled);
   if (options.notifications) {
     alepha.with(AlephaEmail).with(AlephaApiNotifications);
     alepha.with(WebhookNotifications);

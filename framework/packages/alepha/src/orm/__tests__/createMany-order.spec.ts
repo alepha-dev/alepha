@@ -1,8 +1,6 @@
 import { Alepha, z } from "alepha";
-import { $entity, $repository, db } from "alepha/orm";
+import { $entity, $repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
-
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * `createMany` returns rows index-aligned with its input, and callers
@@ -29,7 +27,7 @@ class App {
 
 describe("createMany preserves input order", () => {
   it("returns rows index-aligned with the input", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(App);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres).with(App);
     const app = alepha.inject(App);
     await alepha.start();
 
@@ -55,7 +53,7 @@ describe("createMany preserves input order", () => {
   });
 
   it("preserves order across batch boundaries", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres).with(App);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres).with(App);
     const app = alepha.inject(App);
     await alepha.start();
 

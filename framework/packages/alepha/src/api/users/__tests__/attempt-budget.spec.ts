@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import {
   AlephaSecurity,
   CryptoProvider,
@@ -56,7 +56,7 @@ describe("attempt budgets under a burst", () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
     alepha.with({ provide: CryptoProvider, use: CountingCryptoProvider });
     alepha.with({ provide: MfaService, use: CountingMfaService });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();

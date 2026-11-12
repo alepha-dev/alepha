@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import { NodePostgresProvider } from "../providers/NodePostgresProvider.ts";
+import { NodePostgresProvider } from "../providers/drivers/NodePostgresProvider.ts";
 
 class TestPostgresProvider extends NodePostgresProvider {
   /**

@@ -4,7 +4,7 @@ import {
   MemoryCaptchaProvider,
   UnconfiguredCaptchaProvider,
 } from "alepha/captcha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -32,7 +32,7 @@ describe("alepha/api/users - realm captcha provider", () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
     // Before anything resolves it - the container refuses a late substitution.
     alepha.with({ provide: CaptchaProvider, use: captcha });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     await alepha.start();

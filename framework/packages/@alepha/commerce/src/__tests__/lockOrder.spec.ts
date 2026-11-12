@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha, z } from "alepha";
-import { DatabaseProvider, sql } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { DatabaseProvider, sql, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import type { OrderItemEntity } from "../entities/orderItems.ts";
@@ -49,7 +48,9 @@ class TestLegsKind extends ResourceKindHandler {
  * where taking them in two orders deadlocks.
  */
 const setup = async () => {
-  const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerce);
+  const alepha = Alepha.create()
+    .with(AlephaOrmTestPostgres)
+    .with(AlephaCommerce);
   alepha.inject(ProductKindRegistry).add(alepha.inject(TestLegsKind));
   const ctx = {
     alepha,

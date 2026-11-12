@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -31,7 +30,7 @@ class Ledger {
 const setup = async (backend: "postgres" | "sqlite") => {
   const alepha =
     backend === "postgres"
-      ? Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerceCheckout)
+      ? Alepha.create().with(AlephaOrmTestPostgres).with(AlephaCommerceCheckout)
       : Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }).with(
           AlephaCommerceCheckout,
         );

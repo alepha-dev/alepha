@@ -11,8 +11,11 @@ import {
 import { BackgroundTaskProvider } from "alepha/background";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DatabaseProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  $repository,
+  DatabaseProvider,
+  AlephaOrmTestPostgres,
+} from "alepha/orm";
 import { describe, it } from "vitest";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -55,7 +58,7 @@ class RecordingDeliveryService extends WebhookDeliveryService {
 }
 
 const dialects = {
-  postgres: () => Alepha.create().with(AlephaOrmPostgres),
+  postgres: () => Alepha.create().with(AlephaOrmTestPostgres),
   sqlite: () => Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
 };
 

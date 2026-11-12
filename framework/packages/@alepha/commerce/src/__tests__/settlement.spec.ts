@@ -8,8 +8,7 @@ import {
   type EmailSendOptions,
   MemoryEmailProvider,
 } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -98,7 +97,7 @@ async function payOneOrder(ctx: {
 
 const makeFullApp = () =>
   Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceInvoicing)
     .with(AlephaCommerceNotifications)
     .with(AlephaCommerceSettlement);
@@ -162,7 +161,7 @@ describe("commerce settlement job", () => {
       // `register` resolves InvoiceService eagerly at module wiring time.
       const alepha = Alepha.create()
         .with({ provide: InvoiceService, use: FlakyInvoiceService })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaCommerceInvoicing)
         .with(AlephaCommerceNotifications)
         .with(AlephaCommerceSettlement);
@@ -213,7 +212,7 @@ describe("commerce settlement job", () => {
 
       const alepha = Alepha.create()
         .with({ provide: EmailProvider, use: FlakyMailProvider })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaCommerceInvoicing)
         .with(AlephaCommerceNotifications)
         .with(AlephaCommerceSettlement);
@@ -282,7 +281,7 @@ describe("commerce settlement job", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaCommerceInvoicing)
       .with(AlephaCommerceSettlement);
     const ctx = injectCtx(alepha);

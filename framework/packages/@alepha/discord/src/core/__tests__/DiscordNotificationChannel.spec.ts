@@ -8,8 +8,7 @@ import {
   NotificationSenderService,
 } from "alepha/api/notifications";
 import { AlephaEmail } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -73,7 +72,7 @@ const boot = async (options?: {
     // Before the module, so the memory transport wins the `optional`
     // substitution `AlephaDiscordNotifications` declares.
     .with({ provide: DiscordTransport, use: MemoryDiscordTransport })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiJobs)

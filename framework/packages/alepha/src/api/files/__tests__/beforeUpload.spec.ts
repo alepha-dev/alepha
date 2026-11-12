@@ -1,5 +1,5 @@
 import { $hook, Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { FileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
@@ -33,7 +33,7 @@ class Media {
 
 describe("files:upload:before", () => {
   const setup = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const media = alepha.inject(Media);
     const rewriter = alepha.inject(Rewriter);
     const files = alepha.inject(FileService);
@@ -99,7 +99,7 @@ describe("files:upload:before", () => {
   it("fires after the storage's own MIME and size rules", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(
       class Restricted {
         images = $storage({

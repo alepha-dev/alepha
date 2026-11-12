@@ -1,15 +1,12 @@
 import { $env, $hook, $inject, AlephaError } from "alepha";
-import {
-  DatabaseProvider,
-  DbMigrationError,
-  databaseEnvSchema,
-  type SQLLike,
-} from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
-import { postgresEnvSchema } from "../schemas/postgresEnvSchema.ts";
-import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
+import { DbMigrationError } from "../../errors/DbMigrationError.ts";
+import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
+import { postgresEnvSchema } from "../../schemas/postgresEnvSchema.ts";
+import { PostgresModelBuilder } from "../../services/PostgresModelBuilder.ts";
+import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

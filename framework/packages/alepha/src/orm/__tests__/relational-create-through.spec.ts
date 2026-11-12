@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $relations, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const users = $entity({
   name: "test_m2m_users",
@@ -52,7 +52,7 @@ const boot = async (alepha: Alepha) => {
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 /**
  * A nested create through a junction table.

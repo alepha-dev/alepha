@@ -2,7 +2,7 @@ import { Alepha, z } from "alepha";
 import { AlephaApiFiles, $storage } from "alepha/api/files";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -26,7 +26,7 @@ class App {
 
 const boot = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiFiles)

@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const counters = $entity({
   name: "test_upsert_set_counters",
@@ -61,7 +61,7 @@ describe("upsert set clause", () => {
   });
 
   it("should validate the set payload (postgres)", async () => {
-    await testSetIsValidated(Alepha.create().with(AlephaOrmPostgres));
+    await testSetIsValidated(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("should still apply a valid set payload (sqlite)", async () => {
@@ -71,6 +71,6 @@ describe("upsert set clause", () => {
   });
 
   it("should still apply a valid set payload (postgres)", async () => {
-    await testSetStillWorks(Alepha.create().with(AlephaOrmPostgres));
+    await testSetStillWorks(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

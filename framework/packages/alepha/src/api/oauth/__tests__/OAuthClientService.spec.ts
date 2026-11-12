@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { JwtProvider } from "alepha/security";
 import { describe, it } from "vitest";
 
@@ -19,7 +19,7 @@ describe("OAuthClientService.register", () => {
   it("registers a public DCR client and returns a client_id", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const service = alepha.inject(OAuthClientService);
     await alepha.start();
 
@@ -38,7 +38,7 @@ describe("OAuthClientService.register", () => {
   });
 
   it("rejects an unknown redirect_uri", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const service = alepha.inject(OAuthClientService);
     await alepha.start();
 
@@ -87,7 +87,7 @@ describe("OAuthClientService.register dedupe", () => {
   }
 
   const service = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const it = alepha.inject(TestOAuthClientService);
     await alepha.start();
     return it;
@@ -201,7 +201,7 @@ describe("OAuthClientService.register dedupe", () => {
 
 describe("OAuthClientService wildcard redirect_uri", () => {
   const setup = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const service = alepha.inject(OAuthClientService);
     await alepha.start();
     const client = await service.register({
@@ -265,7 +265,7 @@ describe("OAuthClientService wildcard redirect_uri", () => {
  */
 describe("OAuthClientService redirect_uri validation", () => {
   const setup = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const service = alepha.inject(OAuthClientService);
     await alepha.start();
     const register = (redirectUri: string) =>
@@ -362,7 +362,7 @@ describe("OAuthClientService redirect_uri validation", () => {
  */
 describe("OAuthClientService loopback redirect_uri matching", () => {
   const setup = async (redirectUri: string) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const service = alepha.inject(OAuthClientService);
     await alepha.start();
     const client = await service.register({
@@ -420,7 +420,7 @@ describe("OAuthClientService loopback redirect_uri matching", () => {
 
 describe("OAuthClientService.intersectScopes", () => {
   const setup = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const service = alepha.inject(OAuthClientService);
     await alepha.start();
     return service;
@@ -464,7 +464,7 @@ describe("OAuthClientService authorization code", () => {
   it("mints and verifies a single-use auth code bound to PKCE", async ({
     expect,
   }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const jwt = alepha.inject(JwtProvider);
     jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
     const service = alepha.inject(OAuthClientService);
@@ -499,7 +499,7 @@ describe("OAuthClientService authorization code", () => {
   });
 
   it("names the replay when a spent code comes back", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const jwt = alepha.inject(JwtProvider);
     jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
     const service = alepha.inject(OAuthClientService);
@@ -529,7 +529,7 @@ describe("OAuthClientService authorization code", () => {
   });
 
   it("does not spend a code that fails PKCE", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const jwt = alepha.inject(JwtProvider);
     jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
     const service = alepha.inject(OAuthClientService);
@@ -565,7 +565,7 @@ describe("OAuthClientService authorization code", () => {
   });
 
   it("does not grow its replay guard without bound", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const jwt = alepha.inject(JwtProvider);
     jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
     const service = alepha.inject(OAuthClientService);
@@ -600,7 +600,7 @@ describe("OAuthClientService authorization code", () => {
   });
 
   it("rejects a wrong PKCE verifier", async ({ expect }) => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const jwt = alepha.inject(JwtProvider);
     jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
     const service = alepha.inject(OAuthClientService);

@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const visits = $entity({
   name: "test_aggregate_count_distinct_visits",
@@ -84,6 +84,6 @@ describe("Repository.aggregate countDistinct", () => {
   });
 
   it("counts distinct values, conditioned, over an expression and grouped (postgres)", async () => {
-    await testCountDistinct(Alepha.create().with(AlephaOrmPostgres));
+    await testCountDistinct(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

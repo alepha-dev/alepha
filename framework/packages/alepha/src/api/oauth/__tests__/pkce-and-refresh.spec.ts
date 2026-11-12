@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -47,7 +47,7 @@ const boot = async () => {
 
   const alepha = Alepha.create()
     .with(AlephaServer)
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaOAuth);
   alepha.set(oauthOptions, {
     realm: "users",

@@ -3,8 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
-import { SequenceProvider } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { SequenceProvider, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -52,7 +51,7 @@ const setup = async (
   // onto the job; invoicing alone covers only credit notes.
   const alepha = Alepha.create()
     .with({ provide: DateTimeProvider, use: PinnableClock })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaCommerceInvoicing)
     .with(AlephaCommerceSettlement);
 
@@ -537,7 +536,7 @@ describe("invoice rendering", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: InvoiceRenderer, use: FakePdfRenderer })
       .with(AlephaCommerceInvoicing);
     alepha.store.set(sellerIdentityAtom.key, seller as any);

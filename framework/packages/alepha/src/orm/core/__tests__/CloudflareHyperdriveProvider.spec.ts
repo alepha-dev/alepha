@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import { CloudflareHyperdriveProvider } from "../providers/CloudflareHyperdriveProvider.ts";
+import { CloudflareHyperdriveProvider } from "../providers/drivers/CloudflareHyperdriveProvider.ts";
 
 /**
  * Exposes the two module functions the real provider imports at `start`, so

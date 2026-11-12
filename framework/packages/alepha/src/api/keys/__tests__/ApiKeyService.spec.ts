@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { $inject, Alepha, z } from "alepha";
 import { BackgroundTaskProvider } from "alepha/background";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -28,7 +27,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -67,7 +66,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -104,7 +103,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -132,7 +131,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -173,7 +172,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -229,7 +228,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -265,7 +264,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -296,7 +295,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -360,7 +359,7 @@ describe("ApiKeyService", () => {
 
     const alepha = Alepha.create()
       .with({ provide: ApiKeyService, use: RacingApiKeyService })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -401,7 +400,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -442,7 +441,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -480,7 +479,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -521,7 +520,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -544,7 +543,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -566,7 +565,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -588,7 +587,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -617,7 +616,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -673,7 +672,7 @@ describe("ApiKeyService", () => {
 
     const alepha = Alepha.create()
       .with({ provide: ApiKeyService, use: TrackingApiKeyService })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);
@@ -753,7 +752,7 @@ describe("ApiKeyService", () => {
     const setup = async () => {
       const alepha = Alepha.create()
         .with({ provide: ApiKeyService, use: TrackingApiKeyService })
-        .with(AlephaOrmPostgres)
+        .with(AlephaOrmTestPostgres)
         .with(AlephaServer)
         .with(AlephaSecurity)
         .with(AlephaApiKeys);
@@ -847,7 +846,7 @@ describe("ApiKeyService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaServer)
       .with(AlephaSecurity)
       .with(AlephaApiKeys);

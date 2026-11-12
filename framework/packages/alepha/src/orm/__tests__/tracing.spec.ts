@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { MemoryTraceProvider, Tracer } from "alepha/tracing";
 import { describe, it } from "vitest";
 
@@ -9,7 +10,6 @@ import {
   db,
   sql,
 } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * One span per statement (#E86): the statement-level repository methods,
@@ -30,7 +30,7 @@ describe("ORM tracing", () => {
   }
 
   const boot = async () => {
-    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const alepha = Alepha.create().with(AlephaOrmTestPostgres);
     const app = alepha.inject(App);
     const traces = alepha.inject(MemoryTraceProvider);
     const tracer = alepha.inject(Tracer);

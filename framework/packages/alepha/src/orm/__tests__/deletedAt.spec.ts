@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAggregateExcludesSoftDeleted,
   testForceDelete,
@@ -17,7 +17,7 @@ describe("deletedAt", () => {
   });
   it("should update instead of delete (postgres)", async () => {
     await testSoftDeleteUpdatesInsteadOfDelete(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -27,7 +27,9 @@ describe("deletedAt", () => {
     );
   });
   it("should not update if deletedAt is already set (postgres)", async () => {
-    await testNoUpdateIfAlreadyDeleted(Alepha.create().with(AlephaOrmPostgres));
+    await testNoUpdateIfAlreadyDeleted(
+      Alepha.create().with(AlephaOrmTestPostgres),
+    );
   });
 
   it("aggregate excludes soft-deleted rows (sqlite)", async () => {
@@ -37,7 +39,7 @@ describe("deletedAt", () => {
   });
   it("aggregate excludes soft-deleted rows (postgres)", async () => {
     await testAggregateExcludesSoftDeleted(
-      Alepha.create().with(AlephaOrmPostgres),
+      Alepha.create().with(AlephaOrmTestPostgres),
     );
   });
 
@@ -47,6 +49,6 @@ describe("deletedAt", () => {
     );
   });
   it("should force delete (postgres)", async () => {
-    await testForceDelete(Alepha.create().with(AlephaOrmPostgres));
+    await testForceDelete(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });

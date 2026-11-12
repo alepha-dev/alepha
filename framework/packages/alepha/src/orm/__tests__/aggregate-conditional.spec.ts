@@ -1,8 +1,8 @@
 import { Alepha, AlephaError, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const tickets = $entity({
   name: "test_aggregate_conditional_tickets",
@@ -239,7 +239,7 @@ const testSumAndCountUnderOneCondition = async (alepha: Alepha) => {
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 describe("aggregate conditional buckets", () => {
   it("counts several differently-conditioned buckets in one pass (sqlite)", async () => {

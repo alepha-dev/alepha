@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAllTypes,
   testBasicCrud,
@@ -30,7 +30,7 @@ describe("$repository", () => {
       );
     });
     it("should filter out attributes not defined in schema (postgres)", async () => {
-      await testPgAttr(Alepha.create().with(AlephaOrmPostgres));
+      await testPgAttr(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -41,7 +41,7 @@ describe("$repository", () => {
       );
     });
     it("should handle all supported data types (postgres)", async () => {
-      await testAllTypes(Alepha.create().with(AlephaOrmPostgres));
+      await testAllTypes(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -52,7 +52,7 @@ describe("$repository", () => {
       );
     });
     it("should support basic CRUD operations (postgres)", async () => {
-      await testBasicCrud(Alepha.create().with(AlephaOrmPostgres));
+      await testBasicCrud(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -63,7 +63,7 @@ describe("$repository", () => {
       );
     });
     it("should fire hooks for all operations (postgres)", async () => {
-      await testRepositoryHooks(Alepha.create().with(AlephaOrmPostgres));
+      await testRepositoryHooks(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -74,7 +74,9 @@ describe("$repository", () => {
       );
     });
     it("should AND-combine or/and with sibling field conditions (postgres)", async () => {
-      await testConditionsWithSiblings(Alepha.create().with(AlephaOrmPostgres));
+      await testConditionsWithSiblings(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
   });
 
@@ -85,7 +87,7 @@ describe("$repository", () => {
       );
     });
     it("should support all 3 orderBy modes (postgres)", async () => {
-      await testOrderByModes(Alepha.create().with(AlephaOrmPostgres));
+      await testOrderByModes(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -96,7 +98,7 @@ describe("$repository", () => {
       );
     });
     it("should support pagination with sort format (postgres)", async () => {
-      await testPaginationSort(Alepha.create().with(AlephaOrmPostgres));
+      await testPaginationSort(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -107,7 +109,9 @@ describe("$repository", () => {
       );
     });
     it("should save an entity with deleted fields (postgres)", async () => {
-      await testSaveWithDeletedFields(Alepha.create().with(AlephaOrmPostgres));
+      await testSaveWithDeletedFields(
+        Alepha.create().with(AlephaOrmTestPostgres),
+      );
     });
     it("should save an entity with custom primary key (sqlite)", async () => {
       await testSaveWithCustomPrimaryKey(
@@ -116,7 +120,7 @@ describe("$repository", () => {
     });
     it("should save an entity with custom primary key (postgres)", async () => {
       await testSaveWithCustomPrimaryKey(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });
@@ -141,7 +145,7 @@ describe("$repository", () => {
       );
     });
     it("should support upsert operations (postgres)", async () => {
-      await testUpsert(Alepha.create().with(AlephaOrmPostgres));
+      await testUpsert(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -152,7 +156,7 @@ describe("$repository", () => {
       );
     });
     it("should handle serial id operations (postgres)", async () => {
-      await testSerialIdOperations(Alepha.create().with(AlephaOrmPostgres));
+      await testSerialIdOperations(Alepha.create().with(AlephaOrmTestPostgres));
     });
     it("should handle uuid id operations (sqlite)", async () => {
       await testUuidIdOperations(
@@ -160,7 +164,7 @@ describe("$repository", () => {
       );
     });
     it("should handle uuid id operations (postgres)", async () => {
-      await testUuidIdOperations(Alepha.create().with(AlephaOrmPostgres));
+      await testUuidIdOperations(Alepha.create().with(AlephaOrmTestPostgres));
     });
     it("should handle multiple operators gte & lte (sqlite)", async () => {
       await testMultipleOperators(
@@ -168,7 +172,7 @@ describe("$repository", () => {
       );
     });
     it("should handle multiple operators gte & lte (postgres)", async () => {
-      await testMultipleOperators(Alepha.create().with(AlephaOrmPostgres));
+      await testMultipleOperators(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -179,7 +183,7 @@ describe("$repository", () => {
       );
     });
     it("should handle CRUD with timestamps (postgres)", async () => {
-      await testCrudWithTimestamps(Alepha.create().with(AlephaOrmPostgres));
+      await testCrudWithTimestamps(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -190,7 +194,7 @@ describe("$repository", () => {
       );
     });
     it("should return correct pagination metadata (postgres)", async () => {
-      await testPagination(Alepha.create().with(AlephaOrmPostgres));
+      await testPagination(Alepha.create().with(AlephaOrmTestPostgres));
     });
     it("should detect the next page when size comes from query.limit (sqlite)", async () => {
       await testPaginationWithQueryLimit(
@@ -199,7 +203,7 @@ describe("$repository", () => {
     });
     it("should detect the next page when size comes from query.limit (postgres)", async () => {
       await testPaginationWithQueryLimit(
-        Alepha.create().with(AlephaOrmPostgres),
+        Alepha.create().with(AlephaOrmTestPostgres),
       );
     });
   });

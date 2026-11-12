@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { AlephaApiPayments } from "../index.ts";
@@ -15,7 +15,7 @@ import { PaymentService } from "../services/PaymentService.ts";
  */
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiPayments);
   const payments = alepha.inject(PaymentService);
   const provider = alepha.inject(PaymentProvider) as MemoryPaymentProvider;

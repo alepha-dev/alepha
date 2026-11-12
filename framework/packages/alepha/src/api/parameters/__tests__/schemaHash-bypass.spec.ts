@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
@@ -28,7 +28,7 @@ class FeatureFlags {
 
 const setup = async () => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaSecurity)
     .with(AlephaApiParameters)
     .with(FeatureFlags);

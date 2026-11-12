@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AlephaApiAudits, AuditService, audits } from "../index.ts";
@@ -19,7 +18,7 @@ const setup = async () => {
     env: { LOG_LEVEL: "error" },
   });
 
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaApiAudits);
 
   // Inject before start: the container locks once started, so test-only

@@ -207,7 +207,7 @@ describe("dateWeek", () => {
     );
   });
   it("should return ISO week labels (postgres)", async () => {
-    await testDateWeek(Alepha.create().with(AlephaOrmPostgres));
+    await testDateWeek(Alepha.create().with(AlephaOrmTestPostgres));
   });
 });
 ```

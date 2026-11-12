@@ -1,7 +1,6 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import {
@@ -20,7 +19,7 @@ class TestJobProvider extends JobProvider {
 const boot = () => {
   const alepha = Alepha.create()
     .with({ provide: JobProvider, use: TestJobProvider })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiJobs);
 
   // Pause before start so cron jobs never arm timers against the wall clock.

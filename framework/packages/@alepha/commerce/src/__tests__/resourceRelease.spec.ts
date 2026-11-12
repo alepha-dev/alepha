@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { DateTimeProvider } from "alepha/datetime";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { CartService } from "../cart/services/CartService.ts";
@@ -19,7 +19,7 @@ import { TestCourtKind } from "./fixtures/TestCourtKind.ts";
 const setup = async (backend: "postgres" | "sqlite" | "d1") => {
   const alepha =
     backend === "postgres"
-      ? Alepha.create().with(AlephaOrmPostgres).with(AlephaCommerceCheckout)
+      ? Alepha.create().with(AlephaOrmTestPostgres).with(AlephaCommerceCheckout)
       : Alepha.create({
           env: {
             DATABASE_URL: "sqlite://:memory:",

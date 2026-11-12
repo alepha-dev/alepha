@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaReactAuth, PasskeyClient } from "alepha/react/auth";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
@@ -57,7 +57,7 @@ export class PasskeyHarness {
       alepha.with({ provide: PasskeyClient, use: MemoryPasskeyClient });
     }
     alepha.with(AlephaServer);
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaEmail);
     alepha.with(AlephaTestingWebAuthn);

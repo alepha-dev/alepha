@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../../../../postgres/index.ts";
 import { sql } from "../../../index.ts";
 import { DatabaseProvider } from "../DatabaseProvider.ts";
 
@@ -60,7 +60,7 @@ describe("DatabaseProvider.atomicBatch", () => {
   });
 
   it("applies all or nothing, and joins an open transaction (postgres)", async () => {
-    await atomic(Alepha.create().with(AlephaOrmPostgres));
+    await atomic(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
   it("stays atomic on sqlite with ordinary transactions switched off", async () => {

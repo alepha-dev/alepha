@@ -1,9 +1,9 @@
 import { $hook, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const releases = $entity({
   name: "test_touch_releases",
@@ -144,7 +144,7 @@ void typeChecks;
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 describe("UpdateOptions.touch", () => {
   it("updateMany with touch: false keeps updatedAt, bumps version, fires events (sqlite)", async () => {

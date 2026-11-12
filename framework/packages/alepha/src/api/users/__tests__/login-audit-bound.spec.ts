@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { AuditService } from "alepha/api/audits";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import {
   AlephaSecurity,
   CryptoProvider,
@@ -27,7 +27,7 @@ describe("login audit rows before the password compare", () => {
       realm = $realm({});
     }
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaOrmTestPostgres);
     alepha.with(AlephaSecurity);
     alepha.with(AlephaApiUsers);
     alepha.with(App);

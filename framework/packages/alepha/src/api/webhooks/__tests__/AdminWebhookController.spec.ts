@@ -10,8 +10,7 @@ import {
   webhookEndpointEntity,
 } from "alepha/api/webhooks";
 import { BackgroundTaskProvider } from "alepha/background";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { $role, AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { ForbiddenError, NotFoundError } from "alepha/server";
 import {
@@ -64,7 +63,7 @@ class Shop {
 
 const boot = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaSecurity)
     .with(AlephaServerSwagger)
     .with(AlephaApiWebhooks);

@@ -6,8 +6,7 @@ import {
 } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -28,7 +27,7 @@ class Rows {
 const boot = async () => {
   const alepha = Alepha.create()
     .with({ provide: JobProvider, use: TestJobProvider })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiJobs)

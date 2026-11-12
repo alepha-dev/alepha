@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { ConflictError } from "alepha/server";
 import { describe, it } from "vitest";
@@ -12,7 +12,7 @@ import {
 
 const setup = async (username: string) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
   await alepha.start();

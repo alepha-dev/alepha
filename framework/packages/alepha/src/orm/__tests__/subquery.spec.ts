@@ -1,9 +1,9 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 const epics = $entity({
   name: "test_sq_epics",
@@ -339,7 +339,7 @@ const testCountAndLimit = async (alepha: Alepha) => {
 
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
-const postgres = () => Alepha.create().with(AlephaOrmPostgres);
+const postgres = () => Alepha.create().with(AlephaOrmTestPostgres);
 
 describe("Repository.subquery", () => {
   it("notExists finds epics with no open quest, soft delete applied (sqlite)", async () => {

@@ -99,22 +99,15 @@ DROP TABLE `old_table`;
 
 The database driver is selected based on the `DATABASE_URL` environment variable:
 
-| URL Prefix                             | Driver                                              | Module              |
-| -------------------------------------- | --------------------------------------------------- | ------------------- |
-| `postgres://`                          | PostgreSQL (Node.js or Bun, selected automatically) | `AlephaOrmPostgres` |
-| `postgresql://`                        | PostgreSQL, the same driver                         | `AlephaOrmPostgres` |
-| `hyperdrive://`                        | Cloudflare Hyperdrive (Postgres from Workers)       | `AlephaOrmPostgres` |
-| `d1://`                                | Cloudflare D1                                       | `AlephaOrm`         |
-| a path, `sqlite:`, `file:`, `:memory:` | SQLite (Node.js or Bun, selected automatically)     | `AlephaOrm`         |
+| URL                                    | Driver                                              |
+| -------------------------------------- | --------------------------------------------------- |
+| none                                   | SQLite (Node.js or Bun, selected automatically)     |
+| a path, `sqlite:`, `file:`, `:memory:` | SQLite (Node.js or Bun, selected automatically)     |
+| `postgres://` or `postgresql://`       | PostgreSQL (Node.js or Bun, selected automatically) |
+| `d1://`                                | Cloudflare D1                                       |
+| `hyperdrive://`                        | Cloudflare Hyperdrive (Postgres from Workers)       |
 
-Any other scheme is refused at startup with an error naming the scheme. `AlephaOrm` is registered by any `$entity`, and only knows the SQLite drivers: a `postgres://` URL with it alone fails with "A postgres DATABASE_URL is not supported by the SQLite provider". The PostgreSQL drivers come with `AlephaOrmPostgres`, which you register yourself:
-
-```typescript
-import { Alepha } from "alepha";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
-
-const alepha = Alepha.create().with(AlephaOrmPostgres);
-```
+Any other scheme is refused at startup with an error naming the scheme. Every driver comes with `alepha/orm`, which any `$entity` registers: nothing to import or register to move from SQLite to Postgres, the URL decides. The Postgres drivers are loaded when the app connects, so a SQLite app never evaluates them.
 
 PostgreSQL also reads `POSTGRES_SCHEMA` (default `public`), `POOL_MAX`, and `POOL_IDLE_TIMEOUT` / `POOL_CONNECT_TIMEOUT` in seconds. Every driver reads `DATABASE_TIMEOUT` (milliseconds a query may take, `0` disables, `5000` on serverless and off elsewhere by default; see [Timeouts](/docs/guides-core-cancellation#timeouts)), and `DATABASE_TIMEOUT_SCOPE` (`all`, the default, or `reads` to leave writes without a timeout). The other D1 settings (`DATABASE_D1_MODE`) are covered in the [Cloudflare guide](/docs/guides-deployment-cloudflare).
 

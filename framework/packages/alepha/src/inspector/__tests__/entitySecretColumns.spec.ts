@@ -1,6 +1,5 @@
 import { Alepha, z } from "alepha";
-import { $entity, $repository, db } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $entity, $repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { AlephaInspector } from "../index.ts";
@@ -27,7 +26,7 @@ describe("GET /metadata - secret columns", () => {
     const alepha = Alepha.create({
       env: { ALEPHA_INSPECT: "1", LOG_LEVEL: "error" },
     })
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaInspector);
     const repo = alepha.inject(Db).members;
     await alepha.start();

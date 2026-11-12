@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { users } from "../../users/entities/users.ts";
@@ -15,7 +14,7 @@ import { PaymentService } from "../services/PaymentService.ts";
 
 const setup = async () => {
   const alepha = Alepha.create()
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiPayments);
   const payments = alepha.inject(PaymentService);
   await alepha.start();
@@ -239,7 +238,7 @@ describe("PaymentService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with({ provide: PaymentProvider, use: SlowPaymentProvider })
       .with(AlephaApiPayments);
     const payments = alepha.inject(PaymentService);
@@ -482,7 +481,7 @@ describe("PaymentService", () => {
     }
 
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaApiPayments);
     const testUsers = alepha.inject(TestUsers);
     const payments = alepha.inject(PaymentService);

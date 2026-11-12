@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
 import type { Cookies } from "alepha/server/cookies";
 import { describe, expect, it } from "vitest";
@@ -25,7 +25,7 @@ import { StockService } from "../services/StockService.ts";
 describe("cart ownership", () => {
   const setup = async () => {
     const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
+      .with(AlephaOrmTestPostgres)
       .with(AlephaCommerceCheckout);
     const ctx = {
       alepha,

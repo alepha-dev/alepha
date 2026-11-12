@@ -1,8 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail } from "alepha/email";
-import { $repository } from "alepha/orm";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { $repository, AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSms } from "alepha/sms";
 import { describe, it } from "vitest";
 
@@ -73,7 +72,7 @@ const boot = async () => {
       provide: NotificationInboxRecipientProvider,
       use: TestRecipients,
     })
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaEmail)
     .with(AlephaSms)
     .with(AlephaApiJobs)

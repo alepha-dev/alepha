@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $realm, AlephaApiUsers, RealmProvider } from "alepha/api/users";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import {
   $permission,
   ResourceGrantsProvider,
@@ -63,7 +63,7 @@ const setup = async (options: { countDefinitions?: boolean } = {}) => {
     alepha.with({ provide: RankService, use: CountingRankService });
   }
   alepha
-    .with(AlephaOrmPostgres)
+    .with(AlephaOrmTestPostgres)
     .with(AlephaApiUsers)
     .with(AlephaApiOrganizations)
     .with(Permissions)

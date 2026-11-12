@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,7 +13,6 @@ import {
   NodeSqliteProvider,
   nodeSqliteOptions,
 } from "../core/providers/drivers/NodeSqliteProvider.ts";
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
  * SQL Injection Security Tests
@@ -129,7 +129,7 @@ describe("SQL Injection Security Tests", () => {
   describe("PostgreSQL", () => {
     describe("Basic Filter Operators", () => {
       it("should prevent SQL injection in eq operator", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -158,7 +158,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in ne operator", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -186,7 +186,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in contains operator", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -213,7 +213,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in contains operator (email field)", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -239,7 +239,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in gt/gte/lt/lte operators", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -275,7 +275,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in inArray operator", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -304,7 +304,7 @@ describe("SQL Injection Security Tests", () => {
 
     describe("Array Operator Injection", () => {
       it("should prevent SQL injection in arrayContains", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -332,7 +332,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in arrayOverlaps", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -358,7 +358,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent SQL injection in arrayContained", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -386,7 +386,7 @@ describe("SQL Injection Security Tests", () => {
 
     describe("Raw SQL Injection", () => {
       it("should safely handle parameterized queries", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -415,7 +415,7 @@ describe("SQL Injection Security Tests", () => {
       });
 
       it("should prevent injection in complex SQL expressions", async () => {
-        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
         const app = alepha.inject(App);
         await alepha.start();
 
@@ -592,7 +592,7 @@ describe("SQL Injection Security Tests", () => {
 
   describe("Edge Cases and Special Characters", () => {
     it("should handle unicode and special characters safely", async () => {
-      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -637,7 +637,7 @@ describe("SQL Injection Security Tests", () => {
     });
 
     it("should handle long strings with injection attempts safely", async () => {
-      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 
@@ -667,7 +667,7 @@ describe("SQL Injection Security Tests", () => {
     });
 
     it("should handle empty strings and nulls", async () => {
-      const alepha = Alepha.create().with(AlephaOrmPostgres);
+      const alepha = Alepha.create().with(AlephaOrmTestPostgres);
       const app = alepha.inject(App);
       await alepha.start();
 

@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
-import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +16,7 @@ import {
 const setup = async (user: { email?: string; emailVerified?: boolean }) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
 
-  alepha.with(AlephaOrmPostgres);
+  alepha.with(AlephaOrmTestPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiVerification);

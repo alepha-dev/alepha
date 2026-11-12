@@ -1,7 +1,7 @@
 import { Alepha } from "alepha";
+import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAgo,
   testDateDay,
@@ -19,7 +19,7 @@ describe("SqlExpressionProvider", () => {
       );
     });
     it("should return YYYY-MM-DD text (postgres)", async () => {
-      await testDateDay(Alepha.create().with(AlephaOrmPostgres));
+      await testDateDay(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -30,7 +30,7 @@ describe("SqlExpressionProvider", () => {
       );
     });
     it("should return ISO week labels (postgres)", async () => {
-      await testDateWeek(Alepha.create().with(AlephaOrmPostgres));
+      await testDateWeek(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -41,7 +41,7 @@ describe("SqlExpressionProvider", () => {
       );
     });
     it("should measure elapsed hours and skip NULLs (postgres)", async () => {
-      await testDateDiff(Alepha.create().with(AlephaOrmPostgres));
+      await testDateDiff(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -52,7 +52,7 @@ describe("SqlExpressionProvider", () => {
       );
     });
     it("should bound a relative time window (postgres)", async () => {
-      await testAgo(Alepha.create().with(AlephaOrmPostgres));
+      await testAgo(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -63,7 +63,7 @@ describe("SqlExpressionProvider", () => {
       );
     });
     it("should pick across values and columns (postgres)", async () => {
-      await testGreatestLeast(Alepha.create().with(AlephaOrmPostgres));
+      await testGreatestLeast(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 
@@ -74,7 +74,7 @@ describe("SqlExpressionProvider", () => {
       );
     });
     it("should set a path and append to an array (postgres)", async () => {
-      await testJsonHelpers(Alepha.create().with(AlephaOrmPostgres));
+      await testJsonHelpers(Alepha.create().with(AlephaOrmTestPostgres));
     });
   });
 });
