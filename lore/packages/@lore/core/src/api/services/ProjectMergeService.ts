@@ -1,5 +1,10 @@
 import { $inject, AlephaError } from "alepha";
-import { $repository, DatabaseProvider, type SQLLike } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  SequenceProvider,
+  type SQLLike,
+} from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
 import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
@@ -36,6 +41,7 @@ import {
 export class ProjectMergeService {
   protected readonly database = $inject(DatabaseProvider);
   protected readonly projects = $repository(projects);
+  protected readonly sequences = $inject(SequenceProvider);
   protected readonly automationDatabase = $inject(AutomationDatabase);
   protected readonly references = $inject(ProjectMergeReferences);
   protected readonly steps: ProjectMergeStep[] = [];
@@ -99,13 +105,18 @@ export class ProjectMergeService {
         );
       }
       if (!dryRun) {
+        // Before the batch, never lowered: a batch that fails then leaves a
+        // gap in the numbers, never one handed out twice.
+        for (const raise of plans.flatMap((plan) => plan.sequences ?? [])) {
+          await this.sequences.raise(raise.name, raise.scope, raise.atLeast);
+        }
         await this.apply(plans.flatMap((plan) => plan.statements));
       }
       return {
         sourceProjectId,
         targetProjectId,
         dryRun,
-        steps: plans.map(({ statements: _, ...plan }) => plan),
+        steps: plans.map(({ statements: _, sequences: __, ...plan }) => plan),
       };
     });
   }
@@ -231,6 +242,21 @@ export interface ProjectMergeStepPlan {
    */
   conflicts?: ProjectMergeConflict[];
   statements: SQLLike[];
+  /**
+   * Per-project sequences to raise before the batch runs, as
+   * `ProjectMergeNumbers.renumber` answers them. Not part of the plan the
+   * caller reads back.
+   */
+  sequences?: ProjectMergeSequence[];
+}
+
+/**
+ * A sequence a merge raises to at least `atLeast` before its batch.
+ */
+export interface ProjectMergeSequence {
+  name: string;
+  scope: string;
+  atLeast: number;
 }
 
 /**

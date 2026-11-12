@@ -168,6 +168,42 @@ export class SqlExpressionProvider {
     }
     return sql`(NOW() - ${sql.raw(String(seconds))} * INTERVAL '1 second')`;
   }
+
+  /**
+   * The largest of two or more values: `MAX(a, b)` on SQLite, whose `MAX`
+   * with several arguments is the scalar one, `GREATEST(a, b)` on Postgres.
+   *
+   * ⚠️ NULL differs: SQLite answers NULL when any argument is NULL, Postgres
+   * ignores NULL arguments. Coalesce a nullable operand first when the two
+   * must agree.
+   *
+   * ```ts
+   * // An upsert that never lowers the stored value.
+   * await repo.upsert(row, {
+   *   target: ["name"],
+   *   set: { value: sqlx.greatest(repo.table.value, repo.excluded("value")) },
+   * });
+   * ```
+   */
+  public greatest(...values: [SqlLike, SqlLike, ...SqlLike[]]): SQL {
+    const list = sql.join(
+      values.map((value) => sql`${value}`),
+      sql`, `,
+    );
+    return this.isEpochMillis ? sql`MAX(${list})` : sql`GREATEST(${list})`;
+  }
+
+  /**
+   * The smallest of two or more values: `MIN(a, b)` on SQLite, `LEAST(a, b)`
+   * on Postgres. The NULL caveat of {@link greatest} holds.
+   */
+  public least(...values: [SqlLike, SqlLike, ...SqlLike[]]): SQL {
+    const list = sql.join(
+      values.map((value) => sql`${value}`),
+      sql`, `,
+    );
+    return this.isEpochMillis ? sql`MIN(${list})` : sql`LEAST(${list})`;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

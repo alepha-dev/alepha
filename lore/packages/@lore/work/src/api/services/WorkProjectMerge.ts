@@ -5,6 +5,7 @@ import {
   ProjectMergeReferences,
   type ProjectMergeRenumber,
   type ProjectMergeRewriter,
+  type ProjectMergeSequence,
   ProjectMergeService,
   type ProjectMergeStepPlan,
 } from "@lore/core/api";
@@ -161,12 +162,14 @@ export class WorkProjectMerge {
     const renumbered: ProjectMergeRenumber[] = [];
     const joined: ProjectMergeJoin[] = [];
     const statements: SQLLike[] = [];
+    const sequences: ProjectMergeSequence[] = [];
     const moved: Record<string, number> = {};
 
     for (const kind of WorkProjectMerge.numbered) {
       const result = await this.planNumbered(context, kind);
       renumbered.push(...result.renumbered);
       statements.push(...result.statements);
+      sequences.push(...result.sequences);
       moved[kind.entity.name] = result.moved;
     }
 
@@ -182,6 +185,7 @@ export class WorkProjectMerge {
     renumbered.push(...releases.renumbered);
     joined.push(...releases.joined);
     statements.push(...releases.statements);
+    sequences.push(...releases.sequences);
     moved.releases = releases.moved;
 
     const areas = await this.planAreas(context);
@@ -189,7 +193,7 @@ export class WorkProjectMerge {
     statements.push(...areas.statements);
     moved.areas = areas.moved;
 
-    return { moved, renumbered, joined, changed: [], statements };
+    return { moved, renumbered, joined, changed: [], statements, sequences };
   }
 
   /**
@@ -218,6 +222,7 @@ export class WorkProjectMerge {
     moved: number;
     renumbered: ProjectMergeRenumber[];
     statements: SQLLike[];
+    sequences: ProjectMergeSequence[];
   }> {
     const repository = this.repositories.getRepository(kind.entity);
     const source = await this.rows(
@@ -244,6 +249,7 @@ export class WorkProjectMerge {
     return {
       moved: source.length,
       renumbered: numbering.renumbered,
+      sequences: numbering.sequences,
       statements: [
         // Renumbered while still in the source project, where the new
         // number is free too: it is above every number the source uses.
@@ -258,6 +264,7 @@ export class WorkProjectMerge {
     renumbered: ProjectMergeRenumber[];
     joined: ProjectMergeJoin[];
     statements: SQLLike[];
+    sequences: ProjectMergeSequence[];
   }> {
     const read = async (projectId: number) =>
       (
@@ -324,6 +331,7 @@ export class WorkProjectMerge {
       renumbered: numbering.renumbered,
       joined,
       statements,
+      sequences: numbering.sequences,
     };
   }
 

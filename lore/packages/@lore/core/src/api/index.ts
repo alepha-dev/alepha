@@ -491,6 +491,7 @@ export {
   type ProjectMergeJoin,
   type ProjectMergePlan,
   type ProjectMergeRenumber,
+  type ProjectMergeSequence,
   ProjectMergeService,
   type ProjectMergeStep,
   type ProjectMergeStepPlan,

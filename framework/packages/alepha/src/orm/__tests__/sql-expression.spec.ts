@@ -7,6 +7,7 @@ import {
   testDateDay,
   testDateDiff,
   testDateWeek,
+  testGreatestLeast,
 } from "./sql-expression-tests.ts";
 
 describe("SqlExpressionProvider", () => {
@@ -51,6 +52,17 @@ describe("SqlExpressionProvider", () => {
     });
     it("should bound a relative time window (postgres)", async () => {
       await testAgo(Alepha.create().with(AlephaOrmPostgres));
+    });
+  });
+
+  describe("greatest / least", () => {
+    it("should pick across values and columns (sqlite)", async () => {
+      await testGreatestLeast(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should pick across values and columns (postgres)", async () => {
+      await testGreatestLeast(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

@@ -141,3 +141,40 @@ export const testAgo = async (alepha: Alepha) => {
   expect(within[0].n).toBe(1);
   expect(outside[0].n).toBe(0);
 };
+
+/**
+ * `greatest` / `least` pick across values and columns, the same on both
+ * dialects: SQLite's scalar `MAX`/`MIN`, Postgres `GREATEST`/`LEAST`.
+ */
+export const testGreatestLeast = async (alepha: Alepha) => {
+  const app = alepha.inject(SqlxFixture);
+  await alepha.start();
+
+  const [row] = await app.database.run(
+    sql`SELECT ${app.sqlx.greatest(3, 7, 5)} AS high, ${app.sqlx.least(3, 7, 5)} AS low`,
+    z.object({ high: z.coerce.number(), low: z.coerce.number() }),
+  );
+  expect(row).toEqual({ high: 7, low: 3 });
+
+  await app.events.createMany([
+    {
+      id: "a",
+      startedAt: "2026-03-01T00:00:00.000Z",
+      endedAt: "2026-03-05T00:00:00.000Z",
+    },
+    {
+      id: "b",
+      startedAt: "2026-03-09T00:00:00.000Z",
+      endedAt: "2026-03-02T00:00:00.000Z",
+    },
+  ]);
+  const t = app.events.table;
+  const rows = await app.database.run(
+    sql`SELECT ${t.id} AS id, ${app.sqlx.greatest(t.startedAt, t.endedAt)} = ${t.startedAt} AS starts FROM ${t} ORDER BY ${t.id}`,
+    z.object({ id: z.text(), starts: z.coerce.boolean() }),
+  );
+  expect(rows.map((it) => [it.id, it.starts])).toEqual([
+    ["a", false],
+    ["b", true],
+  ]);
+};

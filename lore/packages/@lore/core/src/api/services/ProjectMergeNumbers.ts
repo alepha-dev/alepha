@@ -1,14 +1,10 @@
 import { $inject } from "alepha";
-import { CryptoProvider } from "alepha/crypto";
-import { DateTimeProvider } from "alepha/datetime";
-import {
-  DatabaseProvider,
-  SequenceProvider,
-  sql,
-  type SQLLike,
-} from "alepha/orm";
+import { SequenceProvider, sql, type SQLLike } from "alepha/orm";
 
-import type { ProjectMergeRenumber } from "./ProjectMergeService.ts";
+import type {
+  ProjectMergeRenumber,
+  ProjectMergeSequence,
+} from "./ProjectMergeService.ts";
 
 /**
  * Gives a moved item a new per-project number when its own is taken in the
@@ -23,20 +19,23 @@ import type { ProjectMergeRenumber } from "./ProjectMergeService.ts";
  * number of a source item that keeps its own.
  */
 export class ProjectMergeNumbers {
-  protected readonly crypto = $inject(CryptoProvider);
-  protected readonly database = $inject(DatabaseProvider);
   protected readonly sequences = $inject(SequenceProvider);
-  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
-   * Answers the renumbered rows and the statements that apply them: one
-   * UPDATE per renumbered row, and the target sequence raised above every
+   * Answers the renumbered rows, the statements that apply them (one UPDATE
+   * per renumbered row), and the target sequence to raise above every
    * number now in use. `table` and `column` are the moved rows' own; the
    * statements leave `project_id` alone, the caller moves the rows.
+   *
+   * The raise is not a statement of the batch: `ProjectMergeService` runs
+   * it through `SequenceProvider.raise()` just before the batch, on a real
+   * run only. It never lowers the sequence, so a batch that then fails
+   * leaves a gap in the numbers, never a number handed out twice.
    */
   public async renumber(input: ProjectMergeNumbering): Promise<{
     renumbered: ProjectMergeRenumber[];
     statements: SQLLike[];
+    sequences: ProjectMergeSequence[];
   }> {
     const taken = new Set(input.targetNumbers);
     const scope = String(input.targetProjectId);
@@ -63,28 +62,9 @@ export class ProjectMergeNumbers {
         sql`UPDATE ${sql.identifier(input.table)} SET ${sql.identifier(input.column)} = ${next} WHERE ${sql.identifier(input.idColumn ?? "id")} = ${row.id}`,
       );
     }
-    if (next > current) {
-      statements.push(this.raiseSequence(input.sequence, scope, next));
-    }
-    return { renumbered, statements };
-  }
-
-  /**
-   * Sets a sequence to at least `value`, creating its row when the target
-   * never allocated one. Never lowers it: a number handed out after the plan
-   * was read stays below the next one.
-   */
-  protected raiseSequence(name: string, scope: string, value: number): SQLLike {
-    const now = this.dateTime.nowISOString();
-    const at =
-      this.database.dialect === "sqlite" ? new Date(now).getTime() : now;
-    const highest =
-      this.database.dialect === "sqlite"
-        ? sql`MAX(alepha_sequences.value, excluded.value)`
-        : sql`GREATEST(alepha_sequences.value, excluded.value)`;
-    return sql`INSERT INTO alepha_sequences (id, name, scope, value, created_at, updated_at)
-      VALUES (${this.crypto.randomUUID()}, ${name}, ${scope}, ${value}, ${at}, ${at})
-      ON CONFLICT (name, scope) DO UPDATE SET value = ${highest}, updated_at = excluded.updated_at`;
+    const sequences =
+      next > current ? [{ name: input.sequence, scope, atLeast: next }] : [];
+    return { renumbered, statements, sequences };
   }
 }
 

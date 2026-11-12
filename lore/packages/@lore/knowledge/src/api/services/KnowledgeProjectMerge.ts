@@ -4,6 +4,7 @@ import {
   ProjectMergeNumbers,
   type ProjectMergeRenumber,
   type ProjectMergeRewriter,
+  type ProjectMergeSequence,
   ProjectMergeService,
   type ProjectMergeStepPlan,
 } from "@lore/core/api";
@@ -146,6 +147,7 @@ export class KnowledgeProjectMerge {
     const renumbered: ProjectMergeRenumber[] = [];
     const changed: ProjectMergeChange[] = [];
     const statements: SQLLike[] = [];
+    const sequences: ProjectMergeSequence[] = [];
 
     // Names and pins first: their statements touch rows by id, so the
     // order against the moves below does not matter, but reading them
@@ -174,6 +176,7 @@ export class KnowledgeProjectMerge {
       });
       moved[name] = source.length;
       renumbered.push(...numbering.renumbered);
+      sequences.push(...numbering.sequences);
       statements.push(
         ...numbering.statements,
         sql`UPDATE ${sql.identifier(name)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`,
@@ -184,7 +187,7 @@ export class KnowledgeProjectMerge {
       sql`UPDATE folio_names SET parent_directory_id = ${`root:${context.targetProjectId}`}, root_scope = ${String(context.targetProjectId)} WHERE parent_directory_id = ${`root:${context.sourceProjectId}`}`,
     );
 
-    return { moved, renumbered, joined: [], changed, statements };
+    return { moved, renumbered, joined: [], changed, statements, sequences };
   }
 
   /**
