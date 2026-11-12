@@ -5,6 +5,7 @@ import {
   apiPath,
   apiPost,
   createProjectViaWizard,
+  openAccount,
   registerAndVerify,
   signIn,
 } from "./_helpers.ts";
@@ -131,7 +132,7 @@ test.describe("Dock", () => {
     await expect.poll(() => pins(page)).toEqual([keep]);
 
     // Opened from All projects, it shows faded below the pins.
-    await page.goto("/account/projects");
+    await openAccount(page, "projects");
     await page
       .getByTestId("account-project-row")
       .filter({ hasText: drop })
@@ -172,7 +173,8 @@ test.describe("Dock", () => {
     ).toHaveAttribute("aria-label", extra);
 
     await page.getByRole("button", { name: "Manage pins" }).click();
-    await page.waitForURL(/\/account\/projects$/);
+    // The account dialog, on its Projects section, over the page.
+    await expect(page.locator('[data-slot="settings-dialog"]')).toBeVisible();
     await expect(page.getByTestId("account-projects-pinned-count")).toHaveText(
       "20 / 20 pinned",
     );

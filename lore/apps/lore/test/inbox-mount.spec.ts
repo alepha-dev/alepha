@@ -8,7 +8,7 @@ import { describe, it } from "vitest";
  *
  * ⚠️ **This is the only thing standing between the owner's ruling and a
  * later tidy-up.** The bell renders on the project shell and on the landing
- * page - never on `/account`, never on `/admin` - and the natural refactor is
+ * page - never in the account dialog, never on `/admin` - and the natural refactor is
  * to "unify" it into `AppActions` with the other four icons. That component's
  * whole argument is that it holds the ambient controls EVERY signed-in surface
  * carries and has no `show` props; a bell there would be on two shells it was
@@ -18,7 +18,7 @@ import { describe, it } from "vitest";
  * project shell only" until the owner specified a bell in the home header
  * alongside the ambient controls. It is `ButtonInbox` directly rather than
  * `ProjectInboxButton`, which needs a current project for its "see all" link;
- * home sends that link to the account's notifications page instead. The count
+ * home sends that link to the account dialog's Notifications section instead. The count
  * behind both is cross-project and always was.
  *
  * A source scan rather than a render test because the failure mode is a
@@ -100,7 +100,7 @@ describe("where the inbox bell is mounted", () => {
 
   /**
    * The other half of the same rule, from the shared package's side: a bell
-   * inside `AppActions` would appear on the account and admin shells too.
+   * inside `AppActions` would appear on the admin shell too.
    */
   it("is not part of the AppActions cluster", ({ expect }) => {
     const cluster = readFileSync(join(UI, "shell", "AppActions.tsx"), "utf8");

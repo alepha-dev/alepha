@@ -100,23 +100,6 @@ test.describe("Home (mobile chrome)", () => {
       }
       await page.keyboard.press("Escape");
     }
-
-    /*
-     * ⚠️ And the account area, a root shell of `@alepha/ui`'s own whose
-     * topbar draws `ButtonSettings` with the kit's catalogue labels, which in
-     * English are the same three. It is where a phone reader changed language
-     * and theme when the header still hid them as buttons, so it has to keep
-     * offering them.
-     */
-    await page.setViewportSize({ width: 411, height: 800 });
-    await page.goto("/account");
-    await page.waitForLoadState("networkidle");
-    await page.getByLabel("Account menu").click({ timeout: 15_000 });
-    for (const name of settings) {
-      await expect(
-        page.getByRole("menuitem", { name, exact: true }),
-      ).toBeVisible();
-    }
   });
 });
 
@@ -397,14 +380,14 @@ test.describe("Home (switcher cap)", () => {
       });
     }
 
-    // The landing page shows the five most recent, and "Show more" links to
-    // the account page that lists every one of them.
+    // The landing page shows the five most recent, and "Show more" opens the
+    // account dialog's Projects section, which lists every one of them.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     const rows = page.getByTestId("home-project-row");
     await expect(rows).toHaveCount(5, { timeout: 15_000 });
-    await page.getByRole("link", { name: "Show more" }).click();
-    await expect(page).toHaveURL(/\/account\/projects$/);
+    await page.getByRole("button", { name: "Show more" }).click();
+    await expect(page.locator('[data-slot="settings-dialog"]')).toBeVisible();
     await expect(page.getByTestId("account-project-row")).toHaveCount(11);
 
     // Every one of them was created by this account, so every row says Owner.

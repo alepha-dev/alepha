@@ -231,7 +231,7 @@ export class InvitationNotifications {
       variables: {
         projectTitle: project.title,
         inviterName,
-        href: "/account/invitations",
+        href: "/?account=invitations",
         scope: `project:${project.id}`,
       },
     });

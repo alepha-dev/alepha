@@ -3,7 +3,7 @@ import { LoreCoreMcp } from "@lore/core/mcp";
 import {
   AutomationRouter,
   CoreRouter,
-  LoreAccountRouter,
+  LoreAccountSections,
   LoreCoreWeb,
 } from "@lore/core/web";
 import { LoreDeployApi } from "@lore/deploy/api";
@@ -14,7 +14,7 @@ import { LoreKnowledgeMcp } from "@lore/knowledge/mcp";
 import { KnowledgeRouter, LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LoreWorkApi } from "@lore/work/api";
 import { LoreWorkMcp } from "@lore/work/mcp";
-import { LoreWorkWeb, WorkAccountRouter, WorkRouter } from "@lore/work/web";
+import { LoreWorkWeb, WorkAccountSections, WorkRouter } from "@lore/work/web";
 import type { Alepha } from "alepha";
 
 /**
@@ -77,8 +77,8 @@ export const bootLore = (
     alepha.inject(WorkRouter);
     alepha.inject(KnowledgeRouter);
     alepha.inject(DeployRouter);
-    alepha.inject(LoreAccountRouter);
-    alepha.inject(WorkAccountRouter);
+    alepha.inject(LoreAccountSections);
+    alepha.inject(WorkAccountSections);
   }
   return alepha;
 };

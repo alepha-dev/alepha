@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger, cn } from "@alepha/ui";
+import { useSettingsDialog } from "@alepha/ui/settings";
 import {
   DndContext,
   type DragEndEvent,
@@ -54,6 +55,7 @@ import { useDock } from "./useDock.ts";
 const ProjectRail = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
+  const account = useSettingsDialog("account");
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
   const [dock] = useStore(userDockAtom);
@@ -287,7 +289,7 @@ const ProjectRail = () => {
         <RailButton
           label={tr("account.projects.see-all")}
           testId="project-rail-all"
-          href={router.path("accountProjects")}
+          onClick={() => account.open("projects")}
         >
           <LayoutGrid className="size-4" />
         </RailButton>
@@ -301,14 +303,16 @@ const RailSeparator = () => (
 );
 
 /**
- * A round icon button with a tooltip: Home, New project, All projects. With
- * no `href` it is drawn disabled (New project once the quota is reached), its
- * tooltip saying why.
+ * A round icon button with a tooltip: Home, New project, All projects. A link
+ * with an `href`, a button with an `onClick` (All projects opens the account
+ * dialog, which has no URL). With neither it is drawn disabled (New project
+ * once the quota is reached), its tooltip saying why.
  */
 const RailButton = (props: {
   label: string;
   testId: string;
   href?: string;
+  onClick?: () => void;
   children: ReactNode;
 }) => {
   const className =
@@ -320,6 +324,17 @@ const RailButton = (props: {
           props.href ? (
             <Link
               href={props.href}
+              aria-label={props.label}
+              data-testid={props.testId}
+              className={cn(
+                className,
+                "hover:text-foreground hover:rounded-xl",
+              )}
+            />
+          ) : props.onClick ? (
+            <button
+              type="button"
+              onClick={props.onClick}
               aria-label={props.label}
               data-testid={props.testId}
               className={cn(

@@ -4,6 +4,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   createProjectViaWizard,
+  openAccount,
   registerAndVerify,
   submitSignInForm,
 } from "./_helpers.ts";
@@ -68,7 +69,7 @@ test.describe("action error toaster", () => {
     await expect(toasts(page, message)).toHaveCount(1);
   };
 
-  test("a failed write on /account toasts once", async ({ page }) => {
+  test("a failed write in the account dialog toasts once", async ({ page }) => {
     test.setTimeout(90_000);
 
     await registerAndVerify(
@@ -76,14 +77,13 @@ test.describe("action error toaster", () => {
       `aet-${Date.now()}@example.com`,
       "GoodPassw0rd",
     );
-    await page.goto("/account");
-    await page.waitForLoadState("networkidle");
+    const dialog = await openAccount(page);
 
     const message = "Profile store unavailable (e2e)";
     await failAction(page, "updateMyProfile", 500, message);
 
-    await page.getByLabel("First name").fill("Ada");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.getByLabel("First name").fill("Ada");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
 
     await expectOneToast(page, message);
     await expect(page.getByText(/profile updated/i)).toHaveCount(0);

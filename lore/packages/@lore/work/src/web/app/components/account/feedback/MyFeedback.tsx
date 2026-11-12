@@ -121,6 +121,12 @@ const MyFeedback = () => {
       <DataTable<MyFeedbackResource, typeof filterFields>
         key={tableKey}
         className="min-h-0 flex-1"
+        // Light enough for the account dialog: server-paged, so the compact
+        // pager rather than the footer, and compact rows.
+        pagination="compact"
+        density="compact"
+        hideColumnPicker
+        hideActionsMenu
         persistenceKey="lor.me.feedback"
         emptyMessage={tr("myFeedback.empty")}
         filters={{ fields: filterFields }}

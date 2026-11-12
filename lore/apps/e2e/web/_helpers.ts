@@ -594,14 +594,18 @@ export const releasePointerEvents = async (page: Page): Promise<void> => {
  *
  * The dialog is found by that button, not as the last dialog on the page: a
  * confirmation that opens another dialog (Rotate opens the token reveal)
- * would otherwise be "still visible" forever, as the next one.
+ * would otherwise be "still visible" forever, as the next one. The account
+ * dialog is never it: a confirmation stacks over it, and the account dialog
+ * holds buttons of every name, so it would match too and never hide.
  */
 export const confirmDialog = async (
   page: Page,
   label: string,
 ): Promise<void> => {
   const dialog = page
-    .locator('[role="alertdialog"], [role="dialog"]')
+    .locator(
+      '[role="alertdialog"], [role="dialog"]:not([data-slot="settings-dialog"])',
+    )
     .filter({ has: page.getByRole("button", { name: label, exact: true }) })
     .last();
   await expect(dialog).toBeVisible({ timeout: 10_000 });
@@ -699,4 +703,22 @@ export const createEstateInProject = async (
     throw new Error(`estate ${projectSlug}/${slug} not listed after create`);
   }
   return { id: created.id, secret };
+};
+
+/**
+ * Open the account dialog on a section, the way a link made outside the
+ * dialog does: `/?account=<section>`, read on load, then stripped (#E140).
+ * Returns the dialog, every assertion on a section scoped to it.
+ *
+ * Lands on the home page behind the dialog. A test that must keep the page it
+ * is on opens the dialog from the user menu instead.
+ */
+export const openAccount = async (
+  page: Page,
+  section = "profile",
+): Promise<ReturnType<Page["locator"]>> => {
+  await page.goto(`/?account=${section}`);
+  const dialog = page.locator('[data-slot="settings-dialog"]');
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  return dialog;
 };

@@ -7,6 +7,7 @@ import {
   extractInviteUrl,
   findLatestEmail,
   newUserContext,
+  openAccount,
   registerAndVerify,
   signInAsAdmin,
 } from "./_helpers.ts";
@@ -46,7 +47,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
       // The invitee opens their profile inbox — no link needed, the
       // invite is bound to their (verified) email.
-      await b.page.goto("/account/invitations");
+      await openAccount(b.page, "invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -189,8 +190,11 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
         // The flow lands on the invitations inbox rather than joining silently.
         // Joining a project is worth a click, and this is the one destination
-        // both the credentials and the OAuth paths can reach.
-        await g.waitForURL(/\/account\/invitations/, { timeout: 20_000 });
+        // both the credentials and the OAuth paths can reach: the account
+        // dialog's Invitations section, opened by `?account=invitations`.
+        await expect(g.locator('[data-slot="settings-dialog"]')).toBeVisible({
+          timeout: 20_000,
+        });
         await expect(g.getByText(projectTitle).first()).toBeVisible({
           timeout: 15_000,
         });
@@ -296,7 +300,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       }
 
       // And the invitation is still waiting where it always was.
-      await b.page.goto("/account/invitations");
+      await openAccount(b.page, "invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -335,7 +339,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await page.getByRole("button", { name: /send invitation/i }).click();
       expect((await createResp).ok()).toBe(true);
 
-      await b.page.goto("/account/invitations");
+      await openAccount(b.page, "invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -394,7 +398,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     // A different account checks the inbox.
     const b = await newUserContext(browser, baseURL!, "stranger");
     try {
-      await b.page.goto("/account/invitations");
+      await openAccount(b.page, "invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(/no pending invitations/i)).toBeVisible({
         timeout: 10_000,
@@ -503,7 +507,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       // The invitee can see it before the owner takes it back — otherwise
       // the assertion after the revoke would pass on an invitation that
       // never arrived.
-      await b.page.goto("/account/invitations");
+      await openAccount(b.page, "invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -530,7 +534,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
       // And the token is dead, not merely hidden from the owner: the
       // invitee's inbox no longer offers it.
-      await b.page.goto("/account/invitations");
+      await openAccount(b.page, "invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle)).toHaveCount(0, {
         timeout: 10_000,

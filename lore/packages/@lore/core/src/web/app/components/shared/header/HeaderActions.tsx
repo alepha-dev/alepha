@@ -26,12 +26,12 @@ export interface HeaderActionsProps {
  *
  * Signed in, the header carries ONE button, the avatar, and language, theme
  * and display mode are submenus of its menu. Signed out, they are the icon
- * buttons they always were, beside the sign-in one. The admin console and
- * the `/account` area still draw all four as buttons through `AppActions`.
+ * buttons they always were, beside the sign-in one. The admin console still
+ * draws all four as buttons through `AppActions`.
  *
  * This file used to build the cluster by hand, and that is how it came to
  * push a route called `me` — a name that stopped existing when the profile
- * pages moved to `/account`, and that kept compiling because `router.push`
+ * pages moved to the account area, and that kept compiling because `router.push`
  * falls back to a plain `string`. `ButtonUser.AccountMenuItem` now owns that
  * navigation, so no caller can get it wrong again.
  *
@@ -39,7 +39,7 @@ export interface HeaderActionsProps {
  * supply: `ButtonUser` draws the viewer's picture itself since #Q2229, with
  * the same two rules this file used to apply - no picture keeps the bare
  * glyph, and the avatar is `size-7` in the `size-9` button - so the admin
- * console and `/account` show it too. It goes through the authenticated
+ * console shows it too. It goes through the authenticated
  * file route, which the browser caches for a year; see `ButtonUser.avatar`.
  *
  * ⚠️ `compact` is what drops the language, theme and dark mode BUTTONS

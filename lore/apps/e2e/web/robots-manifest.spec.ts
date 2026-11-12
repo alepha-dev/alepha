@@ -18,7 +18,8 @@ test.describe("robots.txt and the manifest", () => {
     expect(response.headers()["content-type"]).toContain("text/plain");
     const body = await response.text();
     expect(body).toContain("Disallow: /auth");
-    expect(body).toContain("Disallow: /account");
+    // The account is a dialog since #E140: no route left to disallow.
+    expect(body).not.toContain("Disallow: /account");
   });
 
   test("the manifest answers as one, and every page links it", async ({

@@ -135,9 +135,8 @@ follow the same limits as a report's.
 
 ## What the reporter sees
 
-After submitting, the reporter lands on **Feedback** in their account
-(`/account/feedback`), and the popup from an app's button closes by itself instead.
-That page lists their own reports across every project, with their status, and
+After submitting, the reporter lands on **Feedback** in their account, and the
+popup from an app's button closes by itself instead. That section lists their own reports across every project, with their status, and
 needs no membership.
 
 Opening a report there shows its thread. A report can be edited or deleted only

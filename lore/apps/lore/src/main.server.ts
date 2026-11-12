@@ -122,7 +122,7 @@ alepha.set(oauthOptions, {
   // Claude renders it when connecting to the MCP endpoint - so it says which
   // product it is asking on behalf of, and where the grant can be undone.
   productName: "Lore",
-  connectionsPath: "/account/connections",
+  connectionsPath: "/?account=connections",
   // What each scope a connected app may be granted says on the consent
   // screen, and the permissions its token then carries: every project member
   // group for `mcp` and `cli`, nothing under `admin:*`, nothing for `openid`.

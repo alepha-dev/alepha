@@ -69,7 +69,9 @@ const HomeHeader = () => {
         </TooltipContent>
       </Tooltip>
       <ButtonInbox
-        seeAllHref="/account/notifications"
+        // The account dialog's Notifications section, by its link form: the
+        // inbox navigates with `onOpen`, and `?account=` opens the dialog.
+        seeAllHref="/?account=notifications"
         labels={{
           inbox: tr("inbox.title"),
           heading: tr("inbox.title"),

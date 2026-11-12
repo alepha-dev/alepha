@@ -64,11 +64,6 @@ class Routes {
     path: "/:projectSlug",
     component: () => null,
   });
-  accountProjects = $page({
-    name: "accountProjects",
-    path: "/account/projects",
-    component: () => null,
-  });
   projectCreate = $page({
     name: "projectCreate",
     path: "/new-project",
@@ -169,7 +164,9 @@ describe("ProjectRail", () => {
     expect(
       screen.getByTestId("project-rail-create").getAttribute("href"),
     ).toBeTruthy();
-    expect(screen.getByTestId("project-rail-all")).toBeTruthy();
+    // A button, not a link: All projects opens the account dialog, which has
+    // no URL (#E140).
+    expect(screen.getByTestId("project-rail-all").tagName).toBe("BUTTON");
   });
 
   it("leaves an archived project out", async ({ expect }) => {

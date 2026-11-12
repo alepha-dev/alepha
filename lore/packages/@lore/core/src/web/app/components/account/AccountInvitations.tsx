@@ -1,6 +1,7 @@
 import { useToast } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { MyOrganizationInvitations } from "@alepha/ui/organizations";
+import { useSettingsDialog } from "@alepha/ui/settings";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -11,6 +12,7 @@ import type { ProjectController } from "../../../../api/controllers/ProjectContr
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { storeHomeOverview } from "../../services/homeOverviewWrite.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { useUserProjects } from "./useUserProjects.ts";
 
 const AccountInvitations = () => {
   const invitationApi = useClient<InvitationController>();
@@ -19,6 +21,9 @@ const AccountInvitations = () => {
   const alepha = useAlepha();
   const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
+  const account = useSettingsDialog("account");
+  // `onAccepted` reads the list to find the project it just joined.
+  useUserProjects();
 
   const load = useCallback(async () => {
     const invitations = await invitationApi.listMyInvitations();
@@ -44,13 +49,13 @@ const AccountInvitations = () => {
         toaster.info(tr("dock.full"), {
           action: {
             label: tr("dock.full.manage"),
-            onClick: () => void router.push("accountProjects"),
+            onClick: () => account.open("projects"),
           },
         });
       }
       return result.projectId;
     },
-    [alepha, invitationApi, projectApi, router, toaster, tr],
+    [account, alepha, invitationApi, projectApi, toaster, tr],
   );
   const decline = useCallback(
     async (invitationId: string) => {

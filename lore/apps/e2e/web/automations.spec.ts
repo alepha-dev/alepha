@@ -3,12 +3,13 @@ import type { Locator, Page, Request, Response } from "@playwright/test";
 import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
-  newUserContext,
-  signInAsAdmin,
   createProjectViaWizard,
   createRankFromPreset,
+  newUserContext,
+  openAccount,
   registerAndVerify,
   setCapability,
+  signInAsAdmin,
 } from "./_helpers.ts";
 
 /**
@@ -1136,7 +1137,7 @@ test.describe("Automations", () => {
       );
       await page.getByRole("button", { name: /send invitation/i }).click();
       expect((await invite).ok()).toBe(true);
-      await member.page.goto("/account/invitations");
+      await openAccount(member.page, "invitations");
       const accepted = member.page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
