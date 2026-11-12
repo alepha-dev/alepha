@@ -3,12 +3,12 @@
 A project belongs to the people in it. This page covers inviting them, deciding
 what each of them can do, and handing the project over.
 
-Everything here lives in `Settings ▸ Members`, which has two tabs: **Members**
+Everything here lives in **Settings ▸ Members**, which has two tabs: **Members**
 and **Ranks**.
 
 ## Inviting someone
 
-1. Open `Settings ▸ Members` and choose **Invite**.
+1. Open **Settings ▸ Members** and choose **Invite**.
 2. Enter the person's email address, pick their rank (**Member** unless you
    choose another) and send the invitation.
 

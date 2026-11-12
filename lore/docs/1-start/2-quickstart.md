@@ -40,7 +40,7 @@ Choose **New Project** on the home page. The wizard asks three things:
 ![The project wizard asking what the project does](/screenshots/lore/new-project-light.png)
 
 Nothing here is final. Every switch can be changed later in
-`Settings ▸ General ▸ Capabilities`, and turning one off hides it without
+**Settings ▸ General ▸ Capabilities**, and turning one off hides it without
 deleting anything. [Capabilities](/lore/docs/project-capabilities) describes
 each one.
 
@@ -67,12 +67,12 @@ covers statuses, the board and everything else.
 
 ## 4. Invite your team
 
-Open `Settings ▸ Members` and choose **Invite**. Enter an email address and the
+Open **Settings ▸ Members** and choose **Invite**. Enter an email address and the
 person receives an invitation; once they accept it they are a **Member** and
 can read and work on the project.
 
 When you need finer access (someone who only reads, someone who can manage
-releases), create ranks from `Settings ▸ Members ▸ Ranks`.
+releases), create ranks from **Settings ▸ Members ▸ Ranks**.
 [Members and ranks](/lore/docs/project-members) explains what each permission
 allows.
 

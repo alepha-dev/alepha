@@ -6,8 +6,7 @@ was completed, how long it took, what is waiting, how the apps behaved. The
 fixed, and every figure says what it counts behind an info mark.
 
 Every project has **Reports** in its sidebar. Reading it needs the permission
-**Read the reports** (`stats:read`), which the three ranks a project starts
-with all carry.
+**Read the reports** (`stats:read`), which a **Member** has by default.
 
 ![The Reports page on its Summary tab](/screenshots/lore/reports-light.png)
 

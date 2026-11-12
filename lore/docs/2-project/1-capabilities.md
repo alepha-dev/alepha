@@ -61,7 +61,7 @@ will never use. An option that is off hides its menu entry and its fields.
 
 ## Turning one on or off
 
-Open `Settings ▸ General ▸ Capabilities`. Each capability is a switch, with its
+Open **Settings ▸ General ▸ Capabilities**. Each capability is a switch, with its
 options beneath it.
 
 ![The Capabilities tab of a project's settings](/screenshots/lore/capabilities-light.png)
@@ -79,7 +79,7 @@ that right.
 
 ## The rest of a project's settings
 
-`Settings ▸ General ▸ Details` holds the project itself:
+**Settings ▸ General ▸ Details** holds the project itself:
 
 - **Icon** and **Name**. Renaming a project changes its address, and frees the
   old one for someone else to take.

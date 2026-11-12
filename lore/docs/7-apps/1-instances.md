@@ -5,7 +5,7 @@ page explains the three words the other pages in this section rely on: app,
 instance and sigil.
 
 Apps is the **Deploy and watch apps** capability, in
-`Settings ▸ General ▸ Capabilities`. Each thing it does is an option you turn
+**Settings ▸ General ▸ Capabilities**. Each thing it does is an option you turn
 on when you need it. See [Capabilities](/lore/docs/project-capabilities).
 
 ## What you can do with it

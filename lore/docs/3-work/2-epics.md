@@ -210,7 +210,7 @@ progress bar on a draft or ready epic reads as "not started" rather than
 "stalled". The roadmap draws the order only. Whether an epic is blocked right
 now is on the epic's own page.
 
-Who can see the roadmap is set in `Settings ▸ Quests ▸ Features`, under
+Who can see the roadmap is set in **Settings ▸ Quests ▸ Features**, under
 **Roadmap**: **Off**, **Members only** or **Public**. The same card gives the
 link to share. A change can take up to a minute to reach visitors.
 

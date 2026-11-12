@@ -55,7 +55,7 @@ pending. It shows one status at a time, **Pending**, **Accepted** or
 ![The feedback inbox with a report open](/screenshots/lore/feedback-inbox-light.png)
 
 Reading the inbox needs the permission **Read the feedback inbox**
-(`feedback:read`), which the three ranks a project starts with all carry.
+(`feedback:read`), which a **Member** has by default.
 
 Opening a report shows its text, its attachments, the quests linked to it once
 it is accepted, and its **Context**: who sent it and, for a report sent from an
@@ -71,8 +71,8 @@ report whatever its status.
 ## Accepting and rejecting
 
 Triage needs the permission **Accept, reject and remove feedback**
-(`feedback:triage`). In the ranks a project starts with, the owner and **Admin**
-hold it, and any other rank can be given it in **Settings ▸ Members ▸ Ranks**.
+(`feedback:triage`). The owner has it, a **Member** does not, and any rank can
+be given it in **Settings ▸ Members ▸ Ranks**.
 See [Members](/lore/docs/project-members).
 
 | Action               | Offered on | What happens                                                                                                          |

@@ -51,7 +51,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Quickstart",
     section: "2. Create a project",
     url: "https://alepha.dev/lore/docs/start-quickstart#2-create-a-project",
-    text: "Choose **New Project** on the home page. The wizard asks three things:\n\n1. **A name.** Lore derives the project's address from it:\n   `https://lore.alepha.dev/<slug>`.\n2. **What the project does.** Each switch is a capability: planning work,\n   keeping knowledge, watching and deploying apps, collecting feedback. Pick\n   at least one. **Plan and track work** and **Write and keep knowledge** are\n   on by default, and they are all this page needs.\n3. **How to set it up.** The options of what you picked, such as epics,\n   releases and the board.\n\nNothing here is final. Every switch can be changed later in\n`Settings ▸ General ▸ Capabilities`, and turning one off hides it without\ndeleting anything. [Capabilities](/lore/docs/project-capabilities) describes\neach one.",
+    text: "Choose **New Project** on the home page. The wizard asks three things:\n\n1. **A name.** Lore derives the project's address from it:\n   `https://lore.alepha.dev/<slug>`.\n2. **What the project does.** Each switch is a capability: planning work,\n   keeping knowledge, watching and deploying apps, collecting feedback. Pick\n   at least one. **Plan and track work** and **Write and keep knowledge** are\n   on by default, and they are all this page needs.\n3. **How to set it up.** The options of what you picked, such as epics,\n   releases and the board.\n\nNothing here is final. Every switch can be changed later in\n**Settings ▸ General ▸ Capabilities**, and turning one off hides it without\ndeleting anything. [Capabilities](/lore/docs/project-capabilities) describes\neach one.",
   },
   {
     guide: "Quickstart",
@@ -63,7 +63,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Quickstart",
     section: "4. Invite your team",
     url: "https://alepha.dev/lore/docs/start-quickstart#4-invite-your-team",
-    text: "Open `Settings ▸ Members` and choose **Invite**. Enter an email address and the\nperson receives an invitation; once they accept it they are a **Member** and\ncan read and work on the project.\n\nWhen you need finer access (someone who only reads, someone who can manage\nreleases), create ranks from `Settings ▸ Members ▸ Ranks`.\n[Members and ranks](/lore/docs/project-members) explains what each permission\nallows.",
+    text: "Open **Settings ▸ Members** and choose **Invite**. Enter an email address and the\nperson receives an invitation; once they accept it they are a **Member** and\ncan read and work on the project.\n\nWhen you need finer access (someone who only reads, someone who can manage\nreleases), create ranks from **Settings ▸ Members ▸ Ranks**.\n[Members and ranks](/lore/docs/project-members) explains what each permission\nallows.",
   },
   {
     guide: "Quickstart",
@@ -165,13 +165,13 @@ export const docsCorpus: DocsSection[] = [
     guide: "Capabilities",
     section: "Turning one on or off",
     url: "https://alepha.dev/lore/docs/project-capabilities#turning-one-on-or-off",
-    text: "Open `Settings ▸ General ▸ Capabilities`. Each capability is a switch, with its\noptions beneath it.\n\nTurning a capability off:\n\n- removes its entries from the sidebar and its results from search;\n- refuses new writes to it, from the browser, the command line and agents\n  alike, with a message that names the capability;\n- **deletes nothing**. Turn it back on and every quest, folio or app is where\n  you left it.\n\nOnly the project's **owner** can switch capabilities. No rank can be given\nthat right.",
+    text: "Open **Settings ▸ General ▸ Capabilities**. Each capability is a switch, with its\noptions beneath it.\n\nTurning a capability off:\n\n- removes its entries from the sidebar and its results from search;\n- refuses new writes to it, from the browser, the command line and agents\n  alike, with a message that names the capability;\n- **deletes nothing**. Turn it back on and every quest, folio or app is where\n  you left it.\n\nOnly the project's **owner** can switch capabilities. No rank can be given\nthat right.",
   },
   {
     guide: "Capabilities",
     section: "The rest of a project's settings",
     url: "https://alepha.dev/lore/docs/project-capabilities#the-rest-of-a-projects-settings",
-    text: "`Settings ▸ General ▸ Details` holds the project itself:\n\n- **Icon** and **Name**. Renaming a project changes its address, and frees the\n  old one for someone else to take.\n- **Preferred Language**: the language agents should write quests and folios\n  in.\n- **Repository**: where the project's commits live. Once it is set, the commits\n  recorded on a quest become links.\n- **Export quests** downloads every quest as a CSV file.\n- **Archive project** hides it from the switcher, search and the home page\n  without deleting anything.\n\n⚠️ **Delete this project** removes the project and everything in it, for good.\nOnly the owner can do it.\n\nEach capability then has its own settings section, named like its sidebar\nentry: **Quests**, **Folios**, **Apps**.",
+    text: "**Settings ▸ General ▸ Details** holds the project itself:\n\n- **Icon** and **Name**. Renaming a project changes its address, and frees the\n  old one for someone else to take.\n- **Preferred Language**: the language agents should write quests and folios\n  in.\n- **Repository**: where the project's commits live. Once it is set, the commits\n  recorded on a quest become links.\n- **Export quests** downloads every quest as a CSV file.\n- **Archive project** hides it from the switcher, search and the home page\n  without deleting anything.\n\n⚠️ **Delete this project** removes the project and everything in it, for good.\nOnly the owner can do it.\n\nEach capability then has its own settings section, named like its sidebar\nentry: **Quests**, **Folios**, **Apps**.",
   },
   {
     guide: "Capabilities",
@@ -189,13 +189,13 @@ export const docsCorpus: DocsSection[] = [
     guide: "Members and ranks",
     section: "Members and ranks",
     url: "https://alepha.dev/lore/docs/project-members",
-    text: "A project belongs to the people in it. This page covers inviting them, deciding\nwhat each of them can do, and handing the project over.\n\nEverything here lives in `Settings ▸ Members`, which has two tabs: **Members**\nand **Ranks**.",
+    text: "A project belongs to the people in it. This page covers inviting them, deciding\nwhat each of them can do, and handing the project over.\n\nEverything here lives in **Settings ▸ Members**, which has two tabs: **Members**\nand **Ranks**.",
   },
   {
     guide: "Members and ranks",
     section: "Inviting someone",
     url: "https://alepha.dev/lore/docs/project-members#inviting-someone",
-    text: "1. Open `Settings ▸ Members` and choose **Invite**.\n2. Enter the person's email address, pick their rank (**Member** unless you\n   choose another) and send the invitation.\n\nThe invitation is sent by email and appears in the list until it is answered.\nIt expires after seven days, and its menu lets you withdraw it before then.\n\n- Someone who **already has an account** also finds the invitation under\n  **Invitations** in their account, and in their notifications.\n- Someone who **has no account yet** follows the link in the email, creates\n  one and joins the project in the same step. This works even on an instance\n  where registration is otherwise closed.\n\nOnce accepted, the person is a member with the rank the invitation named.",
+    text: "1. Open **Settings ▸ Members** and choose **Invite**.\n2. Enter the person's email address, pick their rank (**Member** unless you\n   choose another) and send the invitation.\n\nThe invitation is sent by email and appears in the list until it is answered.\nIt expires after seven days, and its menu lets you withdraw it before then.\n\n- Someone who **already has an account** also finds the invitation under\n  **Invitations** in their account, and in their notifications.\n- Someone who **has no account yet** follows the link in the email, creates\n  one and joins the project in the same step. This works even on an instance\n  where registration is otherwise closed.\n\nOnce accepted, the person is a member with the rank the invitation named.",
   },
   {
     guide: "Members and ranks",
@@ -249,7 +249,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Dashboard",
     section: "Editing a dashboard",
     url: "https://alepha.dev/lore/docs/project-dashboard#editing-a-dashboard",
-    text: "Editing needs the permission **Rename the project and edit its details**\n(`project:update`). In the ranks a project starts with, the owner and anyone\nwith the **Admin** rank have it. A **Contributor** or a **Viewer** reads the\ndashboard and cannot change it: no **Customize**, no **Add card**, no **Edit**,\nno card menu, no dragging.\n\nTo let Contributors curate the dashboard in your project, tick that permission\nfor their rank in **Settings ▸ Members ▸ Ranks**. See\n[Members](/lore/docs/project-members).\n\nWith the permission, on a customized dashboard:\n\n- **Add card** opens a panel. Pick a metric, point it at the thing you care\n  about, then **Save card**.\n- **Edit** turns edit mode on. Drag a card to move it, or open its menu for\n  **Change scope**, **Duplicate**, a **Size** (one to three columns wide, one\n  or two rows tall) and **Delete card**.\n- **Save** leaves edit mode. Each change is stored as you make it, so there is\n  nothing to lose by closing the page first.\n\n⚠️ **Delete card** removes the card for everyone in the project. Lore asks\nbefore it does.",
+    text: "Editing needs the permission **Rename the project and edit its details**\n(`project:update`). The owner has it, and so does a rank created from the\n**Admin** preset. A **Member** reads the dashboard and cannot change it: no\n**Customize**, no **Add card**, no **Edit**, no card menu, no dragging.\n\nTo let other members curate the dashboard in your project, tick that permission\nfor their rank in **Settings ▸ Members ▸ Ranks**. See\n[Members](/lore/docs/project-members).\n\nWith the permission, on a customized dashboard:\n\n- **Add card** opens a panel. Pick a metric, point it at the thing you care\n  about, then **Save card**.\n- **Edit** turns edit mode on. Drag a card to move it, or open its menu for\n  **Change scope**, **Duplicate**, a **Size** (one to three columns wide, one\n  or two rows tall) and **Delete card**.\n- **Save** leaves edit mode. Each change is stored as you make it, so there is\n  nothing to lose by closing the page first.\n\n⚠️ **Delete card** removes the card for everyone in the project. Lore asks\nbefore it does.",
   },
   {
     guide: "Dashboard",
@@ -279,7 +279,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Reports",
     section: "Reports",
     url: "https://alepha.dev/lore/docs/project-reports",
-    text: "**Reports** measures what happened in a project over a period: how much work\nwas completed, how long it took, what is waiting, how the apps behaved. The\n[dashboard](/lore/docs/project-dashboard) is a page you compose. Reports is\nfixed, and every figure says what it counts behind an info mark.\n\nEvery project has **Reports** in its sidebar. Reading it needs the permission\n**Read the reports** (`stats:read`), which the three ranks a project starts\nwith all carry.",
+    text: "**Reports** measures what happened in a project over a period: how much work\nwas completed, how long it took, what is waiting, how the apps behaved. The\n[dashboard](/lore/docs/project-dashboard) is a page you compose. Reports is\nfixed, and every figure says what it counts behind an info mark.\n\nEvery project has **Reports** in its sidebar. Reading it needs the permission\n**Read the reports** (`stats:read`), which a **Member** has by default.",
   },
   {
     guide: "Reports",
@@ -405,14 +405,14 @@ export const docsCorpus: DocsSection[] = [
     section: "The board",
     url: "https://alepha.dev/lore/docs/work-quests#the-board",
     capability: "work",
-    text: "With the **Board** option on, **Kanban** in the sidebar shows the same quests\nas cards in columns.\n\nThe board starts with **To do** and **Completed**. Someone whose rank may\nchange the project's settings (the owner, by default) adds up to five columns\nbetween them, with **Add a column** on the board or in\n`Settings ▸ Quests ▸ Board`. A column's menu on the board renames it, colours\nit or deletes it once it is empty. The settings page orders the columns and\nsets, for each one:\n\n- what a card dropped there means: **To do**, **In progress** (the default) or\n  **Done**. When one of your columns means To do or Done, it replaces the\n  board's own;\n- a **WIP limit**. Going over it shows a warning and blocks nothing.\n\nDragging a card is the same move as on the quest page. From To do into an\nin-progress column accepts the quest, back to To do unassigns it, and into a\ncompleted column completes it. A quest still to do has to be accepted before it\ncan be completed, and a completed card cannot be moved.\n\nAbove the board, a search and the **My cards**, **Overdue** and **Due this\nweek** filters narrow the cards, and the lanes control groups them **By area**\nor **By epic**. **Add a card** in a co...",
+    text: "With the **Board** option on, **Kanban** in the sidebar shows the same quests\nas cards in columns.\n\nThe board starts with **To do** and **Completed**. Someone whose rank may\nchange the project's settings (the owner, by default) adds up to five columns\nbetween them, with **Add a column** on the board or in\n**Settings ▸ Quests ▸ Board**. A column's menu on the board renames it, colours\nit or deletes it once it is empty. The settings page orders the columns and\nsets, for each one:\n\n- what a card dropped there means: **To do**, **In progress** (the default) or\n  **Done**. When one of your columns means To do or Done, it replaces the\n  board's own;\n- a **WIP limit**. Going over it shows a warning and blocks nothing.\n\nDragging a card is the same move as on the quest page. From To do into an\nin-progress column accepts the quest, back to To do unassigns it, and into a\ncompleted column completes it. A quest still to do has to be accepted before it\ncan be completed, and a completed card cannot be moved.\n\nAbove the board, a search and the **My cards**, **Overdue** and **Due this\nweek** filters narrow the cards, and the lanes control groups them **By area**\nor **By epic**. **Add a card** in a ...",
   },
   {
     guide: "Quests",
     section: "Commits",
     url: "https://alepha.dev/lore/docs/work-quests#commits",
     capability: "work",
-    text: "Put the quest number in your commit messages (`fix login redirect (#Q12)`) and\nrecord the commits on the quest, so \"what shipped for #Q12\" is a field rather\nthan a search through the git log. They show in the quest's side rail, as links\nonce the project's **Repository** is set in `Settings ▸ General`.\n\nCommits are recorded from the command line or by an agent, one by one or as the\nquest is completed. A commit already recorded is not added twice, and one can\nstill be added to a completed quest, since the final sha is often known only\nafter the merge.",
+    text: "Put the quest number in your commit messages (`fix login redirect (#Q12)`) and\nrecord the commits on the quest, so \"what shipped for #Q12\" is a field rather\nthan a search through the git log. They show in the quest's side rail, as links\nonce the project's **Repository** is set in **Settings ▸ General**.\n\nCommits are recorded from the command line or by an agent, one by one or as the\nquest is completed. A commit already recorded is not added twice, and one can\nstill be added to a completed quest, since the final sha is often known only\nafter the merge.",
   },
   {
     guide: "Quests",
@@ -496,7 +496,7 @@ export const docsCorpus: DocsSection[] = [
     section: "The roadmap",
     url: "https://alepha.dev/lore/docs/work-epics#the-roadmap",
     capability: "work",
-    text: 'The roadmap is a read-only page at `/<project>/roadmap`. It lists the open\nreleases and the epics inside them, then what has shipped. It shows no quests,\nno names and no backlog.\n\nInside a release, a predecessor sits above the epic that depends on it, which\ncarries an "After Epic 7" chip. Each epic is shown with its status, so an empty\nprogress bar on a draft or ready epic reads as "not started" rather than\n"stalled". The roadmap draws the order only. Whether an epic is blocked right\nnow is on the epic\'s own page.\n\nWho can see the roadmap is set in `Settings ▸ Quests ▸ Features`, under\n**Roadmap**: **Off**, **Members only** or **Public**. The same card gives the\nlink to share. A change can take up to a minute to reach visitors.\n\n⚠️ A public roadmap shows anyone with the link your release tags, their target\ndates and the titles of the epics inside them, including epics you have not\nstarted yet.',
+    text: 'The roadmap is a read-only page at `/<project>/roadmap`. It lists the open\nreleases and the epics inside them, then what has shipped. It shows no quests,\nno names and no backlog.\n\nInside a release, a predecessor sits above the epic that depends on it, which\ncarries an "After Epic 7" chip. Each epic is shown with its status, so an empty\nprogress bar on a draft or ready epic reads as "not started" rather than\n"stalled". The roadmap draws the order only. Whether an epic is blocked right\nnow is on the epic\'s own page.\n\nWho can see the roadmap is set in **Settings ▸ Quests ▸ Features**, under\n**Roadmap**: **Off**, **Members only** or **Public**. The same card gives the\nlink to share. A change can take up to a minute to reach visitors.\n\n⚠️ A public roadmap shows anyone with the link your release tags, their target\ndates and the titles of the epics inside them, including epics you have not\nstarted yet.',
   },
   {
     guide: "Epics",
@@ -825,14 +825,14 @@ export const docsCorpus: DocsSection[] = [
     section: "The inbox",
     url: "https://alepha.dev/lore/docs/support-feedback#the-inbox",
     capability: "support",
-    text: "**Feedback** in the sidebar opens the inbox, with a badge counting what is\npending. It shows one status at a time, **Pending**, **Accepted** or\n**Rejected**, newest first, ten at a time, with **Show more** for the next ten.\n\nReading the inbox needs the permission **Read the feedback inbox**\n(`feedback:read`), which the three ranks a project starts with all carry.\n\nOpening a report shows its text, its attachments, the quests linked to it once\nit is accepted, and its **Context**: who sent it and, for a report sent from an\napp, the page, the browser, the language, the viewport and the timezone.\n\n⚠️ Everything a report carries was written by whoever filed it, the context\nincluded. Lore shows the context as plain text and never renders it as a link.\n\nA report has a number and a typed reference: `#P12` in the app, and `[[#P12]]`\nin Lore's own Markdown. Adding `?feedback=12` to the inbox's address opens that\nreport whatever its status.",
+    text: "**Feedback** in the sidebar opens the inbox, with a badge counting what is\npending. It shows one status at a time, **Pending**, **Accepted** or\n**Rejected**, newest first, ten at a time, with **Show more** for the next ten.\n\nReading the inbox needs the permission **Read the feedback inbox**\n(`feedback:read`), which a **Member** has by default.\n\nOpening a report shows its text, its attachments, the quests linked to it once\nit is accepted, and its **Context**: who sent it and, for a report sent from an\napp, the page, the browser, the language, the viewport and the timezone.\n\n⚠️ Everything a report carries was written by whoever filed it, the context\nincluded. Lore shows the context as plain text and never renders it as a link.\n\nA report has a number and a typed reference: `#P12` in the app, and `[[#P12]]`\nin Lore's own Markdown. Adding `?feedback=12` to the inbox's address opens that\nreport whatever its status.",
   },
   {
     guide: "Feedback",
     section: "Accepting and rejecting",
     url: "https://alepha.dev/lore/docs/support-feedback#accepting-and-rejecting",
     capability: "support",
-    text: "Triage needs the permission **Accept, reject and remove feedback**\n(`feedback:triage`). In the ranks a project starts with, the owner and **Admin**\nhold it, and any other rank can be given it in **Settings ▸ Members ▸ Ranks**.\nSee [Members](/lore/docs/project-members).\n\n| Action               | Offered on | What happens                                                                                                          |\n| -------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |\n| **Promote to Quest** | Pending    | The report becomes accepted, then the quest form opens with its title and text. Close the form and it stays accepted. |\n| **New quest**        | Accepted   | Another quest from the same report. One report can spawn several.                                                     |\n| **Reject**           | Pending    | The report becomes rejected and stays in the project, as a record.                                                    |\n| **Delete**           | Any status | The report leaves the project, after a confirmation.                                                 ...",
+    text: "Triage needs the permission **Accept, reject and remove feedback**\n(`feedback:triage`). The owner has it, a **Member** does not, and any rank can\nbe given it in **Settings ▸ Members ▸ Ranks**.\nSee [Members](/lore/docs/project-members).\n\n| Action               | Offered on | What happens                                                                                                          |\n| -------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |\n| **Promote to Quest** | Pending    | The report becomes accepted, then the quest form opens with its title and text. Close the form and it stays accepted. |\n| **New quest**        | Accepted   | Another quest from the same report. One report can spawn several.                                                     |\n| **Reject**           | Pending    | The report becomes rejected and stays in the project, as a record.                                                    |\n| **Delete**           | Any status | The report leaves the project, after a confirmation.                                                                  |\n\n⚠️ **Deleting ...",
   },
   {
     guide: "Feedback",
@@ -1002,7 +1002,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Apps and instances",
     url: "https://alepha.dev/lore/docs/apps-instances",
     capability: "apps",
-    text: "The **Apps** capability is where a project keeps track of what it runs. This\npage explains the three words the other pages in this section rely on: app,\ninstance and sigil.\n\nApps is the **Deploy and watch apps** capability, in\n`Settings ▸ General ▸ Capabilities`. Each thing it does is an option you turn\non when you need it. See [Capabilities](/lore/docs/project-capabilities).",
+    text: "The **Apps** capability is where a project keeps track of what it runs. This\npage explains the three words the other pages in this section rely on: app,\ninstance and sigil.\n\nApps is the **Deploy and watch apps** capability, in\n**Settings ▸ General ▸ Capabilities**. Each thing it does is an option you turn\non when you need it. See [Capabilities](/lore/docs/project-capabilities).",
   },
   {
     guide: "Apps and instances",

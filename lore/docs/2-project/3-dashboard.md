@@ -66,12 +66,11 @@ and you fill it with **Add card**.
 ## Editing a dashboard
 
 Editing needs the permission **Rename the project and edit its details**
-(`project:update`). In the ranks a project starts with, the owner and anyone
-with the **Admin** rank have it. A **Contributor** or a **Viewer** reads the
-dashboard and cannot change it: no **Customize**, no **Add card**, no **Edit**,
-no card menu, no dragging.
+(`project:update`). The owner has it, and so does a rank created from the
+**Admin** preset. A **Member** reads the dashboard and cannot change it: no
+**Customize**, no **Add card**, no **Edit**, no card menu, no dragging.
 
-To let Contributors curate the dashboard in your project, tick that permission
+To let other members curate the dashboard in your project, tick that permission
 for their rank in **Settings ▸ Members ▸ Ranks**. See
 [Members](/lore/docs/project-members).
 

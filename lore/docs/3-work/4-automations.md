@@ -272,7 +272,7 @@ Inbox and email are the channels. Another channel appears in the pickers only
 when the instance has it configured: naming one in a rule does not create it.
 
 While Automations is off, the owner can still read every rule and its health
-in `Settings ▸ Quests ▸ Automations`. That view cannot run or edit a rule.
+in **Settings ▸ Quests ▸ Automations**. That view cannot run or edit a rule.
 
 ## From the command line
 

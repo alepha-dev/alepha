@@ -62,11 +62,11 @@ With the **Estimates** option on, a quest also says how long it should take.
 With **Timer**, it records how long it actually took, from a timer you start
 and pause on the quest. With **Reminders**, whoever holds the quest can ask for
 a daily, weekly or monthly email nudge. All three are switched in
-`Settings ▸ Quests ▸ Features`.
+**Settings ▸ Quests ▸ Features**.
 
 ### Areas
 
-Areas are the project's map of itself. `Settings ▸ Quests ▸ Areas` lists them
+Areas are the project's map of itself. **Settings ▸ Quests ▸ Areas** lists them
 with their open quests, and lets someone whose rank may manage areas describe,
 rename, merge and delete them. Renaming an area onto an existing one merges the
 two. An area that still holds quests cannot be deleted: merge it into another
@@ -175,7 +175,7 @@ as cards in columns.
 The board starts with **To do** and **Completed**. Someone whose rank may
 change the project's settings (the owner, by default) adds up to five columns
 between them, with **Add a column** on the board or in
-`Settings ▸ Quests ▸ Board`. A column's menu on the board renames it, colours
+**Settings ▸ Quests ▸ Board**. A column's menu on the board renames it, colours
 it or deletes it once it is empty. The settings page orders the columns and
 sets, for each one:
 
@@ -199,7 +199,7 @@ alone, in the area the board is filtered on or else the project's first area.
 Put the quest number in your commit messages (`fix login redirect (#Q12)`) and
 record the commits on the quest, so "what shipped for #Q12" is a field rather
 than a search through the git log. They show in the quest's side rail, as links
-once the project's **Repository** is set in `Settings ▸ General`.
+once the project's **Repository** is set in **Settings ▸ General**.
 
 Commits are recorded from the command line or by an agent, one by one or as the
 quest is completed. A commit already recorded is not added twice, and one can
