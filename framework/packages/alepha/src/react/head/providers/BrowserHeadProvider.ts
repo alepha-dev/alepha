@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { TrustedTypes } from "alepha/react";
 
 import type { Head, HeadLink, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
@@ -226,6 +227,9 @@ export class BrowserHeadProvider {
     if (link.hreflang) {
       el.setAttribute("hreflang", link.hreflang);
     }
+    if (link.integrity) {
+      el.setAttribute("integrity", link.integrity);
+    }
     document.head.appendChild(el);
     return el;
   }
@@ -242,7 +246,8 @@ export class BrowserHeadProvider {
     if (typeof script === "string") {
       if (this.findInlineScriptByContent(document, script)) return;
       const el = document.createElement("script");
-      el.textContent = script;
+      this.applyNonce(document, el);
+      el.textContent = TrustedTypes.script(script);
       document.head.appendChild(el);
       return;
     }
@@ -265,13 +270,37 @@ export class BrowserHeadProvider {
       if (value === true) {
         el.setAttribute(key, "");
       } else if (value !== undefined && value !== false) {
-        el.setAttribute(key, String(value));
+        // A script's `src` is a Trusted Types sink.
+        el.setAttribute(
+          key,
+          key === "src" ? TrustedTypes.scriptURL(String(value)) : String(value),
+        );
       }
     }
     if (content) {
-      el.textContent = content;
+      this.applyNonce(document, el);
+      el.textContent = TrustedTypes.script(content);
     }
     document.head.appendChild(el);
+  }
+
+  /**
+   * Give an inline script the document's CSP nonce, when the server sent
+   * one: a head script a client navigation inserts is checked against the
+   * policy of the document, and only that nonce (or its hash) allows it.
+   *
+   * The server writes the nonce on `#__ssr_private` of every rendered page.
+   * A browser hides the attribute's value once parsed, so it is read from the
+   * `nonce` property. A page answered from the page cache has none, and
+   * there only the hashed scripts run.
+   */
+  protected applyNonce(document: Document, el: HTMLScriptElement): void {
+    const nonce = (
+      document.querySelector("script[nonce]") as HTMLScriptElement | null
+    )?.nonce;
+    if (nonce) {
+      el.nonce = nonce;
+    }
   }
 
   /**

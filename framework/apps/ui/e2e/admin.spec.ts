@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.ts";
 
 /**
  * The unit specs prove the fixtures satisfy their response schemas. They cannot

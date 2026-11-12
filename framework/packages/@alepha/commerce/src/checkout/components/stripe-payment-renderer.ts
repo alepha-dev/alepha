@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+import { TrustedTypes } from "alepha/react";
 
 import type { EmbeddedPaymentRenderer } from "./payment-slot.tsx";
 
@@ -129,7 +130,8 @@ export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
           return;
         }
         const script = document.createElement("script");
-        script.src = StripePaymentRenderer.SDK_URL;
+        // A fixed URL, through the framework's Trusted Types policy.
+        script.src = TrustedTypes.scriptURL(StripePaymentRenderer.SDK_URL);
         script.async = true;
         script.addEventListener("load", () => resolve());
         script.addEventListener("error", () =>

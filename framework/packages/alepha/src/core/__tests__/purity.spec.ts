@@ -10,7 +10,7 @@ import {
   type PurityEntry,
   type Service,
 } from "alepha";
-import { $action } from "alepha/server";
+import { $action, AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
 /**
@@ -110,6 +110,36 @@ describe("Alepha.purity", () => {
     expect(entryOf(alepha, Unknown).reasons).toEqual([
       "holds a $unclassifiedThing",
     ]);
+  });
+
+  it("calls a controller not pure when it alone brings a module in", ({
+    expect,
+  }) => {
+    // Deferred, the class would bring the module in after the lock, where
+    // its `register` can no longer add a provider: the ssr example's
+    // CountApi, whose `$repository` alone brought the ORM module in.
+    class Store {}
+    $module({ name: "test.storage", services: [Store] });
+    class Api {
+      store = $inject(Store);
+      list = ping();
+    }
+    const alepha = Alepha.create().with(Api);
+    expect(entryOf(alepha, Api).pure).toBe(false);
+    expect(entryOf(alepha, Api).reasons.join(" ")).toMatch(/test\.storage/);
+  });
+
+  it("keeps a controller pure when registration brought its module in", ({
+    expect,
+  }) => {
+    class Store {}
+    const Storage = $module({ name: "test.storage2", services: [Store] });
+    class Api {
+      store = $inject(Store);
+      list = ping();
+    }
+    const alepha = Alepha.create().with(Storage).with(Api);
+    expect(entryOf(alepha, Api).pure).toBe(true);
   });
 
   it("keeps a controller holding an inert primitive pure", ({ expect }) => {
@@ -234,7 +264,9 @@ describe("Alepha.purity", () => {
     class Caller {
       shared = $inject(Shared);
     }
-    const alepha = Alepha.create().with(Caller);
+    // The server module registered up front, as an app does: otherwise
+    // `Listed`'s action alone would bring it in, which is not pure (#Q3485).
+    const alepha = Alepha.create().with(AlephaServer).with(Caller);
     expect(Mod).toBeDefined();
     expect(entryOf(alepha, Listed).pure).toBe(true);
   });

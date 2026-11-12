@@ -15,6 +15,7 @@ import type {
 import { $cache } from "alepha/cache";
 import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
+import { ServerHelmetProvider } from "alepha/server";
 import Stripe from "stripe";
 
 const envSchema = z.object({
@@ -60,8 +61,39 @@ export class StripePaymentProvider implements PaymentProvider {
     provider: DatabaseCacheProvider,
   });
 
+  /**
+   * What Stripe.js and the Payment Element need under a Content Security
+   * Policy: the SDK script, its iframes (3-D Secure included, on
+   * `hooks.stripe.com`), and its API calls.
+   *
+   * Taken from Stripe's integration security guide, "Content Security
+   * Policy", Stripe.js section: https://docs.stripe.com/security/guide#content-security-policy
+   * `https://maps.googleapis.com` is left out: Stripe lists it only for an
+   * Address Element run with the app's own Google Maps key.
+   */
+  public static readonly CSP_SOURCES: Record<string, string[]> = {
+    "script-src": ["https://js.stripe.com", "https://*.js.stripe.com"],
+    "frame-src": [
+      "https://js.stripe.com",
+      "https://*.js.stripe.com",
+      "https://hooks.stripe.com",
+    ],
+    "connect-src": ["https://api.stripe.com"],
+  };
+
   constructor() {
     this.stripe = new Stripe(this.env.STRIPE_SECRET_KEY);
+    // This provider is the payment provider only when the app loads this
+    // module, and only then do Stripe's hosts join the policy: the in-memory
+    // provider adds none. Helmet sends them only while the CSP is on.
+    if (this.alepha.has(ServerHelmetProvider)) {
+      const helmet = this.alepha.inject(ServerHelmetProvider);
+      for (const [directive, sources] of Object.entries(
+        StripePaymentProvider.CSP_SOURCES,
+      )) {
+        helmet.addCspSource(directive, ...sources);
+      }
+    }
   }
 
   /**

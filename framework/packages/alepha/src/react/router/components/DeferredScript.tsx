@@ -1,4 +1,4 @@
-import { useAlepha, useInject } from "alepha/react";
+import { TrustedTypes, useAlepha, useInject } from "alepha/react";
 import { use } from "react";
 
 import {
@@ -33,15 +33,25 @@ const DeferredScript = (props: DeferredScriptProps) => {
     return (
       <script
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: "" }}
+        dangerouslySetInnerHTML={{ __html: TrustedTypes.html("") }}
       />
     );
+  }
+
+  // A buffered render (`stream: false`, a prerender, a client-rendered page)
+  // ships every value settled in the payload: a delivery script there would
+  // be dead weight, and under a CSP a violation nobody could fix on a
+  // prerendered file. The empty element still matches the browser's, and an
+  // empty inline script is never checked against the policy.
+  if (!alepha.store.getUntracked("alepha.react.router.streamed")) {
+    return <script dangerouslySetInnerHTML={{ __html: "" }} />;
   }
 
   use(deferred.settled(props.promise) as Promise<unknown>);
 
   return (
     <script
+      nonce={alepha.store.getUntracked("alepha.react.router.nonce")}
       dangerouslySetInnerHTML={{
         __html: deferred.deliveryScript(props.id, props.promise),
       }}

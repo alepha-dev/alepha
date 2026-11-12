@@ -1,6 +1,5 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
-
+import type { Page } from "./fixtures.ts";
+import { expect, test } from "./fixtures.ts";
 import { buy, signInAsAdmin } from "./helpers.ts";
 
 /**

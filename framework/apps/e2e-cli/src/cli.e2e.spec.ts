@@ -33,6 +33,7 @@
  */
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import {
   chmod,
@@ -66,6 +67,42 @@ const freePort = (): Promise<number> =>
 
 import { AlephaError } from "alepha";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+/**
+ * A scaffolded app sends the strict CSP (#Q3359), and every inline executable
+ * script of its HTML is allowed by its SHA-256 in `script-src`: the literal
+ * check of the scaffold that the browser suites cannot make. No browser: the
+ * hashes are computed here exactly as a browser would compute them.
+ */
+const expectStrictCsp = async (response: Response) => {
+  const policy = response.headers.get("content-security-policy") ?? "";
+  expect(policy, "no Content-Security-Policy header").toContain(
+    "script-src 'self'",
+  );
+  const scriptSrc =
+    policy
+      .split(";")
+      .map((it) => it.trim().split(/\s+/))
+      .find(([name]) => name === "script-src")
+      ?.slice(1) ?? [];
+  expect(scriptSrc).not.toContain("'unsafe-inline'");
+
+  const html = await response.text();
+  const inline = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter(([, attrs]) => !/\bsrc=/.test(attrs))
+    .filter(([, attrs]) => {
+      const type = attrs.match(/\btype="([^"]*)"/)?.[1];
+      return !type || type === "module";
+    })
+    .map(([, , body]) => body)
+    .filter(Boolean);
+  for (const body of inline) {
+    const hash = `'sha256-${createHash("sha256").update(body).digest("base64")}'`;
+    expect(scriptSrc, `unhashed inline script: ${body.slice(0, 80)}`).toContain(
+      hash,
+    );
+  }
+};
 
 const thisFile = fileURLToPath(import.meta.url);
 const ROOT = resolve(dirname(thisFile), "../../.."); // apps/e2e-cli/src -> monorepo root
@@ -924,6 +961,7 @@ describe("Alepha CLI E2E", () => {
           500,
         );
         expect(response.status).toBe(200);
+        await expectStrictCsp(response);
       } catch (error) {
         throw new AlephaError(
           `${error instanceof Error ? error.message : String(error)}\n${devServer.stdout()}\n${devServer.stderr()}`,
@@ -1166,6 +1204,10 @@ describe("Alepha CLI E2E", () => {
           throw error;
         });
         expect(response.status).toBe(200);
+
+        const page = await fetchWithRetry(`http://localhost:${port}/`, 30, 500);
+        expect(page.status).toBe(200);
+        await expectStrictCsp(page);
       } finally {
         await server.kill();
       }

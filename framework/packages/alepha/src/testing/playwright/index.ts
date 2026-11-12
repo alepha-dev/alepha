@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export * from "./accessible.ts";
+export * from "./CspGuard.ts";
 
 /**
  * A port band, and the spacing between the bases carved out of it.

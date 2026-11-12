@@ -398,6 +398,17 @@ export class Alepha {
   /**
    * Who created whom, and what each class holds: what {@link purity} reads.
    */
+  /**
+   * Depth of `inject` registering the module of the class it creates: that
+   * `with` is the injection's doing, not a registration (#Q3485).
+   */
+  protected reachingModule = 0;
+
+  /**
+   * The modules whose `register` is running, innermost last.
+   */
+  protected registeringModules: Service[] = [];
+
   protected containerGraph = new ContainerGraph(
     (service) =>
       Module.is(service) ||
@@ -600,6 +611,32 @@ export class Alepha {
       }
     }
     return false;
+  }
+
+  /**
+   * Creates, before start, the declared page routers when no React server is
+   * registered (#Q3485): the server's `/*` placeholder is what creates them
+   * on the first page request, and a `$page` was also what registered the
+   * React router module, so with every page router declared that module
+   * never came and every page answered 404. An app that registers the module
+   * itself keeps its routers deferred.
+   */
+  protected async createUnservedPages(): Promise<void> {
+    const surface = this.surface;
+    if (!surface || this.declared.size === 0 || surface.pages.length === 0) {
+      return;
+    }
+    for (const key of this.registry.keys()) {
+      if ((key as { id?: string }).id === "alepha.react.ReactServerProvider") {
+        return;
+      }
+    }
+    const pages = new Set(surface.pages.map((row) => row.class));
+    for (const service of Array.from(this.declared)) {
+      if (pages.has(ContainerGraph.keyOf(service))) {
+        this.inject(await this.resolveDeclared(service));
+      }
+    }
   }
 
   /**
@@ -1188,6 +1225,7 @@ export class Alepha {
       }
 
       this.createUnservedDeclared();
+      await this.createUnservedPages();
 
       // With no list (`ALEPHA_EAGER=true`), the controllers the build made
       // lazy are imported and created now, as every class is (#Q3407).
@@ -1604,6 +1642,15 @@ export class Alepha {
     // `alepha.with` is a registration form wherever it is called (a module's
     // `register`, a `$realm`'s features, a helper): what it creates is
     // registered, not injected by the class under construction (#Q3404).
+    // A module registered here is reached by the class under construction
+    // in this frame (a `$page` or a `$rateLimit` registering its own module
+    // from its class), or by nothing: a registration (#Q3485).
+    if (Module.is(service) && this.reachingModule === 0) {
+      this.containerGraph.moduleReached(
+        service,
+        this.containerGraph.moduleReacherOf(this.pendingInstantiations),
+      );
+    }
     this.containerGraph.openFrame(this.pendingInstantiations.length);
     try {
       this.inject(service);
@@ -1702,6 +1749,21 @@ export class Alepha {
     }
 
     if (!transient && registry === this.registry) {
+      // Every injection of a module's class reaches that module, the one that
+      // creates the class or a later one (#Q3485): a module reached only by
+      // pure classes would arrive after the lock. A module's own `register`
+      // reaching its own services is not counted.
+      const reached = (service as WithModule)[MODULE];
+      if (
+        reached &&
+        typeof reached === "function" &&
+        !this.registeringModules.includes(reached)
+      ) {
+        this.containerGraph.moduleReached(
+          reached,
+          this.containerGraph.moduleReacherOf(this.pendingInstantiations),
+        );
+      }
       // A primitive's `onInit` registering a class (`$realm` passing its
       // features' controllers to `alepha.with`) is the framework's
       // registration, as a module's `register` is, not an injection by the
@@ -1751,7 +1813,12 @@ export class Alepha {
 
     const module = (service as WithModule)[MODULE];
     if (module && typeof module === "function") {
-      this.with(module);
+      this.reachingModule++;
+      try {
+        this.with(module);
+      } finally {
+        this.reachingModule--;
+      }
     }
 
     // check if service has been registered by a module
@@ -1798,9 +1865,11 @@ export class Alepha {
       // What the module creates is its registration, even when an injection
       // pulled it in while another class was under construction (#Q3395).
       this.containerGraph.openFrame(this.pendingInstantiations.length);
+      this.registeringModules.push(instance.constructor as Service);
       try {
         instance.register(this);
       } finally {
+        this.registeringModules.pop();
         this.containerGraph.closeFrame();
         // restore the previous $get context
         __alephaRef.parent = parent;

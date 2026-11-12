@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures.ts";
 
 test.describe("SSR Preload Links", () => {
   test("home page (/) has correct script and preload", async ({ request }) => {

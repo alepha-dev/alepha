@@ -108,8 +108,19 @@ export class SSRManifestProvider {
 
     return {
       js: entry.js === undefined ? undefined : files[entry.js],
+      jsIntegrity:
+        entry.js === undefined ? undefined : this.integrityOf(entry.js),
       css: entry.css.map((index) => files[index]),
+      cssIntegrity: entry.css.map((index) => this.integrityOf(index)),
     };
+  }
+
+  /**
+   * The Subresource Integrity of a file of the preload table, or nothing
+   * when the build recorded none (dev, a build before #Q3319).
+   */
+  public integrityOf(index: number): string | undefined {
+    return this.table?.integrity?.[index] || undefined;
   }
 
   /**
@@ -125,10 +136,23 @@ export class SSRManifestProvider {
       const href = table.files[index];
       if (!href) continue;
 
+      // A module is integrity-checked only if its `modulepreload` is
+      // processed before something imports it, which is why the server
+      // writes the entry's graph ahead of the entry script.
+      const integrity = this.integrityOf(index);
       if (href.endsWith(".css")) {
+        // No integrity on a style preload: the stylesheet that consumes it is
+        // inserted by Vite's own CSS loader, with no `integrity`, and a
+        // browser then discards a preload whose integrity differs ("not used
+        // due to an integrity mismatch") and downloads the file again. A page
+        // stylesheet is, like a lazy chunk, authorised by the CSP only.
         links.push({ rel: "preload", href, as: "style", crossorigin: true });
       } else {
-        links.push({ rel: "modulepreload", href });
+        links.push({
+          rel: "modulepreload",
+          href,
+          ...(integrity ? { integrity } : {}),
+        });
       }
     }
 
@@ -146,6 +170,7 @@ export interface PreloadLink {
   href: string;
   as?: string;
   crossorigin?: HeadLinkCrossOrigin;
+  integrity?: string;
 }
 
 /**
@@ -157,9 +182,17 @@ export interface EntryAssets {
    */
   js?: string;
   /**
+   * Subresource Integrity of {@link js}, when the build recorded it.
+   */
+  jsIntegrity?: string;
+  /**
    * Associated CSS files (e.g., ["/assets/style.abc123.css"])
    */
   css: string[];
+  /**
+   * Subresource Integrity of each of {@link css}, parallel to it.
+   */
+  cssIntegrity?: Array<string | undefined>;
 }
 
 /**

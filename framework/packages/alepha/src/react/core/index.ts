@@ -31,6 +31,7 @@ export * from "./hooks/useStore.ts";
 export * from "./services/ActionErrorPolicy.ts";
 export * from "./services/QueryCache.ts";
 export * from "./services/QueryWakeEvents.ts";
+export * from "./services/TrustedTypes.ts";
 export * from "./utils/isNetworkError.ts";
 export * from "./utils/queryRetry.ts";
 export * from "./utils/shallowEqual.ts";
