@@ -30,10 +30,19 @@ export const mainServerTs = (options: MainServerTsOptions = {}) => {
   return (
     `
 import { Alepha, run } from "alepha";
+import { helmetOptions } from "alepha/server";
 
 ${imports.join("\n")}
 
 const alepha = Alepha.create();
+
+// A strict Content Security Policy: no inline script the framework did not
+// hash or nonce, no third-party host it was not told about. Allow a host with
+// alepha.inject(ServerHelmetProvider).addCspSource("script-src", "https://...").
+alepha.store.mut(helmetOptions, (old) => ({
+  ...old,
+  contentSecurityPolicy: {},
+}));
 
 ${withs.join("\n")}
 

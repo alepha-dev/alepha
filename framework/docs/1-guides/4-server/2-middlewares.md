@@ -67,7 +67,18 @@ alepha.store.mut(helmetOptions, (old) => ({
 
 A header the handler already set is never overwritten. `Strict-Transport-Security` goes out only on a secure request (`https`, or `X-Forwarded-Proto: https` from your proxy), in production, or when `isSecure` is `true`.
 
-`contentSecurityPolicy` has three states. Omit it and no CSP header is sent. Pass `{}` (no `directives`) to send the built-in policy: `'self'` for scripts, forms, frames and images, `'none'` for objects, plus `upgrade-insecure-requests`. Pass `{ directives: {} }` to send no CSP header while leaving every other security header in place - an empty directive map is not a permissive policy, so it is dropped rather than sent empty.
+`contentSecurityPolicy` has three states. Omit it and no CSP header is sent: that is the framework default, so an existing app is unchanged until it opts in. Pass `{}` (no `directives`) to send the built-in policy: `'self'` for scripts, forms and frames, `'self'`, `data:` and `blob:` for images, `'none'` for objects, plus `upgrade-insecure-requests`. A project created by `alepha init` has that one line in `src/main.server.ts` already; an existing app turns the CSP on by adding it:
+
+```typescript
+import { helmetOptions } from "alepha/server";
+
+alepha.store.mut(helmetOptions, (old) => ({
+  ...old,
+  contentSecurityPolicy: {},
+}));
+```
+
+Pass `{ directives: {} }` to send no CSP header while leaving every other security header in place - an empty directive map is not a permissive policy, so it is dropped rather than sent empty.
 
 #### Content Security Policy
 
