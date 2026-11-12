@@ -66,7 +66,7 @@ export const ParameterDiffDialog = (props: ParameterDiffDialogProps) => {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="truncate pr-6">{props.title}</DialogTitle>
+          <DialogTitle className="truncate pe-6">{props.title}</DialogTitle>
           <DialogDescription>
             {props.description ??
               tr("admin.parameters.diffDialogDescription", {

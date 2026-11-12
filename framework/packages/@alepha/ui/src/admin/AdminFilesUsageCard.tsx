@@ -105,7 +105,7 @@ export const AdminFilesUsageCard = (props: AdminFilesUsageCardProps) => {
         {hasQuota && (
           <Segmented
             size="xs"
-            className="order-last ml-auto self-start"
+            className="order-last ms-auto self-start"
             aria-label={tr("admin.files.usageMode", { default: "Bar" })}
             value={mode}
             onChange={changeMode}

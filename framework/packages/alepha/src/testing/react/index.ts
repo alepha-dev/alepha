@@ -2,6 +2,7 @@ import { $module } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./accessible.ts";
 export * from "./form.ts";
 export * from "./render.tsx";
 export * from "./setup.ts";
@@ -15,6 +16,8 @@ export * from "./setup.ts";
  * - `renderWithAlepha()` - Render components with Alepha context
  * - `fillForm()` / `submitForm()` - Form testing helpers
  * - `setupJsdomMocks()` - Mock browser APIs for jsdom
+ * - `expectAccessible()` - Run axe on the rendered tree (structure only: no
+ *   contrast under jsdom). Needs `axe-core`, an optional peer.
  *
  * @module alepha.testing.react
  *

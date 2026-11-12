@@ -168,7 +168,7 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
               return (
                 <TableHead
                   key={column.key}
-                  className="border-border/60 h-auto min-w-36 border-l py-2 text-center align-bottom"
+                  className="border-border/60 h-auto min-w-36 border-s py-2 text-center align-bottom"
                 >
                   <div className="flex flex-col items-center gap-1">
                     <span className="font-medium">{column.label}</span>

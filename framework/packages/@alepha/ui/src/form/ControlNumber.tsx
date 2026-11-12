@@ -84,6 +84,10 @@ export const ControlNumber = (props: ControlNumberProps) => {
         <div className="flex items-center gap-3 py-2">
           <Slider
             id={meta.id}
+            // The `<label for>` above points at the slider's root, which is
+            // not the input a screen reader lands on: the thumb takes the
+            // label as its own name.
+            aria-label={meta.label || undefined}
             min={lo}
             max={hi}
             step={props.step ?? 1}
@@ -92,7 +96,7 @@ export const ControlNumber = (props: ControlNumberProps) => {
             onValueChange={(v) => setValue(Array.isArray(v) ? v[0] : v)}
             className="flex-1"
           />
-          <span className="text-muted-foreground w-10 text-right text-sm tabular-nums">
+          <span className="text-muted-foreground w-10 text-end text-sm tabular-nums">
             {value ?? lo}
           </span>
         </div>
@@ -112,7 +116,7 @@ export const ControlNumber = (props: ControlNumberProps) => {
     >
       <div className="relative">
         {Icon && (
-          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Icon className="text-muted-foreground absolute start-3 top-1/2 size-4 -translate-y-1/2" />
         )}
         <Input
           id={meta.id}
@@ -138,7 +142,7 @@ export const ControlNumber = (props: ControlNumberProps) => {
             const v = e.target.value;
             setValue(v === "" ? undefined : Number(v));
           }}
-          className={Icon ? "pl-9" : undefined}
+          className={Icon ? "ps-9" : undefined}
         />
       </div>
     </FormField>

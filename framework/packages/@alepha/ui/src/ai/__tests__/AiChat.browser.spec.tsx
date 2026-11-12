@@ -6,7 +6,7 @@ import { useForm } from "alepha/react/form";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { type ComponentType, useState } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -179,6 +179,8 @@ describe("AiChat", () => {
       ),
     );
     expect(view.getByTestId("ai-chat-user").textContent).toBe("why late?");
+    // axe: the chat drawer with a streamed reply (#Q3338).
+    await expectAccessible();
     expect(links.bodies("chat")).toEqual([
       {
         conversationId: undefined,

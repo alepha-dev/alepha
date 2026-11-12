@@ -3,7 +3,7 @@ import { Alepha, z } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DataTable } from "../DataTable.tsx";
@@ -122,6 +122,8 @@ describe("DataTableFilterBar", () => {
     );
     // One text run, one space between each word: "Status: not Closed".
     expect(trigger?.textContent).toBe("Status: not Closed");
+    // axe: the table with its filter bar holding a filter (#Q3338).
+    await expectAccessible();
     expect(slot("owner")).toBeNull();
   });
 
@@ -130,14 +132,14 @@ describe("DataTableFilterBar", () => {
 
     await waitFor(() => expect(slot("status")).toBeTruthy());
     // jsdom loads no Tailwind, so the rule is read off the classes: the label
-    // run still carries its `mr-*` for the in-field cross, and the box, which
+    // run still carries its `me-*` for the in-field cross, and the box, which
     // hides that cross, carries the rule that zeroes it.
     const label = slot("status")!.querySelector(
       '[data-slot="combobox-trigger"] [data-slot="trigger-label"]',
     ) as HTMLElement | null;
-    expect(label?.className).toMatch(/\bmr-\d/);
+    expect(label?.className).toMatch(/\bme-\d/);
     const box = slot("status")!.firstElementChild as HTMLElement;
-    expect(box.className).toContain('[&_[data-slot="trigger-label"]]:mr-0');
+    expect(box.className).toContain('[&_[data-slot="trigger-label"]]:me-0');
   });
 
   it("shows a filter holding only an operator, and keeps the operator", async () => {

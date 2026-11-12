@@ -33,7 +33,7 @@ export const DataTableRowActionItem = <T,>(
         disabled={disabled}
         onClick={() => action.onClick(item, ctx)}
       >
-        {Icon && <Icon className="mr-2 size-4" />}
+        {Icon && <Icon className="me-2 size-4" />}
         {action.label}
       </DropdownMenuCheckboxItem>
     );
@@ -44,7 +44,7 @@ export const DataTableRowActionItem = <T,>(
       onClick={() => action.onClick(item, ctx)}
       variant={action.destructive ? "destructive" : undefined}
     >
-      {Icon && <Icon className="mr-2 size-4" />}
+      {Icon && <Icon className="me-2 size-4" />}
       {action.label}
     </DropdownMenuItem>
   );

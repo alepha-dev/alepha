@@ -7,8 +7,11 @@ export interface PaneRailProps {
   /**
    * The edge of the layout the collapsed pane sits on. It picks the icon and
    * puts the border on the side that faces the content the pane was beside.
+   * `start` and `end` follow the reading direction, as a flex row of panes
+   * does: an `end` rail sits on the left of a right-to-left page, with its
+   * arrow mirrored. `left` and `right` are physical, whatever the direction.
    */
-  side: "left" | "right";
+  side: "start" | "end" | "left" | "right";
   /**
    * The expand button's accessible name and tooltip, e.g. "Show history".
    */
@@ -53,7 +56,13 @@ export interface PaneRailProps {
  * width and only changes the default layout.
  */
 export const PaneRail = (props: PaneRailProps) => {
-  const Arrow = props.side === "left" ? PanelLeftOpen : PanelRightOpen;
+  const logical = props.side === "start" || props.side === "end";
+  const Arrow =
+    props.side === "left" || props.side === "start"
+      ? PanelLeftOpen
+      : PanelRightOpen;
+  // A logical rail's arrow points into the page in either direction.
+  const arrowClassName = logical ? "rtl:-scale-x-100" : undefined;
 
   return (
     <button
@@ -64,13 +73,25 @@ export const PaneRail = (props: PaneRailProps) => {
       data-testid={props["data-testid"]}
       className={cn(
         "border-border text-muted-foreground hover:text-foreground hover:bg-hover focus-visible:ring-ring/50 flex w-9 flex-none cursor-pointer flex-col items-center gap-2 pt-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-inset",
-        props.side === "left" ? "border-r" : "border-l",
+        {
+          start: "border-e",
+          end: "border-s",
+          // Physical on purpose: `left` and `right` ignore the direction.
+          left: "border-r",
+          right: "border-l",
+        }[props.side],
         props.className,
       )}
     >
-      {props.icon ?? <Arrow className="size-4 shrink-0" />}
+      {props.icon ?? (
+        <Arrow className={cn("size-4 shrink-0", arrowClassName)} />
+      )}
       {props.children}
-      {props.icon && <Arrow className="mt-auto mb-3 size-3.5 shrink-0" />}
+      {props.icon && (
+        <Arrow
+          className={cn("mt-auto mb-3 size-3.5 shrink-0", arrowClassName)}
+        />
+      )}
     </button>
   );
 };

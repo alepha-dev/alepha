@@ -105,7 +105,7 @@ export const AdminWebhookDeliveryDialog = (
           <DialogTitle>
             {tr("admin.webhooks.deliveryTitle", { default: "Delivery" })}
             {data ? (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ms-2">
                 {data.eventType}
               </Badge>
             ) : null}

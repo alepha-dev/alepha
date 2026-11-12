@@ -1,8 +1,12 @@
 import { $inject, AlephaError } from "alepha";
-import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  SequenceProvider,
+  type SQLLike,
+} from "alepha/orm";
 
-import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
-import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
+import { projects } from "../entities/projects.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   ProjectMergeReferences,
@@ -34,6 +38,8 @@ import {
  */
 export class ProjectMergeService {
   protected readonly database = $inject(DatabaseProvider);
+  protected readonly projects = $repository(projects);
+  protected readonly sequences = $inject(SequenceProvider);
   protected readonly automationDatabase = $inject(AutomationDatabase);
   protected readonly references = $inject(ProjectMergeReferences);
   protected readonly steps: ProjectMergeStep[] = [];
@@ -97,13 +103,18 @@ export class ProjectMergeService {
         );
       }
       if (!dryRun) {
+        // Before the batch, never lowered: a batch that fails then leaves a
+        // gap in the numbers, never one handed out twice.
+        for (const raise of plans.flatMap((plan) => plan.sequences ?? [])) {
+          await this.sequences.raise(raise.name, raise.scope, raise.atLeast);
+        }
         await this.apply(plans.flatMap((plan) => plan.statements));
       }
       return {
         sourceProjectId,
         targetProjectId,
         dryRun,
-        steps: plans.map(({ statements: _, ...plan }) => plan),
+        steps: plans.map(({ statements: _, sequences: __, ...plan }) => plan),
       };
     });
   }
@@ -117,26 +128,21 @@ export class ProjectMergeService {
   }
 
   protected async slugOf(projectId: number): Promise<string | undefined> {
-    const rows = await this.database.execute(
-      `SELECT slug FROM projects WHERE id = ${Number(projectId)}`,
-    );
-    const slug = rows[0]?.slug;
-    return typeof slug === "string" ? slug : undefined;
+    const project = await this.projects.findById(projectId, { force: true });
+    return project?.slug ?? undefined;
   }
 
   /**
-   * Refuses a project that does not exist or is deleted. The `projects`
-   * table is read raw, so a soft-deleted project is visible here and
-   * refused by name rather than reported as missing.
+   * Refuses a project that does not exist or is deleted. The project is
+   * read with `force`, so a soft-deleted one is visible here and refused by
+   * name rather than reported as missing.
    */
   protected async assertProject(projectId: number): Promise<void> {
-    const rows = await this.database.execute(
-      `SELECT id, deleted_at FROM projects WHERE id = ${Number(projectId)}`,
-    );
-    if (!rows[0]) {
+    const project = await this.projects.findById(projectId, { force: true });
+    if (!project) {
       throw new AlephaError(`No project ${projectId}`);
     }
-    if (rows[0].deleted_at != null) {
+    if (project.deletedAt != null) {
       throw new AlephaError(`Project ${projectId} is deleted`);
     }
   }
@@ -146,26 +152,9 @@ export class ProjectMergeService {
    * exclusive transaction, or a transaction on a driver that has one.
    */
   protected async apply(statements: SQLLike[]): Promise<void> {
-    if (!statements.length) {
-      return;
-    }
-    if (
-      this.database instanceof AutomationD1Provider ||
-      this.database instanceof AutomationSqliteProvider
-    ) {
-      await this.database.atomicBatch(statements);
-      return;
-    }
-    if (!this.database.supportsTransactions) {
-      throw new AlephaError(
-        "This database has no atomic batch: a project merge cannot run on it",
-      );
-    }
-    await this.database.transactional(async () => {
-      for (const statement of statements) {
-        await this.database.execute(statement);
-      }
-    });
+    // Unbounded: a merge emits one statement per rewritten row, well past
+    // the automation engine's 100.
+    await this.database.atomicBatch(statements);
   }
 }
 
@@ -234,6 +223,21 @@ export interface ProjectMergeStepPlan {
    */
   conflicts?: ProjectMergeConflict[];
   statements: SQLLike[];
+  /**
+   * Per-project sequences to raise before the batch runs, as
+   * `ProjectMergeNumbers.renumber` answers them. Not part of the plan the
+   * caller reads back.
+   */
+  sequences?: ProjectMergeSequence[];
+}
+
+/**
+ * A sequence a merge raises to at least `atLeast` before its batch.
+ */
+export interface ProjectMergeSequence {
+  name: string;
+  scope: string;
+  atLeast: number;
 }
 
 /**

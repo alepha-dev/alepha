@@ -67,7 +67,7 @@ export const AnalyticsChartDonut = (props: AnalyticsChartDonutProps) => {
             <span className="font-mono text-[11.5px] tabular-nums">
               {analyticsNumber(point.value)}
             </span>
-            <span className="text-muted-foreground w-11 text-right text-[11px] tabular-nums">
+            <span className="text-muted-foreground w-11 text-end text-[11px] tabular-nums">
               {Math.round(point.share * 100)}%
             </span>
           </div>

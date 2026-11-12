@@ -50,14 +50,14 @@ export const QueryPanel = (props: QueryPanelProps) => {
       // obvious place to aim for lands on the panel and nothing happens.
       // Nothing else needs the clip, since the clause list scrolls in its own
       // box.
-      className="border-border bg-card/30 relative flex flex-none flex-col border-r"
+      className="border-border bg-card/30 relative flex flex-none flex-col border-e"
     >
       {/* A 7px hit strip centred on the border: the border itself is 1px,
           which is not a target anyone hits on the first try. */}
       <div
         onPointerDown={props.onStartResize}
         title={tr("admin.analytics.resize", { default: "Drag to resize" })}
-        className="absolute top-0 -right-[3px] bottom-0 z-10 w-[7px] cursor-col-resize"
+        className="absolute -end-[3px] top-0 bottom-0 z-10 w-[7px] cursor-col-resize"
       />
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-4 py-[18px]">
         <DatasetSelect

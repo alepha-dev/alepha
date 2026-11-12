@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import type { OpenApiDocument } from "alepha/server/swagger";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { OpenApiSpec } from "../OpenApiSpec.ts";
@@ -127,6 +127,8 @@ describe("SwaggerOperationView", () => {
     expect(screen.getByText("$secure")).toBeTruthy();
     expect(screen.getAllByText("NOT_FOUND").length).toBeGreaterThan(0);
     expect(screen.getByText("30000 ms")).toBeTruthy();
+    // axe: an operation view (#Q3338).
+    await expectAccessible();
   });
 
   it("lists parameters and responses by status", async () => {

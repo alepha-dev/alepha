@@ -3,7 +3,7 @@ import { Alepha, z } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DataTable } from "../DataTable.tsx";
@@ -195,6 +195,8 @@ describe("DataTableHeaderFilter", () => {
 
     fireEvent.click(funnel("owner")!);
     const box = await screen.findByRole("textbox", { name: "Owner" });
+    // axe: a header filter's popover open (#Q3338).
+    await expectAccessible();
     fireEvent.change(box, { target: { value: "Ada" } });
 
     await waitFor(() => expect(table.last()?.owner).toBe("Ada"));

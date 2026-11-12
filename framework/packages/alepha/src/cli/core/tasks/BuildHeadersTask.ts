@@ -168,8 +168,20 @@ export class BuildHeadersTask extends BuildTask {
     for (const [name, value] of Object.entries(headers)) {
       const line = `${this.headerCase(name)}: ${value}`;
       if (line.length > HeadersFileReader.MAX_LINE_LENGTH) {
+        // A policy grows by what modules register (a `'sha256-...'` source
+        // is 53 characters): say how many it holds, so the reader knows
+        // whether to shorten their own directives or look for a registrar.
+        const sources =
+          name === "content-security-policy"
+            ? ` holding ${
+                value
+                  .split(";")
+                  .flatMap((it) => it.trim().split(/\s+/).slice(1))
+                  .filter(Boolean).length
+              } sources (${(value.match(/'sha256-/g) ?? []).length} of them script hashes)`
+            : "";
         throw new AlephaError(
-          `helmetOptions produces a ${name} of ${line.length} characters, and one line of _headers holds at most ${HeadersFileReader.MAX_LINE_LENGTH}: Cloudflare would skip it. Shorten the policy.`,
+          `helmetOptions produces a ${name} of ${line.length} characters${sources}, and one line of _headers holds at most ${HeadersFileReader.MAX_LINE_LENGTH}: Cloudflare would skip it. Shorten the policy.`,
         );
       }
     }

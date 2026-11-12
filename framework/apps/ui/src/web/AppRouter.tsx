@@ -32,6 +32,8 @@ export class AppRouter {
       this.dataTableAddons,
       this.blocksTree,
       this.blocksDialog,
+      this.blocksOverlays,
+      this.overlayPanel,
       this.blocksToast,
       this.blocksButtons,
       this.blocksPrimitives,
@@ -220,6 +222,29 @@ export class AppRouter {
     static: true,
     head: { title: "Dialog - Alepha UI" },
     lazy: () => import("./pages/blocks/Dialog.tsx"),
+  });
+
+  blocksOverlays = $page({
+    path: "/blocks/overlays",
+    static: true,
+    head: { title: "Overlays - Alepha UI" },
+    lazy: () => import("./pages/blocks/Overlays.tsx"),
+  });
+
+  /**
+   * An overlay route: a sheet over `/blocks/overlays` when a link there
+   * opens it, the full page when its URL is loaded. The keyboard spec checks
+   * both, and that Escape on the sheet goes back with the focus on the link.
+   */
+  overlayPanel = $page({
+    path: "/blocks/overlays/panel",
+    static: true,
+    head: { title: "Panel - Alepha UI" },
+    lazy: () => import("./pages/blocks/OverlayPanelPage.tsx"),
+    overlay: {
+      over: () => [this.blocksOverlays],
+      lazy: () => import("./pages/blocks/OverlayPanelSheet.tsx"),
+    },
   });
 
   blocksToast = $page({

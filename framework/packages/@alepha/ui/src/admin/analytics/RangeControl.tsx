@@ -98,7 +98,7 @@ export const RangeControl = (props: RangeControlProps) => {
       </div>
       <div className="text-muted-foreground flex items-center gap-1.5 font-mono text-[11px]">
         <span>{ends.from}</span>
-        <ArrowRight className="size-[11px]" />
+        <ArrowRight className="size-[11px] rtl:-scale-x-100" />
         <span>{ends.to}</span>
       </div>
     </div>

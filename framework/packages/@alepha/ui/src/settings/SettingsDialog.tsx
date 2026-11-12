@@ -155,7 +155,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   setView("section");
                 }}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2 text-left whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0",
+                  "flex items-center gap-2 rounded-md px-2 text-start whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0",
                   isMobile ? "h-11 text-sm" : "h-8 text-sm",
                   current && !isMobile
                     ? "bg-accent text-accent-foreground font-medium"
@@ -165,7 +165,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 {section.options.icon}
                 <span className="flex-1 truncate">{label(section)}</span>
                 {isMobile && (
-                  <ChevronRight className="text-muted-foreground size-4" />
+                  <ChevronRight className="text-muted-foreground size-4 rtl:-scale-x-100" />
                 )}
               </button>
             );
@@ -198,7 +198,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
             <div
               className={cn(
                 "flex min-h-0 flex-col",
-                isMobile ? "flex-1" : "bg-muted/40 w-56 shrink-0 border-r",
+                isMobile ? "flex-1" : "bg-muted/40 w-56 shrink-0 border-e",
               )}
             >
               {nav}
@@ -228,7 +228,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     })}
                     onClick={() => setView("list")}
                   >
-                    <ChevronLeft />
+                    <ChevronLeft className="rtl:-scale-x-100" />
                   </Button>
                 )}
                 <span

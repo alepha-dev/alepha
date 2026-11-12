@@ -2,7 +2,7 @@ import { AutomationSourceRepository } from "@lore/core/api";
 import { projects, type Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 
 import { epics, type Epic } from "../entities/epics.ts";
 import { feedback, type FeedbackInsert } from "../entities/feedback.ts";
@@ -113,7 +113,9 @@ export class WorkAutomationSources {
         projectId: epic.projectId,
         name: "epic.completed",
         numbers: {
-          quest_count: sql`(SELECT COUNT(*) FROM quests WHERE epic_id = ${id} AND deleted_at IS NULL)`,
+          quest_count: this.quests.subquery({ epicId: id }, undefined, {
+            count: true,
+          }),
         },
         identity: `epic:${id}:completed`,
         resourceId: id,

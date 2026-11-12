@@ -360,6 +360,10 @@ The part names are the same; what a row carried moved to the root:
 | `CommandEmpty` inside `CommandList`     | `CommandEmpty` beside it, before the list                                                                    |
 | `data-selected` on the keyboard row     | `data-highlighted`                                                                                           |
 
+## Accessibility
+
+The kit is built on Base UI and is tested against WCAG 2.2 AA: axe on every component family under jsdom and on every showcase page in Chromium in light, dark and colour-blind mode, keyboard and focus specs on the overlays and the hand-built widgets, and pinned accessibility-tree snapshots. The [accessibility guide](/docs/guides-frontend-accessibility) says, family by family, what each layer covers, what is not tested, the known gaps, and what stays the application's to do.
+
 ## Adding a component
 
 The package owns every file in it: there is no registry to pull from and no

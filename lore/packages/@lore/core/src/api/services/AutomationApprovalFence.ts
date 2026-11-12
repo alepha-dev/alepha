@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
-import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
+import { $repository, DatabaseProvider, sql, type SQLLike } from "alepha/orm";
 
+import { automationVariables } from "../entities/automationVariables.ts";
 import type { AutomationVariableApproval } from "../schemas/automationVariableApprovalSchema.ts";
 
 /**
@@ -9,6 +10,7 @@ import type { AutomationVariableApproval } from "../schemas/automationVariableAp
  */
 export class AutomationApprovalFence {
   protected readonly database = $inject(DatabaseProvider);
+  protected readonly variables = $repository(automationVariables);
   public capture(
     values: Array<{ id?: string; key: string; version: number }>,
   ): AutomationVariableApproval[] {
@@ -28,7 +30,12 @@ export class AutomationApprovalFence {
     return sql.join(
       values.map(
         (value) =>
-          sql`EXISTS (SELECT 1 FROM automation_variables WHERE id = ${value.id} AND project_id = ${projectId} AND key = ${value.key} AND version = ${value.version})`,
+          sql`EXISTS ${this.variables.subquery({
+            id: value.id,
+            projectId,
+            key: value.key,
+            version: value.version,
+          })}`,
       ),
       sql` AND `,
     );

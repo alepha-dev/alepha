@@ -157,11 +157,11 @@ export const DataTableFilterAdd = (props: DataTableFilterAddProps) => {
                 {item.label}
                 {item.type && (
                   // `DropdownMenuShortcut` for its muted colour, its
-                  // `ml-auto` and its highlight-follow on focus. Its
+                  // `ms-auto` and its highlight-follow on focus. Its
                   // `tracking-widest` is for a key chord and makes a word
-                  // look spaced out, so it is put back; `pl-6` keeps the hint
+                  // look spaced out, so it is put back; `ps-6` keeps the hint
                   // clear of the longest label.
-                  <DropdownMenuShortcut className="pl-6 tracking-normal">
+                  <DropdownMenuShortcut className="ps-6 tracking-normal">
                     {typeLabel(item.type)}
                   </DropdownMenuShortcut>
                 )}

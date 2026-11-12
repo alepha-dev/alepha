@@ -78,7 +78,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
         <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
           {statusIcon(v.status)}
         </span>
-        <div className="ml-1 flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="ms-1 flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-sm leading-tight font-semibold capitalize">
             {v.status}
           </span>
@@ -112,12 +112,12 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setJsonOpen(true)}>
-                <Eye className="mr-2 size-4" />
+                <Eye className="me-2 size-4" />
                 {tr("admin.parameters.view", { default: "View" })}
               </DropdownMenuItem>
               {hasPrevious && (
                 <DropdownMenuItem onClick={() => setDiffOpen(true)}>
-                  <GitCompare className="mr-2 size-4" />
+                  <GitCompare className="me-2 size-4" />
                   {tr("admin.parameters.diffWithPrevious", {
                     default: "Diff with previous",
                   })}
@@ -127,7 +127,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => props.onRollback(v.version)}>
-                    <RotateCcw className="mr-2 size-4" />
+                    <RotateCcw className="me-2 size-4" />
                     {tr("admin.parameters.rollback", { default: "Rollback" })}
                   </DropdownMenuItem>
                 </>
@@ -138,8 +138,8 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
         <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
           <ChevronRight
             className={cn(
-              "size-4 transition-transform duration-200",
-              open && "rotate-90",
+              "size-4 transition-transform duration-200 rtl:-scale-x-100",
+              open && "rotate-90 rtl:-rotate-90",
             )}
           />
         </span>

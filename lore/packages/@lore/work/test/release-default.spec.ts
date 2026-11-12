@@ -4,7 +4,7 @@ import { AuditService } from "alepha/api/audits";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { $repository, AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm, sql } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
@@ -320,6 +320,36 @@ describe("ReleaseController: the default release", () => {
 
     expect(swapped).toBe(false);
     expect(await defaultTags(ctx, user, project.id)).toEqual(["0.28.0"]);
+  });
+
+  /**
+   * `defaultSince` is an INTEGER column on SQLite. The swap writes it from a
+   * CASE, outside the ORM's own encoding, and once bound the raw ISO string
+   * there: SQLite stored it as TEXT, which reads back as the same date and
+   * sorts ahead of every integer.
+   */
+  it("stores the swapped defaultSince as an integer on SQLite", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const first = await createRelease(ctx, user, project.id, "0.28.0");
+    const second = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, first.id);
+    await setDefault(ctx, user, project.id, second.id);
+
+    const rows = await ctx.probe.releases.provider.execute(
+      sql`SELECT id, typeof(default_since) AS type FROM releases WHERE project_id = ${project.id} ORDER BY id`,
+    );
+
+    expect(rows).toEqual([
+      { id: first.id, type: "null" },
+      { id: second.id, type: "integer" },
+    ]);
+    const stored = await ctx.probe.releases.findById(second.id);
+    expect(Number.isNaN(new Date(stored?.defaultSince ?? "").getTime())).toBe(
+      false,
+    );
   });
 
   it("refuses a published release with the reopen-it-first wording", async ({

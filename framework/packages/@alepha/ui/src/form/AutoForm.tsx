@@ -483,7 +483,7 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
               )}
             </div>
             {props.headerAction && (
-              <div className="ml-auto">{props.headerAction}</div>
+              <div className="ms-auto">{props.headerAction}</div>
             )}
           </div>
         )}

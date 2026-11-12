@@ -68,7 +68,7 @@ export const TreeViewResizer = (props: TreeViewResizerProps): ReactElement => {
       onPointerUp={end}
       onPointerCancel={end}
       onDoubleClick={() => props.onWidth(defaultWidth)}
-      className="hover:bg-primary/40 active:bg-primary/60 -ml-[2px] w-[5px] flex-none cursor-col-resize transition-colors"
+      className="hover:bg-primary/40 active:bg-primary/60 -ms-[2px] w-[5px] flex-none cursor-col-resize transition-colors"
     />
   );
 };

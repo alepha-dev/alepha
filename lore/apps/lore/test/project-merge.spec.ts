@@ -1,4 +1,8 @@
-import { ProjectMergeController, ProjectMergeService } from "@lore/core/api";
+import {
+  AutomationPersistence,
+  ProjectMergeController,
+  ProjectMergeService,
+} from "@lore/core/api";
 import { appInstances, qualityRuns, sigils } from "@lore/deploy/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
@@ -66,6 +70,7 @@ const setup = async (): Promise<TestContext> => {
   bootLore(alepha);
   const probe = alepha.inject(Probe);
   const repos = alepha.inject(TestEntityRepositories);
+  alepha.inject(AutomationPersistence);
   await alepha.start();
   return {
     alepha,
@@ -201,6 +206,44 @@ describe("ProjectMergeService across every module", () => {
     expect(changed).toContainEqual(
       expect.objectContaining({ kind: "capability", from: "work" }),
     );
+  });
+
+  it("moves a soft-deleted automation with the rest of the source", async ({
+    expect,
+  }) => {
+    const target = await createTestProject(ctx.alepha);
+    const source = await createTestProject(ctx.alepha);
+    const rules = ctx.alepha.inject(AutomationPersistence).rules;
+    const rule = await rules.create({
+      projectId: source.id,
+      authorUserId: source.createdBy,
+      title: "Gone",
+      rule: {
+        version: 1,
+        trigger: { kind: "event", event: "quest.completed" },
+        select: null,
+        guard: null,
+        actions: [
+          {
+            kind: "notify",
+            recipient: source.createdBy,
+            channel: "inbox",
+            title: "Automation",
+            text: "{{title}}",
+            category: "automations",
+          },
+        ],
+      },
+    });
+    await rules.deleteById(rule.id);
+
+    const plan = await ctx.merge.merge(source.id, target.id);
+
+    const core = plan.steps.find((step) => step.name === "core")!;
+    expect(core.moved.automations).toBe(1);
+    const moved = await rules.findById(rule.id, { force: true });
+    expect(moved?.projectId).toBe(target.id);
+    expect(moved?.deletedAt).not.toBeNull();
   });
 
   it("adds the source's members to the target, never as owner", async ({

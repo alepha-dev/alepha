@@ -152,6 +152,17 @@ export const AuthLogin = (props: AuthLoginProps) => {
     await router.push(safeRedirect(router.query.redirect), { force: true });
   };
 
+  // One wording for a refused passkey, whichever ceremony reported it: the
+  // button's or the identifier's autofill, which can settle first.
+  const passkeyErrorMessage = (err: unknown): string =>
+    isHttpError(err, 401)
+      ? tr("auth.login.passkeyInvalid", {
+          default: "That passkey could not sign you in.",
+        })
+      : err instanceof Error
+        ? err.message
+        : String(err);
+
   const signInWithPasskey = async () => {
     // Two concurrent `get` calls throw: the autofill one goes first.
     autofillRef.current?.abort();
@@ -170,15 +181,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
         setChallenge(err.data);
         return;
       }
-      setPasskeyError(
-        isHttpError(err, 401)
-          ? tr("auth.login.passkeyInvalid", {
-              default: "That passkey could not sign you in.",
-            })
-          : err instanceof Error
-            ? err.message
-            : String(err),
-      );
+      setPasskeyError(passkeyErrorMessage(err));
     } finally {
       setPasskeyBusy(false);
     }
@@ -370,7 +373,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
                 }}
                 generation={autofillGeneration}
                 onSignedIn={afterPasskey}
-                onError={(err) => setPasskeyError(err.message)}
+                onError={(err) => setPasskeyError(passkeyErrorMessage(err))}
               />
               <Button
                 type="button"
@@ -431,7 +434,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
               })}{" "}
               <a
                 href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
-                className="text-foreground underline-offset-4 hover:underline"
+                className="text-foreground underline underline-offset-4"
               >
                 {tr("auth.login.signUp", { default: "Sign up" })}
               </a>

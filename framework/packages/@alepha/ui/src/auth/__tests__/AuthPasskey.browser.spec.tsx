@@ -6,7 +6,7 @@ import { AlephaReactAuth, PasskeyClient, ReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { AlephaServerLinks } from "alepha/server/links";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { MemoryPasskeyClient } from "alepha/testing/webauthn";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -94,6 +94,8 @@ describe("AuthLogin and AuthMfaStep - passkeys", () => {
 
     expect(screen.getByText("Sign in with a passkey")).toBeTruthy();
     expect(identifierHint()).toBe("email webauthn");
+    // axe: the login form with its passkey button (#Q3338).
+    await expectAccessible();
   });
 
   it("starts the autofill ceremony on mount and aborts it on unmount", async () => {

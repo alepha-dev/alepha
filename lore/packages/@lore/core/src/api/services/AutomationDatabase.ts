@@ -1,8 +1,10 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
-
-import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
-import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
+import {
+  DatabaseProvider,
+  SqlExpressionProvider,
+  sql,
+  type SQLLike,
+} from "alepha/orm";
 
 /**
  * Bounded internal statements only. There is no public SQL or callback
@@ -11,6 +13,7 @@ import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.
 export class AutomationDatabase {
   protected readonly alepha = $inject(Alepha);
   protected readonly database = $inject(DatabaseProvider);
+  protected readonly sqlx = $inject(SqlExpressionProvider);
 
   public primary<T>(handler: () => T): T {
     return this.alepha.context.nest(() => {
@@ -49,10 +52,7 @@ export class AutomationDatabase {
         typeof expression === "string"
           ? sql.raw(expression)
           : expression.getSQL();
-      value =
-        this.database.dialect === "sqlite"
-          ? sql`json_set(${value}, ${`$.fields.${name}`}, ${query})`
-          : sql`jsonb_set((${value})::jsonb, ${`{fields,${name}}`}, COALESCE(to_jsonb(${query}), 'null'::jsonb))`;
+      value = this.sqlx.jsonSet(value, ["fields", name], query);
     }
     return value;
   }
@@ -79,10 +79,7 @@ export class AutomationDatabase {
         typeof expression === "string"
           ? sql.raw(expression)
           : expression.getSQL();
-      value =
-        this.database.dialect === "sqlite"
-          ? sql`json_set(${value}, ${`$.${name}`}, ${query})`
-          : sql`jsonb_set((${value})::jsonb, ${`{${name}}`}, COALESCE(to_jsonb(${query}), 'null'::jsonb))`;
+      value = this.sqlx.jsonSet(value, [name], query);
     }
     return value;
   }
@@ -96,21 +93,9 @@ export class AutomationDatabase {
       );
     return this.primary(async () => {
       try {
-        if (
-          this.database instanceof AutomationD1Provider ||
-          this.database instanceof AutomationSqliteProvider
-        )
-          return await this.database.atomicBatch(statements);
-        if (!this.database.supportsTransactions)
-          throw new AlephaError(
-            "This database has no automation atomic-batch implementation",
-          );
-        return await this.database.transactional(async () => {
-          const result: Array<Record<string, unknown>[]> = [];
-          for (const statement of statements)
-            result.push(await this.database.execute(statement));
-          return result;
-        });
+        // The 1 to 100 bound is the automation engine's own: one unit of
+        // work per claim. `atomicBatch` itself takes any length.
+        return await this.database.atomicBatch(statements);
       } catch {
         // Driver exceptions may contain bound values. The caller sees a safe
         // boundary failure; recovery inspects durable receipts on the primary.

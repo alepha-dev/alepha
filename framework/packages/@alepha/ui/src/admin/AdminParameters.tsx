@@ -320,12 +320,12 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
         // that the panes stack, the history sits under the form and frees no
         // width by closing, so it stays open there whatever was stored.
         <PaneRail
-          side="right"
+          side="end"
           label={tr("admin.parameters.historyExpand", {
             default: "Show history",
           })}
           onExpand={toggleHistory}
-          className="bg-card hidden rounded-r-lg border lg:flex"
+          className="bg-card hidden rounded-e-lg border lg:flex"
         />
       )}
       {selected && (

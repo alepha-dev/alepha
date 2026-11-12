@@ -9,8 +9,8 @@ import { epics } from "../entities/epics.ts";
  * The backlog gate (`EpicVisibilityService`) is about the project's OWN
  * lists, not about the epic's view of itself: an epic reporting 0/13 is
  * telling the truth, one reporting 0/0 because its own quests are hidden
- * from it is not. `EpicController` never calls `applyBacklogGate` /
- * `draftEpicSqlPredicate` when building this rollup.
+ * from it is not. `EpicController` never calls `applyBacklogGate` when
+ * building this rollup.
  *
  * `questCount` restates `progress.total` as a bare number, for callers
  * that only want a headline count without unpacking the completed/total

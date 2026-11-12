@@ -27,7 +27,10 @@ export const AnalyticsChartBars = (props: AnalyticsChartBarsProps) => {
   const dense = props.points.length > 120;
 
   return (
+    // `dir="ltr"`: time runs left to right in either reading direction, as
+    // the SVG line (which no direction mirrors) and the ticks draw it.
     <div
+      dir="ltr"
       className={cn(
         "border-border flex h-[208px] items-end overflow-hidden border-b px-0.5",
         dense ? "gap-px" : "gap-[3px]",

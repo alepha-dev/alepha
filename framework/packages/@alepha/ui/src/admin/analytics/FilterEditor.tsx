@@ -66,7 +66,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
         {props.filters.map((filter) => (
           <span
             key={filter.dim}
-            className="border-primary bg-primary/15 inline-flex h-[26px] items-center gap-1.5 rounded-md border py-0 pr-1 pl-[9px] whitespace-nowrap"
+            className="border-primary bg-primary/15 inline-flex h-[26px] items-center gap-1.5 rounded-md border py-0 ps-[9px] pe-1 whitespace-nowrap"
           >
             <code className="text-[11.5px]">
               {analyticsFilterLabel(filter)}
@@ -131,7 +131,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
                       onClick={() => setEditing(dim)}
                       className="hover:bg-hover focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-md px-2 py-[7px] focus-visible:ring-[3px] focus-visible:outline-none"
                     >
-                      <code className="min-w-0 flex-1 text-left text-[12px]">
+                      <code className="min-w-0 flex-1 text-start text-[12px]">
                         {dim}
                       </code>
                       <span className="text-muted-foreground text-[11px] tabular-nums">

@@ -151,6 +151,9 @@ const DatePage = () => {
                   disabled={v.disabled}
                   clearLabel="Any status"
                   triggerClassName="w-40"
+                  // A filter row draws no label, so the trigger needs its own
+                  // name: with none, axe reports a nameless button.
+                  inputProps={{ "aria-label": "Status" }}
                 />
               </div>
             </Group>

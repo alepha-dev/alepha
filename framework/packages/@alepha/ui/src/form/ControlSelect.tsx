@@ -453,6 +453,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
     >
       <ControlSelectCombobox
         id={meta.id}
+        label={meta.label}
         data={data}
         loading={loading}
         multi={isArray}

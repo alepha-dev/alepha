@@ -37,6 +37,12 @@ import type { IconComponent } from "./iconHint.tsx";
 
 export interface ControlSelectComboboxProps {
   id?: string;
+  /**
+   * The field's label, which names the popup's listbox: the label element
+   * names the trigger only, and a listbox with no name fails WCAG 4.1.2
+   * (axe `aria-input-field-name`) whenever the popup has no search input.
+   */
+  label?: string;
   data: SelectOption[];
   loading: boolean;
   multi: boolean;
@@ -337,16 +343,16 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
           ? ""
           : tr("controlSelect.noResults", { default: "No results." })}
       </ComboboxEmpty>
-      <ComboboxList>
+      <ComboboxList aria-label={props.label || undefined}>
         {(opt: ComboOption) =>
           opt.selectAll ? (
             <ComboboxItem key="__select_all__" value={opt}>
-              <ListChecks className="mr-2 size-4 shrink-0" />
+              <ListChecks className="me-2 size-4 shrink-0" />
               <span className="truncate font-medium">{opt.label}</span>
             </ComboboxItem>
           ) : opt.create ? (
             <ComboboxItem key={`__create__${opt.value}`} value={opt}>
-              <span className="mr-2">+</span>
+              <span className="me-2">+</span>
               {tr("controlSelect.create", {
                 default: `Create "${opt.query}"`,
                 args: [String(opt.query ?? "")],
@@ -355,7 +361,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
           ) : (
             <ComboboxItem key={opt.value} value={opt} disabled={opt.disabled}>
               {opt.icon && (
-                <span className="mr-2 flex shrink-0 items-center">
+                <span className="me-2 flex shrink-0 items-center">
                   {opt.icon}
                 </span>
               )}
@@ -405,6 +411,9 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       // opening the popup still starts with no preselection.
       autoHighlight
       onInputValueChange={(v) => {
+        // The keyboard-only input of a list with no search field: typing
+        // there is not a search.
+        if (!props.searchable) return;
         setQuery(v);
         props.onSearch?.(v);
       }}
@@ -506,8 +515,23 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       )}
       <ComboboxContent className={props.popupClassName}>
         {props.popupHeader}
-        {props.searchable && (
+        {props.searchable ? (
           <ComboboxInput showTrigger={false} placeholder="Search…" />
+        ) : (
+          /*
+            Base UI's combobox moves through its list from its INPUT only:
+            the trigger opens the popup and hands the focus to the input, and
+            with no input the focus landed on the popup itself, where the
+            arrow keys did nothing. A keyboard user could open the list and
+            never pick from it. So a list with no search field still gets an
+            input, visually hidden, to carry the keyboard; what it types is
+            ignored above, so it never filters a list nobody can see filtered.
+          */
+          <ComboboxInput
+            showTrigger={false}
+            className="sr-only"
+            aria-label={props.label || undefined}
+          />
         )}
         {popupBody}
       </ComboboxContent>

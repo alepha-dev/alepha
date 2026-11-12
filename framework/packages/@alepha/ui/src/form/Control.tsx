@@ -833,7 +833,7 @@ export const Control = (props: ControlProps) => {
     >
       <div className="relative">
         {Icon && (
-          <Icon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Icon className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2" />
         )}
         <Input
           autoCapitalize={verbatim ? "none" : undefined}
@@ -871,9 +871,9 @@ export const Control = (props: ControlProps) => {
             // Below `sm` the row stacks, and `w-full` from `<Input>` is right.
             rowLayout && "sm:w-64",
             merged.inputProps?.className,
-            Icon && "pl-9",
-            reserveGutter && "pr-9",
-            showClear && "focus:pr-9",
+            Icon && "ps-9",
+            reserveGutter && "pe-9",
+            showClear && "focus:pe-9",
           )}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -902,7 +902,7 @@ export const Control = (props: ControlProps) => {
             type="button"
             onClick={() => props.input.form.submit()}
             aria-label="Save"
-            className="text-primary hover:text-primary/80 absolute top-1/2 right-2 -translate-y-1/2 p-1"
+            className="text-primary hover:text-primary/80 absolute end-2 top-1/2 -translate-y-1/2 p-1"
           >
             <Check className="size-3.5" />
           </button>
@@ -919,13 +919,13 @@ export const Control = (props: ControlProps) => {
             // would have matched nothing. Purely an identification hook: no
             // style and no behaviour rides on it here.
             data-slot="control-clear"
-            // Over the value, inside the border (`inset-y-px right-px`), on a
+            // Over the value, inside the border (`inset-y-px end-px`), on a
             // fade into the surface behind the field (`--surface`, which any
             // element painting a surface token declares, see `styles.css`).
             // In dark the input carries its own
             // `bg-input/30` tint, so the fade stacks that tint over the
             // surface to match it exactly.
-            className="text-muted-foreground hover:text-foreground absolute inset-y-px right-px flex items-center rounded-r-[calc(var(--radius-lg)-1px)] bg-[linear-gradient(to_right,transparent,var(--surface)_1.25rem)] pr-2.5 pl-6 dark:bg-[linear-gradient(to_right,transparent,color-mix(in_oklab,var(--input)_30%,transparent)_1.25rem),linear-gradient(to_right,transparent,var(--surface)_1.25rem)]"
+            className="text-muted-foreground hover:text-foreground absolute inset-y-px end-px flex items-center rounded-e-[calc(var(--radius-lg)-1px)] bg-[linear-gradient(to_right,transparent,var(--surface)_1.25rem)] ps-6 pe-2.5 dark:bg-[linear-gradient(to_right,transparent,color-mix(in_oklab,var(--input)_30%,transparent)_1.25rem),linear-gradient(to_right,transparent,var(--surface)_1.25rem)]"
           >
             <X className="size-3.5" />
           </button>
@@ -933,7 +933,7 @@ export const Control = (props: ControlProps) => {
         {showTrailing && (
           <span
             data-slot="control-trailing"
-            className="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 items-center"
+            className="pointer-events-none absolute end-3 top-1/2 flex -translate-y-1/2 items-center"
           >
             {merged.trailing}
           </span>

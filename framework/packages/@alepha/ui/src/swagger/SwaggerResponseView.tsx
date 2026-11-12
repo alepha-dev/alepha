@@ -49,7 +49,7 @@ export const SwaggerResponseView = (props: SwaggerResponseViewProps) => {
           {result.status}
         </Badge>
         <span>{result.statusText}</span>
-        <span className="text-muted-foreground ml-auto font-mono text-xs">
+        <span className="text-muted-foreground ms-auto font-mono text-xs">
           {result.durationMs} ms · {bytes} B
         </span>
         {!result.done && <Spinner className="size-3.5" />}
@@ -57,11 +57,11 @@ export const SwaggerResponseView = (props: SwaggerResponseViewProps) => {
 
       <details className="group/headers">
         <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1 text-xs [&::-webkit-details-marker]:hidden">
-          <ChevronRight className="size-3.5 transition-transform group-open/headers:rotate-90" />
+          <ChevronRight className="size-3.5 transition-transform group-open/headers:rotate-90 rtl:-scale-x-100 rtl:group-open/headers:-rotate-90" />
           {tr("swagger.response.headers", { default: "Headers" })} (
           {result.headers.length})
         </summary>
-        <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 pl-5 font-mono text-xs">
+        <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 ps-5 font-mono text-xs">
           {result.headers.map(([name, value]) => (
             <div key={name} className="contents">
               <dt className="text-muted-foreground">{name}</dt>

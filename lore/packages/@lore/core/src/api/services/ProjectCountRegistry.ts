@@ -74,7 +74,11 @@ export class ProjectCountRegistry {
         // The id list is bound once, as a `VALUES` table every branch reads,
         // rather than as an `IN (...)` per branch: D1 caps a statement at 100
         // bound parameters. `CAST` because a bare `VALUES` parameter has no
-        // type of its own to compare against an integer column.
+        // type of its own to compare against an integer column, and the
+        // `kind` literal is cast for the same reason: Postgres types an
+        // untyped select-list parameter in a `UNION` only from its peers.
+        // Each branch's subquery is aliased, which Postgres before 16
+        // requires of a subquery in `FROM`.
         const ids = sql.join(
           projectIds.map((id) => sql`(CAST(${id} AS INTEGER))`),
           sql`, `,
@@ -85,7 +89,7 @@ export class ProjectCountRegistry {
             ${sql.join(
               selects.map(
                 (provider) =>
-                  sql`SELECT ${provider.key} AS kind, project_id, n FROM (${provider.select!()})`,
+                  sql`SELECT CAST(${provider.key} AS TEXT) AS kind, project_id, n FROM (${provider.select!()}) AS counted`,
               ),
               sql` UNION ALL `,
             )}

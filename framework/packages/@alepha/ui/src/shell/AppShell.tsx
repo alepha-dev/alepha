@@ -17,6 +17,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../core/Breadcrumb.tsx";
+import { DirectionProvider } from "../core/DirectionProvider.tsx";
 import { Separator } from "../core/Separator.tsx";
 import {
   Sidebar,
@@ -158,8 +159,9 @@ export interface AppShellProps {
   actionErrorToaster?: boolean | ActionErrorToasterProps;
   /**
    * When `true`, the shell assumes it is mounted inside an outer provider tree
-   * and skips its own `<DialogProvider>` and `<Toaster />` wrappers. Use this
-   * when a parent layout already provides them.
+   * and skips its own `<DirectionProvider>`, `<DialogProvider>` and
+   * `<Toaster />` wrappers. Use this when a parent layout already provides
+   * them.
    */
   embedded?: boolean;
   /**
@@ -395,16 +397,18 @@ export const AppShell = (props: AppShellProps) => {
   const errorToaster = props.actionErrorToaster ?? true;
 
   return (
-    <DialogProvider>
-      <TooltipProvider>
-        {renderBody()}
-        <Toaster />
-        {errorToaster !== false && (
-          <ActionErrorToaster
-            {...(typeof errorToaster === "object" ? errorToaster : {})}
-          />
-        )}
-      </TooltipProvider>
-    </DialogProvider>
+    <DirectionProvider>
+      <DialogProvider>
+        <TooltipProvider>
+          {renderBody()}
+          <Toaster />
+          {errorToaster !== false && (
+            <ActionErrorToaster
+              {...(typeof errorToaster === "object" ? errorToaster : {})}
+            />
+          )}
+        </TooltipProvider>
+      </DialogProvider>
+    </DirectionProvider>
   );
 };

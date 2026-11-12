@@ -76,7 +76,15 @@ export const PlateLayout = (props: PlateLayoutProps) => (
     {props.scroll === false ? (
       props.children
     ) : (
-      <div className="min-h-0 flex-1 overflow-y-auto">{props.children}</div>
+      // Focusable, so a keyboard can scroll it when nothing inside it takes
+      // focus (axe `scrollable-region-focusable`, WCAG 2.1.1).
+      <div
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll region must take focus for the keyboard to scroll it (WCAG 2.1.1); the lint rule does not know scroll containers
+        tabIndex={0}
+        className="focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
+      >
+        {props.children}
+      </div>
     )}
   </div>
 );

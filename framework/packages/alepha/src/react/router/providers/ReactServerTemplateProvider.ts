@@ -1,7 +1,8 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
-import type { SimpleHead } from "alepha/react/head";
+import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
+import { ServerHelmetProvider } from "alepha/server";
 import { createElement, type ReactNode } from "react";
 
 import ErrorViewer from "../components/ErrorViewer.tsx";
@@ -22,6 +23,34 @@ export class ReactServerTemplateProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly reactDomServer = $inject(ReactDomServerProvider);
   protected readonly deferred = $inject(ReactDeferred);
+  protected readonly helmet = $inject(ServerHelmetProvider);
+  protected readonly serverHead = $inject(ServerHeadProvider);
+
+  /**
+   * The CSP nonce of the page being rendered, when it has one.
+   */
+  protected nonce(): string | undefined {
+    return this.alepha.store.getUntracked("alepha.react.router.nonce");
+  }
+
+  /**
+   * ` nonce="..."` for an inline script no hash covers, on a rendered page
+   * with a nonce; nothing otherwise. A script registered by its hash (a
+   * literal global `$head`) is written bare, so its bytes stay cacheable.
+   */
+  protected nonceAttribute(
+    script: NonNullable<SimpleHead["script"]>[number],
+  ): string {
+    const nonce = this.nonce();
+    if (!nonce) {
+      return "";
+    }
+    const content = this.serverHead.executableInlineContent(script);
+    if (!content || this.helmet.isCspScriptHashed(content)) {
+      return "";
+    }
+    return ` nonce="${nonce}"`;
+  }
 
   /**
    * What React is told to write as its bootstrap script on a page with a
@@ -34,6 +63,14 @@ export class ReactServerTemplateProvider {
    * Shared TextEncoder - reused across all requests.
    */
   protected readonly encoder = new TextEncoder();
+
+  /**
+   * The body of the boot signal a streamed page with a deferred value writes
+   * right after its payload. Constant, so the CSP allows it by its hash
+   * (`ReactServerProvider` registers it with `ServerHelmetProvider`).
+   */
+  public readonly bootSignalScript =
+    'self.__alephaBoot=1;document.dispatchEvent(new Event("alepha:boot"))';
 
   /**
    * Pre-encoded static HTML parts for zero-copy streaming.
@@ -57,7 +94,7 @@ export class ReactServerTemplateProvider {
       '<script id="__ssr_private" type="application/json">',
     ),
     BOOT_SIGNAL: this.encoder.encode(
-      '<script>self.__alephaBoot=1;document.dispatchEvent(new Event("alepha:boot"))</script>',
+      `<script>${this.bootSignalScript}</script>`,
     ),
   } as const;
 
@@ -235,6 +272,8 @@ export class ReactServerTemplateProvider {
         if (link.sizes) content += ` sizes="${this.escapeHtml(link.sizes)}"`;
         if (link.hreflang)
           content += ` hreflang="${this.escapeHtml(link.hreflang)}"`;
+        if (link.integrity)
+          content += ` integrity="${this.escapeHtml(link.integrity)}"`;
         content += ">\n";
       }
     }
@@ -242,7 +281,7 @@ export class ReactServerTemplateProvider {
     if (head.script) {
       for (const script of head.script) {
         if (typeof script === "string") {
-          content += `<script>${script}</script>\n`;
+          content += `<script${this.nonceAttribute(script)}>${script}</script>\n`;
         } else {
           const { content: scriptContent, ...rest } = script;
           const attrs = Object.entries(rest)
@@ -251,8 +290,9 @@ export class ReactServerTemplateProvider {
               v === true ? k : `${k}="${this.escapeHtml(String(v))}"`,
             )
             .join(" ");
+          const nonce = this.nonceAttribute(script);
           content += scriptContent
-            ? `<script ${attrs}>${scriptContent}</script>\n`
+            ? `<script ${attrs}${nonce}>${scriptContent}</script>\n`
             : `<script ${attrs}></script>\n`;
         }
       }
@@ -335,10 +375,16 @@ export class ReactServerTemplateProvider {
    */
   public renderPrivateScript(): string {
     const data = this.buildPrivateData();
-    if (Object.keys(data).length === 0) {
+    // On a page with a CSP nonce the element is written even when empty: it
+    // is how the browser learns the nonce (`BrowserHeadProvider` reads
+    // `script[nonce]`) to allow the head scripts of a later navigation. It is
+    // never shared bytes, so the nonce stays out of the page cache.
+    const nonce = this.nonce();
+    if (Object.keys(data).length === 0 && !nonce) {
       return "";
     }
-    return `<script id="__ssr_private" type="application/json">${this.safeJsonSerialize(data)}</script>`;
+    const attribute = nonce ? ` nonce="${nonce}"` : "";
+    return `<script id="__ssr_private" type="application/json"${attribute}>${this.safeJsonSerialize(data)}</script>`;
   }
 
   // ---------------------------------------------------------------------------
@@ -410,7 +456,13 @@ export class ReactServerTemplateProvider {
     // React writes the tag with an id of its own, so the match starts at the
     // last `<script` before the marker.
     const marker = `${this.shellMarker}</script>`;
-    const longest = marker.length + '<script id="_R_">'.length;
+    // With a CSP nonce React writes ` nonce="..."` into that tag as well:
+    // held back too short, a tag cut between two chunks is flushed in half.
+    const nonce = this.nonce();
+    const longest =
+      marker.length +
+      '<script id="_R_">'.length +
+      (nonce ? ` nonce="${nonce}"`.length : 0);
     let held = new Uint8Array();
     let found = false;
 

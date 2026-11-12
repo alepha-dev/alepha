@@ -57,6 +57,8 @@ const DialogContent = (props: DialogContentProps) => {
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
+          // `left-1/2` with `-translate-x-1/2` is physical on purpose: centring
+          // lands on the same point in either reading direction.
           "bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl p-4 text-sm ring-1 duration-100 outline-none sm:max-w-sm",
           className,
         )}
@@ -69,7 +71,7 @@ const DialogContent = (props: DialogContentProps) => {
             render={
               <Button
                 variant="minimal"
-                className="absolute top-2 right-2"
+                className="absolute end-2 top-2"
                 size="icon-sm"
               />
             }

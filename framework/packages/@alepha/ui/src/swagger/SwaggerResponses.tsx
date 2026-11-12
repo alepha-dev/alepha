@@ -36,7 +36,7 @@ export const SwaggerResponses = (props: SwaggerResponsesProps) => {
             {content.map(([type]) => (
               <span
                 key={type}
-                className="text-muted-foreground ml-auto font-mono text-xs"
+                className="text-muted-foreground ms-auto font-mono text-xs"
               >
                 {type}
               </span>
@@ -45,7 +45,7 @@ export const SwaggerResponses = (props: SwaggerResponsesProps) => {
         );
         if (!content.some(([, media]) => media?.schema)) {
           return (
-            <div key={status} className="pl-5">
+            <div key={status} className="ps-5">
               {head}
             </div>
           );
@@ -53,7 +53,7 @@ export const SwaggerResponses = (props: SwaggerResponsesProps) => {
         return (
           <details key={status} className="group/response">
             <summary className="hover:bg-hover flex cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="text-muted-foreground ml-1.5 size-3.5 shrink-0 transition-transform group-open/response:rotate-90" />
+              <ChevronRight className="text-muted-foreground ms-1.5 size-3.5 shrink-0 transition-transform group-open/response:rotate-90 rtl:-scale-x-100 rtl:group-open/response:-rotate-90" />
               <span className="min-w-0 flex-1">{head}</span>
             </summary>
             <div className="flex flex-col gap-3 px-4 pb-3">

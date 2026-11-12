@@ -181,6 +181,15 @@ export class DefaultReleaseService {
     }
 
     const t = this.releases.table;
+    // `now` is encoded the way the column stores it, since the CASE is
+    // outside the ORM's encoding: SQLite's datetime column is INTEGER epoch
+    // milliseconds, and a raw ISO string bound there is stored as TEXT.
+    // Postgres resolves an untyped CASE branch to text, which a timestamptz
+    // column refuses, so it gets an explicit cast there.
+    const since =
+      this.releases.provider.dialect === "sqlite"
+        ? new Date(now).getTime()
+        : sql`CAST(${now} AS timestamptz)`;
     const ids = await this.releases.updateMany(
       {
         projectId: { eq: projectId },
@@ -192,7 +201,7 @@ export class DefaultReleaseService {
         }),
       },
       {
-        defaultSince: sql`CASE WHEN ${t.id} = ${releaseId} THEN ${now} ELSE NULL END`,
+        defaultSince: sql`CASE WHEN ${t.id} = ${releaseId} THEN ${since} ELSE NULL END`,
       },
       { touch: false },
     );

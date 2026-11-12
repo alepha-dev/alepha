@@ -9,6 +9,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { AlephaReactI18n } from "alepha/react/i18n";
+import { expectAccessible } from "alepha/testing/react";
 import { type ReactNode, useState } from "react";
 import { describe, it } from "vitest";
 
@@ -89,6 +90,8 @@ describe("Control and FormModel.errors", () => {
   it("shows every issue of one failed submit at once", async ({ expect }) => {
     const alepha = await setup();
     const ui = mount(alepha, <Probe />);
+    // axe, default state (#Q3338).
+    await expectAccessible();
 
     fireEvent.change(document.getElementById("f-title")!, {
       target: { value: "x" },
@@ -104,6 +107,8 @@ describe("Control and FormModel.errors", () => {
     });
     expect(messageOf("f-title")).not.toBe("");
     expect(messageOf("f-email")).not.toBe("");
+    // axe, two fields in error: the message wired to each field (#Q3338).
+    await expectAccessible();
 
     await alepha.stop();
   });

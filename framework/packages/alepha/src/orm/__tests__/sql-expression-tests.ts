@@ -141,3 +141,117 @@ export const testAgo = async (alepha: Alepha) => {
   expect(within[0].n).toBe(1);
   expect(outside[0].n).toBe(0);
 };
+
+/**
+ * `greatest` / `least` pick across values and columns, the same on both
+ * dialects: SQLite's scalar `MAX`/`MIN`, Postgres `GREATEST`/`LEAST`.
+ */
+export const testGreatestLeast = async (alepha: Alepha) => {
+  const app = alepha.inject(SqlxFixture);
+  await alepha.start();
+
+  const [row] = await app.database.run(
+    sql`SELECT ${app.sqlx.greatest(3, 7, 5)} AS high, ${app.sqlx.least(3, 7, 5)} AS low`,
+    z.object({ high: z.coerce.number(), low: z.coerce.number() }),
+  );
+  expect(row).toEqual({ high: 7, low: 3 });
+
+  await app.events.createMany([
+    {
+      id: "a",
+      startedAt: "2026-03-01T00:00:00.000Z",
+      endedAt: "2026-03-05T00:00:00.000Z",
+    },
+    {
+      id: "b",
+      startedAt: "2026-03-09T00:00:00.000Z",
+      endedAt: "2026-03-02T00:00:00.000Z",
+    },
+  ]);
+  const t = app.events.table;
+  const rows = await app.database.run(
+    sql`SELECT ${t.id} AS id, ${app.sqlx.greatest(t.startedAt, t.endedAt)} = ${t.startedAt} AS starts FROM ${t} ORDER BY ${t.id}`,
+    z.object({ id: z.text(), starts: z.coerce.boolean() }),
+  );
+  expect(rows.map((it) => [it.id, it.starts])).toEqual([
+    ["a", false],
+    ["b", true],
+  ]);
+};
+
+export const sqlxDocs = $entity({
+  name: "sqlx_docs",
+  schema: z.object({
+    id: db.primaryKey(z.text()),
+    history: z.array(z.object({ action: z.text() })),
+  }),
+});
+
+class SqlxJsonFixture {
+  readonly docs = $repository(sqlxDocs);
+  readonly events = $repository(sqlxEvents);
+  readonly database = $inject(DatabaseProvider);
+  readonly sqlx = $inject(SqlExpressionProvider);
+}
+
+/**
+ * `jsonSet` stores an expression as the scalar it evaluates to and a plain
+ * value as its JSON; `jsonArrayAppend` keeps an appended object an object.
+ */
+export const testJsonHelpers = async (alepha: Alepha) => {
+  const app = alepha.inject(SqlxJsonFixture);
+  await alepha.start();
+  await app.events.createMany([
+    { id: "e1", startedAt: "2026-03-01T00:00:00.000Z" },
+    { id: "e2", startedAt: "2026-03-02T00:00:00.000Z" },
+  ]);
+
+  const counted = app.sqlx.jsonSet(
+    app.sqlx.jsonSet(
+      sql`${JSON.stringify({ fields: { kept: 1 } })}`,
+      ["fields", "total"],
+      sql`(SELECT COUNT(*) FROM ${app.events.table})`,
+    ),
+    ["fields", "label"],
+    { nested: ["a"] },
+  );
+  const [row] = await app.database.run(
+    sql`SELECT ${counted} AS payload`,
+    z.object({ payload: z.any() }),
+  );
+  const payload =
+    typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
+  expect(payload).toEqual({
+    fields: { kept: 1, total: 2, label: { nested: ["a"] } },
+  });
+  expect(() => app.sqlx.jsonSet(sql`'{}'`, ["a.b"], 1)).toThrow(/JSON path/);
+
+  // Over a real JSON array value. (A stored Postgres jsonb column is not
+  // used here: the ORM's jsonb type stores a string scalar today, which no
+  // JSON function can append to.)
+  const array =
+    app.database.dialect === "sqlite"
+      ? sql`${JSON.stringify([{ action: "created" }])}`
+      : sql`CAST(CAST(${JSON.stringify([{ action: "created" }])} AS text) AS jsonb)`;
+  const [appended] = await app.database.run(
+    sql`SELECT ${app.sqlx.jsonArrayAppend(array, { action: "pinged" })} AS history`,
+    z.object({ history: z.any() }),
+  );
+  const history =
+    typeof appended.history === "string"
+      ? JSON.parse(appended.history)
+      : appended.history;
+  expect(history).toEqual([{ action: "created" }, { action: "pinged" }]);
+
+  // And through an update of a stored array, on SQLite.
+  if (app.database.dialect === "sqlite") {
+    await app.docs.create({ id: "d1", history: [{ action: "created" }] });
+    await app.docs.updateById("d1", {
+      history: app.sqlx.jsonArrayAppend(app.docs.table.history, {
+        action: "pinged",
+      }) as never,
+    });
+    const doc = await app.docs.getById("d1");
+    expect(doc.history).toEqual([{ action: "created" }, { action: "pinged" }]);
+  }
+};

@@ -674,7 +674,7 @@ export const ControlArray = (props: ControlArrayProps) => {
         <div className="text-sm leading-tight font-medium">
           {meta.label}
           {meta.required && <FormFieldRequiredMark />}
-          <span className="text-muted-foreground ml-2 text-xs">
+          <span className="text-muted-foreground ms-2 text-xs">
             ({items.length})
           </span>
         </div>
@@ -703,7 +703,7 @@ export const ControlArray = (props: ControlArrayProps) => {
           {expanded ? (
             <ChevronDown className="size-4" />
           ) : (
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4 rtl:-scale-x-100" />
           )}
         </Button>
       )}

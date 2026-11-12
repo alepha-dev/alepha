@@ -104,7 +104,7 @@ export const DataTableColumnPicker = <T,>(
                 setDragging(null);
               }}
               className={cn(
-                "flex items-center gap-1 pr-1",
+                "flex items-center gap-1 pe-1",
                 dragging === key && "opacity-45",
               )}
             >

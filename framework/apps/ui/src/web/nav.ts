@@ -195,6 +195,11 @@ export const NAV: NavGroup[] = [
             description: "Blocking questions, as promises.",
           },
           {
+            href: "/blocks/overlays",
+            label: "Overlays",
+            description: "Sheet, drawer, stacked layers and an overlay route.",
+          },
+          {
             href: "/blocks/toast",
             label: "Toast",
             description: "Transient feedback, stacked and auto-dismissed.",

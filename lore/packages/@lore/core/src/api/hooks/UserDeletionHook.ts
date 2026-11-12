@@ -1,8 +1,11 @@
 import { $hook, $inject } from "alepha";
 import { NotificationInboxService } from "alepha/api/notifications";
-import { $repository, DbCacheProvider, sql } from "alepha/orm";
+import { $repository, DbCacheProvider } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
+import { automationAdoptions } from "../entities/automationAdoptions.ts";
+import { automationReceipts } from "../entities/automationReceipts.ts";
+import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
 import { AutomationDatabase } from "../services/AutomationDatabase.ts";
 
@@ -49,6 +52,9 @@ import { AutomationDatabase } from "../services/AutomationDatabase.ts";
  */
 export class UserDeletionHook {
   protected readonly automations = $repository(automations);
+  protected readonly receipts = $repository(automationReceipts);
+  protected readonly runs = $repository(automationRuns);
+  protected readonly adoptions = $repository(automationAdoptions);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly inbox = $inject(NotificationInboxService);
@@ -110,12 +116,31 @@ export class UserDeletionHook {
       { force: true },
     );
     if (!deleted) return;
-    const rules = sql`SELECT id FROM automations WHERE author_user_id = ${userId} AND deleted_at IS NOT NULL`;
+    // Hard deletes of the author's deleted rules and what hangs off them,
+    // with no RETURNING: the caches go below, table by table.
+    const deletedRules = {
+      authorUserId: userId,
+      deletedAt: { isNotNull: true },
+    };
+    const rules = () =>
+      this.automations.subquery(deletedRules, "id", { force: true });
+    const quiet = { events: false };
     await this.database.batch([
-      sql`DELETE FROM automation_receipts WHERE automation_id IN (${rules})`,
-      sql`DELETE FROM automation_runs WHERE automation_id IN (${rules})`,
-      sql`DELETE FROM automation_adoptions WHERE automation_id IN (${rules}) OR author_user_id = ${userId}`,
-      sql`DELETE FROM automations WHERE author_user_id = ${userId} AND deleted_at IS NOT NULL`,
+      this.receipts.deleteStatement(
+        { automationId: { inArray: rules() } },
+        quiet,
+      ),
+      this.runs.deleteStatement({ automationId: { inArray: rules() } }, quiet),
+      this.adoptions.deleteStatement(
+        {
+          or: [
+            { automationId: { inArray: rules() } },
+            { authorUserId: { eq: userId } },
+          ],
+        },
+        quiet,
+      ),
+      this.automations.deleteStatement(deletedRules, { ...quiet, force: true }),
     ]);
     for (const table of [
       "automation_receipts",

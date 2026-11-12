@@ -119,7 +119,7 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
           href={props.specUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-1 text-xs"
+          className="text-muted-foreground hover:text-foreground ms-auto flex items-center gap-1 text-xs"
         >
           <FileJson className="size-3.5" />
           {tr("swagger.raw", { default: "OpenAPI JSON" })}
@@ -131,7 +131,7 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
         )}
         <details className="group/credentials basis-full">
           <summary className="text-muted-foreground hover:text-foreground flex w-fit cursor-pointer list-none items-center gap-1 text-xs [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="size-3.5 transition-transform group-open/credentials:rotate-90" />
+            <ChevronRight className="size-3.5 transition-transform group-open/credentials:rotate-90 rtl:-scale-x-100 rtl:group-open/credentials:-rotate-90" />
             <KeyRound className="size-3.5" />
             {token
               ? tr("swagger.credentials.set", {
@@ -139,7 +139,7 @@ export const SwaggerExplorer = (props: SwaggerExplorerProps) => {
                 })
               : tr("swagger.credentials.title", { default: "Credentials" })}
           </summary>
-          <div className="pt-2 pl-5">
+          <div className="ps-5 pt-2">
             <SwaggerCredentials onChange={setToken} />
           </div>
         </details>

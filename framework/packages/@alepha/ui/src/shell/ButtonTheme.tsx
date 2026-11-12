@@ -104,7 +104,7 @@ export const ButtonTheme = (props: ButtonThemeProps) => {
               )}
             >
               {t.swatch && <ButtonThemeSwatch colors={t.swatch} />}
-              <span className="flex-1 text-left">{t.label}</span>
+              <span className="flex-1 text-start">{t.label}</span>
               {theme === t.id && <Check className="size-3.5" />}
             </DropdownMenuItem>
           ))}

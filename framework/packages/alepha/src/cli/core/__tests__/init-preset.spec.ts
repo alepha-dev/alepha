@@ -106,6 +106,22 @@ describe("alepha init --preset", () => {
       expect(agents).not.toContain("Realm.ts");
     });
 
+    it("should turn the CSP on in the server entry, and say so in AGENTS.md", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      const server = await readFile(fs, "/project/src/main.server.ts");
+      expect(server).toContain(
+        'import { helmetOptions } from "alepha/server";',
+      );
+      expect(server).toContain("contentSecurityPolicy: {},");
+      const agents = await readFile(fs, "/project/AGENTS.md");
+      expect(agents).toContain("## Content Security Policy");
+      expect(agents).toContain("addCspSource");
+    });
+
     it("should be what an explicit --preset=default produces", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
@@ -322,6 +338,19 @@ describe("alepha init --preset", () => {
           `@alepha/ui/${subpath.slice(2)} does not export ${name}`,
         ).toMatch(new RegExp(`\\b${name}\\b`));
       }
+    });
+
+    it("should turn the CSP on in the server entry", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      const server = await readFile(fs, "/project/src/main.server.ts");
+      expect(server).toContain("contentSecurityPolicy: {},");
+      expect(await readFile(fs, "/project/AGENTS.md")).toContain(
+        "## Content Security Policy",
+      );
     });
 
     it("should still scaffold the shared default files", async () => {

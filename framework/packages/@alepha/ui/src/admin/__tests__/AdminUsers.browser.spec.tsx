@@ -7,7 +7,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Toaster } from "../../core/Toaster.tsx";
@@ -167,6 +167,8 @@ describe("AdminUsers", () => {
       expect(
         await screen.findByText("Roles of ada@example.app saved"),
       ).toBeTruthy();
+      // axe: the users table after a change (#Q3338).
+      await expectAccessible();
       expect(links.calls.at(-1)?.args.body.roles).toEqual(["user", "admin"]);
     });
 

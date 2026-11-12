@@ -357,6 +357,25 @@ The right-to-left languages are a fixed list (`ar`, `he`, `fa`, `ur`, `ps`, `sd`
 
 `<html dir>` follows it, next to `<html lang>`: on the server for each request's language, and in the browser on a language switch. That is what makes Tailwind's `rtl:` variants match. An application that sets `htmlAttributes.dir` in its own `$head` keeps its value.
 
+### Right-to-left in @alepha/ui
+
+The kit's components mirror on a right-to-left page with nothing to configure:
+
+- **Spacing and placement are logical.** The components use `ms-*`, `pe-*`, `start-*`, `end-*`, `text-start`, `border-s` and `rounded-e-*` rather than their left and right forms, so a margin, an icon inside a field or a rounded corner lands on the side the text starts or ends. Write your own classes the same way. The few places where a side is physical on purpose (centring with `left-1/2`, the device safe areas `pl-safe` / `pr-safe`, a time axis) say so in a comment.
+- **Directional icons flip.** A chevron that opens a submenu, a back arrow or a pagination arrow carries `rtl:-scale-x-100`. An icon that names an action rather than a direction does not.
+- **Base UI gets the direction.** Popups placed on `side="inline-start"` or `side="inline-end"`, submenus and context menus included, and keyboard navigation in menus, sliders and tabs, read it from Base UI's direction provider, not from the document. A non-`embedded` `AppShell` mounts `DirectionProvider` from `useI18n().dir`. An application with its own layout mounts it once, around everything:
+
+```tsx
+import { DirectionProvider } from "@alepha/ui";
+
+<DirectionProvider>
+  <Layout />
+</DirectionProvider>;
+```
+
+- **`Sidebar`, `Sheet` and `PaneRail` take `side="start" | "end"`**, which follows the direction, beside the physical `left` and `right`.
+- **The calendar and the toaster follow it too**: the calendar swaps its previous and next buttons and its arrow keys, and toasts move to the bottom-left corner.
+
 ## Translate Component
 
 `<Translate>` (also exported as `<Tr>`) is `tr()` as JSX:

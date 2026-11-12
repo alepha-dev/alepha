@@ -6,6 +6,7 @@
     "build": "alepha build",
     "dev": "alepha dev",
     "e2e": "playwright test",
+    "e2e:a11y": "playwright test --config playwright.a11y.config.ts",
     "e2e:ui": "playwright test --ui",
     "lint": "alepha lint",
     "start": "node dist",

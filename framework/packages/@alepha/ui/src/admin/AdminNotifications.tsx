@@ -398,7 +398,7 @@ export const AdminNotifications = () => {
             }),
             // First, because it is the only column an operator scans
             // before deciding whether the row is interesting at all.
-            className: "pl-4",
+            className: "ps-4",
             sortable: true,
             cell: (n) => <AdminNotificationsStatusBadge status={n.status} />,
           },

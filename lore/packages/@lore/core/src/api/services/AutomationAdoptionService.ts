@@ -226,7 +226,14 @@ export class AutomationAdoptionService {
           const id = this.crypto.randomUUID();
           await this.atomic.guarded(
             projectId,
-            sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${projectId} AND policy = ${policy}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${rule.revision} AND author_user_id = ${user.id} AND deleted_at IS NULL)`,
+            sql`NOT EXISTS ${this.persistence.adoptions.subquery({
+              projectId,
+              policy,
+            })} AND EXISTS ${this.persistence.rules.subquery({
+              id: rule.id,
+              revision: rule.revision,
+              authorUserId: user.id,
+            })}`,
             [
               this.rows.insertStatement({
                 id,
@@ -254,7 +261,7 @@ export class AutomationAdoptionService {
             `compatibility-${policy}`,
             [],
             (rule) => ({
-              condition: sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${projectId} AND policy = ${policy})`,
+              condition: sql`NOT EXISTS ${this.persistence.adoptions.subquery({ projectId, policy })}`,
               statements: [
                 this.rows.insertStatement({
                   id: this.crypto.randomUUID(),
@@ -289,7 +296,19 @@ export class AutomationAdoptionService {
           `compatibility-${policy}`,
           [],
           (rule) => ({
-            condition: sql`EXISTS (SELECT 1 FROM automation_adoptions WHERE id = ${previous.id} AND version = ${previous.version} AND state = 'pending' AND author_user_id = ${user.id} AND automation_id = ${previous.automationId}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${previous.automationId} AND deleted_at IS NOT NULL)`,
+            // The replaced rule must be deleted already: `force`, since the
+            // soft-delete filter would hide exactly the row this looks for.
+            condition: sql`EXISTS ${this.persistence.adoptions.subquery({
+              id: previous.id,
+              version: previous.version,
+              state: "pending",
+              authorUserId: user.id,
+              automationId: previous.automationId,
+            })} AND EXISTS ${this.persistence.rules.subquery(
+              { id: previous.automationId, deletedAt: { isNotNull: true } },
+              undefined,
+              { force: true },
+            )}`,
             statements: [
               this.rows.updateStatement(
                 {
@@ -302,7 +321,7 @@ export class AutomationAdoptionService {
                   version: previous.version + 1,
                   updatedAt: rule.createdAt,
                 },
-                false,
+                { returning: false },
               ),
             ],
             changedTables: ["automation_adoptions"],
@@ -343,12 +362,17 @@ export class AutomationAdoptionService {
       revision,
       {
         adopting: marker.policy,
-        condition: sql`EXISTS (SELECT 1 FROM automation_adoptions WHERE id = ${marker.id} AND version = ${marker.version} AND state = 'pending' AND author_user_id = ${user.id})`,
+        condition: sql`EXISTS ${this.persistence.adoptions.subquery({
+          id: marker.id,
+          version: marker.version,
+          state: "pending",
+          authorUserId: user.id,
+        })}`,
         statements: [
           this.rows.updateStatement(
             { id: marker.id, version: marker.version, state: "pending" },
             { state: "adopted", adoptedAt: now, updatedAt: now },
-            false,
+            { returning: false },
           ),
         ],
         changedTables: ["automation_adoptions"],

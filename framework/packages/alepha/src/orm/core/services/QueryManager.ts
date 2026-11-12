@@ -618,8 +618,8 @@ export class QueryManager {
 
     // The array operators map to postgres array functions (`@>`, `<@`, `&&`).
     // SQLite/D1 store a string array as JSON text, so emitting them there
-    // produced invalid SQL or silently wrong semantics. The `ilike` family
-    // above got a sqlite fallback; this one never did. Fail loudly rather
+    // produced invalid SQL or silently wrong semantics. `arrayContains` has a
+    // sqlite form over that text (below); the other two fail loudly rather
     // than run a query that means something else.
     const assertArrayOperatorSupported = (name: string) => {
       if (dialect === "sqlite") {
@@ -630,10 +630,28 @@ export class QueryManager {
     };
 
     if (operator?.arrayContains != null) {
-      assertArrayOperatorSupported("arrayContains");
-      conditions.push(
-        arrayContains(column, encodeValue(operator.arrayContains)),
-      );
+      if (dialect === "sqlite") {
+        // One `json_each` membership test per element, ANDed: the row holds
+        // every element. Empty is refused, as drizzle refuses it on postgres.
+        const values = operator.arrayContains as unknown;
+        if (!Array.isArray(values) || values.length === 0) {
+          throw new AlephaError(
+            "arrayContains requires a non-empty array of values",
+          );
+        }
+        conditions.push(
+          and(
+            ...values.map(
+              (value) =>
+                sql`EXISTS (SELECT 1 FROM json_each(${column}) WHERE value = ${value})`,
+            ),
+          )!,
+        );
+      } else {
+        conditions.push(
+          arrayContains(column, encodeValue(operator.arrayContains)),
+        );
+      }
     }
 
     if (operator?.arrayContained != null) {

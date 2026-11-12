@@ -233,7 +233,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                   className={cn(
                     props.cellClassName,
                     def.className,
-                    def.align === "right" && "text-right",
+                    def.align === "right" && "text-end",
                     def.align === "center" && "text-center",
                   )}
                 >
@@ -242,7 +242,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
               ))}
               {hasRowActions && (
                 <TableCell
-                  className={cn(props.cellClassName, "text-right")}
+                  className={cn(props.cellClassName, "text-end")}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {props.rowActionsDisplay === "inline" ? (

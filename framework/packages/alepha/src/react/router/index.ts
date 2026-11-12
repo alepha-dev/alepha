@@ -54,6 +54,19 @@ declare module "alepha" {
   interface State {
     "alepha.react.router.state"?: ReactRouterState;
     /**
+     * The CSP nonce of the page being rendered on the server, set only when
+     * the CSP is on and the response is rendered (never on a page cache hit
+     * or a prerender). Every inline script the render writes and no hash
+     * covers carries it.
+     */
+    "alepha.react.router.nonce"?: string;
+    /**
+     * Whether the page being rendered on the server streams its deferred
+     * values (`DeferredScript`), or settles them first and ships them in the
+     * payload (`stream: false`, a prerender, a client-rendered page).
+     */
+    "alepha.react.router.streamed"?: boolean;
+    /**
      * The active locale path-prefix (e.g. `"fr"`), when `routing: "prefix"` is
      * enabled on the i18n module. Empty/absent for the default locale.
      */

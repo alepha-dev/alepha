@@ -1,4 +1,5 @@
 import { fireEvent, render } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it } from "vitest";
 
 import { UserAvatar } from "../UserAvatar.tsx";
@@ -14,7 +15,7 @@ import { UserAvatar } from "../UserAvatar.tsx";
 describe("UserAvatar", () => {
   const img = (container: HTMLElement) => container.querySelector("img");
 
-  it("serves a file id through the authenticated file route", () => {
+  it("serves a file id through the authenticated file route", async () => {
     const { container } = render(
       <UserAvatar fileId="00000000-0000-4000-8000-00000000000a" />,
     );
@@ -22,6 +23,8 @@ describe("UserAvatar", () => {
     expect(img(container)?.getAttribute("src")).toBe(
       "/api/files/00000000-0000-4000-8000-00000000000a",
     );
+    // axe: an avatar image (#Q3338).
+    await expectAccessible();
     // Same-origin: nothing to withhold.
     expect(img(container)?.getAttribute("referrerpolicy")).toBeNull();
   });

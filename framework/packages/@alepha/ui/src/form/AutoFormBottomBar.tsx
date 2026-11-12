@@ -47,7 +47,7 @@ export const AutoFormBottomBar = (props: AutoFormBottomBarProps) => {
           onClick={props.onCancel}
           disabled={props.disabled}
         >
-          <X className="mr-1 size-4" />
+          <X className="me-1 size-4" />
           {tr("autoForm.cancel", { default: "Cancel" })}
         </Button>
       )}
@@ -78,13 +78,13 @@ export const AutoFormBottomBar = (props: AutoFormBottomBarProps) => {
             onClick={() => action.onClick()}
             disabled={props.disabled || action.disabled}
           >
-            {Icon && <Icon className="mr-1 size-4" />}
+            {Icon && <Icon className="me-1 size-4" />}
             {action.label}
           </Button>
         );
       })}
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ms-auto flex items-center gap-2">
         <AutoFormErrorPopover form={props.form} />
         {!props.noSubmit && (
           <Button

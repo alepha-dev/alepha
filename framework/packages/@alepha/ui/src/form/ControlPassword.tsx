@@ -49,7 +49,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
     >
       <div className="relative">
         {Icon && (
-          <Icon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Icon className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2" />
         )}
         <Input
           {...props.inputProps}
@@ -70,7 +70,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
           maxLength={props.maxLength}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
-          className={[props.inputProps?.className, Icon ? "pr-9 pl-9" : "pr-9"]
+          className={[props.inputProps?.className, Icon ? "pe-9 ps-9" : "pe-9"]
             .filter(Boolean)
             .join(" ")}
         />
@@ -87,7 +87,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
           disabled={props.disabled}
           onClick={() => setReveal((r) => !r)}
           aria-label={reveal ? "Hide password" : "Show password"}
-          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-1 my-auto size-7"
+          className="text-muted-foreground hover:text-foreground absolute inset-y-0 end-1 my-auto size-7"
         >
           {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </Button>

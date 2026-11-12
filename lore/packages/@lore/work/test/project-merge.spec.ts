@@ -110,6 +110,61 @@ describe("ProjectMergeService, Work's step", () => {
       expect(await shortIdsOf(target.id)).toEqual([5]);
     });
 
+    it("moves a soft-deleted source quest and rewrites the references it holds", async ({
+      expect,
+    }) => {
+      const target = await createTestProject(ctx.alepha);
+      const source = await createTestProject(ctx.alepha);
+      await createTestQuest(ctx.alepha, target, { shortId: 2 });
+      const renumbered = await createTestQuest(ctx.alepha, source, {
+        shortId: 2,
+      });
+      const gone = await createTestQuest(ctx.alepha, source, {
+        shortId: 3,
+        description: "Blocked by [[#Q2]].",
+      });
+      await ctx.repos.quests.deleteById(gone.id);
+      const before = await Promise.all(
+        [renumbered.id, gone.id].map((id) =>
+          ctx.repos.quests.getById(id, { force: true }),
+        ),
+      );
+      // A merge a while later: a write that stamped the time would show.
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const plan = await ctx.merge.merge(source.id, target.id);
+
+      const work = workOf(plan);
+      expect(work.moved.quests).toBe(2);
+      expect(work.renumbered).toEqual([
+        expect.objectContaining({ id: renumbered.id, from: 2, to: 4 }),
+      ]);
+      const moved = await ctx.repos.quests.findById(gone.id, { force: true });
+      expect(moved?.projectId).toBe(target.id);
+      expect(moved?.deletedAt).not.toBeNull();
+      expect(moved?.description).toBe("Blocked by [[#Q4]].");
+      // Moved, renumbered and rewritten, and still not edited: neither
+      // `updatedAt` nor `version` moved.
+      for (const row of before) {
+        const after = await ctx.repos.quests.getById(row.id, { force: true });
+        expect(after.projectId).toBe(target.id);
+        expect({ updatedAt: after.updatedAt, version: after.version }).toEqual({
+          updatedAt: row.updatedAt,
+          version: row.version,
+        });
+      }
+    });
+
+    it("refuses a deleted project, by name", async ({ expect }) => {
+      const target = await createTestProject(ctx.alepha);
+      const source = await createTestProject(ctx.alepha);
+      await ctx.repos.projects.deleteById(source.id);
+
+      await expect(ctx.merge.merge(source.id, target.id)).rejects.toThrow(
+        `Project ${source.id} is deleted`,
+      );
+    });
+
     it("writes nothing on a dry run, and answers the same plan", async ({
       expect,
     }) => {

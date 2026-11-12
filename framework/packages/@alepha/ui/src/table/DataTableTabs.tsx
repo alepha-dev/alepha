@@ -1,5 +1,5 @@
 import { Link } from "alepha/react/router";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, KeyboardEvent, ReactNode } from "react";
 
 import { cn } from "../core/utils.ts";
 
@@ -41,74 +41,112 @@ export interface DataTableTabsProps {
  * not a border a tab would have to overlap: the tabs paint over it, so the
  * active tile covers it and joins the bar, and everywhere else it stays the
  * line between the band and what follows.
+ *
+ * It claims `role="tablist"`, so it keeps that role's keyboard contract: one
+ * tab stop (the active tab, or the first when none is), and the arrow keys,
+ * Home and End move the focus between tabs. Activation stays manual: Enter or
+ * Space on the focused tab, as a click would, so moving through the band
+ * never navigates or reloads a table on its own.
  */
-export const DataTableTabs = (props: DataTableTabsProps) => (
-  <div
-    role="tablist"
-    data-slot="data-table-tabs"
-    className={cn(
-      "bg-background flex items-end overflow-x-auto overflow-y-hidden rounded-md rounded-b-none border border-b-0 px-3 pt-1.5 shadow-[inset_0_-1px_0_0_var(--border)]",
-      props.className,
-    )}
-  >
-    {props.tabs.map((tab, index) => {
-      const Icon = tab.icon;
-      // A divider on the start edge of a resting tab that follows another
-      // resting tab, hidden while either of the two is hovered.
-      const divided =
-        !tab.active && index > 0 && !props.tabs[index - 1]!.active;
-      const className = cn(
-        "relative flex h-9 shrink-0 items-center gap-2 rounded-t-[0.625rem] px-4 text-sm font-medium transition-colors duration-150",
-        tab.active
-          ? // The ears: two squares outside the tile's bottom corners, each
-            // filled but for a quarter circle, so the tile's sides curve out
-            // into the band. Swapped under rtl, where the start is the right.
-            "bg-muted text-foreground before:absolute before:start-[-0.625rem] before:bottom-0 before:size-[0.625rem] before:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] before:content-[''] after:absolute after:end-[-0.625rem] after:bottom-0 after:size-[0.625rem] after:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] after:content-[''] rtl:before:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] rtl:after:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))]"
-          : "text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--muted),transparent_40%)]",
-        divided &&
-          "before:bg-border before:absolute before:start-0 before:top-[30%] before:h-[40%] before:w-px before:content-[''] hover:before:opacity-0 [[role=tab]:hover+&]:before:opacity-0",
-      );
-      const content = (
-        <>
-          {Icon && <Icon className="size-4" />}
-          {tab.label}
-          {tab.count != null && (
-            <span
-              className={cn(
-                "rounded-full px-1.5 text-xs tabular-nums",
-                tab.active
-                  ? "bg-primary/10 text-primary"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {tab.count}
-            </span>
-          )}
-        </>
-      );
-      return tab.href ? (
-        <Link
-          key={tab.key}
-          href={tab.href}
-          role="tab"
-          aria-selected={Boolean(tab.active)}
-          className={className}
-          onClick={tab.onSelect}
-        >
-          {content}
-        </Link>
-      ) : (
-        <button
-          key={tab.key}
-          type="button"
-          role="tab"
-          aria-selected={Boolean(tab.active)}
-          className={className}
-          onClick={tab.onSelect}
-        >
-          {content}
-        </button>
-      );
-    })}
-  </div>
-);
+export const DataTableTabs = (props: DataTableTabsProps) => {
+  const stop = Math.max(
+    0,
+    props.tabs.findIndex((tab) => tab.active),
+  );
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const tabs = [
+      ...e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'),
+    ];
+    const current = tabs.indexOf(e.target as HTMLElement);
+    if (current === -1) return;
+    const next =
+      e.key === "ArrowRight"
+        ? (current + 1) % tabs.length
+        : e.key === "ArrowLeft"
+          ? (current - 1 + tabs.length) % tabs.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? tabs.length - 1
+              : -1;
+    if (next === -1) return;
+    e.preventDefault();
+    tabs[next]!.focus();
+  };
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- a roving tab stop: the tabs take the focus, the tablist only hears their arrow keys
+    <div
+      role="tablist"
+      onKeyDown={onKeyDown}
+      data-slot="data-table-tabs"
+      className={cn(
+        "bg-background flex items-end overflow-x-auto overflow-y-hidden rounded-md rounded-b-none border border-b-0 px-3 pt-1.5 shadow-[inset_0_-1px_0_0_var(--border)]",
+        props.className,
+      )}
+    >
+      {props.tabs.map((tab, index) => {
+        const Icon = tab.icon;
+        // A divider on the start edge of a resting tab that follows another
+        // resting tab, hidden while either of the two is hovered.
+        const divided =
+          !tab.active && index > 0 && !props.tabs[index - 1]!.active;
+        const className = cn(
+          "relative flex h-9 shrink-0 items-center gap-2 rounded-t-[0.625rem] px-4 text-sm font-medium transition-colors duration-150",
+          tab.active
+            ? // The ears: two squares outside the tile's bottom corners, each
+              // filled but for a quarter circle, so the tile's sides curve out
+              // into the band. Swapped under rtl, where the start is the right.
+              "bg-muted text-foreground before:absolute before:start-[-0.625rem] before:bottom-0 before:size-[0.625rem] before:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] before:content-[''] after:absolute after:end-[-0.625rem] after:bottom-0 after:size-[0.625rem] after:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] after:content-[''] rtl:before:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] rtl:after:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))]"
+            : "text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--muted),transparent_40%)]",
+          divided &&
+            "before:bg-border before:absolute before:start-0 before:top-[30%] before:h-[40%] before:w-px before:content-[''] hover:before:opacity-0 [[role=tab]:hover+&]:before:opacity-0",
+        );
+        const content = (
+          <>
+            {Icon && <Icon className="size-4" />}
+            {tab.label}
+            {tab.count != null && (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-xs tabular-nums",
+                  tab.active
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {tab.count}
+              </span>
+            )}
+          </>
+        );
+        return tab.href ? (
+          <Link
+            key={tab.key}
+            href={tab.href}
+            role="tab"
+            aria-selected={Boolean(tab.active)}
+            tabIndex={index === stop ? 0 : -1}
+            className={className}
+            onClick={tab.onSelect}
+          >
+            {content}
+          </Link>
+        ) : (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={Boolean(tab.active)}
+            tabIndex={index === stop ? 0 : -1}
+            className={className}
+            onClick={tab.onSelect}
+          >
+            {content}
+          </button>
+        );
+      })}
+    </div>
+  );
+};

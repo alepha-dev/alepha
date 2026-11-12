@@ -170,6 +170,8 @@ export const Segmented = (props: SegmentedProps) => {
     // where both are zero.
     const scale =
       container.offsetWidth > 0 ? parentRect.width / container.offsetWidth : 1;
+    // Physical on purpose: the thumb is placed from measured rects, which are
+    // the same in either reading direction.
     setThumb((previous) => ({
       left: (elRect.left - parentRect.left) / scale - borderLeft,
       top: (elRect.top - parentRect.top) / scale - borderTop,
@@ -326,7 +328,7 @@ export const Segmented = (props: SegmentedProps) => {
               itemDisabled && "cursor-not-allowed opacity-50",
               fullWidth && "flex-1",
               showDivider &&
-                "before:bg-border before:absolute before:inset-y-1.5 before:left-0 before:w-px before:content-['']",
+                "before:bg-border before:absolute before:inset-y-1.5 before:start-0 before:w-px before:content-['']",
             )}
           >
             {opt.label}
@@ -334,7 +336,7 @@ export const Segmented = (props: SegmentedProps) => {
               <span
                 data-slot="segmented-count"
                 className={cn(
-                  "ml-1.5 tabular-nums",
+                  "ms-1.5 tabular-nums",
                   // Derived from the segment's own foreground rather than
                   // from the resting muted token, which is chosen for a
                   // different background. At FULL strength: white at `/70`

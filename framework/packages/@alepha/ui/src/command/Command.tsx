@@ -1,6 +1,13 @@
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import { CheckIcon, SearchIcon } from "lucide-react";
-import { type ComponentProps, type ReactNode, useMemo, useState } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Dialog,
@@ -155,6 +162,30 @@ export const CommandDialog = (props: CommandDialogProps) => {
     showCloseButton = false,
     ...dialogProps
   } = props;
+
+  /*
+   * Where the focus goes back on close. A palette is opened by state (a
+   * shortcut, a button elsewhere), never by a Base UI trigger, so the dialog
+   * had nothing to return to and Escape dropped the focus on the page
+   * (WCAG 2.4.3). The last element focused outside the popup is it.
+   */
+  const returnTo = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        !target.closest('[data-slot="dialog-content"]') &&
+        // Base UI's focus-trap guards sit just outside the popup.
+        !target.hasAttribute("data-base-ui-focus-guard")
+      ) {
+        returnTo.current = target;
+      }
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, []);
+
   return (
     <Dialog {...dialogProps}>
       <DialogHeader className="sr-only">
@@ -167,6 +198,9 @@ export const CommandDialog = (props: CommandDialogProps) => {
           className,
         )}
         showCloseButton={showCloseButton}
+        finalFocus={() =>
+          returnTo.current?.isConnected ? returnTo.current : true
+        }
       >
         {children}
       </DialogContent>
@@ -180,7 +214,7 @@ export const CommandInput = (props: CommandInputProps) => {
   const { className, ...inputProps } = props;
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="border-border/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
+      <InputGroup className="border-border/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:ps-2!">
         <AutocompletePrimitive.Input
           data-slot="command-input"
           className={cn(
@@ -309,7 +343,7 @@ export const CommandItem = (props: CommandItemProps) => {
       {...itemProps}
     >
       {children}
-      <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
+      <CheckIcon className="ms-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
     </AutocompletePrimitive.Item>
   );
 };
@@ -322,7 +356,7 @@ export const CommandShortcut = (props: CommandShortcutProps) => {
     <span
       data-slot="command-shortcut"
       className={cn(
-        "text-muted-foreground group-data-highlighted/command-item:text-foreground ml-auto text-xs tracking-widest",
+        "text-muted-foreground group-data-highlighted/command-item:text-foreground ms-auto text-xs tracking-widest",
         className,
       )}
       {...spanProps}

@@ -42,7 +42,7 @@ export const AdminParametersHistoryPane = (
   return (
     <div
       className={cn(
-        "bg-card flex min-h-0 flex-col overflow-hidden rounded-r-lg border",
+        "bg-card flex min-h-0 flex-col overflow-hidden rounded-e-lg border",
         props.className,
       )}
     >
@@ -61,9 +61,9 @@ export const AdminParametersHistoryPane = (
           title={tr("admin.parameters.historyCollapse", {
             default: "Hide history",
           })}
-          className="text-muted-foreground hover:text-foreground hover:bg-hover ml-auto hidden size-6.5 items-center justify-center rounded-md transition-colors lg:flex"
+          className="text-muted-foreground hover:text-foreground hover:bg-hover ms-auto hidden size-6.5 items-center justify-center rounded-md transition-colors lg:flex"
         >
-          <PanelRightClose className="size-3.5" />
+          <PanelRightClose className="size-3.5 rtl:-scale-x-100" />
         </button>
       </div>
       {!props.name ? (

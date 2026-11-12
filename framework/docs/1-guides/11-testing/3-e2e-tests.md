@@ -102,6 +102,30 @@ How the allocator answers:
 
 `e2ePort.worker(app, workerIndex)` gives each Playwright worker its own port when every worker boots its own server (for example on its own in-memory database, so specs can run `fullyParallel`). Workers walk disjoint subsets of the same candidate list, and the answer is deliberately not memoised. `e2ePort.candidates(root, app)` and `e2ePort.root()` expose the list the allocator walks, for a test that wants to assert on it.
 
+## Accessibility
+
+`expectPageAccessible(page)` from `alepha/testing/playwright` runs [axe](https://github.com/dequelabs/axe-core) on the page with the WCAG 2.0, 2.1 and 2.2 A and AA rules and fails with every violation: the rule id, its help URL, and the selector and HTML of each node. Same-origin iframes are scanned too. It needs `@axe-core/playwright`:
+
+```bash
+npm install -D @axe-core/playwright
+```
+
+```typescript
+import { test } from "@playwright/test";
+import { expectPageAccessible } from "alepha/testing/playwright";
+
+test("the home page is accessible", async ({ page }) => {
+  await page.goto("/");
+  await expectPageAccessible(page, { exclude: ["#third-party-widget"] });
+});
+```
+
+Options: `disable` (rule ids switched off for this call), `include` and `exclude` (CSS selectors). In a real browser the page is styled and laid out, so contrast and target size are measured here, unlike under jsdom.
+
+`scanPageAccessibility(page, options?)` returns the same findings as data instead of failing, one item per rule and node (`rule`, `help`, `helpUrl`, `selector`, `html`), to compare against a checked-in list of known findings.
+
+A pass is a floor: axe finds roughly half of real issues by its own figure, and it has no rule for non-text contrast (a field's border, a focus ring).
+
 ## With Bun
 
 If your production server runs on Bun, build the Bun slice (`alepha build --runtime bun`) and adjust the `webServer` command:

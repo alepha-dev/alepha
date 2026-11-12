@@ -174,6 +174,12 @@ export interface HeadLink {
    * Hreflang attribute — used for `rel="alternate"` localized variants.
    */
   hreflang?: string;
+  /**
+   * Subresource Integrity (`sha384-...`): the browser refuses the file if
+   * its bytes do not match. The build fills it for its own scripts and
+   * stylesheets.
+   */
+  integrity?: string;
 }
 
 export interface HeadMeta {

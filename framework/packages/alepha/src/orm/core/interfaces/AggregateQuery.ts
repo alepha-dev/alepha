@@ -3,7 +3,24 @@ import type { SQL } from "drizzle-orm";
 
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
-export type AggregateOp = "count" | "sum" | "avg" | "min" | "max";
+/**
+ * The aggregate operations. `countDistinct` is `COUNT(DISTINCT x)`: with a
+ * `where` it counts the distinct values of the rows that match, the CASE
+ * yielding NULL for the others, which `COUNT` skips.
+ */
+export type AggregateOp =
+  | "count"
+  | "countDistinct"
+  | "sum"
+  | "avg"
+  | "min"
+  | "max";
+
+/**
+ * The operations whose result is a number whatever the column holds, and
+ * `0` over an empty set.
+ */
+export type NumericAggregateOp = "count" | "countDistinct" | "sum" | "avg";
 
 /**
  * How ONE aggregate operation is computed.
@@ -100,12 +117,10 @@ export type AggregateSelect<T extends ZObject> = {
  * of a text column a string, and calling either of those a number is how they
  * became `NaN`.
  */
-export type AggregateOpValue<Op extends AggregateOp, TValue> = Op extends
-  | "count"
-  | "sum"
-  | "avg"
-  ? number
-  : TValue;
+export type AggregateOpValue<
+  Op extends AggregateOp,
+  TValue,
+> = Op extends NumericAggregateOp ? number : TValue;
 
 /**
  * Which column an operation actually reads: the one `column` names when it is
@@ -152,7 +167,7 @@ export type AggregateColumnResult<
           Op in AggregateOp as TSelect extends Record<Op, AggregateOpSelect<T>>
             ? Op
             : never
-        ]: Op extends "count" | "sum" | "avg"
+        ]: Op extends NumericAggregateOp
           ? number
           :
               | (TSelect extends Record<Op, infer TSpec>
@@ -203,7 +218,7 @@ export type AggregateHavingValue<
   K,
   TSelect,
   Op extends AggregateOp,
-> = Op extends "count" | "sum" | "avg"
+> = Op extends NumericAggregateOp
   ? number
   : TSelect extends Record<Op, infer TSpec>
     ? AggregateSourceValue<T, K, TSpec>

@@ -1,4 +1,3 @@
-import { AutomationSqliteProvider } from "@lore/core/api";
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { folioLinks } from "@lore/core/schemas";
 import { BlightController } from "@lore/deploy/api";
@@ -15,7 +14,7 @@ import { $hook, Alepha, AlephaError, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
-import { DatabaseProvider } from "alepha/orm";
+import { DatabaseProvider, NodeSqliteProvider } from "alepha/orm";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
@@ -98,7 +97,7 @@ const setup = async () => {
       DATABASE_TRANSACTIONS: false,
     },
   });
-  alepha.with({ provide: DatabaseProvider, use: AutomationSqliteProvider });
+  alepha.with({ provide: DatabaseProvider, use: NodeSqliteProvider });
   alepha.with({ provide: FolioAttachmentService, use: RecordingAttachments });
   alepha.with({ provide: ResourceLinkService, use: FailingLinks });
   alepha.with(AlephaOrm);

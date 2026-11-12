@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { type ReactElement, useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -65,7 +66,7 @@ const rowOf = (label: string): HTMLElement => {
 const px = (value: string): number => Number.parseFloat(value || "0");
 
 describe("TreeView", () => {
-  it("renders one row per visible row, in order", () => {
+  it("renders one row per visible row, in order", async () => {
     render(<Harness />);
     const rows = document.querySelectorAll('[data-slot="tree-view-row"]');
     expect([...rows].map((r) => r.textContent)).toEqual([
@@ -75,6 +76,8 @@ describe("TreeView", () => {
       "Leaf",
       "Other",
     ]);
+    // axe: a tree with nested rows (#Q3338).
+    await expectAccessible();
   });
 
   it("speaks the tree structure: roles, level, expanded and selected", () => {
@@ -118,11 +121,15 @@ describe("TreeView", () => {
     );
     expect(box, "the disclosure column's width").toBe(14);
 
-    const base = px(rowOf("Level0").style.paddingLeft);
+    const base = px(rowOf("Level0").style.paddingInlineStart);
     expect(base, "a depth-0 row's padding").toBe(8);
 
-    // A root-level row has nothing to guide back to.
-    expect(rowOf("Level0").style.backgroundImage).toBe("");
+    // A root-level row has nothing to guide back to. The gradient is a class,
+    // since its direction flips under `rtl:`; jsdom loads no Tailwind, so it
+    // is read off the class name.
+    expect(rowOf("Level0").className).not.toContain(
+      "repeating-linear-gradient",
+    );
 
     const expectedOrigin = base + box / 2;
 
@@ -132,20 +139,25 @@ describe("TreeView", () => {
       [3, "Leaf"],
     ] as const) {
       const row = rowOf(label);
-      expect(px(row.style.paddingLeft), `depth ${depth} padding`).toBe(
+      expect(px(row.style.paddingInlineStart), `depth ${depth} padding`).toBe(
         8 + depth * 13,
       );
 
       // The guides are one repeating gradient clipped to the indent area,
       // so "how many" is the width it is allowed to paint over.
-      expect(row.style.backgroundImage).toContain("repeating-linear-gradient");
+      expect(row.className).toContain("repeating-linear-gradient(to_right");
+      expect(row.className).toContain(
+        "rtl:[background-image:repeating-linear-gradient(to_left",
+      );
       // From the theme's border token, never a literal.
-      expect(row.style.backgroundImage).toContain("var(--border)");
+      expect(row.className).toContain("var(--border)");
       expect(row.style.backgroundSize, `depth ${depth} guide count`).toBe(
         `${depth * 13}px 100%`,
       );
 
-      const [originX] = row.style.backgroundPosition.split(" ");
+      // The origin is a custom property, read by `background-position` from
+      // the start edge in either direction.
+      const originX = row.style.getPropertyValue("--tree-guide-origin");
       // Every depth paints from the SAME origin: the guides repeat, they do
       // not restart per row, and that origin is the centre of a depth-0
       // disclosure column.
@@ -256,5 +268,78 @@ describe("TreeView", () => {
     // beneath it disappear. "Other" is untouched by any of that.
     expect(renders).toContain("d-0");
     expect(renders).not.toContain("other");
+  });
+});
+
+describe("TreeView keyboard", () => {
+  const press = (key: string) =>
+    fireEvent.keyDown(document.activeElement!, { key });
+
+  it("has one tab stop, the selected row, and moves it to the row that takes the focus", () => {
+    render(<Harness selectedId="d-1" />);
+    const stops = [
+      ...document.querySelectorAll('[data-slot="tree-view-row"]'),
+    ].filter((row) => row.getAttribute("tabindex") === "0");
+    expect(stops).toEqual([rowOf("Level1")]);
+
+    act(() => {
+      rowOf("Other").focus();
+    });
+    expect(rowOf("Other").getAttribute("tabindex")).toBe("0");
+    expect(rowOf("Level1").getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("moves through the rows with Up, Down, Home and End", () => {
+    render(<Harness />);
+    act(() => {
+      rowOf("Level0").focus();
+    });
+    act(() => {
+      press("ArrowDown");
+    });
+    expect(document.activeElement).toBe(rowOf("Level1"));
+    act(() => {
+      press("End");
+    });
+    expect(document.activeElement).toBe(rowOf("Other"));
+    act(() => {
+      press("ArrowUp");
+    });
+    expect(document.activeElement).toBe(rowOf("Leaf"));
+    act(() => {
+      press("Home");
+    });
+    expect(document.activeElement).toBe(rowOf("Level0"));
+  });
+
+  it("closes an open branch with Left, then steps out to its parent", () => {
+    render(<Harness />);
+    act(() => {
+      rowOf("Level2").focus();
+    });
+    act(() => {
+      press("ArrowLeft");
+    });
+    expect(rowOf("Level2").getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Leaf")).toBeNull();
+    act(() => {
+      press("ArrowLeft");
+    });
+    expect(document.activeElement).toBe(rowOf("Level1"));
+  });
+
+  it("opens a closed branch with Right, then steps into its first child", () => {
+    render(<Harness initialCollapsed={["d-2"]} />);
+    act(() => {
+      rowOf("Level2").focus();
+    });
+    act(() => {
+      press("ArrowRight");
+    });
+    expect(rowOf("Level2").getAttribute("aria-expanded")).toBe("true");
+    act(() => {
+      press("ArrowRight");
+    });
+    expect(document.activeElement).toBe(rowOf("Leaf"));
   });
 });

@@ -12,9 +12,13 @@ export interface AnalyticsChartTicksProps {
  * Absolutely placed by percentage rather than one label per column: at ninety
  * bars a column is about ten pixels wide and no date would ever fit inside
  * one.
+ *
+ * `dir="ltr"`, and physical `left` / `right`, on purpose: time runs left to
+ * right in either reading direction, as the bars above it and the SVG line
+ * (which no direction mirrors) draw it.
  */
 export const AnalyticsChartTicks = (props: AnalyticsChartTicksProps) => (
-  <div className="relative mx-0.5 mt-1.5 h-3.5">
+  <div dir="ltr" className="relative mx-0.5 mt-1.5 h-3.5">
     {analyticsTicks(props.points).map((tick) => (
       <div
         key={tick.key}

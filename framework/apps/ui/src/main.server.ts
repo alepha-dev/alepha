@@ -1,5 +1,6 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
+import { helmetOptions } from "alepha/server";
 
 import { UiShowcase } from "./showcase/index.ts";
 import { UiWeb } from "./web/index.ts";
@@ -28,6 +29,16 @@ const alepha = Alepha.create({
  * e2e suite send nothing. It sits in both entries: the browser half collects,
  * this half forwards from `POST /api/sigil/ingest`, where the key stays.
  */
+// The strict Content Security Policy (#E130): scripts by hash or per-request
+// nonce, no 'unsafe-inline'. The e2e suite runs under it and fails on the
+// first violation, so it stays true.
+alepha.store.mut(helmetOptions, (old) => ({
+  ...old,
+  // Trusted Types too (#Q3320): the framework's DOM sinks go through its
+  // `alepha` policy, and the suite fails on any other.
+  contentSecurityPolicy: { trustedTypes: true },
+}));
+
 alepha //
   .with(UiShowcase)
   .with(AlephaSigil)

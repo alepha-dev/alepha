@@ -4,6 +4,7 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { type BaseInputField, useFieldValue, useForm } from "alepha/react/form";
 import { AlephaReactI18n } from "alepha/react/i18n";
+import { expectAccessible } from "alepha/testing/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -87,6 +88,8 @@ describe("ControlSelect searchable", () => {
 
     openPopup(ui);
     await ui.findByRole("option", { name: /Editor/ });
+    // axe: a ControlSelect open on its list (#Q3338).
+    await expectAccessible();
     expect(searchInput(ui)).toBeNull();
   });
 
@@ -97,6 +100,8 @@ describe("ControlSelect searchable", () => {
     openPopup(ui);
     await ui.findByRole("option", { name: "opt-0" });
     expect(searchInput(ui)).not.toBeNull();
+    // axe: a ControlSelect open with its search field (#Q3338).
+    await expectAccessible();
   });
 
   it("honors an explicit `searchable` in both directions", async () => {

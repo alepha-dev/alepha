@@ -61,13 +61,13 @@ export const DataTableSummaryPanel = (props: DataTableSummaryPanelProps) => {
         aria-expanded={props.open}
         aria-controls={props.open ? bodyId : undefined}
         onClick={() => props.onOpenChange(!props.open)}
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-8 w-full items-center gap-1.5 rounded-t-md px-3 text-left text-xs font-medium outline-none focus-visible:ring-[3px]"
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-8 w-full items-center gap-1.5 rounded-t-md px-3 text-start text-xs font-medium outline-none focus-visible:ring-[3px]"
       >
         <ChevronRight
           aria-hidden
           className={cn(
-            "size-3.5 shrink-0 transition-transform",
-            props.open && "rotate-90",
+            "size-3.5 shrink-0 transition-transform rtl:-scale-x-100",
+            props.open && "rotate-90 rtl:-rotate-90",
           )}
         />
         <span className="truncate">{props.title}</span>

@@ -286,7 +286,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
     return (
       <div
         key={id}
-        className={`border-border dark:bg-input/30 relative flex h-9 cursor-zoom-in items-center rounded-md border bg-transparent pl-1 ${canClear ? "pr-9" : "pr-2"}`}
+        className={`border-border dark:bg-input/30 relative flex h-9 cursor-zoom-in items-center rounded-md border bg-transparent ps-1 ${canClear ? "pe-9" : "pe-2"}`}
         onClick={() => setPreviewId(id)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -312,7 +312,7 @@ export const ControlUpload = (props: ControlUploadProps) => {
               removeOne(id);
             }}
             aria-label={tr("controlUpload.remove", { default: "Remove" })}
-            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
+            className="text-muted-foreground hover:text-foreground absolute end-2 top-1/2 -translate-y-1/2 p-1"
           >
             <X className="size-3.5" />
           </button>
@@ -362,12 +362,12 @@ export const ControlUpload = (props: ControlUploadProps) => {
       >
         {uploading ? (
           <>
-            <Loader2 className="mr-1 size-4 animate-spin" />
+            <Loader2 className="me-1 size-4 animate-spin" />
             {tr("controlUpload.uploading", { default: "Uploading…" })}
           </>
         ) : (
           <>
-            <Upload className="mr-1 size-4" />
+            <Upload className="me-1 size-4" />
             {props.multi
               ? tr("controlUpload.chooseFiles", { default: "Choose files" })
               : tr("controlUpload.chooseFile", { default: "Choose a file" })}

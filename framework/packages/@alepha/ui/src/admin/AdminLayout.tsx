@@ -73,7 +73,7 @@ export const AdminLayout = () => {
             >
               <Search className="size-4 shrink-0" />
               <span>{tr("nav.spotlight.search", { default: "Search…" })}</span>
-              <kbd className="bg-muted text-muted-foreground pointer-events-none ml-2 hidden rounded px-1.5 font-mono text-[10px] md:inline">
+              <kbd className="bg-muted text-muted-foreground pointer-events-none ms-2 hidden rounded px-1.5 font-mono text-[10px] md:inline">
                 ⌘K
               </kbd>
             </button>

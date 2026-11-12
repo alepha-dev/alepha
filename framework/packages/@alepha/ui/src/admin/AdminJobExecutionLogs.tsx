@@ -81,7 +81,7 @@ export const AdminJobExecutionLogs = (props: AdminJobExecutionLogsProps) => {
             </span>
           </div>
           {entry.data !== undefined && entry.data !== null && (
-            <pre className="text-muted-foreground ml-14 overflow-x-auto whitespace-pre-wrap">
+            <pre className="text-muted-foreground ms-14 overflow-x-auto whitespace-pre-wrap">
               {JSON.stringify(entry.data, null, 2)}
             </pre>
           )}

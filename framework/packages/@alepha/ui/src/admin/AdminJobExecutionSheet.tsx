@@ -132,8 +132,8 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
       }}
     >
       <SheetContent
-        side="right"
-        className="flex w-full flex-col gap-0 overflow-y-auto data-[side=right]:sm:max-w-[40rem]"
+        side="end"
+        className="flex w-full flex-col gap-0 overflow-y-auto data-[side=end]:sm:max-w-[40rem]"
       >
         <SheetHeader>
           <SheetTitle>

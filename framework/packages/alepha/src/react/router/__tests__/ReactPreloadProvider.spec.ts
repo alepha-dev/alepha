@@ -137,4 +137,30 @@ describe("ReactPreloadProvider", () => {
 
     await alepha.stop();
   });
+  it("carries the build's integrity, so the tags reuse a checked fetch", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+    }).with(App);
+    alepha.store.set(ssrManifestAtom, {
+      preload: {
+        files: ["/assets/entry.abc123.js", "/assets/style.def456.css"],
+        integrity: ["sha384-js", "sha384-css"],
+        keys: {},
+        entry: { js: 0, css: [1], graph: [] },
+      },
+    });
+    await alepha.start();
+
+    const response = await alepha
+      .inject(HttpClient)
+      .fetch(`${alepha.inject(ServerProvider).hostname}/`);
+
+    expect(response.headers.get("link")).toBe(
+      '</assets/style.def456.css>; rel=preload; as=style; crossorigin; integrity="sha384-css", ' +
+        '</assets/entry.abc123.js>; rel=modulepreload; integrity="sha384-js"',
+    );
+    await alepha.stop();
+  });
 });

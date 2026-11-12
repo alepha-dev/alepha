@@ -1,4 +1,4 @@
-import { expect, request, test } from "@playwright/test";
+import { expect, request, test } from "../fixtures.ts";
 
 /**
  * HEAD against a real production build (quest #1646).

@@ -35,7 +35,7 @@ export const DataTableCompactPager = (props: DataTableCompactPagerProps) => {
         props.className,
       )}
     >
-      <span className="mr-1">
+      <span className="me-1">
         {meta.totalPages
           ? tr("dataTable.pageOf", {
               default: "Page $1 of $2",
@@ -56,7 +56,7 @@ export const DataTableCompactPager = (props: DataTableCompactPagerProps) => {
         })}
         onClick={() => setPage((p) => Math.max(0, p - 1))}
       >
-        <ChevronLeft className="size-4" />
+        <ChevronLeft className="size-4 rtl:-scale-x-100" />
       </Button>
       <Button
         type="button"
@@ -68,7 +68,7 @@ export const DataTableCompactPager = (props: DataTableCompactPagerProps) => {
         })}
         onClick={() => setPage((p) => p + 1)}
       >
-        <ChevronRight className="size-4" />
+        <ChevronRight className="size-4 rtl:-scale-x-100" />
       </Button>
     </nav>
   );

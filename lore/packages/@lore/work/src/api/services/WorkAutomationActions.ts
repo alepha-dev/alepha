@@ -87,7 +87,11 @@ export class WorkAutomationActions {
       return {
         target: { table: "quests", mode: "create" },
         result,
-        condition: sql`(SELECT COUNT(*) FROM quests WHERE project_id = ${rule.projectId} AND deleted_at IS NULL) < ${cap}`,
+        condition: sql`${this.quests.subquery(
+          { projectId: rule.projectId },
+          undefined,
+          { count: true },
+        )} < ${cap}`,
         invoke: () => this.api().createQuest({ body }, { user }),
       };
     }
@@ -126,7 +130,20 @@ export class WorkAutomationActions {
       return {
         target,
         result,
-        condition: sql`EXISTS (SELECT 1 FROM releases WHERE id = ${release.id} AND project_id = ${rule.projectId} AND released_at IS NULL) AND EXISTS (SELECT 1 FROM quests WHERE id = ${quest.id} AND project_id = ${rule.projectId} AND (release_id IS NULL OR release_id = ${release.id}))`,
+        // The quest subquery adds the soft-delete filter the raw guard
+        // lacked; a deleted quest is refused by the update it guards anyway.
+        condition: sql`EXISTS ${this.releases.subquery({
+          id: release.id,
+          projectId: rule.projectId,
+          releasedAt: { isNull: true },
+        })} AND EXISTS ${this.quests.subquery({
+          id: quest.id,
+          projectId: rule.projectId,
+          or: [
+            { releaseId: { isNull: true } },
+            { releaseId: { eq: release.id } },
+          ],
+        })}`,
         invoke: () =>
           this.api().updateQuestById(
             {

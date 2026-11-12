@@ -68,7 +68,7 @@ export const AiChatHistory = (props: AiChatHistoryProps) => {
                 conversation.id === props.current ? "true" : undefined
               }
               className={cn(
-                "hover:bg-muted flex flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left",
+                "hover:bg-muted flex flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-start",
                 conversation.id === props.current && "bg-muted",
               )}
               onClick={() => {

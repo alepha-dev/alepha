@@ -4,6 +4,7 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
+import { expectAccessible } from "alepha/testing/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DialogProvider } from "../../core/useDialog.tsx";
@@ -85,6 +86,8 @@ describe("MyOrganizations", () => {
     const { view } = await mount((id) => opened.push(id));
 
     expect(view.getByText("Owner")).toBeDefined();
+    // axe: the organization list (#Q3338).
+    await expectAccessible();
     fireEvent.click(view.getByRole("button", { name: "Open Acme" }));
 
     expect(opened).toEqual([organizationId]);

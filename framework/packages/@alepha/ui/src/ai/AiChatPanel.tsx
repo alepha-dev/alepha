@@ -116,7 +116,7 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
 
   return (
     <div data-testid="ai-chat" className="flex h-full min-h-0 w-full flex-col">
-      <div className="border-border flex items-center gap-2 border-b py-2.5 pr-2.5 pl-4">
+      <div className="border-border flex items-center gap-2 border-b py-2.5 ps-4 pe-2.5">
         <Sparkles className="text-primary size-4 shrink-0" />
         {props.renderTitle ? (
           props.renderTitle(title, titleClassName)
@@ -200,7 +200,7 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
             {chat.streaming && (
               <div
                 data-testid="ai-chat-streaming"
-                className="mr-4 self-start text-sm leading-relaxed"
+                className="me-4 self-start text-sm leading-relaxed"
               >
                 <MarkdownView
                   content={chat.streaming}

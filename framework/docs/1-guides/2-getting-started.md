@@ -46,7 +46,9 @@ This creates a `my-app` directory with:
 - `.oxlintrc.json` and `.oxfmtrc.json` for linting and formatting
 - `src/api/` with an example controller
 - `src/web/` with a React router and page
-- `src/main.server.ts` and `src/main.browser.ts` as the entry files, plus `src/main.css`
+- `src/main.server.ts` and `src/main.browser.ts` as the entry files, plus `src/main.css`;
+  the server entry turns on a strict Content Security Policy
+  (`contentSecurityPolicy: {}`, see [Middlewares](/docs/guides-server-middlewares))
 - `vite.config.ts` with the Tailwind plugin
 - `AGENTS.md` so AI assistants know the project's conventions
 - the supporting files: `.gitignore`, `.editorconfig`, `.env.example`,

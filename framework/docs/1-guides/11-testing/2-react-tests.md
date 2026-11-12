@@ -7,8 +7,10 @@ Alepha provides testing utilities for React components through `alepha/testing/r
 Vitest ships with `alepha`, but jsdom and Testing Library do not. Install them in the project:
 
 ```bash
-npm install -D jsdom @testing-library/react @testing-library/dom
+npm install -D jsdom @testing-library/react @testing-library/dom axe-core
 ```
+
+`axe-core` is needed by `expectAccessible` only, and is loaded when it is called: leave it out if you do not use it.
 
 ## File Naming Convention
 
@@ -62,6 +64,7 @@ The `alepha/testing/react` module exports:
 | `waitForFormSubmit(alepha, formId)`       | Wait for the `form:submit:end` event                                                        |
 | `toggleSwitch(screen, role?, name?)`      | Toggle a switch or checkbox element                                                         |
 | `setupJsdomMocks()`                       | Mock `matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `getComputedStyle` |
+| `expectAccessible(target?, options?)`     | Run axe on the rendered tree and fail on any WCAG 2.2 A or AA violation                     |
 
 ## Basic Rendering
 
@@ -208,6 +211,24 @@ Mocked APIs:
 - `window.IntersectionObserver`
 - `window.scrollTo`
 - `window.getComputedStyle`
+
+## Accessibility
+
+`expectAccessible()` runs [axe](https://github.com/dequelabs/axe-core) with the WCAG 2.0, 2.1 and 2.2 A and AA rules and fails with every violation it finds: for each one, the rule id, its help URL, and the selector and HTML of each node.
+
+```tsx
+import { expectAccessible, renderWithAlepha } from "alepha/testing/react";
+
+it("is accessible with the dialog open", async () => {
+  await renderWithAlepha(<MyDialog defaultOpen />);
+  await expectAccessible();
+});
+```
+
+- It scans `document.body` by default, not the render container: a dialog, a menu or a popover is portalled outside the container. Pass an element to scan only that.
+- `{ disable: ["rule-id"] }` switches a rule off for that one call. There is no global switch: disable a false positive where it is, with the reason beside it.
+
+What it does not prove. Under jsdom no stylesheet is applied and nothing is laid out, so axe sees structure only: names, roles, aria wiring, labels, duplicate ids. `color-contrast` and `target-size` are switched off, since they would return no result and read as a pass. Measure them in a real browser with `expectPageAccessible` (see [End-to-End Tests](/docs/guides-testing-e2e-tests)). And axe finds roughly half of real accessibility issues by its own figure: a green scan is a floor, not a verdict.
 
 ## Server-side rendering
 

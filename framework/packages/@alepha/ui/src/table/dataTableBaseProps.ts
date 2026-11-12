@@ -360,6 +360,8 @@ export interface DataTableBaseProps<
    * Square the table's right corners, for a table that another panel joins
    * on its right so the two read as one block: the panel carries the
    * rounded corners, and the table's right border is the line between them.
+   * "Right" is the end side: on a right-to-left page the panel and the
+   * squared corners are on the left.
    *
    * `true` squares them always. A breakpoint (`"lg"`) squares them from that
    * width up only, for a panel that is itself hidden below it: the table on

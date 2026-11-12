@@ -260,7 +260,7 @@ export const AdminAudits = () => {
       type="button"
       title={label}
       onClick={() => router.push(href)}
-      className="hover:text-primary inline-flex items-center gap-1.5 truncate text-left text-xs underline-offset-2 hover:underline"
+      className="hover:text-primary inline-flex items-center gap-1.5 truncate text-start text-xs underline-offset-2 hover:underline"
     >
       {icon}
       <span className="truncate">{label}</span>

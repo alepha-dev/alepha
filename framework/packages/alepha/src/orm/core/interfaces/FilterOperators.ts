@@ -407,6 +407,13 @@ export interface FilterOperators<TValue> {
    * The argument passed in the second array can't be empty:
    * if an empty is provided, this method will throw.
    *
+   * ## Dialects
+   *
+   * Postgres compiles it to `@>`. SQLite and D1 store an array column as
+   * JSON text, and test each element with `json_each` instead, so one where
+   * object serves both. (`arrayContained` and `arrayOverlaps` have no SQLite
+   * form and throw there.)
+   *
    * ## Examples
    *
    * ```ts

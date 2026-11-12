@@ -6,7 +6,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi, uiAtom } from "alepha/react/ui";
 import { LinkProvider } from "alepha/server/links";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import AccountProfile from "../AccountProfile.tsx";
@@ -104,6 +104,8 @@ describe("AccountProfile", () => {
   it("shows the username when no realm is described", async () => {
     await mount();
     expect(screen.queryByText("Username")).not.toBeNull();
+    // axe: the profile page (#Q3338).
+    await expectAccessible();
   });
 
   /**

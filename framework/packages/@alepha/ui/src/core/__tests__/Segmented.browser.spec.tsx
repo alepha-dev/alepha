@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { useState } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -54,11 +55,13 @@ const checked = () =>
  * focus with it. Without it the role is a claim the control does not honour.
  */
 describe("Segmented keyboard navigation", () => {
-  it("moves the selection and the focus with the arrow keys", () => {
+  it("moves the selection and the focus with the arrow keys", async () => {
     render(<Harness />);
 
     fireEvent.click(screen.getByRole("radio", { name: "Alpha" }));
     expect(checked()).toBe("Alpha");
+    // axe: a segmented radiogroup (#Q3338).
+    await expectAccessible();
 
     press("ArrowRight");
     expect(checked()).toBe("Bravo");

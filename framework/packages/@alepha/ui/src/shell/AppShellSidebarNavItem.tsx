@@ -313,7 +313,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
           )
         ) : (
           <ChevronRight
-            className={`size-4 transition-transform rtl:-scale-x-100 ${open ? "rotate-90" : ""}`}
+            className={`size-4 transition-transform rtl:-scale-x-100 ${open ? "rotate-90 rtl:-rotate-90" : ""}`}
           />
         )}
       </SidebarMenuButton>

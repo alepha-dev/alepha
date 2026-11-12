@@ -242,6 +242,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
     "Saisissez le code que nous avons envoyé à votre adresse e-mail.",
   "auth.mfa.error": "Une erreur est survenue. Merci de réessayer.",
   "auth.mfa.invalid": "Ce code n'est pas valide. Réessayez.",
+  "auth.mfa.codeLabel": "Code de vérification",
   "auth.mfa.resend": "Envoyer un nouveau code",
   "auth.mfa.resendFailed":
     "Impossible d'envoyer un nouveau code. Réessayez dans un instant.",

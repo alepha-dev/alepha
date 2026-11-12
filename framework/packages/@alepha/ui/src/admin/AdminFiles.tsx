@@ -253,7 +253,7 @@ export const AdminFiles = () => {
                 <button
                   type="button"
                   onClick={() => downloadFile(f)}
-                  className="hover:text-primary truncate text-left font-medium underline-offset-2 hover:underline"
+                  className="hover:text-primary truncate text-start font-medium underline-offset-2 hover:underline"
                 >
                   {f.name}
                 </button>

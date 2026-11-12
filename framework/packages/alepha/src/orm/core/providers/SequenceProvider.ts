@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { alephaSequences } from "../entities/alephaSequences.ts";
 import { $repository } from "../primitives/$repository.ts";
+import { SqlExpressionProvider } from "./SqlExpressionProvider.ts";
 
 /**
  * Portable, scoped numeric sequence provider - works identically on Postgres,
@@ -27,6 +28,7 @@ import { $repository } from "../primitives/$repository.ts";
 export class SequenceProvider {
   protected readonly repository = $repository(alephaSequences);
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly sqlx = $inject(SqlExpressionProvider);
 
   /**
    * Atomically advance the counter for `(name, scope)` and return the new value.
@@ -81,6 +83,39 @@ export class SequenceProvider {
       },
     });
     return row ? Number(row.value) : null;
+  }
+
+  /**
+   * Raise the counter for `(name, scope)` to at least `atLeast`, creating the
+   * row when it was never advanced, and return the value it now holds.
+   *
+   * Never lowers it, unlike {@link reset}: a value advanced past `atLeast`
+   * by a concurrent caller stays, so the next {@link advance} still hands
+   * out a fresh number. The comparison runs in the database, in the same
+   * `INSERT ... ON CONFLICT DO UPDATE` as `advance`, so it is atomic on every
+   * driver.
+   *
+   * Made for an import or a merge that writes numbers of its own and must
+   * keep the sequence above them.
+   */
+  public async raise(
+    name: string,
+    scope: string = "default",
+    atLeast: number,
+  ): Promise<number> {
+    const updated = await this.repository.upsert(
+      { id: this.crypto.randomUUID(), name, scope, value: atLeast },
+      {
+        target: ["name", "scope"],
+        set: {
+          value: this.sqlx.greatest(
+            this.repository.table.value,
+            this.repository.excluded("value"),
+          ),
+        },
+      },
+    );
+    return Number(updated.value ?? atLeast);
   }
 
   /**

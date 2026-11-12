@@ -13,6 +13,7 @@ export * from "./constants/PAGE_PRELOAD_KEY.ts";
 export * from "./contexts/RouterLayerContext.ts";
 export * from "./errors/Redirection.ts";
 export * from "./hooks/useActive.ts";
+export * from "./hooks/useCspNonce.ts";
 export * from "./hooks/useOverlay.ts";
 export * from "./hooks/useQueryParams.ts";
 export * from "./hooks/useRouter.ts";

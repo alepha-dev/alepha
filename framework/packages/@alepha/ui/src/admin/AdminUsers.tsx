@@ -421,7 +421,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/users/${u.id}`)}
-                    className="hover:text-primary inline-flex items-center gap-1.5 truncate text-left font-medium underline-offset-2 hover:underline"
+                    className="hover:text-primary inline-flex items-center gap-1.5 truncate text-start font-medium underline-offset-2 hover:underline"
                   >
                     <span className="truncate">{u.email ?? "—"}</span>
                     {u.emailVerified && u.email && (

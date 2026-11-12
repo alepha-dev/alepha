@@ -152,6 +152,24 @@ none, as on a fresh clone, and never overwrites one: put your local values there
 built-in default is public and would let anyone forge authentication tokens.
 Generate one with \`openssl rand -hex 32\`.
 
+## Content Security Policy
+
+The app sends a strict CSP, set in \`src/main.server.ts\`
+(\`contentSecurityPolicy: {}\` on \`helmetOptions\`), in \`alepha dev\` too. The
+browser runs no inline script and loads no script, frame, image or connection
+from another origin unless the policy allows it; the framework adds what its
+own scripts need. A third-party script, a remote image or an API on another
+host that is blocked (a \`Content Security Policy\` error in the console) is
+fixed by allowing it, never by adding \`'unsafe-inline'\`:
+
+\`\`\`ts
+alepha.inject(ServerHelmetProvider).addCspSource("img-src", "https://cdn.example.com");
+\`\`\`
+
+An inline script of your own goes in a \`$head\` given a literal object (it is
+allowed by its hash), or reads \`ServerHelmetProvider.cspNonce()\` when its
+content changes per request.
+
 ## Rules
 
 - Always check \`node_modules/alepha/src/\` before suggesting npm packages

@@ -212,7 +212,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
                       }
                     />
                   </div>
-                  <div className="bg-card absolute right-0 bottom-0 flex size-5 items-center justify-center rounded-full border">
+                  <div className="bg-card absolute end-0 bottom-0 flex size-5 items-center justify-center rounded-full border">
                     <Camera className="size-3" />
                   </div>
                 </button>
@@ -236,7 +236,11 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
             ref={fileInput}
             onChange={onPickAvatar}
             accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
+            // The `hidden` attribute, not the Tailwind class: the picker is
+            // opened through the button above, and the attribute keeps the
+            // bare input out of the accessibility tree even where no
+            // stylesheet applies (axe under jsdom reported it unlabelled).
+            hidden
           />
         </>
       )}
