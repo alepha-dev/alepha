@@ -241,13 +241,14 @@ test.describe("deploying through Lore", () => {
         .click();
       const search = page.locator('input[role="combobox"]');
       await expect(search).toBeVisible({ timeout: 15_000 });
-      await search.fill("DATABASE_URL");
+      // R2_BUCKET_NAME: DATABASE_URL takes a Postgres URL since #Q3509.
+      await search.fill("R2_BUCKET_NAME");
       await page
         .getByRole("option")
-        .filter({ hasText: "DATABASE_URL" })
+        .filter({ hasText: "R2_BUCKET_NAME" })
         .first()
         .click();
-      await page.locator("#app-environment-add-value").fill("postgres://nope");
+      await page.locator("#app-environment-add-value").fill("a-bucket");
       await page.getByTestId("app-environment-save").click();
 
       const key = page.getByTestId("app-environment-key");
@@ -277,7 +278,7 @@ test.describe("deploying through Lore", () => {
             "# pasted from a laptop",
             "STRIPE_SECRET_KEY=sk_live_replacedvalue1",
             "export MAILER_DSN='smtp://user:pass@host'",
-            "DATABASE_URL=postgres://nope",
+            "R2_BUCKET_NAME=nope",
           ].join("\n"),
         );
 
@@ -297,7 +298,7 @@ test.describe("deploying through Lore", () => {
         timeout: 15_000,
       });
       await expect(
-        table.getByText("DATABASE_URL", { exact: true }),
+        table.getByText("R2_BUCKET_NAME", { exact: true }),
       ).toHaveCount(0);
     });
 
