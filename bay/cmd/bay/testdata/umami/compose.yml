@@ -1,7 +1,8 @@
 ---
 services:
   umami:
-    image: ghcr.io/umami-software/umami:latest
+    # Pinned: latest moved to 3.5.0 on 2026-11-12 and its heartbeat answers 500 after the deploy (#Q3495).
+    image: ghcr.io/umami-software/umami:3.4.1
     ports:
       - "3000:3000"
     environment:
