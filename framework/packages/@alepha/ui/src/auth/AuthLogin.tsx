@@ -431,7 +431,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
               })}{" "}
               <a
                 href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
-                className="text-foreground underline-offset-4 hover:underline"
+                className="text-foreground underline underline-offset-4"
               >
                 {tr("auth.login.signUp", { default: "Sign up" })}
               </a>

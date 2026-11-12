@@ -250,7 +250,7 @@ export const AuthRegisterFormPhase = (props: AuthRegisterFormPhaseProps) => {
             })}{" "}
             <a
               href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
-              className="text-foreground underline-offset-4 hover:underline"
+              className="text-foreground underline underline-offset-4"
             >
               {tr("auth.register.signIn", { default: "Sign in" })}
             </a>

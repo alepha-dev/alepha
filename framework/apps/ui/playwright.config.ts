@@ -15,6 +15,8 @@ const port = e2ePort("ui");
 
 export default defineConfig({
   testDir: "./e2e",
+  // The accessibility scan has its own config and clock: `playwright.a11y.config.ts`.
+  testIgnore: ["a11y.spec.ts"],
   reporter: process.env.CI ? "list" : "html",
   fullyParallel: false,
   workers: 1,

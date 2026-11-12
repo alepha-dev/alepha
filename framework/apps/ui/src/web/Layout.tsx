@@ -65,14 +65,15 @@ export const Layout = () => {
             }
             brand={
               /*
-                The accessible name is on the ANCHOR, not on the image: both
-                text lines are `display: none` in icon mode, so an `alt`
-                carrying the name would be the only label in one state and a
-                duplicate of the visible text in the other.
+                The accessible name is the anchor's own TEXT, not an
+                `aria-label` and not the image's `alt`: an `aria-label` that
+                left out the version the link shows failed WCAG 2.5.3 (axe
+                `label-content-name-mismatch`). In icon mode the two text
+                lines turn `sr-only` rather than `display: none`, so the
+                collapsed link keeps the same name.
               */
               <a
                 href="/"
-                aria-label="Alepha UI"
                 className="flex items-center gap-2 px-2 py-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
               >
                 {/*
@@ -90,7 +91,7 @@ export const Layout = () => {
                   height={32}
                   className="size-8 shrink-0 object-contain"
                 />
-                <span className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+                <span className="flex min-w-0 flex-col group-data-[collapsible=icon]:sr-only">
                   <span className="truncate text-sm leading-tight font-semibold">
                     Alepha UI
                   </span>

@@ -372,7 +372,21 @@ const Button = (props: ButtonProps) => {
           <Loader2Icon aria-hidden className="animate-spin" />
         </span>
       )}
-      <span className={cn("contents", { invisible: loading })}>{children}</span>
+      {/*
+        While loading, the label is painted out but stays in the layout AND in
+        the accessibility tree: `invisible` (visibility: hidden) also removed
+        it from the tree, so a loading button had no name (axe `button-name`,
+        WCAG 4.1.2). `opacity` does nothing on a `display: contents` box, so
+        the text is made transparent and every element inside it fully
+        transparent instead.
+      */}
+      <span
+        className={cn("contents", {
+          "text-transparent [&_*]:opacity-0": loading,
+        })}
+      >
+        {children}
+      </span>
     </ButtonPrimitive>
   );
 };

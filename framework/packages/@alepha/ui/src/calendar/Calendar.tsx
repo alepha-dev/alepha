@@ -10,6 +10,7 @@ import {
   type DayButton,
   DayPicker,
   getDefaultClassNames,
+  labelDayButton,
   type Locale,
 } from "react-day-picker";
 
@@ -36,6 +37,7 @@ const Calendar = (props: CalendarProps) => {
     locale,
     formatters,
     components,
+    labels,
     ...rest
   } = props;
   const defaultClassNames = getDefaultClassNames();
@@ -53,6 +55,14 @@ const Calendar = (props: CalendarProps) => {
       )}
       captionLayout={captionLayout}
       locale={resolvedLocale}
+      labels={{
+        // The day's number first, then react-day-picker's own label: a
+        // button whose name does not contain the text it shows fails WCAG
+        // 2.5.3 (axe `label-content-name-mismatch`), and "1st" is not "1".
+        labelDayButton: (date, modifiers, options, dateLib) =>
+          `${date.getDate()}, ${labelDayButton(date, modifiers, options, dateLib)}`,
+        ...labels,
+      }}
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString(resolvedLocale?.code, { month: "short" }),

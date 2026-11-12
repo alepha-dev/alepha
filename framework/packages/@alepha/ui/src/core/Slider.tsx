@@ -37,6 +37,12 @@ const Slider = (props: SliderProps) => {
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
+            // The focusable part of a slider is each thumb's hidden range
+            // input, not the root: a name given to the root reaches no
+            // control unless it is forwarded (axe `label`, WCAG 4.1.2).
+            getAriaLabel={
+              props["aria-label"] ? () => props["aria-label"]! : undefined
+            }
             className="border-ring ring-ring/50 relative block size-3 shrink-0 rounded-full border bg-white transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}

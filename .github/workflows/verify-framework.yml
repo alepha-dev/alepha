@@ -521,6 +521,48 @@ jobs:
         timeout-minutes: 20
         run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run e2e
 
+  # ──────────────────────────────────────────────────────────────────────
+  # The accessibility scan of the showcase (#Q3349): axe on every route of
+  # `apps/ui` in light, dark and both colour-blind token sets, plus the
+  # states only a click opens. A few hundred axe runs do not fit the six-
+  # minute `globalTimeout` of the ui suite above, so the scan has its own
+  # Playwright config (`playwright.a11y.config.ts`) and its own job, which
+  # keeps it off the critical path of `e2e-apps`. It is inside Verify
+  # Framework on purpose: a green Verify Framework on `main` is what Deploy
+  # Framework waits for, so a new finding blocks the deploy.
+  #
+  # It blocks against `apps/ui/e2e/a11y-baseline.ts`: a finding missing from
+  # it fails, and so does an entry no finding matches any more.
+  # ──────────────────────────────────────────────────────────────────────
+  e2e-a11y:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      # See `test` above: the generators and oxfmt, not `yarn lint`.
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      - name: Build Showcase
+        run: yarn workspaces foreach -Wpt --include ui run build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+        with:
+          working-directory: framework
+
+      - name: Run Accessibility Scan
+        timeout-minutes: 22
+        run: yarn w ui e2e:a11y
+
   # Its own job for the reason it was already its own step: `e2e-cli` packs
   # the workspace with `yarn pack` and installs the tarball into a throwaway
   # project, so a failure here means a packaging bug rather than a UI one.

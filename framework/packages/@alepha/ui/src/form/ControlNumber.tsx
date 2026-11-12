@@ -84,6 +84,10 @@ export const ControlNumber = (props: ControlNumberProps) => {
         <div className="flex items-center gap-3 py-2">
           <Slider
             id={meta.id}
+            // The `<label for>` above points at the slider's root, which is
+            // not the input a screen reader lands on: the thumb takes the
+            // label as its own name.
+            aria-label={meta.label || undefined}
             min={lo}
             max={hi}
             step={props.step ?? 1}

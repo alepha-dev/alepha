@@ -20,11 +20,20 @@ describe("Button loading", () => {
     expect(button.querySelector("svg.animate-spin")).not.toBeNull();
   });
 
-  it("keeps the label in the layout, hidden, so the width holds", () => {
+  it("keeps the label in the layout, painted out, so the width holds", () => {
     render(<Button loading>Save</Button>);
     const label = screen.getByText("Save");
 
-    expect(label.className).toContain("invisible");
+    expect(label.className).toContain("text-transparent");
+    expect(label.className).not.toContain("invisible");
+  });
+
+  it("keeps its accessible name while loading", () => {
+    render(<Button loading>Save</Button>);
+
+    // `visibility: hidden` would drop the label from the accessibility tree
+    // and leave a nameless button for as long as the work runs.
+    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
   });
 
   it("does not run its click handler while loading", () => {
@@ -47,6 +56,8 @@ describe("Button loading", () => {
     expect(button.hasAttribute("disabled")).toBe(false);
     expect(button.hasAttribute("data-loading")).toBe(false);
     expect(button.querySelector("svg.animate-spin")).toBeNull();
-    expect(screen.getByText("Save").className).not.toContain("invisible");
+    expect(screen.getByText("Save").className).not.toContain(
+      "text-transparent",
+    );
   });
 });

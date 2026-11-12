@@ -157,6 +157,9 @@ export const AuthMfaStep = (props: AuthMfaStepProps) => {
       <div className="flex justify-center">
         <InputOTP
           maxLength={6}
+          aria-label={tr("auth.mfa.codeLabel", {
+            default: "Verification code",
+          })}
           value={code}
           disabled={loading}
           onChange={(value: string) => {
