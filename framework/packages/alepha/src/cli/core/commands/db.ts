@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { delimiter, dirname, isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -24,7 +25,7 @@ export class DbCommand {
     provider: z
       .text({
         description:
-          "Database provider name to target (e.g., 'postgres', 'sqlite')",
+          "Migrations folder to target, 'sqlite' or 'postgres'. Migration commands cover both by default; apply, push and studio act on the database DATABASE_URL names.",
       })
       .optional(),
   });
@@ -78,64 +79,126 @@ export class DbCommand {
       // for every provider whether or not its schema has moved.
       const destructive: Array<{ provider: string; offenders: string[] }> = [];
 
+      // Every app keeps both folders (#Q3506): the dialect the URL names,
+      // and the other one, whose model is rebuilt offline (#Q3471).
+      // `--provider` narrows to one of them.
+      const dialects = this.dialectsFor(flags.provider);
+      // A folder with no migrations while its twin has history: an app that
+      // predates the second dialect. One clear error, not a drift report
+      // against an empty database.
+      const missing: Array<{ provider: string; other: string }> = [];
+
       for (const primitive of repositoryProvider.getRepositories()) {
         const provider = primitive.provider;
-        const providerName = provider.name;
-        if (accepted.has(providerName)) {
+        if (provider.name === "" || accepted.has(provider.name)) {
           continue;
         }
+        accepted.add(provider.name);
 
-        accepted.add(providerName);
-
-        // Honor the --provider filter (previously declared but ignored here).
-        if (flags.provider && flags.provider !== providerName) {
-          continue;
-        }
-
-        const migrationDir = this.fs.join(rootDir, "migrations", providerName);
-
-        // Before anything about drift. `generate` only ever scanned the
-        // files it had just created, so a committed migration was read once
-        // on one laptop and never again.
-        const offenders = await this.findDestructiveMigrations(
-          migrationDir,
-          await this.fs.ls(migrationDir).catch(() => []),
-        );
-        if (offenders.length > 0) {
-          destructive.push({ provider: providerName, offenders });
-        }
-
-        const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
-
-        // No snapshot is not "nothing to compare"  -  it is a comparison
-        // against an empty database, and `generateMigration` already does
-        // exactly that when `prevSnapshot` is undefined. Skipping it here
-        // meant a project with entities and zero migrations reported clean
-        // and exited 0, so `alepha verify` passed on an app whose first
-        // authenticated request would 500 with `DbTableNotFoundError`. An app
-        // with no models still produces no statements, so a genuinely empty
-        // provider stays green on the same code path.
-        if (!lastSnapshot) {
-          this.log.info(
-            `No migrations recorded yet for '${providerName}'; comparing against an empty database.`,
+        for (const dialect of dialects) {
+          const providerName = this.folderOf(dialect);
+          const otherName = this.folderOf(
+            dialect === "postgresql" ? "sqlite" : "postgresql",
           );
-        }
 
-        const { statements: migrationStatements } =
-          await drizzleKitProvider.generateMigration(provider, lastSnapshot, {
-            withoutSchema: true,
+          const migrationDir = this.fs.join(
+            rootDir,
+            "migrations",
+            providerName,
+          );
+          const entries = await this.fs.ls(migrationDir).catch(() => []);
+
+          // Before anything about drift. `generate` only ever scanned the
+          // files it had just created, so a committed migration was read once
+          // on one laptop and never again.
+          const offenders = await this.findDestructiveMigrations(
+            migrationDir,
+            entries,
+          );
+          if (offenders.length > 0) {
+            destructive.push({ provider: providerName, offenders });
+          }
+
+          if (
+            (await this.countMigrations(migrationDir, entries)) === 0 &&
+            (await this.countMigrations(
+              this.fs.join(rootDir, "migrations", otherName),
+            )) > 0
+          ) {
+            missing.push({ provider: providerName, other: otherName });
+            continue;
+          }
+
+          const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
+
+          // No snapshot is not "nothing to compare"  -  it is a comparison
+          // against an empty database, and `generateMigration` already does
+          // exactly that when `prevSnapshot` is undefined. Skipping it here
+          // meant a project with entities and zero migrations reported clean
+          // and exited 0, so `alepha verify` passed on an app whose first
+          // authenticated request would 500 with `DbTableNotFoundError`. An app
+          // with no models still produces no statements, so a genuinely empty
+          // provider stays green on the same code path.
+          if (!lastSnapshot) {
+            this.log.info(
+              `No migrations recorded yet for '${providerName}'; comparing against an empty database.`,
+            );
+          }
+
+          const { statements: migrationStatements } =
+            await drizzleKitProvider.generateMigration(provider, lastSnapshot, {
+              withoutSchema: true,
+              dialect,
+            });
+
+          if (migrationStatements.length === 0) {
+            this.log.info(`No changes detected for '${providerName}'.`);
+            continue;
+          }
+
+          drifted.push({
+            provider: providerName,
+            statements: migrationStatements,
+            layout: await this.migrationsLayout(migrationDir),
           });
-
-        if (migrationStatements.length === 0) {
-          this.log.info(`No changes detected for '${providerName}'.`);
-          continue;
         }
+      }
 
-        drifted.push({
-          provider: providerName,
-          statements: migrationStatements,
-          layout: await this.migrationsLayout(migrationDir),
-        });
+      // A custom migration is both dialects, or says why not (#Q3506): an
+      // empty twin would otherwise pass every check, and "both" would be in
+      // name only.
+      const twins =
+        dialects.length === 2
+          ? await this.findUnmatchedCustomMigrations(rootDir)
+          : [];
+
+      for (const { provider: providerName, other } of missing) {
+        this.log.info("");
+        this.log.info(
+          `No ${providerName}/ baseline: run 'alepha db baseline create --provider ${providerName}'.`,
+        );
+        this.log.info(
+          `Every app keeps migrations/sqlite and migrations/postgres; this one has ${other}/ history only.`,
+        );
+      }
+
+      if (twins.length > 0) {
+        this.log.info("");
+        this.log.info(
+          "Custom migrations with no SQL in the other dialect's folder:",
+        );
+        this.log.info("");
+        for (const twin of twins) {
+          this.log.info(`  ${twin}`);
+        }
+        this.log.info("");
+        this.log.info(
+          "Write the other dialect's SQL in its twin, or say why it needs none, in either file:",
+        );
+        this.log.info("");
+        this.log.info("  -- alepha-sqlite-only: <why Postgres needs nothing>");
+        this.log.info("  -- alepha-postgres-only: <why SQLite needs nothing>");
+        this.log.info("");
       }
 
       // Report every destructive statement across ALL providers, then drift,
@@ -191,6 +254,16 @@ export class DbCommand {
       // destructive statement says both rather than hiding the second behind
       // whichever was checked first.
       const reasons: string[] = [];
+      for (const { provider: providerName } of missing) {
+        reasons.push(
+          `no ${providerName}/ baseline: run alepha db baseline create --provider ${providerName}`,
+        );
+      }
+      if (twins.length > 0) {
+        reasons.push(
+          `custom migration without its twin's SQL or an 'alepha-sqlite-only' / 'alepha-postgres-only' marker (${twins.length})`,
+        );
+      }
       if (destructive.length > 0) {
         reasons.push(
           `DROP TABLE without an 'alepha-allow-drop-table' marker (${destructive
@@ -245,22 +318,31 @@ export class DbCommand {
     handler: async ({ flags, root }) => {
       const parts: string[] = [];
       if (flags.custom) parts.push(`--custom=1`);
+      // A custom migration is created in both folders, and its twin is found
+      // by name (#Q3506): left to drizzle-kit, each run would pick its own.
+      const name =
+        flags.name ??
+        (flags.custom ? `custom_${randomBytes(4).toString("hex")}` : undefined);
       // Both values travel through a shell string: a migration name with a
       // space, or a hint containing a quote, has to be quoted to survive.
-      if (flags.name) parts.push(`--name=${this.quoteShellArg(flags.name)}`);
+      if (name) parts.push(`--name=${this.quoteShellArg(name)}`);
       if (flags.hints) {
         parts.push(`--hints=${this.quoteShellArg(flags.hints)}`);
       }
       const commandFlags = parts.length > 0 ? parts.join(" ") : undefined;
 
-      await this.runDrizzleKitCommand({
-        root,
-        command: "generate",
-        commandFlags,
-        provider: flags.provider,
-        logMessage: (providerName, dialect) =>
-          `Generate '${providerName}' migrations (${dialect}) ...`,
-      });
+      // Both folders, in one run, whatever DATABASE_URL says (#Q3506): the
+      // other dialect's model is built offline, so nothing connects.
+      for (const dialect of this.dialectsFor(flags.provider)) {
+        await this.runDrizzleKitCommand({
+          root,
+          command: "generate",
+          commandFlags,
+          dialect,
+          logMessage: (providerName, kind) =>
+            `Generate '${providerName}' migrations (${kind}) ...`,
+        });
+      }
     },
   });
 
@@ -279,30 +361,34 @@ export class DbCommand {
         mode: "development",
         entry,
       });
-      const repositoryProvider = this.requireDatabase(alepha, "baseline");
+      this.requireDatabase(alepha, "baseline");
 
-      const seen = new Set<string>();
-      for (const primitive of repositoryProvider.getRepositories()) {
-        const providerName = primitive.provider.name;
-        if (providerName === "" || seen.has(providerName)) continue;
-        seen.add(providerName);
-        if (flags.provider && flags.provider !== providerName) continue;
-
+      // Per dialect, both by default (#Q3506): `--provider postgres` is how
+      // an app that predates the second folder gets its first baseline. A
+      // folder with nothing to archive simply gets its baseline.
+      const dialects = this.dialectsFor(flags.provider);
+      for (const dialect of dialects) {
+        const providerName = this.folderOf(dialect);
         const migrationsDir = this.fs.join(root, "migrations", providerName);
+        if ((await this.countMigrations(migrationsDir)) === 0) {
+          continue;
+        }
         const archived = await this.archiveMigrations(migrationsDir);
         this.log.info(
           `Archived ${archived.length} migration(s) for '${providerName}' into .archive/`,
         );
       }
 
-      await this.runDrizzleKitCommand({
-        root,
-        command: "generate",
-        commandFlags: "--name=baseline",
-        provider: flags.provider,
-        logMessage: (providerName, dialect) =>
-          `Generate '${providerName}' baseline (${dialect}) ...`,
-      });
+      for (const dialect of dialects) {
+        await this.runDrizzleKitCommand({
+          root,
+          command: "generate",
+          commandFlags: "--name=baseline",
+          dialect,
+          logMessage: (providerName, kind) =>
+            `Generate '${providerName}' baseline (${kind}) ...`,
+        });
+      }
     },
   });
 
@@ -970,6 +1056,126 @@ if (typeof registerHooks === "function") {
       hookUrl: pathToFileURL(hookPath).href,
     };
   }
+
+  /**
+   * The dialects a migrations command covers: both by default (#Q3506), or
+   * the one `--provider` names. `d1` and `hyperdrive` name their dialect's
+   * folder, since D1 runs `sqlite/` and Hyperdrive `postgres/`.
+   */
+  protected dialectsFor(
+    provider: string | undefined,
+  ): Array<"sqlite" | "postgresql"> {
+    if (!provider) {
+      return ["sqlite", "postgresql"];
+    }
+    if (provider === "sqlite" || provider === "d1") {
+      return ["sqlite"];
+    }
+    if (
+      provider === "postgres" ||
+      provider === "postgresql" ||
+      provider === "hyperdrive"
+    ) {
+      return ["postgresql"];
+    }
+    throw new CommandError(
+      `Unknown --provider '${provider}'. Use 'sqlite' or 'postgres', or leave it out for both.`,
+    );
+  }
+
+  /**
+   * The migrations folder of a dialect: `sqlite` or `postgres`.
+   */
+  protected folderOf(dialect: "sqlite" | "postgresql"): string {
+    return dialect === "postgresql" ? "postgres" : "sqlite";
+  }
+
+  /**
+   * How many migrations a folder holds (the `.archive/` of a baseline
+   * excluded).
+   */
+  protected async countMigrations(
+    migrationsDir: string,
+    entries?: string[],
+  ): Promise<number> {
+    let count = 0;
+    for (const entry of entries ??
+      (await this.fs.ls(migrationsDir).catch(() => []))) {
+      if (await this.resolveMigrationSqlPath(migrationsDir, entry)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * Custom migrations (`migrations create --custom`) whose SQL exists in one
+   * folder and not in the other, with no marker saying why.
+   *
+   * A custom migration is created in both folders under the same name, and
+   * drizzle-kit leaves both empty. Writing the SQLite one and forgetting the
+   * Postgres one would pass `check` (custom SQL changes no snapshot), so the
+   * twin is compared here: matched by the name after the timestamp, empty
+   * when nothing but comments and breakpoints is left. `-- alepha-sqlite-only:
+   * <why>` or `-- alepha-postgres-only: <why>`, in either file, accepts it.
+   */
+  protected async findUnmatchedCustomMigrations(
+    rootDir: string,
+  ): Promise<string[]> {
+    const read = async (folder: string) => {
+      const dir = this.fs.join(rootDir, "migrations", folder);
+      const found = new Map<string, { entry: string; sql: string }>();
+      for (const entry of await this.fs.ls(dir).catch(() => [])) {
+        const sqlPath = await this.resolveMigrationSqlPath(dir, entry);
+        if (!sqlPath) continue;
+        const sql = await this.fs.readTextFile(sqlPath);
+        if (!sql.includes(DbCommand.CUSTOM_MIGRATION_HEADER)) continue;
+        const name = entry.replace(/\.sql$/, "").replace(/^\d+_/, "");
+        found.set(name, { entry, sql });
+      }
+      return found;
+    };
+    const isEmpty = (sql: string | undefined) =>
+      sql === undefined ||
+      sql
+        .split("\n")
+        .map((line) => line.replace(/--> statement-breakpoint/g, "").trim())
+        .filter((line) => line !== "" && !line.startsWith("--")).length === 0;
+    const marked = (...sqls: Array<string | undefined>) =>
+      sqls.some(
+        (sql) =>
+          sql !== undefined &&
+          /--\s*alepha-(sqlite|postgres)-only:\s*\S/.test(sql),
+      );
+
+    const sqlite = await read("sqlite");
+    const postgres = await read("postgres");
+    const offenders: string[] = [];
+    for (const name of new Set([...sqlite.keys(), ...postgres.keys()])) {
+      const a = sqlite.get(name);
+      const b = postgres.get(name);
+      if (isEmpty(a?.sql) === isEmpty(b?.sql)) continue;
+      if (marked(a?.sql, b?.sql)) continue;
+      const written = isEmpty(a?.sql)
+        ? `postgres/${b!.entry}`
+        : `sqlite/${a!.entry}`;
+      const empty = isEmpty(a?.sql)
+        ? a
+          ? `sqlite/${a.entry} is empty`
+          : "sqlite/ has no twin"
+        : b
+          ? `postgres/${b.entry} is empty`
+          : "postgres/ has no twin";
+      offenders.push(`${written}: ${empty}`);
+    }
+    return offenders;
+  }
+
+  /**
+   * The comment drizzle-kit writes at the top of a `--custom` migration.
+   */
+  public static readonly CUSTOM_MIGRATION_HEADER =
+    "Custom SQL migration file, put your code below!";
 
   /**
    * Resolve a migrations-directory entry to the actual `.sql` file it
