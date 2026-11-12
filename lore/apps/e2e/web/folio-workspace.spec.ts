@@ -350,10 +350,13 @@ test.describe("Folio workspace", () => {
     expect(movedInto).not.toBeNull();
 
     // And the tree agrees: the folio now sits one level deeper than root.
+    // The kit indents on the inline start (#Q3332), so it reads the logical
+    // property: `paddingLeft` is empty in either direction.
     await page.reload();
     await expect(treeRow(folioTitle)).toBeVisible({ timeout: 15_000 });
     const depth = await treeRow(folioTitle).evaluate(
-      (el) => Number.parseInt((el as HTMLElement).style.paddingLeft, 10) || 0,
+      (el) =>
+        Number.parseInt((el as HTMLElement).style.paddingInlineStart, 10) || 0,
     );
     expect(depth).toBeGreaterThan(8);
   });
