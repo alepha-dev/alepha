@@ -18,9 +18,9 @@ import { sigilResourceSchema } from "./sigilResourceSchema.ts";
  * one request. Both are `pick`ed from the schemas that own those rows, so a
  * column added to `sigils` or `estates` cannot ride along into a browser.
  *
- * ⚠️ There is deliberately no "has artifacts" flag. The Artifacts tab is
- * unconditional (#1774), so the presence of a build decides nothing and the
- * flag would cost a query per row of the list.
+ * ⚠️ There is deliberately no "has artifacts" flag. The presence of a build
+ * decides no tab, so the flag would cost a query per row of the list for
+ * nothing.
  *
  * Lives here rather than beside the controller because the browser reads it
  * too: `currentInstancesAtom` / `currentInstanceAtom` validate against this

@@ -1995,7 +1995,6 @@ export default {
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Errors",
   "app.tab.explore": "Explore",
-  "app.tab.artifacts": "Artifacts",
   "app.tab.deploy": "Deploy",
   "apps.table.version": "Version",
   "apps.filter.version": "Version",
@@ -2006,15 +2005,14 @@ export default {
   "app.deploy.pick": "What to ship here",
   "app.deploy.wrongRuntime":
     "This estate runs $1, and no build of this tag was made for it.",
-  "app.deploy.runs": "Deploys",
   "app.deploy.loading": "Loading...",
   "app.deploy.error": "Could not read this copy's deploys.",
   "app.deploy.empty": "Nothing has been deployed here yet.",
   "app.deploy.log.show": "Log",
-  "app.deploy.log.hide": "Hide log",
   "app.deploy.status.queued": "Queued",
   "app.deploy.status.running": "Running",
   "app.deploy.status.succeeded": "Live",
+  "app.deploy.status.superseded": "Succeeded",
   "app.deploy.status.failed": "Failed",
   "app.deploy.status.cancelled": "Cancelled",
   "app.deploy.rollback": "Roll back",
@@ -2026,6 +2024,20 @@ export default {
   "app.deploy.rollback.migrations":
     "⚠️ $1 migration(s) have been applied since it shipped. A rollback changes the code and not the database, so it would run against the current schema.",
   "app.deploy.rollback.confirm": "Roll back",
+  "app.deploy.rollback.what":
+    "Lore deploys $1 ($2) in place of $3, which runs here now.",
+  "app.deploy.rollback.whatNoCurrent": "Lore deploys $1 ($2) here.",
+  "app.deploy.rollback.code":
+    "Only the code changes. The database, the environment variables and the stored files stay as they are.",
+  "app.deploy.rollback.planning": "Checking what a rollback would take...",
+  "app.deploy.rollback.unavailable": "This run cannot be rolled back to.",
+  "app.deploy.new": "Deploy new artifact",
+  "app.deploy.log.title": "Log of $1",
+  "app.deploy.log.empty": "This run wrote no log.",
+  "app.deploy.table.status": "Status",
+  "app.deploy.table.build": "Build",
+  "app.deploy.table.when": "When",
+  "app.deploy.table.error": "Error",
   "app.deploy.rollback.started": "Rolling back",
   "app.deploy.noEstate.description":
     "This copy has no estate yet, so there is nowhere to deploy it. Choose one on its Settings tab.",
@@ -2076,9 +2088,6 @@ export default {
   "app.sigil.excludedPaths": "Hide the button on",
   "app.sigil.excludedPaths.desc":
     "One path per line. * matches within a segment, ** across segments.",
-  "app.sigil.outsideProduction": "Report outside production",
-  "app.sigil.outsideProduction.desc":
-    "Send from a non-production server too, such as staging. The browser half still reports from production pages only.",
   "app.sigil.save": "Save",
   "app.sigil.savedNextDeploy": "Saved. It applies on the next deploy.",
   "app.sigil.redeploy.title": "Redeploy to apply it?",
@@ -2127,7 +2136,6 @@ export default {
   "app.dashboard.resourceName": "Resources",
   "app.dashboard.resourceName.hint":
     "The name its estate knows it by: its Worker, database and bucket on Cloudflare, its instance on a Bay machine. Set on the first deploy, it stays the same when the project is renamed.",
-  "app.switcher.label": "Switch environment",
   "app.nextSteps.title": "Next steps",
   "app.nextSteps.description":
     "None of these is required. This copy is already tracked; each step below buys one more thing.",
@@ -2147,7 +2155,7 @@ export default {
   // want different answers. "Not known yet" was the old string on both, and
   // `yet` was the problem: some apps have no address and never will.
   "app.dashboard.address.unknown": "None",
-  "app.dashboard.address.pinned": "Pinned on the Settings tab",
+  "app.dashboard.address.pinned": "Pinned in Settings",
   "app.dashboard.address.detected": "Detected from this app's last report",
   "app.dashboard.lastReport": "Last report",
   "app.dashboard.silent": "Silent",
@@ -2162,13 +2170,12 @@ export default {
   "app.dashboard.off": "Off",
   "app.dashboard.unknown": "Unknown",
   "app.dashboard.mismatch": "The app and Lore disagree about this one",
-  "app.dashboard.feedbackButton": "Feedback button: $1",
+  "app.dashboard.feedbackButton": "Button at $1",
   "app.dashboard.excludedPaths": "Button hidden on: $1",
-  "app.dashboard.reportedAt": "Reported by the app on $1.",
+  "app.dashboard.reported": "Configuration reported",
+  "app.dashboard.configure": "Configure",
   "app.dashboard.neverReported":
     "This app has not reported its configuration. Older releases send none, and one that has never reported has told us nothing either.",
-  "app.dashboard.configHint":
-    "What the app sends is decided by SIGIL_CONFIG in its own deploy. When Lore deploys this copy, switch it under Settings.",
   "app.dashboard.acceptsNothing": "Lore accepts nothing from this app",
   "app.artifacts": "Artifacts",
   "app.artifacts.loading": "Reading what this app has built…",
@@ -2387,8 +2394,8 @@ export default {
     "Copy this token now: it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, which is the only variable an app needs. Add SIGIL_SINK pointing at this instance if it is not the app's default sink.",
   "sigils.token.copy": "Copy token",
   "sigils.token.done": "Done",
-  "sigils.lastSeen": "last reported $1",
-  "sigils.neverSeen": "never reported",
+  "sigils.lastSeen": "Last reported",
+  "sigils.neverSeen": "Never reported",
   "sigils.action.rotate": "Rotate",
   "sigils.action.delete": "Delete",
   "sigils.rotate.confirmTitle": "Rotate the token for $1?",

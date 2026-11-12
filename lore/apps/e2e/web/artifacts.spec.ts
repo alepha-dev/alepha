@@ -122,7 +122,7 @@ test("opens a build from the table and reads what it declares", async ({
   // ...and the verbatim document one click away.
   await page
     .getByTestId("artifact-manifest")
-    .getByRole("tab", { name: "Raw" })
+    .getByRole("radio", { name: "Raw" })
     .click();
   await expect(page.getByTestId("artifact-manifest-raw")).toContainText(
     '"entry": "index.node.js"',

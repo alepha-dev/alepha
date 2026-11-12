@@ -1,4 +1,5 @@
 import {
+  Segmented,
   TooltipContent,
   TooltipTrigger,
   Tooltip as UiTooltip,
@@ -53,55 +54,42 @@ const AppInsightsControls = (props: AppInsightsControlsProps) => {
             claim is made. "Humans" means "did not declare itself a crawler" -
             a scraper driving a real browser sits in that bucket, and only the
             engagement rate gives it away.
+
+            The trigger is a wrapper rather than the `Segmented` itself: the
+            trigger hands its element a `ref`, and `Segmented` measures its
+            thumb through its own.
           */}
           <TooltipTrigger
-            render={
-              <div
-                data-testid="app-traffic"
-                className="bg-muted flex gap-0.5 rounded-md p-0.5"
-              >
-                {APP_INSIGHTS_TRAFFICS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => onChange({ range, traffic: t })}
-                    className={
-                      t === traffic
-                        ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
-                        : "text-muted-foreground rounded px-3 py-1 text-xs"
-                    }
-                  >
-                    {tr(`insights.traffic.${t}`)}
-                  </button>
-                ))}
-              </div>
-            }
-          />
+            render={<span data-testid="app-traffic" className="inline-flex" />}
+          >
+            <Segmented
+              size="sm"
+              value={traffic}
+              onChange={(t) =>
+                onChange({ range, traffic: t as AppInsightsTraffic })
+              }
+              options={APP_INSIGHTS_TRAFFICS.map((t) => ({
+                value: t,
+                label: tr(`insights.traffic.${t}`),
+              }))}
+            />
+          </TooltipTrigger>
           <TooltipContent className="max-w-xs">
             {tr("insights.traffic.note")}
           </TooltipContent>
         </UiTooltip>
       )}
 
-      <div
+      <Segmented
         data-testid="app-range"
-        className="bg-muted flex gap-0.5 rounded-md p-0.5"
-      >
-        {APP_INSIGHTS_RANGES.map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => onChange({ range: r, traffic })}
-            className={
-              r === range
-                ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
-                : "text-muted-foreground rounded px-3 py-1 text-xs"
-            }
-          >
-            {tr(`insights.range.${r}`)}
-          </button>
-        ))}
-      </div>
+        size="sm"
+        value={range}
+        onChange={(r) => onChange({ range: r as AppInsightsRange, traffic })}
+        options={APP_INSIGHTS_RANGES.map((r) => ({
+          value: r,
+          label: tr(`insights.range.${r}`),
+        }))}
+      />
 
       <ToolbarSpinner loading={loading} />
     </div>

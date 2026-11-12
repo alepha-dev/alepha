@@ -145,7 +145,7 @@ test.describe("deploying through Lore", () => {
       // page copy elsewhere.
       const tabs = page.getByTestId("app-tabs");
       await expect(
-        tabs.getByRole("link", { name: "Artifacts", exact: true }),
+        tabs.getByRole("link", { name: "Overview", exact: true }),
       ).toBeVisible();
       await expect(
         tabs.getByRole("link", { name: "Deploy", exact: true }),
@@ -388,7 +388,7 @@ test.describe("deploying through Lore", () => {
       await page.waitForLoadState("networkidle");
       const tabs = page.getByTestId("app-tabs");
       await expect(
-        tabs.getByRole("link", { name: "Artifacts", exact: true }),
+        tabs.getByRole("link", { name: "Overview", exact: true }),
       ).toBeVisible();
       await expect(
         tabs.getByRole("link", { name: "Deploy", exact: true }),

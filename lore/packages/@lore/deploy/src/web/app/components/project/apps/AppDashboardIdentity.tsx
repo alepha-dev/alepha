@@ -1,8 +1,10 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Link, useRouter } from "alepha/react/router";
+import { ExternalLink } from "lucide-react";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import AppDashboardRunning from "./AppDashboardRunning.tsx";
@@ -33,6 +35,8 @@ export interface AppDashboardIdentityProps {
 const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
+  const router = useRouter();
+  const [project] = useStore(currentProjectAtom);
   const { instance } = props;
   const sigil = instance.sigil;
 
@@ -56,11 +60,9 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
           {tr("app.dashboard.address")}
         </span>
         {/*
-          Text, not a link, and deliberately so: the page header two lines up
-          already carries the address as the clickable one, and a second link to
-          the same place beside it is a duplicate control rather than a second
-          fact. What this row adds is the part the header cannot say - WHERE the
-          value came from.
+          A link, as in the page header: an address on screen is one a reader
+          expects to open. What this row adds over the header is WHERE the value
+          came from, and a pinned one links to the Settings row that pins it.
 
           Two sources, one answer, resolved by `appUrl`: the operator's pin wins
           over the host the app reports from. Absent is a real state and reads
@@ -72,12 +74,36 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
         <span className="flex flex-col gap-0.5">
           {url ? (
             <>
-              <span>{appUrlLabel(url)}</span>
-              <span className="text-muted-foreground text-xs">
-                {instance.url
-                  ? tr("app.dashboard.address.pinned")
-                  : tr("app.dashboard.address.detected")}
-              </span>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="hover:text-foreground inline-flex w-fit items-center gap-1 hover:underline"
+              >
+                {appUrlLabel(url)}
+                <ExternalLink
+                  className="text-muted-foreground size-3"
+                  aria-hidden
+                />
+              </a>
+              {instance.url && project ? (
+                <Link
+                  href={router.path("appSettings", {
+                    params: {
+                      projectSlug: project.slug,
+                      app: instance.app,
+                      env: instance.env,
+                    },
+                  })}
+                  className="text-muted-foreground hover:text-foreground w-fit text-xs underline decoration-dotted underline-offset-4"
+                >
+                  {tr("app.dashboard.address.pinned")}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("app.dashboard.address.detected")}
+                </span>
+              )}
             </>
           ) : (
             <span className="text-muted-foreground">

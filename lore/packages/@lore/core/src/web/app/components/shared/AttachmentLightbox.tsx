@@ -3,9 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
+  Segmented,
 } from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
@@ -192,21 +190,16 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
         </div>
 
         {isHtml && (
-          <Tabs
+          <Segmented
+            size="sm"
+            className="self-start"
             value={tab}
-            onValueChange={(value) =>
-              setTab(value === "code" ? "code" : "preview")
-            }
-          >
-            <TabsList>
-              <TabsTrigger value="preview">
-                {tr("attachments.tab.preview")}
-              </TabsTrigger>
-              <TabsTrigger value="code">
-                {tr("attachments.tab.code")}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+            onChange={(value) => setTab(value === "code" ? "code" : "preview")}
+            options={[
+              { value: "preview", label: tr("attachments.tab.preview") },
+              { value: "code", label: tr("attachments.tab.code") },
+            ]}
+          />
         )}
 
         <div className="flex min-w-0 items-center justify-center">

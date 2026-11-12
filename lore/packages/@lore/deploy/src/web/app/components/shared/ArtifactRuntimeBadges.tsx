@@ -21,7 +21,7 @@ export interface ArtifactRuntimeBadgesProps {
  * `cloudflare`. The owner reversed the old label on 2026-09-22. `cloudflare`
  * is an estate TYPE, which is infrastructure, and it keeps its name there.
  *
- * One component for the project Artifacts table, an app's Artifacts tab and a
+ * One component for the project Artifacts table, an app's Deploy tab and a
  * release's Artifacts tab, so a runtime is drawn the same way everywhere.
  */
 const ArtifactRuntimeBadges = (props: ArtifactRuntimeBadgesProps) => {

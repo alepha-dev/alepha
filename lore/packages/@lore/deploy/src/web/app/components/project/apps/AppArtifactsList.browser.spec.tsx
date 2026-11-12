@@ -12,7 +12,7 @@ import { describe, it } from "vitest";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import AppArtifacts from "./AppArtifacts.tsx";
+import AppArtifactsList from "./AppArtifactsList.tsx";
 
 /**
  * Records every action the page reaches for and answers what a case set.
@@ -51,12 +51,11 @@ const instanceOf = (
 });
 
 /**
- * The Artifacts tab (feedback #2065): the card that used to close the
- * Dashboard, given a tab and the width. These cases moved here with it; the
- * one listing the page issues moved with them, since the Dashboard is back to
- * asking for nothing.
+ * The build list the Deploy tab reuses. It was the Artifacts tab's whole
+ * content until that tab was removed; these cases tested it through the tab
+ * and now render it directly.
  */
-describe("AppArtifacts", () => {
+describe("AppArtifactsList", () => {
   const mount = async () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -96,7 +95,7 @@ describe("AppArtifacts", () => {
       links,
       ...render(
         <AlephaContext.Provider value={alepha}>
-          <AppArtifacts />
+          <AppArtifactsList app={instance.app} />
         </AlephaContext.Provider>,
       ),
     };

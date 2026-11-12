@@ -5,23 +5,21 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  useToast,
 } from "@alepha/ui";
 import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
-import { useAction, useClient, useStore } from "alepha/react";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useState } from "react";
 
-import type { DeployController } from "../../../../../api/controllers/DeployController.ts";
 import { acceptedRuntimes } from "../../../../../api/schemas/acceptedRuntimes.ts";
-import type { ArtifactGroup } from "../../../../../api/schemas/artifactGroupSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import AppArtifactsList from "./AppArtifactsList.tsx";
+import AppDeployPickDialog from "./AppDeployPickDialog.tsx";
 import AppDeployRuns from "./AppDeployRuns.tsx";
 
 /**
- * The Deploy tab: what has run here, and what to ship next.
+ * The Deploy tab: the history of what has run here, full height, with
+ * "Deploy new artifact" over it.
  *
  * ## ⚠️ There is no estate picker, and there must not be one
  *
@@ -31,53 +29,17 @@ import AppDeployRuns from "./AppDeployRuns.tsx";
  * that the client never names an estate. So the empty state is "this copy has
  * no estate yet", pointing at that Settings row - not at a connect flow.
  *
- * ## The build list is the Artifacts tab's, not a second one
- *
- * `AppArtifactsList` with an `action` slot. Two artifact tables on one instance
- * page, disagreeing about column widths and about which digest is short enough,
- * is the outcome the reuse exists to prevent.
- *
- * ## ⚠️ The runtime refusal happens HERE, before the call
- *
- * `artifacts` is unique on `(projectId, app, tag, runtime, format)` and an
- * estate accepts one runtime and no image at all, so a tag with no ARCHIVE
- * variant this estate can run is a deploy that fails at the gate. The button
- * is disabled with the reason on it rather than enabled into a refusal - the
- * server still refuses (#1598, and `DeployService.queue` for the format half),
- * and this is the affordance, not the boundary.
+ * Owns no padding: the history is a `DataTable` that fills the plate, which
+ * is why `AppLayout` gives this tab no scroll region of its own.
  */
 const AppDeploy = () => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
-  const toaster = useToast();
   const router = useRouter();
-  const deployApi = useClient<DeployController>();
+  const [picking, setPicking] = useState(false);
 
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
-
-  // A `useAction` (#E59, #Q2329). The refusal is the server's own words, shown
-  // by the root `ActionErrorToaster`: the runtime gate and the credential
-  // clauses are written for somebody who often cannot fix them from here.
-  const deployAction = useAction<[group: ArtifactGroup], void>(
-    {
-      handler: async (_ctx, group) => {
-        if (!project || !instance) return;
-        await deployApi.startDeploy({
-          params: { projectId: project.id, instanceId: instance.id },
-          // ⚠️ A tag and nothing else. No estate on the wire, ever.
-          body: { tag: group.tag },
-        });
-        toaster.success(tr("app.deploy.started", { args: [group.tag] }));
-      },
-      // The run list picks the new run up.
-      invalidates: [["app-deployments", project?.id, instance?.id]],
-    },
-    [deployApi, project?.id, instance?.id, toaster, tr],
-  );
-  // Which tag the label names while the deploy starts. Every deploy button is
-  // disabled for that time (busy is page-wide); only the clicked one says so.
-  const [picked, setPicked] = useState("");
 
   if (!project || !instance) {
     return null;
@@ -120,72 +82,30 @@ const AppDeploy = () => {
   // may have granted it to a rank. ⚠️ Never the boundary - the endpoints refuse
   // server-side, and a hidden button refuses nothing.
   const canDeploy = can("deploy:manage");
-  // Derived from the estate's TYPE through the module the server reads too, so
-  // the button and the gate cannot disagree about what this copy can run.
-  const runnable = acceptedRuntimes(
-    instance.estate?.type ?? (instance.stack ? "bay" : "cloudflare"),
-  );
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <>
       <AppDeployRuns
         projectId={project.id}
         instanceId={instance.id}
         canWrite={canDeploy}
+        onDeployNew={canDeploy ? () => setPicking(true) : undefined}
       />
-
-      <AppArtifactsList
-        app={instance.app}
-        title={tr("app.deploy.pick")}
-        action={(group) => {
-          // ⚠️ `format === "archive"` is half of this test, not decoration.
-          //
-          // An image row carries a REAL runtime - Lore's own image is `node` -
-          // so a tag whose only node variant is an image would light this
-          // button up and the server would refuse the click. That is exactly
-          // the experience the shared `acceptedRuntimes` module was extracted
-          // to prevent, and the server half of the same gate is in
-          // `DeployService.queue`. Shipping one without the other is what
-          // makes a hidden-button bug.
-          //
-          // And every slice, not the primary (#Q2462): a `node,workerd`
-          // archive is deployable to a Cloudflare estate.
-          const usable = group.variants.some(
-            (variant) =>
-              variant.format === "archive" &&
-              variant.runtimes.some((runtime) => runnable.includes(runtime)),
-          );
-          const imageOnly =
-            !usable && group.variants.every((it) => it.format === "image");
-          if (!canDeploy) {
-            return null;
-          }
-          return (
-            <Button
-              size="sm"
-              variant={usable ? "solid" : "outlined"}
-              disabled={!usable || deployAction.loading}
-              title={
-                usable
-                  ? undefined
-                  : imageOnly
-                    ? tr("app.deploy.imageOnly")
-                    : tr("app.deploy.wrongRuntime", { args: [runnable[0]] })
-              }
-              onClick={() => {
-                setPicked(group.tag);
-                void deployAction.run(group);
-              }}
-              data-testid={`app-deploy-${group.tag}`}
-            >
-              {deployAction.loading && picked === group.tag
-                ? tr("app.deploy.starting")
-                : tr("app.deploy.action")}
-            </Button>
-          );
-        }}
-      />
-    </div>
+      {canDeploy ? (
+        <AppDeployPickDialog
+          open={picking}
+          onOpenChange={setPicking}
+          projectId={project.id}
+          instance={instance}
+          // Derived from the estate's TYPE through the module the server reads
+          // too, so the button and the gate cannot disagree about what this
+          // copy can run.
+          runnable={acceptedRuntimes(
+            instance.estate?.type ?? (instance.stack ? "bay" : "cloudflare"),
+          )}
+        />
+      ) : null}
+    </>
   );
 };
 

@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { BrandIcon } from "../core/BrandIcon.tsx";
 import { Button } from "../core/Button.tsx";
 import { Card, CardContent } from "../core/Card.tsx";
+import { AuthLink } from "./AuthLink.tsx";
 import { Separator } from "../core/Separator.tsx";
 import { Control } from "../form/Control.tsx";
 import { AuthMfaStep } from "./AuthMfaStep.tsx";
@@ -293,155 +294,156 @@ export const AuthLogin = (props: AuthLoginProps) => {
             className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
           />
         ) : null)}
-      <Card className="w-full">
-        <CardContent className="flex flex-col gap-4">
-          {(settings.displayName || settings.description) && (
-            <div className="flex flex-col items-center gap-1">
-              {settings.displayName && (
-                <h2 className="text-center text-lg font-semibold">
-                  {settings.displayName}
-                </h2>
-              )}
-              {settings.description && (
-                <p className="text-muted-foreground text-center text-sm">
-                  {settings.description}
-                </p>
-              )}
-            </div>
-          )}
+      <div className="w-full rounded-[calc(var(--radius-xl)+2px)] bg-neutral-600 px-px pt-1 pb-0.5 shadow-sm dark:bg-neutral-700">
+        <Card className="w-full">
+          <CardContent className="flex flex-col gap-4">
+            {(settings.displayName || settings.description) && (
+              <div className="flex flex-col items-center gap-1">
+                {settings.displayName && (
+                  <h2 className="text-center text-lg font-semibold">
+                    {settings.displayName}
+                  </h2>
+                )}
+                {settings.description && (
+                  <p className="text-muted-foreground text-center text-sm">
+                    {settings.description}
+                  </p>
+                )}
+              </div>
+            )}
 
-          {(error || formError || passkeyError) && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>
-                {error || formError || passkeyError}
-              </AlertDescription>
-            </Alert>
-          )}
+            {(error || formError || passkeyError) && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>
+                  {error || formError || passkeyError}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {challenge && (
-            <AuthMfaStep
-              challenge={challenge}
-              onVerified={async () => {
-                await router.push(safeRedirect(router.query.redirect), {
-                  force: true,
-                });
-              }}
-              onCancel={() => setChallenge(undefined)}
-            />
-          )}
-
-          {!challenge && credentialsProvider && (
-            <form {...form.props} className="flex flex-col gap-4">
-              <Control
-                label={identifierLabel}
-                input={form.input.identifier}
-                icon={identifierIcon}
-                autoComplete={identifierAutoComplete}
-                // oxlint-disable-next-line jsx-a11y/no-autofocus -- a caller-requested autofocus, see `autoFocus` in form/Control.tsx
-                autoFocus={autoFocusIdentifier}
-              />
-              <Control
-                label={tr("auth.login.password", {
-                  default: "Password",
-                })}
-                input={form.input.password}
-                password
-              />
-              <Button type="submit" loading={formState.loading}>
-                {tr("auth.login.submit", { default: "Sign in" })}
-              </Button>
-              {settings.resetPasswordAllowed && (
-                <a
-                  href={`${props.resetPasswordPath ?? "/auth/reset-password"}${realmQuery}`}
-                  className="text-muted-foreground hover:text-foreground text-center text-sm underline-offset-4 hover:underline"
-                >
-                  {tr("auth.login.forgot", {
-                    default: "Forgot password?",
-                  })}
-                </a>
-              )}
-            </form>
-          )}
-
-          {!challenge && passkeysOffered && (
-            <>
-              <AuthPasskeyAutofill
-                realm={props.realmConfig.realmName}
-                onController={(controller) => {
-                  autofillRef.current = controller;
+            {challenge && (
+              <AuthMfaStep
+                challenge={challenge}
+                onVerified={async () => {
+                  await router.push(safeRedirect(router.query.redirect), {
+                    force: true,
+                  });
                 }}
-                generation={autofillGeneration}
-                onSignedIn={afterPasskey}
-                onError={(err) => setPasskeyError(passkeyErrorMessage(err))}
+                onCancel={() => setChallenge(undefined)}
               />
-              <Button
-                type="button"
-                variant="outlined"
-                intent="none"
-                loading={passkeyBusy}
-                onClick={() => void signInWithPasskey()}
-              >
-                <Fingerprint className="size-4" />
-                {tr("auth.login.passkey", {
-                  default: "Sign in with a passkey",
-                })}
-              </Button>
-            </>
-          )}
+            )}
 
-          {showDivider && (
-            <div className="flex items-center gap-3">
-              <Separator className="flex-1" />
-              <span className="text-muted-foreground text-xs">
-                {tr("auth.login.or", { default: "OR" })}
-              </span>
-              <Separator className="flex-1" />
-            </div>
-          )}
-
-          {!challenge && externalMethods.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {externalMethods.map((method) => {
-                const provider =
-                  method.name.charAt(0).toUpperCase() + method.name.slice(1);
-                return (
-                  <Button
-                    key={method.name}
-                    variant="outlined"
-                    onClick={() =>
-                      auth.login(method.name, {
-                        redirect,
-                        realm: props.realmConfig.realmName,
-                      })
-                    }
+            {!challenge && credentialsProvider && (
+              <form {...form.props} className="flex flex-col gap-4">
+                <Control
+                  label={identifierLabel}
+                  input={form.input.identifier}
+                  icon={identifierIcon}
+                  autoComplete={identifierAutoComplete}
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- a caller-requested autofocus, see `autoFocus` in form/Control.tsx
+                  autoFocus={autoFocusIdentifier}
+                />
+                <Control
+                  label={tr("auth.login.password", {
+                    default: "Password",
+                  })}
+                  input={form.input.password}
+                  password
+                />
+                <Button type="submit" loading={formState.loading}>
+                  {tr("auth.login.submit", { default: "Sign in" })}
+                </Button>
+                {settings.resetPasswordAllowed && (
+                  <AuthLink
+                    href={`${props.resetPasswordPath ?? "/auth/reset-password"}${realmQuery}`}
+                    className="self-center text-sm"
                   >
-                    <BrandIcon provider={method.name} />
-                    {tr("auth.login.continueWith", {
-                      default: `Continue with ${provider}`,
-                      args: [provider],
+                    {tr("auth.login.forgot", {
+                      default: "Forgot password?",
                     })}
-                  </Button>
-                );
-              })}
-            </div>
-          )}
+                  </AuthLink>
+                )}
+              </form>
+            )}
 
-          {!challenge && settings.registrationAllowed && (
-            <p className="text-muted-foreground text-center text-sm">
-              {tr("auth.login.noAccount", {
-                default: "Don't have an account?",
-              })}{" "}
-              <a
-                href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
-                className="text-foreground underline underline-offset-4"
-              >
-                {tr("auth.login.signUp", { default: "Sign up" })}
-              </a>
-            </p>
-          )}
-        </CardContent>
-      </Card>
+            {!challenge && passkeysOffered && (
+              <>
+                <AuthPasskeyAutofill
+                  realm={props.realmConfig.realmName}
+                  onController={(controller) => {
+                    autofillRef.current = controller;
+                  }}
+                  generation={autofillGeneration}
+                  onSignedIn={afterPasskey}
+                  onError={(err) => setPasskeyError(passkeyErrorMessage(err))}
+                />
+                <Button
+                  type="button"
+                  variant="outlined"
+                  intent="none"
+                  loading={passkeyBusy}
+                  onClick={() => void signInWithPasskey()}
+                >
+                  <Fingerprint className="size-4" />
+                  {tr("auth.login.passkey", {
+                    default: "Sign in with a passkey",
+                  })}
+                </Button>
+              </>
+            )}
+
+            {showDivider && (
+              <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-muted-foreground text-xs">
+                  {tr("auth.login.or", { default: "OR" })}
+                </span>
+                <Separator className="flex-1" />
+              </div>
+            )}
+
+            {!challenge && externalMethods.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {externalMethods.map((method) => {
+                  const provider =
+                    method.name.charAt(0).toUpperCase() + method.name.slice(1);
+                  return (
+                    <Button
+                      key={method.name}
+                      variant="outlined"
+                      onClick={() =>
+                        auth.login(method.name, {
+                          redirect,
+                          realm: props.realmConfig.realmName,
+                        })
+                      }
+                    >
+                      <BrandIcon provider={method.name} />
+                      {tr("auth.login.continueWith", {
+                        default: `Continue with ${provider}`,
+                        args: [provider],
+                      })}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+
+            {!challenge && settings.registrationAllowed && (
+              <p className="text-muted-foreground text-center text-sm">
+                {tr("auth.login.noAccount", {
+                  default: "Don't have an account?",
+                })}{" "}
+                <AuthLink
+                  href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
+                >
+                  {tr("auth.login.signUp", { default: "Sign up" })}
+                </AuthLink>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       {props.cancelPath !== false && (
         <Button
           variant="minimal"

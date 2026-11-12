@@ -1331,7 +1331,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Where builds appear",
     url: "https://alepha.dev/lore/docs/apps-artifacts#where-builds-appear",
     capability: "apps",
-    text: "- The project's **Artifacts** page lists every build of every app. Search a\n  tag or a commit, and filter by app, runtime or format. A row's menu\n  downloads the archive.\n- Opening a build shows what it needs, where it runs, its manifest and its\n  deployments, with a **Deploy** menu when the project deploys through Lore.\n- An app instance's **Artifacts** tab lists that app's builds, one row per\n  tag.\n- A release shows, on its **Artifacts** tab, the builds whose tag equals the\n  release's tag. Nothing links the two, so changing the release's tag changes\n  what it shows.\n- An app instance's **Deploy** tab is the same list with a **Deploy** button\n  per build.",
+    text: "- The project's **Artifacts** page lists every build of every app. Search a\n  tag or a commit, and filter by app, runtime or format. A row's menu\n  downloads the archive.\n- Opening a build shows what it needs, where it runs, its manifest and its\n  deployments, with a **Deploy** menu when the project deploys through Lore.\n- A release shows, on its **Artifacts** tab, the builds whose tag equals the\n  release's tag. Nothing links the two, so changing the release's tag changes\n  what it shows.\n- An app instance's **Deploy** tab is the same list with a **Deploy** button\n  per build.",
   },
   {
     guide: "Artifacts",

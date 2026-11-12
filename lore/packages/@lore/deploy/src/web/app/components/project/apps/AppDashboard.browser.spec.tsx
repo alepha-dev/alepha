@@ -144,7 +144,7 @@ describe("AppDashboard", () => {
    *
    * Between epic #18 and feedback #2065 this read "one artifact listing and
    * no analytics query": the Artifacts card issued one indexed read. The card
-   * is a tab of its own now (`AppArtifacts.browser.spec.tsx` owns that
+   * left the front page (`AppArtifactsList.browser.spec.tsx` owns that
    * listing), so the front page is back to asking for nothing. Written as an
    * exact list rather than "no analytics", so any request creeping back in is
    * a red test and a decision.
@@ -201,7 +201,7 @@ describe("AppDashboard", () => {
     );
 
     expect(getByTestId("app-capabilities").textContent).toContain(
-      "Reported by the app on",
+      "Configuration reported",
     );
     // Three rows disagree: errors, vitals and feedback are all sent and all
     // refused. Views is the one that agrees, and carries no marker.

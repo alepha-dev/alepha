@@ -378,7 +378,6 @@ export class DeployRouter {
       this.appVitals,
       this.appErrors,
       this.appExplore,
-      this.appArtifacts,
       this.appDeploy,
       this.appEnvironment,
       this.appBackups,
@@ -664,27 +663,9 @@ export class DeployRouter {
   });
 
   /**
-   * What CI has built for this app, one row per tag.
-   *
-   * Its own tab rather than a card at the bottom of the Dashboard (feedback
-   * #2065): a build list is a table, and a table wants a tab's width. NOT
-   * gated on beacon, unlike Analytics, Vitals and Explore: artifacts come
-   * from CI through `lore artifacts push`, not from the sigil's
-   * telemetry, so an app that sends no beacon still has a build history.
-   */
-  appArtifacts = $page({
-    name: "appArtifacts",
-    path: "/artifacts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Artifacts`,
-    }),
-    lazy: () => import("./components/project/apps/AppArtifacts.tsx"),
-  });
-
-  /**
    * What has been deployed here, and what to deploy next.
    *
-   * ⚠️ Unguarded in the router, like `appArtifacts`. The tab self-hides on
+   * ⚠️ Unguarded in the router. The tab self-hides on
    * `apps.deploy` plus the copy having an estate, and every write behind it is
    * refused server-side by #1205's gate; a route guard would only turn a link
    * somebody already holds into a 404 while changing no permission.
@@ -722,7 +703,7 @@ export class DeployRouter {
    * value back to a browser, the project owner included. Sealed at rest under
    * `lore:app-secrets:v1`, opened only by the deploy.
    *
-   * ⚠️ Unguarded in the router, like `appArtifacts` and unlike the beacon
+   * ⚠️ Unguarded in the router, like `appDeploy` and unlike the beacon
    * tabs. The tab self-hides on `apps.deploy` plus the copy having an estate,
    * and the endpoints refuse server-side; a route guard here would only turn a
    * link somebody already holds into a 404 while changing no permission.

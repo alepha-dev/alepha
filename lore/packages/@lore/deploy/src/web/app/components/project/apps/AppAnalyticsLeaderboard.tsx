@@ -3,10 +3,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  Segmented,
 } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
@@ -147,26 +144,29 @@ const AppAnalyticsLeaderboard = (props: AppAnalyticsLeaderboardProps) => {
 
   return (
     <Card data-testid={testId}>
-      <Tabs value={active} onValueChange={(value) => setActive(String(value))}>
-        <CardHeader>
-          <TabsList>
-            {segments.map((segment) => (
-              <TabsTrigger key={segment.dimension} value={segment.dimension}>
-                {segment.title}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </CardHeader>
-        <CardContent>
-          {segments.map((segment) => (
-            <TabsContent key={segment.dimension} value={segment.dimension}>
+      <CardHeader>
+        <Segmented
+          size="sm"
+          className="self-start"
+          value={active}
+          onChange={setActive}
+          options={segments.map((segment) => ({
+            value: segment.dimension,
+            label: segment.title,
+          }))}
+        />
+      </CardHeader>
+      <CardContent>
+        {segments
+          .filter((segment) => segment.dimension === active)
+          .map((segment) => (
+            <div key={segment.dimension}>
               {note(segment)}
               {body(segment)}
               {footer(segment)}
-            </TabsContent>
+            </div>
           ))}
-        </CardContent>
-      </Tabs>
+      </CardContent>
     </Card>
   );
 };
