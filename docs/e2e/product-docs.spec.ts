@@ -32,9 +32,13 @@ test.describe("Product doc sets", () => {
     await expect(page.locator("h1").first()).toBeVisible({ timeout: 15_000 });
 
     const explorer = page.locator('nav[aria-label="Documentation explorer"]');
-    await expect(explorer.getByText("reference", { exact: true })).toHaveCount(
+    // Lore has a `reference` folder of its own, so the tell here is the
+    // framework's other roots, and Lore's own being there.
+    await expect(explorer.getByText("packages", { exact: true })).toHaveCount(
       0,
     );
+    await expect(explorer.getByText("cli", { exact: true })).toHaveCount(0);
+    await expect(explorer.getByText("work", { exact: true })).toBeVisible();
   });
 
   test("the old flat URLs redirect instead of 404ing", async ({ page }) => {
