@@ -641,7 +641,11 @@ export class DeployService {
         typeof (value as { id?: unknown }).id === "string"
           ? (value as { name: string; id: string })
           : undefined;
-      return { d1: pick(parsed.d1), kv: pick(parsed.kv) };
+      return {
+        d1: pick(parsed.d1),
+        kv: pick(parsed.kv),
+        hyperdrive: pick(parsed.hyperdrive),
+      };
     } catch {
       return {};
     }

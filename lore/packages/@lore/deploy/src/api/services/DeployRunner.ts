@@ -81,13 +81,16 @@ export interface DeployRequest {
   deploymentId?: string;
 
   /**
-   * The D1 and KV ids this copy's last deploy recorded (#Q3386), so
-   * `provision` checks each by id instead of listing the estate's account.
-   * A hint: each is verified, and a missing one is recreated.
+   * The D1, KV and Hyperdrive ids this copy's last deploy recorded
+   * (#Q3386), so `provision` checks each by id instead of listing the
+   * estate's account. A hint: each is verified, and a missing one is
+   * recreated. For Hyperdrive it is also the only config a deploy may take
+   * over and PATCH (#Q3510): a same-named one it never recorded is refused.
    */
   known?: {
     d1?: { name: string; id: string };
     kv?: { name: string; id: string };
+    hyperdrive?: { name: string; id: string };
   };
 
   /**

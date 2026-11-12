@@ -264,6 +264,8 @@ export const createHyperdriveOriginSchema = z.object({
 export const createHyperdriveBodySchema = z.object({
   name: z.string(),
   origin: createHyperdriveOriginSchema,
+  caching: z.object({ disabled: z.boolean() }).optional(),
+  mtls: z.object({ sslmode: z.string() }).optional(),
 });
 
 export const putSecretBodySchema = z.object({

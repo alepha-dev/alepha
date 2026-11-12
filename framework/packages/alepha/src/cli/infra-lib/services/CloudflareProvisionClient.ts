@@ -459,20 +459,97 @@ export class CloudflareProvisionClient {
   public async ensureHyperdrive(
     name: string,
     connectionString: string,
+    options: {
+      /**
+       * The id a previous deploy recorded: checked first, by id.
+       */
+      knownId?: string;
+      /**
+       * Whether a config of that name this deploy did not record may be
+       * taken over. True on the CLI, which deploys to the operator's own
+       * account; false for Lore, whose credential is lent and whose account
+       * may hold a stranger's config of the same name (#Q3510).
+       */
+      adoptByName?: boolean;
+    } = {},
   ): Promise<CloudflareHyperdrive> {
+    // ⚠️ Updated, always, never compared (#Q3510): Cloudflare never returns
+    // the password, so a rotation cannot be detected, and the origin is
+    // PATCHed on every deploy instead. The same body sets caching off.
+    if (options.knownId) {
+      const known = await this.getHyperdrive(options.knownId);
+      if (known?.name === name) {
+        return await this.updateHyperdrive(known.id, connectionString);
+      }
+    }
     const existing = (await this.listHyperdrive()).find(
       (it) => it.name === name,
     );
     if (existing) {
-      return existing;
+      if (options.adoptByName === false) {
+        throw new AlephaError(
+          `A Hyperdrive config named '${name}' already exists in this account, and this copy never recorded it: refusing to take it over or overwrite its origin. Remove or rename it, or deploy under another name.`,
+        );
+      }
+      return await this.updateHyperdrive(existing.id, connectionString);
     }
     return await this.fetch<CloudflareHyperdrive>(
       `/accounts/${this.accountId}/hyperdrive/configs`,
       {
         method: "POST",
-        body: { name, origin: this.hyperdriveOrigin(connectionString) },
+        body: { name, ...this.hyperdriveSettings(connectionString) },
       },
     );
+  }
+
+  /**
+   * One config by id, or `undefined` when the account has none by that id.
+   */
+  public async getHyperdrive(
+    configId: string,
+  ): Promise<CloudflareHyperdrive | undefined> {
+    return await this.fetch<CloudflareHyperdrive | undefined>(
+      `/accounts/${this.accountId}/hyperdrive/configs/${encodeURIComponent(configId)}`,
+      { missing: "undefined" },
+    );
+  }
+
+  /**
+   * Point a config at `connectionString` again, with caching off: what
+   * makes a rotated password reach Cloudflare on the next deploy.
+   */
+  public async updateHyperdrive(
+    configId: string,
+    connectionString: string,
+  ): Promise<CloudflareHyperdrive> {
+    return await this.fetch<CloudflareHyperdrive>(
+      `/accounts/${this.accountId}/hyperdrive/configs/${encodeURIComponent(configId)}`,
+      { method: "PATCH", body: this.hyperdriveSettings(connectionString) },
+    );
+  }
+
+  /**
+   * What a create and an update both send: the origin, caching off, and the
+   * URL's `sslmode` when it names one Hyperdrive takes.
+   *
+   * Caching is off because an ORM must not serve a stale read right after a
+   * write: Hyperdrive does not invalidate its cache on a write (#F1488).
+   */
+  protected hyperdriveSettings(connectionString: string): {
+    origin: ReturnType<CloudflareProvisionClient["hyperdriveOrigin"]>;
+    caching: { disabled: true };
+    mtls?: { sslmode: "require" | "verify-ca" | "verify-full" };
+  } {
+    const sslmode = new URL(connectionString).searchParams.get("sslmode");
+    return {
+      origin: this.hyperdriveOrigin(connectionString),
+      caching: { disabled: true },
+      ...(sslmode === "require" ||
+      sslmode === "verify-ca" ||
+      sslmode === "verify-full"
+        ? { mtls: { sslmode } }
+        : {}),
+    };
   }
 
   public async deleteHyperdrive(configId: string): Promise<void> {

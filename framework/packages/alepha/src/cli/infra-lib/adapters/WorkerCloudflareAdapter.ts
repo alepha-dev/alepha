@@ -177,7 +177,10 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * name; a deleted one falls back to the listing and is recreated.
    */
   public withKnownResources(
-    known: Pick<WorkerCloudflareAdapter["provisionedResources"], "d1" | "kv">,
+    known: Pick<
+      WorkerCloudflareAdapter["provisionedResources"],
+      "d1" | "kv" | "hyperdrive"
+    >,
   ): this {
     this.knownResources = known;
     return this;
@@ -185,7 +188,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
 
   protected knownResources: Pick<
     WorkerCloudflareAdapter["provisionedResources"],
-    "d1" | "kv"
+    "d1" | "kv" | "hyperdrive"
   > = {};
 
   /**
@@ -259,7 +262,37 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     const api = this.provisioner();
     const tasks: Array<{ name: string; handler: () => Promise<void> }> = [];
 
-    if (ctx.resources.hasDatabase) {
+    const postgres = ctx.resources.hasDatabase
+      ? await this.postgresUrl()
+      : undefined;
+    if (postgres) {
+      // A Postgres instance (#Q3510): a Hyperdrive config instead of a D1
+      // database, PATCHed with the instance's URL on every deploy (a rotated
+      // password cannot be detected) and caching off. Only the config this
+      // copy recorded is ever taken over: the credential is lent, and the
+      // account may hold a stranger's config of the same name.
+      const name = ctx.naming.hyperdrive();
+      tasks.push({
+        name: `provision hyperdrive (${name})`,
+        handler: async () => {
+          const config = await api.ensureHyperdrive(name, postgres, {
+            knownId:
+              this.knownResources.hyperdrive?.name === name
+                ? this.knownResources.hyperdrive.id
+                : undefined,
+            adoptByName: false,
+          });
+          // What `BuildCloudflareTask.enhanceHyperdrive` binds; it writes
+          // `DATABASE_URL=hyperdrive://HYPERDRIVE` itself. The instance's
+          // URL never reaches the Worker: Cloudflare holds it.
+          this.provisioned.HYPERDRIVE_ID = config.id;
+          if (this.appSecrets.POSTGRES_SCHEMA) {
+            this.provisioned.POSTGRES_SCHEMA = this.appSecrets.POSTGRES_SCHEMA;
+          }
+          this.provisionedResources.hyperdrive = { name, id: config.id };
+        },
+      });
+    } else if (ctx.resources.hasDatabase) {
       const name = ctx.naming.d1();
       tasks.push({
         name: `provision d1 (${name})`,
@@ -525,6 +558,12 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   public provisionedResources: {
     worker?: string;
     d1?: { name: string; id: string };
+    /**
+     * The Hyperdrive config a Postgres instance binds (#Q3510). Its id is
+     * what a later deploy updates and what teardown deletes; the database
+     * behind it is the operator's and is never touched.
+     */
+    hyperdrive?: { name: string; id: string };
     r2?: string;
     kv?: { name: string; id: string };
     queue?: string;
@@ -1473,6 +1512,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     record: {
       worker?: string;
       d1?: { name: string; id: string };
+      hyperdrive?: { name: string; id: string };
       r2?: string;
       kv?: { name: string; id: string };
       queue?: string;
@@ -1533,6 +1573,13 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     }
     if (record.kv) {
       await attempt("kv", () => api.deleteKV(record.kv!.id));
+    }
+    // The config only, recreated by the next deploy: the Postgres database
+    // behind it is the operator's, outside this account, and never touched.
+    if (record.hyperdrive) {
+      await attempt("hyperdrive", () =>
+        api.deleteHyperdrive(record.hyperdrive!.id),
+      );
     }
 
     // ⚠️ LAST, and only for an ephemeral copy. Everything above is recreated by
