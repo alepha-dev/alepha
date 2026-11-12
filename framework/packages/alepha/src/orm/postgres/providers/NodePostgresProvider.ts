@@ -1,9 +1,7 @@
 import { AlephaError } from "alepha";
 import { sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
+import type postgres from "postgres";
 
 import {
   type PostgresLockSession,
@@ -22,6 +20,14 @@ export class NodePostgresProvider extends PostgresProvider {
   /**
    * @internal Driver plumbing, outside semver.
    */
+  protected driverModules?: Promise<{
+    postgres: typeof postgres;
+    drizzle: typeof import("drizzle-orm/postgres-js").drizzle;
+    migrate: typeof import("drizzle-orm/postgres-js/migrator").migrate;
+  }>;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected pg?: PostgresJsDatabase;
 
   /**
@@ -37,10 +43,34 @@ export class NodePostgresProvider extends PostgresProvider {
     return this.pg;
   }
 
+  /**
+   * The postgres.js client and its drizzle adapter, loaded on the first
+   * connect or migrate, never at boot: Postgres is part of every app, and a
+   * SQLite app must not evaluate a driver it never opens. Loaded once.
+   *
+   * @internal Driver plumbing, outside semver.
+   */
+  protected loadDriver() {
+    this.driverModules ??= (async () => {
+      const [pg, drizzleModule, migrator] = await Promise.all([
+        import("postgres"),
+        import("drizzle-orm/postgres-js"),
+        import("drizzle-orm/postgres-js/migrator"),
+      ]);
+      return {
+        postgres: (pg.default ?? pg) as typeof postgres,
+        drizzle: drizzleModule.drizzle,
+        migrate: migrator.migrate,
+      };
+    })();
+    return this.driverModules;
+  }
+
   protected override async runMigrator(
     migrationsFolder: string,
     options?: { init?: boolean },
   ): Promise<{ exitCode?: string } | void> {
+    const { postgres, drizzle, migrate } = await this.loadDriver();
     if (!this.needsDedicatedMigrationClient()) {
       return await migrate(this.db, {
         migrationsFolder,
@@ -80,6 +110,7 @@ export class NodePostgresProvider extends PostgresProvider {
    * migration none to run on.
    */
   protected override async openLockSession(): Promise<PostgresLockSession> {
+    const { postgres } = await this.loadDriver();
     const client = postgres(this.migrationClientOptions());
     return {
       query: async (text, params) =>
@@ -118,6 +149,7 @@ export class NodePostgresProvider extends PostgresProvider {
       password: options.password ? "****" : undefined, // hide password
     });
 
+    const { postgres, drizzle } = await this.loadDriver();
     const client = postgres(options);
     await client`SELECT 1`; // test connection
 
