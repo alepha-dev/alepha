@@ -1,4 +1,4 @@
-import { Badge, TimeAgo } from "@alepha/ui";
+import { Badge, Skeleton, TimeAgo } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
@@ -15,6 +15,7 @@ import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailCard } from "../project/ProjectRailCard.tsx";
 import { useDock } from "../project/useDock.ts";
 import { MyProjectsPinSwitch } from "./MyProjectsPinSwitch.tsx";
+import { useUserProjects } from "./useUserProjects.ts";
 
 /**
  * Every project the signed-in user belongs to, owned or joined, as a
@@ -22,8 +23,8 @@ import { MyProjectsPinSwitch } from "./MyProjectsPinSwitch.tsx";
  *
  * This page adds NO request of its own. It reads `userProjectsAtom`, the
  * complete membership list `getHomeOverview` returns, which the root layout
- * fills at bootstrap and `LoreAccountRouter.loadProjects` fills on a visit
- * that starts under `/account`. It is the same array Home slices its five
+ * fills at bootstrap and `useUserProjects` fills when the dialog opens over
+ * a page outside that layout. It is the same array Home slices its five
  * from, and capping the atom to make this page fetch would break
  * `Spotlight`'s client-side project search (see `recentProjectsCap.ts`). The
  * table is handed the array and pages it in memory.
@@ -53,6 +54,7 @@ const MyProjects = () => {
   // supplies at runtime (a registry entry, a search row), which core's
   // registered routers cannot name.
   const router = useRouter<any>();
+  const loaded = useUserProjects();
 
   const projects = overview?.projects ?? [];
   // The pins this page manages (#E139, #Q3440): which ones, never their
@@ -104,11 +106,26 @@ const MyProjects = () => {
   const projectPath = (project: ProjectOverviewResource) =>
     router.path("project", { params: { projectSlug: project.slug } });
 
+  if (!loaded) {
+    return (
+      <AccountPage variant="table">
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </AccountPage>
+    );
+  }
+
   return (
     <AccountPage variant="table">
       <DataTable<ProjectOverviewResource, typeof filterFields>
         className="min-h-0 flex-1"
         data={projects}
+        // Light enough for the account dialog: the compact pager, compact
+        // rows, and the toolbar down to its filters and the create action.
+        pagination="compact"
+        density="compact"
+        hideColumnPicker
+        hideActionsMenu
         persistenceKey="lor.account.projects"
         // Every project on one page: an owner is capped well below this, and
         // the list is the complete set Home's "Show more" promises.

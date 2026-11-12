@@ -427,7 +427,7 @@ export class CoreRouter {
   /**
    * Every message addressed to the viewer, from every project.
    *
-   * ⚠️ **One route, not two.** A `/account/inbox` would be a second page for
+   * ⚠️ **One route, not two.** An account inbox would be a second page for
    * the same list differing only in a default filter. The filter is a query
    * param instead, so both entry points reach the same page with the default
    * each of them wants: the sidebar lands on this project, and the header

@@ -21,15 +21,25 @@ const profile = {
 } as unknown as MyProfile;
 
 /**
- * Every action exists and answers nothing: the page only reads the realm.
+ * What `getRealmConfig` answers, set by each test's `mount`.
+ */
+let realm: RealmConfig | undefined;
+
+/**
+ * Every action exists: the section fetches the profile and the realm, and
+ * every other call answers nothing.
  */
 class Links extends LinkProvider {
   override client(): any {
     return new Proxy(
       {},
       {
-        get: () => {
-          const action: any = async () => undefined;
+        get: (_target, name: string) => {
+          const action: any = async () => {
+            if (name === "getMyProfile") return profile;
+            if (name === "getRealmConfig") return realm;
+            return undefined;
+          };
           action.can = () => true;
           return action;
         },
@@ -64,12 +74,12 @@ describe("AccountProfile", () => {
       .with(AlephaReactI18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    const realmConfig = (username ? { settings: { username } } : undefined) as
+    realm = (username ? { settings: { username } } : undefined) as
       | RealmConfig
       | undefined;
     render(
       <AlephaContext.Provider value={alepha}>
-        <AccountProfile profile={profile} realmConfig={realmConfig} />
+        <AccountProfile />
       </AlephaContext.Provider>,
     );
     await screen.findByText("First name");

@@ -259,29 +259,9 @@ export const NAV: NavGroup[] = [
         icon: UserCog,
         children: [
           {
-            href: "/pages/account/profile",
-            label: "Profile",
-            description: "Name, email and the roles a realm granted.",
-          },
-          {
-            href: "/pages/account/security",
-            label: "Security",
-            description: "Password, second factor, linked providers, deletion.",
-          },
-          {
-            href: "/pages/account/sessions",
-            label: "Sessions",
-            description: "Every device this account is signed in on.",
-          },
-          {
             href: "/pages/account/keys",
             label: "API keys",
             description: "Personal tokens, live and revoked.",
-          },
-          {
-            href: "/pages/account/connections",
-            label: "Connections",
-            description: "Authorised applications and their scopes.",
           },
         ],
       },

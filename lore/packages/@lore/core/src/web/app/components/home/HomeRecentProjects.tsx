@@ -1,8 +1,8 @@
 import { Button } from "@alepha/ui";
+import { useSettingsDialog } from "@alepha/ui/settings";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
 
 import type { ProjectOverviewResource } from "../../../../api/schemas/projectResourceSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -32,14 +32,15 @@ export interface HomeRecentProjectsProps {
  * Home's one column: the projects you touched last, one row each.
  *
  * A glance, not a table: no sorting, no filters, no paging. The first
- * `RECENT` rows show, and "Show more" is a link to `/account/projects`,
- * which lists every project, rather than growing this list in place.
+ * `RECENT` rows show, and "Show more" opens the account dialog's Projects
+ * section, which lists every project, rather than growing this list in
+ * place.
  */
 export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const openTags = useHomeOpenTags(props.openCounts);
-  const router = useRouter();
+  const account = useSettingsDialog("account");
 
   const shown = props.projects.slice(0, RECENT);
 
@@ -87,7 +88,7 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
       </ul>
       {props.projects.length > RECENT && (
         <Button
-          href={router.path("accountProjects")}
+          onClick={() => account.open("projects")}
           variant="minimal"
           size="sm"
           className="text-muted-foreground mt-4 self-center"

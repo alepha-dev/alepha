@@ -108,7 +108,7 @@ nothing about when a page changed.
 import { $robots } from "alepha/react/sitemap";
 
 class AppRouter {
-  robots = $robots({ disallow: ["/admin", "/account"] });
+  robots = $robots({ disallow: ["/admin", "/auth"] });
 }
 ```
 

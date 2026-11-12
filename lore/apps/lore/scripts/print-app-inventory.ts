@@ -52,8 +52,7 @@ class AppInventory {
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     });
     alepha.with(AlephaReactRouter);
-    // Every router, the account pages included: without them the /account
-    // pages Lore declares itself are silently absent.
+    // Every router (the account sections, a dialog, add no route).
     bootLore(alepha, ["routes"]);
     const pages = alepha.inject(ReactPageProvider);
     await alepha.start();

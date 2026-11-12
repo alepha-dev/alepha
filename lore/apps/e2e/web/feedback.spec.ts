@@ -2,11 +2,12 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
 import {
-  setCapability,
   apiPath,
   createProjectViaWizard,
   newUserContext,
+  openAccount,
   registerAndVerify,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -102,7 +103,8 @@ test.describe("Feedback", () => {
 
       // The reporter here is the project's owner, a member, so a successful
       // submit lands back in the project, on the inbox the report joined. An
-      // outside reporter lands on their own list at `/account/feedback`.
+      // outside reporter lands on their own list, the account dialog's
+      // Feedback section.
       await page.waitForURL(new RegExp(`/${projectSlug}/feedback$`), {
         timeout: 15_000,
       });
@@ -143,7 +145,7 @@ test.describe("Feedback", () => {
 
     await test.step("feedback shows as pending in the list", async () => {
       // The reporter's own list: the submit landed on the project's inbox.
-      await page.goto("/account/feedback");
+      await openAccount(page, "feedback");
       const row = page.getByRole("row").filter({ hasText: feedbackTitle });
       await expect(row).toContainText(/pending/i);
     });
@@ -157,8 +159,7 @@ test.describe("Feedback", () => {
     });
 
     await test.step("list reflects the accepted status", async () => {
-      await page.goto("/account/feedback");
-      await page.waitForLoadState("networkidle");
+      await openAccount(page, "feedback");
       const row = page.getByRole("row").filter({ hasText: feedbackTitle });
       await expect(row).toContainText(/accepted/i, { timeout: 10_000 });
     });
@@ -259,13 +260,13 @@ test.describe("Feedback", () => {
       { id: projectId, withFile, withoutFile },
     );
 
-    await page.goto("/account/feedback");
-    await page.waitForLoadState("networkidle");
+    await openAccount(page, "feedback");
 
     await test.step("the attachment is visible, as a thumbnail", async () => {
       await page.getByRole("row").filter({ hasText: withFile }).click();
 
-      const drawer = page.getByRole("dialog");
+      // The last dialog: the drawer stacks over the account dialog.
+      const drawer = page.getByRole("dialog").last();
       await expect(drawer.getByText(/attachments/i)).toBeVisible({
         timeout: 10_000,
       });
@@ -286,14 +287,14 @@ test.describe("Feedback", () => {
     await test.step("a feedback with no attachment shows no section", async () => {
       // An empty "Attachments" heading is a question the reader then has to
       // answer by remembering what they uploaded.
-      await page.goto("/account/feedback");
-      await page.waitForLoadState("networkidle");
+      await openAccount(page, "feedback");
       await page.getByRole("row").filter({ hasText: withoutFile }).click();
 
       // Waited on the title FIELD, not on text: the drawer edits the title in
       // an input, so `getByText` finds nothing and the absence assertion
       // below would pass against a drawer that had not opened yet.
-      const drawer = page.getByRole("dialog");
+      // The last dialog: the drawer stacks over the account dialog.
+      const drawer = page.getByRole("dialog").last();
       await expect(drawer.locator("#feedback-title")).toHaveValue(withoutFile, {
         timeout: 10_000,
       });
@@ -401,7 +402,7 @@ test.describe("Feedback", () => {
         name: /see my previous reports|voir mes retours/i,
       });
       await expect(link).toHaveAttribute("target", "_blank");
-      await expect(link).toHaveAttribute("href", "/account/feedback");
+      await expect(link).toHaveAttribute("href", "/?account=feedback");
 
       // No link anywhere on the form points into the members-only project.
       const projectLinks = reporter.page.locator(

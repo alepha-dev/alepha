@@ -5,6 +5,7 @@ import {
   createProjectViaWizard,
   createRankFromPreset,
   newUserContext,
+  openAccount,
   registerAndVerify,
 } from "./_helpers.ts";
 
@@ -421,7 +422,7 @@ test.describe("Project dashboard", () => {
       });
 
       await test.step("the reader joins and is put on the Contributor rank", async () => {
-        await reader.page.goto("/account/invitations");
+        await openAccount(reader.page, "invitations");
         await reader.page.waitForLoadState("domcontentloaded");
         const accepted = reader.page.waitForResponse(
           (r) =>

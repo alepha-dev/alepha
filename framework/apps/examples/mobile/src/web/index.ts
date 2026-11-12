@@ -1,5 +1,5 @@
 import { OtaAdminRouter } from "@alepha/capacitor/ota-admin";
-import { AccountRouter } from "@alepha/ui/account";
+import { AccountDialog } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
 import { $module } from "alepha";
@@ -10,8 +10,9 @@ import { AlephaReactUi } from "alepha/react/ui";
 import { AppRouter } from "./AppRouter.ts";
 
 /**
- * The three routers mount their own pages — /auth/*, /account/* and /admin/*
- * — so there is nothing to declare beyond listing them.
+ * The two routers mount their own pages (/auth/* and /admin/*) and
+ * AccountDialog declares the account dialog, so there is nothing to declare
+ * beyond listing them.
  *
  * Each page hides itself when the action behind it is missing from
  * /api/_links, so deleting a module from ApiModule removes its screens too
@@ -21,5 +22,5 @@ import { AppRouter } from "./AppRouter.ts";
 export const WebModule = $module({
   name: "mobile.web",
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, AuthRouter, AccountRouter, AdminRouter, OtaAdminRouter],
+  services: [AppRouter, AuthRouter, AccountDialog, AdminRouter, OtaAdminRouter],
 });

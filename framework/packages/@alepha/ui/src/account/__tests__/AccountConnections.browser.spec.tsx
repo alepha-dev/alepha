@@ -24,6 +24,11 @@ const connection = (id: string, clientName: string): MyConnection => ({
 /**
  * Records a disconnect.
  */
+/**
+ * What `listMyConnections` answers, set by each test's `mount`.
+ */
+let listed: MyConnection[] = [];
+
 class Links extends LinkProvider {
   public revoked: string[] = [];
 
@@ -33,6 +38,9 @@ class Links extends LinkProvider {
       {
         get: (_target, name: string) => {
           const action: any = async (input: any) => {
+            if (name === "listMyConnections") {
+              return listed;
+            }
             if (name === "revokeMyConnection") {
               this.revoked.push(input.params.id);
             }
@@ -63,6 +71,7 @@ describe("AccountConnections", () => {
   });
 
   const mount = async (connections: MyConnection[]) => {
+    listed = connections;
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with({ provide: LinkProvider, use: Links })
@@ -73,7 +82,7 @@ describe("AccountConnections", () => {
     render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <AccountConnections connections={connections} />
+          <AccountConnections />
         </DialogProvider>
       </AlephaContext.Provider>,
     );

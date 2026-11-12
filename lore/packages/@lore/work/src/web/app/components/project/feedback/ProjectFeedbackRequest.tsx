@@ -381,13 +381,13 @@ const ProjectFeedbackRequest = () => {
       toaster.show(tr("feedback.request.success"), "success");
 
       // A member lands back in the project, on the inbox the report just
-      // joined; an outside reporter on their cross-project feedback list (the
-      // dedicated status page was retired in favour of /me/feedback).
+      // joined; an outside reporter on their cross-project feedback list, the
+      // account dialog's Feedback section, opened by its link form.
       if (memberProject && !inPopup) {
         await router.push("projectFeedback", { params: { projectSlug } });
         return;
       }
-      await meRouter.push(meRouter.path("myFeedback") as `/${string}`);
+      await meRouter.push("/?account=feedback");
     },
   });
   const { loading: submitting } = useFormState(form, ["loading"]);
@@ -760,7 +760,7 @@ const ProjectFeedbackRequest = () => {
                     the parent browser, which is right in a normal tab too.
                   */}
                   <a
-                    href={meRouter.path("myFeedback")}
+                    href="/?account=feedback"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"

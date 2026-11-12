@@ -113,20 +113,21 @@ alepha init my-app --preset=saas
 
 Everything above, plus a working identity surface on first run:
 
-| Route        | What's there                                                                         |
-| ------------ | ------------------------------------------------------------------------------------ |
-| `/auth/*`    | Login, register, password reset, email verification                                  |
-| `/account/*` | Profile, security, sessions, API keys, connected apps                                |
-| `/admin/*`   | Users, sessions, keys, audit log - and any other console page whose module you mount |
+| Surface            | What's there                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| `/auth/*`          | Login, register, password reset, email verification                                  |
+| the account dialog | Profile, security, sessions, API keys, connected apps, over the page                 |
+| `/admin/*`         | Users, sessions, keys, audit log - and any other console page whose module you mount |
 
-It adds one dependency, `@alepha/ui`, and three files' worth of difference:
+It adds one dependency, `@alepha/ui`, and four files' worth of difference:
 
 ```txt
 src/
 ├── api/
 │   ├── Realm.ts                     # ← new: $realm + the admin:ui permission
 │   └── index.ts                     # + AlephaOrm, AlephaApiUsers
-├── web/index.ts                     # + AuthRouter, AccountRouter, AdminRouter
+├── web/index.ts                     # + AuthRouter, AccountDialog, AdminRouter
+├── web/components/Layout.tsx        # ← new: DialogProvider, Toaster, ButtonUser
 └── main.css                         # @import "@alepha/ui/styles.css"
 ```
 

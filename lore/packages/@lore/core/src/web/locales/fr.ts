@@ -1856,8 +1856,11 @@ export default {
   "quest-log.expand-all": "Tout déplier",
   "quest-log.collapse-panel": "Masquer le journal",
   "quest-log.expand-panel": "Afficher le journal",
-  "account.brand.back": "Retour à l'accueil",
-  "account.brand.subtitle": "Compte",
+  "account.nav.group.lore": "Lore",
+  "account.nav.projects": "Projets",
+  "account.nav.invitations": "Invitations",
+  "account.nav.notifications": "Notifications",
+  "account.nav.feedback": "Retours",
   "account.projects.create": "Nouveau projet",
   "account.projects.col.project": "Projet",
   "account.projects.col.role": "Votre rôle",
@@ -3439,7 +3442,7 @@ export default {
   "dashboard.footer.visitors.noCompare": "pas encore de comparaison",
   "dashboard.footer.noBeacon": "aucune app ici ne remonte de pages vues",
 
-  // --- /account/feedback ----------------------------------------------------
+  // --- account dialog: Feedback ---------------------------------------------
   "myFeedback.empty": "Vous n'avez encore envoyé aucun retour.",
   "myFeedback.filter.search.aria": "Rechercher un retour",
   "myFeedback.filter.allStatuses": "Tous les statuts",

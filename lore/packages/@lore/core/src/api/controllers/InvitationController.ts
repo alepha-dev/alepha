@@ -220,7 +220,7 @@ export class InvitationController {
 
   /**
    * Inbox: pending invitations addressed to the current user's email.
-   * Rendered at /account/invitations.
+   * Rendered in the account dialog's Invitations section.
    */
   public readonly listMyInvitations = $action({
     method: "GET",

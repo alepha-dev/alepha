@@ -3,12 +3,14 @@ import * as React from "react";
 void React;
 
 import { AlephaError } from "alepha";
+import { AlephaContext } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   type ChangeEvent,
   createContext,
   type KeyboardEvent,
   type ReactNode,
+  Suspense,
   useCallback,
   useContext,
   useMemo,
@@ -26,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./AlertDialog.tsx";
+import { DialogHosts } from "./DialogHosts.ts";
 import { Input } from "./Input.tsx";
 
 export interface ConfirmOptions {
@@ -74,8 +77,9 @@ interface DialogApi {
 
 /**
  * Context exemption: `useHasDialogProvider()` asks whether a provider is
- * ABOVE this point in the tree, and `AccountLayout` mounts its own only when
- * none is. An `$atom` cannot answer a question about tree position, and two
+ * ABOVE this point in the tree, so a standalone shell mounts its own only
+ * when none is, and so a nested provider leaves the registered hosts to the
+ * outermost one. An `$atom` cannot answer a question about tree position, and two
  * mounted hosts reading one atom would draw the same dialog twice.
  */
 const Ctx = createContext<DialogApi | null>(null);
@@ -91,6 +95,16 @@ export interface DialogProviderProps {
  */
 export const DialogProvider = (props: DialogProviderProps) => {
   const { tr } = useI18n();
+  // A provider nested inside another (a preview frame inside the app's
+  // layout) draws no registered host: the outermost one does, or every level
+  // would draw its own copy, stacked. Read without `useAlepha`, which throws
+  // under a provider rendered with no `AlephaContext` (a component spec).
+  const nested = useContext(Ctx) !== null;
+  const alepha = useContext(AlephaContext);
+  const hosts =
+    !nested && alepha?.has(DialogHosts)
+      ? alepha.inject(DialogHosts).list()
+      : [];
   const [pending, setPending] = useState<Pending | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [promptError, setPromptError] = useState<string | null>(null);
@@ -165,6 +179,17 @@ export const DialogProvider = (props: DialogProviderProps) => {
   return (
     <Ctx.Provider value={api}>
       {props.children}
+      {/* The hosts other modules registered (every settings dialog), drawn
+          inside this provider so their `useDialog()` works and every shell
+          with a provider shows them with nothing to mount. Before the alert
+          below, so a confirm one of them opens stacks over it. */}
+      {hosts.length > 0 && (
+        <Suspense fallback={null}>
+          {hosts.map((Host, index) => (
+            <Host key={index} />
+          ))}
+        </Suspense>
+      )}
       <AlertDialog
         open={!!pending}
         onOpenChange={(o: boolean) => {
@@ -269,7 +294,7 @@ export function useDialog(): DialogApi {
  * Whether a {@link DialogProvider} is already above this point.
  *
  * Lets a shell that is mounted standalone supply its own provider without
- * doubling the one an `AppShell` already put there. See `AccountLayout`.
+ * doubling the one an `AppShell` already put there.
  */
 export function useHasDialogProvider(): boolean {
   return useContext(Ctx) !== null;

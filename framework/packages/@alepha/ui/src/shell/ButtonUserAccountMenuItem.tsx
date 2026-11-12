@@ -3,23 +3,16 @@ import * as React from "react";
 void React;
 
 import { useAuth } from "alepha/react/auth";
-import { Link, useRouter } from "alepha/react/router";
 import { CircleUser } from "lucide-react";
 
 import { DropdownMenuItem } from "../core/DropdownMenu.tsx";
+import { useSettingsDialog } from "../settings/useSettingsDialog.ts";
 
 export interface ButtonUserAccountMenuItemProps {
   /**
-   * Route name to link to. Defaults to `"account"`, which is what
-   * `AccountRouter` registers — set it only if you mounted the account area
-   * under a different name.
-   */
-  routeName?: string;
-
-  /**
-   * Escape hatch for a destination no route name can express. Supplying it
-   * turns the item back into a click handler on a `div`, giving up everything
-   * an anchor provides.
+   * Escape hatch for a destination the account dialog does not cover.
+   * Supplying it replaces opening the dialog, and shows the item whether or
+   * not the dialog has anything to show.
    */
   onClick?: () => void;
 
@@ -30,35 +23,23 @@ export interface ButtonUserAccountMenuItemProps {
 }
 
 /**
- * Link to the signed-in user's own account area.
+ * Opens the signed-in user's account dialog (`AccountDialog`, the settings
+ * dialog named `account`) over the current page.
  *
- * ⚠️ **It owns its destination, unlike {@link ButtonUser.AdminMenuItem}.**
- * That asymmetry is deliberate. Every caller that hard-coded this navigation
- * got it wrong the moment the account area moved — `router.push("me")` kept
- * compiling after the `me` route ceased to exist, because `router.push` falls
- * back to a plain `string` overload, and threw only when someone clicked it.
- * Defaulting to the route `AccountRouter` actually registers removes the whole
- * class of bug; `onClick` stays available for an application that mounted the
- * area itself under another name.
+ * **It hides itself when the dialog has no visible section**: an application
+ * that never registers `AccountDialog`, or whose every section is hidden,
+ * gets no dead entry. The same question the sections' own `can` gates
+ * answer, asked once for all of them.
  *
- * **It hides itself when no `account` route is registered**, so an application
- * that never mounts `AccountRouter` gets no dead entry — the same "is the
- * module actually there" question the router's own `can` gates answer, asked
- * the only way a menu item can ask it.
- *
- * ⚠️ **It renders an `<a href>`, not a click handler**, because it is a
- * destination rather than an action. `DropdownMenuItem` is a Base UI
- * `Menu.Item`, which defaults to a `div` — correct for Logout, wrong here: a
- * div navigating from `onClick` cannot be ⌘-clicked, middle-clicked or opened
- * in a new tab, shows no target on hover, and offers no "copy link address".
- * `render` swaps the element while Base UI keeps `role="menuitem"` and its
- * keyboard handling, so the menu semantics are unchanged.
+ * A click handler, not a link: the dialog is state, not a destination, and
+ * has no URL to open in a new tab. A link made outside the app reaches it
+ * with `?account=<section>` instead.
  */
 export const ButtonUserAccountMenuItem = (
   props: ButtonUserAccountMenuItemProps,
 ) => {
   const auth = useAuth();
-  const router = useRouter<any>();
+  const account = useSettingsDialog("account");
 
   if (!auth.user) {
     return null;
@@ -75,15 +56,12 @@ export const ButtonUserAccountMenuItem = (
     return <DropdownMenuItem onClick={props.onClick}>{label}</DropdownMenuItem>;
   }
 
-  // No account area mounted → no entry, rather than one that 404s on click.
-  const routeName = props.routeName ?? "account";
-  if (!router.pages?.some((page: any) => page.name === routeName)) {
+  // No account dialog, or nothing in it → no entry.
+  if (account.sections.length === 0) {
     return null;
   }
 
   return (
-    <DropdownMenuItem render={<Link href={router.path(routeName)} />}>
-      {label}
-    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => account.open()}>{label}</DropdownMenuItem>
   );
 };

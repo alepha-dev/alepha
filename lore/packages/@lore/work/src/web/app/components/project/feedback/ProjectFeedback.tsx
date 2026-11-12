@@ -29,7 +29,7 @@ import ProjectFeedbackEmptyState from "./ProjectFeedbackEmptyState.tsx";
 /*
  * Exactly the entity's own three states, and deliberately derived rather than
  * retyped: a fourth "all" segment used to sit alongside them. "all" is still a
- * value the endpoint accepts (`listFeedback`'s enum, and `/account/feedback`
+ * value the endpoint accepts (`listFeedback`'s enum, and the account Feedback section
  * still asks for it), so this is about what the inbox offers, not about what
  * the API can answer.
  */

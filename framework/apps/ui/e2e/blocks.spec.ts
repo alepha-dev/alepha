@@ -1001,48 +1001,60 @@ test.describe("layout blocks", () => {
     ).toBeVisible();
   });
 
-  test("Settings draws the rail, the cards and the danger zone", async ({
+  test("Settings opens a dialog with a grouped nav, the cards and the danger zone", async ({
     page,
   }) => {
     await page.goto("/blocks/settings");
 
-    // Scoped to the preview throughout. Every knob in the props panel is
-    // named after the thing it switches on, so "Danger zone" alone matches
-    // the page description, the section title AND the switch's label.
-    const preview = page.getByTestId("showcase-preview");
+    // The dialog is drawn by the app's DialogProvider, outside the preview.
+    // Retried: a click that lands before the page has hydrated does nothing.
+    const dialog = page.locator("[data-slot=settings-dialog]");
+    await expect(async () => {
+      await page
+        .getByTestId("showcase-preview")
+        .getByRole("button", { name: "Open settings" })
+        .click();
+      await expect(dialog).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    await expect(dialog.getByText("Workspace settings")).toBeVisible();
 
-    // The rail groups by `group`, and an ungrouped entry renders first with no
-    // heading above it.
-    const rail = preview.getByRole("navigation");
-    await expect(rail.getByText("Overview")).toBeVisible();
-    await expect(rail.getByText("Account")).toBeVisible();
-    // Visible but not reachable: rendered muted and inert rather than hidden.
-    await expect(rail.getByText("Billing")).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    // The nav groups by `group`; its items are buttons, never anchors.
+    const nav = dialog.getByRole("navigation");
+    await expect(nav.getByText("Account", { exact: true })).toBeVisible();
+    await expect(nav.getByText("Workspace", { exact: true })).toBeVisible();
+    await expect(nav.locator("a")).toHaveCount(0);
 
-    // A row is a label and one control, and the label is a real `<label>` when
-    // the row is given an `htmlFor`.
-    await expect(preview.getByLabel("Display name")).toHaveValue(
-      "Ada Lovelace",
-    );
+    // A row is a label and one control, and the label is a real `<label>`
+    // when the row is given an `htmlFor`.
+    await expect(dialog.getByLabel("Display name")).toHaveValue("Ada Lovelace");
+
+    // Switching section is state: the URL does not move.
+    const url = page.url();
+    await nav.getByRole("button", { name: "Danger zone" }).click();
     await expect(
-      preview.getByRole("switch", { name: "Weekly digest" }),
+      dialog.getByRole("button", { name: "Delete", exact: true }),
+    ).toBeVisible();
+    expect(page.url()).toBe(url);
+
+    // A confirm opened from a section stacks over the dialog; cancelling it
+    // leaves the dialog open.
+    await nav.getByRole("button", { name: "Billing" }).click();
+    await dialog.getByRole("button", { name: "Switch to yearly" }).click();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(
+      dialog.getByRole("button", { name: "Switch to yearly" }),
     ).toBeVisible();
 
-    // And the boundary between "change your display name" and "delete your
-    // account", which is the whole point of the second card.
-    await expect(preview.getByText("Danger zone")).toBeVisible();
-    await expect(
-      preview.getByRole("button", { name: "Delete", exact: true }),
-    ).toBeVisible();
+    // Escape closes it.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
   });
 });
 
 /**
- * Auth and Account are five pages each, not one page with a dropdown, because
- * that is what they are in an application that mounts them. Each entry below
+ * Auth is five pages, not one page with a dropdown, because that is what it
+ * is in an application that mounts it; API keys is the account section the
+ * showcase backs with an API of its own. Each entry below
  * is a route AND a sidebar link, and both have been wrong before.
  */
 const PAGE_SCREENS = [
@@ -1051,11 +1063,7 @@ const PAGE_SCREENS = [
   { path: "/pages/auth/reset", content: "Email" },
   { path: "/pages/auth/verify", content: "Sign in" },
   { path: "/pages/auth/mfa", content: "a•••@alepha.dev" },
-  { path: "/pages/account/profile", content: "ada@alepha.dev" },
-  { path: "/pages/account/security", content: "Sign-in methods" },
-  { path: "/pages/account/sessions", content: "Chrome" },
   { path: "/pages/account/keys", content: "CLI on my laptop" },
-  { path: "/pages/account/connections", content: "Lore MCP" },
 ] as const;
 
 test.describe("page showcases", () => {
@@ -1067,7 +1075,7 @@ test.describe("page showcases", () => {
 
       // A failed action is reported to the READER, not the console, so a page
       // can 200 with every assertion green while telling its visitor an action
-      // was not found. `/pages/account/security` did exactly that.
+      // was not found. The old account security showcase did exactly that.
       await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
     });
   }

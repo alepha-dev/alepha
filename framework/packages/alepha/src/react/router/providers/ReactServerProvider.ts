@@ -2,7 +2,6 @@ import { join } from "node:path";
 
 import {
   $atom,
-  $env,
   $hook,
   $inject,
   $store,
@@ -86,7 +85,6 @@ export class ReactServerProvider {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
-  protected readonly env = $env(envSchema);
   protected readonly pageApi = $inject(ReactPageProvider);
   protected readonly templateProvider = $inject(ReactServerTemplateProvider);
   protected readonly serverHeadProvider = $inject(ServerHeadProvider);
@@ -131,8 +129,10 @@ export class ReactServerProvider {
       // (#Q3405): their pages are registered on the first page request.
       const deferred = this.pageApi.hasDeclaredPages();
 
-      const ssrEnabled =
-        (pages.length > 0 || deferred) && this.env.REACT_SSR_ENABLED !== false;
+      // A client-rendered page is `$page({ ssr: false })`: there is no switch
+      // turning SSR off for the whole app, which used to register no page
+      // route at all and answer 404 for every page (#Q3486).
+      const ssrEnabled = pages.length > 0 || deferred;
 
       // production mode
       let root = "";
@@ -1651,20 +1651,6 @@ export class ReactServerProvider {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-const envSchema = z.object({
-  REACT_SSR_ENABLED: z
-    .boolean()
-    .describe(
-      "Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only.",
-    )
-    .meta({ secret: false })
-    .optional(),
-});
-
-declare module "alepha" {
-  interface Env extends Partial<Infer<typeof envSchema>> {}
-}
 
 /**
  * React server provider configuration atom

@@ -59,7 +59,7 @@ const Layout = () => {
             none: `ProjectView`'s `AppShell` is `embedded`, and an embedded
             shell mounts no toaster of its own, so a managed request failed
             in silence even inside a project, and everywhere else
-            (`/account`, `/new-project`, the landing page) too. A call site
+            (`/new-project`, the landing page) too. A call site
             that shows its own error passes `onError`, which marks the
             failure handled and keeps it out of here. `/admin` is not under
             this layout: its `NavShell` mounts its own. */}

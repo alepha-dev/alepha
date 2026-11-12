@@ -6,6 +6,7 @@ import {
   apiPost,
   createProjectViaWizard,
   newUserContext,
+  openAccount,
   registerAndVerify,
   setCapability,
 } from "./_helpers.ts";
@@ -812,7 +813,7 @@ test.describe("Epics — a member, not just the owner", () => {
         await page.getByRole("button", { name: /send invitation/i }).click();
         expect((await invited).ok()).toBe(true);
 
-        await member.page.goto("/account/invitations");
+        await openAccount(member.page, "invitations");
         await member.page.waitForLoadState("domcontentloaded");
         const accepted = member.page.waitForResponse(
           (r) =>

@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui";
+import { useSettingsDialog } from "@alepha/ui/settings";
 import { useAuth } from "alepha/react/auth";
 import { KeyRound, ShieldCheck, SmartphoneNfc } from "lucide-react";
 
@@ -18,6 +19,7 @@ import { KeyRound, ShieldCheck, SmartphoneNfc } from "lucide-react";
  */
 const Home = () => {
   const auth = useAuth();
+  const account = useSettingsDialog("account");
 
   return (
     <div className="flex flex-col gap-10">
@@ -39,7 +41,7 @@ const Home = () => {
 
         <div className="flex flex-wrap gap-3">
           {auth.user ? (
-            <Button href="/account/security">
+            <Button onClick={() => account.open("security")}>
               <ShieldCheck className="size-4" />
               Set up two-factor authentication
             </Button>
@@ -62,7 +64,7 @@ const Home = () => {
               Enroll
             </CardTitle>
             <CardDescription>
-              <code className="font-mono text-xs">/account/security</code>
+              <code className="font-mono text-xs">/?account=security</code>
             </CardDescription>
           </CardHeader>
           <CardContent className="text-muted-foreground text-sm">

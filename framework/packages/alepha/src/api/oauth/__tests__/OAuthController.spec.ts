@@ -134,8 +134,8 @@ describe("oauth helpers", () => {
     });
 
     it("links revocation only when the app has a page for it", ({ expect }) => {
-      expect(render({ connectionsUrl: "/account/connections" })).toContain(
-        'href="/account/connections"',
+      expect(render({ connectionsUrl: "/?account=connections" })).toContain(
+        'href="/?account=connections"',
       );
       expect(render()).not.toContain("revoke this at any time");
     });
@@ -340,6 +340,43 @@ describe("OAuthController", () => {
     // 429, not 400: a caller that waits and retries is doing the right thing,
     // and only this status tells it so.
     expect(statuses.filter((s) => s === 429)).toHaveLength(2);
+  });
+});
+
+describe("OAuthController connectionsPath", () => {
+  class TestOAuthController extends OAuthController {
+    public testConnectionsUrl = () => this.connectionsUrl();
+  }
+
+  const controllerWith = (connectionsPath?: string) => {
+    // Substituted before the module that resolves it, so the module's own
+    // controller is the subclass and its rate limiters register once.
+    const alepha = Alepha.create()
+      .with({ provide: OAuthController, use: TestOAuthController })
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+      ...(connectionsPath === undefined ? {} : { connectionsPath }),
+    });
+    return alepha.inject(OAuthController) as TestOAuthController;
+  };
+
+  it("defaults to the account dialog's Connected apps section", ({
+    expect,
+  }) => {
+    expect(controllerWith().testConnectionsUrl()).toBe("/?account=connections");
+  });
+
+  it("takes the app's own path", ({ expect }) => {
+    expect(controllerWith("/me/apps").testConnectionsUrl()).toBe("/me/apps");
+  });
+
+  it("omits the link for an empty path", ({ expect }) => {
+    expect(controllerWith("").testConnectionsUrl()).toBeUndefined();
   });
 });
 

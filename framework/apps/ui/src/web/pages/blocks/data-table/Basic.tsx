@@ -60,6 +60,10 @@ const KNOBS = z.object({
   // the showcase should open on the real one. The switch is kept so the
   // content-height variant can still be seen.
   fullHeight: z.boolean().default(true).meta({ title: "Full height" }),
+  // The three props a table laid inside a dialog takes: no toolbar, the
+  // compact pager in place of the footer, and compact rows. Server-paged
+  // here, so the pager is the one a long list in a settings section gets.
+  light: z.boolean().default(false).meta({ title: "Light (for dialogs)" }),
 });
 
 /**
@@ -211,6 +215,7 @@ const Basic = () => {
         filters: true,
         emptyState: "Off",
         fullHeight: true,
+        light: false,
       }}
     >
       {(v) => (
@@ -220,7 +225,7 @@ const Basic = () => {
           // key or the switch moves and the table does not. `fullHeight` is
           // deliberately absent: it feeds a class, and remounting on it would
           // throw the fetch away to change a style.
-          key={`${v.pageSize}-${v.selectable}-${v.filters}-${v.emptyState}`}
+          key={`${v.pageSize}-${v.selectable}-${v.filters}-${v.emptyState}-${v.light}`}
           className={cn("min-h-0", v.fullHeight && "flex-1")}
           // Dropped while an empty state is forced. Persistence would
           // otherwise decide which of the two states appears: a search left in
@@ -255,6 +260,9 @@ const Basic = () => {
               : undefined
           }
           defaultSize={Number(v.pageSize)}
+          hideToolbar={v.light}
+          pagination={v.light ? "compact" : undefined}
+          density={v.light ? "compact" : undefined}
           filters={
             // "No match" implies the filter bar, whatever the toolbar knob
             // says: the state only exists when something is filtering, so the

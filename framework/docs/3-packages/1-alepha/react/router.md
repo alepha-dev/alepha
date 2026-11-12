@@ -56,7 +56,6 @@ This module enables:
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable            | Type    | Default | Description                                                                                                            |
-| ------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `REACT_PAGE_CACHE`  | boolean | -       | Turn the automatic SSR page cache off (false) without a code change, for an incident.                                  |
-| `REACT_SSR_ENABLED` | boolean | -       | Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only. |
+| Variable           | Type    | Default | Description                                                                           |
+| ------------------ | ------- | ------- | ------------------------------------------------------------------------------------- |
+| `REACT_PAGE_CACHE` | boolean | -       | Turn the automatic SSR page cache off (false) without a code change, for an incident. |

@@ -723,7 +723,8 @@ Two rules are worth knowing before you wire a UI to them:
   is not locked, it is unreachable - and password reset cannot recover it,
   because that needs a `credentials` identity to reset.
 
-`@alepha/ui` provides the matching UI as `AccountRouter` - see the
+`@alepha/ui` provides the matching UI as `AccountDialog`, the account as a
+settings dialog over the page - see the
 [frontend routing guide](/docs/guides-frontend-routing).
 
 ### Deleting an Account: the `user:delete:before` Hook

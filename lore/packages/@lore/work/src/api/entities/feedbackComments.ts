@@ -15,7 +15,7 @@ import { feedback } from "./feedback.ts";
  *
  * A copy of `quest_comments` in shape, with one difference that is not
  * cosmetic: **the reporter is often not a project member**. They reach
- * their own item through `/account/feedback`, so the read/write gate here
+ * their own item through the account dialog's Feedback section, so the read/write gate here
  * is "member of the project OR the reporter of this item", not membership
  * alone. See `FeedbackCommentController`.
  *

@@ -1,5 +1,6 @@
 import { Button, Card, CardContent, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { useSettingsDialog } from "@alepha/ui/settings";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -78,6 +79,7 @@ const ProjectCreate = () => {
   const [overview] = useStore(userProjectsAtom);
   const toaster = useToast();
   const router = useRouter();
+  const account = useSettingsDialog("account");
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
   const { tr } = useI18n<I18n, "en">();
@@ -184,7 +186,7 @@ const ProjectCreate = () => {
         toaster.info(tr("dock.full"), {
           action: {
             label: tr("dock.full.manage"),
-            onClick: () => void router.push("accountProjects"),
+            onClick: () => account.open("projects"),
           },
         });
       }

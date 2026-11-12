@@ -44,7 +44,7 @@ const sessions: MySession[] = [
 ];
 
 /**
- * Records the two writes the page makes, and answers them.
+ * Answers the list the section fetches, and records the two writes it makes.
  */
 class Links extends LinkProvider {
   public deleted: string[] = [];
@@ -56,6 +56,9 @@ class Links extends LinkProvider {
       {
         get: (_target, name: string) => {
           const action: any = async (input: any) => {
+            if (name === "listMySessions") {
+              return sessions;
+            }
             if (name === "deleteMySession") {
               this.deleted.push(input.params.id);
               return;
@@ -102,7 +105,7 @@ describe("AccountSessions", () => {
     render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <AccountSessions sessions={sessions} />
+          <AccountSessions />
         </DialogProvider>
       </AlephaContext.Provider>,
     );

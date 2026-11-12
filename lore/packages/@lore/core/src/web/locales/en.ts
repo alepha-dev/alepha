@@ -1867,8 +1867,11 @@ export default {
   "quest-log.expand-all": "Expand all",
   "quest-log.collapse-panel": "Hide quest log",
   "quest-log.expand-panel": "Show quest log",
-  "account.brand.back": "Back to home",
-  "account.brand.subtitle": "Account",
+  "account.nav.group.lore": "Lore",
+  "account.nav.projects": "Projects",
+  "account.nav.invitations": "Invitations",
+  "account.nav.notifications": "Notifications",
+  "account.nav.feedback": "Feedback",
   "account.projects.create": "New project",
   "account.projects.col.project": "Project",
   "account.projects.col.role": "Your role",
@@ -3432,7 +3435,7 @@ export default {
   "dashboard.footer.visitors.noCompare": "no comparison yet",
   "dashboard.footer.noBeacon": "no app here reports page views",
 
-  // --- /account/feedback ----------------------------------------------------
+  // --- account dialog: Feedback ---------------------------------------------
   "myFeedback.empty": "You haven't submitted any feedback yet.",
   "myFeedback.filter.search.aria": "Search feedback",
   "myFeedback.filter.allStatuses": "All statuses",

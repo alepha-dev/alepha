@@ -30,7 +30,7 @@ export interface SettingsHeadingProps {
  * That hand-rolling is the failure this prevents, and it had already happened:
  * Lore's account pages grew an `<h2 className="text-base font-semibold">`
  * on one page and a bare `<span className="text-xs">` with no title at all on
- * another, so the `/account` rail led to three different type scales depending
+ * another, so the account rail led to three different type scales depending
  * on which entry you clicked. Nothing was broken and nothing could have failed
  * — it just read as three pages from three different applications.
  *

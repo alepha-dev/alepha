@@ -86,7 +86,7 @@ interface InboxRow {
  * registered, and it prunes every `$secure()` one for an anonymous caller.
  * So this renders nothing both when the app has not registered
  * `alepha/api/notifications` and when nobody is signed in, with no 404 fired
- * on every page load. `AccountRouter` gates its five pages the same way.
+ * on every page load. `AccountDialog` gates its five sections the same way.
  *
  * ## ⚠️ The scope chip is a label the message carries, never a parsed scope
  *

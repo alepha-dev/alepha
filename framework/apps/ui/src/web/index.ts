@@ -4,6 +4,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 
 import { AppRouter } from "./AppRouter.tsx";
+import { ShowcaseSettings } from "./ShowcaseSettings.ts";
 import { UiI18n } from "./UiI18n.ts";
 import { UiThemes } from "./UiThemes.ts";
 
@@ -23,5 +24,5 @@ export const UiWeb = $module({
    * registered, the locked container refused it and both pages failed to
    * render. Listing the class brings its module in at boot.
    */
-  services: [AppRouter, UiI18n, UiThemes, PasskeyClient],
+  services: [AppRouter, ShowcaseSettings, UiI18n, UiThemes, PasskeyClient],
 });

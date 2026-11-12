@@ -36,30 +36,25 @@ describe("isActivePath", () => {
 
 describe("keepDeepestActive", () => {
   /*
-    The account rail's regression. `AccountRouter.profile` sits at `path: "/"`
-    under the `/account` shell, and `createMatch` collapses that to `/account`
-    — the shell's own path — so the entry is a prefix of every sibling and lit
-    up on all of them.
+    The index-entry regression. A shell's first page at `path: "/"` (the
+    admin dashboard) has a match `createMatch` collapses to the shell's own
+    path, so the entry is a prefix of every sibling and lit up on all of them.
   */
   it("drops an index entry whose match is a prefix of its siblings", () => {
     const rail = [
-      "/account", // Profile
-      "/account/security",
-      "/account/sessions",
-      "/account/feedback",
+      "/admin", // Dashboard
+      "/admin/users",
+      "/admin/sessions",
+      "/admin/jobs",
     ];
 
-    expect(activeHrefs("/account/security", rail)).toEqual([
-      "/account/security",
-    ]);
-    expect(activeHrefs("/account/feedback", rail)).toEqual([
-      "/account/feedback",
-    ]);
+    expect(activeHrefs("/admin/users", rail)).toEqual(["/admin/users"]);
+    expect(activeHrefs("/admin/jobs", rail)).toEqual(["/admin/jobs"]);
   });
 
   it("keeps the index entry on the index route itself", () => {
-    expect(activeHrefs("/account", ["/account", "/account/security"])).toEqual([
-      "/account",
+    expect(activeHrefs("/admin", ["/admin", "/admin/users"])).toEqual([
+      "/admin",
     ]);
   });
 
@@ -77,15 +72,13 @@ describe("keepDeepestActive", () => {
   it("keeps an index entry lit on a child route it genuinely owns", () => {
     // Same shape as the first case, except no sibling claims the child — so
     // the index entry is still the deepest match and must survive.
-    expect(
-      activeHrefs("/account/photo", ["/account", "/account/security"]),
-    ).toEqual(["/account"]);
+    expect(activeHrefs("/admin/audits", ["/admin", "/admin/users"])).toEqual([
+      "/admin",
+    ]);
   });
 
   it("marks nothing active when the current path is outside the shell", () => {
-    expect(activeHrefs("/projects", ["/account", "/account/security"])).toEqual(
-      [],
-    );
+    expect(activeHrefs("/projects", ["/admin", "/admin/users"])).toEqual([]);
   });
 
   it("leaves a list with a single active entry untouched", () => {

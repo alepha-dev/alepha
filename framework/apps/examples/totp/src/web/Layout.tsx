@@ -29,7 +29,7 @@ export const Layout = () => {
               <div className="ml-auto flex items-center gap-2">
                 <ButtonTheme />
                 {/*
-                 * Resolves the signed-in account and links to `/account`. It is
+                 * Resolves the signed-in account and opens its dialog. It is
                  * also the sign-in entry point when nobody is signed in, which
                  * is why the shell needs no `/auth/login` link of its own.
                  */}

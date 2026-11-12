@@ -203,7 +203,6 @@ export class ShopI18n {
           "Cette boutique est une démonstration technique. L'atelier, le laminoir de 1962 et les pièces sont inventés.",
 
         // Account shell
-        "account.brand": "Atelier · mon compte",
 
         // Admin shell
         "admin.brand": "Atelier · gestion",
@@ -368,8 +367,6 @@ export class ShopI18n {
           "A ring can be resized, a clasp replaced, a polish redone. Write to contact@atelier-aurore.test with the reference engraved inside; we take our pieces back with no time limit.",
         "atelier.demo":
           "This shop is a technical demonstration. The workshop, the 1962 rolling mill and the pieces are invented.",
-
-        "account.brand": "Workshop · my account",
 
         "admin.brand": "Workshop · admin",
         "admin.produits": "Products",

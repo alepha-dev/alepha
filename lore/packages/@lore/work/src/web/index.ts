@@ -12,7 +12,7 @@ import { currentReleasesAtom } from "./app/atoms/currentReleasesAtom.ts";
 import { kanbanFiltersAtom } from "./app/atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./app/atoms/kanbanReloadAtom.ts";
 import { questLogCollapsedAtom } from "./app/atoms/questLogCollapsedAtom.ts";
-import { WorkAccountRouter } from "./app/components/account/feedback/WorkAccountRouter.ts";
+import { WorkAccountSections } from "./app/components/account/feedback/WorkAccountSections.ts";
 import { WorkProjectLoader } from "./app/loaders/WorkProjectLoader.ts";
 import { WorkShell } from "./app/shell/WorkShell.ts";
 import { WorkRouter } from "./app/WorkRouter.ts";
@@ -58,7 +58,7 @@ export const LoreWorkWeb = $module({
     // nothing else would construct; and its dashboard metrics' declarative
     // half, which the browser needs to draw the tiles.
     alepha.with(WorkRouter);
-    alepha.with(WorkAccountRouter);
+    alepha.with(WorkAccountSections);
     alepha.inject(WorkProjectLoader);
     alepha.inject(WorkShell);
     alepha.inject(WorkDashboardMetrics);
@@ -74,7 +74,7 @@ export const LoreWorkWeb = $module({
 
 export { WorkRouter } from "./app/WorkRouter.ts";
 export { currentReleasesAtom } from "./app/atoms/currentReleasesAtom.ts";
-export { WorkAccountRouter } from "./app/components/account/feedback/WorkAccountRouter.ts";
+export { WorkAccountSections } from "./app/components/account/feedback/WorkAccountSections.ts";
 export {
   expandCommentReferences,
   outsideProtected,
@@ -96,6 +96,5 @@ export { WorkShell } from "./app/shell/WorkShell.ts";
 declare module "alepha/react/router" {
   interface Routers {
     loreWork: WorkRouter;
-    loreWorkAccount: WorkAccountRouter;
   }
 }

@@ -2,39 +2,44 @@ import { expect, test } from "./_fixtures.ts";
 import {
   confirmDialog,
   createProjectViaWizard,
+  openAccount,
   registerAndVerify,
   releasePointerEvents,
 } from "./_helpers.ts";
 
 /**
- * The `/account` area — Lore's consumer of `@alepha/ui`'s `AccountRouter`.
+ * The account dialog (#E140): Lore's consumer of `@alepha/ui`'s
+ * `AccountDialog`, opened over the page rather than at a route.
  *
- * Most of what these pages do is covered by framework specs against the
- * controllers. What only an e2e can prove is that the *seam* is wired: that
- * `AccountRouter` mounts as a root shell (a floating sidebar and its own
- * topbar, like `/admin`, #E68), that the sidebar lists both the framework's
- * five pages and Lore's, and that the `$pageAccount` extension point actually
- * produces reachable routes.
+ * Most of what the sections do is covered by framework specs against the
+ * controllers. What only an e2e can prove is that the seam is wired: that the
+ * user menu and `?account=<section>` open the dialog, that its nav lists both
+ * the framework's five sections and Lore's four, that it closes on a route
+ * change, and that each section works inside it.
  */
-test.describe("Account area", () => {
-  test("lands on the profile and lists both built-in and Lore pages", async ({
+test.describe("Account dialog", () => {
+  test("opens from the user menu over the page, with the built-in and Lore sections", async ({
     page,
   }) => {
     test.setTimeout(90_000);
 
     const email = `ac-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
-
-    // Bare `/account` must resolve — the profile sits at the shell root, which
-    // is why AccountRouter needs no index redirect.
-    await page.goto("/account");
+    await page.goto("/");
     await page.waitForLoadState("networkidle");
+    const url = page.url();
 
-    await expect(page.getByText(email, { exact: true })).toBeVisible();
+    await page.getByLabel("Account menu").click();
+    await page.getByRole("menuitem", { name: "User Account" }).click();
+    const dialog = page.locator('[data-slot="settings-dialog"]');
+    await expect(dialog).toBeVisible();
 
-    // The sidebar is derived from route `nav` metadata, so this asserts the
-    // five built-ins AND that `$pageAccount` put Lore's pages in the same tree.
-    const sidebar = page.locator('[data-slot="sidebar"]');
+    // The page is still the one it was: the dialog is state, not a route.
+    expect(page.url()).toBe(url);
+    await expect(dialog.getByText(email, { exact: true })).toBeVisible();
+
+    // The nav lists the five built-ins and Lore's four, as buttons.
+    const nav = dialog.getByRole("navigation");
     for (const label of [
       "Profile",
       "Projects",
@@ -47,20 +52,44 @@ test.describe("Account area", () => {
       "Notifications",
     ]) {
       await expect(
-        sidebar.getByRole("link", { name: label, exact: true }),
+        nav.getByRole("button", { name: label, exact: true }),
       ).toBeVisible();
     }
-    // Estates belong to a project since #E126: the account has no page for
-    // them.
+    await expect(nav.locator("a")).toHaveCount(0);
+    // Estates belong to a project since #E126: the account has no section
+    // for them.
     await expect(
-      sidebar.getByRole("link", { name: "Estates", exact: true }),
+      nav.getByRole("button", { name: "Estates", exact: true }),
     ).toHaveCount(0);
 
-    // The sidebar's header reads "Account" behind a back arrow, the way home.
-    await expect(page.getByTestId("lore-account-brand")).toHaveText("Account");
+    // One section current at a time, switched without moving the URL.
+    await nav.getByRole("button", { name: "Sessions", exact: true }).click();
+    const current = nav.locator('[aria-current="page"]');
+    await expect(current).toHaveCount(1);
+    await expect(current).toHaveText("Sessions");
+    expect(page.url()).toBe(url);
+
+    // Escape closes it, and reopening lands on the last section viewed.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await page.getByLabel("Account menu").click();
+    await page.getByRole("menuitem", { name: "User Account" }).click();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText("Sessions");
+  });
+
+  test("opens from ?account=<section> and strips it", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    await registerAndVerify(
+      page,
+      `aq-${Date.now()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const dialog = await openAccount(page, "invitations");
     await expect(
-      page.getByRole("link", { name: "Back to home", exact: true }),
-    ).toHaveAttribute("href", "/");
+      dialog.getByRole("navigation").locator('[aria-current="page"]'),
+    ).toHaveText("Invitations");
+    await expect(page).not.toHaveURL(/account=/);
   });
 
   test("holds colour-blind mode on the profile, not in the account menu", async ({
@@ -73,12 +102,11 @@ test.describe("Account area", () => {
       `cb-${Date.now()}@example.com`,
       "GoodPassw0rd",
     );
-    await page.goto("/account");
-    await page.waitForLoadState("networkidle");
+    let dialog = await openAccount(page);
 
     // The switch drives the real preference: the `cvd` class on <html>, which
     // is what the palette is keyed on.
-    const toggle = page.getByRole("switch", { name: "Colour-blind mode" });
+    const toggle = dialog.getByRole("switch", { name: "Colour-blind mode" });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(page.locator("html")).not.toHaveClass(/\bcvd\b/);
     await toggle.click();
@@ -86,14 +114,14 @@ test.describe("Account area", () => {
     await expect(page.locator("html")).toHaveClass(/\bcvd\b/);
 
     // Kept across a reload (the UI cookie), and the switch reads it back.
-    await page.reload();
-    await page.waitForLoadState("networkidle");
+    dialog = await openAccount(page);
     await expect(page.locator("html")).toHaveClass(/\bcvd\b/);
     await expect(
-      page.getByRole("switch", { name: "Colour-blind mode" }),
+      dialog.getByRole("switch", { name: "Colour-blind mode" }),
     ).toHaveAttribute("aria-checked", "true");
 
     // The account menu still has its display mode, and no colour-blind item.
+    await page.keyboard.press("Escape");
     await page.getByLabel("Account menu").click();
     await expect(
       page.getByRole("menuitem", { name: "Display Mode" }),
@@ -103,50 +131,9 @@ test.describe("Account area", () => {
     ).toHaveCount(0);
   });
 
-  test("highlights exactly one sidebar entry per page", async ({ page }) => {
-    test.setTimeout(90_000);
-
-    /*
-      Regression guard for the Profile entry. It sits at `path: "/"` under the
-      shell, and `ReactPageProvider.createMatch` collapses that to the shell's
-      own path (`/account` + `/` → `/account`), so its `match` is a prefix of
-      every sibling's. `isActivePath` is a per-entry predicate and cannot see
-      that a sibling matched deeper, so Profile rendered active on *every*
-      account page until `keepDeepestActive` was added.
-
-      Driven through the real router rather than asserted against a hardcoded
-      href, because the whole bug lives in what `createMatch` produces for an
-      index page. A unit test that assumes `/account` cannot notice that
-      changing.
-    */
-    const email = `ah-${Date.now()}@example.com`;
-    await registerAndVerify(page, email, "GoodPassw0rd");
-
-    const expected: Array<[string, string]> = [
-      ["/account", "Profile"],
-      ["/account/security", "Security"],
-      ["/account/sessions", "Sessions"],
-      ["/account/keys", "API keys"],
-      ["/account/connections", "Connected apps"],
-      ["/account/projects", "Projects"],
-      ["/account/invitations", "Invitations"],
-      ["/account/feedback", "Feedback"],
-      ["/account/notifications", "Notifications"],
-    ];
-
-    for (const [path, label] of expected) {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
-
-      const active = page.locator(
-        '[data-slot="sidebar"] a[aria-current="page"]',
-      );
-      await expect(active).toHaveCount(1);
-      await expect(active).toHaveText(label);
-    }
-  });
-
-  test("lists the projects in a table and opens one", async ({ page }) => {
+  test("lists the projects in a table and opens one, closing the dialog", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
 
     const email = `apr-${Date.now()}@example.com`;
@@ -154,15 +141,15 @@ test.describe("Account area", () => {
     const title = `APR${Date.now()}`.slice(0, 20);
     const { slug } = await createProjectViaWizard(page, title);
 
-    await page.goto("/account/projects");
-    await page.waitForLoadState("networkidle");
-
-    const row = page.getByRole("row").filter({ hasText: title });
+    const dialog = await openAccount(page, "projects");
+    const row = dialog.getByRole("row").filter({ hasText: title });
     await expect(row).toHaveCount(1);
     await expect(row.getByText("Owner", { exact: true })).toBeVisible();
 
     await row.getByTestId("account-project-row").click();
     await expect(page).toHaveURL(new RegExp(`/${slug}(/|$)`));
+    // A route change closes the dialog by itself.
+    await expect(dialog).toHaveCount(0);
   });
 
   test("renames the account and persists it across a reload", async ({
@@ -173,30 +160,25 @@ test.describe("Account area", () => {
     const email = `an-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
-    await page.goto("/account");
-    await page.waitForLoadState("networkidle");
-
-    const firstName = page.getByLabel("First name");
-    await firstName.fill("Ada");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    let dialog = await openAccount(page);
+    await dialog.getByLabel("First name").fill("Ada");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
 
     // Assert the write landed before asserting it persisted — otherwise a
     // failed save and a failed reload look identical.
     await expect(page.getByText(/profile updated/i)).toBeVisible();
 
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByLabel("First name")).toHaveValue("Ada");
+    dialog = await openAccount(page);
+    await expect(dialog.getByLabel("First name")).toHaveValue("Ada");
 
     // And back: an emptied box is sent as "", which the server stores as no
     // name at all (#Q3225), so the field comes back empty after a reload.
-    await page.getByLabel("First name").fill("");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.getByLabel("First name").fill("");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByText(/profile updated/i).first()).toBeVisible();
 
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByLabel("First name")).toHaveValue("");
+    dialog = await openAccount(page);
+    await expect(dialog.getByLabel("First name")).toHaveValue("");
   });
 
   /**
@@ -214,10 +196,9 @@ test.describe("Account area", () => {
     const email = `nt-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
-    await page.goto("/account/notifications");
-    await page.waitForLoadState("networkidle");
+    let dialog = await openAccount(page, "notifications");
 
-    const emailSwitch = page.getByRole("switch", { name: "Email" });
+    const emailSwitch = dialog.getByRole("switch", { name: "Email" });
     await expect(emailSwitch).toHaveAttribute("aria-checked", "true");
 
     // ⚠️ Client actions are coalesced into `POST /api/_batch`, so a
@@ -235,19 +216,16 @@ test.describe("Account area", () => {
     // Polled: the batch above carries the write, and the row it produces is
     // read back by the next page load rather than by that same round trip.
     await expect(async () => {
-      await page.reload();
-      await page.waitForLoadState("networkidle");
-      await expect(page.getByRole("switch", { name: "Email" })).toHaveAttribute(
-        "aria-checked",
-        "false",
-        { timeout: 5_000 },
-      );
+      dialog = await openAccount(page, "notifications");
+      await expect(
+        dialog.getByRole("switch", { name: "Email" }),
+      ).toHaveAttribute("aria-checked", "false", { timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
 
     // The in-app row is a statement, not a control: there is no switch to
     // find, which is what stops it reading as a broken one.
-    await expect(page.getByText("In-app", { exact: true })).toBeVisible();
-    await expect(page.getByRole("switch", { name: "In-app" })).toHaveCount(0);
+    await expect(dialog.getByText("In-app", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("switch", { name: "In-app" })).toHaveCount(0);
   });
 
   test("changes the password and reports the revoked sessions", async ({
@@ -258,10 +236,9 @@ test.describe("Account area", () => {
     const email = `ap-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
-    await page.goto("/account/security");
-    await page.waitForLoadState("networkidle");
+    const dialog = await openAccount(page, "security");
 
-    await page.getByRole("button", { name: /change password/i }).click();
+    await dialog.getByRole("button", { name: /change password/i }).click();
     await page.getByLabel(/^Current password/).fill("GoodPassw0rd");
     await page.getByLabel(/^New password/).fill("EvenBett3r!");
     await page.getByLabel(/^Confirm new password/).fill("EvenBett3r!");
@@ -283,18 +260,17 @@ test.describe("Account area", () => {
     const email = `as-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
-    await page.goto("/account/sessions");
-    await page.waitForLoadState("networkidle");
+    const dialog = await openAccount(page, "sessions");
 
-    await expect(page.getByText(/this device/i)).toBeVisible();
+    await expect(dialog.getByText(/this device/i)).toBeVisible();
     // The row you are sitting in has no row menu - signing yourself out
     // belongs to the sign-out affordance, not to a per-row action that reads
     // as "revoke someone else" - and with one session there is no "Sign out
     // N others" either.
     await expect(
-      page.getByRole("button", { name: "Open row actions" }),
+      dialog.getByRole("button", { name: "Open row actions" }),
     ).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /^Sign out/ })).toHaveCount(
+    await expect(dialog.getByRole("button", { name: /^Sign out/ })).toHaveCount(
       0,
     );
   });
@@ -350,8 +326,7 @@ test.describe("Account area", () => {
       await confirmDialog(page, action);
     };
 
-    await page.goto("/account/keys");
-    await page.waitForLoadState("networkidle");
+    await openAccount(page, "keys");
 
     // Create, with an expiry other than the preselected 90 days.
     await page.getByRole("button", { name: /new key/i }).click();
@@ -456,10 +431,8 @@ test.describe("Account area", () => {
     await registerAndVerify(page, email, "GoodPassw0rd");
     await createProjectViaWizard(page, `AD${Date.now()}`.slice(0, 20));
 
-    await page.goto("/account/security");
-    await page.waitForLoadState("networkidle");
-
-    await page.getByRole("button", { name: /delete account/i }).click();
+    const dialog = await openAccount(page, "security");
+    await dialog.getByRole("button", { name: /delete account/i }).click();
     await page.getByLabel(/^Current password/).fill("GoodPassw0rd");
     await page.getByLabel(/to confirm/i).fill(email);
     await page
@@ -478,43 +451,45 @@ test.describe("Account area", () => {
     ).toBeVisible();
 
     // And the refusal has to actually refuse.
-    await page.goto("/account");
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText(email, { exact: true })).toBeVisible();
+    const profile = await openAccount(page);
+    await expect(profile.getByText(email, { exact: true })).toBeVisible();
   });
 
-  test("main scrolls and nothing is clipped at 1280x320", async ({ page }) => {
+  test("the section scrolls and nothing is clipped at 1280x320", async ({
+    page,
+  }) => {
     test.setTimeout(90_000);
 
     /*
-      The account shell owns the viewport (`h-svh` + `NavShell fill`), so
-      the document never scrolls: `main` is bounded and every page inside it
-      owns its scroll. A form page does it through `AccountPage
-      variant="form"`, a table page through the table body. Were that frame
-      missing, everything past the fold would be unreachable rather than
-      merely below it, which is how `/account/feedback` once lost the rest
-      of its table and its pagination bar.
+      The dialog bounds itself to the viewport, and its content pane owns the
+      scroll. Were that frame missing, everything past the fold would be
+      unreachable rather than merely below it.
 
       Asserted through the DOM rather than by looking for a specific row,
-      because how much content overflows depends on the page and the viewport
-      - what must hold is that *something* can scroll and nothing is clipped.
+      because how much content overflows depends on the section and the
+      viewport - what must hold is that *something* can scroll and nothing is
+      clipped.
     */
     const email = `af-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
     // Short enough that the card stack cannot fit, whatever it holds.
     await page.setViewportSize({ width: 1280, height: 320 });
-    await page.goto("/account/security");
-    await page.waitForLoadState("networkidle");
+    const dialog = await openAccount(page, "security");
+    await expect(
+      dialog.getByText("Sign-in methods", { exact: true }),
+    ).toBeVisible();
 
-    const overflow = await page.evaluate(() => {
+    const overflow = await dialog.evaluate((root) => {
       const overflows = (e: Element) => e.scrollHeight > e.clientHeight + 4;
-      const all = [...document.querySelectorAll("*")];
+      const all = [root, ...root.querySelectorAll("*")];
       return {
         // Anything taller than its box whose overflow is hidden is content
-        // the user can never get to — the bug, exactly.
+        // the user can never get to — the bug, exactly. The dialog's own
+        // frame hides its overflow by design, and is not content.
         clipped: all.filter(
           (e) =>
+            e !== root &&
             overflows(e) &&
             getComputedStyle(e).overflowY === "hidden" &&
             !e.className.toString().includes("sr-only"),
@@ -531,63 +506,65 @@ test.describe("Account area", () => {
     expect(overflow.scrollable).toBeGreaterThan(0);
   });
 
-  test("opens the sidebar as a sheet at phone width, and keeps the account menu", async ({
-    page,
-  }) => {
+  test("drills into a section at phone width, and back", async ({ page }) => {
     test.setTimeout(90_000);
 
     const email = `am-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/account");
+    await page.goto("/");
     await page.waitForLoadState("networkidle");
-
-    // Docked sidebars do not fit a phone: the trigger opens a sheet.
-    const sheet = page.locator('[data-slot="sidebar"][data-mobile="true"]');
-    await expect(sheet).toHaveCount(0);
-    await page.getByRole("button", { name: /Expand sidebar/ }).click();
-    await expect(sheet).toBeVisible();
-    await sheet.getByRole("link", { name: "Security", exact: true }).click();
-    await expect(page).toHaveURL(/\/account\/security$/);
-    // Following a link closes the sheet.
-    await expect(sheet).toHaveCount(0);
-
-    // Language, theme and display mode stay reachable in the account menu.
     await page.getByLabel("Account menu").click();
-    for (const name of ["Language", "Theme", "Display Mode"]) {
-      await expect(
-        page.getByRole("menuitem", { name, exact: true }),
-      ).toBeVisible();
-    }
-    // And the way out of the account area.
-    await expect(page.getByTestId("account-back-to-site")).toBeVisible();
+    await page.getByRole("menuitem", { name: "User Account" }).click();
+
+    // Full screen, on the list of sections.
+    const dialog = page.locator('[data-slot="settings-dialog"]');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Security", exact: true }).click();
+    await expect(
+      dialog.getByText("Sign-in methods", { exact: true }),
+    ).toBeVisible();
+    // Back to the list: state, not history.
+    const url = page.url();
+    await dialog.getByRole("button", { name: "Back", exact: true }).click();
+    await expect(
+      dialog.getByRole("button", { name: "Sessions", exact: true }),
+    ).toBeVisible();
+    expect(page.url()).toBe(url);
   });
 
-  test("sends a signed-out visitor to sign in, and back", async ({ page }) => {
-    /*
-      `/account` is no longer under Lore's root layout, whose `errorHandler`
-      turned a 401 into the login redirect. The account layout's `$secure()`
-      is what does it now: a guarded page denies an anonymous visitor to the
-      route named `login`, carrying the blocked URL.
-    */
-    await page.goto("/account/projects");
-    await expect(page).toHaveURL(
-      /\/auth\/login\?redirect=%2Faccount%2Fprojects/,
-      { timeout: 15_000 },
+  test("sends a signed-out visitor to sign in, and back into the dialog", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await page.goto("/?account=projects");
+    await expect(page).toHaveURL(/\/auth\/login\?redirect=/, {
+      timeout: 15_000,
+    });
+    expect(new URL(page.url()).searchParams.get("redirect")).toBe(
+      "/?account=projects",
     );
   });
 
-  test("404s the retired /auth/profile paths", async ({ page }) => {
+  test("404s the retired /account and /auth/profile paths", async ({
+    page,
+  }) => {
     test.setTimeout(90_000);
 
-    // Deleted, not redirected — a decision recorded in folio #100. Invitation
-    // emails sent before the move carry the old path and will 404.
+    // Deleted, not redirected: links stored before the move 404 (accepted
+    // data loss, #E140; folio #100 for `/auth/profile`).
     const email = `ao-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
 
-    await page.goto("/auth/profile");
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText(email, { exact: true })).toHaveCount(0);
+    for (const path of ["/auth/profile", "/account/projects"]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText(email, { exact: true })).toHaveCount(0);
+      await expect(page.locator('[data-slot="settings-dialog"]')).toHaveCount(
+        0,
+      );
+    }
   });
 });
