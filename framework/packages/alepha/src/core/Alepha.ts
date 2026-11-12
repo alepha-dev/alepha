@@ -550,34 +550,56 @@ export class Alepha {
 
   /**
    * Creates, before start, the declared classes nothing would ever create
-   * late: those holding an MCP tool, resource or prompt when no MCP server is
-   * registered (#Q3406). The MCP server is what creates them on its first
-   * request; a tool class was also what registered its module, so with every
-   * tool class declared that module may never have come.
+   * late: a tool class when no MCP server is registered (#Q3406), a page
+   * router when no SSR server is, a controller when no server router is. The
+   * server of each kind is what creates them on first use, and the class
+   * was also what registered that server's module.
    */
   protected createUnservedDeclared(): void {
     const surface = this.surface;
     if (!surface || this.declared.size === 0) {
       return;
     }
-    const mcp = new Set(
-      [...surface.tools, ...surface.resources, ...surface.prompts].map(
-        (row) => row.class,
-      ),
-    );
-    if (mcp.size === 0) {
-      return;
+    // What would create each kind of declared class late, and the classes
+    // of that kind. A class's primitives register the module that serves
+    // them (`$page` the React router, `$action` the server) when the class
+    // is constructed: an app whose only page router or controller is
+    // declared never registers that module, and nothing would ever serve
+    // them (#Q3405, #Q3406).
+    const kinds: Array<[string, Array<{ class: string }>]> = [
+      [
+        "alepha.mcp.McpServerProvider",
+        [...surface.tools, ...surface.resources, ...surface.prompts],
+      ],
+      ["alepha.react.ReactServerProvider", surface.pages],
+      [
+        "alepha.server.ServerRouterProvider",
+        [...surface.actions, ...surface.routes],
+      ],
+    ];
+    for (const [server, rows] of kinds) {
+      if (rows.length === 0 || this.hasServiceId(server)) {
+        continue;
+      }
+      const keys = new Set(rows.map((row) => row.class));
+      for (const service of Array.from(this.declared)) {
+        if (
+          !isLazyService(service) &&
+          keys.has(ContainerGraph.keyOf(service))
+        ) {
+          this.inject(service);
+        }
+      }
     }
+  }
+
+  protected hasServiceId(id: string): boolean {
     for (const key of this.registry.keys()) {
-      if ((key as { id?: string }).id === "alepha.mcp.McpServerProvider") {
-        return;
+      if ((key as { id?: string }).id === id) {
+        return true;
       }
     }
-    for (const service of Array.from(this.declared)) {
-      if (mcp.has(ContainerGraph.keyOf(service))) {
-        this.inject(service);
-      }
-    }
+    return false;
   }
 
   /**
@@ -678,6 +700,33 @@ export class Alepha {
     if (this.declared.delete(lazy as unknown as Service)) {
       if (!this.registry.has(resolved)) {
         this.declared.add(resolved);
+      }
+    }
+  }
+
+  /**
+   * A class created through a static import while its module lists a lazy
+   * stand-in for it (#Q3483): another class `$inject`s it before its chunk
+   * was ever needed. The stand-in leaves the declared set, resolved to the
+   * created class, so nothing reads the class as declared AND created: the
+   * links registered its actions twice, and threw.
+   *
+   * Matched by name, and by module when the created class has one: a class
+   * of another module that happens to share the name is not this one.
+   */
+  protected retireStandIn(service: Service): void {
+    if (this.declared.size === 0) {
+      return;
+    }
+    const module = (service as WithModule)[MODULE];
+    for (const entry of this.declared) {
+      if (
+        isLazyService(entry) &&
+        entry.name === service.name &&
+        (!module || (entry as unknown as WithModule)[MODULE] === module)
+      ) {
+        this.adopt(entry, service);
+        return;
       }
     }
   }
@@ -1732,6 +1781,9 @@ export class Alepha {
 
     if (!transient) {
       registry.set(service, definition);
+      if (registry === this.registry) {
+        this.retireStandIn(service);
+      }
     }
 
     // [feature]: modules - it's just a way to group services together

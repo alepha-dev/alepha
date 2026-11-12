@@ -79,10 +79,26 @@ export class LinkProvider {
     while (this.deferredRegistrations.length > 0) {
       const pending = this.deferredRegistrations;
       this.deferredRegistrations = [];
-      for (const register of pending) {
-        register();
+      for (let i = 0; i < pending.length; i++) {
+        try {
+          pending[i]();
+        } catch (error) {
+          // Back in the queue, with what had not run yet (#Q3483): the next
+          // read retries and fails as loudly, never serving a map this
+          // build left half done.
+          this.deferredRegistrations.unshift(...pending.slice(i));
+          throw error;
+        }
       }
     }
+  }
+
+  /**
+   * Whether a link with a local handler is already registered under `name`,
+   * read without running the deferred registrations.
+   */
+  public hasLocalLink(name: string): boolean {
+    return !!this.serverLinkStore.get(name)?.handler;
   }
 
   protected get serverLinkMap(): Map<string, HttpClientLink> {

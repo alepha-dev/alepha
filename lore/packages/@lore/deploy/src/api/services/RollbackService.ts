@@ -5,6 +5,7 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
+import { artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
@@ -62,6 +63,7 @@ export class RollbackService {
   protected readonly log = $logger();
   protected readonly rows = $repository(deployments);
   protected readonly instances = $repository(appInstances);
+  protected readonly artifacts = $repository(artifacts);
   protected readonly gate = $inject(DeployGate);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly registry = $inject(DeployRegistry);
@@ -223,6 +225,8 @@ export class RollbackService {
       );
       await this.registry.succeeded(row.id, {
         versionId: plan.deployment.versionId,
+        // A version rollback touches no database (#Q3479).
+        migrationsApplied: 0,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -238,13 +242,18 @@ export class RollbackService {
   /**
    * How many migrations landed after the chosen version shipped.
    *
-   * Counted from the deployments in between rather than from the migration
-   * files, because Lore knows when each run happened and not when each
-   * migration did - and a run that applied migrations is the only evidence
-   * there is.
+   * Summed from what each later run recorded applying (#Q3479). It used to
+   * count every later run with different bytes as one migration, so the
+   * warning fired on nearly every rollback of every app, a database or not,
+   * and a warning that always fires trains people to acknowledge it.
+   *
+   * A later run that recorded nothing is UNKNOWN: it counts one, as before,
+   * unless its artifact's manifest says the build has no database. Unknown
+   * never reads as none, because under-counting costs old code against a
+   * new schema while over-counting costs one confirmation.
    */
   protected async migrationsSince(target: Deployment): Promise<number> {
-    const later = await this.rows.findMany({
+    const rows = await this.rows.findMany({
       where: {
         instanceId: { eq: target.instanceId },
         status: { eq: "succeeded" },
@@ -257,11 +266,65 @@ export class RollbackService {
     // together - and a strict comparison then counts zero migrations for a
     // rollback that really is going backwards. Over-counting by a tie costs an
     // extra confirmation; under-counting costs old code against a new schema.
-    return later.filter(
+    const later = rows.filter(
       (it) =>
         it.id !== target.id &&
         Date.parse(it.createdAt) >= Date.parse(target.createdAt) &&
         it.sha256 !== target.sha256,
-    ).length;
+    );
+    const unknown = later.filter((it) => it.migrationsApplied == null);
+    const noDatabase = await this.withoutDatabase(unknown);
+    let count = 0;
+    for (const it of later) {
+      if (it.migrationsApplied != null) {
+        count += it.migrationsApplied;
+      } else if (!noDatabase.has(it.id)) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * The runs, among these, whose artifact's manifest says the build has no
+   * database (`resources.hasDatabase: false`). A run whose artifact is gone,
+   * or whose manifest is absent or says nothing, is not among them.
+   */
+  protected async withoutDatabase(runs: Deployment[]): Promise<Set<string>> {
+    const ids = [
+      ...new Set(runs.map((it) => it.artifactId).filter((it) => !!it)),
+    ] as string[];
+    if (ids.length === 0) {
+      return new Set();
+    }
+    const found = await this.artifacts.findMany({
+      where: { id: { inArray: ids } },
+      columns: ["id", "manifest"],
+    });
+    const plain = new Set<string>();
+    for (const artifact of found) {
+      if (this.declaresNoDatabase(artifact.manifest)) {
+        plain.add(artifact.id);
+      }
+    }
+    return new Set(
+      runs
+        .filter((it) => it.artifactId && plain.has(it.artifactId))
+        .map((it) => it.id),
+    );
+  }
+
+  protected declaresNoDatabase(manifest?: string | null): boolean {
+    if (!manifest) {
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(manifest) as {
+        resources?: { hasDatabase?: unknown };
+      };
+      return parsed.resources?.hasDatabase === false;
+    } catch {
+      return false;
+    }
   }
 }

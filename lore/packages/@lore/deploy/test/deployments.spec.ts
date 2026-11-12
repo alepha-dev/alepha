@@ -2057,6 +2057,71 @@ describe("rolling back", () => {
     }
   });
 
+  describe("counting the migrations a rollback crosses (#Q3479)", () => {
+    const later = async (
+      ctx: Awaited<ReturnType<typeof world>>,
+      tag: string,
+      row: Record<string, unknown>,
+    ) =>
+      await ctx.rows.deployments.create({
+        projectId: ctx.project.id,
+        instanceId: ctx.instance.id,
+        app: "my-app",
+        tag,
+        sha256: tag.replaceAll(".", "").padEnd(64, "a"),
+        status: "succeeded",
+        ...row,
+      } as never);
+
+    const planOf = async (ctx: Awaited<ReturnType<typeof world>>) =>
+      await alepha
+        .inject(RollbackService)
+        .plan(ctx.project.id, ctx.deployment.id);
+
+    const bay = { slug: "vps", type: "bay" };
+
+    it("sums what the later runs recorded applying", async ({ expect }) => {
+      const ctx = await world(bay);
+      await later(ctx, "1.2.4", { migrationsApplied: 2 });
+      await later(ctx, "1.2.5", { migrationsApplied: 1 });
+      expect((await planOf(ctx)).migrationsSince).toBe(3);
+    });
+
+    it("does not ask past runs that applied none", async ({ expect }) => {
+      const ctx = await world(bay);
+      await later(ctx, "1.2.4", { migrationsApplied: 0 });
+      await later(ctx, "1.2.5", { migrationsApplied: 0 });
+      expect((await planOf(ctx)).migrationsSince).toBe(0);
+    });
+
+    it("never asks for an app whose build declares no database, even on runs from before the count", async ({
+      expect,
+    }) => {
+      const ctx = await world(bay);
+      const artifact = await ctx.rows.artifacts.create({
+        projectId: ctx.project.id,
+        app: "my-app",
+        tag: "1.2.4",
+        runtime: "workerd",
+        sha256: "b".repeat(64),
+        size: 1,
+        manifest: JSON.stringify({
+          runtimes: [{ runtime: "workerd" }],
+          resources: { hasDatabase: false },
+        }),
+      } as never);
+      await later(ctx, "1.2.4", { artifactId: artifact.id });
+      expect((await planOf(ctx)).migrationsSince).toBe(0);
+    });
+
+    it("counts an unknown run as one, never as none", async ({ expect }) => {
+      const ctx = await world(bay);
+      await later(ctx, "1.2.4", {});
+      await later(ctx, "1.2.5", { migrationsApplied: 2 });
+      expect((await planOf(ctx)).migrationsSince).toBe(3);
+    });
+  });
+
   it("asks Cloudflare about the copy's stored Worker name", async ({
     expect,
   }) => {

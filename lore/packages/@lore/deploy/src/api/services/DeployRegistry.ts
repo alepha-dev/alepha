@@ -119,7 +119,11 @@ export class DeployRegistry {
 
   public async succeeded(
     deploymentId: string | undefined,
-    outcome: { url?: string; versionId?: string } = {},
+    outcome: {
+      url?: string;
+      versionId?: string;
+      migrationsApplied?: number;
+    } = {},
   ): Promise<boolean> {
     if (outcome.url) {
       await this.line(deploymentId, `Deployed to ${outcome.url}`);
@@ -129,6 +133,7 @@ export class DeployRegistry {
       status: "succeeded",
       url: outcome.url,
       versionId: outcome.versionId,
+      migrationsApplied: outcome.migrationsApplied,
       finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
     });
   }
