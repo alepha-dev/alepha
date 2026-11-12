@@ -6,6 +6,7 @@ import {
   $store,
   Alepha,
   AlephaError,
+  type AppSurfaceAction,
   MIDDLEWARE_PROTECTED,
   type MiddlewareMetadata,
   TimeoutError,
@@ -167,8 +168,17 @@ export class ServerLinksProvider {
     // on its first call; the schema is read, creating it, only when the
     // schemas endpoint asks.
     const surface = this.alepha.inject(ServerSurfaceProvider);
+    const createdSse = new Set(
+      this.alepha.primitives($sse).map((it) => `${it.group}:${it.name}`),
+    );
     for (const { action: row } of surface.declaredActions()) {
+      // A `$sse` of a class not created yet (#Q3485): listed like a created
+      // one, so a client can call it. Skipping it hid the stream from the
+      // registry, and the client answered "Action chat not found".
       if (row.kind === "sse") {
+        if (!createdSse.has(`${row.group}:${row.name}`)) {
+          links.push(this.declaredSseLink(surface, row));
+        }
         continue;
       }
       // The same action, created since the list was read (#Q3483): it is
@@ -223,6 +233,47 @@ export class ServerLinksProvider {
       });
     }
     return links;
+  }
+
+  /**
+   * The local link of a declared class's `$sse`: its handler creates the
+   * class, then runs the stream it registered.
+   */
+  protected declaredSseLink(
+    surface: ServerSurfaceProvider,
+    row: AppSurfaceAction,
+  ): { name: string } & Record<string, any> {
+    const find = () =>
+      this.alepha
+        .primitives($sse)
+        .find((it) => it.name === row.name && it.group === row.group);
+    const link: { name: string } & Record<string, any> = {
+      name: row.name,
+      group: row.group,
+      kind: "sse",
+      secured: row.secured,
+      method: "POST",
+      prefix: this.prefix,
+      path: row.path,
+      handler: async (config: unknown) => {
+        await surface.resolveActionAsync(row);
+        const sse = find();
+        if (!sse) {
+          throw new AlephaError(
+            `Stream '${row.name}' is listed but its class registered no such stream`,
+          );
+        }
+        return sse.run(config as any) as any;
+      },
+    };
+    Object.defineProperty(link, "schema", {
+      enumerable: true,
+      get: () => {
+        surface.resolveAction(row);
+        return { body: find()?.schema?.body };
+      },
+    });
+    return link;
   }
 
   protected readonly onStart = $hook({
