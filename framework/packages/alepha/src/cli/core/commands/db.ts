@@ -711,6 +711,17 @@ export class DbCommand {
   }
 
   /**
+   * The URL a drizzle-kit config names for a dialect the app does not run
+   * on. `generate` never opens it: it diffs the entities against the
+   * snapshots in the migrations folder.
+   */
+  protected offlineUrl(dialect: "sqlite" | "postgresql"): string {
+    return dialect === "postgresql"
+      ? "postgres://offline:offline@127.0.0.1:5432/offline"
+      : ":memory:";
+  }
+
+  /**
    * Single-quote a value for a POSIX shell string.
    */
   protected quoteShellArg(value: string): string {
@@ -725,6 +736,14 @@ export class DbCommand {
     command: string;
     commandFlags?: string;
     provider?: string;
+    /**
+     * Generate for this dialect instead of the provider's own (#Q3471).
+     * Only `generate` accepts another dialect: drizzle-kit reads the
+     * snapshots on disk and never connects, so a SQLite app gets its
+     * Postgres migrations with no Postgres. Its folder is
+     * `migrations/postgres` (or `migrations/sqlite`).
+     */
+    dialect?: "sqlite" | "postgresql";
     logMessage: (providerName: string, dialect: string) => string;
   }): Promise<void> {
     const rootDir = options.root;
@@ -751,8 +770,19 @@ export class DbCommand {
 
     for (const primitive of repositoryProvider.getRepositories()) {
       const provider = primitive.provider;
-      const providerName = provider.name;
-      const dialect = provider.dialect;
+      const ownDialect = provider.dialect;
+      const dialect = options.dialect ?? ownDialect;
+      if (dialect !== ownDialect && options.command !== "generate") {
+        throw new CommandError(
+          `drizzle-kit '${options.command}' talks to the database DATABASE_URL names, a ${ownDialect} one: only 'generate' runs for another dialect.`,
+        );
+      }
+      const providerName =
+        dialect === ownDialect
+          ? provider.name
+          : dialect === "postgresql"
+            ? "postgres"
+            : "sqlite";
 
       if (providerName === "") {
         continue;
@@ -778,8 +808,14 @@ export class DbCommand {
         kit: drizzleKitProvider,
         provider,
         providerName,
-        providerUrl: provider.url,
-        providerDriver: provider.driver,
+        // The URL getter runs for the provider's own dialect only: another
+        // dialect's generate never connects, and a Postgres getter throws
+        // without a DATABASE_URL.
+        providerUrl:
+          dialect === ownDialect
+            ? provider.url
+            : this.offlineUrl(dialect as "sqlite" | "postgresql"),
+        providerDriver: dialect === ownDialect ? provider.driver : dialect,
         dialect,
         entry: this.fs.join(rootDir, entry.server),
         rootDir,
@@ -1466,12 +1502,14 @@ if (typeof registerHooks === "function") {
     // doesn't contain hardcoded schema qualifiers (e.g. "myschema"."users").
     // The schema is applied at runtime via search_path.
     const withoutSchema = options.command === "generate";
+    const dialect = options.dialect as "sqlite" | "postgresql";
+    const crossDialect = dialect !== options.provider.dialect;
     const models = withoutSchema
-      ? Object.keys(options.kit.getModelsWithoutSchema(options.provider))
+      ? Object.keys(options.kit.getModelsForDialect(options.provider, dialect))
       : Object.keys(options.kit.getModels(options.provider));
     const entitiesJs = this.generateEntitiesJs(
       { root: options.rootDir, server: options.entry },
-      options.providerName,
+      dialect,
       models,
       withoutSchema,
     );
@@ -1499,13 +1537,15 @@ if (typeof registerHooks === "function") {
     // the same database each track their own migration history.
     if (options.dialect === "postgresql") {
       config.migrations = {
-        table: options.provider.migrationsTable,
+        table: crossDialect
+          ? `migrations_${process.env.POSTGRES_SCHEMA || "public"}`
+          : options.provider.migrationsTable,
       };
     }
 
     // Schema filter is only needed for push/studio (introspection).
     // For generate, models are already schema-free.
-    if (options.provider.schema && !withoutSchema) {
+    if (options.provider.schema && !withoutSchema && !crossDialect) {
       config.schemaFilter = options.provider.schema;
     }
 
@@ -1561,6 +1601,10 @@ if (typeof registerHooks === "function") {
    * understands in the server's import graph (an `?raw` asset, a CSS import),
    * so `create` broke on apps that `check` passed.
    *
+   * `dialect` is the dialect to build (#Q3471): the provider's own, or the
+   * other one, whose model the matching builder replays from the same
+   * entities with no connection.
+   *
    * The ORM services are found BY NAME, as `check` and `create` find them in
    * the CLI's own process, never by a class object. In an installed project
    * `alepha` lives in `node_modules` and Vite SSR externalizes the app's
@@ -1574,12 +1618,12 @@ if (typeof registerHooks === "function") {
    */
   public generateEntitiesJs(
     entry: AppEntry,
-    provider: string,
+    dialect: "sqlite" | "postgresql",
     models: string[] = [],
     withoutSchema = false,
   ): string {
     const getModelsCall = withoutSchema
-      ? "kit.getModelsWithoutSchema(provider)"
+      ? `kit.getModelsForDialect(provider, ${JSON.stringify(dialect)})`
       : "kit.getModels(provider)";
 
     // Interpolated as JSON, not into bare quotes: the entry holds filesystem
@@ -1587,7 +1631,6 @@ if (typeof registerHooks === "function") {
     // backslash (every Windows path contains backslashes) produces a module
     // that does not parse, or worse, one that parses as something else.
     const appEntry = JSON.stringify({ root: entry.root, server: entry.server });
-    const providerName = JSON.stringify(provider);
 
     return `
 import { Alepha } from "alepha";
@@ -1598,11 +1641,13 @@ let models;
 try {
   const alepha = await vite.runAlepha({ entry: ${appEntry}, mode: "development" });
   const kit = alepha.inject("alepha.orm.DrizzleKitProvider");
+  // The app's one DatabaseProvider, whatever its dialect: every repository
+  // holds it. The dialect to generate is the argument above, never the
+  // provider's name, so a SQLite app's child builds its Postgres model.
   const provider = alepha
     .inject("alepha.orm.RepositoryProvider")
-    .getRepositories()
-    .find((it) => it.provider.name === ${providerName}).provider;
-  models = ${getModelsCall};
+    .getRepositories()[0]?.provider;
+  models = provider ? ${getModelsCall} : {};
 } finally {
   await vite.close();
 }

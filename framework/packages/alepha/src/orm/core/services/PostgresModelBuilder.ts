@@ -376,9 +376,9 @@ export class PostgresModelBuilder extends ModelBuilder {
       const enumVals = z.schema.enumOptions(value);
       if (!enumVals.every((it) => typeof it === "string")) {
         throw new AlephaError(
-          `Enum for ${fieldName} must be an array of strings, got ${JSON.stringify(
+          `Entity '${tableName}', column '${fieldName}': the Postgres model needs an enum of strings, got ${JSON.stringify(
             enumVals,
-          )}`,
+          )}. Every app also generates Postgres migrations, so a SQLite-only app meets this rule too.`,
         );
       }
 
@@ -401,7 +401,7 @@ export class PostgresModelBuilder extends ModelBuilder {
           const newValues = enumVals.join(",");
           if (values !== newValues) {
             throw new AlephaError(
-              `Enum name conflict for ${enumName}: [${values}] vs [${newValues}]`,
+              `Entity '${tableName}', column '${fieldName}': the Postgres enum type '${enumName}' is already declared with [${values}], not [${newValues}]. A shared enum name needs the same values; give one of them another name. Every app also generates Postgres migrations, so a SQLite-only app meets this rule too.`,
             );
           }
         }
@@ -416,7 +416,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     throw new AlephaError(
-      `Unsupported schema type for ${fieldName} as ${JSON.stringify(value)}`,
+      `Entity '${tableName}', column '${fieldName}': the Postgres model has no column type for ${JSON.stringify(value)}.`,
     );
   };
 

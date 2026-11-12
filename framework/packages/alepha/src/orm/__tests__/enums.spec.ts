@@ -309,6 +309,6 @@ describe("enums - conflict detection with different values", () => {
         r1: $repository(conflictEnumEntity1),
         r2: $repository(conflictEnumEntity2),
       })),
-    ).toThrow(/Enum name conflict/i);
+    ).toThrow(/is already declared with/);
   });
 });

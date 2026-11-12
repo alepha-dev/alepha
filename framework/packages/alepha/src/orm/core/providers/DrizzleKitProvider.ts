@@ -11,6 +11,8 @@ import type * as DrizzleKitPostgres from "drizzle-kit/payload/postgres";
 import type * as DrizzleKitSqlite from "drizzle-kit/payload/sqlite";
 import { getColumns, getTableName, sql, type Table } from "drizzle-orm";
 
+import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
+import { SqliteModelBuilder } from "../services/SqliteModelBuilder.ts";
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
 /**
@@ -215,20 +217,27 @@ export class DrizzleKitProvider {
    *
    * When `withoutSchema` is true, models are rebuilt without schema qualifiers
    * so the generated SQL is portable across different PostgreSQL schemas.
+   *
+   * `dialect` generates for another dialect than the provider's (#Q3471):
+   * its models are rebuilt schema-free through that dialect's builder, and
+   * drizzle-kit's payload for that dialect diffs them. Nothing connects.
    */
   public async generateMigration(
     provider: DatabaseProvider,
     prevSnapshot?: any,
-    options?: { withoutSchema?: boolean },
+    options?: { withoutSchema?: boolean; dialect?: "sqlite" | "postgresql" },
   ): Promise<{
     statements: string[];
     models: Record<string, unknown>;
     snapshot?: any;
   }> {
-    const kit = this.importDrizzleKit(this.payloadDialect(provider));
-    const models = options?.withoutSchema
-      ? this.getModelsWithoutSchema(provider)
-      : this.getModels(provider);
+    const dialect = options?.dialect;
+    const kit = this.importDrizzleKit(dialect ?? this.payloadDialect(provider));
+    const models = dialect
+      ? this.getModelsForDialect(provider, dialect)
+      : options?.withoutSchema
+        ? this.getModelsWithoutSchema(provider)
+        : this.getModels(provider);
 
     if (Object.keys(models).length > 0) {
       const prev = prevSnapshot
@@ -332,7 +341,30 @@ export class DrizzleKitProvider {
   public getModelsWithoutSchema(
     provider: DatabaseProvider,
   ): Record<string, unknown> {
-    const maps = provider.rebuildModels("public");
+    return this.getModelsForDialect(provider, provider.dialect);
+  }
+
+  /**
+   * Schema-free models of the provider's entities in a given dialect, for
+   * migration generation.
+   *
+   * The provider's own dialect replays its entities through its own builder,
+   * as `getModelsWithoutSchema` always did. The other dialect replays them
+   * through that dialect's builder, so a SQLite app gets its Postgres model
+   * (and the other way round) with no Postgres provider, no URL and no
+   * connection: the builder only maps entity primitives to drizzle tables.
+   */
+  public getModelsForDialect(
+    provider: DatabaseProvider,
+    dialect: "sqlite" | "postgresql",
+  ): Record<string, unknown> {
+    const builder =
+      dialect === provider.dialect
+        ? undefined
+        : dialect === "postgresql"
+          ? this.alepha.inject(PostgresModelBuilder)
+          : this.alepha.inject(SqliteModelBuilder);
+    const maps = provider.rebuildModels("public", builder);
     const models: Record<string, unknown> = {};
 
     for (const [key, value] of maps.tables.entries()) {

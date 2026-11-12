@@ -249,8 +249,16 @@ export abstract class DatabaseProvider {
    *
    * When called with `"public"`, produces schema-free models suitable for
    * migration generation (no schema qualifiers in the SQL output).
+   *
+   * `builder` defaults to this provider's own. Another dialect's builder
+   * replays the same entities as that dialect's model, which is how a SQLite
+   * app generates its Postgres migrations (#Q3471): nothing here reads the
+   * URL or connects.
    */
-  public rebuildModels(targetSchema: string): {
+  public rebuildModels(
+    targetSchema: string,
+    builder: ModelBuilder = this.builder,
+  ): {
     tables: Map<string, unknown>;
     enums: Map<string, unknown>;
     sequences: Map<string, unknown>;
@@ -265,10 +273,10 @@ export abstract class DatabaseProvider {
     };
 
     for (const entity of this.entityPrimitives) {
-      this.builder.buildTable(entity, result);
+      builder.buildTable(entity, result);
     }
     for (const seq of this.sequencePrimitives) {
-      this.builder.buildSequence(seq, result);
+      builder.buildSequence(seq, result);
     }
 
     return result;
