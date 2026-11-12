@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+export * from "./CspGuard.ts";
+
 /**
  * A port band, and the spacing between the bases carved out of it.
  *

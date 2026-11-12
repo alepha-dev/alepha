@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../fixtures.ts";
 
 /**
  * Subresource Integrity on a real production build (#Q3319): every script

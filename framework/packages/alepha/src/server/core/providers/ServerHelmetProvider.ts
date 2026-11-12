@@ -120,7 +120,10 @@ export class ServerHelmetProvider {
       "font-src": ["'self'", "https:", "data:"],
       "form-action": ["'self'"],
       "frame-ancestors": ["'self'"],
-      "img-src": ["'self'", "data:"],
+      // `blob:`: an image the page made itself from a local file, such as the
+      // thumbnail `ControlUpload` shows before the upload (#Q3343). A blob URL
+      // is created by the document's own script, so it opens no third party.
+      "img-src": ["'self'", "data:", "blob:"],
       "object-src": ["'none'"],
       "script-src": ["'self'"],
       "script-src-attr": ["'none'"],

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "./fixtures.ts";
 
 test.describe("Page Rendering", () => {
   test.describe("Home Page", () => {
