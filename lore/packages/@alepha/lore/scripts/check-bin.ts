@@ -1,11 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { isBuiltin } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseAst } from "rolldown/parseAst";
 
 /**
- * The published `lore` binary must import nothing but `node:` builtins.
+ * The published `lore` binary must import nothing but builtins.
  *
  * `alepha` is an optional peer of this package, so a global install brings no
  * `alepha` at all, and the bin's build inlines it instead (`tsdown.config.ts`).
@@ -17,6 +18,12 @@ import { parseAst } from "rolldown/parseAst";
  * Read from the parsed module, never with a regex over the text: the bundle
  * carries Alepha's project scaffolding, whose template strings are full of
  * lines that start with `import`.
+ *
+ * A builtin counts whatever its spelling: postgres.js, which the ORM loads on
+ * connect since every app carries Postgres (#E142), imports `net` and `tls`
+ * without the `node:` prefix, and a global install has them all the same. So
+ * does a `bun:` module, imported only by the Bun driver's own chunk, which
+ * nothing loads outside Bun.
  */
 const bin = fileURLToPath(new URL("../dist/bin", import.meta.url));
 
@@ -38,7 +45,8 @@ for (const name of files) {
         : undefined;
     if (
       typeof source === "string" &&
-      !source.startsWith("node:") &&
+      !isBuiltin(source) &&
+      !source.startsWith("bun:") &&
       !source.startsWith(".")
     ) {
       offenders.push(`${name}: ${source}`);
