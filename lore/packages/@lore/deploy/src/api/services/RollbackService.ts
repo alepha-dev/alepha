@@ -7,9 +7,15 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
+import { ArtifactSchemaStore } from "./ArtifactSchemaStore.ts";
+import { ArtifactService } from "./ArtifactService.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
+import {
+  type SchemaChange,
+  SchemaCompatibility,
+} from "./SchemaCompatibility.ts";
 
 /**
  * What a rollback would do, before anybody asks for one.
@@ -31,9 +37,39 @@ export interface RollbackPlan {
    */
   migrationsSince: number;
   /**
+   * Whether the chosen build fits the schema every later run left behind,
+   * read from the Drizzle snapshots their pushes carried (#Q3542).
+   *
+   * Absent when that cannot be answered: the chosen build or a later run that
+   * may have migrated was pushed without one (an older CLI, an artifact from
+   * before #Q3542), or they share no dialect. {@link migrationsSince} is
+   * then all there is to go on.
+   */
+  schema?: RollbackSchemaCheck;
+  /**
+   * What the operator must acknowledge before rolling back, or absent when
+   * nothing needs it. One sentence with no instruction in it: each surface
+   * adds its own (a button, a flag, a tool argument).
+   *
+   * From {@link schema} when it is known, so a rollback past migrations that
+   * only ADDED to the schema needs no confirmation; from
+   * {@link migrationsSince} otherwise.
+   */
+  warning?: string;
+  /**
    * Why the fast path is unavailable, when it is.
    */
   reason?: string;
+}
+
+export interface RollbackSchemaCheck {
+  /**
+   * `safe` when the live schema only adds to what the build expects,
+   * `breaks` when one of its own queries will fail, `risky` when some of its
+   * writes may be refused.
+   */
+  verdict: "safe" | "risky" | "breaks";
+  changes: SchemaChange[];
 }
 
 /**
@@ -67,6 +103,8 @@ export class RollbackService {
   protected readonly gate = $inject(DeployGate);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly registry = $inject(DeployRegistry);
+  protected readonly schemas = $inject(ArtifactSchemaStore);
+  protected readonly compatibility = $inject(SchemaCompatibility);
 
   /**
    * What rolling back to this deployment would take, and what it would risk.
@@ -95,13 +133,13 @@ export class RollbackService {
       throw new NotFoundError("That deployed copy is gone.");
     }
     const estate = await this.gate.assert(instance);
-    const migrationsSince = await this.migrationsSince(target);
+    const risk = await this.risk(target);
 
     if (estate.type !== "cloudflare") {
       return {
         path: "artifact",
         deployment: target,
-        migrationsSince,
+        ...risk,
         // Named rather than left blank: an operator wondering why the fast
         // button is missing should not have to guess.
         reason:
@@ -113,7 +151,7 @@ export class RollbackService {
       return {
         path: "artifact",
         deployment: target,
-        migrationsSince,
+        ...risk,
         reason:
           "That run recorded no Cloudflare version, so a rollback redeploys the stored artifact.",
       };
@@ -128,7 +166,7 @@ export class RollbackService {
       return {
         path: "artifact",
         deployment: target,
-        migrationsSince,
+        ...risk,
         reason:
           "Lore has no record of this copy's Worker name, so a rollback redeploys the stored artifact.",
       };
@@ -153,13 +191,13 @@ export class RollbackService {
       return {
         path: "artifact",
         deployment: target,
-        migrationsSince,
+        ...risk,
         reason:
           "Cloudflare no longer holds that version, so a rollback redeploys the stored artifact.",
       };
     }
 
-    return { path: "version", deployment: target, migrationsSince };
+    return { path: "version", deployment: target, ...risk };
   }
 
   /**
@@ -186,10 +224,8 @@ export class RollbackService {
     // failure this warning exists for, and the version path invites clicking
     // precisely because it is fast - so the acknowledgement is required rather
     // than displayed.
-    if (plan.migrationsSince > 0 && !options.acknowledgeMigrations) {
-      throw new BadRequestError(
-        `${plan.migrationsSince} migration(s) have been applied since that version shipped. A rollback changes the code and not the database, so that version would run against the current schema. Confirm to proceed anyway.`,
-      );
+    if (plan.warning && !options.acknowledgeMigrations) {
+      throw new BadRequestError(`${plan.warning} Confirm to proceed anyway.`);
     }
 
     const instance = await this.instances.findById(plan.deployment.instanceId);
@@ -240,19 +276,121 @@ export class RollbackService {
   }
 
   /**
-   * How many migrations landed after the chosen version shipped.
-   *
-   * Summed from what each later run recorded applying (#Q3479). It used to
-   * count every later run with different bytes as one migration, so the
-   * warning fired on nearly every rollback of every app, a database or not,
-   * and a warning that always fires trains people to acknowledge it.
-   *
-   * A later run that recorded nothing is UNKNOWN: it counts one, as before,
-   * unless its artifact's manifest says the build has no database. Unknown
-   * never reads as none, because under-counting costs old code against a
-   * new schema while over-counting costs one confirmation.
+   * What rolling back to `target` risks: the migration count, the schema
+   * check when it can be made, and the warning they amount to.
    */
-  protected async migrationsSince(target: Deployment): Promise<number> {
+  protected async risk(
+    target: Deployment,
+  ): Promise<Pick<RollbackPlan, "migrationsSince" | "schema" | "warning">> {
+    const later = await this.laterRuns(target);
+    const noDatabase = await this.withoutDatabase(
+      later.filter((it) => it.migrationsApplied == null),
+    );
+    const migrationsSince = this.migrationsSince(later, noDatabase);
+    const schema = await this.schemaSince(target, later, noDatabase);
+    return {
+      migrationsSince,
+      schema,
+      warning: this.warningOf(migrationsSince, schema),
+    };
+  }
+
+  protected warningOf(
+    migrationsSince: number,
+    schema?: RollbackSchemaCheck,
+  ): string | undefined {
+    if (schema) {
+      if (schema.verdict === "safe") {
+        return undefined;
+      }
+      const listed = schema.changes.map((it) => it.change).join(", ");
+      return schema.verdict === "breaks"
+        ? `That build will break on the current schema: ${listed}. A rollback changes the code and not the database.`
+        : `Some of that build's writes may be refused by the current schema: ${listed}. A rollback changes the code and not the database.`;
+    }
+    if (migrationsSince > 0) {
+      return `${migrationsSince} migration(s) have been applied since that version shipped. A rollback changes the code and not the database, so that version would run against the current schema.`;
+    }
+    return undefined;
+  }
+
+  /**
+   * The schema the chosen build expects, compared with what every later run
+   * expected (#Q3542).
+   *
+   * ⚠️ **Every later run, not only the newest.** A rollback is itself a run,
+   * carrying OLDER bytes, so after "deploy A2, roll back to A1" the newest
+   * run's snapshot is A1's while the database still has A2's schema. Each
+   * later snapshot is a schema the database reached, and migrations only go
+   * forward, so every one of them is compared.
+   *
+   * `undefined`, so the caller falls back to counting, when a later run that
+   * may have migrated has no stored schema: what it did cannot be known, and
+   * unknown never reads as safe. A run that applied none, or whose build has
+   * no database, changed nothing and is passed over.
+   */
+  protected async schemaSince(
+    target: Deployment,
+    later: Deployment[],
+    noDatabase: Set<string>,
+  ): Promise<RollbackSchemaCheck | undefined> {
+    const read = new Map<
+      string,
+      Promise<Awaited<ReturnType<ArtifactSchemaStore["read"]>>>
+    >();
+    const schemaOf = (sha256: string) => {
+      if (!read.has(sha256)) {
+        read.set(
+          sha256,
+          this.schemas.read(ArtifactService.BUCKET, target.projectId, sha256),
+        );
+      }
+      return read.get(sha256) as ReturnType<ArtifactSchemaStore["read"]>;
+    };
+
+    const expected = await schemaOf(target.sha256);
+    if (!expected) {
+      return undefined;
+    }
+    const changes = new Map<string, SchemaChange>();
+    for (const run of later) {
+      const reached = await schemaOf(run.sha256);
+      if (!reached) {
+        if (run.migrationsApplied === 0 || noDatabase.has(run.id)) {
+          continue;
+        }
+        return undefined;
+      }
+      const dialects = Object.keys(expected.dialects).filter(
+        (it) => reached.dialects[it],
+      );
+      if (dialects.length === 0) {
+        return undefined;
+      }
+      for (const dialect of dialects) {
+        for (const change of this.compatibility.compare(
+          expected.dialects[dialect],
+          reached.dialects[dialect],
+        )) {
+          changes.set(change.change, change);
+        }
+      }
+    }
+    const all = [...changes.values()];
+    return {
+      verdict: all.some((it) => it.severity === "breaks")
+        ? "breaks"
+        : all.length > 0
+          ? "risky"
+          : "safe",
+      changes: all,
+    };
+  }
+
+  /**
+   * The successful runs of the same copy after `target`, with other bytes.
+   */
+  protected async laterRuns(target: Deployment): Promise<Deployment[]> {
     const rows = await this.rows.findMany({
       where: {
         instanceId: { eq: target.instanceId },
@@ -266,14 +404,31 @@ export class RollbackService {
     // together - and a strict comparison then counts zero migrations for a
     // rollback that really is going backwards. Over-counting by a tie costs an
     // extra confirmation; under-counting costs old code against a new schema.
-    const later = rows.filter(
+    return rows.filter(
       (it) =>
         it.id !== target.id &&
         Date.parse(it.createdAt) >= Date.parse(target.createdAt) &&
         it.sha256 !== target.sha256,
     );
-    const unknown = later.filter((it) => it.migrationsApplied == null);
-    const noDatabase = await this.withoutDatabase(unknown);
+  }
+
+  /**
+   * How many migrations landed after the chosen version shipped.
+   *
+   * Summed from what each later run recorded applying (#Q3479). It used to
+   * count every later run with different bytes as one migration, so the
+   * warning fired on nearly every rollback of every app, a database or not,
+   * and a warning that always fires trains people to acknowledge it.
+   *
+   * A later run that recorded nothing is UNKNOWN: it counts one, as before,
+   * unless its artifact's manifest says the build has no database. Unknown
+   * never reads as none, because under-counting costs old code against a
+   * new schema while over-counting costs one confirmation.
+   */
+  protected migrationsSince(
+    later: Deployment[],
+    noDatabase: Set<string>,
+  ): number {
     let count = 0;
     for (const it of later) {
       if (it.migrationsApplied != null) {

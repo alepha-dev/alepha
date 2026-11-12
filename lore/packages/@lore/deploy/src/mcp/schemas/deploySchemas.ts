@@ -101,7 +101,7 @@ export const deployRollbackParamsSchema = projectParamsSchema.extend({
     .boolean()
     .optional()
     .describe(
-      "⚠️ Required when migrations have been applied since that run shipped. A rollback changes the CODE and not the database, so the old build would run against the current schema. Call once without it: the refusal names how many, which is what you need to decide.",
+      "⚠️ Required when the old build will not fit the current schema, or, when its schema is unknown, when migrations have been applied since it shipped. A rollback changes the CODE and not the database. Call once without it: the refusal names the schema changes (or how many migrations), which is what you need to decide.",
     ),
 });
 

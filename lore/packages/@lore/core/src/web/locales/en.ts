@@ -93,7 +93,7 @@ export default {
   "automation.channel.email": "Email",
   "automation.preset.feedback-created.title": "New feedback",
   "automation.preset.feedback-created.description":
-    "Notify one member when feedback is created. Reporter contact details are excluded.",
+    "Notify one member when feedback is created, with its description and a link to the report. Reporter contact details are excluded.",
   "automation.preset.weekly-report-digest.title": "Weekly report",
   "automation.preset.weekly-report-digest.description":
     "Send the Reports summary of the last seven days to one member, every Monday at 08:00 UTC. They opt out in their notification settings.",
@@ -2023,6 +2023,12 @@ export default {
     "That version is no longer available, so this redeploys the stored build.",
   "app.deploy.rollback.migrations":
     "⚠️ $1 migration(s) have been applied since it shipped. A rollback changes the code and not the database, so it would run against the current schema.",
+  "app.deploy.rollback.schemaSafe":
+    "The current schema only adds to what that build expects, so it runs on it.",
+  "app.deploy.rollback.schemaBreaks":
+    "⚠️ That build will break on the current schema: $1. A rollback changes the code and not the database.",
+  "app.deploy.rollback.schemaRisky":
+    "⚠️ Some of that build's writes may be refused by the current schema: $1. A rollback changes the code and not the database.",
   "app.deploy.rollback.confirm": "Roll back",
   "app.deploy.rollback.what":
     "Lore deploys $1 ($2) in place of $3, which runs here now.",

@@ -325,6 +325,7 @@ export { StackVariableService } from "./services/StackVariableService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";
 export { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
+export { ArtifactSchemaStore } from "./services/ArtifactSchemaStore.ts";
 export { ArtifactService } from "./services/ArtifactService.ts";
 export { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 export { BlightRuleService } from "./services/BlightRuleService.ts";
@@ -350,6 +351,10 @@ export { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 export { QualityService } from "./services/QualityService.ts";
 export { RegistryTransport } from "./services/RegistryTransport.ts";
 export { RollbackService } from "./services/RollbackService.ts";
+export {
+  type SchemaChange,
+  SchemaCompatibility,
+} from "./services/SchemaCompatibility.ts";
 export { SigilIngestService } from "./services/SigilIngestService.ts";
 export { SigilTokenService } from "./services/SigilTokenService.ts";
 export { TeardownService } from "./services/TeardownService.ts";

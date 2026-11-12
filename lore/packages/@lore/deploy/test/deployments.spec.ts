@@ -21,6 +21,8 @@ import {
   DeployRegistry,
   DeployService,
   RollbackService,
+  ArtifactSchemaStore,
+  ArtifactService,
 } from "../src/api/index.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import {
@@ -30,6 +32,7 @@ import {
   estateProjects,
   estates,
 } from "../src/schemas/index.ts";
+import { packedArtifact } from "../src/testing/index.ts";
 
 /**
  * The row a deploy is followed through, and the run that writes it.
@@ -2119,6 +2122,177 @@ describe("rolling back", () => {
       await later(ctx, "1.2.4", {});
       await later(ctx, "1.2.5", { migrationsApplied: 2 });
       expect((await planOf(ctx)).migrationsSince).toBe(3);
+    });
+  });
+
+  describe("checking the schema a rollback lands on (#Q3542)", () => {
+    const later = async (
+      ctx: Awaited<ReturnType<typeof world>>,
+      tag: string,
+      row: Record<string, unknown>,
+    ) =>
+      await ctx.rows.deployments.create({
+        projectId: ctx.project.id,
+        instanceId: ctx.instance.id,
+        app: "my-app",
+        tag,
+        sha256: tag.replaceAll(".", "").padEnd(64, "a"),
+        status: "succeeded",
+        ...row,
+      } as never);
+
+    /**
+     * What a push of `sha256` carried: one SQLite snapshot of `columns` on a
+     * `users` table, `!` marking NOT NULL.
+     */
+    const pushed = async (
+      ctx: Awaited<ReturnType<typeof world>>,
+      sha256: string,
+      columns: Record<string, string>,
+    ) =>
+      await alepha.inject(ArtifactSchemaStore).storePushed(
+        "artifacts",
+        ctx.project.id,
+        sha256,
+        new File(
+          [
+            JSON.stringify({
+              version: 1,
+              dialects: {
+                sqlite: {
+                  version: "7",
+                  ddl: [
+                    { name: "users", entityType: "tables" },
+                    ...Object.entries(columns).map(([name, spec]) => ({
+                      table: "users",
+                      name,
+                      type: spec.replace("!", ""),
+                      notNull: spec.endsWith("!"),
+                      default: null,
+                      entityType: "columns",
+                    })),
+                  ],
+                },
+              },
+            }),
+          ],
+          "schema.json",
+        ),
+      );
+
+    const planOf = async (ctx: Awaited<ReturnType<typeof world>>) =>
+      await alepha
+        .inject(RollbackService)
+        .plan(ctx.project.id, ctx.deployment.id);
+
+    const bay = { slug: "vps", type: "bay" };
+
+    it("needs no confirmation past migrations that only added", async ({
+      expect,
+    }) => {
+      const ctx = await world(bay);
+      await pushed(ctx, ctx.deployment.sha256, { id: "integer!" });
+      const run = await later(ctx, "1.2.4", { migrationsApplied: 2 });
+      await pushed(ctx, run.sha256, { id: "integer!", nickname: "text" });
+
+      const plan = await planOf(ctx);
+      expect(plan.migrationsSince).toBe(2);
+      expect(plan.schema).toEqual({ verdict: "safe", changes: [] });
+      expect(plan.warning).toBeUndefined();
+    });
+
+    it("names what breaks, from every later run, not only the newest", async ({
+      expect,
+    }) => {
+      // A2 drops `email`; a rollback to A1 then carries A1's bytes again. The
+      // newest run's snapshot is A1's, and the database still has A2's.
+      const ctx = await world(bay);
+      await pushed(ctx, ctx.deployment.sha256, {
+        id: "integer!",
+        email: "text",
+      });
+      const dropped = await later(ctx, "1.2.4", { migrationsApplied: 1 });
+      await pushed(ctx, dropped.sha256, { id: "integer!" });
+      const back = await later(ctx, "1.2.5", { migrationsApplied: 0 });
+      await pushed(ctx, back.sha256, { id: "integer!", email: "text" });
+
+      const plan = await planOf(ctx);
+      expect(plan.schema).toEqual({
+        verdict: "breaks",
+        changes: [{ severity: "breaks", change: "users.email dropped" }],
+      });
+      expect(plan.warning).toMatch(
+        /break on the current schema: users\.email dropped/,
+      );
+    });
+
+    it("falls back to the count when a later run that migrated sent no schema", async ({
+      expect,
+    }) => {
+      const ctx = await world(bay);
+      await pushed(ctx, ctx.deployment.sha256, { id: "integer!" });
+      await later(ctx, "1.2.4", { migrationsApplied: 1 });
+
+      const plan = await planOf(ctx);
+      expect(plan.schema).toBeUndefined();
+      expect(plan.warning).toMatch(/1 migration\(s\) have been applied/);
+    });
+
+    it("keeps the schema of replaced `latest` bytes a run deployed, and drops one nothing deployed", async ({
+      expect,
+    }) => {
+      const ctx = await world(bay);
+      const artifacts = alepha.inject(ArtifactService);
+      const store = alepha.inject(ArtifactSchemaStore);
+      const schemaFile = () =>
+        new File(
+          [
+            JSON.stringify({
+              version: 1,
+              dialects: {
+                sqlite: {
+                  version: "7",
+                  ddl: [{ name: "users", entityType: "tables" }],
+                },
+              },
+            }),
+          ],
+          "schema.json",
+        );
+      const pushLatest = async (filler: string) =>
+        (
+          await artifacts.push({
+            projectId: ctx.project.id,
+            app: "my-app",
+            tag: "latest",
+            file: (await packedArtifact({ filler })) as never,
+            schema: schemaFile(),
+          })
+        ).artifact.sha256;
+      const read = (sha256: string) =>
+        store.read(ArtifactService.BUCKET, ctx.project.id, sha256);
+
+      const deployed = await pushLatest("one");
+      await later(ctx, "latest", { sha256: deployed });
+      const idle = await pushLatest("two");
+      // A run deployed `one`: a rollback to it still needs its schema.
+      expect(await read(deployed)).toBeDefined();
+
+      await pushLatest("three");
+      // Nothing deployed `two`, so replacing it reclaims its schema.
+      expect(await read(idle)).toBeUndefined();
+    });
+
+    it("passes over a later run without a schema that applied none", async ({
+      expect,
+    }) => {
+      const ctx = await world(bay);
+      await pushed(ctx, ctx.deployment.sha256, { id: "integer!" });
+      await later(ctx, "1.2.4", { migrationsApplied: 0 });
+
+      const plan = await planOf(ctx);
+      expect(plan.schema).toEqual({ verdict: "safe", changes: [] });
+      expect(plan.warning).toBeUndefined();
     });
   });
 

@@ -57,7 +57,7 @@ export const AdminUserDetailIdentityAside = (
       value: (
         <a
           href={`mailto:${user.email}`}
-          className="text-primary block truncate hover:underline"
+          className="text-primary-text block truncate hover:underline"
           title={user.email}
         >
           {user.email}
@@ -71,7 +71,7 @@ export const AdminUserDetailIdentityAside = (
       value: (
         <a
           href={`tel:${user.phoneNumber}`}
-          className="text-primary block truncate font-mono hover:underline"
+          className="text-primary-text block truncate font-mono hover:underline"
         >
           {user.phoneNumber}
         </a>

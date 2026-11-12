@@ -8,6 +8,7 @@ import { epics, type Epic } from "../entities/epics.ts";
 import { feedback, type FeedbackInsert } from "../entities/feedback.ts";
 import { quests, type Quest } from "../entities/quests.ts";
 import { releases, type Release } from "../entities/releases.ts";
+import { FeedbackAutomationFields } from "./FeedbackAutomationFields.ts";
 
 /**
  * Event projections belong to Work. Controllers retain their ordinary audits,
@@ -15,6 +16,7 @@ import { releases, type Release } from "../entities/releases.ts";
  */
 export class WorkAutomationSources {
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly feedbackFields = $inject(FeedbackAutomationFields);
   protected readonly projects = $repository(projects);
   protected readonly feedback = $inject(
     AutomationSourceRepository.of(feedback),
@@ -39,7 +41,10 @@ export class WorkAutomationSources {
           project: project.title,
           title: data.title,
           shortId: data.shortId,
-          url: `/${project.slug || `project-${project.id}`}/feedback`,
+          ...this.feedbackFields.build(
+            `/${project.slug || `project-${project.id}`}`,
+            { shortId: data.shortId, description: data.description ?? "" },
+          ),
         },
       },
     );

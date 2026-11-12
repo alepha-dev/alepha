@@ -139,6 +139,15 @@ describe("dashboard needs you", () => {
     expect(value.value).toBe(4);
   });
 
+  it("titles a blight named only Error by its message", async ({ expect }) => {
+    const { project, user } = await projectOf();
+    await blight(project, "Error");
+
+    const value = await resolve(project, user);
+
+    expect(value.rows?.map((row) => row.title)).toEqual(["boom"]);
+  });
+
   it("never flags a plain open quest, even beside a draft epic", async ({
     expect,
   }) => {

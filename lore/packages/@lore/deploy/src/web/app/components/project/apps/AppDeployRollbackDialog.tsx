@@ -72,6 +72,31 @@ const AppDeployRollbackDialog = (props: AppDeployRollbackDialogProps) => {
   );
 
   const migrations = Number(plan.data?.migrationsSince ?? 0);
+  // The schema check (#Q3542) answers the question the count can only raise:
+  // whether that build runs on the live schema. Without it, the count is all
+  // there is.
+  const schema = plan.data?.schema as
+    | { verdict: string; changes: Array<{ change: string }> }
+    | undefined;
+  const listed = schema?.changes.map((it) => it.change).join(", ") ?? "";
+  const risk = schema
+    ? schema.verdict === "safe"
+      ? migrations > 0
+        ? tr("app.deploy.rollback.schemaSafe")
+        : ""
+      : tr(
+          schema.verdict === "breaks"
+            ? "app.deploy.rollback.schemaBreaks"
+            : "app.deploy.rollback.schemaRisky",
+          { args: [listed] },
+        )
+    : migrations > 0
+      ? tr("app.deploy.rollback.migrations", { args: [String(migrations)] })
+      : "";
+  // What the server requires acknowledged: its own warning, or a migration
+  // count it could not check against a schema.
+  const acknowledge =
+    Boolean(plan.data?.warning) || (!schema && migrations > 0);
 
   // A refusal at either step is the server's sentence, shown by the root
   // `ActionErrorToaster` (#E59, #Q2329).
@@ -82,7 +107,7 @@ const AppDeployRollbackDialog = (props: AppDeployRollbackDialogProps) => {
         if (plan.data.path === "version") {
           await deployApi.rollbackDeployment({
             params: { projectId: props.projectId, deploymentId: runId },
-            body: { acknowledgeMigrations: migrations > 0 },
+            body: { acknowledgeMigrations: acknowledge },
           });
         } else {
           // The fallback, and it is a plain deploy of the same tag: there is
@@ -101,7 +126,7 @@ const AppDeployRollbackDialog = (props: AppDeployRollbackDialogProps) => {
       // The new run joins the history.
       invalidates: [["app-deployments", props.projectId]],
     },
-    [deployApi, props.projectId, runId, plan.data, migrations, toaster, tr],
+    [deployApi, props.projectId, runId, plan.data, acknowledge, toaster, tr],
   );
 
   const refused =
@@ -165,13 +190,9 @@ const AppDeployRollbackDialog = (props: AppDeployRollbackDialogProps) => {
                 ⚠️ The warning the dialog exists for. Code goes back; the
                 schema does not.
               */}
-              {migrations > 0 ? (
-                <Alert className="border-amber-500/50">
-                  <AlertDescription>
-                    {tr("app.deploy.rollback.migrations", {
-                      args: [String(migrations)],
-                    })}
-                  </AlertDescription>
+              {risk ? (
+                <Alert className={acknowledge ? "border-amber-500/50" : ""}>
+                  <AlertDescription>{risk}</AlertDescription>
                 </Alert>
               ) : null}
             </>
@@ -187,7 +208,7 @@ const AppDeployRollbackDialog = (props: AppDeployRollbackDialogProps) => {
             {tr("common.cancel")}
           </Button>
           <Button
-            intent={migrations > 0 ? "danger" : undefined}
+            intent={acknowledge ? "danger" : undefined}
             disabled={!plan.data || rollback.loading}
             loading={rollback.loading}
             onClick={() => void rollback.run()}

@@ -126,7 +126,7 @@ describe("AppDeployRollbackDialog", () => {
     expect(fake.calls).toEqual(["planDeploymentRollback"]);
   });
 
-  it("names the migrations a rollback would run old code against", async () => {
+  it("names the migrations when the server could not check the schema", async () => {
     await mount((fake) => {
       fake.plan = { path: "version", migrationsSince: 2 };
     });

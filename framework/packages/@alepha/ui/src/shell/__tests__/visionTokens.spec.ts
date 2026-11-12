@@ -101,4 +101,44 @@ describe("colour-blind tokens in styles.css", () => {
       }
     }
   });
+
+  /**
+   * An achromatic `oklch(L 0 0)` as sRGB hex: OKLab's grey is linear
+   * `L` cubed, gamma-encoded.
+   */
+  const grey = (value: string) => {
+    const lightness = Number(/oklch\(([\d.]+) 0 0\)/.exec(value)?.[1]);
+    const linear = lightness ** 3;
+    const encoded =
+      linear <= 0.0031308
+        ? linear * 12.92
+        : 1.055 * linear ** (1 / 2.4) - 0.055;
+    const byte = Math.round(encoded * 255)
+      .toString(16)
+      .padStart(2, "0");
+    return `#${byte}${byte}${byte}`;
+  };
+
+  it("keeps muted text at AA on the muted surface, light and dark (#Q3487)", () => {
+    // `:root` and `.dark` hold the surfaces; the cvd blocks leave them
+    // alone (see above), so these two pairs cover all four token sets.
+    // Not `block`: these blocks carry comments with braces in them, so a
+    // token is read as its first declaration after the selector.
+    const token = (selector: string, name: string) => {
+      const start = css.indexOf(`\n${selector} {`);
+      expect(start, `${selector} block`).toBeGreaterThan(-1);
+      return new RegExp(`\\n\\s*${name}:\\s*([^;]+);`)
+        .exec(css.slice(start))?.[1]
+        ?.trim();
+    };
+    for (const selector of [":root", ".dark"]) {
+      expect(
+        contrast(
+          grey(token(selector, "--muted-foreground")!),
+          grey(token(selector, "--muted")!),
+        ),
+        `${selector} muted text on muted`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

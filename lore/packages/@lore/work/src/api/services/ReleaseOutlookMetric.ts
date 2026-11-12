@@ -25,7 +25,9 @@ import { ReleaseContentService } from "./ReleaseContentService.ts";
  * over the days left, against what the window's completions averaged.
  *
  * An open release with every quest done reports `readyToPublish`, as the
- * release card does (#Q2649).
+ * release card does (#Q2649). Unlike that card, this headline still draws
+ * its figure, 100, and the tile marks it ready to ship (#Q3524): a lone dot
+ * on the board's first tile read as broken rather than finished.
  */
 export class ReleaseOutlookMetric implements DashboardMetricResolver {
   protected readonly dashboard = $inject(DashboardMetricRegistry);
@@ -91,7 +93,7 @@ export class ReleaseOutlookMetric implements DashboardMetricResolver {
       out.set(entry.card.id, {
         ...(progress.total === 0 ? { empty: "noRelease" as const } : {}),
         value:
-          progress.total > 0 && !readyToPublish
+          progress.total > 0
             ? Math.round((progress.completed / progress.total) * 100)
             : undefined,
         segments: [
