@@ -24,11 +24,13 @@ import {
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectAiContextPublisher from "./ProjectAiContextPublisher.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
+import ProjectPageSkeleton from "./ProjectPageSkeleton.tsx";
 import ProjectRail from "./ProjectRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import { ROUTES_FULL_WIDTH } from "./projectViewRoutes.ts";
 import { visibleSettingsTabs } from "./settings/projectSettingsSections.ts";
+import { useLeavingProject } from "./useLeavingProject.ts";
 
 const ProjectView = () => {
   const routerState = useRouterState();
@@ -40,9 +42,14 @@ const ProjectView = () => {
   const shell = useInject(ProjectShellRegistry);
   const trail = useInject(ProjectTrail);
   const { tr } = useI18n<I18n, "en">();
-  const name = routerState.name ?? "";
+  // On the way to another project, the shell describes no page: the one still
+  // mounted belongs to the project being left, and the atoms already name the
+  // next one, so its sidebar entry, quest log and crumbs would all be wrong.
+  const leaving = !!useLeavingProject(routerState.params.projectSlug);
+  const name = leaving ? "" : (routerState.name ?? "");
   const aside = shell.asideFor(name);
-  const fullWidth = ROUTES_FULL_WIDTH.has(name);
+  // Full width while leaving: a project opens on its dashboard, which is.
+  const fullWidth = leaving || ROUTES_FULL_WIDTH.has(name);
   const activeSettings = shell.findSettingsTab(name);
 
   const [project] = useStore(currentProjectAtom);
@@ -319,7 +326,13 @@ const ProjectView = () => {
                     </div>
                   ) : fullWidth ? (
                     <div className="flex min-h-0 w-full flex-1 flex-col">
-                      <NestedView />
+                      {/* The page of the project being left stays mounted but
+                    hidden, so the view still hears the end of the navigation
+                    and swaps the next page in. */}
+                      {leaving && <ProjectPageSkeleton />}
+                      <div className={leaving ? "hidden" : "contents"}>
+                        <NestedView />
+                      </div>
                     </div>
                   ) : (
                     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
