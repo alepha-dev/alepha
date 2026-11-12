@@ -8,6 +8,7 @@ import {
   type ProjectMergeSequence,
   ProjectMergeService,
   type ProjectMergeStepPlan,
+  projectMergeWrite,
 } from "@lore/core/api";
 import { $inject, type ZObject } from "alepha";
 import {
@@ -16,7 +17,6 @@ import {
   type PgQueryWhere,
   type Repository,
   RepositoryProvider,
-  sql,
   type SQLLike,
 } from "alepha/orm";
 
@@ -175,7 +175,7 @@ export class WorkProjectMerge {
 
     // An epic's reviews carry its project too (#E121), and move with it.
     // Their items name the epic alone, and the epic keeps its id.
-    statements.push(this.move("epic_reviews", context));
+    statements.push(this.move(this.epicReviews, context));
     moved.epic_reviews = await this.epicReviews.count(
       { projectId: { eq: context.sourceProjectId } },
       { force: true },
@@ -237,10 +237,8 @@ export class WorkProjectMerge {
     );
     const numbering = await this.numbers.renumber({
       kind: kind.kind,
-      table: repository.tableName,
-      column: (repository.table as unknown as Record<string, { name: string }>)[
-        kind.field
-      ].name,
+      repository,
+      field: kind.field,
       sequence: kind.sequence,
       targetProjectId: context.targetProjectId,
       targetNumbers: target.map((row) => row.number),
@@ -254,7 +252,7 @@ export class WorkProjectMerge {
         // Renumbered while still in the source project, where the new
         // number is free too: it is above every number the source uses.
         ...numbering.statements,
-        this.move(repository.tableName, context),
+        this.move(repository, context),
       ],
     };
   }
@@ -303,29 +301,41 @@ export class WorkProjectMerge {
         targetId: match.id,
       });
       statements.push(
-        sql`UPDATE quests SET release_id = ${match.id} WHERE release_id = ${row.id}`,
-        sql`UPDATE epics SET release_id = ${match.id} WHERE release_id = ${row.id}`,
-        sql`DELETE FROM releases WHERE id = ${row.id}`,
+        this.quests.updateStatement(
+          { releaseId: { eq: row.id } },
+          { releaseId: match.id },
+          projectMergeWrite,
+        ),
+        this.epics.updateStatement(
+          { releaseId: { eq: row.id } },
+          { releaseId: match.id },
+          projectMergeWrite,
+        ),
+        this.releases.deleteStatement({ id: { eq: row.id } }, { force: true }),
       );
     }
     // One default per project: the target's stays when it has one.
     if (target.some((row) => row.isDefault)) {
       for (const row of moving.filter((row) => row.isDefault)) {
         statements.push(
-          sql`UPDATE releases SET default_since = NULL WHERE id = ${row.id}`,
+          this.releases.updateStatement(
+            { id: { eq: row.id } },
+            { defaultSince: null },
+            projectMergeWrite,
+          ),
         );
       }
     }
     const numbering = await this.numbers.renumber({
       kind: "release",
-      table: "releases",
-      column: "number",
+      repository: this.releases,
+      field: "number",
       sequence: "releaseNumber",
       targetProjectId: context.targetProjectId,
       targetNumbers: target.map((row) => row.number),
       sourceRows: moving,
     });
-    statements.push(...numbering.statements, this.move("releases", context));
+    statements.push(...numbering.statements, this.move(this.releases, context));
     return {
       moved: moving.length,
       renumbered: numbering.renumbered,
@@ -375,12 +385,18 @@ export class WorkProjectMerge {
       });
       if (row.live && !match.live) {
         statements.push(
-          sql`UPDATE areas SET deleted_at = NULL WHERE id = ${match.id}`,
+          this.areas.updateStatement(
+            { id: { eq: match.id } },
+            { deletedAt: null },
+            projectMergeWrite,
+          ),
         );
       }
-      statements.push(sql`DELETE FROM areas WHERE id = ${row.id}`);
+      statements.push(
+        this.areas.deleteStatement({ id: { eq: row.id } }, { force: true }),
+      );
     }
-    statements.push(this.move("areas", context));
+    statements.push(this.move(this.areas, context));
     return { moved: source.length - joined.length, joined, statements };
   }
 
@@ -406,8 +422,18 @@ export class WorkProjectMerge {
     }));
   }
 
-  protected move(table: string, context: ProjectMergeContext): SQLLike {
-    return sql`UPDATE ${sql.identifier(table)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`;
+  /**
+   * Every row of the source, soft-deleted ones included, into the target.
+   */
+  protected move(
+    repository: Repository<ZObject>,
+    context: ProjectMergeContext,
+  ): SQLLike {
+    return repository.updateStatement(
+      { projectId: { eq: context.sourceProjectId } } as never,
+      { projectId: context.targetProjectId } as never,
+      projectMergeWrite,
+    );
   }
 }
 

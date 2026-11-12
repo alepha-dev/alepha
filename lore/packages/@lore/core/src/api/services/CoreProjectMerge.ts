@@ -3,9 +3,7 @@ import {
   organizationMembers,
   organizationRanks,
 } from "alepha/api/organizations";
-import { CryptoProvider } from "alepha/crypto";
-import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DatabaseProvider, sql, type SQLLike } from "alepha/orm";
+import { $repository, type SQLLike } from "alepha/orm";
 
 import { automationAdoptions } from "../entities/automationAdoptions.ts";
 import { automationEvents } from "../entities/automationEvents.ts";
@@ -49,11 +47,8 @@ import {
  *   still point at the source (#Q3298).
  */
 export class CoreProjectMerge {
-  protected readonly crypto = $inject(CryptoProvider);
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly tables = $inject(ProjectMergeTables);
-  protected readonly database = $inject(DatabaseProvider);
-  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly projects = $repository(projects);
   protected readonly members = $repository(organizationMembers);
   protected readonly ranks = $repository(organizationRanks);
@@ -172,9 +167,6 @@ export class CoreProjectMerge {
       ).map((row) => row.key),
     );
 
-    const now = this.dateTime.nowISOString();
-    const at =
-      this.database.dialect === "sqlite" ? new Date(now).getTime() : now;
     const changed: ProjectMergeChange[] = [];
     const statements: SQLLike[] = [];
     for (const member of await members(source)) {
@@ -192,8 +184,13 @@ export class CoreProjectMerge {
         from: member.rank ?? "",
         to: rank,
       });
+      // The ORM gives the row its id and timestamps.
       statements.push(
-        sql`INSERT INTO organization_members (id, created_at, updated_at, organization_id, user_id, rank) VALUES (${this.crypto.randomUUID()}, ${at}, ${at}, ${target}, ${member.userId}, ${rank})`,
+        this.members.insertStatement({
+          organizationId: target,
+          userId: member.userId,
+          rank,
+        }),
       );
     }
     return { changed, statements };

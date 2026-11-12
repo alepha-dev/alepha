@@ -6,10 +6,11 @@ import {
   type ProjectMergeStepPlan,
   type ProjectMergeTable,
   ProjectMergeTables,
+  projectMergeWrite,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { $inject } from "alepha";
-import { $repository, sql, type SQLLike } from "alepha/orm";
+import { $repository, type SQLLike } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
@@ -174,11 +175,15 @@ export class DeployProjectMerge {
         // value they already hold, since `EstateAnchorHooks` keeps every
         // homed estate's `owner_user_id` on its home project's owner, so only
         // the moved ones change. `owner_user_id` is the cascade anchor
-        // (#Q3278), not a stale owner column. It stays a statement of the
-        // merge batch rather than an `estates.updateMany`, which would run at
-        // once, outside the batch, and break the merge's atomicity.
+        // (#Q3278), not a stale owner column. It is a statement of the merge
+        // batch (`updateStatement`), never an `estates.updateMany`, which
+        // would run at once, outside the batch, and break its atomicity.
         statements.push(
-          sql`UPDATE estates SET owner_user_id = ${owner} WHERE project_id = ${context.targetProjectId}`,
+          this.estates.updateStatement(
+            { projectId: { eq: context.targetProjectId } },
+            { ownerUserId: owner },
+            projectMergeWrite,
+          ),
         );
       }
     }

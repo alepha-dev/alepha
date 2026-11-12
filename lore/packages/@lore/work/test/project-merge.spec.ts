@@ -124,6 +124,13 @@ describe("ProjectMergeService, Work's step", () => {
         description: "Blocked by [[#Q2]].",
       });
       await ctx.repos.quests.deleteById(gone.id);
+      const before = await Promise.all(
+        [renumbered.id, gone.id].map((id) =>
+          ctx.repos.quests.getById(id, { force: true }),
+        ),
+      );
+      // A merge a while later: a write that stamped the time would show.
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
@@ -136,6 +143,16 @@ describe("ProjectMergeService, Work's step", () => {
       expect(moved?.projectId).toBe(target.id);
       expect(moved?.deletedAt).not.toBeNull();
       expect(moved?.description).toBe("Blocked by [[#Q4]].");
+      // Moved, renumbered and rewritten, and still not edited: neither
+      // `updatedAt` nor `version` moved.
+      for (const row of before) {
+        const after = await ctx.repos.quests.getById(row.id, { force: true });
+        expect(after.projectId).toBe(target.id);
+        expect({ updatedAt: after.updatedAt, version: after.version }).toEqual({
+          updatedAt: row.updatedAt,
+          version: row.version,
+        });
+      }
     });
 
     it("refuses a deleted project, by name", async ({ expect }) => {

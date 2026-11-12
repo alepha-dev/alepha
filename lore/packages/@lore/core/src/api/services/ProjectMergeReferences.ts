@@ -1,14 +1,9 @@
 import type { ZObject } from "alepha";
-import {
-  type PgQueryWhere,
-  type Repository,
-  sql,
-  type SQL,
-  type SQLLike,
-} from "alepha/orm";
+import { type PgQueryWhere, type Repository, type SQLLike } from "alepha/orm";
 
 import { splitMarkdownCode } from "../../web/app/components/shared/element/markdownCodeSegments.ts";
-import type { ProjectMergeRenumber } from "./ProjectMergeService.ts";
+import { projectMergeWrite } from "../projectMergeWrite.ts";
+import { type ProjectMergeRenumber } from "./ProjectMergeService.ts";
 
 /**
  * Keeps the references inside moved text pointing at what they meant
@@ -83,10 +78,6 @@ export class ProjectMergeReferences {
     },
   ): Promise<{ rewritten: number; statements: SQLLike[] }> {
     const { repository } = input;
-    const columns = repository.table as unknown as Record<
-      string,
-      { name: string }
-    >;
     const rows = (await repository.findMany(
       {
         where: input.where,
@@ -96,7 +87,7 @@ export class ProjectMergeReferences {
     )) as Record<string, unknown>[];
     const statements: SQLLike[] = [];
     for (const row of rows) {
-      const sets: SQL[] = [];
+      const patch: Record<string, string> = {};
       for (const field of input.fields) {
         const value = row[field];
         if (typeof value !== "string") {
@@ -104,12 +95,16 @@ export class ProjectMergeReferences {
         }
         const next = rewriter.text(value);
         if (next !== value) {
-          sets.push(sql`${sql.identifier(columns[field].name)} = ${next}`);
+          patch[field] = next;
         }
       }
-      if (sets.length) {
+      if (Object.keys(patch).length) {
         statements.push(
-          sql`UPDATE ${sql.identifier(repository.tableName)} SET ${sql.join(sets, sql`, `)} WHERE id = ${row.id}`,
+          repository.updateStatement(
+            { id: { eq: row.id } } as never,
+            patch as never,
+            projectMergeWrite,
+          ),
         );
       }
     }

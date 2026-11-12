@@ -484,6 +484,7 @@ export {
   type ProjectMergeStep,
   type ProjectMergeStepPlan,
 } from "./services/ProjectMergeService.ts";
+export { projectMergeWrite } from "./projectMergeWrite.ts";
 export {
   ProjectMergeReferences,
   ProjectMergeRewriter,

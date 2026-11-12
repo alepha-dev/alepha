@@ -7,15 +7,10 @@ import {
   type ProjectMergeSequence,
   ProjectMergeService,
   type ProjectMergeStepPlan,
+  projectMergeWrite,
 } from "@lore/core/api";
-import { $inject, Alepha, type ZObject } from "alepha";
-import {
-  $repository,
-  DatabaseProvider,
-  type Repository,
-  sql,
-  type SQLLike,
-} from "alepha/orm";
+import { $inject, Alepha } from "alepha";
+import { $repository, type Repository, type SQLLike } from "alepha/orm";
 
 import { pinnedContentAtom } from "../atoms/pinnedContentAtom.ts";
 import { folioAttachments } from "../entities/folioAttachments.ts";
@@ -49,7 +44,6 @@ export class KnowledgeProjectMerge {
   protected readonly alepha = $inject(Alepha);
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly numbers = $inject(ProjectMergeNumbers);
-  protected readonly database = $inject(DatabaseProvider);
   protected readonly folios = $repository(folios);
   protected readonly directories = $repository(folioDirectories);
   protected readonly attachments = $repository(folioAttachments);
@@ -108,7 +102,11 @@ export class KnowledgeProjectMerge {
         content: nextContent,
       });
       statements.push(
-        sql`UPDATE folios SET summary = ${nextSummary}, content = ${nextContent}, search_text = ${searchText} WHERE id = ${id}`,
+        this.folios.updateStatement(
+          { id: { eq: id } },
+          { summary: nextSummary, content: nextContent, searchText },
+          projectMergeWrite,
+        ),
       );
     }
     return { rewritten: { folios: statements.length }, statements };
@@ -166,9 +164,9 @@ export class KnowledgeProjectMerge {
       const name = table.repository.tableName;
       const numbering = await this.numbers.renumber({
         kind: table.kind,
-        table: name,
-        column: "short_id",
-        idColumn: this.column(table.repository, table.idField),
+        repository: table.repository,
+        field: "shortId",
+        idField: table.idField,
         sequence: table.sequence,
         targetProjectId: context.targetProjectId,
         targetNumbers: target.map((row) => row.number),
@@ -179,12 +177,23 @@ export class KnowledgeProjectMerge {
       sequences.push(...numbering.sequences);
       statements.push(
         ...numbering.statements,
-        sql`UPDATE ${sql.identifier(name)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`,
+        table.repository.updateStatement(
+          { projectId: { eq: context.sourceProjectId } },
+          { projectId: context.targetProjectId },
+          projectMergeWrite,
+        ),
       );
     }
 
     statements.push(
-      sql`UPDATE folio_names SET parent_directory_id = ${`root:${context.targetProjectId}`}, root_scope = ${String(context.targetProjectId)} WHERE parent_directory_id = ${`root:${context.sourceProjectId}`}`,
+      this.names.updateStatement(
+        { parentDirectoryId: { eq: `root:${context.sourceProjectId}` } },
+        {
+          parentDirectoryId: `root:${context.targetProjectId}`,
+          rootScope: String(context.targetProjectId),
+        },
+        projectMergeWrite,
+      ),
     );
 
     return { moved, renumbered, joined: [], changed, statements, sequences };
@@ -245,15 +254,27 @@ export class KnowledgeProjectMerge {
               content: entry.content,
             });
         statements.push(
-          sql`UPDATE folios SET title = ${renamed}, search_text = ${searchText} WHERE id = ${id}`,
+          this.folios.updateStatement(
+            { id: { eq: id } },
+            { title: renamed, searchText },
+            projectMergeWrite,
+          ),
         );
       } else {
         statements.push(
-          sql`UPDATE folio_directories SET name = ${renamed} WHERE id = ${id}`,
+          this.directories.updateStatement(
+            { id: { eq: id } },
+            { name: renamed },
+            projectMergeWrite,
+          ),
         );
       }
       statements.push(
-        sql`UPDATE folio_names SET lower_name = ${renamed.trim().toLowerCase()} WHERE entity_id = ${id}`,
+        this.names.updateStatement(
+          { entityId: { eq: id } },
+          { lowerName: renamed.trim().toLowerCase() },
+          projectMergeWrite,
+        ),
       );
     }
     return { changed, statements };
@@ -366,20 +387,14 @@ export class KnowledgeProjectMerge {
         to: "false",
       });
       statements.push(
-        sql`UPDATE folios SET pinned = ${this.flag(false)} WHERE id = ${folio.id}`,
+        this.folios.updateStatement(
+          { id: { eq: folio.id } },
+          { pinned: false },
+          projectMergeWrite,
+        ),
       );
     }
     return { changed, statements };
-  }
-
-  /**
-   * A boolean as the driver binds it: SQLite stores 0 and 1.
-   */
-  protected flag(value: boolean): boolean | number {
-    if (this.database.dialect === "sqlite") {
-      return value ? 1 : 0;
-    }
-    return value;
   }
 
   /**
@@ -404,15 +419,6 @@ export class KnowledgeProjectMerge {
       id: String(row[table.idField]),
       number: Number(row.shortId),
     }));
-  }
-
-  /**
-   * The physical name of one of a repository's fields.
-   */
-  protected column(repository: Repository<ZObject>, field: string): string {
-    return (repository.table as unknown as Record<string, { name: string }>)[
-      field
-    ].name;
   }
 }
 

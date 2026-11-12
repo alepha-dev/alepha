@@ -3,14 +3,14 @@ import {
   type EntityPrimitive,
   type Repository,
   RepositoryProvider,
-  sql,
   type SQLLike,
 } from "alepha/orm";
 
-import type {
-  ProjectMergeChange,
-  ProjectMergeConflict,
-  ProjectMergeContext,
+import { projectMergeWrite } from "../projectMergeWrite.ts";
+import {
+  type ProjectMergeChange,
+  type ProjectMergeConflict,
+  type ProjectMergeContext,
 } from "./ProjectMergeService.ts";
 
 /**
@@ -58,9 +58,7 @@ export class ProjectMergeTables {
     statements: SQLLike[];
   }> {
     const repository = this.repository(table);
-    const name = repository.tableName;
     const idField = table.idField ?? "id";
-    const idColumn = this.column(repository, idField);
     const keys = table.keys ?? [];
     // `force`: a soft-deleted row moves too, and still holds its key.
     const read = (projectId: number) =>
@@ -104,7 +102,10 @@ export class ProjectMergeTables {
             to: "",
           });
           statements.push(
-            sql`DELETE FROM ${sql.identifier(name)} WHERE ${sql.identifier(idColumn)} = ${row[idField]}`,
+            repository.deleteStatement(
+              { [idField]: { eq: row[idField] } } as never,
+              { force: true },
+            ),
           );
         } else {
           conflicts.push({ kind: table.kind, key, sourceId, targetId });
@@ -113,16 +114,13 @@ export class ProjectMergeTables {
     }
 
     statements.push(
-      sql`UPDATE ${sql.identifier(name)} SET project_id = ${context.targetProjectId} WHERE project_id = ${context.sourceProjectId}`,
+      repository.updateStatement(
+        { projectId: { eq: context.sourceProjectId } } as never,
+        { projectId: context.targetProjectId } as never,
+        projectMergeWrite,
+      ),
     );
     return { moved, changed, conflicts, statements };
-  }
-
-  /**
-   * The physical name of one of a repository's fields.
-   */
-  protected column(repository: Repository<ZObject>, field: string): string {
-    return (repository.table as Record<string, { name: string }>)[field].name;
   }
 
   protected text(value: unknown): string {

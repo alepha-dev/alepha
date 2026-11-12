@@ -1,9 +1,10 @@
 import { $inject } from "alepha";
-import { SequenceProvider, sql, type SQLLike } from "alepha/orm";
+import { type Repository, SequenceProvider, type SQLLike } from "alepha/orm";
 
-import type {
-  ProjectMergeRenumber,
-  ProjectMergeSequence,
+import { projectMergeWrite } from "../projectMergeWrite.ts";
+import {
+  type ProjectMergeRenumber,
+  type ProjectMergeSequence,
 } from "./ProjectMergeService.ts";
 
 /**
@@ -59,7 +60,11 @@ export class ProjectMergeNumbers {
         to: next,
       });
       statements.push(
-        sql`UPDATE ${sql.identifier(input.table)} SET ${sql.identifier(input.column)} = ${next} WHERE ${sql.identifier(input.idColumn ?? "id")} = ${row.id}`,
+        input.repository.updateStatement(
+          { [input.idField ?? "id"]: { eq: row.id } },
+          { [input.field]: next },
+          projectMergeWrite,
+        ),
       );
     }
     const sequences =
@@ -76,12 +81,18 @@ export interface ProjectMergeNumbering {
    * The kind named in the mapping: `quest`, `epic`, `feedback`, ...
    */
   kind: string;
-  table: string;
-  column: string;
   /**
-   * The moved rows' primary key column, `id` unless named.
+   * The moved rows' repository, which builds the renumbering UPDATEs.
    */
-  idColumn?: string;
+  repository: Repository<any>;
+  /**
+   * The field holding the per-project number.
+   */
+  field: string;
+  /**
+   * The moved rows' primary key field, `id` unless named.
+   */
+  idField?: string;
   /**
    * The `$sequence` that allocates this number, scoped by project id.
    */
