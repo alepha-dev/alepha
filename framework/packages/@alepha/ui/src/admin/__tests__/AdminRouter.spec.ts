@@ -9,7 +9,6 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { $pageAdmin } from "../$pageAdmin.tsx";
-import { AccountRouter } from "../../account/AccountRouter.tsx";
 import { uiFr } from "../../i18n/fr/uiFr.ts";
 import type { NavMeta } from "../../shell/navTreeUtil.ts";
 import { AdminRouter } from "../AdminRouter.tsx";
@@ -274,9 +273,8 @@ describe("AdminRouter", () => {
     await alepha.start();
 
     // The shell root itself, not a child URL: a bare `/admin` resolves to
-    // the dashboard rather than redirecting to a second one. Same arrangement
-    // `AccountRouter` uses for `/account`, and the reason the `indexPath`
-    // option no longer exists.
+    // the dashboard rather than redirecting to a second one, and the reason
+    // the `indexPath` option no longer exists.
     expect(router.dashboard.options.path).toBe("/");
     expect(router.dashboard.options.parent).toBe(router.layout);
     // Nothing may reintroduce an index redirect behind its back.
@@ -300,12 +298,11 @@ describe("AdminRouter", () => {
   /**
    * The owner's brief: the Jobs tab reads "Admin - Jobs", and so does every
    * admin page, so it cannot be mistaken for an application page of the same
-   * name. The account pages share `$pageNav` and must not pick it up.
+   * name.
    */
-  it("titles every admin page 'Admin - <Page>' and no account page", async () => {
+  it("titles every admin page 'Admin - <Page>'", async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);
     const admin = alepha.inject(AdminRouter);
-    const account = alepha.inject(AccountRouter);
     await alepha.start();
 
     // A function since #Q2392, resolved the way `HeadProvider` does.
@@ -326,20 +323,6 @@ describe("AdminRouter", () => {
     }
     expect(titleOf(admin.jobs)).toBe("Admin - Jobs");
     expect(titleOf(admin.jobDetail)).toBe("Admin - Job");
-
-    const accountPages = alepha
-      .primitives($page)
-      .filter(
-        (page) =>
-          page.options.parent !== undefined &&
-          page.options.parent !== admin.layout &&
-          titleOf(page) !== undefined,
-      );
-    expect(accountPages.length).toBeGreaterThan(0);
-    expect(account).toBeDefined();
-    for (const page of accountPages) {
-      expect(titleOf(page)).not.toMatch(/^Admin - /);
-    }
   });
 
   it("prefixes a $pageAdmin title and keeps its label unprefixed", async () => {

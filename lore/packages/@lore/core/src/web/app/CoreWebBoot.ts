@@ -131,10 +131,10 @@ export class CoreWebBoot {
 
   /**
    * A self-hosted Lore has its own `PUBLIC_URL`, or none, and answers for its
-   * own host. `/auth` and `/account` are worth no crawler's time: every unknown
-   * URL leads to the login page.
+   * own host. `/auth` is worth no crawler's time: every unknown URL leads to
+   * the login page.
    */
-  protected readonly robots = $robots({ disallow: ["/auth", "/account"] });
+  protected readonly robots = $robots({ disallow: ["/auth"] });
 
   protected readonly manifest = $manifest({
     name: "Lore",

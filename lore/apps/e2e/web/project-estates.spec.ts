@@ -13,6 +13,7 @@ import {
   createProjectViaWizard,
   createRankFromPreset,
   newUserContext,
+  openAccount,
   registerAndVerify,
   releasePointerEvents,
   signInAsAdmin,
@@ -57,7 +58,7 @@ const inviteWithRank = async (
 };
 
 const accept = async (page: Page, projectTitle: string): Promise<void> => {
-  await page.goto("/account/invitations");
+  await openAccount(page, "invitations");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByText(projectTitle).first()).toBeVisible({
     timeout: 10_000,

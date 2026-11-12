@@ -39,8 +39,9 @@ someone else to take.
 
 ## 3. Invite your team
 
-Open **Settings ▸ Members** and invite people. They find the invitation on their
-**Invitations** page (`/account/invitations`) once they have an account.
+Open **Settings ▸ Members** and invite people. They find the invitation under
+**Invitations** in their account (the account menu, top right) once they have
+an account.
 
 A new project has two ranks, **Owner** and **Member**. If you need finer access,
 create more from **Settings ▸ Ranks** (Admin, Contributor and Viewer are offered
@@ -113,8 +114,8 @@ it and the agent works as you. With Claude Code, for example:
 claude mcp add --transport http lore https://lore.alepha.dev/mcp
 ```
 
-You can see and revoke every connection you granted on **Connected apps**
-(`/account/connections`). [MCP tools](/lore/docs/guides-mcp) lists what an agent
+You can see and revoke every connection you granted under **Connected apps** in
+your account. [MCP tools](/lore/docs/guides-mcp) lists what an agent
 can call.
 
 A connection made this way reaches what a project member can do, and nothing
@@ -124,7 +125,7 @@ administrator yourself.
 ### With an API key
 
 Some clients, and every CI job, cannot go through a browser. For them, create
-an **API key** on **API keys** (`/account/keys`). Keys start with `ak_`.
+an **API key** under **API keys** in your account. Keys start with `ak_`.
 Send one as a bearer token:
 
 ```http

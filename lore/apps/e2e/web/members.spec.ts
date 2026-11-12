@@ -5,6 +5,7 @@ import {
   createProjectViaWizard,
   createRankFromPreset,
   newUserContext,
+  openAccount,
   registerAndVerify,
 } from "./_helpers.ts";
 
@@ -93,7 +94,7 @@ test.describe("Members settings page", () => {
       await page.getByRole("button", { name: /send invitation/i }).click();
       expect((await invited).ok()).toBe(true);
 
-      await member.page.goto("/account/invitations");
+      await openAccount(member.page, "invitations");
       await expect(member.page.getByText(title).first()).toBeVisible({
         timeout: 15_000,
       });

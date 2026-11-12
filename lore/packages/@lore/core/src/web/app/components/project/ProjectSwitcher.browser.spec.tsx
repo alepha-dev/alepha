@@ -32,11 +32,6 @@ class Routes {
     path: "/:projectSlug",
     component: () => null,
   });
-  accountProjects = $page({
-    name: "accountProjects",
-    path: "/account/projects",
-    component: () => null,
-  });
   projectCreate = $page({
     name: "projectCreate",
     path: "/new-project",

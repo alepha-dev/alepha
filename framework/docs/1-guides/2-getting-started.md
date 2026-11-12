@@ -394,8 +394,8 @@ The layout above is fixed. A preset only decides what is mounted on top of it:
 npm create alepha my-app -- --preset=saas
 ```
 
-`saas` adds `@alepha/ui` and three routers (sign-in at `/auth/*`, an account
-area at `/account/*`, an admin console at `/admin/*`), plus the `$realm` in
+`saas` adds `@alepha/ui` with sign-in at `/auth/*`, the account as a dialog
+over the page, and an admin console at `/admin/*`, plus the `$realm` in
 `src/api/Realm.ts` that configures them. Nothing moves; you get that one extra source file,
 longer `src/api/index.ts` and `src/web/index.ts` modules (the API one adds the ORM and
 the user API), an initial database migration under `migrations/`, and a gitignored

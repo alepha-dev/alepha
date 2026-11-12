@@ -147,7 +147,7 @@ describe("a project invitation's notifications", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       title: "Invitation to join Invited",
-      href: "/account/invitations",
+      href: "/?account=invitations",
       scope: `project:${project.id}`,
       scopeLabel: "Invited",
       template: "lore:invitation:received",

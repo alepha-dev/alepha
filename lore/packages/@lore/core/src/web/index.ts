@@ -1,10 +1,10 @@
-import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
+import { AccountDialog, accountDialogOptionsAtom } from "@alepha/ui/account";
 import { $module } from "alepha";
 import { AlephaCrypto } from "alepha/crypto";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
-import { createElement, lazy, Suspense } from "react";
+import { createElement } from "react";
 
 import { CoreDashboardMetrics } from "../api/schemas/CoreDashboardMetrics.ts";
 import { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
@@ -13,7 +13,7 @@ import { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
 import { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
 import { AutomationRouter } from "./app/AutomationRouter.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
-import { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
+import { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
@@ -68,29 +68,17 @@ export const LoreCoreWeb = $module({
     // build list can declare a pure router without creating it (#Q3417).
     alepha.with(CoreRouter);
     alepha.with(AutomationRouter);
-    alepha.with(AccountRouter);
-    alepha.with(LoreAccountRouter);
+    // The account dialog and Lore's sections of it (#E140): no route, the
+    // dialog is drawn by the layout's `DialogProvider`.
+    alepha.with(AccountDialog);
+    alepha.with(LoreAccountSections);
 
     // Lore's `quests.createdBy` cascades, so deleting an account also deletes
     // every quest it authored, including inside other people's projects. The
     // framework cannot know that; this fills the dialog's warning slot so the
     // consequences are stated before the click rather than discovered after
     // it, each module's line registered on `AccountDeletionRegistry`.
-    //
-    // `/account` is a root shell like `/admin` (#E68): not adopted into
-    // `CoreRouter.layout`, so its chrome is set here. The brand is Lore's
-    // mark linking home, loaded lazily so the account chrome stays out of
-    // the bundle every page loads; `Suspense` holds the header empty for the
-    // moment the chunk takes.
-    alepha.store.set(accountRouterOptionsAtom, {
-      brand: createElement(
-        Suspense,
-        { fallback: null },
-        createElement(
-          lazy(() => import("./app/components/account/LoreAccountBrand.tsx")),
-        ),
-      ),
-      homeRouteName: "home",
+    alepha.store.set(accountDialogOptionsAtom, {
       pages: {
         security: { deleteWarning: createElement(AccountDeleteWarning) },
       },
@@ -115,7 +103,7 @@ export {
 } from "./app/atoms/projectNavAtom.ts";
 export { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
 export { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
-export { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
+export { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
 export { isOAuthReturnTarget } from "./app/components/auth/oauthReturnTarget.ts";
 export { type DashboardScopeApp } from "./app/components/dashboard/DashboardScopeStep.tsx";
 export {
@@ -317,7 +305,5 @@ declare module "alepha/react/router" {
     loreCore: CoreRouter;
     loreCoreProject: ProjectRouter;
     loreCoreAutomation: AutomationRouter;
-    loreCoreAccount: LoreAccountRouter;
-    loreAccount: AccountRouter;
   }
 }

@@ -93,9 +93,9 @@ describe("DevToolsMetadataProvider — GET /metadata (atoms)", () => {
  * An atom whose schema has no JSON Schema representation.
  *
  * `z.custom()` is the documented choice for a value TypeScript already owns —
- * `@alepha/ui`'s `adminRouterOptionsAtom` and `accountRouterOptionsAtom` both
+ * `@alepha/ui`'s `adminRouterOptionsAtom` and `accountDialogOptionsAtom` both
  * use it, because they carry React nodes and component references. Neither is
- * exotic: mounting `AdminRouter` or `AccountRouter` is enough to put one in
+ * exotic: mounting `AdminRouter` or `AccountDialog` is enough to put one in
  * every app's container, which is why this took the whole devtools UI down
  * rather than one row of one panel.
  */

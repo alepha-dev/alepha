@@ -119,7 +119,7 @@ const login = async (baseUrl: string, email: string, password: string) => {
   });
 };
 
-describe("MyIdentityController.setMyFirstPassword (/account)", () => {
+describe("MyIdentityController.setMyFirstPassword (account dialog)", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {

@@ -81,9 +81,13 @@ export const oauthOptions = $atom({
      */
     productName: z.text().optional(),
     /**
-     * Where a user revokes a granted connection, e.g. `/account/connections`.
-     * Linked from the consent screen when set, and never guessed: the page is
-     * `@alepha/ui`'s account router, which an app may not mount at all.
+     * Where a user revokes a granted connection, linked from the consent
+     * screen.
+     *
+     * Defaults to `/?account=connections`, which opens the Connected apps
+     * section of `@alepha/ui`'s account dialog over the home page. An app
+     * that lists connections elsewhere names its own path; one that offers no
+     * such page sets an empty string, and the screen omits the link.
      */
     connectionsPath: z.text().optional(),
     /**
@@ -701,7 +705,7 @@ export class OAuthController {
           client.source === "cimd"
             ? this.redirectHost(client.clientId)
             : undefined,
-        connectionsUrl: this.options.connectionsPath,
+        connectionsUrl: this.connectionsUrl(),
         hidden: {
           response_type: query.response_type,
           client_id: query.client_id,
@@ -1283,4 +1287,15 @@ export class OAuthController {
       }
     },
   });
+
+  /**
+   * The consent screen's revocation link: `connectionsPath`, defaulting to
+   * the account dialog's Connected apps section. An empty string means the
+   * app has no such page, and the screen omits the link.
+   */
+  protected connectionsUrl(): string | undefined {
+    return (
+      (this.options.connectionsPath ?? "/?account=connections") || undefined
+    );
+  }
 }

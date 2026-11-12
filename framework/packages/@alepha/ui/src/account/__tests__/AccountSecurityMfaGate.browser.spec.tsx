@@ -4,7 +4,7 @@ import type { RealmConfig } from "alepha/api/users";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { AlephaServerLinks } from "alepha/server/links";
+import { AlephaServerLinks, LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -21,6 +21,34 @@ import AccountSecurity from "../AccountSecurity.tsx";
  * this is the half that stops the user reaching a dead end in the first
  * place.
  */
+/**
+ * What `getRealmConfig` answers, set by each test's `mount`.
+ */
+let realm: RealmConfig | undefined;
+
+/**
+ * The section fetches its identities (none) and the realm; every other call
+ * answers nothing, as an unreachable server would.
+ */
+class Links extends LinkProvider {
+  override client(): any {
+    return new Proxy(
+      {},
+      {
+        get: (_target, name: string) => {
+          const action: any = async () => {
+            if (name === "listMyIdentities") return [];
+            if (name === "getRealmConfig") return realm;
+            return undefined;
+          };
+          action.can = () => true;
+          return action;
+        },
+      },
+    );
+  }
+}
+
 describe("AccountSecurity - two-factor row against the realm setting", () => {
   let alepha: Alepha | undefined;
 
@@ -37,18 +65,23 @@ describe("AccountSecurity - two-factor row against the realm setting", () => {
     ({ settings: { mfa: { totp } } }) as unknown as RealmConfig;
 
   const mount = async (config?: RealmConfig) => {
+    realm = config;
     alepha = Alepha.create()
+      .with({ provide: LinkProvider, use: Links })
       .with(AlephaReactI18n)
       .with(AlephaReactAuth)
       .with(AlephaServerLinks);
     await alepha.start();
-    return render(
+    const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <AccountSecurity identities={[]} realmConfig={config} />
+          <AccountSecurity />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
+    // Past the skeleton: an absent row means absent, not still loading.
+    await screen.findByText("Sign-in methods");
+    return view;
   };
 
   it("should not offer two-factor when the realm has totp disabled", async () => {

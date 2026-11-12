@@ -36,7 +36,7 @@ const PAGE_SIZE = 25;
  *
  * ## ⚠️ One route, two entry points, one query param
  *
- * There is deliberately no `/account/inbox`: it would be a second page for
+ * There is deliberately no account inbox: it would be a second page for
  * the same list differing only in a default filter. The scope is `?scope=`
  * instead, so the sidebar entry lands on this project and the header bell's
  * "See all" lands on all projects - which it has to, because that dropdown is

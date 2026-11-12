@@ -5,11 +5,10 @@ import { Layout } from "./Layout.tsx";
 /**
  * Every route in the demo: one page of its own.
  *
- * `AuthRouter`, `AccountRouter` and `AdminRouter` are registered as services
- * in `./index.ts` and mount themselves at the root (`/auth/*`, `/account` and
- * `/admin`), so they are absent here. The account area is a root shell with
- * its own sidebar and a "Back to site" item; adopting it into this layout
- * would show every toast twice.
+ * `AuthRouter` and `AdminRouter` are registered as services in `./index.ts`
+ * and mount themselves at the root (`/auth/*` and `/admin`), so they are
+ * absent here. The account is a dialog over the page (`AccountDialog`),
+ * drawn by this layout's `DialogProvider`.
  */
 export class AppRouter {
   layout = $page({

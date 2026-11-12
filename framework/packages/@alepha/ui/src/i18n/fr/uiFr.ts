@@ -84,6 +84,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "undoable.undo": "Annuler",
 
   // The data table: toolbar, selection, empty state.
+  "settings.dialog.back": "Retour",
+  "settings.dialog.close": "Fermer",
   "dataTable.bulkMenu.empty": "Rien à choisir",
   "dataTable.bulkMenu.failed": "Impossible de charger les choix",
   "dataTable.bulkMenu.loading": "Chargement…",
@@ -1190,10 +1192,6 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.viewProfile": "Voir le profil",
 
   // ─── The account kit (components/account/*) ───────────────────────────────
-  // The account sidebar's default header, under the user's name.
-  "account.brand.subtitle": "Compte",
-  // The browser tab of every account page, around the page's own title.
-  "account.title": "Compte - $1",
   "account.connections.colApp": "Application",
   "account.connections.colConnected": "Connectée",
   "account.connections.colExpires": "Fin de l’accès",
@@ -1310,9 +1308,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
     "Scannez ceci avec votre application d'authentification, puis saisissez le code à six chiffres qu'elle affiche.",
   "account.mfa.setupTitle": "Activer la double authentification",
   "account.mfa.turnOn": "Activer",
-  // The account rail's own chrome, same mechanism as `admin.nav.*`.
-  "account.nav.account": "Compte",
-  "account.nav.backToSite": "Retour au site",
+  // The account dialog's title and nav, same mechanism as `admin.nav.*`.
+  "account.dialog.title": "Compte",
   "account.nav.connections": "Applications connectées",
   "account.nav.group.account": "Compte",
   "account.nav.group.security": "Sécurité",

@@ -102,15 +102,6 @@ const NAV_ROUTE_NAMES = [
   "register",
   "projectCreate",
   "projectFeedbackRequest",
-  // The shared /account area (@alepha/ui AccountRouter) plus Lore's own
-  // pages inside it. `myFeedback` kept its pre-migration name on purpose —
-  // see WorkAccountRouter.
-  "account",
-  "accountProfile",
-  "accountConnections",
-  "accountInvitations",
-  "accountProjects",
-  "myFeedback",
 ];
 
 // Boots the router rather than reading source by path. Once a package's pages
@@ -130,8 +121,7 @@ describe("the route table", () => {
     // pages join the project layout by `parent:` (`$pageProject`), so a
     // module left out here drops its names from the table.
     bootLore(alepha, ["web"]);
-    // Every router, the account pages included: without them the guard
-    // would silently skip Lore's own /account pages.
+    // Every router, and the account sections, which declare no route.
     bootLore(alepha, ["routes"]);
     // Injected before `start()` — the container locks afterwards.
     slugs = alepha.inject(ProjectSlugService);

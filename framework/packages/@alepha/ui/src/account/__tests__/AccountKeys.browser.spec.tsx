@@ -103,13 +103,7 @@ describe("AccountKeys", () => {
     render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <AccountKeys
-            apiKeys={[
-              key(CI, "CI", "active"),
-              key(DEPLOY, "Deploy", "active"),
-              key(OLD, "Old laptop", "revoked"),
-            ]}
-          />
+          <AccountKeys />
         </DialogProvider>
       </AlephaContext.Provider>,
     );

@@ -1,6 +1,6 @@
 /**
  * How many projects `ProjectSwitcher` lists before deferring to the full list
- * at `/account/projects`.
+ * in the account dialog's Projects section.
  *
  * ⚠️ **It has one reader now.** It used to be shared with the landing page's
  * rail and the inline list beside it, and the argument for a single constant

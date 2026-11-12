@@ -55,7 +55,7 @@ alepha.with(WebModule);
 
 run(alepha);
 `,
-  "src/web/index.ts": `import { AccountRouter } from "@alepha/ui/account";
+  "src/web/index.ts": `import { AccountDialog } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { $module } from "alepha";
 
@@ -63,7 +63,7 @@ import { AppRouter } from "./AppRouter.ts";
 
 export const WebModule = $module({
   name: "app.web",
-  services: [AppRouter, AccountRouter, AdminRouter],
+  services: [AppRouter, AccountDialog, AdminRouter],
 });
 `,
   ".gitignore": "node_modules\n",
@@ -122,7 +122,7 @@ describe("alepha capacitor init --ota", () => {
       /alepha\.with\(AlephaCapacitor\);\nalepha\.with\(AlephaCapacitorOta\);\nalepha\.with\(WebModule\);/,
     );
     expect(await read("src/web/index.ts")).toContain(
-      "services: [AppRouter, AccountRouter, AdminRouter, OtaAdminRouter]",
+      "services: [AppRouter, AccountDialog, AdminRouter, OtaAdminRouter]",
     );
     expect(await read(".gitignore")).toContain("/.ota/");
     expect(await read(".env.example")).toContain("OTA_DOWNLOAD_SECRET=");

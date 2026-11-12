@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 export interface SidebarBackHeaderProps {
   /**
    * Where the arrow leads: the application's home, out of a root shell such
-   * as `/account` or `/admin` that is not drawn inside the application's own
+   * as `/admin` that is not drawn inside the application's own
    * chrome. Absent, there is no arrow, for an application with nowhere to
    * go back to.
    */
@@ -30,9 +30,9 @@ export interface SidebarBackHeaderProps {
  * A root shell's sidebar header with a way out: a back arrow to the
  * application's home, then what the area is.
  *
- * `/account` and `/admin` own the viewport, so the application's sidebar and
- * its links are gone while they are open, and the only other way back is an
- * item inside the account menu. The arrow is a real `Link`, so home can also
+ * A root shell such as `/admin` owns the viewport, so the application's
+ * sidebar and its links are gone while it is open, and the only other way
+ * back is an item inside the account menu. The arrow is a real `Link`, so home can also
  * be opened in a new tab.
  *
  * Collapsed to the icon rail, the words go and the arrow stays: it is the

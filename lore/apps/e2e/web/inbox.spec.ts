@@ -4,6 +4,7 @@ import {
   createProjectViaWizard,
   findLatestEmail,
   newUserContext,
+  openAccount,
   registerAndVerify,
   signInAsAdmin,
 } from "./_helpers.ts";
@@ -133,15 +134,15 @@ test.describe("Inbox", () => {
       /*
         ⚠️ The owner ruled the bell renders in the PROJECT SHELL ONLY. The
         failure mode is somebody later tidying `ButtonInbox` into `AppActions`,
-        which puts it on all three shells at once with nothing red. This is the
+        which puts it on every shell at once with nothing red. This is the
         only browser-level thing standing between that ruling and its silent
-        reversal.
+        reversal. The account dialog draws no bell of its own either.
       */
-      await member.page.goto("/account");
-      await member.page.waitForLoadState("domcontentloaded");
+      const account = await openAccount(member.page);
       await expect(
-        member.page.getByRole("button", { name: /notifications/i }),
-      ).toHaveCount(0);
+        account.getByRole("button", { name: /^notifications$/i }),
+      ).toHaveCount(1);
+      await expect(account.getByTestId("inbox-badge")).toHaveCount(0);
     } finally {
       await member.ctx.close();
     }
@@ -149,7 +150,7 @@ test.describe("Inbox", () => {
 
   /**
    * The third shell. Cheap because `signInAsAdmin` already exists, and worth
-   * having beside the `/account` assertion: the refactor that would break the
+   * having beside the account dialog assertion: the refactor that would break the
    * ruling breaks both at once, and a spec covering one of the two reads as
    * if the other had been considered.
    */
@@ -351,11 +352,12 @@ const inviteAndAccept = async (
       const page = (await r.json()) as { items?: { href?: string }[] };
       return (page.items ?? []).map((it) => it.href);
     });
-    // The account's page, and never the email's one-time link.
-    expect(entries).toEqual(["/account/invitations"]);
+    // The account dialog's section, by its link form, and never the email's
+    // one-time link.
+    expect(entries).toEqual(["/?account=invitations"]);
   }).toPass({ timeout: 60_000 });
 
-  await member.page.goto("/account/invitations");
+  await openAccount(member.page, "invitations");
   await member.page.waitForLoadState("domcontentloaded");
   const accepted = member.page.waitForResponse(
     (r) =>

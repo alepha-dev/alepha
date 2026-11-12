@@ -9,6 +9,7 @@ import {
   SidebarMenuItem,
   useIsMobile,
 } from "@alepha/ui";
+import { useSettingsDialog } from "@alepha/ui/settings";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -38,6 +39,7 @@ import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
 const ProjectSwitcher = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
+  const account = useSettingsDialog("account");
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
   const [dock] = useStore(userDockAtom);
@@ -192,7 +194,7 @@ const ProjectSwitcher = () => {
             {hasMore && (
               <DropdownMenuItem
                 data-testid="switcher-all-projects"
-                render={<Link href={router.path("accountProjects")} />}
+                onClick={() => account.open("projects")}
               >
                 <LayoutGrid className="size-4" />
                 {tr("account.projects.see-all")}

@@ -1,9 +1,11 @@
 /**
- * The signed-in user's own account area.
+ * The signed-in user's own account, as a settings dialog over the page.
  *
- * `AccountRouter` mounts profile, security, sessions, connections and API keys
- * under one layout, each page its own lazy chunk. The pages are exported by
- * name too, for an app that routes them itself.
+ * `AccountDialog` declares the `account` dialog and its five sections
+ * (profile, security, sessions, API keys, connected apps), each its own lazy
+ * chunk fetching its own data. The section components are exported by name
+ * too. An application adds a section with `$settingsSection` against
+ * `AccountDialog.dialog`.
  *
  * The profile page ends with `AccountDisplay`, the viewer's own display
  * settings: the colour-blind switch, which a signed-in viewer finds here and
@@ -12,7 +14,6 @@
  * @module alepha.ui.account
  */
 
-export { $pageAccount } from "./$pageAccount.tsx";
 export {
   default as AccountConnections,
   type AccountConnectionsProps,
@@ -21,24 +22,18 @@ export {
   default as AccountKeys,
   type AccountKeysProps,
 } from "./AccountKeys.tsx";
+export { AccountDialog } from "./AccountDialog.ts";
 export {
-  AccountBackToSiteMenuItem,
-  type AccountBackToSiteMenuItemProps,
-} from "./AccountBackToSiteMenuItem.tsx";
-export { AccountBrand, type AccountBrandProps } from "./AccountBrand.tsx";
-export { AccountLayout } from "./AccountLayout.tsx";
+  type AccountDialogOptions,
+  accountDialogOptionsAtom,
+  type AccountSectionName,
+} from "./AccountDialogOptions.ts";
 export { AccountPage, type AccountPageProps } from "./AccountPage.tsx";
 export { AccountDisplay } from "./AccountDisplay.tsx";
 export {
   default as AccountProfile,
   type AccountProfileProps,
 } from "./AccountProfile.tsx";
-export { AccountRouter } from "./AccountRouter.tsx";
-export {
-  type AccountPageName,
-  type AccountRouterOptions,
-  accountRouterOptionsAtom,
-} from "./AccountRouterOptions.tsx";
 export {
   AccountPasskeyProofDialog,
   type AccountPasskeyProofDialogProps,

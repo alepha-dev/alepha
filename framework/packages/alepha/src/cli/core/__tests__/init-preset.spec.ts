@@ -172,22 +172,40 @@ describe("alepha init --preset", () => {
 
       const web = await readFile(fs, "/project/src/web/index.ts");
       expect(web).toContain("AuthRouter");
-      expect(web).toContain("AccountRouter");
+      expect(web).toContain("AccountDialog");
       expect(web).toContain("AdminRouter");
       expect(web).toContain('from "@alepha/ui/account"');
     });
 
-    it("should mount the account area at the root, never adopted into the app layout", async () => {
-      // The account shell mounts its own Toaster: adopted under the app's
-      // layout, every toast would show twice.
+    it("should register no account route in the app router", async () => {
+      // The account is a dialog, not a page: nothing in AppRouter names it.
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
 
       const router = await readFile(fs, "/project/src/web/AppRouter.ts");
-      expect(router).not.toContain("account.layout");
-      expect(router).not.toContain("AccountRouter");
+      expect(router).not.toContain("account");
+      expect(router).not.toContain("Account");
+    });
+
+    it("should put the pages under a layout that mounts DialogProvider", async () => {
+      // The account is a settings dialog, drawn by DialogProvider: an app
+      // without one has nowhere to open it.
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      const router = await readFile(fs, "/project/src/web/AppRouter.ts");
+      expect(router).toContain('import("./components/Layout.tsx")');
+      const layout = await readFile(
+        fs,
+        "/project/src/web/components/Layout.tsx",
+      );
+      expect(layout).toContain("<DialogProvider>");
+      expect(layout).toContain("<NestedView />");
+      expect(layout).toContain("<ButtonUser />");
     });
 
     it("should import the react modules the routers depend on", async () => {

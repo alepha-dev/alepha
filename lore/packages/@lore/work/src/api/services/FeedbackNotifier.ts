@@ -168,10 +168,11 @@ export class FeedbackNotifier {
     // ⚠️ `P`, not `F`, which is a folio. Through `formatReference` so the
     // grammar of epic #E32 has one implementation.
     const reference = formatReference("feedback", feedback.shortId);
-    // The reporter's own view of it, not the owner's inbox: `/account/feedback`
-    // is the page a reporter can reach whether or not they are a member, and
-    // the project's triage inbox 403s for somebody who is not.
-    const href = "/account/feedback";
+    // The reporter's own view of it, not the owner's inbox: the account
+    // dialog's Feedback section is what a reporter can reach whether or not
+    // they are a member, and the project's triage inbox 403s for somebody who
+    // is not. Its link form, since this is read outside the page.
+    const href = "/?account=feedback";
     const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
 
     return {

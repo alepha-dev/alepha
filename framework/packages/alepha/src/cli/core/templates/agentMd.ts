@@ -37,28 +37,28 @@ of the installed version. Run \`npx alepha check --json\` for the findings as da
     ? `
 ## Identity
 
-This project uses the \`saas\` preset, so three routers from \`@alepha/ui\` are
-registered in \`src/web/index.ts\` and mount pages of their own:
+This project uses the \`saas\` preset, so \`@alepha/ui\` provides the identity
+surface, registered in \`src/web/index.ts\`:
 
-| Route        | Router          | Source                 |
-| ------------ | --------------- | ---------------------- |
-| \`/auth/*\`    | \`AuthRouter\`    | \`@alepha/ui/auth\`      |
-| \`/account/*\` | \`AccountRouter\` | \`@alepha/ui/account\`   |
-| \`/admin/*\`   | \`AdminRouter\`   | \`@alepha/ui/admin\`     |
+| Surface                  | Declared by     | Source                 |
+| ------------------------ | --------------- | ---------------------- |
+| \`/auth/*\`                | \`AuthRouter\`    | \`@alepha/ui/auth\`      |
+| the account dialog       | \`AccountDialog\` | \`@alepha/ui/account\`   |
+| \`/admin/*\`               | \`AdminRouter\`   | \`@alepha/ui/admin\`     |
 
-**These pages are not in \`src/web/\`.** Don't write your own login or admin
-screen - extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page
-to the existing nav in one call (take \`order\` 100-999 in your own \`nav.group\`).
+**These screens are not in \`src/web/\`.** Don't write your own login, account
+or admin screen - extend them instead: \`$pageAdmin\` adds an admin page, and
+\`$settingsSection({ dialog: <AccountDialog>.dialog, ... })\` adds an account
+section (take \`order\` 100-999 in your own \`group\`).
 
-\`/admin\` and \`/account\` are both **root shells** with their own sidebar and
-topbar; \`/account\`'s menu carries "Back to site". Never put
-\`AccountRouter.layout\` in your own layout's \`children\`: each shell mounts its
-own \`Toaster\`, so every toast would show twice. Chrome (\`brand\`,
-\`homeRouteName\`, \`extraNav\`, \`hide\`, page props) goes through
-\`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
-\`alepha.set(...)\` from **both** \`main.server.ts\` and \`main.browser.ts\`. An
-account page frames itself with \`AccountPage\` (\`variant="table"\` or
-\`"form"\`).
+The account is a **settings dialog** over the current page, not a route: the
+user menu opens it, and a link made outside the app opens it with
+\`?account=<section>\` (\`/?account=sessions\`). \`DialogProvider\` draws it, so
+keep the one in \`src/web/components/Layout.tsx\`. \`/admin\` is a **root shell**
+with its own sidebar and topbar; never put \`AdminRouter.layout\` in your own
+layout's \`children\`. Options go through \`adminRouterOptionsAtom\` /
+\`accountDialogOptionsAtom\` (\`hide\`, section props), set with
+\`alepha.set(...)\` from **both** \`main.server.ts\` and \`main.browser.ts\`.
 
 \`src/api/Realm.ts\` is the switchboard for all of it:
 

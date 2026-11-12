@@ -62,9 +62,8 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
   // below, because `AuthRegister` builds its submit handler once at mount:
   // a query param written by an effect arrives too late and the person lands
   // on the default with nothing to say why.
-  const invitedRedirect = invited
-    ? router.path("accountInvitations")
-    : undefined;
+  // The account dialog's Invitations section, by its link form.
+  const invitedRedirect = invited ? "/?account=invitations" : undefined;
 
   useEffect(() => {
     if (!entry) return;
@@ -96,7 +95,7 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
   }, [entry, intentKey, router]);
 
   const loginPath = router.path("login", {
-    query: { redirect: router.path("accountInvitations") },
+    query: { redirect: "/?account=invitations" },
   });
 
   if (invitation && invitation.status !== "ok") {
