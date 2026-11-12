@@ -28,17 +28,19 @@ describe("DataTable (tabs)", () => {
     alepha = undefined;
   });
 
-  const mount = async (tabs?: DataTableTab[]) => {
+  const mount = async (tabs?: DataTableTab[], dir?: "rtl") => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     await alepha.start();
     return render(
       <AlephaContext.Provider value={alepha}>
-        <DataTable<Row>
-          rowKey={(r) => String(r.id)}
-          data={rows}
-          tabs={tabs}
-          columns={{ title: { label: "Title", cell: (r: Row) => r.title } }}
-        />
+        <div dir={dir}>
+          <DataTable<Row>
+            rowKey={(r) => String(r.id)}
+            data={rows}
+            tabs={tabs}
+            columns={{ title: { label: "Title", cell: (r: Row) => r.title } }}
+          />
+        </div>
       </AlephaContext.Provider>,
     );
   };
@@ -101,6 +103,23 @@ describe("DataTable (tabs)", () => {
     press("Home");
     expect(document.activeElement).toBe(tabs[0]);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("swaps Left and Right on a right-to-left page", async () => {
+    await mount(
+      [
+        { key: "a", label: "A", active: true },
+        { key: "b", label: "B" },
+      ],
+      "rtl",
+    );
+    const tabs = await screen.findAllByRole("tab");
+    tabs[0]!.focus();
+    // The next tab sits to the LEFT of the first one.
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(tabs[1]);
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(tabs[0]);
   });
 
   it("draws no band without tabs", async () => {

@@ -1,6 +1,7 @@
 import { Link } from "alepha/react/router";
 import type { ComponentType, KeyboardEvent, ReactNode } from "react";
 
+import { inlineArrowKey } from "../core/inlineArrowKey.ts";
 import { cn } from "../core/utils.ts";
 
 /**
@@ -60,14 +61,15 @@ export const DataTableTabs = (props: DataTableTabsProps) => {
     ];
     const current = tabs.indexOf(e.target as HTMLElement);
     if (current === -1) return;
+    const key = inlineArrowKey(e);
     const next =
-      e.key === "ArrowRight"
+      key === "ArrowRight"
         ? (current + 1) % tabs.length
-        : e.key === "ArrowLeft"
+        : key === "ArrowLeft"
           ? (current - 1 + tabs.length) % tabs.length
-          : e.key === "Home"
+          : key === "Home"
             ? 0
-            : e.key === "End"
+            : key === "End"
               ? tabs.length - 1
               : -1;
     if (next === -1) return;

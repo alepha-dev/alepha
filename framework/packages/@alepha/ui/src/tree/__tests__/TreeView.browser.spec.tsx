@@ -328,6 +328,26 @@ describe("TreeView keyboard", () => {
     expect(document.activeElement).toBe(rowOf("Level1"));
   });
 
+  it("swaps Left and Right on a right-to-left page", () => {
+    render(
+      <div dir="rtl">
+        <Harness initialCollapsed={["d-2"]} />
+      </div>,
+    );
+    act(() => {
+      rowOf("Level2").focus();
+    });
+    // A branch's children sit to its left: Left opens it.
+    act(() => {
+      press("ArrowLeft");
+    });
+    expect(rowOf("Level2").getAttribute("aria-expanded")).toBe("true");
+    act(() => {
+      press("ArrowRight");
+    });
+    expect(rowOf("Level2").getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("opens a closed branch with Right, then steps into its first child", () => {
     render(<Harness initialCollapsed={["d-2"]} />);
     act(() => {

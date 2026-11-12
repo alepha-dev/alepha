@@ -33,7 +33,7 @@ export interface ResultsPaneProps {
  * which people already read carefully.
  */
 export const ResultsPane = (props: ResultsPaneProps) => {
-  const { tr } = useI18n();
+  const { tr, dir } = useI18n();
   const labels = useShapeLabels();
   const query = props.query;
   const result = query.result;
@@ -151,7 +151,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
 
       <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-3">
         <code className="text-foreground text-[11.5px]">
-          {analyticsWindowLabel(query.window)}
+          {analyticsWindowLabel(query.window, dir)}
         </code>
         {result && (
           <SamplingBadge

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { inlineArrowKey } from "../core/inlineArrowKey.ts";
 import {
   type TreeDropPosition,
   type TreeNode,
@@ -261,7 +262,9 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
     const isOpenBranch =
       row.node.branch === true && !props.collapsed.has(row.node.id);
     let next: number | undefined;
-    switch (e.key) {
+    // Right opens and steps in, Left closes and steps out: swapped on a
+    // right-to-left page, where a branch's children sit to its left.
+    switch (inlineArrowKey(e)) {
       case "ArrowDown":
         next = index + 1;
         break;

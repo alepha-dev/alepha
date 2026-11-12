@@ -52,7 +52,11 @@ export const TotalsCards = (props: TotalsCardsProps) => {
                 {props.result.labels[measure] ?? measure}
               </code>
               <span className="flex-1" />
+              {/* `dir="ltr"`: a signed number keeps its sign in front on a
+                  right-to-left page, where the bidi algorithm would
+                  otherwise draw `+5%` as `5%+`. */}
               <Badge
+                dir="ltr"
                 variant="tint"
                 tone={percent === null ? "neutral" : up ? "success" : "warning"}
                 className="h-[18px] flex-none px-[7px] text-[11px] tabular-nums"

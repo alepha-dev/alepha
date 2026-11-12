@@ -27,7 +27,7 @@ export interface CompareNoteProps {
  * `compare to` control and in the results context line above the cards.
  */
 export const CompareNote = (props: CompareNoteProps) => {
-  const { tr } = useI18n();
+  const { tr, dir } = useI18n();
 
   if (props.compare === "off" || !props.baselineWindow) {
     return (
@@ -39,7 +39,7 @@ export const CompareNote = (props: CompareNoteProps) => {
     );
   }
 
-  const range = analyticsWindowLabel(props.baselineWindow);
+  const range = analyticsWindowLabel(props.baselineWindow, dir);
   return (
     <span className={cn("text-muted-foreground", props.className)}>
       {props.compare === "lastYear"

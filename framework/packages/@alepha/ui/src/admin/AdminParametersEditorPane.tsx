@@ -96,7 +96,7 @@ export const AdminParametersEditorPane = (
             </EmptyTitle>
             <EmptyDescription>
               {tr("admin.parameters.emptySelection", {
-                default: "Pick a parameter on the left to edit it.",
+                default: "Pick a parameter in the list to edit it.",
               })}
             </EmptyDescription>
           </EmptyHeader>

@@ -17,6 +17,7 @@ import {
   analyticsToday,
   analyticsWhere,
   analyticsWindow,
+  analyticsWindowLabel,
 } from "./analyticsModel.ts";
 import type { AnalyticsQueryState } from "./analyticsTypes.ts";
 
@@ -393,5 +394,22 @@ describe("labels", () => {
     expect(
       analyticsFilterLabel({ dim: "country", values: ["FR", "US", "DE"] }),
     ).toBe("country ∈ (3)");
+  });
+});
+
+describe("analyticsWindowLabel", () => {
+  const window = { from: "2026-07-22", to: "2026-08-20" };
+
+  it("points from the first day to the last, left to right", () => {
+    expect(analyticsWindowLabel(window)).toBe("2026-07-22 → 2026-08-20");
+  });
+
+  it("reads from the right on a right-to-left page, isolated", () => {
+    // An RTL isolate around `from ← to`: the bidi algorithm draws `to` on
+    // the left and `from` on the right, the arrow pointing from one to the
+    // other, whatever the surrounding sentence's direction.
+    expect(analyticsWindowLabel(window, "rtl")).toBe(
+      "\u20672026-07-22 \u2190 2026-08-20\u2069",
+    );
   });
 });
