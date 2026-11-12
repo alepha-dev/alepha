@@ -465,6 +465,45 @@ An account page frames itself with `AccountPage`: `variant="table"` for a
 `DataTable` that fills the area, `variant="form"` for a centred column of
 cards.
 
+### Settings dialogs
+
+Not every surface is a route. A settings dialog opens over the page the
+reader is on and drops them back there when it closes, the way the settings
+of a chat or mail client do. It is state, not routing: no route is
+registered, nothing is written to the URL, Back does not reopen it, and a
+reload closes it.
+
+`$settingsDialog` declares one, `$settingsSection` adds a section to it from
+any class, and `useSettingsDialog(name)` opens and closes it:
+
+```typescript
+import { $settingsDialog, $settingsSection } from "@alepha/ui/settings";
+
+class PreferencesSettings {
+  dialog = $settingsDialog({ name: "preferences", title: "Preferences" });
+
+  general = $settingsSection({
+    dialog: this.dialog,
+    name: "general",
+    label: "General",
+    group: "App",
+    order: 1,
+    lazy: () => import("./GeneralPreferences.tsx"),
+  });
+}
+```
+
+A section has no loader: its component fetches its own data with `useQuery`
+when it is shown. `can` hides a section, `group` and `order` place it in the
+nav, and groups sort by their smallest member. Reopening lands on the last
+section viewed; `open("general")` picks one.
+
+The dialog closes by itself on any route change and when the user signs out.
+A link made outside the dialog (an email, a notification) opens it with
+`?<name>=<section>`, as in `/?preferences=general`: read in the browser on
+load and on every client navigation, then removed from the URL. A signed-out
+visitor following it is sent to sign in first and lands in the dialog after.
+
 ## Error Handling
 
 Use `errorHandler` to catch loader or rendering errors. It receives the error and the router state, and returns a ReactNode for a custom error page, a `Redirection` to redirect, `null` for the built-in error page, or `undefined` to let the error propagate. A page without a handler of its own uses its nearest parent's.
