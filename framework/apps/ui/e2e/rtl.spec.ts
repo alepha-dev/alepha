@@ -192,6 +192,31 @@ for (const dir of ["ltr", "rtl"] as const) {
       }
     });
 
+    test("a sheet with no side opens at the end of the line", async ({
+      page,
+      context,
+      baseURL,
+    }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await open(page, context, dir, "/blocks/overlays", baseURL);
+
+      await page.getByRole("button", { name: "Open sheet" }).click();
+      const sheet = page.getByRole("dialog", { name: "Filters" });
+      await expect(sheet).toBeVisible();
+      // The slide-in is a transform: wait for it to settle.
+      await expect(sheet).not.toHaveAttribute("data-starting-style");
+      await page.waitForTimeout(300);
+
+      const panel = await box(sheet);
+      if (rtl) {
+        expect(panel.x, "against the left edge").toBeLessThan(1);
+      } else {
+        expect(panel.x + panel.width, "against the right edge").toBeGreaterThan(
+          1279,
+        );
+      }
+    });
+
     test("a switch moves its thumb toward the end when checked", async ({
       page,
       context,

@@ -882,7 +882,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
     "Différences avec la version précédente.",
   "admin.parameters.diffWithPrevious": "Comparer à la précédente",
   "admin.parameters.emptySelection":
-    "Choisissez un paramètre à gauche pour le modifier.",
+    "Choisissez un paramètre dans la liste pour le modifier.",
   "admin.parameters.emptyTitle": "Aucun paramètre sélectionné",
   "admin.parameters.export": "Exporter",
   "admin.parameters.factoryReset": "Réinitialisation d'usine",

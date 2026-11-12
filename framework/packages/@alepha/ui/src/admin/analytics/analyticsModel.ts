@@ -304,10 +304,20 @@ export const analyticsStateWindow = (
 /**
  * How a window reads in the explorer: days as they are, instants as local
  * `YYYY-MM-DD HH:MM`.
+ *
+ * In the reading direction: on a right-to-left page the arrow points left
+ * and the label is a right-to-left isolate (U+2067 ... U+2069), so it reads
+ * `from`, then `to`, from the right, even inside an English fallback
+ * sentence whose own run is left-to-right.
  */
-export const analyticsWindowLabel = (window: AnalyticsWindow): string => {
+export const analyticsWindowLabel = (
+  window: AnalyticsWindow,
+  dir: "ltr" | "rtl" = "ltr",
+): string => {
   const ends = analyticsWindowEnds(window);
-  return `${ends.from} → ${ends.to}`;
+  return dir === "rtl"
+    ? `\u2067${ends.from} \u2190 ${ends.to}\u2069`
+    : `${ends.from} → ${ends.to}`;
 };
 
 /**

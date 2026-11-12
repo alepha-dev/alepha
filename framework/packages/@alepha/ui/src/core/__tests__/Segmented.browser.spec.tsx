@@ -122,3 +122,20 @@ describe("Segmented keyboard navigation", () => {
     expect(checked()).toBe("Alpha");
   });
 });
+
+describe("Segmented on a right-to-left page", () => {
+  it("moves forward with Left, which points along the line", () => {
+    render(
+      <div dir="rtl">
+        <Harness />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Alpha" }));
+    press("ArrowLeft");
+    expect(checked()).toBe("Bravo");
+
+    press("ArrowRight");
+    expect(checked()).toBe("Alpha");
+  });
+});

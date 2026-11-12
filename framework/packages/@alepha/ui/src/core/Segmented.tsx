@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { inlineArrowKey } from "./inlineArrowKey.ts";
 import { cn } from "./utils.ts";
 
 export interface SegmentedOption {
@@ -227,7 +228,7 @@ export const Segmented = (props: SegmentedProps) => {
     if (disabled) return;
     const current = options.findIndex((o) => o.value === value);
     const from = current === -1 ? 0 : current;
-    switch (event.key) {
+    switch (inlineArrowKey(event)) {
       case "ArrowRight":
       case "ArrowDown":
         event.preventDefault();

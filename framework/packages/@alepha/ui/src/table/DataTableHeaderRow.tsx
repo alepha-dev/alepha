@@ -74,7 +74,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
     moveColumn,
     toggleColumn,
   } = props;
-  const { tr } = useI18n();
+  const { tr, dir } = useI18n();
   const row = useRef<HTMLTableRowElement>(null);
 
   // The menu's "Filter" opens the funnel, so the filter is reachable from the
@@ -247,22 +247,28 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
               {/* Disabled at the ends rather than hidden: the pair
                   is a fixed landmark, and an entry that appears
                   and disappears as you move a column is harder to
-                  aim at than one that greys out. */}
+                  aim at than one that greys out.
+                  The labels name the side the column moves to on
+                  screen: toward the start is the left of a
+                  left-to-right table and the right of a right-to-left
+                  one, and the icons flip with it. */}
               <ContextMenuItem
                 disabled={index === 0}
                 onClick={() => moveColumn(key, -1)}
               >
                 <ChevronLeft className="size-4 rtl:-scale-x-100" />
-                {tr("dataTable.moveLeft", { default: "Move left" })}
+                {dir === "rtl"
+                  ? tr("dataTable.moveRight", { default: "Move right" })
+                  : tr("dataTable.moveLeft", { default: "Move left" })}
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={index === visibleCols.length - 1}
                 onClick={() => moveColumn(key, 1)}
               >
                 <ChevronRight className="size-4 rtl:-scale-x-100" />
-                {tr("dataTable.moveRight", {
-                  default: "Move right",
-                })}
+                {dir === "rtl"
+                  ? tr("dataTable.moveLeft", { default: "Move left" })
+                  : tr("dataTable.moveRight", { default: "Move right" })}
               </ContextMenuItem>
               <ContextMenuSeparator />
               {/* Never the last one: a table with no columns has

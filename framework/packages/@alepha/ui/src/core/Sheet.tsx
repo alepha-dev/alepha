@@ -49,7 +49,8 @@ export type SheetContentProps = SheetPrimitive.Popup.Props & {
   /**
    * The edge the sheet slides in from. `start` and `end` follow the reading
    * direction (a `start` sheet comes from the right on a right-to-left
-   * page); `left` and `right` are physical.
+   * page); `left` and `right` are physical. Defaults to `end`: the right of
+   * a left-to-right page, the left of a right-to-left one.
    */
   side?: "top" | "right" | "bottom" | "left" | "start" | "end";
   showCloseButton?: boolean;
@@ -59,7 +60,7 @@ const SheetContent = (props: SheetContentProps) => {
   const {
     className,
     children,
-    side = "right",
+    side = "end",
     showCloseButton = true,
     ...rest
   } = props;

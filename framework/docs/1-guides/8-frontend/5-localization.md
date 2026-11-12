@@ -373,7 +373,8 @@ import { DirectionProvider } from "@alepha/ui";
 </DirectionProvider>;
 ```
 
-- **`Sidebar`, `Sheet` and `PaneRail` take `side="start" | "end"`**, which follows the direction, beside the physical `left` and `right`.
+- **`Sidebar`, `Sheet` and `PaneRail` take `side="start" | "end"`**, which follows the direction, beside the physical `left` and `right`. A `Sheet` with no `side` opens at the `end`.
+- **The kit's own arrow keys follow it**: in a segmented control, a table's tabs and a tree, Left and Right swap on a right-to-left page.
 - **The calendar and the toaster follow it too**: the calendar swaps its previous and next buttons and its arrow keys, and toasts move to the bottom-left corner.
 
 ## Translate Component
