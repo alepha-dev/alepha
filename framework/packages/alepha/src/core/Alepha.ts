@@ -592,6 +592,32 @@ export class Alepha {
   }
 
   /**
+   * Creates, before start, the declared page routers when no React server is
+   * registered (#Q3485): the server's `/*` placeholder is what creates them
+   * on the first page request, and a `$page` was also what registered the
+   * React router module, so with every page router declared that module
+   * never came and every page answered 404. An app that registers the module
+   * itself keeps its routers deferred.
+   */
+  protected async createUnservedPages(): Promise<void> {
+    const surface = this.surface;
+    if (!surface || this.declared.size === 0 || surface.pages.length === 0) {
+      return;
+    }
+    for (const key of this.registry.keys()) {
+      if ((key as { id?: string }).id === "alepha.react.ReactServerProvider") {
+        return;
+      }
+    }
+    const pages = new Set(surface.pages.map((row) => row.class));
+    for (const service of Array.from(this.declared)) {
+      if (pages.has(ContainerGraph.keyOf(service))) {
+        this.inject(await this.resolveDeclared(service));
+      }
+    }
+  }
+
+  /**
    * Create every declared class now: what a reader that needs every action
    * (OpenAPI, the schemas endpoint) calls first.
    */
@@ -1177,6 +1203,7 @@ export class Alepha {
       }
 
       this.createUnservedDeclared();
+      await this.createUnservedPages();
 
       // With no list (`ALEPHA_EAGER=true`), the controllers the build made
       // lazy are imported and created now, as every class is (#Q3407).
@@ -1752,9 +1779,7 @@ export class Alepha {
       ) {
         this.containerGraph.moduleReached(
           module,
-          this.primitiveInits > 0
-            ? null
-            : this.containerGraph.injectorOf(this.pendingInstantiations),
+          this.containerGraph.moduleReacherOf(this.pendingInstantiations),
         );
       }
       this.reachingModule++;

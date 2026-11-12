@@ -63,7 +63,7 @@ const surface: AppSurface = {
   prompts: [],
 };
 
-const start = async (list = true) => {
+const start = async (list = true, router = true) => {
   created = [];
   const alepha = Alepha.create({
     env: { SERVER_PORT: 0, APP_SECRET: "test-secret" },
@@ -71,7 +71,10 @@ const start = async (list = true) => {
   if (list) {
     alepha.useSurface(surface);
   }
-  alepha.with(AlephaReactRouter).with(Api).with(LayoutRouter).with(DocsRouter);
+  if (router) {
+    alepha.with(AlephaReactRouter);
+  }
+  alepha.with(Api).with(LayoutRouter).with(DocsRouter);
   await alepha.start();
   const hostname = alepha.inject(ServerProvider).hostname;
   return {
@@ -117,6 +120,17 @@ describe("pure page routers", () => {
   }) => {
     const { alepha } = await start();
     expect(alepha.inject(ReactPageProvider).pathname("docs")).toBe("/docs");
+    await alepha.stop();
+  });
+
+  it("are created at boot when nothing else registers the React router (#Q3485)", async ({
+    expect,
+  }) => {
+    // Their `$page`s are what brought the router module in: deferred, it
+    // never came, and every page answered 404.
+    const { alepha, request } = await start(true, false);
+    expect([...created].sort()).toEqual(["DocsRouter", "LayoutRouter"]);
+    expect(await (await request("/docs")).text()).toContain("docs page");
     await alepha.stop();
   });
 

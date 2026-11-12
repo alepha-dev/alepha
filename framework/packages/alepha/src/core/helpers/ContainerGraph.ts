@@ -144,6 +144,24 @@ export class ContainerGraph {
   }
 
   /**
+   * The class that reaches a module now: the nearest class under
+   * construction within the current frame that is not a primitive, or `null`
+   * for a registration (#Q3485). Unlike {@link injectorOf}, a primitive's
+   * plumbing reaching a module counts against the class declaring it: a
+   * `$page` alone is what brings the React router in, and deferred with its
+   * class it would arrive after the lock.
+   */
+  public moduleReacherOf(stack: ReadonlyArray<Service>): Service | null {
+    const base = this.frames[this.frames.length - 1];
+    for (let i = stack.length - 1; i >= base; i--) {
+      if (!this.skip(stack[i])) {
+        return stack[i];
+      }
+    }
+    return null;
+  }
+
+  /**
    * The class a primitive being initialised now belongs to: the nearest
    * class under construction that is not itself a primitive.
    */

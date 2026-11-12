@@ -10,7 +10,7 @@ import {
   type PurityEntry,
   type Service,
 } from "alepha";
-import { $action } from "alepha/server";
+import { $action, AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
 /**
@@ -264,7 +264,9 @@ describe("Alepha.purity", () => {
     class Caller {
       shared = $inject(Shared);
     }
-    const alepha = Alepha.create().with(Caller);
+    // The server module registered up front, as an app does: otherwise
+    // `Listed`'s action alone would bring it in, which is not pure (#Q3485).
+    const alepha = Alepha.create().with(AlephaServer).with(Caller);
     expect(Mod).toBeDefined();
     expect(entryOf(alepha, Listed).pure).toBe(true);
   });
