@@ -2,6 +2,7 @@ import { type Alepha, AlephaError, type Service } from "alepha";
 
 import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 import { NodePostgresProvider } from "../providers/drivers/NodePostgresProvider.ts";
+import { DatabaseUrlParser } from "../services/DatabaseUrlParser.ts";
 
 /**
  * What `AlephaOrmTestPostgres` does, shared by the Node and Bun barrels, each
@@ -25,12 +26,43 @@ export class TestPostgresRegistration {
     alepha.with(orm);
   }
 
-  protected usePostgres(alepha: Alepha): void {
+  /**
+   * `DATABASE_TEST_DIALECT=postgres` (#Q3473): in a test, an unset or
+   * in-memory SQLite `DATABASE_URL` becomes `POSTGRES_TEST_URL`, before the
+   * ORM picks its driver. A file, D1 or Postgres URL is left alone, since a
+   * spec naming one means it.
+   */
+  public applyDialectSwitch(alepha: Alepha): void {
+    const env = alepha.env as Record<string, unknown>;
+    if (!alepha.isTest() || env.DATABASE_TEST_DIALECT !== "postgres") {
+      return;
+    }
+    const current =
+      typeof env.DATABASE_URL === "string" ? env.DATABASE_URL : undefined;
+    const parsed = new DatabaseUrlParser().parse(current);
+    if (parsed && !(parsed.kind === "sqlite" && parsed.path === ":memory:")) {
+      return;
+    }
+    this.usePostgres(alepha, { override: true });
+  }
+
+  protected usePostgres(
+    alepha: Alepha,
+    options: { override?: boolean } = {},
+  ): void {
     const url = (alepha.env as Record<string, unknown>).POSTGRES_TEST_URL;
     if (typeof url !== "string" || url === "") {
       throw new AlephaError(
         "AlephaOrmTestPostgres needs POSTGRES_TEST_URL, the Postgres server specs run against (postgres://user:password@host:port/database).",
       );
+    }
+    if (options.override) {
+      // `loadEnv` never replaces a key already set: drop it first.
+      const { DATABASE_URL: _, ...rest } = alepha.env as Record<
+        string,
+        unknown
+      >;
+      alepha.store.set("env", rest as typeof alepha.env);
     }
     // `loadEnv` clears the env cache, so a schema parsed before this module
     // still sees the URL.

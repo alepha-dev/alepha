@@ -46,3 +46,45 @@ describe("AlephaOrm: DATABASE_URL selects the provider", () => {
     expect(() => providerFor("mysql://u:p@localhost/app")).toThrow(DbUrlError);
   });
 });
+
+describe("DATABASE_TEST_DIALECT=postgres", () => {
+  const providerFor = (env: Record<string, string | undefined>) =>
+    Alepha.create({
+      env: {
+        DATABASE_TEST_DIALECT: "postgres",
+        POSTGRES_TEST_URL: "postgres://u:p@localhost:5432/app",
+        ...env,
+      },
+    })
+      .with(AlephaOrm)
+      .inject(DatabaseProvider);
+
+  it("moves an unset or in-memory SQLite URL onto Postgres", ({ expect }) => {
+    expect(providerFor({ DATABASE_URL: undefined })).toBeInstanceOf(
+      NodePostgresProvider,
+    );
+    expect(providerFor({ DATABASE_URL: ":memory:" })).toBeInstanceOf(
+      NodePostgresProvider,
+    );
+    expect(providerFor({ DATABASE_URL: "sqlite://:memory:" })).toBeInstanceOf(
+      NodePostgresProvider,
+    );
+  });
+
+  it("leaves a SQLite file and D1 alone, since a spec naming one means it", ({
+    expect,
+  }) => {
+    expect(
+      providerFor({ DATABASE_URL: "sqlite://./data/app.db" }),
+    ).toBeInstanceOf(NodeSqliteProvider);
+    expect(providerFor({ DATABASE_URL: "d1://DB" }).constructor.name).toBe(
+      "CloudflareD1Provider",
+    );
+  });
+
+  it("does nothing outside a test", ({ expect }) => {
+    expect(
+      providerFor({ NODE_ENV: "development", DATABASE_URL: ":memory:" }),
+    ).toBeInstanceOf(NodeSqliteProvider);
+  });
+});

@@ -112,6 +112,55 @@ jobs:
       - name: Test Project
         run: yarn alepha test --shard ${{ matrix.shard }}/2
 
+  # Lore's suite on Postgres (#Q3473). Every app keeps migrations/postgres/,
+  # and SQL nothing applies only looks supported, so this job applies Lore's
+  # to an empty database, then runs every spec that names no database (or an
+  # in-memory SQLite one) on Postgres through `alepha test --dialect postgres`.
+  #
+  # ⚠️ NOT blocking, on purpose: `continue-on-error` keeps a red run from
+  # failing Verify Lore, so it never holds a deploy back. Lore's raw SQL is
+  # still SQLite-only in places (#E141); make the job blocking (drop
+  # `continue-on-error`) when E141 lands and this job is green.
+  test-postgres:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    continue-on-error: true
+    env:
+      POSTGRES_TEST_URL: postgres://postgres:postgres@127.0.0.1:15432/postgres
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Started by hand, not as a service container: a service cannot pass
+      # server flags. Every spec creates a schema of Lore's ~90 tables and
+      # drops it at stop, in parallel, and DROP SCHEMA ... CASCADE takes a lock
+      # per object: at the default 64 the run dies of "out of shared memory".
+      # The larger lock table lives in shared memory, which Docker caps at
+      # 64 MB by default; without `--shm-size` the server crashes mid-run.
+      - name: Start Postgres
+        run: |
+          docker run -d --name postgres -p 15432:5432 --shm-size=1g \
+            -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+            postgres -c max_locks_per_transaction=1024
+          until docker exec postgres pg_isready -U postgres; do sleep 1; done
+
+      # A drizzle `--> statement-breakpoint` is a SQL comment, so psql runs
+      # each migration file as it is, in order, and stops at the first error.
+      # The container's own psql: the runner image need not ship a client.
+      - name: Apply migrations/postgres
+        run: |
+          docker exec postgres psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE lore_migrations"
+          for file in apps/lore/migrations/postgres/*/migration.sql; do
+            echo "Applying $file"
+            docker exec -i postgres psql -U postgres -d lore_migrations -v ON_ERROR_STOP=1 -q < "$file"
+          done
+
+      - name: Test Project on Postgres
+        run: yarn alepha test --dialect postgres
+
   e2e-lore:
     runs-on: ubuntu-26.04
     timeout-minutes: 30

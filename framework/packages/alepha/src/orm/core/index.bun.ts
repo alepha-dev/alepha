@@ -54,6 +54,9 @@ export const AlephaOrm = $module({
     PostgresModelBuilder,
   ],
   register: (alepha: Alepha) => {
+    // `DATABASE_TEST_DIALECT=postgres` moves a SQLite suite onto Postgres
+    // before the driver is picked (#Q3473).
+    new TestPostgresRegistration().applyDialectSwitch(alepha);
     const env = alepha.parseEnv(databaseEnvSchema);
 
     const kind = new DatabaseUrlParser().kind(env.DATABASE_URL);

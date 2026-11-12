@@ -42,6 +42,19 @@ export const databaseEnvSchema = z.object({
   DATABASE_TRANSACTIONS: z.boolean().meta({ secret: false }).optional(),
 
   /**
+   * Test-only: `postgres` runs a suite written for SQLite on Postgres.
+   *
+   * A spec whose `DATABASE_URL` is unset or an in-memory SQLite one then
+   * gets the server `POSTGRES_TEST_URL` names instead, in a schema of its
+   * own; a spec that names a file, D1 or Postgres keeps it. `alepha test
+   * --dialect postgres` sets it. Honoured only when `NODE_ENV` is `test`.
+   */
+  DATABASE_TEST_DIALECT: z
+    .enum(["sqlite", "postgres"])
+    .meta({ secret: false })
+    .optional(),
+
+  /**
    * Milliseconds a query may take before it fails with `DbTimeoutError`
    * (503), on every driver. `0` disables it. Defaults to 5000 on serverless,
    * off elsewhere. A statement's own `timeout` wins.

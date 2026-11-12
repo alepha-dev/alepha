@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { $command } from "alepha/command";
+import { $command, CommandError } from "alepha/command";
 
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -100,6 +100,12 @@ export class TestCommand {
           "Run one slice of the spec files, `<index>/<count>` (e.g. `2/6`): one leg of a CI matrix",
         )
         .optional(),
+      dialect: z
+        .enum(["sqlite", "postgres"])
+        .describe(
+          "Run the specs on this database. `postgres` moves every spec with no DATABASE_URL, or an in-memory SQLite one, onto the server POSTGRES_TEST_URL names, each in a schema of its own",
+        )
+        .optional(),
       project: z
         .string()
         .meta({ alias: "p" })
@@ -121,6 +127,17 @@ export class TestCommand {
       });
 
       const config = flags.config ? `--config=${flags.config}` : "";
+
+      // The run's children inherit the environment, and the ORM reads the
+      // switch in each spec's container (#Q3473).
+      if (flags.dialect) {
+        if (flags.dialect === "postgres" && !process.env.POSTGRES_TEST_URL) {
+          throw new CommandError(
+            "alepha test --dialect postgres needs POSTGRES_TEST_URL, the Postgres server the specs run against (postgres://user:password@host:port/database).",
+          );
+        }
+        process.env.DATABASE_TEST_DIALECT = flags.dialect;
+      }
 
       // The positional arg is forwarded to Vitest as a filename filter —
       // `alepha test user` runs only specs whose path matches "user".
