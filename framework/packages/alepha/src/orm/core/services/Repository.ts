@@ -2111,6 +2111,19 @@ export abstract class Repository<T extends ZObject> {
    * rendered again (Postgres would refuse it once the expression binds a
    * parameter), so it may not be spelled like a column. `min` / `max` over an
    * expression are typed and decoded as the expression's `SQL<T>`.
+   *
+   * `countDistinct` counts distinct values, `COUNT(DISTINCT x)`. With a
+   * `where` it counts the distinct values of the matching rows only:
+   *
+   * @example
+   * ```ts
+   * await visits.aggregate({
+   *   select: {
+   *     visitors: { countDistinct: { column: "visitorId", where: { bot: false } } },
+   *   },
+   * });
+   * // -> [{ visitors: { countDistinct: 42 } }]
+   * ```
    */
   public async aggregate<S extends AggregateSelect<T>>(
     query: AggregateQuery<T, S>,
@@ -2132,6 +2145,8 @@ export abstract class Repository<T extends ZObject> {
         switch (op) {
           case "count":
             return count(column);
+          case "countDistinct":
+            return countDistinct(column);
           case "sum":
             return sum(column);
           case "avg":
@@ -2354,7 +2369,10 @@ export abstract class Repository<T extends ZObject> {
               // that through Number() turned every non-numeric min/max into NaN.
               // Their empty-set answer stays null, because SQL has none.
               result[col][op] =
-                op === "count" || op === "sum" || op === "avg"
+                op === "count" ||
+                op === "countDistinct" ||
+                op === "sum" ||
+                op === "avg"
                   ? value != null
                     ? Number(value)
                     : 0
