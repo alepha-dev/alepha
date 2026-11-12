@@ -175,6 +175,23 @@ export class BunSqliteProvider extends DatabaseProvider {
   }
 
   /**
+   * Always a native exclusive transaction, even with ordinary transactions
+   * switched off: that switch emulates D1, whose batch is still atomic.
+   */
+  protected override runAtomicBatch(
+    statements: SQLLike[],
+  ): Promise<Array<Record<string, unknown>[]>> {
+    const sqlite = this.sqlite;
+    if (!sqlite) {
+      throw new AlephaError("Database not initialized");
+    }
+    return this.runExclusiveNativeTransaction(
+      (sql) => sqlite.run(sql),
+      () => this.executeEach(statements),
+    );
+  }
+
+  /**
    * Open the sqlite connection outside the normal `start` lifecycle.
    *
    * CLI commands that load the app via `loadAlephaFromServerEntryFile` set

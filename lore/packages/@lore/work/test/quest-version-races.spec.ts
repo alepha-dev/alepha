@@ -1,9 +1,8 @@
-import { AutomationSqliteProvider } from "@lore/core/api";
 import { ProjectController } from "@lore/core/api";
 import { $hook, Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { DatabaseProvider } from "alepha/orm";
+import { DatabaseProvider, NodeSqliteProvider } from "alepha/orm";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
@@ -61,7 +60,7 @@ const setup = async (): Promise<TestContext> => {
       DATABASE_TRANSACTIONS: false,
     },
   });
-  alepha.with({ provide: DatabaseProvider, use: AutomationSqliteProvider });
+  alepha.with({ provide: DatabaseProvider, use: NodeSqliteProvider });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);

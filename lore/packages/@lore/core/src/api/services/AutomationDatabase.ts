@@ -6,9 +6,6 @@ import {
   type SQLLike,
 } from "alepha/orm";
 
-import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
-import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
-
 /**
  * Bounded internal statements only. There is no public SQL or callback
  * workflow API, and no claim that a database batch can undo an external send.
@@ -96,21 +93,9 @@ export class AutomationDatabase {
       );
     return this.primary(async () => {
       try {
-        if (
-          this.database instanceof AutomationD1Provider ||
-          this.database instanceof AutomationSqliteProvider
-        )
-          return await this.database.atomicBatch(statements);
-        if (!this.database.supportsTransactions)
-          throw new AlephaError(
-            "This database has no automation atomic-batch implementation",
-          );
-        return await this.database.transactional(async () => {
-          const result: Array<Record<string, unknown>[]> = [];
-          for (const statement of statements)
-            result.push(await this.database.execute(statement));
-          return result;
-        });
+        // The 1 to 100 bound is the automation engine's own: one unit of
+        // work per claim. `atomicBatch` itself takes any length.
+        return await this.database.atomicBatch(statements);
       } catch {
         // Driver exceptions may contain bound values. The caller sees a safe
         // boundary failure; recovery inspects durable receipts on the primary.

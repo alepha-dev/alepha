@@ -7,8 +7,6 @@ import {
 } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
-import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
-import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   ProjectMergeReferences,
@@ -154,26 +152,9 @@ export class ProjectMergeService {
    * exclusive transaction, or a transaction on a driver that has one.
    */
   protected async apply(statements: SQLLike[]): Promise<void> {
-    if (!statements.length) {
-      return;
-    }
-    if (
-      this.database instanceof AutomationD1Provider ||
-      this.database instanceof AutomationSqliteProvider
-    ) {
-      await this.database.atomicBatch(statements);
-      return;
-    }
-    if (!this.database.supportsTransactions) {
-      throw new AlephaError(
-        "This database has no atomic batch: a project merge cannot run on it",
-      );
-    }
-    await this.database.transactional(async () => {
-      for (const statement of statements) {
-        await this.database.execute(statement);
-      }
-    });
+    // Unbounded: a merge emits one statement per rewritten row, well past
+    // the automation engine's 100.
+    await this.database.atomicBatch(statements);
   }
 }
 

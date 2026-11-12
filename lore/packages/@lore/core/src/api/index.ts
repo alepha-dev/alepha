@@ -48,7 +48,6 @@ import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.t
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
-import { AutomationSqliteProvider } from "./providers/AutomationSqliteProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
@@ -351,17 +350,6 @@ export const LoreCoreApi = $module({
         provide: DatabaseProvider,
         use: AutomationD1Provider,
       });
-    else if (
-      !alepha.isBun() &&
-      (!alepha.env.DATABASE_URL ||
-        String(alepha.env.DATABASE_URL) === ":memory:" ||
-        String(alepha.env.DATABASE_URL).startsWith("sqlite:"))
-    )
-      alepha.with({
-        optional: true,
-        provide: DatabaseProvider,
-        use: AutomationSqliteProvider,
-      });
     // Registered before any module, so these substitutions land before the
     // first `$audit` user or organization policy reader is constructed.
     alepha.with({
@@ -556,8 +544,6 @@ export { AutomationSourceRepository } from "./services/AutomationSourceRepositor
 export { AutomationOrigin } from "./services/AutomationOrigin.ts";
 
 export { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
-
-export { AutomationSqliteProvider } from "./providers/AutomationSqliteProvider.ts";
 
 export { AutomationSchedules } from "./services/AutomationSchedules.ts";
 export {

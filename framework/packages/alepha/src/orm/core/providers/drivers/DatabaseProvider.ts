@@ -944,6 +944,73 @@ export abstract class DatabaseProvider {
   }
 
   /**
+   * Run `statements` as one atomic unit, and return each one's rows, in
+   * order: all of them apply, or none does.
+   *
+   * - Postgres: one transaction.
+   * - SQLite (Node and Bun): an exclusive native transaction on the shared
+   *   connection, even when `DATABASE_TRANSACTIONS=false` switches ordinary
+   *   transactions off (the way a test emulates D1).
+   * - Cloudflare D1: the binding's native `batch()`, the only atomic write D1
+   *   offers, since it refuses `BEGIN`.
+   *
+   * Inside an open `transactional()` block the statements run in it, in
+   * place: no nested `BEGIN`, and the block's commit or rollback decides.
+   *
+   * There is no statement cap: D1 accepts a long batch, and a caller that
+   * wants a bound (one unit of work per request, say) enforces its own.
+   *
+   * It is the primitive for writes that must land together on a database
+   * without interactive transactions; a statement is a raw `sql` fragment.
+   *
+   * ```ts
+   * await database.atomicBatch([
+   *   sql`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${from}`,
+   *   sql`UPDATE accounts SET balance = balance + ${amount} WHERE id = ${to}`,
+   * ]);
+   * ```
+   */
+  public async atomicBatch(
+    statements: SQLLike[],
+  ): Promise<Array<Record<string, unknown>[]>> {
+    if (statements.length === 0) {
+      return [];
+    }
+    if (this.alepha.get("alepha.orm.tx")) {
+      return this.executeEach(statements);
+    }
+    return this.runAtomicBatch(statements);
+  }
+
+  /**
+   * The driver half of {@link atomicBatch}, outside an open transaction:
+   * one transaction here, overridden where the driver has a better unit.
+   */
+  protected async runAtomicBatch(
+    statements: SQLLike[],
+  ): Promise<Array<Record<string, unknown>[]>> {
+    if (!this.supportsTransactions) {
+      throw new AlephaError(
+        `The ${this.driver} driver has transactions switched off and no native batch: an atomic batch cannot run on it`,
+      );
+    }
+    return this.transactional(() => this.executeEach(statements));
+  }
+
+  /**
+   * Each statement in turn, on the open transaction if there is one.
+   */
+  protected async executeEach(
+    statements: SQLLike[],
+  ): Promise<Array<Record<string, unknown>[]>> {
+    const rows: Array<Record<string, unknown>[]> = [];
+    for (const statement of statements) {
+      rows.push(await this.execute(statement));
+    }
+    return rows;
+  }
+
+  /**
    * The driver half of {@link execute}: run the statement, return its rows.
    */
   protected abstract executeStatement(

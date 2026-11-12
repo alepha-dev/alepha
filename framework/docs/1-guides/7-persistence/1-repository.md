@@ -715,6 +715,20 @@ Code that must be correct on D1 does not rely on a rollback:
 
 Specs can run the same way on SQLite with `DATABASE_TRANSACTIONS: false` (see the testing guide).
 
+### Atomic batches
+
+When several writes must land together, and none needs to read what an earlier one wrote, `DatabaseProvider.atomicBatch(statements)` runs them as one unit on every driver: D1's native `batch()`, an exclusive transaction on SQLite (even with `DATABASE_TRANSACTIONS: false`), a transaction on Postgres. All apply or none does, and it answers each statement's rows in order.
+
+```typescript
+const database = this.alepha.inject(DatabaseProvider);
+await database.atomicBatch([
+  sql`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${from} AND balance >= ${amount}`,
+  sql`UPDATE accounts SET balance = balance + ${amount} WHERE id = ${to}`,
+]);
+```
+
+Inside an open `$transactional()` block the statements join it instead of opening another. There is no cap on their number; a caller that wants one sets its own.
+
 Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time - `Promise.all`, two requests, a job racing a handler - never read or write through each other's transaction.
 
 ### After the commit
