@@ -178,3 +178,80 @@ export const testGreatestLeast = async (alepha: Alepha) => {
     ["b", true],
   ]);
 };
+
+export const sqlxDocs = $entity({
+  name: "sqlx_docs",
+  schema: z.object({
+    id: db.primaryKey(z.text()),
+    history: z.array(z.object({ action: z.text() })),
+  }),
+});
+
+class SqlxJsonFixture {
+  readonly docs = $repository(sqlxDocs);
+  readonly events = $repository(sqlxEvents);
+  readonly database = $inject(DatabaseProvider);
+  readonly sqlx = $inject(SqlExpressionProvider);
+}
+
+/**
+ * `jsonSet` stores an expression as the scalar it evaluates to and a plain
+ * value as its JSON; `jsonArrayAppend` keeps an appended object an object.
+ */
+export const testJsonHelpers = async (alepha: Alepha) => {
+  const app = alepha.inject(SqlxJsonFixture);
+  await alepha.start();
+  await app.events.createMany([
+    { id: "e1", startedAt: "2026-03-01T00:00:00.000Z" },
+    { id: "e2", startedAt: "2026-03-02T00:00:00.000Z" },
+  ]);
+
+  const counted = app.sqlx.jsonSet(
+    app.sqlx.jsonSet(
+      sql`${JSON.stringify({ fields: { kept: 1 } })}`,
+      ["fields", "total"],
+      sql`(SELECT COUNT(*) FROM ${app.events.table})`,
+    ),
+    ["fields", "label"],
+    { nested: ["a"] },
+  );
+  const [row] = await app.database.run(
+    sql`SELECT ${counted} AS payload`,
+    z.object({ payload: z.any() }),
+  );
+  const payload =
+    typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
+  expect(payload).toEqual({
+    fields: { kept: 1, total: 2, label: { nested: ["a"] } },
+  });
+  expect(() => app.sqlx.jsonSet(sql`'{}'`, ["a.b"], 1)).toThrow(/JSON path/);
+
+  // Over a real JSON array value. (A stored Postgres jsonb column is not
+  // used here: the ORM's jsonb type stores a string scalar today, which no
+  // JSON function can append to.)
+  const array =
+    app.database.dialect === "sqlite"
+      ? sql`${JSON.stringify([{ action: "created" }])}`
+      : sql`CAST(CAST(${JSON.stringify([{ action: "created" }])} AS text) AS jsonb)`;
+  const [appended] = await app.database.run(
+    sql`SELECT ${app.sqlx.jsonArrayAppend(array, { action: "pinged" })} AS history`,
+    z.object({ history: z.any() }),
+  );
+  const history =
+    typeof appended.history === "string"
+      ? JSON.parse(appended.history)
+      : appended.history;
+  expect(history).toEqual([{ action: "created" }, { action: "pinged" }]);
+
+  // And through an update of a stored array, on SQLite.
+  if (app.database.dialect === "sqlite") {
+    await app.docs.create({ id: "d1", history: [{ action: "created" }] });
+    await app.docs.updateById("d1", {
+      history: app.sqlx.jsonArrayAppend(app.docs.table.history, {
+        action: "pinged",
+      }) as never,
+    });
+    const doc = await app.docs.getById("d1");
+    expect(doc.history).toEqual([{ action: "created" }, { action: "pinged" }]);
+  }
+};

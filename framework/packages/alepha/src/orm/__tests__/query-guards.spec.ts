@@ -88,7 +88,7 @@ describe("query guards", () => {
   });
 
   describe("array operators on sqlite", () => {
-    it("should refuse arrayContains instead of emitting invalid SQL", async () => {
+    it("should refuse arrayOverlaps instead of emitting invalid SQL", async () => {
       // These map to postgres array functions; sqlite/D1 stores arrays as
       // JSON text, so they produced invalid SQL or wrong semantics.
       const alepha = Alepha.create({
@@ -99,9 +99,37 @@ describe("query guards", () => {
 
       await expect(
         app.repository.findMany({
-          where: { tags: { arrayContains: ["x"] } },
+          where: { tags: { arrayOverlaps: ["x"] } },
         }),
       ).rejects.toThrow(/not supported on sqlite/i);
+    });
+
+    it("should test arrayContains over the JSON text, every element", async () => {
+      const alepha = Alepha.create({
+        env: { DATABASE_URL: "sqlite://:memory:" },
+      });
+      const app = alepha.inject(App);
+      await alepha.start();
+      const create = (name: string, tags: string[]) =>
+        app.repository.create({ name, tags } as never);
+      await create("both", ["x", "y"]);
+      await create("x only", ["x"]);
+      await create("none", []);
+
+      const names = async (tags: string[]) =>
+        (
+          await app.repository.findMany({
+            where: { tags: { arrayContains: tags } },
+          })
+        )
+          .map((row) => row.name)
+          .sort();
+      expect(await names(["x"])).toEqual(["both", "x only"]);
+      expect(await names(["x", "y"])).toEqual(["both"]);
+      expect(await names(["z"])).toEqual([]);
+      // A quote is a value, never SQL.
+      expect(await names(["x') OR 1=1 --"])).toEqual([]);
+      await expect(names([])).rejects.toThrow(/non-empty/);
     });
 
     it("should still allow arrayContains on postgres", async () => {

@@ -8,6 +8,7 @@ import {
   testDateDiff,
   testDateWeek,
   testGreatestLeast,
+  testJsonHelpers,
 } from "./sql-expression-tests.ts";
 
 describe("SqlExpressionProvider", () => {
@@ -63,6 +64,17 @@ describe("SqlExpressionProvider", () => {
     });
     it("should pick across values and columns (postgres)", async () => {
       await testGreatestLeast(Alepha.create().with(AlephaOrmPostgres));
+    });
+  });
+
+  describe("jsonSet / jsonArrayAppend", () => {
+    it("should set a path and append to an array (sqlite)", async () => {
+      await testJsonHelpers(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should set a path and append to an array (postgres)", async () => {
+      await testJsonHelpers(Alepha.create().with(AlephaOrmPostgres));
     });
   });
 });

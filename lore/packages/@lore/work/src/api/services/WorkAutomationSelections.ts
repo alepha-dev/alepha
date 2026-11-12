@@ -4,7 +4,12 @@ import {
   type AutomationSelectionHandler,
 } from "@lore/core/api";
 import { $inject, z } from "alepha";
-import { $repository, sql, type PgQueryWhere } from "alepha/orm";
+import {
+  $repository,
+  type PgQueryWhere,
+  SqlExpressionProvider,
+  sql,
+} from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { epics } from "../entities/epics.ts";
@@ -21,6 +26,7 @@ export class WorkAutomationSelections {
   protected readonly epics = $repository(epics);
   protected readonly open = $inject(OpenQuestScope);
   protected readonly database = $inject(AutomationDatabase);
+  protected readonly sqlx = $inject(SqlExpressionProvider);
   constructor() {
     this.selections.register("quests.open", {
       select: (input) => this.select(input, false),
@@ -43,13 +49,9 @@ export class WorkAutomationSelections {
       if (typeof input.filters.tag !== "string")
         throw new BadRequestError("Tag must be text");
       const tag = input.filters.tag.trim().toLowerCase();
-      // `tags` is JSON text on SQLite, where the ORM refuses array operators,
-      // and `text[]` on Postgres, where `arrayContains` is `@> ARRAY[...]`.
-      if (this.quests.provider.dialect === "sqlite")
-        predicates.push(
-          sql`EXISTS (SELECT 1 FROM json_each(${this.quests.table.tags}) WHERE value = ${tag})`,
-        );
-      else where.tags = { arrayContains: [tag] };
+      // `tags` is JSON text on SQLite and `text[]` on Postgres; the ORM's
+      // `arrayContains` covers both.
+      where.tags = { arrayContains: [tag] };
     }
     if (input.filters.area !== undefined) {
       if (typeof input.filters.area !== "string")
@@ -183,15 +185,11 @@ export class WorkAutomationSelections {
         },
       ],
     })}`;
-    const history = JSON.stringify({
+    const append = this.sqlx.jsonArrayAppend(sql`history`, {
       at,
       by: assignee,
       action: "reminder_sent",
     });
-    const append =
-      this.quests.provider.dialect === "sqlite"
-        ? sql`json_insert(history, '$[#]', json(${history}))`
-        : sql`history || jsonb_build_array(${history}::jsonb)`;
     return {
       condition,
       statements: [
