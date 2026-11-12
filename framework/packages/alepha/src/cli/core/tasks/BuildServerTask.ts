@@ -295,7 +295,14 @@ export class BuildServerTask extends BuildTask {
     plugins.push(this.viteUtils.createClientModulesPlugin());
     // A pure controller's code becomes a chunk imported on its first use
     // (#Q3407), from the build list: only for a server build that has one.
-    const lazy = opts.surface ? new LazyControllerPlugin() : undefined;
+    // Off unless asked for at build time (#Q3407): on Lore it moved 0.4 MB
+    // out of the eager closure and no CPU, and a controller whose primitives
+    // register a module (`$action` registering the server) loses that
+    // registration when its class is not imported at boot.
+    const lazy =
+      opts.surface && process.env.ALEPHA_LAZY_CHUNKS === "true"
+        ? new LazyControllerPlugin()
+        : undefined;
     if (lazy && opts.surface) {
       plugins.push(lazy.create(opts.surface));
     }

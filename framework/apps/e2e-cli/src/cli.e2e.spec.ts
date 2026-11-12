@@ -1197,7 +1197,12 @@ describe("Alepha CLI E2E", () => {
           `http://localhost:${port}/api/hello`,
           30,
           500,
-        );
+        ).catch((error) => {
+          // A build that never answers: what it said is the diagnosis.
+          console.log("SERVER STDOUT:", server.stdout().slice(-3000));
+          console.log("SERVER STDERR:", server.stderr().slice(-3000));
+          throw error;
+        });
         expect(response.status).toBe(200);
 
         const page = await fetchWithRetry(`http://localhost:${port}/`, 30, 500);
