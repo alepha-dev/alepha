@@ -30,8 +30,13 @@ export interface A11yBaselineEntry {
 
   /**
    * axe's own selector for the node, copied from the failure message.
+   *
+   * A list when axe names the same node differently from one machine to
+   * another (it picks the shortest selector unique on the page as it is):
+   * each item is still one concrete selector, never a pattern, and the entry
+   * is stale only when none of them matches.
    */
-  selector: string;
+  selector: string | string[];
 
   /**
    * One sentence saying why it is not fixed here, and the quest that tracks
@@ -431,7 +436,11 @@ export const A11Y_BASELINE: A11yBaselineEntry[] = [
     page: "/pages/organizations/members",
     modes: ["light", "light-cvd"],
     rule: "color-contrast",
-    selector: ".flex-1.flex-col > .text-xs.text-muted-foreground",
+    // axe names this node with or without `.min-w-0` depending on the run.
+    selector: [
+      ".flex-1.flex-col > .text-xs.text-muted-foreground",
+      ".flex-1.flex-col.min-w-0 > .text-xs.text-muted-foreground",
+    ],
     reason:
       "--muted-foreground (#737373) on --muted (#f5f5f5) is 4.34:1 in light mode; the fix is a token change, outside #E135's fix budget (gap recorded on #Q3349).",
   },

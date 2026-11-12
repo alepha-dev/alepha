@@ -200,11 +200,15 @@ interface SeenFinding extends AccessibilityFinding {
  */
 const compare = (page: string, findings: SeenFinding[]) => {
   const entries = A11Y_BASELINE.filter((e) => e.page === page);
+  const selects = (e: A11yBaselineEntry, selector: string) =>
+    Array.isArray(e.selector)
+      ? e.selector.includes(selector)
+      : e.selector === selector;
   const known = (f: SeenFinding) =>
     entries.some(
       (e) =>
         e.rule === f.rule &&
-        e.selector === f.selector &&
+        selects(e, f.selector) &&
         e.modes.includes(f.mode),
     );
 
@@ -216,7 +220,7 @@ const compare = (page: string, findings: SeenFinding[]) => {
         (f) =>
           f.mode === mode &&
           f.rule === entry.rule &&
-          f.selector === entry.selector,
+          selects(entry, f.selector),
       );
       if (!seen) {
         stale.push(
@@ -282,7 +286,13 @@ test.describe("accessibility of the showcase", () => {
       "a baseline entry for a page the scan never visits",
     ).toEqual([]);
     const wildcards = A11Y_BASELINE.filter(
-      (e) => !e.page || !e.rule || !e.selector || e.modes.length === 0,
+      (e) =>
+        !e.page ||
+        !e.rule ||
+        e.modes.length === 0 ||
+        (Array.isArray(e.selector)
+          ? e.selector.length === 0 || e.selector.some((s) => !s)
+          : !e.selector),
     );
     expect(wildcards, "a baseline entry with an empty field").toEqual([]);
   });
