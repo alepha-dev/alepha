@@ -29,6 +29,7 @@ import {
   DurableObjectLifecycle,
   type DurableObjectLifecycleConfig,
 } from "../services/DurableObjectLifecycle.ts";
+import { PostgresMigrationsService } from "../services/PostgresMigrationsService.ts";
 import {
   InfraAdapter,
   type InfraContext,
@@ -104,6 +105,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   protected readonly buildTask = $inject(BuildCloudflareTask);
   protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
   protected readonly migrations = $inject(D1MigrationsService);
+  protected readonly postgresMigrations = $inject(PostgresMigrationsService);
   protected readonly assetManifest = $inject(CloudflareAssetManifest);
   protected readonly walker = $inject(AssetWalker);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -149,6 +151,20 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   public withSecrets(secrets: Record<string, string>): this {
     this.appSecrets = secrets;
     return this;
+  }
+
+  /**
+   * The instance's Postgres `DATABASE_URL`, when its secrets carry one
+   * (`postgres:` or `postgresql:`): the database is then Postgres through
+   * Hyperdrive instead of D1. Undefined otherwise.
+   */
+  protected async postgresUrl(): Promise<string | undefined> {
+    const url = this.appSecrets.DATABASE_URL;
+    if (!url) {
+      return undefined;
+    }
+    const { DatabaseUrlParser } = await import("alepha/orm");
+    return new DatabaseUrlParser().isPostgres(url) ? url : undefined;
   }
 
   /**
@@ -416,6 +432,24 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   ): Promise<void> {
     if (!ctx.resources.hasDatabase) {
       this.migrationsApplied = 0;
+      return;
+    }
+    const postgres = await this.postgresUrl();
+    if (postgres) {
+      // A Postgres instance (#Q3508): the artifact's migrations/postgres/,
+      // read from the deploy's own filesystem and applied over a direct
+      // connection. The URL is the instance's secret and is never logged.
+      const target = new URL(postgres).hostname;
+      await run({
+        name: `migrate postgres (${target})`,
+        handler: async () => {
+          this.migrationsApplied = await this.postgresMigrations.apply({
+            url: postgres,
+            schema: this.appSecrets.POSTGRES_SCHEMA,
+            root: ctx.root,
+          });
+        },
+      });
       return;
     }
     const name = ctx.naming.d1();

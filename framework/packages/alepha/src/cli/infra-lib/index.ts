@@ -13,6 +13,7 @@ import { D1MigrationsService } from "./services/D1MigrationsService.ts";
 import { InfraInspector } from "./services/InfraInspector.ts";
 import { InfraOrchestrator } from "./services/InfraOrchestrator.ts";
 import { NamingService } from "./services/NamingService.ts";
+import { PostgresMigrationsService } from "./services/PostgresMigrationsService.ts";
 import { SecretFilterService } from "./services/SecretFilterService.ts";
 import { WranglerApi } from "./services/WranglerApi.ts";
 
@@ -39,6 +40,7 @@ export const AlephaInfraLibPlugin = $module({
     CloudflareAdapter,
     CloudflareCredentialSource,
     D1MigrationsService,
+    PostgresMigrationsService,
     WranglerApi,
     InfraCacheProvider,
     GitHubSecretStore,
@@ -118,6 +120,7 @@ export * from "./services/CloudflareCredentialSource.ts";
 export * from "./services/CloudflareProvisionClient.ts";
 export * from "./services/CloudflareDeployClient.ts";
 export * from "./services/D1MigrationsService.ts";
+export * from "./services/PostgresMigrationsService.ts";
 export * from "./services/NamingService.ts";
 export * from "./services/InfraInspector.ts";
 export * from "./services/InfraOrchestrator.ts";

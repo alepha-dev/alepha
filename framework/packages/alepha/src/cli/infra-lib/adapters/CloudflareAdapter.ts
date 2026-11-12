@@ -24,6 +24,7 @@ import { CloudflareCredentialSource } from "../services/CloudflareCredentialSour
 import type { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import type { D1MigrationTransport } from "../services/D1MigrationsService.ts";
 import { NamingService } from "../services/NamingService.ts";
+import { PostgresMigrationsService } from "../services/PostgresMigrationsService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import type {
@@ -69,6 +70,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
   protected readonly credentials = $inject(CloudflareCredentialSource);
   protected readonly runner = $inject(Runner);
   protected readonly placeholders = $inject(StoragePlaceholderService);
+  protected readonly postgresMigrations = $inject(PostgresMigrationsService);
   protected readonly options = $store(infraOptions);
 
   protected provisionedD1Id?: string;
@@ -1045,14 +1047,23 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     run: RunnerMethod,
   ): Promise<void> {
     if (ctx.prebuilt) {
-      // Postgres + Hyperdrive prebuilt deploys need a separate
-      // migration story (an alepha-CLI-free `apply` against the
-      // packed `migrations/postgres/` dir)  -  not implemented yet.
-      // Lore Deploy's v1 path is D1, which migrates over the D1 API
-      // (`D1MigrationsService`) and works fine in prebuilt mode.
-      throw new AlephaError(
-        "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha deploy` CLI for now.",
-      );
+      // A prebuilt artifact carries no CLI (#Q3508): its
+      // migrations/postgres/ is applied in process, over the journal and
+      // lock every other Postgres migrate uses.
+      await run({
+        name: "migrate postgres",
+        handler: async () => {
+          const envVars = await this.envUtils.parseEnv(ctx.root, [
+            `.env.${ctx.env}`,
+          ]);
+          await this.postgresMigrations.apply({
+            url: envVars.DATABASE_URL ?? process.env.DATABASE_URL!,
+            schema: envVars.POSTGRES_SCHEMA ?? process.env.POSTGRES_SCHEMA,
+            root: ctx.root,
+          });
+        },
+      });
+      return;
     }
     await run({
       name: "migrate postgres",
