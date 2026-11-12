@@ -283,7 +283,10 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
           items={props.fields
             .filter(
               (field) =>
-                !isLocked(field) && !field.hidden && !shown.includes(field.key),
+                !isLocked(field) &&
+                !field.hidden &&
+                field.menu !== false &&
+                !shown.includes(field.key),
             )
             .map((field) => ({
               key: field.key,

@@ -415,13 +415,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     run: RunnerMethod,
   ): Promise<void> {
     if (!ctx.resources.hasDatabase) {
+      this.migrationsApplied = 0;
       return;
     }
     const name = ctx.naming.d1();
     await run({
       name: `migrate d1 (${name})`,
       handler: async () => {
-        await this.migrations.apply(
+        this.migrationsApplied = await this.migrations.apply(
           this.migrationTransport(),
           name,
           ctx.root,
@@ -460,6 +461,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * touch every adapter for one caller's benefit.
    */
   public deployedVersionId?: string;
+
+  /**
+   * How many D1 migrations this deploy applied: `0` for a build with no
+   * database, unset until `migrate` ran. Read off the adapter by a deployer
+   * that records it, so a rollback past this run knows whether it crosses a
+   * schema change (#Q3479).
+   */
+  public migrationsApplied?: number;
 
   /**
    * What this deploy actually provisioned, by id where one exists.

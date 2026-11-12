@@ -67,7 +67,89 @@ alepha.store.mut(helmetOptions, (old) => ({
 
 A header the handler already set is never overwritten. `Strict-Transport-Security` goes out only on a secure request (`https`, or `X-Forwarded-Proto: https` from your proxy), in production, or when `isSecure` is `true`.
 
-`contentSecurityPolicy` has three states. Omit it and no CSP header is sent. Pass `{}` (no `directives`) to send the built-in policy: `'self'` for scripts, forms, frames and images, `'none'` for objects, plus `upgrade-insecure-requests`. Pass `{ directives: {} }` to send no CSP header while leaving every other security header in place - an empty directive map is not a permissive policy, so it is dropped rather than sent empty.
+`contentSecurityPolicy` has three states. Omit it and no CSP header is sent: that is the framework default, so an existing app is unchanged until it opts in. Pass `{}` (no `directives`) to send the built-in policy: `'self'` for scripts, forms and frames, `'self'`, `data:` and `blob:` for images, `'none'` for objects, plus `upgrade-insecure-requests`. A project created by `alepha init` has that one line in `src/main.server.ts` already; an existing app turns the CSP on by adding it:
+
+```typescript
+import { helmetOptions } from "alepha/server";
+
+alepha.store.mut(helmetOptions, (old) => ({
+  ...old,
+  contentSecurityPolicy: {},
+}));
+```
+
+Pass `{ directives: {} }` to send no CSP header while leaving every other security header in place - an empty directive map is not a permissive policy, so it is dropped rather than sent empty.
+
+#### Content Security Policy
+
+The built-in policy is strict on scripts: `script-src 'self'`, with no `'unsafe-inline'` and no `'unsafe-eval'`. `style-src` keeps `'unsafe-inline'`, because React renders `style=""` attributes that no hash or nonce can cover.
+
+The framework writes a few inline scripts of its own, and adds what they need to the policy itself, so an app that turns the CSP on adds nothing for them:
+
+- **A hash for what is constant.** The colour scheme boot of `alepha/react/ui`, the boot signal of a streamed page, and every inline script of a global `$head` given a literal object are allowed by their SHA-256 in `script-src`. The hashes are computed once, at `configure`, and work everywhere the header goes: a cached page, a prerendered file, the `_headers` file a host applies to the files it serves ahead of the app.
+- A `$head` that sets a `type` other than JavaScript (`application/ld+json`, `application/json`) is a data block, which the CSP does not govern: it is not hashed.
+- **A nonce for what is not.** On a page it renders, the server adds a fresh `'nonce-...'` to `script-src` and writes it on every inline script no hash covers: React's own streaming scripts, the script delivering a deferred value, and the inline scripts of a `$head` function or a page `head` (their content is known only per render). A client navigation gives the head scripts it inserts the same nonce.
+
+Which to use for your own inline script: a global `$head` given a literal object is hashed for you and costs nothing. Anything built per request gets the nonce, and that has a price: **a nonce never enters the page cache.** A page whose markup carries one (a streamed page that suspended, an unhashed inline head script) is rendered on every request, and in development its `x-alepha-cache` header says `reason=csp-nonce`. A page answered from the cache carries no nonce, and its header is the static policy. A prerendered page has no request, so no nonce: an inline script there that no hash covers is blocked, so keep the scripts of a prerendered page in a literal `$head`.
+
+The nonce goes into `script-src` only. `style-src` keeps `'unsafe-inline'`, which a browser ignores as soon as a nonce or a hash sits beside it. An API response or a file never asks for a nonce, and keeps the cached header. Your own code reads the current request's nonce with `ServerHelmetProvider.cspNonce()`, which creates it on first use.
+
+`alepha dev` enforces the same policy, so a violation shows while you write the code rather than in the production build. The dev head is inline scripts (the build metadata, your `define` constants, the reload handler, the stylesheet import, the plugins' preambles such as React Refresh); each is constant for the dev session and allowed by its hash. The HMR websocket is same-origin and passes `'self'`, and the `<style>` tags Vite injects pass `'unsafe-inline'`. One directive is left out in dev: `upgrade-insecure-requests`, since the dev server is plain `http` on localhost and some browsers upgrade localhost too.
+
+To add a source without restating the whole policy, register it with `ServerHelmetProvider`. It is appended to the effective policy, the built-in one or your own `directives`, and a directive the policy does not have is created from `default-src` first, so `frame-src` keeps the `'self'` it inherited:
+
+```typescript
+import { $hook, $inject } from "alepha";
+import { ServerHelmetProvider } from "alepha/server";
+
+class Analytics {
+  protected readonly helmet = $inject(ServerHelmetProvider);
+
+  protected readonly onConfigure = $hook({
+    on: "configure",
+    handler: () => {
+      this.helmet.addCspSource("script-src", "https://cdn.example.com");
+      this.helmet.addCspSource("connect-src", "https://api.example.com");
+      // One constant inline script of your own, by its hash:
+      this.helmet.addCspScriptHash("window.dataLayer=[]");
+    },
+  });
+}
+```
+
+Two framework modules load a third-party script, and add their hosts the same way, only when they are the provider in use:
+
+- **Turnstile** (`alepha/captcha`), when `TurnstileCaptchaProvider` is the captcha: `https://challenges.cloudflare.com` in `script-src` and `frame-src`.
+- **Stripe** (`@alepha/payments-stripe`), when it is the payment provider: `https://js.stripe.com` and `https://*.js.stripe.com` in `script-src` and `frame-src`, `https://hooks.stripe.com` in `frame-src` (3-D Secure), `https://api.stripe.com` in `connect-src`.
+
+The lists are `TurnstileCaptchaProvider.CSP_SOURCES` and `StripePaymentProvider.CSP_SOURCES`, taken from each provider's CSP documentation. An app on the in-memory payment provider, or with no captcha configured, gets none of them. Any other third-party host (analytics, a tag manager, a font CDN for `connect-src`) is yours to declare with `addCspSource`, as above.
+
+A directive is matched in kebab-case or camelCase (`scriptSrc` and `script-src` are one directive). Nothing registered is sent while the CSP is off. Register at `configure`: the header is built once and cached, and `alepha build` writes the same policy into `dist/public/_headers` when it configures the app (a prerendered page or a static site). One line of that file holds 2000 characters, about 30 script hashes beside the built-in policy; the build says how many sources a policy over the limit holds.
+
+#### Trusted Types
+
+Opt in with `trustedTypes`, on top of the CSP:
+
+```typescript
+import { helmetOptions } from "alepha/server";
+
+alepha.store.mut(helmetOptions, (old) => ({
+  ...old,
+  contentSecurityPolicy: { trustedTypes: true },
+}));
+```
+
+The policy then gains `require-trusted-types-for 'script'` and `trusted-types alepha`: a DOM sink that runs code (`innerHTML`, a `<script>`'s text or `src`, React's `dangerouslySetInnerHTML`) takes only a value a Trusted Types policy made, and a plain string is refused. That is a browser-enforced defence against DOM XSS, available in every current browser.
+
+The framework's own sinks go through one policy, `alepha` (`TrustedTypes` in `alepha/react`): the head scripts a client navigation inserts, the deferred-value script, the chart styles and the MFA QR code of `@alepha/ui`, and the Turnstile and Stripe loaders. It passes its input through, because each of those values is built by the framework itself; it is not a sanitizer.
+
+Your own sinks need a policy of your own: create it with `trustedTypes.createPolicy("mine", { createHTML: sanitize })` and allow its name with `trustedTypes: ["mine"]`. Never reuse `alepha` for content a visitor controls.
+
+#### Subresource Integrity
+
+`alepha build` computes a SHA-384 of every JS and CSS file it emits, and the server writes it as `integrity` on what the document has a tag for: the entry script, the entry stylesheets, and every `modulepreload` (the entry's own graph and the first page's chunks), plus the matching `Link` header preloads. A browser refuses any of those files whose bytes changed between the build and the visitor. A `$head` link given an `integrity` gets the attribute too. Nothing to turn on, and it works with or without the CSP.
+
+What it does not cover: a chunk loaded later by an `import()` (a client navigation to another page, a lazy component) and a page stylesheet Vite inserts itself have no tag in the document, so no integrity. They are authorised by `script-src 'self'` (and `style-src`) only; no import map with an `integrity` section is built, since it would be an inline script of tens of kilobytes on every page of a large app. For a payment page under PCI DSS 4.0.1 requirement 6.4.3, that means the method for a lazily loaded chunk is the CSP, not SRI: keep the checkout's code in the page's static imports if you want every byte of it integrity-checked. `alepha dev` serves no hashed files and writes no integrity.
 
 ### Body Parser
 

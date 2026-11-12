@@ -34,14 +34,28 @@ export class ReactPreloadProvider {
 
     const links: string[] = [];
 
-    // CSS - preload as style
-    for (const css of assets.css) {
-      links.push(`<${css}>; rel=preload; as=style`);
-    }
+    // A preload starts the fetch the document's tag will reuse, so it must
+    // carry the same integrity (#Q3319). Without it, the header's unchecked
+    // fetch of the entry filled the browser's module map first, and the
+    // `<script integrity>` ran whatever it got; the stylesheet's preload was
+    // discarded as a mismatch and fetched twice. `crossorigin` matches the
+    // stylesheet tag, which needs it for integrity.
+    assets.css.forEach((css, i) => {
+      const integrity = assets.cssIntegrity?.[i];
+      links.push(
+        integrity
+          ? `<${css}>; rel=preload; as=style; crossorigin; integrity="${integrity}"`
+          : `<${css}>; rel=preload; as=style`,
+      );
+    });
 
     // JS - modulepreload for ES modules
     if (assets.js) {
-      links.push(`<${assets.js}>; rel=modulepreload`);
+      links.push(
+        assets.jsIntegrity
+          ? `<${assets.js}>; rel=modulepreload; integrity="${assets.jsIntegrity}"`
+          : `<${assets.js}>; rel=modulepreload`,
+      );
     }
 
     return links.length > 0 ? links.join(", ") : null;

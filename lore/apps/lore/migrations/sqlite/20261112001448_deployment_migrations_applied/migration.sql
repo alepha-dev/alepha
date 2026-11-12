@@ -1,0 +1,1 @@
+ALTER TABLE `deployments` ADD `migrations_applied` integer;

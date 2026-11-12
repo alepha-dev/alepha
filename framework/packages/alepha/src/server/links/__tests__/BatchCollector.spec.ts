@@ -40,6 +40,47 @@ describe("BatchCollector", () => {
     expect(direct).toEqual(["upload", "list"]);
   });
 
+  it("reports a failed entry on client:request:error, once per distinct call, as a single call does", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const http = alepha.inject(HttpClient);
+    http.fetch = (async () => ({
+      data: [
+        { action: "ok", status: 200, data: "fine" },
+        {
+          action: "secret",
+          status: 401,
+          error: "Sign in first",
+          name: "UNAUTHORIZED",
+        },
+      ],
+    })) as any;
+    const heard: number[] = [];
+    alepha.events.on("client:request:error", ({ error }) => {
+      heard.push((error as HttpError).status);
+    });
+    const collector = alepha.inject(BatchCollector);
+    const entry = (action: string) => ({
+      action,
+      directCall: async () => action,
+    });
+
+    const settled = await Promise.allSettled([
+      collector.add(entry("ok")),
+      collector.add(entry("secret")),
+      // The same call again: deduplicated, one report for both.
+      collector.add(entry("secret")),
+    ]);
+
+    expect(settled.map((it) => it.status)).toEqual([
+      "fulfilled",
+      "rejected",
+      "rejected",
+    ]);
+    expect(heard).toEqual([401]);
+  });
+
   it("rejects a failed entry as its own class, with its request id (#Q3104)", async ({
     expect,
   }) => {

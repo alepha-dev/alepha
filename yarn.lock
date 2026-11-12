@@ -10252,6 +10252,7 @@ __metadata:
   resolution: "totp-example@workspace:framework/apps/examples/totp"
   dependencies:
     "@alepha/ui": "workspace:*"
+    "@playwright/test": "npm:^1.65.0"
     "@tailwindcss/vite": "npm:^4.3.5"
     alepha: "workspace:^"
     lucide-react: "npm:^1.70.0"

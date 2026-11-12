@@ -1,5 +1,5 @@
 import type { MyMfaController } from "alepha/api/users";
-import { useAction, useClient, useQuery } from "alepha/react";
+import { TrustedTypes, useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
@@ -162,7 +162,9 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                   className="mx-auto w-48 rounded-lg bg-white p-3 [&>svg]:w-full"
                   // The QR is generated server-side, from a URI the server
                   // built itself. No user input reaches it.
-                  dangerouslySetInnerHTML={{ __html: enrollment.qrSvg }}
+                  dangerouslySetInnerHTML={{
+                    __html: TrustedTypes.html(enrollment.qrSvg),
+                  }}
                 />
 
                 <details className="text-muted-foreground text-center text-xs">

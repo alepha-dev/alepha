@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
-import { expect } from "@playwright/test";
+import type { Page } from "./fixtures.ts";
+import { expect } from "./fixtures.ts";
 
 /**
  * Walk the funnel up to the PSP redirect and finish the payment there.

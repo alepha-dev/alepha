@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { PasskeyClient } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 
@@ -16,5 +17,11 @@ import { UiThemes } from "./UiThemes.ts";
 export const UiWeb = $module({
   name: "ui.web",
   imports: [AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, UiI18n, UiThemes],
+  /**
+   * `PasskeyClient` because the Sign in and Security showcases render the
+   * passkey button and card, which inject it: with its module never
+   * registered, the locked container refused it and both pages failed to
+   * render. Listing the class brings its module in at boot.
+   */
+  services: [AppRouter, UiI18n, UiThemes, PasskeyClient],
 });

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.ts";
 
 /**
  * A returning visitor who collapsed the sidebar, on a prerendered page
@@ -44,7 +44,7 @@ test.describe("Sidebar cookie on a prerendered page", () => {
     ]);
   });
 
-  const read = (page: import("@playwright/test").Page) =>
+  const read = (page: import("./fixtures.ts").Page) =>
     page.evaluate(() => ({
       label: document
         .querySelector(

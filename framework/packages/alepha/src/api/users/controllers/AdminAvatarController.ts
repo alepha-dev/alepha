@@ -1,5 +1,5 @@
 import { $inject, Alepha, z } from "alepha";
-import { $permission, $secure } from "alepha/security";
+import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import { UserAudits } from "../audits/UserAudits.ts";
@@ -34,11 +34,6 @@ export class AdminAvatarController {
   protected readonly alepha = $inject(Alepha);
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly userFiles = $inject(UserStorage);
-
-  readonly avatarPermission = $permission({
-    name: "admin:user:avatar",
-    description: "Manage another user's avatar",
-  });
 
   protected users(realm?: string) {
     return this.realmProvider.userRepository(realm);

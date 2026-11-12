@@ -28,6 +28,19 @@ export const ssrManifestAtomSchema = z.object({
           graph: z.array(z.number()),
         })
         .optional(),
+      /**
+       * Subresource Integrity of each file, parallel to `files`: a
+       * `sha384-<base64>` for every emitted JS and CSS file, `""` for any
+       * other. Computed by `alepha build` from the bytes it wrote.
+       *
+       * Covers what has a tag in a document: the entry script, the
+       * stylesheets, and every `modulepreload` the server writes (the
+       * entry's graph and the first page's). A chunk loaded later by an
+       * `import()` (a client navigation, a lazy component) carries no tag and
+       * is not integrity-checked: `script-src 'self'` is what authorises it.
+       * No import map with an `integrity` section is built.
+       */
+      integrity: z.array(z.string()).optional(),
     })
     .optional(),
 

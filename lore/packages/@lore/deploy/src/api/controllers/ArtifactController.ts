@@ -1,7 +1,7 @@
 import { $ownsProject, ProjectSecurityService } from "@lore/core/api";
 import { appNameSchema, releaseTagSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
-import { $storage, FileService } from "alepha/api/files";
+import { FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import type { UserAccountToken } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -13,6 +13,7 @@ import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
 import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
 import { ArtifactDetailService } from "../services/ArtifactDetailService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
+import { DeployBuckets } from "../services/DeployBuckets.ts";
 
 /**
  * The endpoint CI pushes a build into.
@@ -72,42 +73,15 @@ export class ArtifactController {
   }
 
   /**
-   * Where the tarballs live.
-   *
-   * ## ⚠️ The ceiling, and what it is really bounding
-   *
-   * 20 MB. A packed Alepha app is a few megabytes gzipped - Cloudflare's own
-   * Worker script limit is 10 MB compressed - so this is generous for the
-   * thing it is for and deliberately not open-ended.
-   *
-   * It is not only a storage quota. `z.file()` materialises the part before
-   * `$secure` runs, so this number is also how much an UNAUTHENTICATED request
-   * can make a Worker isolate hold. That isolate has around 128 MB in total,
-   * which is the reason this is 20 and not 200.
-   *
-   * The MIME list is the zstd and gzip families plus the catch-all every
-   * `curl -F` sends. It is a usability guard rather than a security control -
-   * the type is client-supplied - and the real check on the content is that
-   * the bytes have to decompress into a tar carrying a readable
-   * `manifest.json`.
-   *
-   * ⚠️ **gzip stays listed.** `alepha pack` produces zstd now, but artifacts
-   * pushed before the move are still in the registry and a re-push of one must
-   * not be refused on its type.
+   * The bucket, declared on `DeployBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
    */
-  artifactBucket = $storage({
-    name: ArtifactService.BUCKET,
-    description: "Build artifacts pushed by CI",
-    maxSize: 20,
-    mimeTypes: [
-      "application/zstd",
-      "application/x-zstd",
-      "application/gzip",
-      "application/x-gzip",
-      "application/x-compressed-tar",
-      "application/octet-stream",
-    ],
-  });
+  protected readonly buckets = $inject(DeployBuckets);
+
+  public get artifactBucket() {
+    return this.buckets.artifacts;
+  }
 
   /**
    * Store a build under `(app, tag, runtime)`.

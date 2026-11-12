@@ -11,7 +11,7 @@ import {
 import { type Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, createPagination, z } from "alepha";
-import { $storage, FileService } from "alepha/api/files";
+import { FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -69,6 +69,7 @@ import { QuestService } from "../services/QuestService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
+import { WorkBuckets } from "../services/WorkBuckets.ts";
 
 export class QuestController {
   protected readonly automationMutations = $inject(AutomationMutationContext);
@@ -204,40 +205,16 @@ export class QuestController {
   bound = $inject(BoundParameters);
   bestEffort = $inject(BestEffort);
 
-  attachments = $storage({
-    description: "Quest attachments",
-    // Megabytes. This read `10 * 1024 * 1024`, i.e. a ten-million-megabyte
-    // cap — no cap at all.
-    maxSize: 10,
-    // No `mimeTypes`, on purpose: a quest carries whatever the work needs,
-    // an HTML mockup included. `$storage` reads an absent list as "any
-    // type", the same as the folio attachment bucket. A member is someone the
-    // project already trusts; feedback attachments come from anyone with an
-    // account and keep their own narrow list.
-    //
-    // This was a closed list until 2026-09-04, excluding `text/html` and
-    // `image/svg+xml` on the grounds that `/api/files/:id` serves a file
-    // inline with the type it was stored under, which would make an
-    // attachment stored XSS against the members who open it. That premise
-    // was already false when it was written: `serializeResponse` sets
-    // `Content-Disposition: attachment` on every `z.file()` response, so
-    // the browser saves the file instead of rendering it, whatever the type
-    // claims to be (`ServerRouterProvider`, pinned by
-    // `ServerRouterProvider-serializeResponse.spec.ts`).
-    //
-    // So the served DISPOSITION is what guards this bucket, not the list.
-    // What to check before changing any of it:
-    //
-    // - Serve an attachment without that header, or with `inline`, and every
-    //   markup type here becomes executable in this origin. A download route
-    //   that writes its own headers is the thing to watch for.
-    // - The lightbox renders images through `<img>` and everything else as
-    //   highlighted source (`attachmentPreview`). `<img>` does not run
-    //   an SVG's scripts; an `<iframe>` or a `dangerouslySetInnerHTML` over
-    //   attachment bytes would.
-    // - `LoreFileAccessProvider` gates reads on project membership, so a
-    //   file uploaded here is never reachable by a stranger holding the id.
-  });
+  /**
+   * The bucket, declared on `WorkBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
+   */
+  protected readonly buckets = $inject(WorkBuckets);
+
+  public get attachments() {
+    return this.buckets.questAttachments;
+  }
 
   /**
    * The four gates this controller needs.

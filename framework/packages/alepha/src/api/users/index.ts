@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaCacheDatabase } from "alepha/cache/database";
+import { AlephaServerAuth } from "alepha/server/auth";
 
 import { SessionAudits } from "./audits/SessionAudits.ts";
 import { UserAudits } from "./audits/UserAudits.ts";
@@ -21,6 +22,7 @@ import { UserController } from "./controllers/UserController.ts";
 import { UserJobs } from "./jobs/UserJobs.ts";
 import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { RealmProvider } from "./providers/RealmProvider.ts";
+import { AvatarPermissions } from "./services/AvatarPermissions.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
 import { MfaService } from "./services/MfaService.ts";
@@ -131,7 +133,14 @@ export const AlephaApiUsers = $module({
    * container has one - and a dependency that load-bearing must not rest on
    * a line somebody could tidy away.
    */
-  imports: [AlephaCacheDatabase],
+  /**
+   * `AlephaServerAuth` for the same reason, and one more: only
+   * `RealmController` injects its `ServerAuthProvider`, and that controller
+   * is pure, so created on its first request. Left to that injection the
+   * module would arrive after start, its provider missing the `configure`
+   * hook it holds (#Q3485).
+   */
+  imports: [AlephaCacheDatabase, AlephaServerAuth],
   services: [
     RealmProvider,
     SessionService,
@@ -171,6 +180,7 @@ export const AlephaApiUsers = $module({
     // Same gate, same reason: a realm that switched avatars off must not grow
     // admin endpoints for them either.
     AdminAvatarController,
+    AvatarPermissions,
   ],
 });
 

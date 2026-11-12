@@ -2,6 +2,7 @@ import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
 import { accountRouterOptionsAtom } from "@alepha/ui/account";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha, run } from "alepha";
+import { helmetOptions } from "alepha/server";
 
 import { ShopApi } from "./api/index.ts";
 import { shopAccountOptions } from "./web/accountChrome.tsx";
@@ -45,6 +46,16 @@ const alepha = Alepha.create({
  * depends on the mock — and a dead end on a deployed site. Configure Stripe
  * before deploying, or accept a storefront you cannot buy from.
  */
+// The strict Content Security Policy (#E130): scripts by hash or per-request
+// nonce, no 'unsafe-inline'. The e2e suite runs under it and fails on the
+// first violation, so it stays true.
+alepha.store.mut(helmetOptions, (old) => ({
+  ...old,
+  // Trusted Types too (#Q3320): the framework's DOM sinks go through its
+  // `alepha` policy, and the suite fails on any other.
+  contentSecurityPolicy: { trustedTypes: true },
+}));
+
 if (process.env.STRIPE_SECRET_KEY) {
   alepha.with(AlephaPaymentsStripe);
 }

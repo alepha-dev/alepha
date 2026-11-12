@@ -79,6 +79,14 @@ export const deployments = $entity({
      */
     versionId: z.string().max(100).optional(),
     /**
+     * How many database migrations this run applied (#Q3479): `0` for a run
+     * that applied none, or for a build with no database. Absent means
+     * UNKNOWN (a run from before this column, a Bay deploy, a run that
+     * failed before migrating), never "none": a rollback past an unknown run
+     * still asks.
+     */
+    migrationsApplied: z.integer().min(0).optional(),
+    /**
      * Where it landed, when the adapter is what put the host into effect.
      */
     url: z.string().max(500).optional(),

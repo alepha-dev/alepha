@@ -96,6 +96,7 @@ import { AutomationVariables } from "./services/AutomationVariables.ts";
 import { AutomationVariableService } from "./services/AutomationVariableService.ts";
 import { AutomationWorker } from "./services/AutomationWorker.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
+import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
@@ -181,6 +182,9 @@ export const LoreCoreApi = $module({
     AlephaApiOrganizations,
   ],
   services: [
+    // Every bucket of the package, at boot: an upload looks its bucket up
+    // by name, and the controllers that use one stay pure (#Q3404).
+    CoreBuckets,
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,

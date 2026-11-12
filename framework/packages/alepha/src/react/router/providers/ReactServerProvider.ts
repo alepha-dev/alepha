@@ -7,6 +7,7 @@ import {
   $inject,
   $store,
   Alepha,
+  AlephaError,
   type Infer,
   type Middleware,
   PipelineHandler,
@@ -20,7 +21,9 @@ import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
 import {
   type ServerHandler,
   ServerReply,
+  ServerHelmetProvider,
   type ServerRequest,
+  type ServerRequestData,
   ServerRouterProvider,
 } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
@@ -97,6 +100,7 @@ export class ReactServerProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly background = $inject(BackgroundTaskProvider);
   protected readonly deferred = $inject(ReactDeferred);
+  protected readonly helmet = $inject(ServerHelmetProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -120,10 +124,15 @@ export class ReactServerProvider {
   public readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
+      this.registerCspHashes();
+
       const pages = this.alepha.primitives($page);
+      // Page routers a build list let the app declare without creating
+      // (#Q3405): their pages are registered on the first page request.
+      const deferred = this.pageApi.hasDeclaredPages();
 
       const ssrEnabled =
-        pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
+        (pages.length > 0 || deferred) && this.env.REACT_SSR_ENABLED !== false;
 
       // production mode
       let root = "";
@@ -154,6 +163,14 @@ export class ReactServerProvider {
         }
       }
 
+      if (ssrEnabled && deferred) {
+        this.registerPagesOnFirstRequest();
+        this.log.info(
+          "SSR OK (page routers created on the first page request)",
+        );
+        return;
+      }
+
       if (ssrEnabled) {
         this.registerPages();
         this.log.info("SSR OK");
@@ -166,9 +183,58 @@ export class ReactServerProvider {
   });
 
   /**
+   * Allow the framework's constant inline scripts under the CSP by their
+   * SHA-256: the boot signal of a streamed page, and every inline script of a
+   * global `$head` given a literal object (the colour scheme boot of
+   * `alepha/react/ui` is one). Computed once, here, never per request.
+   *
+   * Registered whether the CSP is on or not: helmet sends them only when it
+   * is, and an app may turn it on after this hook.
+   */
+  protected registerCspHashes(): void {
+    this.helmet.addCspScriptHash(this.templateProvider.bootSignalScript);
+    for (const script of this.serverHeadProvider.constantInlineScripts()) {
+      this.helmet.addCspScriptHash(script);
+    }
+  }
+
+  /**
+   * Stands in for every page while the page routers are declared and not
+   * created (#Q3405): one `GET /*` placeholder, below every API and static
+   * route, so only a page request (or a not-found) reaches it. Its first hit
+   * creates the routers, builds the tree and registers the real page routes,
+   * whose `/*` replaces it, then answers through them. A cron or an API
+   * request never creates a router.
+   */
+  protected registerPagesOnFirstRequest(): void {
+    this.pageApi.onPagesBuilt = () => this.registerPages();
+    this.serverRouterProvider.createPlaceholder(
+      "GET",
+      "/*",
+      (request: ServerRequestData) => {
+        this.pageApi.ensurePages();
+        const { route } = this.serverRouterProvider.match(
+          `/GET${request.url.pathname}`,
+        );
+        if (!route || route.placeholder) {
+          throw new AlephaError(
+            "The page routers were created and registered no page route",
+          );
+        }
+        return route.handler(request);
+      },
+    );
+  }
+
+  /**
    * Register all pages as server routes.
    */
   protected registerPages(): void {
+    // Again here: the page routers are created on the first page request
+    // (#Q3405), after `configure`, so a literal `$head` they declare is only
+    // known now. Before the first response leaves, so its header has them.
+    this.registerCspHashes();
+
     // Set up early head content (entry assets)
     this.setupEarlyHeadContent();
 
@@ -314,6 +380,15 @@ export class ReactServerProvider {
 
     // Dev mode: use pre-transformed head content from Vite
     if (manifest.devHead) {
+      // `alepha dev` enforces the CSP as production does (#Q3353): its head
+      // is inline scripts (the build metadata, the define constants, the
+      // reload handler, the stylesheet import, the plugins' preambles), all
+      // constant for the dev session, so each is allowed by its hash.
+      for (const script of this.serverHeadProvider.inlineScriptsOf(
+        manifest.devHead,
+      )) {
+        this.helmet.addCspScriptHash(script);
+      }
       const devContent = faviconTag
         ? `${faviconTag}\n${manifest.devHead}\n`
         : `${manifest.devHead}\n`;
@@ -337,34 +412,62 @@ export class ReactServerProvider {
     }
     const assets = this.ssrManifestProvider.getEntryAssets();
     if (assets) {
-      for (const css of assets.css) {
-        parts.push(`<link rel="stylesheet" href="${css}">`);
-      }
+      assets.css.forEach((css, i) => {
+        const integrity = assets.cssIntegrity?.[i];
+        // `crossorigin` with the integrity: SRI on a file served from
+        // another origin (an asset base on a CDN) needs a CORS request, and it
+        // matches the `preload as=style crossorigin` the same file gets.
+        parts.push(
+          integrity
+            ? `<link rel="stylesheet" href="${css}" integrity="${integrity}" crossorigin="">`
+            : `<link rel="stylesheet" href="${css}">`,
+        );
+      });
     }
 
     // Everything above is safe on an error page; the entry script is not, so
     // the two heads fork here. See ReactServerTemplateProvider.errorHeadContent.
     const styleOnlyParts = [...parts];
 
-    if (assets?.js) {
+    // The entry is imported by every chunk (it holds the shared code). A
+    // module enters the browser's module map on its first fetch, whoever made
+    // it, and a later `<script integrity>` reuses that entry unchecked: when a
+    // preloaded chunk's import of the entry got there first, a tampered entry
+    // ran (#Q3319, measured in `apps/examples/ssr/e2e/prod/integrity.spec.ts`).
+    // A checked `modulepreload` of the entry ahead of every other module tag
+    // makes the first fetch the checked one.
+    if (assets?.js && assets.jsIntegrity) {
       parts.push(
-        // `async`: it must be able to run before the document ends, or a
-        // deferred value would hold the page dead until it settled. The early
-        // head leaves before the loaders, so this cannot depend on the page:
-        // `ReactBrowserProvider.payloadWritten` is what keeps every other page
-        // waiting for the end of the document, as a deferred script did.
-        `<script type="module" crossorigin="" src="${assets.js}" async></script>`,
+        `<link rel="modulepreload" href="${assets.js}" integrity="${assets.jsIntegrity}">`,
       );
     }
 
     // The entry's own static graph, which every page needs and nothing about
     // a request can change. Without it these chunks are discovered only by
     // parsing entry.js, two sequential round trips deep.
+    //
+    // Ahead of the entry script (#Q3319): a module is integrity-checked only
+    // when its `modulepreload` was processed before something imports it, so
+    // written after, the entry's static imports could be fetched unchecked.
     const entryGraph = this.templateProvider.renderHeadContent({
       link: this.ssrManifestProvider.collectEntryGraphLinks(),
     });
     if (entryGraph) {
       parts.push(entryGraph.trimEnd());
+    }
+
+    if (assets?.js) {
+      const integrity = assets.jsIntegrity
+        ? ` integrity="${assets.jsIntegrity}"`
+        : "";
+      parts.push(
+        // `async`: it must be able to run before the document ends, or a
+        // deferred value would hold the page dead until it settled. The early
+        // head leaves before the loaders, so this cannot depend on the page:
+        // `ReactBrowserProvider.payloadWritten` is what keeps every other page
+        // waiting for the end of the document, as a deferred script did.
+        `<script type="module" crossorigin="" src="${assets.js}"${integrity} async></script>`,
+      );
     }
 
     this.templateProvider.setEarlyHeadContent(
@@ -829,6 +932,14 @@ export class ReactServerProvider {
           return;
         }
       }
+      // A rendered response asks for its CSP nonce now, before the headers
+      // leave: on a streamed page they leave before the loaders run, so
+      // whether the page will need one cannot be waited for. A hit (above)
+      // asks for none, and keeps the static header.
+      const nonce = this.helmet.cspNonce(serverRequest);
+      if (nonce) {
+        this.alepha.store.set("alepha.react.router.nonce", nonce);
+      }
       const sink = cached && recorder ? new PageCacheSink() : undefined;
       const outcome = cached
         ? this.pageCache.refused.has(cached.key) && dev
@@ -1073,6 +1184,23 @@ export class ReactServerProvider {
 
     const parts = sink.parts();
 
+    // A nonce never enters shared bytes (#Q3318): a hit would replay it to
+    // another visitor under a header that does not allow it, or hand a valid
+    // nonce to whatever markup was stored with it. A page whose React stream
+    // suspended, or whose head has an inline script no hash covers, is
+    // rendered on every request instead.
+    const nonce = this.alepha.store.getUntracked("alepha.react.router.nonce");
+    if (nonce && (parts.head.includes(nonce) || parts.tail.includes(nonce))) {
+      this.log.debug(
+        `Page "${route.name}" was not cached: its markup carries the request's CSP nonce`,
+        { key: plan.key },
+      );
+      if (!this.alepha.isProduction() && !reply.headers["x-alepha-cache"]) {
+        reply.headers["x-alepha-cache"] = "bypass; reason=csp-nonce";
+      }
+      return;
+    }
+
     // Outside production, the read tracker gets a second opinion before the
     // first write: the same page rendered for nobody must be byte for byte
     // the same. A difference is personal data that reached the markup through
@@ -1131,7 +1259,7 @@ export class ReactServerProvider {
     );
 
     const anonymous = html.replace(
-      /<script id="__ssr_private" type="application\/json">[\s\S]*?<\/script>/,
+      /<script id="__ssr_private" type="application\/json"[^>]*>[\s\S]*?<\/script>/,
       "",
     );
     if (anonymous === shared) {
@@ -1163,6 +1291,9 @@ export class ReactServerProvider {
     "server-timing",
     "x-alepha-cache",
     "date",
+    // Helmet's, per response: a hit carries the static policy, never the
+    // nonce of the response it was stored from.
+    "content-security-policy",
   ]);
 
   // ---------------------------------------------------------------------------
@@ -1334,6 +1465,10 @@ export class ReactServerProvider {
 
     const element = this.pageApi.root(state);
     this.alepha.store.set("alepha.react.router.state", state);
+    this.alepha.store.set(
+      "alepha.react.router.streamed",
+      options.streamed === true,
+    );
 
     // Loaded here rather than imported at the top so the renderer stays off the
     // cold-start path — and loaded BEFORE the stream opens, because the error
@@ -1346,6 +1481,9 @@ export class ReactServerProvider {
       // stops the render (#E85). The page cache's anonymous re-render runs in
       // an isolated context, where this is the app signal instead.
       signal: this.alepha.context.signal,
+      // React's own streaming scripts (`$RC`, `$RB`...) change with the page:
+      // only the request's nonce can allow them.
+      nonce: this.alepha.store.getUntracked("alepha.react.router.nonce"),
       bootstrapScriptContent:
         deferred && options.streamed
           ? this.templateProvider.shellMarker

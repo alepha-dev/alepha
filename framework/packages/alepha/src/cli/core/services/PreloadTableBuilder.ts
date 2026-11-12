@@ -42,6 +42,12 @@ export interface PreloadTable {
     css: number[];
     graph: number[];
   };
+
+  /**
+   * Subresource Integrity, parallel to `files`: filled by `BuildServerTask`
+   * from the emitted bytes, `""` for a file that is neither JS nor CSS.
+   */
+  integrity?: string[];
 }
 
 /**

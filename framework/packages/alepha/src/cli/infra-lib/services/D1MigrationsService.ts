@@ -155,14 +155,16 @@ export class D1MigrationsService {
   }
 
   /**
-   * Apply pending D1 migrations.
+   * Apply pending D1 migrations, and answer how many it applied: what a
+   * deployer records so a later rollback knows whether it crosses a schema
+   * change (#Q3479).
    */
   public async apply(
     api: D1MigrationTransport,
     dbName: string,
     root?: string,
     migrationsDir = "migrations/sqlite",
-  ): Promise<void> {
+  ): Promise<number> {
     const databaseId = await api.resolveD1Id(dbName);
     // ⚠️ The bookkeeping table and the names in it, in ONE query (#Q3386):
     // two round trips on every deploy, nothing changed or not. Read from the
@@ -176,7 +178,7 @@ export class D1MigrationsService {
     const pending = migrations.filter((it) => !applied.has(it.name));
     if (pending.length === 0) {
       this.log.info("No pending D1 migrations");
-      return;
+      return 0;
     }
 
     if (applied.size === 0 && pending.length > 1) {
@@ -187,7 +189,7 @@ export class D1MigrationsService {
         );
         await api.d1Import(databaseId, batch);
         this.log.info(`Applied ${pending.length} D1 migration(s)`);
-        return;
+        return pending.length;
       }
     }
 
@@ -205,6 +207,7 @@ export class D1MigrationsService {
     }
 
     this.log.info(`Applied ${pending.length} D1 migration(s)`);
+    return pending.length;
   }
 
   /**

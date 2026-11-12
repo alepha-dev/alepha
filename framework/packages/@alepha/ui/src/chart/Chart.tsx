@@ -1,3 +1,4 @@
+import { TrustedTypes } from "alepha/react";
 import * as React from "react";
 import type { TooltipValueType } from "recharts";
 import * as RechartsPrimitive from "recharts";
@@ -105,9 +106,12 @@ const ChartStyle = (props: ChartStyleProps) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+        // Generated here from the chart's own config: the framework's
+        // Trusted Types policy lets it through when the CSP requires one.
+        __html: TrustedTypes.html(
+          Object.entries(THEMES)
+            .map(
+              ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
@@ -119,8 +123,9 @@ ${colorConfig
   .join("\n")}
 }
 `,
-          )
-          .join("\n"),
+            )
+            .join("\n"),
+        ),
       }}
     />
   );

@@ -1,3 +1,5 @@
+import { createHash, randomBytes } from "node:crypto";
+
 import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -26,6 +28,7 @@ export const helmetOptions = $atom({
     contentSecurityPolicy: z
       .object({
         directives: z.record(z.string(), z.any()).optional(),
+        trustedTypes: z.union([z.boolean(), z.array(z.string())]).optional(),
       })
       .optional(),
     referrerPolicy: z
@@ -60,7 +63,7 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-type CspDirective = string | string[];
+export type CspDirective = string | string[];
 
 export interface CspDirectives {
   "default-src"?: CspDirective;
@@ -90,6 +93,14 @@ export interface CspOptions {
    * without turning off the rest of helmet.
    */
   directives?: CspDirectives;
+  /**
+   * Turn on Trusted Types: `require-trusted-types-for 'script'` and
+   * `trusted-types alepha`, appended to the effective policy. A DOM sink
+   * that runs code then takes only a value a policy made: the framework's
+   * own go through its `alepha` policy (`TrustedTypes` in `alepha/react`).
+   * Pass a list to allow more policy names, the app's own. Off by default.
+   */
+  trustedTypes?: boolean | string[];
 }
 
 export interface HstsOptions {
@@ -111,6 +122,12 @@ export class ServerHelmetProvider {
    */
   protected readonly options = $store(helmetOptions);
 
+  /**
+   * The framework's Trusted Types policy name, `TrustedTypes.POLICY_NAME` in
+   * `alepha/react` (which the server cannot import).
+   */
+  public static readonly TRUSTED_TYPES_POLICY = "alepha";
+
   protected defaultCspDirectives(): CspDirectives {
     return {
       "default-src": ["'self'"],
@@ -118,7 +135,10 @@ export class ServerHelmetProvider {
       "font-src": ["'self'", "https:", "data:"],
       "form-action": ["'self'"],
       "frame-ancestors": ["'self'"],
-      "img-src": ["'self'", "data:"],
+      // `blob:`: an image the page made itself from a local file, such as the
+      // thumbnail `ControlUpload` shows before the upload (#Q3343). A blob URL
+      // is created by the document's own script, so it opens no third party.
+      "img-src": ["'self'", "data:", "blob:"],
       "object-src": ["'none'"],
       "script-src": ["'self'"],
       "script-src-attr": ["'none'"],
@@ -136,18 +156,210 @@ export class ServerHelmetProvider {
    */
   protected cachedHeaders?: {
     options: HelmetOptions;
+    sourcesVersion: number;
     headers: Record<string, string>;
   };
 
+  /**
+   * Sources other modules added to the policy, by kebab-case directive, in
+   * the order they were added. See {@link addCspSource}.
+   */
+  protected readonly cspSources = new Map<string, string[]>();
+
+  /**
+   * Bumped on every new source, so the cached header string is rebuilt.
+   */
+  protected cspSourcesVersion = 0;
+
+  /**
+   * The inline scripts whose hash is in `script-src`, by exact content.
+   */
+  protected readonly hashedScripts = new Map<string, string>();
+
   protected buildHeaders(): Record<string, string> {
     const options = this.options;
-    if (this.cachedHeaders?.options !== options) {
+    if (
+      this.cachedHeaders?.options !== options ||
+      this.cachedHeaders.sourcesVersion !== this.cspSourcesVersion
+    ) {
       this.cachedHeaders = {
         options,
+        sourcesVersion: this.cspSourcesVersion,
         headers: this.buildHeadersFromConfig(options),
       };
     }
     return this.cachedHeaders.headers;
+  }
+
+  /**
+   * Whether a `Content-Security-Policy` goes out: helmet is on, the option is
+   * set, and its `directives` (when given) are not the empty map that means
+   * "no CSP".
+   */
+  public isCspEnabled(): boolean {
+    const options = this.options;
+    const csp = options.contentSecurityPolicy;
+    if (options.disabled || !csp) {
+      return false;
+    }
+    return !csp.directives || Object.keys(csp.directives).length > 0;
+  }
+
+  /**
+   * Add sources to one directive of the policy, without restating it.
+   *
+   * Appended to the effective policy, the default one or the app's own
+   * `directives`, and deduplicated. `directive` is kebab-case or camelCase
+   * (`scriptSrc` and `script-src` are the same directive). A directive the
+   * policy does not have is created from the value of `default-src` first,
+   * so a `frame-src` added for one host keeps the `'self'` it inherited.
+   *
+   * Registered sources go out only when the CSP is on (see
+   * {@link isCspEnabled}); registering while it is off is harmless. Call it
+   * at `configure` time, never per request: the header is cached.
+   *
+   * @example
+   * ```ts
+   * alepha.inject(ServerHelmetProvider).addCspSource(
+   *   "connect-src",
+   *   "https://api.example.com",
+   * );
+   * ```
+   */
+  public addCspSource(directive: string, ...sources: string[]): void {
+    const key = this.kebabDirective(directive);
+    const list = this.cspSources.get(key) ?? [];
+    let changed = false;
+    for (const source of sources) {
+      if (!list.includes(source)) {
+        list.push(source);
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.cspSources.set(key, list);
+      this.cspSourcesVersion++;
+    }
+  }
+
+  /**
+   * The CSP source for an inline script: `'sha256-<base64>'` of its exact
+   * content, the bytes between `<script>` and `</script>`.
+   */
+  public cspScriptHash(content: string): string {
+    const digest = createHash("sha256")
+      .update(content, "utf8")
+      .digest("base64");
+    return `'sha256-${digest}'`;
+  }
+
+  /**
+   * Allow one constant inline script by its hash: add the SHA-256 of
+   * `content` to `script-src`, and return the source added.
+   *
+   * The content must be byte for byte what the document carries between
+   * `<script>` and `</script>`. Computed once, when called: register at
+   * `configure` time, never per request.
+   */
+  public addCspScriptHash(content: string): string {
+    let source = this.hashedScripts.get(content);
+    if (!source) {
+      source = this.cspScriptHash(content);
+      this.hashedScripts.set(content, source);
+    }
+    this.addCspSource("script-src", source);
+    return source;
+  }
+
+  /**
+   * Whether `content` is an inline script registered with
+   * {@link addCspScriptHash}, so a document may carry it with no nonce.
+   */
+  public isCspScriptHashed(content: string): boolean {
+    return this.hashedScripts.has(content);
+  }
+
+  /**
+   * The sources registered with {@link addCspSource}, by kebab-case
+   * directive. A copy.
+   */
+  public getCspSources(): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (const [key, list] of this.cspSources) {
+      out[key] = [...list];
+    }
+    return out;
+  }
+
+  protected kebabDirective(key: string): string {
+    return key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+  }
+
+  /**
+   * The effective directives: the app's (or the default), keys in kebab-case,
+   * with every registered source appended.
+   */
+  protected effectiveCspDirectives(
+    directives: CspDirectives,
+  ): Map<string, CspDirective | boolean> {
+    const map = new Map<string, CspDirective | boolean>();
+    for (const [key, value] of Object.entries(directives)) {
+      if (value === undefined) {
+        continue;
+      }
+      const kebab = this.kebabDirective(key);
+      // Two spellings of one directive (`scriptSrc` and `script-src`) are
+      // merged: a browser reads only the first of two.
+      const existing = map.get(kebab);
+      if (existing !== undefined && typeof value !== "boolean") {
+        map.set(kebab, this.mergeSources(existing, this.toList(value)));
+        continue;
+      }
+      map.set(kebab, value);
+    }
+    if (map.size === 0) {
+      return map;
+    }
+    // `alepha dev` serves plain http on localhost: `upgrade-insecure-requests`
+    // there can only break a subresource (Safari upgrades localhost, Chrome
+    // and Firefox exempt it), and protects nothing.
+    if (this.alepha.isViteDev()) {
+      map.delete("upgrade-insecure-requests");
+    }
+    for (const [key, sources] of this.cspSources) {
+      const existing = map.get(key) ?? map.get("default-src") ?? [];
+      map.set(key, this.mergeSources(existing, sources));
+    }
+    return map;
+  }
+
+  protected toList(value: CspDirective | boolean): string[] {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      return value.split(/\s+/).filter(Boolean);
+    }
+    return [];
+  }
+
+  protected mergeSources(
+    existing: CspDirective | boolean,
+    sources: string[],
+  ): string[] {
+    const list = [...this.toList(existing)];
+    // `'none'` alone means nothing is allowed; with a source beside it, a
+    // browser drops the whole directive's meaning. A registered source wins.
+    const none = list.indexOf("'none'");
+    if (none !== -1 && sources.length > 0) {
+      list.splice(none, 1);
+    }
+    for (const source of sources) {
+      if (!list.includes(source)) {
+        list.push(source);
+      }
+    }
+    return list;
   }
 
   /**
@@ -213,26 +425,26 @@ export class ServerHelmetProvider {
     }
 
     // Content-Security-Policy
+    this.cachedCspDirectives = undefined;
     if (csp) {
       // `csp.directives`, not `Object.keys(csp)`: the option object always
       // carries that one key, so the old test was never true and the default
       // policy could not be reached by any configuration at all.
-      const directives = csp.directives ?? this.defaultCspDirectives();
-      const value = Object.entries(directives)
-        .map(([key, value]) => {
-          const kebabKey = key.replace(
-            /[A-Z]/g,
-            (letter) => `-${letter.toLowerCase()}`,
-          );
-          if (Array.isArray(value)) {
-            return `${kebabKey} ${value.join(" ")}`;
-          }
-          if (typeof value === "boolean" && value) {
-            return kebabKey;
-          }
-          return `${kebabKey} ${value}`;
-        })
-        .join("; ");
+      const directives = this.effectiveCspDirectives(
+        csp.directives ?? this.defaultCspDirectives(),
+      );
+      if (csp.trustedTypes && directives.size > 0) {
+        directives.set("require-trusted-types-for", ["'script'"]);
+        directives.set(
+          "trusted-types",
+          this.mergeSources(directives.get("trusted-types") ?? [], [
+            ServerHelmetProvider.TRUSTED_TYPES_POLICY,
+            ...(Array.isArray(csp.trustedTypes) ? csp.trustedTypes : []),
+          ]),
+        );
+      }
+      this.cachedCspDirectives = directives;
+      const value = this.serializeCsp(directives);
       // An empty map means no header. Sending `content-security-policy:` with
       // nothing after it is not a permissive policy - it is a policy with no
       // directives, and browsers read the absent `default-src` as the
@@ -244,6 +456,91 @@ export class ServerHelmetProvider {
     }
 
     return headers;
+  }
+
+  /**
+   * The effective directives of the last built policy, kept to add a nonce
+   * to `script-src` without rebuilding the rest.
+   */
+  protected cachedCspDirectives?: Map<string, CspDirective | boolean>;
+
+  protected serializeCsp(directives: Map<string, CspDirective | boolean>) {
+    return [...directives]
+      .map(([kebabKey, value]) => {
+        if (Array.isArray(value)) {
+          return `${kebabKey} ${value.join(" ")}`;
+        }
+        if (typeof value === "boolean" && value) {
+          return kebabKey;
+        }
+        return `${kebabKey} ${value}`;
+      })
+      .join("; ");
+  }
+
+  /**
+   * The nonce of each request that asked for one. A WeakMap: the request
+   * object is the request's lifetime, and nothing else needs clearing.
+   */
+  protected readonly nonces = new WeakMap<object, string>();
+
+  /**
+   * The CSP nonce of the current request, created on the first ask and kept
+   * for the rest of it; `undefined` when the CSP is off or there is no
+   * request (a prerender, a build).
+   *
+   * Asking is what puts `'nonce-...'` into `script-src`: only the response
+   * of a request that asked carries it, so an API response or a file keeps
+   * the cached header. Ask before the headers leave, which on a streamed page
+   * is before the handler returns.
+   *
+   * Every inline `<script>` the response writes and no hash covers must carry
+   * `nonce="<value>"`. A nonce never belongs in bytes shared between two
+   * responses (a page cache entry, a prerendered file).
+   */
+  public cspNonce(request?: object): string | undefined {
+    if (!this.isCspEnabled()) {
+      return undefined;
+    }
+    const req =
+      request ?? this.alepha.store.getUntracked("alepha.http.request");
+    if (!req) {
+      return undefined;
+    }
+    let nonce = this.nonces.get(req);
+    if (!nonce) {
+      nonce = randomBytes(16).toString("base64");
+      this.nonces.set(req, nonce);
+    }
+    return nonce;
+  }
+
+  /**
+   * The nonce `request` already asked for, without creating one.
+   */
+  public peekCspNonce(request: object): string | undefined {
+    return this.nonces.get(request);
+  }
+
+  /**
+   * The policy with `'nonce-<nonce>'` added to `script-src` only. Never to
+   * `style-src`: a nonce there makes a browser ignore the `'unsafe-inline'`
+   * every React `style=""` attribute relies on.
+   */
+  protected cspWithNonce(nonce: string): string | undefined {
+    const directives = this.cachedCspDirectives;
+    if (!directives || directives.size === 0) {
+      return undefined;
+    }
+    const copy = new Map(directives);
+    copy.set(
+      "script-src",
+      this.mergeSources(
+        copy.get("script-src") ?? copy.get("default-src") ?? [],
+        [`'nonce-${nonce}'`],
+      ),
+    );
+    return this.serializeCsp(copy);
   }
 
   protected readonly onResponse = $hook({
@@ -270,9 +567,17 @@ export class ServerHelmetProvider {
         this.alepha.isProduction();
 
       const headersToSet = this.buildHeaders();
+      const nonce = this.peekCspNonce(request);
 
       for (const key in headersToSet) {
         if (key === "strict-transport-security" && !isSecure) {
+          continue;
+        }
+        if (key === "content-security-policy" && nonce) {
+          if (!response.headers[key]) {
+            response.headers[key] =
+              this.cspWithNonce(nonce) ?? headersToSet[key];
+          }
           continue;
         }
         // don't overwrite headers if they are already set

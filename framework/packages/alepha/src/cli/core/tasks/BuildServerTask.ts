@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { isAbsolute, join } from "node:path";
 
@@ -11,6 +12,7 @@ import type { UserConfig } from "vite";
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { LazyControllerPlugin } from "../services/LazyControllerPlugin.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import {
   type PreloadTable,
@@ -291,6 +293,19 @@ export class BuildServerTask extends BuildTask {
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.viteUtils.createClientModulesPlugin());
+    // A pure controller's code becomes a chunk imported on its first use
+    // (#Q3407), from the build list: only for a server build that has one.
+    // Off unless asked for at build time (#Q3407): on Lore it moved 0.4 MB
+    // out of the eager closure and no CPU, and a controller whose primitives
+    // register a module (`$action` registering the server) loses that
+    // registration when its class is not imported at boot.
+    const lazy =
+      opts.surface && process.env.ALEPHA_LAZY_CHUNKS === "true"
+        ? new LazyControllerPlugin()
+        : undefined;
+    if (lazy && opts.surface) {
+      plugins.push(lazy.create(opts.surface));
+    }
 
     if (conditions.includes("workerd")) {
       plugins.push(this.workerdCreateRequirePlugin());
@@ -454,6 +469,21 @@ export class BuildServerTask extends BuildTask {
       throw error;
     }
 
+    // Informative, like the purity report: a pure controller another file
+    // imports statically keeps its code in the eager bundle (#Q3407).
+    if (lazy?.eagerReport.length) {
+      this.log.info(
+        `${lazy.eagerReport.length} pure controllers keep their code eager (${opts.runtime}):`,
+      );
+      for (const it of lazy.eagerReport) {
+        this.log.info(
+          it.importers.length
+            ? `  ${it.key}: imported by ${it.importers.map((file) => file.replace(`${opts.root}/`, "")).join(", ")}`
+            : `  ${it.key}: re-exported by its module's file, or bundled with eager code`,
+        );
+      }
+    }
+
     const resolvedConfig = await resolveConfig(viteBuildServerConfig, "build");
 
     const externals: string[] = [];
@@ -534,21 +564,32 @@ export class BuildServerTask extends BuildTask {
       `${opts.distDir}/${opts.clientDir}`,
     );
 
-    const data = {
-      // This is the only point in the pipeline holding every manifest at
-      // once, so it is the only one that can resolve a preload key - and the
-      // only one that can refuse to.
-      preload: clientManifest
-        ? this.preloadTable.build({
-            clientManifest,
-            preloadManifest: preloadManifest ?? {},
-            ssrManifest: ssrManifest ?? {},
-            base: base === "/" ? "" : base,
-            allowUnresolved: opts.allowUnresolvedPreloads,
-          })
-        : undefined,
-      favicon,
-    };
+    // This is the only point in the pipeline holding every manifest at
+    // once, so it is the only one that can resolve a preload key - and the
+    // only one that can refuse to.
+    const preload = clientManifest
+      ? this.preloadTable.build({
+          clientManifest,
+          preloadManifest: preloadManifest ?? {},
+          ssrManifest: ssrManifest ?? {},
+          base: base === "/" ? "" : base,
+          allowUnresolved: opts.allowUnresolvedPreloads,
+        })
+      : undefined;
+    if (preload) {
+      preload.integrity = await this.integrityOf(
+        preload.files,
+        `${opts.distDir}/${opts.clientDir}`,
+        base === "/" ? "" : base,
+      );
+      this.log.info(
+        `Subresource Integrity: ${preload.integrity.filter(Boolean).length} JS and CSS files hashed (sha384). ` +
+          "The document's tags carry it: the entry script, the stylesheets, the preloaded graph. " +
+          "A chunk loaded later by import() is authorised by script-src 'self' only.",
+      );
+    }
+
+    const data = { preload, favicon };
 
     return {
       viteDir,
@@ -557,6 +598,42 @@ export class BuildServerTask extends BuildTask {
       // integer per line tripled the size of a generated file nobody reads.
       statement: `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(data)});\n`,
     };
+  }
+
+  /**
+   * Subresource Integrity for each file of the preload table, parallel to
+   * `files`: `sha384-<base64>` of the bytes on disk for a `.js` or `.css`
+   * file, `""` for anything else or a file that is not there.
+   *
+   * Taken here, after the client build wrote them: no later task of the
+   * build rewrites a JS or CSS file under the public directory (the
+   * compressed copies are separate files). It covers what a document has a
+   * tag for: the entry script, the stylesheets and the preloaded graph. A
+   * chunk loaded later by `import()` is authorised by `script-src 'self'`
+   * only; no integrity import map is built.
+   */
+  protected async integrityOf(
+    files: string[],
+    publicDir: string,
+    base: string,
+  ): Promise<string[]> {
+    return Promise.all(
+      files.map(async (href) => {
+        if (!/\.(m?js|css)$/.test(href)) {
+          return "";
+        }
+        const file =
+          base && href.startsWith(`${base}/`)
+            ? href.slice(base.length + 1)
+            : href.replace(/^\//, "");
+        const path = `${publicDir}/${file}`;
+        if (!(await this.fs.exists(path))) {
+          return "";
+        }
+        const bytes = await this.fs.readFile(path);
+        return `sha384-${createHash("sha384").update(bytes).digest("base64")}`;
+      }),
+    );
   }
 
   /**

@@ -70,6 +70,20 @@ export class AppRouter {
     lazy: () => import("./Deferred.tsx"),
   });
 
+  /**
+   * Rendered in the browser only (`ssr: false`): the document a
+   * client-rendered page gets, which the e2e suite runs under the CSP.
+   */
+  clientRendered = $page({
+    head: {
+      title: "Client rendered",
+    },
+    path: "/client-rendered",
+    ssr: false,
+    loader: async () => ({ message: "Rendered in the browser" }),
+    lazy: () => import("./ClientRendered.tsx"),
+  });
+
   about = $page({
     head: {
       title: "About",

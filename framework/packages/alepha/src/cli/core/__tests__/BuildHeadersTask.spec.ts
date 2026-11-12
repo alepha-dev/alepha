@@ -1,5 +1,11 @@
 import { Alepha, AlephaError } from "alepha";
-import { AlephaServer, type HelmetOptions, helmetOptions } from "alepha/server";
+import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
+import {
+  AlephaServer,
+  type HelmetOptions,
+  helmetOptions,
+  ServerHelmetProvider,
+} from "alepha/server";
 import { HeadersFileReader } from "alepha/server/static";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
@@ -353,5 +359,72 @@ describe("BuildHeadersTask", () => {
     await build(task);
 
     expect(await fs.exists(HEADERS)).toBe(false);
+  });
+  describe("the content security policy", () => {
+    it("carries the sources modules registered, as getHeaders() does", async ({
+      expect,
+    }) => {
+      const { task, fs, reader } = setup();
+      await withPublic(fs);
+      const app = appWithHelmet({ contentSecurityPolicy: {} });
+      const helmet = app.inject(ServerHelmetProvider);
+      const hash = helmet.addCspScriptHash("self.__x=1");
+      helmet.addCspSource("frame-src", "https://frames.example.com");
+
+      await build(task, { app });
+
+      const headers: Record<string, string> = reader.apply(
+        reader.read(fs.getFileContent(HEADERS) ?? ""),
+        "/",
+        {},
+      );
+      const policy = headers["content-security-policy"];
+      expect(policy).toBe(helmet.getHeaders()["content-security-policy"]);
+      expect(policy).toContain(`script-src 'self' ${hash}`);
+      expect(policy).toContain("frame-src 'self' https://frames.example.com");
+    });
+
+    it("carries the hosts a configured third-party module registered", async ({
+      expect,
+    }) => {
+      const { task, fs } = setup();
+      await withPublic(fs);
+      const app = Alepha.create({
+        env: {
+          LOG_LEVEL: "silent",
+          TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+        },
+      })
+        .with(AlephaServer)
+        .with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+      app.store.mut(helmetOptions, (old) => ({
+        ...old,
+        contentSecurityPolicy: {},
+      }));
+      app.inject(CaptchaProvider);
+
+      await build(task, { app });
+
+      expect(fs.getFileContent(HEADERS)).toContain(
+        "frame-src 'self' https://challenges.cloudflare.com",
+      );
+    });
+
+    it("refuses a policy over one line, saying how many sources it holds", async ({
+      expect,
+    }) => {
+      const { task, fs } = setup();
+      await withPublic(fs);
+      const app = appWithHelmet({ contentSecurityPolicy: {} });
+      const helmet = app.inject(ServerHelmetProvider);
+      for (let i = 0; i < 40; i++) {
+        helmet.addCspScriptHash(`self.__x=${i}`);
+      }
+
+      await expect(build(task, { app })).rejects.toThrow(
+        /content-security-policy of \d+ characters holding \d+ sources \(40 of them script hashes\)/,
+      );
+    });
   });
 });

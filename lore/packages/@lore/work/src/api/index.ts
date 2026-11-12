@@ -78,6 +78,7 @@ import { WorkAutomationEventSubjects } from "./services/WorkAutomationEventSubje
 import { WorkAutomationPresets } from "./services/WorkAutomationPresets.ts";
 import { WorkAutomationReferences } from "./services/WorkAutomationReferences.ts";
 import { WorkAutomationSelections } from "./services/WorkAutomationSelections.ts";
+import { WorkBuckets } from "./services/WorkBuckets.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 import { WorkDeliveryChanges } from "./services/WorkDeliveryChanges.ts";
@@ -105,6 +106,9 @@ export const LoreWorkApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    // Every bucket of the package, at boot: an upload looks its bucket up
+    // by name, and the controllers that use one stay pure (#Q3404).
+    WorkBuckets,
     WorkAutomationPresets,
     WorkAutomationAdoptions,
     WorkAutomationEventSubjects,

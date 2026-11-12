@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.ts";
 
 test.describe("organization pages", () => {
   test("walks organizations, members, invitations, and ranks", async ({

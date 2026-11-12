@@ -15,7 +15,9 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  * (`default % 100`) and so depended on two unrelated numbers staying
  * coordinated by comment.
  *
- * Every slot from 0 to 9 is taken. Past that, raise the band's `stride`.
+ * Ten slots filled a stride of 10, so the band's `stride` is 20 here, which
+ * leaves room up to slot 19 (the passkey e2e of the `totp` example took
+ * slot 10). Raising it moved every suite's derived port once.
  *
  * ⚠️ Numbers are not reshuffled when a suite goes away. Slot 2 was
  * `apps/examples/playground`, retired once `apps/ui` replaced it; slots 1, 7
@@ -34,6 +36,7 @@ export const E2E_SLOTS = {
   ai: 7,
   oidc: 8,
   "mobile-api": 9,
+  totp: 10,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;
@@ -68,7 +71,7 @@ export type E2eApp = keyof typeof E2E_SLOTS;
  *
  * @param app the suite's key in {@link E2E_SLOTS}.
  */
-export const e2ePort = createE2ePortAllocator(E2E_SLOTS);
+export const e2ePort = createE2ePortAllocator(E2E_SLOTS, { stride: 20 });
 
 export const E2E_BAND_START = e2ePort.band.start;
 export const E2E_BAND_END = e2ePort.band.end;

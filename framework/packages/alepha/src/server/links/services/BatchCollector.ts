@@ -1,4 +1,4 @@
-import { $inject, isFileLike } from "alepha";
+import { $inject, Alepha, isFileLike } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpClient, HttpError } from "alepha/server";
 
@@ -18,6 +18,7 @@ export class BatchCollector {
 
   protected readonly log = $logger();
   protected readonly httpClient = $inject(HttpClient);
+  protected readonly alepha = $inject(Alepha);
 
   protected pending: PendingBatchEntry[] = [];
   protected scheduled = false;
@@ -113,7 +114,12 @@ export class BatchCollector {
         )
       ).flat();
 
-      // Distribute results back (including deduped slots)
+      // Distribute results back (including deduped slots). A failed entry
+      // is reported the way a single call's failure is: one
+      // `client:request:error` per distinct call, before its callers see it,
+      // so an app's 401 handler (a redirect to sign-in) hears a batched read
+      // too. It used to hear only single calls and transport failures.
+      const failures = new Map<number, HttpError>();
       for (let i = 0; i < batch.length; i++) {
         const result = allResults[indexMap[i]];
         if (result.status >= 400) {
@@ -125,14 +131,18 @@ export class BatchCollector {
             status: result.status,
           };
           if (result.requestId) data.requestId = result.requestId;
-          batch[i].reject(
-            HttpError.fromJSON({
+          let error = failures.get(indexMap[i]);
+          if (!error) {
+            error = HttpError.fromJSON({
               name: result.name ?? HttpError.name,
               message:
                 result.error ?? `${result.action} failed (${result.status})`,
               data,
-            }),
-          );
+            });
+            failures.set(indexMap[i], error);
+            await this.alepha.events.emit("client:request:error", { error });
+          }
+          batch[i].reject(error);
         } else {
           batch[i].resolve(result.data);
         }
