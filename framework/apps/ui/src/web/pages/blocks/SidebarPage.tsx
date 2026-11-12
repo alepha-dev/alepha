@@ -57,8 +57,7 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  *
  * ⚠️ It also binds ⌘B on `window`, and both providers answer it: the shortcut
  * toggles this preview AND the rail on the left. That is not fixable from
- * here, and it is one of the reasons `SettingsNav` refuses to build its own
- * rail out of `SidebarMenuButton` - see that component.
+ * here.
  *
  * `SidebarInset` is a `<main>`, so inside the preview pane it is nested in the
  * app's own. That is a property of previewing a shell inside a shell, not of

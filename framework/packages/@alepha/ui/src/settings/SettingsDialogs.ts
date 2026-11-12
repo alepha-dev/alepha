@@ -1,7 +1,9 @@
 import { $atom, $hook, $inject, Alepha, z } from "alepha";
 import { ReactPageProvider, ReactRouter } from "alepha/react/router";
 import { currentUserAtom } from "alepha/security";
-import type { ComponentType, ReactNode } from "react";
+import { type ComponentType, lazy, type ReactNode } from "react";
+
+import { DialogHosts } from "../core/DialogHosts.ts";
 
 /**
  * A settings dialog, as `$settingsDialog` declares it.
@@ -141,6 +143,11 @@ export const settingsDialogsAtom = $atom({
   schema: z.object({
     open: z.text().optional(),
     section: z.text().optional(),
+    /**
+     * Whether the dialog was opened on a named section, so a phone shows that
+     * section rather than the list.
+     */
+    focus: z.boolean().optional(),
     last: z.record(z.text(), z.text()),
   }),
   default: { last: {} },
@@ -158,12 +165,20 @@ export const settingsDialogsAtom = $atom({
  */
 export class SettingsDialogs {
   protected readonly alepha = $inject(Alepha);
+  protected readonly dialogHosts = $inject(DialogHosts);
   protected readonly dialogs = new Map<string, SettingsDialogPrimitive>();
   protected readonly sections: SettingsSectionPrimitive[] = [];
 
   public registerDialog(dialog: SettingsDialogPrimitive): void {
     this.dialogs.set(dialog.name, dialog);
+    // `DialogProvider` draws the host. Lazy, so the dialog's code is fetched
+    // the first time one opens rather than with every page.
+    this.dialogHosts.register(this.host);
   }
+
+  protected readonly host = lazy(async () => ({
+    default: (await import("./SettingsDialogHost.tsx")).SettingsDialogHost,
+  }));
 
   public registerSection(section: SettingsSectionPrimitive): void {
     this.sections.push(section);
@@ -238,6 +253,7 @@ export class SettingsDialogs {
     this.alepha.store.set(settingsDialogsAtom, {
       open: name,
       section: target.name,
+      focus: section !== undefined,
       last: { ...state.last, [name]: target.name },
     });
   }

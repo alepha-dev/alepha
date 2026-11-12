@@ -518,6 +518,7 @@ export {
   TooltipTrigger,
   type TooltipTriggerProps,
 } from "./Tooltip.tsx";
+export { DialogHosts } from "./DialogHosts.ts";
 export {
   type AlertOptions,
   type ConfirmOptions,

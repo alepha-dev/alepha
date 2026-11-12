@@ -1,4 +1,4 @@
-import { useInject, useStore } from "alepha/react";
+import { useAlepha, useStore } from "alepha/react";
 import { currentUserAtom } from "alepha/security";
 import { useMemo } from "react";
 
@@ -49,21 +49,30 @@ export interface UseSettingsDialogReturn {
  * ```
  */
 export const useSettingsDialog = (name: string): UseSettingsDialogReturn => {
-  const dialogs = useInject(SettingsDialogs);
+  // Read only when registered: an application that declares no settings
+  // dialog never created the registry, and injecting it after start throws
+  // (the container is locked). A shell drawing the user menu must not.
+  const alepha = useAlepha();
+  const dialogs = alepha.has(SettingsDialogs)
+    ? alepha.inject(SettingsDialogs)
+    : undefined;
   const [state] = useStore(settingsDialogsAtom);
   // Which sections are visible follows the user (a `can` reads the actions
   // the session may call), so a sign-in re-reads them.
   const [user] = useStore(currentUserAtom);
   const isOpen = state?.open === name;
-  const groups = useMemo(() => dialogs.groups(name), [dialogs, name, user]);
+  const groups = useMemo(
+    () => dialogs?.groups(name) ?? [],
+    [dialogs, name, user],
+  );
 
   return {
-    dialog: dialogs.dialog(name),
+    dialog: dialogs?.dialog(name),
     isOpen,
     section: isOpen ? state?.section : undefined,
     groups,
     sections: groups.flatMap((group) => group.sections),
-    open: (section) => dialogs.open(name, section),
-    close: () => dialogs.close(name),
+    open: (section) => dialogs?.open(name, section),
+    close: () => dialogs?.close(name),
   };
 };

@@ -14,9 +14,10 @@ The settings kit.
 and held in state, never in the URL; `$settingsSection` adds a section to it
 from any class, and `useSettingsDialog` opens and closes it.
 
-`SettingsLayout` and `SettingsNav` frame a settings area; `SettingsSection`,
-`SettingsRow`, `SettingsHeading` and `SettingsDangerSection` build its pages,
-and `settingsCardEdge` is the one card edge they all share.
+`SettingsDialog` draws a declared dialog, and `DialogProvider` draws it for
+you. `SettingsSection`, `SettingsRow`, `SettingsHeading` and
+`SettingsDangerSection` build a section's content, and `settingsCardEdge`
+is the one card edge they all share.
 
 ## API Reference
 

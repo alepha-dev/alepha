@@ -3,6 +3,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 
 import { AppRouter } from "./AppRouter.tsx";
+import { ShowcaseSettings } from "./ShowcaseSettings.ts";
 import { UiI18n } from "./UiI18n.ts";
 import { UiThemes } from "./UiThemes.ts";
 
@@ -16,5 +17,5 @@ import { UiThemes } from "./UiThemes.ts";
 export const UiWeb = $module({
   name: "ui.web",
   imports: [AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, UiI18n, UiThemes],
+  services: [AppRouter, ShowcaseSettings, UiI18n, UiThemes],
 });

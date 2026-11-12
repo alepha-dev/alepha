@@ -174,6 +174,25 @@ describe("alepha init --preset", () => {
       expect(router).not.toContain("AccountRouter");
     });
 
+    it("should put the pages under a layout that mounts DialogProvider", async () => {
+      // The account is a settings dialog, drawn by DialogProvider: an app
+      // without one has nowhere to open it.
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      const router = await readFile(fs, "/project/src/web/AppRouter.ts");
+      expect(router).toContain('import("./components/Layout.tsx")');
+      const layout = await readFile(
+        fs,
+        "/project/src/web/components/Layout.tsx",
+      );
+      expect(layout).toContain("<DialogProvider>");
+      expect(layout).toContain("<NestedView />");
+      expect(layout).toContain("<ButtonUser />");
+    });
+
     it("should import the react modules the routers depend on", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);

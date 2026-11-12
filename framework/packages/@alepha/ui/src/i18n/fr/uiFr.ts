@@ -84,6 +84,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "undoable.undo": "Annuler",
 
   // The data table: toolbar, selection, empty state.
+  "settings.dialog.back": "Retour",
+  "settings.dialog.close": "Fermer",
   "dataTable.bulkMenu.empty": "Rien à choisir",
   "dataTable.bulkMenu.failed": "Impossible de charger les choix",
   "dataTable.bulkMenu.loading": "Chargement…",

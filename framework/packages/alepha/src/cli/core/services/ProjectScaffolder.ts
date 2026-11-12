@@ -36,6 +36,7 @@ import {
 import { webAppRouterTs } from "../templates/webAppRouterTs.ts";
 import { webHomeComponentTsx } from "../templates/webHomeComponentTsx.ts";
 import { webIndexTs } from "../templates/webIndexTs.ts";
+import { webLayoutComponentTsx } from "../templates/webLayoutComponentTsx.ts";
 import { AlephaCliUtils } from "./AlephaCliUtils.ts";
 import { ConventionRegistry } from "./ConventionRegistry.ts";
 import {
@@ -694,9 +695,17 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/AppRouter.ts",
-      webAppRouterTs(),
+      webAppRouterTs({ saas: opts.saas }),
       opts.force,
     );
+    if (opts.saas) {
+      await this.ensureFile(
+        root,
+        "src/web/components/Layout.tsx",
+        webLayoutComponentTsx(),
+        opts.force,
+      );
+    }
     await this.ensureFile(
       root,
       "src/web/components/Home.tsx",
