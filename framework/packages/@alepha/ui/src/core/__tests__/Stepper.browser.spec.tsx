@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Stepper, stepperStepState } from "../Stepper.tsx";
@@ -10,7 +11,7 @@ const STEPS = [
 ];
 
 describe("Stepper", () => {
-  it("marks each step done, current or upcoming", () => {
+  it("marks each step done, current or upcoming", async () => {
     const { container } = render(<Stepper steps={STEPS} current={1} />);
     const states = [...container.querySelectorAll("li")].map((li) =>
       li.getAttribute("data-state"),
@@ -19,6 +20,8 @@ describe("Stepper", () => {
     expect(
       screen.getByText("Address").closest("li")?.getAttribute("aria-current"),
     ).toBe("step");
+    // axe: a stepper on its second step (#Q3338).
+    await expectAccessible();
   });
 
   it("lets only a done step be clicked", () => {

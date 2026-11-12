@@ -3,7 +3,7 @@ import { Alepha, z } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { DataTable } from "../DataTable.tsx";
@@ -122,6 +122,8 @@ describe("DataTableFilterBar", () => {
     );
     // One text run, one space between each word: "Status: not Closed".
     expect(trigger?.textContent).toBe("Status: not Closed");
+    // axe: the table with its filter bar holding a filter (#Q3338).
+    await expectAccessible();
     expect(slot("owner")).toBeNull();
   });
 

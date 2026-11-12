@@ -37,6 +37,12 @@ import type { IconComponent } from "./iconHint.tsx";
 
 export interface ControlSelectComboboxProps {
   id?: string;
+  /**
+   * The field's label, which names the popup's listbox: the label element
+   * names the trigger only, and a listbox with no name fails WCAG 4.1.2
+   * (axe `aria-input-field-name`) whenever the popup has no search input.
+   */
+  label?: string;
   data: SelectOption[];
   loading: boolean;
   multi: boolean;
@@ -337,7 +343,7 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
           ? ""
           : tr("controlSelect.noResults", { default: "No results." })}
       </ComboboxEmpty>
-      <ComboboxList>
+      <ComboboxList aria-label={props.label || undefined}>
         {(opt: ComboOption) =>
           opt.selectAll ? (
             <ComboboxItem key="__select_all__" value={opt}>

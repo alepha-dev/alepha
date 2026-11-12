@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PaneRail } from "../PaneRail.tsx";
 
 describe("PaneRail", () => {
-  it("is one button the whole strip: a click below the icon expands the pane", () => {
+  it("is one button the whole strip: a click below the icon expands the pane", async () => {
     const onExpand = vi.fn();
     render(
       <PaneRail side="left" label="Show the tree" onExpand={onExpand}>
@@ -13,6 +14,8 @@ describe("PaneRail", () => {
     );
 
     const rail = screen.getByRole("button", { name: "Show the tree" });
+    // axe: a pane rail (#Q3338).
+    await expectAccessible();
     expect(rail.getAttribute("title")).toBe("Show the tree");
     // No inner button: the strip itself is the control.
     expect(rail.querySelector("button")).toBeNull();

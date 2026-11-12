@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { type ReactElement, useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -65,7 +66,7 @@ const rowOf = (label: string): HTMLElement => {
 const px = (value: string): number => Number.parseFloat(value || "0");
 
 describe("TreeView", () => {
-  it("renders one row per visible row, in order", () => {
+  it("renders one row per visible row, in order", async () => {
     render(<Harness />);
     const rows = document.querySelectorAll('[data-slot="tree-view-row"]');
     expect([...rows].map((r) => r.textContent)).toEqual([
@@ -75,6 +76,8 @@ describe("TreeView", () => {
       "Leaf",
       "Other",
     ]);
+    // axe: a tree with nested rows (#Q3338).
+    await expectAccessible();
   });
 
   it("speaks the tree structure: roles, level, expanded and selected", () => {

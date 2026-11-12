@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import AdminLayout from "../AdminLayout.tsx";
@@ -58,6 +58,8 @@ describe("AdminLayout options", () => {
     expect(root!.classList.contains("admin-fence")).toBe(true);
     // Merged, not replaced — the viewport bound stays.
     expect(root!.classList.contains("h-svh")).toBe(true);
+    // axe: the admin layout (#Q3338).
+    await expectAccessible();
   });
 
   it("colorScheme: false leaves the document's theme class alone", async () => {

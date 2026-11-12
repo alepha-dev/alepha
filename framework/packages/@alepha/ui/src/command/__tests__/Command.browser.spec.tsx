@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -76,6 +77,8 @@ describe("Command", () => {
     await waitFor(() => expect(highlighted()).toBe("Tree"));
     expect(screen.getByText("Blocks")).toBeTruthy();
     expect(screen.getByText("Pages")).toBeTruthy();
+    // axe: the command list open with groups (#Q3338).
+    await expectAccessible();
   });
 
   it("filters and ranks as the query changes, dropping empty groups", async () => {

@@ -3,6 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { $page, AlephaReactRouter } from "alepha/react/router";
+import { expectAccessible } from "alepha/testing/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -59,6 +60,8 @@ describe("PlateLayout", () => {
     expect(view.getByTestId("probe-tabs")).toBeTruthy();
     // The rule that separates the tabs from the plate above them.
     expect(view.getByTestId("probe-tabs").className).toContain("border-t");
+    // axe: a plate layout with tabs (#Q3338).
+    await expectAccessible();
   });
 
   /**

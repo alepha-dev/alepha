@@ -5,6 +5,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
 import { LinkProvider } from "alepha/server/links";
+import { expectAccessible } from "alepha/testing/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DialogProvider } from "../../core/useDialog.tsx";
@@ -131,6 +132,8 @@ describe("OrganizationMembers", () => {
   it("only renders management controls when can allows member management", async () => {
     const managed = await mount(true);
     expect(managed.view.getAllByTestId("member-actions")).toHaveLength(1);
+    // axe: the members table with management controls (#Q3338).
+    await expectAccessible();
     managed.view.unmount();
     await alepha?.stop();
     alepha = undefined;

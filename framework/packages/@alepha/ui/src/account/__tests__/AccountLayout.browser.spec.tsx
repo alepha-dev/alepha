@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import type React from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -128,6 +128,8 @@ describe("AccountLayout", () => {
       "API keys",
       "Connected apps",
     ]);
+    // axe: the account layout and its sidebar (#Q3338).
+    await expectAccessible();
   });
 
   it("drops a hidden page from the sidebar", async () => {

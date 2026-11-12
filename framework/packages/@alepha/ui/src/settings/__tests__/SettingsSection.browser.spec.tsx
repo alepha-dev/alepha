@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it } from "vitest";
 
 import { SettingsDangerSection } from "../SettingsDangerSection.tsx";
@@ -12,7 +13,7 @@ import { SettingsSection } from "../SettingsSection.tsx";
  * `py-3`. Doubling them produces a thick blank band top and bottom.
  */
 describe("SettingsSection", () => {
-  it("opts the card out of vertical padding so rows own it", () => {
+  it("opts the card out of vertical padding so rows own it", async () => {
     const { container } = render(
       <SettingsSection title="General">
         <SettingsRow label="Name">control</SettingsRow>
@@ -26,6 +27,8 @@ describe("SettingsSection", () => {
 
     const row = container.querySelector('[data-slot="card-content"]');
     expect(row?.className).toContain("py-3");
+    // axe: a settings section with a row (#Q3338).
+    await expectAccessible();
   });
 
   it("divides rows and keeps the card gapless", () => {

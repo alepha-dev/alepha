@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { uiAtom } from "alepha/react/ui";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { toast } from "sonner";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -54,6 +54,8 @@ describe("Toaster", () => {
     });
 
     await waitFor(() => expect(toastWith("Saved the folio")).toBeTruthy());
+    // axe: a toast shown (#Q3338).
+    await expectAccessible();
     expect(
       toastWith("Saved the folio")?.querySelector("[data-close-button]"),
     ).not.toBeNull();

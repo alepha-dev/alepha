@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it } from "vitest";
 
 import { MarkdownView } from "../MarkdownView.tsx";
@@ -9,7 +10,7 @@ import { MarkdownView } from "../MarkdownView.tsx";
  * the plugin at all, and with detection on.
  */
 describe("MarkdownView code highlighting", () => {
-  it("colours a fence in a registered language", () => {
+  it("colours a fence in a registered language", async () => {
     const { container } = render(
       <MarkdownView content={"```ts\nconst answer: number = 42;\n```"} />,
     );
@@ -17,6 +18,8 @@ describe("MarkdownView code highlighting", () => {
     expect(
       container.querySelector("pre code.hljs .hljs-keyword"),
     ).not.toBeNull();
+    // axe: a rendered markdown fence (#Q3338).
+    await expectAccessible();
   });
 
   it("renders a fence in any other language as its plain text", () => {

@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Calendar } from "../Calendar.tsx";
@@ -54,6 +54,8 @@ describe("Calendar language", () => {
     expect(caption(container).toLowerCase()).toContain("janvier");
     expect(weekdays(container)).toContain("lundi");
     expect(weekdays(container)).not.toContain("monday");
+    // axe: a month grid (#Q3338).
+    await expectAccessible();
   });
 
   it("names the month and the weekdays in English", async () => {

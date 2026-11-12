@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
-import { setupJsdomMocks } from "alepha/testing/react";
+import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { AppShell } from "../AppShell.tsx";
@@ -66,6 +66,8 @@ describe("AppShell direction and disclosure", () => {
     const classes = container.getAttribute("class") ?? "";
     expect(classes).toContain("data-[side=start]:start-0");
     expect(classes).toContain("group-data-[side=start]:border-e");
+    // axe: the app shell: sidebar, top bar, main (#Q3338).
+    await expectAccessible();
   });
 
   it("marks a nav group expanded or not, and names its panel", async () => {

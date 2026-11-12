@@ -242,7 +242,11 @@ const AccountProfile = (props: AccountProfileProps) => {
             ref={fileInput}
             onChange={onPickAvatar}
             accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
+            // The `hidden` attribute, not the Tailwind class: the picker is
+            // opened through the button above, and the attribute keeps the
+            // bare input out of the accessibility tree even where no
+            // stylesheet applies (axe under jsdom reported it unlabelled).
+            hidden
           />
         </>
       )}
