@@ -440,6 +440,14 @@ export interface DataTableFilterFieldOptions {
    */
   mode?: DataTableFilterMode;
   /**
+   * `false` keeps the filter out of the "Add filters" menu. Meant for a
+   * filter naming its `column`: it then opens only from that column's
+   * header, and still joins the bar while it holds a value. When no field is
+   * left for the menu, the menu's button is not drawn. `true` when absent.
+   * Read every render.
+   */
+  menu?: boolean;
+  /**
    * The key of the column this filter belongs to. Its header then carries a
    * funnel that opens the filter in place: a list's options, with its
    * operator switch, a date range's calendar, a text filter's box. The

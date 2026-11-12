@@ -19,7 +19,31 @@ export abstract class RouterProvider<T extends Route = Route> {
    */
   protected readonly paramNames = new WeakMap<T, Map<number, string>>();
 
+  /**
+   * Routes pushed and not in the tree yet: the tree is built on the first
+   * match, once, so a process that never matches (a cron, a queue message)
+   * never builds it (#Q3396). Kept in push order, so a later route of the
+   * same path still replaces an earlier one.
+   */
+  protected pending: Array<{ route: T; segments: RouteSegment[] }> = [];
+
+  /**
+   * Puts every pending route in the tree. Called by {@link match}; public so
+   * a build can force it, and see an invalid path fail there.
+   */
+  public build(): void {
+    if (this.pending.length === 0) {
+      return;
+    }
+    const routes = this.pending;
+    this.pending = [];
+    for (const { route, segments } of routes) {
+      this.insert(route, segments);
+    }
+  }
+
   public match(path: string): RouteMatch<T> {
+    this.build();
     const pathname = path.split("?", 1)[0];
     const hit = this.cache.get(pathname);
     if (hit) {
@@ -38,19 +62,27 @@ export abstract class RouterProvider<T extends Route = Route> {
   }
 
   protected push(route: T): void {
+    // Parsed and checked now, inserted at the first match.
+    this.pending.push({ route, segments: this.parse(route) });
+    this.cache.clear();
+  }
+
+  /**
+   * The path's segments, checked: what {@link insert} walks. Done at push, so
+   * a malformed path throws where it is declared, not at the first match.
+   */
+  protected parse(route: T): RouteSegment[] {
     const path = route.path.replaceAll("//", "/");
 
     this.test(path);
-    this.cache.clear();
 
     const parts = this.createParts(path);
-
-    let cursor = this.tree;
+    const segments: RouteSegment[] = [];
     for (let i = 0; i < parts.length; i++) {
       const isLast = i === parts.length - 1;
       let part = parts[i].toLowerCase(); // url is case-insensitive
       if (part === "*" && isLast) {
-        cursor.wildcard = { route };
+        segments.push({ kind: "wildcard" });
         break;
       }
 
@@ -71,13 +103,30 @@ export abstract class RouterProvider<T extends Route = Route> {
         if (!name) {
           throw new AlephaError(`Route '${path}' has an empty param name`);
         }
+        segments.push({ kind: "param", name, index: i, isLast });
+        continue;
+      }
 
+      segments.push({ kind: "static", part, isLast });
+    }
+    return segments;
+  }
+
+  protected insert(route: T, segments: RouteSegment[]): void {
+    let cursor = this.tree;
+    for (const segment of segments) {
+      if (segment.kind === "wildcard") {
+        cursor.wildcard = { route };
+        break;
+      }
+
+      if (segment.kind === "param") {
         // Two routes may disagree about what this position is called, and
         // that is fine: the node keeps whichever name arrived first, purely
         // as a description of the shape, while the name that will be USED is
         // recorded against this route at this index.
         if (!cursor.param) {
-          cursor.param = { name, children: {} };
+          cursor.param = { name: segment.name, children: {} };
         }
 
         let names = this.paramNames.get(route);
@@ -85,9 +134,9 @@ export abstract class RouterProvider<T extends Route = Route> {
           names = new Map();
           this.paramNames.set(route, names);
         }
-        names.set(i, name);
+        names.set(segment.index, segment.name);
 
-        if (isLast) {
+        if (segment.isLast) {
           cursor.param.route = route;
         }
 
@@ -95,15 +144,15 @@ export abstract class RouterProvider<T extends Route = Route> {
         continue;
       }
 
-      if (!cursor.children[part]) {
-        cursor.children[part] = { children: {} };
+      if (!cursor.children[segment.part]) {
+        cursor.children[segment.part] = { children: {} };
       }
 
-      if (isLast) {
-        cursor.children[part].route = route;
+      if (segment.isLast) {
+        cursor.children[segment.part].route = route;
       }
 
-      cursor = cursor.children[part];
+      cursor = cursor.children[segment.part];
     }
   }
 
@@ -282,3 +331,11 @@ export interface Tree<T extends Route> {
     route: T;
   };
 }
+
+/**
+ * One segment of a parsed route path.
+ */
+export type RouteSegment =
+  | { kind: "wildcard" }
+  | { kind: "param"; name: string; index: number; isLast: boolean }
+  | { kind: "static"; part: string; isLast: boolean };

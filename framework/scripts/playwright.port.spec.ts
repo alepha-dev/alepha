@@ -2,6 +2,7 @@ import { describe, it } from "vitest";
 
 import {
   candidatePorts,
+  e2ePort,
   E2E_BAND_END,
   E2E_BAND_START,
   E2E_SLOTS,
@@ -60,7 +61,7 @@ describe("E2E_SLOTS", () => {
     // its neighbour's port rather than fail to compile.
     const slots = Object.values(E2E_SLOTS);
     expect(new Set(slots).size).toBe(slots.length);
-    expect(Math.max(...slots)).toBeLessThan(10);
+    expect(Math.max(...slots)).toBeLessThan(e2ePort.band.stride);
   });
 
   it("keeps the band this repo's port table advertises", ({ expect }) => {

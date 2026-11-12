@@ -4,6 +4,7 @@ import {
   $store,
   Alepha,
   type AppSurfaceAction,
+  isLazyService,
   type AppSurfaceRoute,
   type Service,
 } from "alepha";
@@ -49,11 +50,21 @@ export class ServerSurfaceProvider {
    * Creates the class holding an action of the list and returns the action,
    * once created. Undefined when the class or the action is not there.
    */
+  public async resolveActionAsync(
+    row: AppSurfaceAction,
+  ): Promise<ActionPrimitive<any> | undefined> {
+    const service = this.alepha.declaredByKey(row.class);
+    if (service) {
+      this.alepha.inject(await this.alepha.resolveDeclared(service));
+    }
+    return this.resolveAction(row);
+  }
+
   public resolveAction(
     row: AppSurfaceAction,
   ): ActionPrimitive<any> | undefined {
     const service = this.alepha.declaredByKey(row.class);
-    if (service) {
+    if (service && !isLazyService(service)) {
       this.alepha.inject(service);
     }
     return (this.alepha.primitives("$action") as ActionPrimitive<any>[]).find(
@@ -96,19 +107,25 @@ export class ServerSurfaceProvider {
 
   protected placeholder(method: string, path: string, service: Service): void {
     const verb = method.toUpperCase();
-    this.router.createPlaceholder(verb, path, (request: ServerRequestData) => {
-      // Synchronous, so two concurrent first requests create the class once.
-      this.alepha.inject(service);
-      const { route } = this.router.match(`/${verb}${request.url.pathname}`);
-      if (!route || route.placeholder) {
-        throw new HttpError(
-          { status: 500 },
-          {
-            message: `${service.name} was created and registered no route for ${verb} ${path}`,
-          },
-        );
-      }
-      return route.handler(request);
-    });
+    this.router.createPlaceholder(
+      verb,
+      path,
+      async (request: ServerRequestData) => {
+        // The class's code first, when the build made it a lazy chunk (#Q3407);
+        // creating it is synchronous, so concurrent first requests create it
+        // once. A failed import fails this request only, and the next retries.
+        this.alepha.inject(await this.alepha.resolveDeclared(service));
+        const { route } = this.router.match(`/${verb}${request.url.pathname}`);
+        if (!route || route.placeholder) {
+          throw new HttpError(
+            { status: 500 },
+            {
+              message: `${service.name} was created and registered no route for ${verb} ${path}`,
+            },
+          );
+        }
+        return route.handler(request);
+      },
+    );
   }
 }

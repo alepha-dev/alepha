@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "bench": "node scripts/bench.ts",
+    "cold": "node scripts/cold.ts",
     "smoke": "node scripts/smoke.ts",
     "typecheck": "tsc --noEmit"
   },

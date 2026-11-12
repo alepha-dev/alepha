@@ -195,7 +195,13 @@ export class BunSqliteProvider extends DatabaseProvider {
       );
     }
 
-    const { Database } = await import("bun:sqlite");
+    // A specifier bundlers do not resolve: a bundle for another runtime
+    // (a jsdom spec, a browser build reaching a server barrel) would
+    // otherwise fail on the Bun built-in it can never load.
+    const bunSqlite = "bun:sqlite";
+    const { Database } = (await import(
+      /* @vite-ignore */ bunSqlite
+    )) as typeof import("bun:sqlite");
     const { drizzle } = await import("drizzle-orm/bun-sqlite");
 
     const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");

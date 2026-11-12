@@ -84,6 +84,12 @@ declare module "alepha" {
  * - $page => React route (for React SSR)
  */
 export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
+  /**
+   * Stable id, so a container loaded in another module graph (the build's)
+   * can reach this provider by name.
+   */
+  public static readonly id: string = "alepha.server.ServerRouterProvider";
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
 

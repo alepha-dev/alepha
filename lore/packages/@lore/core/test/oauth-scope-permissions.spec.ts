@@ -58,17 +58,6 @@ describe("Lore's OAuth scopes", () => {
 
   const groupOf = (permission: string) => permission.split(":")[0];
 
-  /**
-   * Catalogue groups that name no permission a route checks.
-   *
-   * `AdminAvatarController` declares `$permission({ name: "admin:user:avatar" })`,
-   * which the registry files under the declaring class, as
-   * `AdminAvatarController:admin:user:avatar`; its routes check the real
-   * `admin:user:avatar`, registered beside it. Listed so the placement test
-   * reads the registry honestly, and still asserted out of every scope.
-   */
-  const MISFILED_GROUPS = new Set(["AdminAvatarController"]);
-
   const reaches = (scope: string, permission: string) =>
     security.isInPermissionScope(
       permission,
@@ -85,7 +74,6 @@ describe("Lore's OAuth scopes", () => {
           .filter(
             (group) =>
               group !== "admin" &&
-              !MISFILED_GROUPS.has(group) &&
               !LoreOAuthScopes.MEMBER_GROUPS.includes(group) &&
               !LoreOAuthScopes.EXCLUDED_GROUPS.includes(group),
           ),
@@ -126,7 +114,6 @@ describe("Lore's OAuth scopes", () => {
     const outside = permissions.filter(
       (permission) =>
         permission.startsWith("admin:") ||
-        MISFILED_GROUPS.has(groupOf(permission)) ||
         LoreOAuthScopes.EXCLUDED_GROUPS.includes(groupOf(permission)),
     );
     expect(outside.some((it) => it.startsWith("admin:"))).toBe(true);

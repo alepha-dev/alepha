@@ -227,8 +227,14 @@ const ProjectRail = () => {
             dropped.current = false;
           }}
           // `px` leaves room for the marker and the ring, which an
-          // `overflow` container would otherwise clip.
-          className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-y-auto px-3 py-1"
+          // `overflow` container would otherwise clip. Vertical only
+          // (#Q3481): the content runs a pixel wider than the rail's 63px
+          // (its 64px less the border), and `overflow-y-auto` alone makes
+          // the other axis `auto` too. `flex-initial`, never `flex-1`
+          // (#Q3484): the list is as tall as its projects, so + and the grid
+          // follow the last one, and it shrinks and scrolls only once they
+          // no longer fit, which leaves those two at the bottom.
+          className="flex min-h-0 w-full flex-initial [scrollbar-width:none] flex-col items-center gap-2 overflow-x-hidden overflow-y-auto px-3 py-1"
         >
           {pinned.map((it) => (
             <ProjectRailItem

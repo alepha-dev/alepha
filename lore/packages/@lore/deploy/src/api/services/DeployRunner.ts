@@ -272,6 +272,9 @@ export class DeployRunner {
         // keeps every uploaded version, so pointing at an older one needs no
         // artifact at all.
         versionId: adapter.deployedVersionId,
+        // What a later rollback past this run reads, to ask only when it
+        // crosses a schema change (#Q3479).
+        migrationsApplied: adapter.migrationsApplied,
       });
       // ⚠️ Carried out so the copy can record what Lore created for it. A
       // teardown that had to recompute these names would delete whatever bears

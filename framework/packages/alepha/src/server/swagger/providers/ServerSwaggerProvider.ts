@@ -88,6 +88,7 @@ export class ServerSwaggerProvider {
       }
       // OpenAPI needs every action's schema: the classes a build list let
       // the app declare without creating are created here, once (#Q3403).
+      await alepha.loadDeclared();
       alepha.createDeclared();
 
       this.json = await this.setupSwaggerPlugin(options);
