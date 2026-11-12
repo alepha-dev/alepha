@@ -208,6 +208,7 @@ describe("primitive data-slots", () => {
       "menubar-sub-trigger",
       "menubar-trigger",
     ],
+    "core/PageOutline.tsx": ["page-outline"],
     "core/Pagination.tsx": [
       "pagination",
       "pagination-content",
