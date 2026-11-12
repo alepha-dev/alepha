@@ -15,8 +15,6 @@
  * ⚠️ **A static `import … from "react-dom/server"` anywhere in the server graph
  * undoes this completely.** One eager edge pulls the whole module back onto the
  * cold-start path and nothing about this provider will report that it happened.
- * `REACT_SSR_ENABLED=false` does not help either: it is read at runtime, long
- * after the module graph has been decided.
  */
 export class ReactDomServerProvider {
   /**
