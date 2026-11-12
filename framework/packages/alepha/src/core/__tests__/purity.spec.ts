@@ -112,6 +112,36 @@ describe("Alepha.purity", () => {
     ]);
   });
 
+  it("calls a controller not pure when it alone brings a module in", ({
+    expect,
+  }) => {
+    // Deferred, the class would bring the module in after the lock, where
+    // its `register` can no longer add a provider: the ssr example's
+    // CountApi, whose `$repository` alone brought the ORM module in.
+    class Store {}
+    $module({ name: "test.storage", services: [Store] });
+    class Api {
+      store = $inject(Store);
+      list = ping();
+    }
+    const alepha = Alepha.create().with(Api);
+    expect(entryOf(alepha, Api).pure).toBe(false);
+    expect(entryOf(alepha, Api).reasons.join(" ")).toMatch(/test\.storage/);
+  });
+
+  it("keeps a controller pure when registration brought its module in", ({
+    expect,
+  }) => {
+    class Store {}
+    const Storage = $module({ name: "test.storage2", services: [Store] });
+    class Api {
+      store = $inject(Store);
+      list = ping();
+    }
+    const alepha = Alepha.create().with(Storage).with(Api);
+    expect(entryOf(alepha, Api).pure).toBe(true);
+  });
+
   it("keeps a controller holding an inert primitive pure", ({ expect }) => {
     class Api {
       list = ping();

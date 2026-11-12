@@ -398,6 +398,17 @@ export class Alepha {
   /**
    * Who created whom, and what each class holds: what {@link purity} reads.
    */
+  /**
+   * Depth of `inject` registering the module of the class it creates: that
+   * `with` is the injection's doing, not a registration (#Q3485).
+   */
+  protected reachingModule = 0;
+
+  /**
+   * The modules whose `register` is running, innermost last.
+   */
+  protected registeringModules: Service[] = [];
+
   protected containerGraph = new ContainerGraph(
     (service) =>
       Module.is(service) ||
@@ -1582,6 +1593,9 @@ export class Alepha {
     // `alepha.with` is a registration form wherever it is called (a module's
     // `register`, a `$realm`'s features, a helper): what it creates is
     // registered, not injected by the class under construction (#Q3404).
+    if (Module.is(service) && this.reachingModule === 0) {
+      this.containerGraph.moduleReached(service, null);
+    }
     this.containerGraph.openFrame(this.pendingInstantiations.length);
     try {
       this.inject(service);
@@ -1729,7 +1743,26 @@ export class Alepha {
 
     const module = (service as WithModule)[MODULE];
     if (module && typeof module === "function") {
-      this.with(module);
+      // Who reached the module, before `with` opens its registration frame
+      // and calls it a registration (#Q3485).
+      // Not a module's own `register` reaching its own services.
+      if (
+        registry === this.registry &&
+        !this.registeringModules.includes(module)
+      ) {
+        this.containerGraph.moduleReached(
+          module,
+          this.primitiveInits > 0
+            ? null
+            : this.containerGraph.injectorOf(this.pendingInstantiations),
+        );
+      }
+      this.reachingModule++;
+      try {
+        this.with(module);
+      } finally {
+        this.reachingModule--;
+      }
     }
 
     // check if service has been registered by a module
@@ -1776,9 +1809,11 @@ export class Alepha {
       // What the module creates is its registration, even when an injection
       // pulled it in while another class was under construction (#Q3395).
       this.containerGraph.openFrame(this.pendingInstantiations.length);
+      this.registeringModules.push(instance.constructor as Service);
       try {
         instance.register(this);
       } finally {
+        this.registeringModules.pop();
         this.containerGraph.closeFrame();
         // restore the previous $get context
         __alephaRef.parent = parent;
