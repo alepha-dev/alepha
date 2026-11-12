@@ -193,7 +193,13 @@ export class WorkAutomationSelections {
     return {
       condition,
       statements: [
-        sql`UPDATE quests SET reminder_next_at = ${this.database.timestamp(next)}, history = ${append}, version = version + 1, updated_at = ${this.database.timestamp(at)} WHERE id = ${id} AND project_id = ${projectId}`,
+        // By id and project alone, as the guard above checked the row:
+        // `force`, since the raw statement had no soft-delete filter.
+        this.quests.updateStatement(
+          { id, projectId },
+          { reminderNextAt: next, history: append as never },
+          { now: at, force: true, returning: false },
+        ),
       ],
       changedTables: ["quests"],
     };

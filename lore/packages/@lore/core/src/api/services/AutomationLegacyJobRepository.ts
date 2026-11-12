@@ -59,7 +59,6 @@ export class AutomationLegacyJobRepository extends AutomationBatchRepository<
         );
       const time = this.alepha.inject(DateTimeProvider);
       const now = time.nowISOString();
-      const database = this.alepha.inject(AutomationDatabase);
       const prepared = await this.prepareEffectCreate(data);
       const mutation = prepared.statement;
       let batch: Record<string, unknown>[][];
@@ -73,7 +72,22 @@ export class AutomationLegacyJobRepository extends AutomationBatchRepository<
           })} AND NOT EXISTS ${persistence.receipts.subquery({ id })} AND (${fence.condition ?? sql`TRUE`})`,
           [
             mutation,
-            sql`INSERT INTO automation_receipts (id, version, project_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${id}, 0, ${fence.projectId}, ${id}, 'legacy', 'committed', ${`legacy:${id}`}, 0, ${database.timestamp(now)}, ${database.timestamp(time.now().add(90, "days").toISOString())}, 0, 0, FALSE, ${database.timestamp(now)}, ${database.timestamp(now)})`,
+            persistence.receipts.insertStatement({
+              id,
+              projectId: fence.projectId,
+              identity: id,
+              kind: "legacy",
+              status: "committed",
+              occurrenceId: `legacy:${id}`,
+              ruleRevision: 0,
+              occurredAt: now,
+              replayUntil: time.now().add(90, "days").toISOString(),
+              cursor: 0,
+              queueAttempts: 0,
+              rosterComplete: false,
+              createdAt: now,
+              updatedAt: now,
+            }),
             ...(fence.statements ?? []),
           ],
         );

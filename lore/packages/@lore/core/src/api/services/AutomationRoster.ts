@@ -90,8 +90,25 @@ export class AutomationRoster {
           occurrence.projectId,
           sql`${this.claims.live(occurrence, token)} AND NOT EXISTS ${this.persistence.receipts.subquery({ id: rosterId })}`,
           [
-            sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, action_index, row_index, cursor, roster_complete, created_at, updated_at)
-              VALUES (${rosterId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${rosterId}, 'roster', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${occurrence.id}, ${input.index}, ${input.row ?? null}, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
+            this.persistence.receipts.insertStatement({
+              id: rosterId,
+              projectId: occurrence.projectId,
+              automationId: occurrence.automationId,
+              identity: rosterId,
+              kind: "roster",
+              status: "claimed",
+              occurrenceId: occurrence.occurrenceId,
+              ruleRevision: occurrence.ruleRevision,
+              occurredAt: occurrence.occurredAt,
+              replayUntil: occurrence.replayUntil,
+              parentId: occurrence.id,
+              actionIndex: input.index,
+              rowIndex: input.row,
+              cursor: 0,
+              rosterComplete: false,
+              createdAt: now,
+              updatedAt: now,
+            }),
             sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, recipient_user_id, recipient_channel, position, cursor, roster_complete, created_at, updated_at)
               SELECT (${rosterId} || ':' || members.user_id || ':' || channels.channel), 0, ${occurrence.projectId}, ${occurrence.automationId}, (${rosterId} || ':' || members.user_id || ':' || channels.channel), 'recipient', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${rosterId}, members.user_id, channels.channel, ROW_NUMBER() OVER (ORDER BY members.user_id, channels.channel) - 1, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}
               FROM organization_members AS members JOIN users ON users.id = members.user_id
@@ -100,7 +117,11 @@ export class AutomationRoster {
                 sql` UNION ALL `,
               )}) AS channels
               WHERE members.organization_id = ${project.organizationId} AND users.enabled = TRUE ${input.excludeUserId ? sql`AND members.user_id <> ${input.excludeUserId}` : sql``}`,
-            sql`UPDATE automation_receipts SET roster_complete = TRUE, version = version + 1 WHERE id = ${rosterId}`,
+            this.persistence.receipts.updateStatement(
+              { id: rosterId },
+              { rosterComplete: true },
+              { touch: false, returning: false },
+            ),
           ],
         );
       } catch (error) {
@@ -178,8 +199,29 @@ export class AutomationRoster {
           occurrence.projectId,
           this.claims.live(occurrence, token),
           [
-            sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, snapshot, position, cursor, roster_complete, created_at, updated_at)
-              VALUES (${id}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${id}, 'chunk', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${rosterId}, ${runId}, ${JSON.stringify(snapshot)}, ${page.roster.cursor}, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) ON CONFLICT DO NOTHING`,
+            this.persistence.receipts.insertStatement(
+              {
+                id,
+                projectId: occurrence.projectId,
+                automationId: occurrence.automationId,
+                identity: id,
+                kind: "chunk",
+                status: "claimed",
+                occurrenceId: occurrence.occurrenceId,
+                ruleRevision: occurrence.ruleRevision,
+                occurredAt: occurrence.occurredAt,
+                replayUntil: occurrence.replayUntil,
+                parentId: rosterId,
+                runId,
+                snapshot,
+                position: page.roster.cursor,
+                cursor: 0,
+                rosterComplete: false,
+                createdAt: now,
+                updatedAt: now,
+              },
+              { onConflictDoNothing: true },
+            ),
           ],
         );
         receipt = await this.persistence.receipts.getById(id);
@@ -230,7 +272,14 @@ export class AutomationRoster {
       page.occurrence.projectId,
       sql`${this.claims.live(page.occurrence, token)} AND ${condition}`,
       [
-        sql`UPDATE automation_receipts SET status = ${effectId ? "committed" : "skipped"}, reason = ${reason?.slice(0, 1024) ?? null}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${recipientId} AND parent_id = ${rosterId}`,
+        this.persistence.receipts.updateStatement(
+          { id: recipientId, parentId: rosterId },
+          {
+            status: effectId ? "committed" : "skipped",
+            reason: reason?.slice(0, 1024) ?? null,
+          },
+          { returning: false },
+        ),
       ],
     );
   }
@@ -268,8 +317,16 @@ export class AutomationRoster {
         status: "claimed",
       })}`,
       [
-        sql`UPDATE automation_receipts SET status = 'committed', snapshot = NULL, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${chunkId}`,
-        sql`UPDATE automation_receipts SET cursor = ${next}, status = ${page.hasMore ? "claimed" : "committed"}, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${rosterId} AND cursor = ${page.roster.cursor}`,
+        this.persistence.receipts.updateStatement(
+          { id: chunkId },
+          { status: "committed", snapshot: null },
+          { now, returning: false },
+        ),
+        this.persistence.receipts.updateStatement(
+          { id: rosterId, cursor: page.roster.cursor },
+          { cursor: next, status: page.hasMore ? "claimed" : "committed" },
+          { now, returning: false },
+        ),
       ],
     );
     return { hasMore: page.hasMore, cursor: next };

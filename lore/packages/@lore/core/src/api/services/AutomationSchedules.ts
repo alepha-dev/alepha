@@ -91,7 +91,11 @@ export class AutomationSchedules {
             ? { eq: rule.scheduleCron }
             : { isNull: true },
         })} AND ${free}`;
-        const mutation = sql`UPDATE automations SET next_run_at = ${this.database.timestamp(next)}, schedule_cron = ${cron}, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${rule.id}`;
+        const mutation = this.persistence.rules.updateStatement(
+          { id: rule.id },
+          { nextRunAt: next, scheduleCron: cron },
+          { now, force: true, returning: false },
+        );
         if (scheduledAt < rule.nextRunAt) {
           // An old cursor no longer belongs to the current compiled schedule.
           // Move it to the future without manufacturing an occurrence.

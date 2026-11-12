@@ -1231,30 +1231,30 @@ export abstract class Repository<T extends ZObject> {
    * Always a HARD delete, on a soft-deleting table too: a statement that
    * sets `deletedAt` is an {@link updateStatement}. The soft-delete filter
    * still scopes `where` unless `force`, so by default it removes live rows
-   * only; pass `force` to remove deleted ones as well. Once the batch has
-   * committed, the query cache is invalidated and `repository:delete:after`
-   * fires with the removed ids.
+   * only; pass `force` to remove deleted ones as well. It returns the
+   * removed keys only, and once the batch has committed the query cache is
+   * invalidated and `repository:delete:after` fires with them. With
+   * `events: false` it returns nothing and does neither.
    */
   public deleteStatement(
     where: PgQueryWhereOrSQL<T>,
     opts: { force?: boolean; events?: boolean } = {},
   ): SQL {
     const scoped = this.withDeletedAt(where, opts);
-    const statement = this.rawDelete()
-      .where(this.toSQL(scoped))
-      .returning(this.pgTable)
-      .getSQL();
+    const remove = this.rawDelete().where(this.toSQL(scoped));
     if (opts.events === false) {
-      return statement;
+      return remove.getSQL();
     }
+    // Only the key comes back: a delete can remove many rows, and D1 caps
+    // the size of a result.
+    const key = this.col(this.id.key as keyof Infer<T>);
+    const statement = remove.returning({ [key.name]: key }).getSQL();
     return withAfterBatch(statement, async (rows) => {
       await this.invalidateCache({});
       await this.alepha.events.emit("repository:delete:after", {
         tableName: this.tableName,
         where: scoped,
-        ids: rows.map(
-          (it) => this.decodeRow(it)[this.id.key as string] as string | number,
-        ),
+        ids: rows.map((it) => it[key.name] as string | number),
       });
     });
   }

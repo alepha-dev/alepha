@@ -293,7 +293,10 @@ export class AutomationVariables {
         projectId,
         sql`${this.variableRows.exists({ id: row.id, version })} AND ${this.approvals.consumers(row.id, projectId, [])}`,
         [
-          sql`DELETE FROM automation_variables WHERE id = ${row.id} AND version = ${version}`,
+          this.variableRows.deleteStatement(
+            { id: row.id, version },
+            { events: false },
+          ),
           this.audit.statement(projectId, user, "variable_delete", row.id, {
             key,
             version,

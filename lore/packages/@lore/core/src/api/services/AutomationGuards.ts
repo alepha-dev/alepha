@@ -214,8 +214,33 @@ export class AutomationGuards {
           leaseUntil: { gt: now },
         })}`,
         [
-          sql`UPDATE automations SET baseline = ${baseline ? JSON.stringify(baseline) : null}, version = version + 1 WHERE id = ${rule.id}`,
-          sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, result, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${id}, 0, ${rule.projectId}, ${rule.id}, ${id}, 'guard', 'committed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${occurrence.id}, ${occurrence.runId}, ${JSON.stringify(recorded)}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
+          // Bookkeeping: no `updated_at`, and by id alone, as the raw
+          // statement was (the guard above already checked the row).
+          this.persistence.rules.updateStatement(
+            { id: rule.id },
+            { baseline: baseline ?? null },
+            { touch: false, force: true, returning: false },
+          ),
+          this.persistence.receipts.insertStatement({
+            id,
+            projectId: rule.projectId,
+            automationId: rule.id,
+            identity: id,
+            kind: "guard",
+            status: "committed",
+            occurrenceId: occurrence.occurrenceId,
+            ruleRevision: occurrence.ruleRevision,
+            occurredAt: occurrence.occurredAt,
+            replayUntil: occurrence.replayUntil,
+            parentId: occurrence.id,
+            runId: occurrence.runId,
+            result: recorded,
+            cursor: 0,
+            queueAttempts: 0,
+            rosterComplete: false,
+            createdAt: now,
+            updatedAt: now,
+          }),
         ],
       );
       await this.cache.invalidateTable("automations");
