@@ -30,7 +30,7 @@ export interface DataTableTabsProps {
 
 /**
  * The band of tabs that opens a table's frame, drawn like a browser's tabs:
- * the active tab is a tile of the bar below it, flaring into the band at its
+ * the active tab is an outlined tile of the bar below it, flaring into the band at its
  * two bottom corners, so the tab and the bar read as one surface. A resting
  * tab is plain text, lit as a tile on hover, with a short divider between two
  * resting neighbours.
@@ -95,13 +95,22 @@ export const DataTableTabs = (props: DataTableTabsProps) => {
         const divided =
           !tab.active && index > 0 && !props.tabs[index - 1]!.active;
         const className = cn(
-          "relative flex h-9 shrink-0 items-center gap-2 rounded-t-[0.625rem] px-4 text-sm font-medium transition-colors duration-150",
+          "relative flex h-9 shrink-0 items-center gap-2 rounded-t-[0.625rem] border border-b-0 px-4 text-sm font-medium transition-colors duration-150",
           tab.active
-            ? // The ears: two squares outside the tile's bottom corners, each
-              // filled but for a quarter circle, so the tile's sides curve out
-              // into the band. Swapped under rtl, where the start is the right.
-              "bg-muted text-foreground before:absolute before:start-[-0.625rem] before:bottom-0 before:size-[0.625rem] before:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] before:content-[''] after:absolute after:end-[-0.625rem] after:bottom-0 after:size-[0.625rem] after:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] after:content-[''] rtl:before:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))] rtl:after:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--muted)_calc(0.625rem_+_0.5px))]"
-            : "text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_oklab,var(--muted),transparent_40%)]",
+            ? // The tile is outlined on its top and sides, and its bottom
+              // stays open onto the bar, whose own side borders carry the
+              // outline on. The ears: two squares outside the tile's bottom
+              // corners, each filled but for a quarter circle, so the tile's
+              // sides curve out into the band. The circle's rim is a 1px ring
+              // of the border colour, so the outline follows the curve from
+              // the tile's side down to the band's bottom line. An inset is
+              // measured from the padding box, inside the border, so each ear
+              // is 1px wider and taller and reaches over the tile's border
+              // column: its ring lands on that border, and its fill hides the
+              // straight side below the curve. Swapped under rtl, where the
+              // start is the right.
+              "bg-muted text-foreground border-border before:absolute before:start-[calc(-0.625rem_-_1px)] before:bottom-0 before:size-[calc(0.625rem_+_1px)] before:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))] before:content-[''] after:absolute after:end-[calc(-0.625rem_-_1px)] after:bottom-0 after:size-[calc(0.625rem_+_1px)] after:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))] after:content-[''] rtl:before:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))] rtl:after:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))]"
+            : "text-muted-foreground hover:text-foreground border-transparent hover:bg-[color-mix(in_oklab,var(--muted),transparent_40%)]",
           divided &&
             "before:bg-border before:absolute before:start-0 before:top-[30%] before:h-[40%] before:w-px before:content-[''] hover:before:opacity-0 [[role=tab]:hover+&]:before:opacity-0",
         );
