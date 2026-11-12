@@ -26,7 +26,7 @@ axe finds roughly half of real accessibility issues by its own figure. A green s
 | 1.1.1 Non-text Content                                   | Lint, axe (structure and rendered page)                               |
 | 1.3.1 Info and Relationships                             | axe (structure and rendered page), accessibility tree                 |
 | 1.4.1 Use of Color                                       | axe on the rendered page (links in text), colour-blind palette test   |
-| 1.4.3 Contrast (Minimum)                                 | axe on the rendered page, four token sets. Known gaps below.          |
+| 1.4.3 Contrast (Minimum)                                 | axe on the rendered page, four token sets                             |
 | 1.4.11 Non-text Contrast                                 | **Not tested by any layer.** axe has no rule for it. Known gap below. |
 | 2.1.1 Keyboard                                           | Lint, keyboard specs, axe (scrollable regions)                        |
 | 2.1.2 No Keyboard Trap                                   | Keyboard specs (every overlay closes on Escape)                       |
@@ -72,7 +72,6 @@ Not scanned under jsdom: `TimeAgo`, `Highlight`, `FileImage`, `BrandIcon` and `F
 ## Known gaps
 
 - **1.4.11 Non-text Contrast is not met** on the default palette for field borders and the focus ring. Against white, `--input` measures **1.26:1** and `--ring` **2.58:1**, where the criterion asks for 3:1. No automated layer checks this criterion: axe has no rule for it.
-- **1.4.3 Contrast, muted text in light mode.** `--muted-foreground` on `--muted` measures **4.34:1**, under the 4.5:1 asked for normal text. It shows wherever muted text sits on a muted surface: the data table footer, the neutral tinted badge, counters, the tab band, keyboard hints, inline code, the permission matrix and ranks headers. A tab count on a tinted pill measures 3.52:1 in light mode and 4.33:1 in dark mode. The primary-coloured link on the admin user page is under 4.5:1 in dark mode. 52 findings in all, each listed in the scan's baseline.
 - **2.5.8 Target Size.** The storage usage bar of the admin files page draws a small bucket as a 12 by 10 pixel button.
 - **Landmarks.** The shell nests the page's `main` inside its own, and the sidebar's navigation is not inside a `navigation` landmark. axe reports neither under the WCAG rules, and neither is fixed yet.
 

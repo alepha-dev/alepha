@@ -53,10 +53,10 @@ export const OrganizationPendingInvitations = (
         const rankName =
           props.ranks.find((item) => item.key === rank)?.name ?? rank;
         return (
-          <Card
-            key={invitation.id}
-            className={`${settingsCardEdge} py-3 opacity-80`}
-          >
+          // No `opacity-80` on the card: it took the muted "Expires" line to
+          // 3.5:1, under WCAG 1.4.3 (#Q3487). The mail avatar and that line
+          // already say the member is only invited.
+          <Card key={invitation.id} className={`${settingsCardEdge} py-3`}>
             <CardContent className="flex items-center gap-4 px-3">
               <div className="bg-muted flex size-9 items-center justify-center rounded-full">
                 <Mail className="size-4" />

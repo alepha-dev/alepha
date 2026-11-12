@@ -126,7 +126,10 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
               <span
                 className={cn(
                   "bg-foreground/10 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-[5px] font-mono text-[10.5px]",
-                  active ? "text-foreground" : "text-muted-foreground",
+                  // `text-foreground/70`, not `text-muted-foreground`: on the
+                  // count's own fill the muted token was 3.52:1 light and
+                  // 4.33:1 dark, under WCAG 1.4.3 (#Q3487).
+                  active ? "text-foreground" : "text-foreground/70",
                 )}
               >
                 {tab.count}
