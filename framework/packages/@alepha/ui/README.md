@@ -396,8 +396,8 @@ family. Beside them, the small pieces every surface reaches for: `cn` for
 class merging, `useToast` with its `Toaster`, `useDialog` with its
 `DialogProvider`, `DirectionProvider` for Base UI's reading direction,
 `useIsMobile`, `TimeAgo`, `UserAvatar`, `BrandIcon`, `FileImage`,
-`PaneRail`, `FilterSlot`, and `Highlight` to mark what a search matched in
-a text.
+`PaneRail`, `PageOutline` for an "on this page" rail, `FilterSlot`, and
+`Highlight` to mark what a search matched in a text.
 
 Imports nothing from another `@alepha/ui` module, so
 `import { Button } from "@alepha/ui"` never pulls in a form, a table or a

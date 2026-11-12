@@ -106,6 +106,7 @@ const AppSettingsEstate = () => {
   if (instance.stack) {
     return (
       <SettingsSection
+        id="estate"
         title={tr("app.settings.estate.title")}
         description={tr("app.settings.estate.description")}
       >
@@ -160,6 +161,7 @@ const AppSettingsEstate = () => {
 
   return (
     <SettingsSection
+      id="estate"
       title={tr("app.settings.estate.title")}
       description={tr("app.settings.estate.description")}
     >

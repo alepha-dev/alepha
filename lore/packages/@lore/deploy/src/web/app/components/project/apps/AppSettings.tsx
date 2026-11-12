@@ -1,3 +1,4 @@
+import { PageOutline } from "@alepha/ui";
 import { SettingsSection } from "@alepha/ui/settings";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
@@ -48,8 +49,17 @@ const AppSettings = () => {
     // `max-w-6xl` so this one would not read badly at full width, which also
     // denied the width to Analytics and Vitals, which want it. Each tab
     // answers for itself now: this one at `max-w-3xl`, the rest full width.
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
-      <SettingsSection title={tr("app.settings.general")}>
+    //
+    // Every section carries a stable `id`, so `#sigil` deep-links to it, and
+    // `PageOutline` lists them in a rail on the right when the page is wide
+    // enough. The ids are part of the URL contract: renaming one breaks the
+    // links people have shared.
+    <PageOutline
+      title={tr("app.settings.outline")}
+      className="p-4"
+      contentClassName="flex max-w-3xl flex-col gap-4"
+    >
+      <SettingsSection id="general" title={tr("app.settings.general")}>
         {/*
           Keyed by the instance, and all three must be. Moving between two
           instances' Settings tabs swaps `currentInstanceAtom` without
@@ -69,7 +79,7 @@ const AppSettings = () => {
       <AppSettingsEstate />
 
       <AppSettingsDelete />
-    </div>
+    </PageOutline>
   );
 };
 

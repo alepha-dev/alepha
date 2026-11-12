@@ -1,3 +1,4 @@
+import { outlineEntry } from "@alepha/ui";
 import {
   capabilityOption,
   currentProjectAtom,
@@ -60,7 +61,13 @@ const AppSettingsSigilFeatures = () => {
   const stored = data?.items.find((item) => item.key === "SIGIL_CONFIG");
 
   return (
-    <>
+    // A link target and an outline entry like the sections around it; the
+    // form draws its own heading, so the label is given here.
+    <div
+      id="sigil-features"
+      {...outlineEntry(tr("app.sigil.title"))}
+      className="scroll-mt-4"
+    >
       {loading && !data ? (
         <p className="text-muted-foreground text-sm">
           {tr("app.environment.loading")}
@@ -76,7 +83,7 @@ const AppSettingsSigilFeatures = () => {
           stored={stored}
         />
       )}
-    </>
+    </div>
   );
 };
 
