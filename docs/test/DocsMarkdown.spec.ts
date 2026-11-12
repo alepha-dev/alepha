@@ -114,6 +114,25 @@ describe("DocsMarkdown", () => {
     });
   });
 
+  describe("image", () => {
+    it("should emit both themes for a -light.png source", () => {
+      expect(
+        DocsMarkdown.image("/screenshots/lore/quests-light.png", "The list"),
+      ).toBe(
+        '<img class="doc-shot doc-shot-light" src="/screenshots/lore/quests-light.png" alt="The list" loading="lazy" />' +
+          '<img class="doc-shot doc-shot-dark" src="/screenshots/lore/quests-dark.png" alt="The list" loading="lazy" />',
+      );
+    });
+
+    it("should emit one image for any other source, alt escaped", () => {
+      expect(
+        DocsMarkdown.image("/admin/jobs-dark.png", 'A "jobs" <page>'),
+      ).toBe(
+        '<img class="doc-shot" src="/admin/jobs-dark.png" alt="A &quot;jobs&quot; &lt;page>" loading="lazy" />',
+      );
+    });
+  });
+
   describe("forSite", () => {
     it("should point the site's own links at the site being built", () => {
       expect(

@@ -166,6 +166,30 @@
    HEADING ANCHORS
    ----------------------------------------------------------------------------- */
 
+/* A screenshot in a guide. `![alt](/x-light.png)` renders both themes' images
+   (see `DocsMarkdown.image`); light is the default so a page drawn before the
+   theme script runs matches the rest of it, as `.admin-shot` does. */
+.doc-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.doc-shot-dark {
+  display: none;
+}
+
+[data-theme="dark"] .doc-shot-light {
+  display: none;
+}
+
+[data-theme="dark"] .doc-shot-dark {
+  display: block;
+}
+
 .doc-heading {
   position: relative;
 }

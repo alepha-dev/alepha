@@ -67,6 +67,28 @@ export class DocsMarkdown {
     /^(import|installation|install|table of contents|contents|prerequisites)$/i;
 
   /**
+   * A markdown image as the site draws it. A source ending in `-light.png`
+   * has a `-dark.png` twin beside it: both are emitted and CSS shows the one
+   * matching the theme, as the home page's admin shots do. Any other source is
+   * one image, whatever the theme.
+   */
+  public static image(href: string, alt: string): string {
+    const text = alt
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+    const tag = (src: string, variant: string) =>
+      `<img class="doc-shot${variant}" src="${src}" alt="${text}" loading="lazy" />`;
+    if (!href.endsWith(DocsMarkdown.LIGHT_SHOT)) {
+      return tag(href, "");
+    }
+    const dark = `${href.slice(0, -DocsMarkdown.LIGHT_SHOT.length)}-dark.png`;
+    return `${tag(href, " doc-shot-light")}${tag(dark, " doc-shot-dark")}`;
+  }
+
+  protected static readonly LIGHT_SHOT = "-light.png";
+
+  /**
    * A page's slug from where it sits under its `docs/` root: order prefixes
    * dropped, the path joined with dashes, lowercased, the first `@` gone.
    * `1-guides/4-server` and `1-building-an-api` give

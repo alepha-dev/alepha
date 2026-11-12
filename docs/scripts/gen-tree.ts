@@ -527,6 +527,7 @@ export class TreeCommand {
     const marked = new Marked();
 
     const renderer = {
+      image: ({ href, text }: Tokens.Image) => DocsMarkdown.image(href, text),
       heading: ({ text, depth }: Tokens.Heading) => {
         // GitHub's rule, shared with `check:docs` so a link it accepts is
         // an anchor this page has.
