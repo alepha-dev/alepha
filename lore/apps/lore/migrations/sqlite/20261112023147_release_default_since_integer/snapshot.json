@@ -1,6 +1,6 @@
 {
-  "id": "22fcdf4e-2d16-429f-93d9-c820438bb8b7",
-  "prevIds": ["78cf115b-01d7-4929-8d45-dab14c876e87"],
+  "id": "afa6290b-91e5-4377-97d7-d5d729c09311",
+  "prevIds": ["b0955c9c-dfdc-4274-914f-d13a421ce24e"],
   "version": "7",
   "dialect": "sqlite",
   "ddl": [
@@ -4050,6 +4050,16 @@
       "table": "deployments",
       "name": "version_id",
       "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "deployments",
+      "name": "migrations_applied",
+      "type": "integer",
       "notNull": false,
       "autoincrement": false,
       "default": null,
