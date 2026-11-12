@@ -113,6 +113,21 @@ describe("Automation template boundary", () => {
     ).toThrow("bounds");
   });
 
+  it("keeps a Lore path's numeric item selector and drops every other query parameter", async ({
+    expect,
+  }) => {
+    const source = (url: string) =>
+      builder.source(project.id, "deploy.failed", { url });
+    expect(
+      (await source("/club/feedback?token=secret&feedback=94")).values.url,
+    ).toBe("/club/feedback?feedback=94");
+    expect((await source("/club/feedback?feedback=x")).values.url).toBe(
+      "/club/feedback",
+    );
+    expect(
+      (await source("https://example.test/a?feedback=94")).values.url,
+    ).toBe("https://example.test/a");
+  });
   it("allows only declared safe context fields and uses the authoritative project title", async ({
     expect,
   }) => {

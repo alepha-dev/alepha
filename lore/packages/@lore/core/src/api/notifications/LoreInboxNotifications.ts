@@ -132,7 +132,7 @@ export class LoreInboxNotifications {
         const excerpt = this.html.escape(it.excerpt);
         const url = encodeURI(it.url);
         return `
-        <h1>${projectTitle} — you were mentioned</h1>
+        <h1>${projectTitle}: you were mentioned</h1>
         <p><strong>${authorName}</strong> wrote your name in a comment on ${reference}, <strong>${subjectTitle}</strong>.</p>
         <blockquote style="margin: 16px 0; padding: 8px 16px; border-left: 3px solid #e5e7eb; color: #4b5563;">${excerpt}</blockquote>
         <p>
@@ -164,7 +164,7 @@ export class LoreInboxNotifications {
             const excerpt = this.html.escape(it.excerpt);
             const url = encodeURI(it.url);
             return `
-        <h1>${projectTitle} — vous avez été mentionné</h1>
+        <h1>${projectTitle}: vous avez été mentionné</h1>
         <p><strong>${authorName}</strong> a écrit votre nom dans un commentaire sur ${reference}, <strong>${subjectTitle}</strong>.</p>
         <blockquote style="margin: 16px 0; padding: 8px 16px; border-left: 3px solid #e5e7eb; color: #4b5563;">${excerpt}</blockquote>
         <p>
@@ -219,7 +219,7 @@ export class LoreInboxNotifications {
             ? "It ships 1 quest."
             : `It ships ${it.questCount} quests.`;
         return `
-        <h1>${projectTitle} — ${releaseTag} is out</h1>
+        <h1>${projectTitle}: ${releaseTag} is out</h1>
         <p><strong>${releaseTitle}</strong> has been published. ${shipped}</p>
         <p>
           <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
@@ -250,7 +250,7 @@ export class LoreInboxNotifications {
                 ? "Elle embarque 1 quête."
                 : `Elle embarque ${it.questCount} quêtes.`;
             return `
-        <h1>${projectTitle} — ${releaseTag} est disponible</h1>
+        <h1>${projectTitle}: ${releaseTag} est disponible</h1>
         <p><strong>${releaseTitle}</strong> vient d'être publiée. ${shipped}</p>
         <p>
           <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
@@ -322,7 +322,7 @@ export class LoreInboxNotifications {
             ? "has been <strong>accepted</strong>"
             : "has been <strong>rejected</strong>";
         return `
-        <h1>${projectTitle} — ${reference}</h1>
+        <h1>${projectTitle}: ${reference}</h1>
         <p>Your report <strong>${feedbackTitle}</strong> ${verdict}.</p>
         <p>
           <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
@@ -359,7 +359,7 @@ export class LoreInboxNotifications {
                 ? "a été <strong>acceptée</strong>"
                 : "a été <strong>refusée</strong>";
             return `
-        <h1>${projectTitle} — ${reference}</h1>
+        <h1>${projectTitle}: ${reference}</h1>
         <p>Votre demande <strong>${feedbackTitle}</strong> ${verdict}.</p>
         <p>
           <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
@@ -414,7 +414,7 @@ export class LoreInboxNotifications {
         const excerpt = this.html.escape(it.excerpt);
         const url = encodeURI(it.url);
         return `
-        <h1>${projectTitle} — ${reference}</h1>
+        <h1>${projectTitle}: ${reference}</h1>
         <p><strong>${authorName}</strong> answered your report <strong>${feedbackTitle}</strong>.</p>
         <blockquote style="margin: 16px 0; padding: 8px 16px; border-left: 3px solid #e5e7eb; color: #4b5563;">${excerpt}</blockquote>
         <p>
@@ -444,7 +444,7 @@ export class LoreInboxNotifications {
             const excerpt = this.html.escape(it.excerpt);
             const url = encodeURI(it.url);
             return `
-        <h1>${projectTitle} — ${reference}</h1>
+        <h1>${projectTitle}: ${reference}</h1>
         <p><strong>${authorName}</strong> a répondu à votre demande <strong>${feedbackTitle}</strong>.</p>
         <blockquote style="margin: 16px 0; padding: 8px 16px; border-left: 3px solid #e5e7eb; color: #4b5563;">${excerpt}</blockquote>
         <p>

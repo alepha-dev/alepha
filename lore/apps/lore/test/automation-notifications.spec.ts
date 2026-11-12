@@ -342,13 +342,61 @@ describe("Automation configured notifications and durable outbox", () => {
     expect(mail.last).toMatchObject({
       to: "member@example.test",
       subject: "A <custom> & title",
-      text: '<script>Keep & "quotes"</script> {{never_reparse}}',
     });
+    expect(
+      mail.last!.text!.startsWith(
+        '<script>Keep & "quotes"</script> {{never_reparse}}\n',
+      ),
+    ).toBe(true);
     expect(mail.last!.body).toContain(
       "&lt;script&gt;Keep &amp; &quot;quotes&quot;&lt;/script&gt; {{never_reparse}}",
     );
     expect(mail.last!.body).not.toContain("&amp;lt;");
     expect(await rows.inbox.count()).toBe(0);
+  });
+  it("frames an email with its project, title, an absolute link and the automation that sent it", async ({
+    expect,
+  }) => {
+    const ast = config("email");
+    ast.actions[0] = {
+      ...ast.actions[0],
+      text: "See {{url}}",
+    } as (typeof ast.actions)[0];
+    const opened = await open(ast);
+    const result = await enqueue(opened);
+    expect(
+      await deliver(String(result.receipt.result!.outbox_id)),
+    ).toMatchObject({ status: "sent" });
+    const base = (alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
+    const link = `${base}/${project.slug}/quests`;
+    const manage = `${base}/${project.slug}/automations/${opened.rule.id}`;
+    const body = mail.last!.body;
+    expect(body).toContain("<h1");
+    expect(body).toContain("A &lt;custom&gt; &amp; title</h1>");
+    expect(body).toContain(`See ${link}`);
+    expect(body).toContain(`href="${link}"`);
+    expect(body).toContain("Open in Lore");
+    expect(body).toContain(`href="${manage}"`);
+    expect(body).toContain("Manage this automation");
+    expect(body).not.toContain("\u2014");
+    expect(mail.last!.text).toContain(`See ${link}`);
+    expect(mail.last!.text).not.toContain("Open in Lore:");
+    expect(mail.last!.text).toContain(`Manage it: ${manage}`);
+  });
+  it("keeps a Lore path relative in the inbox, where the app resolves it", async ({
+    expect,
+  }) => {
+    const ast = config();
+    ast.actions[0] = {
+      ...ast.actions[0],
+      text: "See {{url}}",
+    } as (typeof ast.actions)[0];
+    const result = await enqueue(await open(ast));
+    await deliver(String(result.receipt.result!.outbox_id));
+    expect(await rows.inbox.getOne({})).toMatchObject({
+      body: `See /${project.slug}/quests`,
+      href: `/${project.slug}/quests`,
+    });
   });
   it("keeps category preferences and the global email switch authoritative at send time", async ({
     expect,

@@ -93,7 +93,7 @@ export default {
   "automation.channel.email": "Email",
   "automation.preset.feedback-created.title": "New feedback",
   "automation.preset.feedback-created.description":
-    "Notify one member when feedback is created. Reporter contact details are excluded.",
+    "Notify one member when feedback is created, with its description and a link to the report. Reporter contact details are excluded.",
   "automation.preset.weekly-report-digest.title": "Weekly report",
   "automation.preset.weekly-report-digest.description":
     "Send the Reports summary of the last seven days to one member, every Monday at 08:00 UTC. They opt out in their notification settings.",

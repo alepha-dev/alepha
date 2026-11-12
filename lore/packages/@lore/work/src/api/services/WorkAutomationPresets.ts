@@ -20,7 +20,7 @@ export class WorkAutomationPresets {
     this.register(
       "feedback-created",
       "New feedback",
-      "Notify one member when feedback is created. Reporter contact details are excluded.",
+      "Notify one member when feedback is created, with its description and a link to the report. Reporter contact details are excluded.",
       "feedback.created",
       (values) => this.feedback(values),
     );
@@ -134,8 +134,8 @@ export class WorkAutomationPresets {
       actions: [
         this.notify(
           values,
-          "New feedback: {{title}}",
-          "Feedback {{shortId}}: {{title}}\n{{url}}\n{{project}}",
+          "New feedback {{reference}}: {{title}}",
+          "{{project}} received {{reference}}.\n\n{{description}}",
         ),
       ],
     };

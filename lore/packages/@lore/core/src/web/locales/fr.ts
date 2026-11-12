@@ -98,7 +98,7 @@ export default {
   "automation.channel.email": "E-mail",
   "automation.preset.feedback-created.title": "Nouveau retour",
   "automation.preset.feedback-created.description":
-    "Notifier un membre lors de la création d’un retour, sans divulguer les coordonnées de son auteur.",
+    "Notifier un membre lors de la création d’un retour, avec sa description et un lien vers lui, sans divulguer les coordonnées de son auteur.",
   "automation.preset.weekly-report-digest.title": "Rapport hebdomadaire",
   "automation.preset.weekly-report-digest.description":
     "Envoie le résumé des rapports des sept derniers jours à un membre, chaque lundi à 08:00 UTC. Il peut s'en désabonner dans ses réglages de notification.",
