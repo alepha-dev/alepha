@@ -176,6 +176,38 @@ describe("dashboard shared reads", () => {
     });
   });
 
+  describe("needs you", () => {
+    it("reads neither the Overview nor the Quests page, and agrees with both", async ({
+      expect,
+    }) => {
+      const project = await repos.projects.getOne({
+        where: { id: { eq: projectId } },
+      });
+      const longAgo = dateTime.now().subtract(30, "day").toISOString();
+      // Two stale quests (accepted a month ago, still open) and one not started.
+      await createTestQuest(alepha, project, { acceptedAt: longAgo });
+      await createTestQuest(alepha, project, { acceptedAt: longAgo });
+      await createTestQuest(alepha, project, { priority: "high" });
+      await add("needsYou");
+
+      const loaded = await load();
+
+      expect(reports.calls.get("overview")).toBeUndefined();
+      expect(reports.calls.get("questsReport")).toBeUndefined();
+
+      const overview = await reports.overview(projectId, {});
+      const page = await reports.questsReport(projectId, {});
+      const figures = await reports.questAttention(projectId, {});
+      expect(figures.attention).toEqual(overview.attention);
+      expect(figures.aging).toEqual(page.aging);
+      expect(overview.attention.staleQuests).toBe(2);
+      expect(loaded.values[0]!.value).toBe(
+        overview.attention.staleQuests +
+          Math.min(1, overview.attention.notStartedQuests),
+      );
+    });
+  });
+
   describe("cycle time", () => {
     it("reads neither the Overview nor the Quests page", async ({ expect }) => {
       await complete(1);

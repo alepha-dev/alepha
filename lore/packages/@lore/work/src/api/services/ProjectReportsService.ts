@@ -426,6 +426,124 @@ export class ProjectReportsService {
     );
   }
 
+  /**
+   * What needs a human in scope (#Q3491): the attention counts the Overview
+   * shows and the oldest open quests the Quests tab lists, read alone.
+   *
+   * The dashboard's Needs you tile reads this. It used to read `overview()`
+   * AND `questsReport()`, two whole Reports pages of some twenty scans of the
+   * project's quests, to keep these two figures. Both pages read them
+   * through the same helpers, so the three cannot disagree.
+   */
+  async questAttention(projectId: number, query: ReportsQuery) {
+    const scope = this.questScope(
+      projectId,
+      await this.epicVisibility.draftEpicIds(projectId),
+      query,
+    );
+    const staleSince = this.dt
+      .now()
+      .subtract(query.staleDays ?? 14, "day")
+      .toISOString();
+    const [attention, aging] = await Promise.all([
+      this.attentionCounts(scope, staleSince),
+      this.agingRows(scope, query.agingLimit ?? 10),
+    ]);
+    return { attention, aging };
+  }
+
+  /**
+   * Stale, not started and blocked quests in scope, in one aggregate.
+   */
+  protected async attentionCounts(
+    scope: PgQueryWhere<typeof quests.schema>,
+    staleSince: string,
+  ) {
+    // Attention counts. A quest is blocked while the one it depends on is
+    // still open: `subquery` correlates through the outer `depends_on`.
+    const [attentionAgg] = await this.quests.aggregate({
+      select: {
+        staleQuests: {
+          count: {
+            column: "id",
+            where: {
+              acceptedAt: { isNotNull: true, lt: staleSince },
+              completedAt: { isNull: true },
+              heldAt: { isNull: true },
+            },
+          },
+        },
+        notStartedQuests: {
+          count: {
+            column: "id",
+            where: {
+              acceptedAt: { isNull: true },
+              completedAt: { isNull: true },
+              heldAt: { isNull: true },
+            },
+          },
+        },
+        blockedQuests: {
+          count: {
+            column: "id",
+            where: {
+              completedAt: { isNull: true },
+              dependsOn: { isNotNull: true },
+              exists: this.quests.subquery({
+                id: { eq: this.quests.table.dependsOn },
+                completedAt: { isNull: true },
+              }),
+            },
+          },
+        },
+      },
+      where: scope,
+    });
+
+    return {
+      staleQuests: Number(attentionAgg?.staleQuests.count) || 0,
+      notStartedQuests: Number(attentionAgg?.notStartedQuests.count) || 0,
+      blockedQuests: Number(attentionAgg?.blockedQuests.count) || 0,
+    };
+  }
+
+  /**
+   * The oldest open quests in scope, oldest first, with their age in days.
+   */
+  protected async agingRows(
+    scope: PgQueryWhere<typeof quests.schema>,
+    limit: number,
+  ) {
+    // Oldest still-open (accepted, not completed) quests. A held quest is not
+    // aging: it is waiting, and it shows as held.
+    const rows = await this.quests.findMany({
+      where: {
+        ...scope,
+        acceptedAt: { isNotNull: true },
+        completedAt: { isNull: true },
+        heldAt: { isNull: true },
+      },
+      columns: ["shortId", "title", "area", "priority", "acceptedAt"],
+      orderBy: { column: "acceptedAt", direction: "asc" },
+      limit,
+    });
+
+    const now = this.dt.nowMillis();
+    return rows.map((row) => {
+      // The where above guarantees it; the column is optional in the schema.
+      const acceptedMs = row.acceptedAt
+        ? this.dt.of(row.acceptedAt).valueOf()
+        : now;
+      return {
+        shortId: row.shortId,
+        title: row.title,
+        area: row.area ?? "Unassigned",
+        priority: row.priority,
+        ageDays: Math.floor((now - acceptedMs) / 86400000),
+      };
+    });
+  }
+
   protected cycleFigures(samples: Array<{ hours: number }>) {
     const hours = samples.map((sample) => sample.hours);
     return {
@@ -602,52 +720,7 @@ export class ProjectReportsService {
       .sampled(daily, query.grain ?? this.series.grainFor(axis.length))
       .map(({ at, ...point }) => ({ date: at, ...point }));
 
-    // Attention counts. A quest is blocked while the one it depends on is
-    // still open: `subquery` correlates through the outer `depends_on`.
-    const [attentionAgg] = await this.quests.aggregate({
-      select: {
-        staleQuests: {
-          count: {
-            column: "id",
-            where: {
-              acceptedAt: { isNotNull: true, lt: staleSince },
-              completedAt: { isNull: true },
-              heldAt: { isNull: true },
-            },
-          },
-        },
-        notStartedQuests: {
-          count: {
-            column: "id",
-            where: {
-              acceptedAt: { isNull: true },
-              completedAt: { isNull: true },
-              heldAt: { isNull: true },
-            },
-          },
-        },
-        blockedQuests: {
-          count: {
-            column: "id",
-            where: {
-              completedAt: { isNull: true },
-              dependsOn: { isNotNull: true },
-              exists: this.quests.subquery({
-                id: { eq: this.quests.table.dependsOn },
-                completedAt: { isNull: true },
-              }),
-            },
-          },
-        },
-      },
-      where: scope,
-    });
-
-    const attention = {
-      staleQuests: Number(attentionAgg?.staleQuests.count) || 0,
-      notStartedQuests: Number(attentionAgg?.notStartedQuests.count) || 0,
-      blockedQuests: Number(attentionAgg?.blockedQuests.count) || 0,
-    };
+    const attention = await this.attentionCounts(scope, staleSince);
 
     return {
       kpis,
@@ -837,34 +910,7 @@ export class ProjectReportsService {
       }))
       .sort(byPriorityDesc);
 
-    // Oldest still-open (accepted, not completed) quests. A held quest is not
-    // aging: it is waiting, and it shows as held.
-    const agingQuery = await this.quests.findMany({
-      where: {
-        ...scope,
-        acceptedAt: { isNotNull: true },
-        completedAt: { isNull: true },
-        heldAt: { isNull: true },
-      },
-      columns: ["shortId", "title", "area", "priority", "acceptedAt"],
-      orderBy: { column: "acceptedAt", direction: "asc" },
-      limit: query.agingLimit ?? 10,
-    });
-
-    const now = this.dt.nowMillis();
-    const aging = agingQuery.map((row) => {
-      // The where above guarantees it; the column is optional in the schema.
-      const acceptedMs = row.acceptedAt
-        ? this.dt.of(row.acceptedAt).valueOf()
-        : now;
-      return {
-        shortId: row.shortId,
-        title: row.title,
-        area: row.area ?? "Unassigned",
-        priority: row.priority,
-        ageDays: Math.floor((now - acceptedMs) / 86400000),
-      };
-    });
+    const aging = await this.agingRows(scope, query.agingLimit ?? 10);
 
     const previousWindow = this.previousWindow(query);
     const previous = previousWindow && {

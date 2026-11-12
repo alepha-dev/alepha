@@ -61,11 +61,13 @@ export class WorkAttentionSources {
       return this.quests.findMany({ where, limit: 20 });
     };
 
-    const [held, overdueRows, overview, report] = await Promise.all([
+    // The aging list and the attention counts alone, never the Overview and
+    // Quests pages they are figures of (#Q3491): those were some twenty scans
+    // of the project's quests for this one tile.
+    const [held, overdueRows, { attention, aging }] = await Promise.all([
       open({ heldAt: { isNotNull: true } }),
       open({ dueAt: { lt: now } }),
-      this.reports.overview(project.id, this.reports.fixedQuery),
-      this.reports.questsReport(project.id, this.reports.fixedQuery),
+      this.reports.questAttention(project.id, this.reports.fixedQuery),
     ]);
     const unassigned = await this.quests.findMany({
       where: {
@@ -95,7 +97,7 @@ export class WorkAttentionSources {
         },
       });
     }
-    for (const aged of report.aging.filter((it) => it.ageDays >= 14)) {
+    for (const aged of aging.filter((it) => it.ageDays >= 14)) {
       items.push({
         // Older is heavier, but never above a hold.
         weight: 20 + Math.min(aged.ageDays, 90) / 10,
@@ -127,8 +129,8 @@ export class WorkAttentionSources {
       items,
       total:
         overdueOrHeld +
-        overview.attention.staleQuests +
-        Math.min(unassigned.length, overview.attention.notStartedQuests),
+        attention.staleQuests +
+        Math.min(unassigned.length, attention.notStartedQuests),
       link: { route: "projectQuests", params: { projectSlug: slug } },
     };
   }
