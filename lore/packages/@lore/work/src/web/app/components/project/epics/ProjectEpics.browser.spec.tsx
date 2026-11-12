@@ -257,6 +257,10 @@ describe("ProjectEpics - the status filter", () => {
     expect(title?.textContent).toContain("Draft epic");
     expect(title?.className).toContain("truncate");
     expect(count.className).toContain("shrink-0");
+    // A warning glyph before the text, sized to the line (#Q3532).
+    const icon = count.querySelector("svg");
+    expect(icon?.getAttribute("aria-hidden")).toBe("true");
+    expect(icon?.getAttribute("class")).toContain("size-3");
     expect(
       screen.getByTestId("epic-title-line-2").querySelector("a")?.textContent,
     ).toContain("Quiet epic");
