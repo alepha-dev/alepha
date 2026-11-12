@@ -52,7 +52,12 @@ const ProjectSettings = () => {
       active={found?.tab.route ?? activeRoute}
       plate={
         found ? (
-          <div className="flex flex-col gap-1 px-4 pt-4 pb-3 md:px-6">
+          // Title and description on one line, the description muted after
+          // it, wrapping below only when the width runs out (#Q3525).
+          <div
+            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 pt-4 pb-3 md:px-6"
+            data-testid="settings-header"
+          >
             <h1 className="text-xl font-semibold">
               {tr(found.section.labelKey)}
             </h1>
