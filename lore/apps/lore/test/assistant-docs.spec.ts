@@ -11,21 +11,19 @@ import { LoreAiDocsController } from "@/assistant/index.ts";
 
 import { bootAssistant } from "./fixtures/bootAssistant.ts";
 
-const GUIDES = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../../docs/1-guides",
-);
+const GUIDES = join(dirname(fileURLToPath(import.meta.url)), "../../../docs");
 
 /**
  * How-to answers from Lore's own guides (#Q3212): a corpus generated from
- * `lore/docs/1-guides`, searched per project, never returning a guide whose
+ * the guides under `lore/docs`, searched per project, never returning a guide whose
  * capability the project has off, and linking only the docs site.
  */
 describe("searchDocs", () => {
   it("serves a corpus generated from the guides as they are now", ({
     expect,
   }) => {
-    const files = readdirSync(GUIDES)
+    const files = readdirSync(GUIDES, { recursive: true })
+      .map((name) => String(name).split("\\").join("/"))
       .filter((name) => name.endsWith(".md"))
       .map((name) => ({
         name,
@@ -36,7 +34,7 @@ describe("searchDocs", () => {
     expect(docsCorpus.length).toBeGreaterThan(50);
     for (const section of docsCorpus) {
       expect(section.url).toMatch(
-        /^https:\/\/alepha\.dev\/lore\/docs\/guides-/,
+        /^https:\/\/alepha\.dev\/lore\/docs\/[a-z]+-[a-z-]+(#.*)?$/,
       );
     }
   });
@@ -62,7 +60,7 @@ describe("searchDocs", () => {
 
     const telemetry = "telemetry blights sigil feedback inbox";
     const allOn = await ask(everything.id, telemetry, everything.createdBy);
-    expect(allOn.some((s) => s.url.includes("guides-telemetry"))).toBe(true);
+    expect(allOn.some((s) => s.url.includes("apps-telemetry"))).toBe(true);
 
     const narrowed = await ask(workOnly.id, telemetry, workOnly.createdBy);
     expect(narrowed.length).toBeGreaterThan(0);
@@ -83,7 +81,7 @@ describe("searchDocs", () => {
         { params: { projectId: project.id }, query: { q: "shelve an epic" } },
         { user },
       );
-    expect(sections[0].url).toContain("guides-epics");
+    expect(sections[0].url).toContain("work-epics");
     await alepha.stop();
   });
 });

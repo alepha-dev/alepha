@@ -187,10 +187,7 @@ test.describe("Automations", () => {
     await page.goto(`/${project.slug}/automations`);
     await expect(
       page.getByRole("link", { name: "How automations work" }),
-    ).toHaveAttribute(
-      "href",
-      "https://alepha.dev/lore/docs/guides-automations",
-    );
+    ).toHaveAttribute("href", "https://alepha.dev/lore/docs/work-automations");
     await expect(
       page.getByText("No automations yet", { exact: true }),
     ).toBeVisible();

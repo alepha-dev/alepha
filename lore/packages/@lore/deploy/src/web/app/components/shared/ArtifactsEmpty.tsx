@@ -25,7 +25,7 @@ export interface ArtifactsEmptyProps {
  * Lore's docs beats instructional text in the app.** Take that as the default
  * for the next empty state tempted to explain a pipeline.
  *
- * The instructions did not disappear, they moved to `guides-artifacts`, where
+ * The instructions did not disappear, they moved to `apps-artifacts`, where
  * they can say the whole thing: every flag, the CI snippet, and why `latest`
  * is the one tag that may be replaced. The panel had room for none of that
  * and was already at the length nobody reads.
@@ -96,7 +96,7 @@ const ArtifactsEmpty = (props: ArtifactsEmptyProps) => {
         <OutboundLink
           // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it
           // resolves against Lore's own origin and 404s (feedback #P2142).
-          href={loreDocsUrl("guides-artifacts")}
+          href={loreDocsUrl("apps-artifacts")}
           className="text-sm underline underline-offset-4"
           data-testid="artifacts-empty-docs"
         >

@@ -1,19 +1,87 @@
 # The Cloudflare token
 
-A **Cloudflare estate** is a deploy destination Lore reaches over Cloudflare's
-API. You mint a token in the Cloudflare dashboard, paste it into Lore with your
-account id, and Lore checks it against that account before the estate exists.
-If the token is missing something, the dialog says which permission and nothing
-is saved. There is no half-made estate to repair afterwards: you mint a better
-token and try again.
+To deploy to a Cloudflare account, Lore needs an API token that you create at
+Cloudflare and paste into the form that adds a Cloudflare
+[estate](/lore/docs/apps-estates), beside the account id. This page says which
+token to create.
 
-This page is the recipe. It is worth following once rather than guessing,
-because the obvious template is not quite the right one.
+## What to create
 
-## Which token kind
+A **Custom token** with these six permissions, limited to the one account the
+estate deploys to:
 
-Cloudflare issues two, and Lore accepts both. It tells them apart by their
-prefix and verifies each through the endpoint that matches its kind.
+| Permission             | Access | What it is for                                             |
+| ---------------------- | ------ | ---------------------------------------------------------- |
+| **Account Settings**   | Read   | Proving the token can see the account you named.           |
+| **Workers Scripts**    | Edit   | Uploading the Worker, and attaching it to a custom domain. |
+| **D1**                 | Edit   | The database, when the app has one.                        |
+| **Workers KV Storage** | Edit   | Key-value namespaces.                                      |
+| **Workers R2 Storage** | Edit   | Object storage, for uploads and artifacts.                 |
+| **Queues**             | Edit   | Background jobs.                                           |
+
+All six are required: Lore refuses a token that is missing any of them. All
+six are **Account** permissions, and there are no Zone rows to add.
+
+The quickest way:
+
+1. Open Cloudflare's token form with the six permissions already added:
+   [Open the Custom token form with the six permissions added](https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_kv_storage%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_r2%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%5D&accountId=*&zoneId=all&name=lore-deploy).
+   Lore shows the same link under the token field, as **Mint one with the
+   right permissions**.
+2. Under **Account Resources**, choose **Include** and pick the one account
+   this estate names.
+3. **Continue to summary**, then **Create Token**.
+4. Copy the token. Cloudflare shows it once.
+5. Back in Lore, paste it into **Cloudflare API token**, with the
+   [account id](#the-account-id) in **Cloudflare account id**.
+
+⚠️ **The link does not choose the account for you.** It opens on **All
+accounts**. Narrow **Account Resources** to the one account before you create
+the token: a deploy token should reach the account it deploys to and no other.
+
+⚠️ **Do not start from the "Edit Cloudflare Workers" template.** It is the one
+most people reach for, and it is wrong in both directions. It covers **four**
+of the six (Account Settings, Workers Scripts, KV and R2) and misses **D1 and
+Queues**, so Lore refuses a token made from it. It also grants **nine things a
+Lore deploy never uses**: Cloudflare Pages, Containers, Workers Observability,
+Workers Builds Configuration, Workers Agents Configuration, Workers Tail, User
+Details, Memberships, and a Zone-level Workers Routes.
+
+⚠️ **Edit and Write are the same permission.** Cloudflare's dashboard says
+**Edit** where its API documentation says **Write**. This page uses the
+dashboard's wording, because that is the screen you are looking at.
+
+## The account id
+
+On the Cloudflare dashboard's account overview page, in the right-hand column,
+labelled **Account ID**. It is 32 hexadecimal characters.
+
+A token that is valid but cannot read the account you named gets a message of
+its own, which names both causes: a wrong account id, or a token without
+Account Settings. Check the id you pasted first.
+
+## Creating the token by hand
+
+For anyone who would rather see each step, or whose dashboard ignores the
+prefilled link:
+
+1. Open the Cloudflare dashboard and click your **profile icon**, top right.
+2. **API Tokens**.
+3. **Create Token**.
+4. Scroll past the templates to **Custom token** and click **Get started**.
+5. Give it a name you will recognise in six months, such as `lore-deploy`.
+6. Add the six permissions from the table above.
+7. Under **Account Resources**, choose **Include** and pick the one account
+   this estate will name, not "All accounts".
+8. **TTL** and **Client IP Address Filtering** are optional. If you set an
+   expiry, Lore shows it on the estate and checks the token again every night,
+   so you find out it lapsed before a deploy does.
+9. **Continue to summary**, then **Create Token**.
+10. Copy the token. Cloudflare shows it once.
+
+## A token for a team account
+
+Cloudflare issues two kinds of token, and Lore accepts both:
 
 | Kind                    | Prefix  | When                                                                                               |
 | ----------------------- | ------- | -------------------------------------------------------------------------------------------------- |
@@ -22,181 +90,103 @@ prefix and verifies each through the endpoint that matches its kind.
 
 Older tokens are 40 characters with no prefix at all. Those still work.
 
-For a shared account, prefer the account-owned kind. It is the answer, on
-Cloudflare's side, to "the person who set this up has left".
-
-## Minting a user token
-
-**The short way.** This link opens Cloudflare's Custom token form with all six
-permissions already added:
-
-[Open the Custom token form with the six permissions added](https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_kv_storage%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_r2%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%5D&accountId=*&zoneId=all&name=lore-deploy)
-
-Lore shows the same link beside the token field, so you can reach it from the
-form you are filling in.
-
-⚠️ **It does not choose the account for you.** The link opens on **All
-accounts**, which is exactly what step 7 below says not to leave. Narrow
-**Account Resources** to the one account this estate names before you create
-the token.
-
-The manual steps are below, for anyone who would rather see what they are
-agreeing to, or whose dashboard does not honour the parameter.
-
-1. Open the Cloudflare dashboard and click your **profile icon**, top right.
-2. **API Tokens**.
-3. **Create Token**.
-4. Scroll past the templates to **Custom token** and click **Get started**.
-5. Give it a name you will recognise in six months, such as `lore-deploy`.
-6. Add the permissions from the table below.
-7. Under **Account Resources**, choose **Include** and pick the one account this
-   estate will name. Not "All accounts": a deploy token should reach the account
-   it deploys to and no other.
-8. **TTL** and **Client IP Address Filtering** are optional. If you set an
-   expiry, Lore shows it on the estate and re-checks the token every night, so
-   you find out it lapsed before a deploy does.
-9. **Continue to summary**, then **Create Token**.
-10. Copy the token. Cloudflare shows it once.
-
-## Minting an account-owned token
-
-Same permissions, a different starting point. The prefilled link for this kind
-is:
-
-[Open the account-owned Custom token form with the six permissions added](https://dash.cloudflare.com/?to=/:account/api-tokens&permissionGroupKeys=%5B%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_kv_storage%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_r2%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%5D&name=lore-deploy)
-
-It carries no account parameter at all - that entry point resolves the account
-from the dashboard - so the scoping happens on the form either way.
+The steps above create a user token. For a shared account, prefer the
+account-owned kind: it keeps working when the person who set it up has left.
+It takes the same six permissions, from a different starting point:
 
 1. In the dashboard, select the **account**, then **Manage Account**.
 2. **Account API Tokens**.
 3. **Create Token**, then **Custom token**.
-4. From step 5 above, identically.
+4. Continue from step 5 of the list above.
+
+Or open the form with the permissions already added:
+
+[Open the account-owned Custom token form with the six permissions added](https://dash.cloudflare.com/?to=/:account/api-tokens&permissionGroupKeys=%5B%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_kv_storage%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_r2%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%5D&name=lore-deploy)
+
+That link names no account: the dashboard works out which one, so check the
+account on the form here too.
 
 Creating an account-owned token needs **Super Administrator** on that account.
-If you do not have it, the button is not there, and no amount of looking will
-find it: ask whoever administers the account.
+Without it the **Create Token** button is not there: ask whoever administers
+the account.
 
-## Which permissions
+## When you save
 
-All six, every one of them required. Lore refuses a token that is missing any,
-because the estate is either fit to deploy to or it is not, and finding out
-halfway through a deploy is worse than finding out at the form.
+Lore checks the token with Cloudflare before it saves anything, and the dialog
+says **Checking with Cloudflare…** meanwhile.
 
-| Permission             | Group | What it is for                                             |
-| ---------------------- | ----- | ---------------------------------------------------------- |
-| **Account Settings**   | Read  | Proving the token can see the account you named.           |
-| **Workers Scripts**    | Edit  | Uploading the Worker, and attaching it to a custom domain. |
-| **D1**                 | Edit  | The database, when the app has one.                        |
-| **Workers KV Storage** | Edit  | Key-value namespaces.                                      |
-| **Workers R2 Storage** | Edit  | Object storage, for uploads and artifacts.                 |
-| **Queues**             | Edit  | Background jobs.                                           |
+- **Every check passes.** The estate is created, lent to the project, and
+  ready to deploy to.
+- **One fails.** The message names the missing permission, in Cloudflare's own
+  words, beside the field it concerns. Nothing is saved, so there is no
+  half-made estate to repair: fix the token, or create a better one, and try
+  again.
+- **Cloudflare cannot be reached.** Lore says so and saves nothing. It does
+  not mark the token as invalid: an outage says nothing about your token.
 
-All six are **Account** permissions. There are no Zone rows to add: every app
-Lore deploys uses a plain custom domain, which Cloudflare serves as an
-account-level call under Workers Scripts.
+| What Lore says                                                                                                                                 | What to do                                                                   |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Cloudflare did not accept this token                                                                                                           | Cloudflare does not recognise it. Paste it again: a cut-off paste does this. |
+| This Cloudflare token has expired                                                                                                              | Its TTL has passed. Create a new one.                                        |
+| This Cloudflare token is disabled; enable it at Cloudflare or mint a new one                                                                   | It was revoked or switched off at Cloudflare.                                |
+| This Cloudflare token is not valid before _date_                                                                                               | Its start date is still in the future.                                       |
+| Lore could not read Cloudflare account _id_ with this token. Either the account id is wrong, or the token is missing "Account Settings: Read". | Check the account id first, then the permission.                             |
+| This token cannot reach Workers on this account. Add "Workers Scripts: Edit" to it and try again.                                              | Add **Workers Scripts**, Edit.                                               |
+| This token cannot reach D1 on this account. Add "D1: Edit" to it and try again.                                                                | Add **D1**, Edit.                                                            |
+| This token cannot reach Workers KV on this account. Add "Workers KV Storage: Edit" to it and try again.                                        | Add **Workers KV Storage**, Edit.                                            |
+| This token cannot reach Workers R2 on this account. Add "Workers R2 Storage: Edit" to it and try again.                                        | Add **Workers R2 Storage**, Edit.                                            |
+| This token cannot reach Queues on this account. Add "Queues: Edit" to it and try again.                                                        | Add **Queues**, Edit.                                                        |
+| Cloudflare could not be reached, try again                                                                                                     | Try again. Nothing was recorded either way.                                  |
 
-⚠️ **Do not start from "Edit Cloudflare Workers".** It is the template most
-people reach for, and it is wrong in both directions. It covers **four** of the
-six - Account Settings, Workers Scripts, KV and R2 - and misses **D1 and
-Queues**, so a token minted from it is refused at the D1 check. It also grants
-**nine things a Lore deploy never uses**: Cloudflare Pages, Containers, Workers
-Observability, Workers Builds Configuration, Workers Agents Configuration,
-Workers Tail, User Details, Memberships, and a Zone-level Workers Routes.
+### What the check cannot see
 
-Use the prefilled link above, or build a Custom token with all six by hand.
+The check proves the token can **read** each of the six, not that it can
+edit. A token given Read where the table asks for Edit passes here and fails at
+the first deploy.
 
-⚠️ **Two spellings of the same thing.** Cloudflare's dashboard says **Edit**
-where its API documentation says **Write**. They are the same permission. This
-page uses the dashboard's wording throughout, because that is the screen you
-are looking at.
+⚠️ **The check cannot tell whether the account has a workers.dev subdomain.**
+A deploy asks for one when the app is published there, and an account that has
+never registered one answers with an error that looks exactly like a missing
+permission. The failure arrives at deploy time, naming the account and not the
+token. Register a workers.dev subdomain in the Cloudflare dashboard, or deploy
+to a custom domain only.
 
-Lore checks a **read** on each of these groups, which is the honest ceiling: no
-token can be proven to have Edit without writing something. The check catches
-the token that has no access at all, which is the mistake people actually make;
-the wording asks for Edit because Edit is what a deploy needs.
+## What Lore stores
 
-⚠️ **One thing the check cannot tell you: whether this account has a
-workers.dev subdomain.** A deploy asks for one when the app is published there,
-and an account that has never registered one answers an error that looks exactly
-like a missing permission. Probing it would refuse perfectly good tokens, so
-Lore does not, and the failure arrives at deploy time instead, naming the
-account rather than the token. Register a workers.dev subdomain in the
-Cloudflare dashboard, or deploy to a custom domain only.
+The token is **encrypted at rest**. What Lore shows of it is its prefix plus
+eight characters (`cfut_a1B2c3D4`), or the first eight for an older token with
+no prefix: enough to tell two tokens apart, and far too few to rebuild one.
 
-## The account id
-
-On the dashboard's account overview page, in the right-hand column, labelled
-**Account ID**. It is 32 hexadecimal characters. Copy it into the estate form
-beside the token.
-
-A token that is valid but cannot see the account you named is reported as a
-**wrong account**, which is deliberately not the same message as a missing
-permission: the two are fixed in different places, and one of them is a
-copy-paste error.
-
-## What happens when you save
-
-Lore makes seven requests to Cloudflare before it writes anything: one to verify
-the token itself, and one per permission group. The dialog says it is checking
-while they run.
-
-- **They all pass.** The estate is created, already valid, and ready to be lent
-  to a project.
-- **One fails.** The message names the permission group, in Cloudflare's own
-  words, beside the field it concerns. Nothing is saved.
-- **Cloudflare cannot be reached.** Lore says
-  `Cloudflare could not be reached, try again` and saves nothing. It does not
-  record the token as invalid, because it does not know that: an outage is not
-  a verdict about your token.
-
-### Every message, and what it means
-
-One line per check, in the words the form uses.
-
-| What Lore says                                                                                                                                 | What happened                                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Cloudflare did not accept this token                                                                                                           | The token is not one Cloudflare recognises. A truncated paste does this.  |
-| This Cloudflare token has expired                                                                                                              | Its TTL has passed. Mint a new one.                                       |
-| This Cloudflare token is disabled; enable it at Cloudflare or mint a new one                                                                   | It was revoked or switched off at Cloudflare.                             |
-| This Cloudflare token is not valid before _date_                                                                                               | Its start date is still in the future.                                    |
-| Lore could not read Cloudflare account _id_ with this token. Either the account id is wrong, or the token is missing "Account Settings: Read". | The account probe. Two readings, because they look identical on the wire. |
-| This token cannot reach Workers on this account. Add "Workers Scripts: Edit" to it and try again.                                              | The Workers probe.                                                        |
-| This token cannot reach D1 on this account. Add "D1: Edit" to it and try again.                                                                | The D1 probe.                                                             |
-| This token cannot reach Workers KV on this account. Add "Workers KV Storage: Edit" to it and try again.                                        | The KV probe.                                                             |
-| This token cannot reach Workers R2 on this account. Add "Workers R2 Storage: Edit" to it and try again.                                        | The R2 probe.                                                             |
-| This token cannot reach Queues on this account. Add "Queues: Edit" to it and try again.                                                        | The Queues probe.                                                         |
-| Cloudflare could not be reached, try again                                                                                                     | Lore could not ask. Nothing was recorded either way.                      |
-
-## What Lore stores, and what it never shows
-
-The token is **encrypted at rest**. What the interface shows is its prefix plus
-eight characters (`cfut_a1B2c3D4`), or the first eight for a legacy token with
-no prefix: enough to tell two tokens apart and far too few to reconstruct one.
-
-⚠️ **Lore never shows the token back. Not even right after you save it.** This
-surprises people who created a machine estate first, so it is worth naming: for
-a machine, Lore _mints_ the secret, so it shows it once, in a dialog, and stores
-only a hash. For Cloudflare, **you** brought the token, you already have it, and
-Lore showing it back would put it in a second place on your screen for no
-reason. Replacing it is the only way to a new one, and replacing is a write:
-nothing is revealed afterwards either.
+⚠️ **Lore never shows the token back, not even right after you save it.** This
+differs from a Bay estate, whose secret Lore creates and shows once. Here you
+brought the token and already have it. The only way to change it is **Replace
+token**, in the estate's drawer, and nothing is revealed after that either.
 
 ## The nightly check
 
 Once a night Lore asks Cloudflare again about every Cloudflare estate. If a
 token has stopped passing, the estate shows as **credential invalid** with the
-reason, and every member of its project whose rank grants `estate:update` gets
-one email. So a token revoked or narrowed at
-Cloudflare is reported within a day, rather than by the first deploy that fails.
+reason, deploys to it are refused until the token is replaced, and every
+member of its home project whose rank grants `estate:update` gets one email.
+So a token revoked or narrowed at Cloudflare is reported within a day, not by
+the first deploy that fails.
 
-The **Check again** button in the estate's drawer does the same thing on demand,
-which is what you want right after widening a token at Cloudflare.
+**Check again**, in the estate's drawer, does the same thing on demand, which
+is what you want right after widening a token at Cloudflare.
 
 ## Deleting an estate does not revoke the token
 
-It removes Lore's copy and the projects it was lent to lose a deploy
-destination. The token itself goes on existing and working, for anything else
-that holds it. To revoke it, go back to where you minted it - **API Tokens** for
-a user token, **Account API Tokens** for an account-owned one - and delete it
-there.
+⚠️ Deleting the estate removes Lore's copy of the token, and the projects the
+estate was lent to lose a place to deploy. The token itself goes on existing
+and working, for anything else that holds it. To revoke it, go back to where
+you created it, **API Tokens** for a user token or **Account API Tokens** for
+an account-owned one, and delete it there.
+
+## Next
+
+- [Estates](/lore/docs/apps-estates): lending the estate to other projects,
+  who can manage it, deleting it.
+- [Deploying an app](/lore/docs/apps-deploying): pick the estate and ship a
+  build.
+- [Notifications](/lore/docs/project-notifications): how the email about a
+  failing token reaches you.

@@ -1,38 +1,47 @@
 # Assistant
 
-The **assistant** is a chat inside Lore's projects. Open it from the sparkle
-button in a project's header: from 1024px up it docks beside the page, so a link in a reply opens the
-page next to the conversation; on a narrower screen it slides in as a drawer.
-Fold it into a pill to keep the conversation for later.
+The assistant is a chat inside a Lore project. Ask it what you would otherwise
+click through: what is still open, what an epic lacks, how a feature works. It
+can also file a quest or write a folio for you, once you approve.
 
 It is off unless the operator of your Lore turns it on (see
-[Turning it on](#turning-it-on)). When it is off, the button does not appear.
+[Turning it on](#turning-it-on)). When it is off, its button does not appear.
+
+## Opening it
+
+Click the sparkle button, **Assistant**, in a project's header. On a wide
+screen (1024 pixels and up) the chat docks beside the page, so a link in a
+reply opens the page next to the conversation. On a narrower screen it slides
+in as a drawer. Fold it into a pill to keep the conversation for later.
+
+The assistant is offered on project pages only: Home and your account have
+none.
 
 ## What it can do
-
-Ask it what you would otherwise click through:
 
 - **Read** a project: its quests, epics, folios, releases and feedback, and
   Lore's search. "What is still open in the API area?", "What does this epic
   still lack?", "Summarise folio #F12."
 - **Write** the things you do most: file a quest, comment on one, update or
-  complete it, and write a folio. Every write waits for you: the assistant
-  shows a card with exactly what it is about to do (the project, the title,
-  the fields it sets, the text it posts), and nothing happens until you
-  approve. Deny it and nothing runs.
+  complete it, and write a folio.
 - **Answer how-to questions** from these guides, with a link to the page it
   read.
 
+**Every write waits for you.** The assistant shows a card with exactly what it
+is about to do: the project, the title, the fields it sets, the text it posts.
+Nothing happens until you approve. Deny it and nothing runs.
+
 Its answers are short on purpose: a list names each item by its reference and
 title, a handful at a time, and says when there are more. An answer has a
-length limit; when one reaches it, the assistant says the answer was cut short
-and offers to continue, so a reply that stops early is never shown as
-complete.
+length limit. When one reaches it, the assistant says the answer was cut short
+and offers to continue, so a reply that stops early is never shown as complete.
 
-It works inside the project you are looking at, and only there. It acts as
-you: it can never do anything your rank in that project does not allow, and
-it is not offered the tools your rank does not grant. It is offered on
-project pages only: Home and your account have no assistant.
+## What it may do
+
+The assistant works inside the project you are looking at, and only there. It
+acts as you: it can never do anything your rank in that project does not allow,
+and it is not offered the tools your rank does not grant. See
+[Members](/lore/docs/project-members) for ranks.
 
 What it writes is marked as written by an agent: a comment it posts shows your
 name with the agent badge and the client `lore-ai`.
@@ -51,11 +60,22 @@ name with the agent badge and the client `lore-ai`.
 
 ## Turning it on
 
-The assistant is off on every copy of Lore until an operator sets the
-environment variable `AI_ASSISTANT_ENABLED` (any value other than empty,
-`false` or `0`). It needs Cloudflare Workers AI: Lore on Workers declares the
-`ai` binding, and a self-hosted copy off Workers refuses to start with the
-variable set, since it has no model to talk to.
+This part is for whoever runs the Lore instance.
+
+The assistant is off on every instance until the environment variable
+`AI_ASSISTANT_ENABLED` is set to any value other than empty, `false` or `0`.
+
+⚠️ It needs Cloudflare Workers AI. Lore running on Cloudflare Workers has the
+model at hand. A self-hosted instance running anywhere else has no model to
+talk to, and refuses to start with the variable set.
 
 The budget, the rate and the retention are the `api.ai` parameter, which an
 administrator edits at runtime from the admin console's parameters.
+
+## Next
+
+- [Agent prompts](/lore/docs/agents-prompts): hand work to your own coding
+  agent.
+- [Connecting an agent](/lore/docs/agents-connecting): give an agent the same
+  access over MCP.
+- [Self-hosting](/lore/docs/start-self-hosting): running your own Lore.

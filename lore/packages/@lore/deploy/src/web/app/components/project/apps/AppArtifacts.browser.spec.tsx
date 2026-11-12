@@ -138,7 +138,7 @@ describe("AppArtifacts", () => {
     // this panel used to print moved into that page (feedback #P2154).
     const docs = getByTestId("artifacts-empty-docs") as HTMLAnchorElement;
     expect(docs.getAttribute("href")).toBe(
-      "https://alepha.dev/lore/docs/guides-artifacts",
+      "https://alepha.dev/lore/docs/apps-artifacts",
     );
     expect(getByTestId("app-artifacts").textContent).not.toContain(
       "lore artifacts push",

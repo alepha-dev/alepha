@@ -17,16 +17,17 @@ const DOCS_ROOT = "https://alepha.dev/lore/docs";
 
 // alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
- * Every guide Lore links to, by its slug on the site: the file name with its
- * leading digits and dashes eaten, under `guides-`.
+ * Every guide Lore links to, by its slug on the site: its folder and its file
+ * name under `lore/docs`, each with its leading digits eaten, joined by a
+ * dash. `3-work/3-releases.md` is `work-releases`.
  */
 const GUIDES = [
-  "guides-assistant",
-  "guides-automations",
-  "guides-artifacts",
-  "guides-cloudflare-token",
-  "guides-project-dashboard",
-  "guides-releases",
+  "agents-assistant",
+  "work-automations",
+  "apps-artifacts",
+  "apps-cloudflare-token",
+  "project-dashboard",
+  "work-releases",
 ] as const;
 
 // alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute

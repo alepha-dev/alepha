@@ -1,133 +1,81 @@
 # Introduction
 
-Lore is an open-source project management app built on Alepha.
+Lore is an open-source app for running a software project: what is planned,
+what was decided, what your users ask for and how your apps are doing, in one
+place that people and AI agents share.
 
-A project is not one fixed shape. It is a container that composes four
-**capabilities**, and you pick them when you create it:
+![A project dashboard in Lore](/screenshots/lore/dashboard-light.png)
 
-- **Work** - **quests** (the roadmap and the in-flight work), **areas**, and
-  optionally **epics** (bounded initiatives that hold quests and run from
-  draft to completed, see [Epics](/lore/docs/guides-epics)), **releases**
-  (the named goals epics and quests ship in) and a Kanban **board**. See
-  [Quests](/lore/docs/guides-quests).
-- **Knowledge** - **folios**: project memory, wiki-linked, optionally
-  end-to-end encrypted, filed in a tree. See [Folios](/lore/docs/guides-folios).
-- **Apps** - the copies you deploy, the **sigils** they report with, their
-  analytics, and **blights**: deduplicated crash telemetry. See
-  [Telemetry](/lore/docs/guides-telemetry) and
-  [Deploying an app](/lore/docs/guides-deploying).
-- **Support** - **feedback**, inbound bug and feature triage, plus a
-  first-party request form your users can reach. See
-  [Feedback](/lore/docs/guides-feedback).
+You can use the hosted instance at [lore.alepha.dev](https://lore.alepha.dev)
+or [run your own](/lore/docs/start-self-hosting) from one Docker image. Lore
+does not care what your project is written in: planning, knowledge and feedback
+work the same for a Rust service, a mobile app or a hardware product.
 
-Turn a capability off and its pages, its menu entries and its search results
-go with it. Nothing is deleted: turn it back on and everything is where you
-left it. A project can have all four or just one, and turning them all off is
-allowed - what remains is the project itself, its members, its activity feed
-and its reports.
+## What a project holds
+
+A project is made of four **capabilities**. You pick them when you create the
+project and you can switch any of them later, without losing anything.
+
+| Capability    | What you get                                                                                           | Start here                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| **Work**      | **Quests** (units of work), grouped into **epics** and shipped in **releases**, with a list and board. | [Quests](/lore/docs/work-quests)                |
+| **Knowledge** | **Folios**: linked notes in a tree, with files and history. The project's memory.                      | [Folios](/lore/docs/knowledge-folios)           |
+| **Support**   | **Feedback**: a request form for your users and an inbox to triage what they send.                     | [Feedback](/lore/docs/support-feedback)         |
+| **Apps**      | Your deployed apps: analytics, errors, healthchecks and deploys.                                       | [Apps and instances](/lore/docs/apps-instances) |
+
+Every project also has a [dashboard](/lore/docs/project-dashboard),
+[reports](/lore/docs/project-reports), members with
+[ranks](/lore/docs/project-members) and
+[notifications](/lore/docs/project-notifications), whatever its capabilities.
+[Capabilities](/lore/docs/project-capabilities) explains each one and its
+options.
+
+## Three ways in
+
+Everything in a project can be reached three ways, with the same permissions
+behind each:
 
 ```mermaid
 flowchart LR
   People[People in the browser] --> Project[Lore project]
   Agents[AI agents over MCP] --> Project
-  CLI[lore CLI and CI] --> Project
+  CLI[The lore command, CI] --> Project
   Project --> Work
   Project --> Knowledge
-  Project --> Apps
   Project --> Support
-  Deployed[Deployed apps] -->|sigil| Apps
+  Project --> Apps
 ```
 
-**Reports** sits outside the four: every project has it, and each of its tabs
-appears when the capability behind it does. Summary compares a period with the
-one before; Flow, Backlog, Planning, Support, Knowledge, Delivery and Team explain
-what moved, with one filter bar across them. See
-[Reports](/lore/docs/guides-reports).
+- **In the browser.** This is where most of this documentation takes place.
+- **From an AI agent.** Lore is an MCP server, so a coding agent can read the
+  project's folios before it starts, pick up a quest, tick its objectives and
+  write down what it learned. An agent acts as the person who connected it and
+  can never do more than that person. See
+  [Connecting an agent](/lore/docs/agents-connecting).
+- **From a terminal.** The `lore` command does the same from a shell or a CI
+  job. See [The lore CLI](/lore/docs/reference-cli).
 
-Most of those surfaces are exposed over **MCP**, which is the primary consumer: an
-AI agent reads the folio index to orient itself, drives quests as work lands, and
-files what it learned back as a folio. [MCP tools](/lore/docs/guides-mcp) lists every
-tool, and what has none. `project_context` answers the capability
-set first, then only the sections those capabilities own - a section a project
-has turned off is absent rather than empty, so an agent is never told a project
-tracks something it does not.
+You do not need an agent to use Lore. A team that never connects one gets a
+complete project tool; a team that does gets a place where the agent's work is
+planned, visible and reviewable like anyone else's.
 
-A connected app, whether an agent over MCP or the `lore` command after
-`lore login`, reaches what a project member can do and nothing more. Its access
-is limited to the project surfaces (quests, folios, feedback, apps, deploys and
-the rest), so an administrator who connects an agent does not hand it the admin
-pages. Those stay reachable from a signed-in session. Neither kind of
-connection can create or revoke API keys or change account settings. An API
-key (`LORE_API_KEY`) is not narrowed this way: it carries its owner's roles,
-unless it was created with a permission scope of its own.
+## Lore and Alepha
 
-## Apps and their instances
+Lore is built with the [Alepha](/docs/guides-introduction) framework and is
+released alongside it, which is why its documentation lives on this site. You
+do not need to know Alepha, or use it in your own project, to use Lore.
 
-An **app** is a name rather than a record. What Lore stores is one **instance**
-per deployed copy: the pair `(app, env)`, so `acme/production` and `acme/staging`
-are two instances of one app and nothing else has to exist for them to be. The
-environment half is a free label, not a fixed list, so `east-production` and
-`eu-staging` are as valid as `staging`, and how finely you slice your fleet is
-your decision rather than the schema's.
+Two features of the Apps capability are made for apps built with Alepha today:
+[telemetry](/lore/docs/apps-telemetry), which an app reports through an Alepha
+module, and [app deploys](/lore/docs/apps-deploying), which ship an Alepha
+build. [Healthchecks](/lore/docs/apps-healthchecks) watch any address, and
+[stacks](/lore/docs/apps-stacks) deploy any Compose file.
 
-Creating an instance mints nothing. It records that a copy of your app runs
-somewhere, and each capability is unlocked on it separately, from that instance's
-**Settings** tab:
+## Next
 
-- a **sigil** is the credential the deployed copy reports with. Minting one
-  unlocks Analytics, Vitals, Errors and Explore for that copy alone.
-- an **estate** names the machine the copy is deployed to.
-
-⚠️ **Removing a sigil loses that instance's analytics history** - views,
-vitals, unique visitors and error groups all hang off the credential. To revoke a
-leaked token, rotate it instead: the app stops reporting with the old key
-immediately and every row survives.
-
-## Why it exists
-
-Lore is built with Alepha, and it lives in one repository beside the framework and
-[Bay](/bay/docs/guides-introduction) on purpose: it builds on the framework's
-source, not a published version. It is where framework changes get used before
-they are recommended: a rough edge in Alepha shows up in Lore first, and the fix
-ships in the same commit as the feature that exposed it.
-
-## Status
-
-Lore is deployed at [lore.alepha.dev](https://lore.alepha.dev) and shares its version
-number with the rest of the ecosystem.
-
-It also ships as a self-hosted image, `ghcr.io/alepha-dev/lore`, published by the
-same release that publishes the framework. One command, one volume, no
-configuration:
-
-```bash
-docker run -p 3000:3000 -v lore:/data ghcr.io/alepha-dev/lore
-```
-
-See [Self-Hosting](/lore/docs/guides-self-hosting) for what happens on first boot and
-what each optional variable buys.
-
-## Where to go next
-
-- [Getting started](/lore/docs/guides-getting-started) - a project, the CLI and
-  an agent connected, in a few minutes.
-- [Quests](/lore/docs/guides-quests), [Epics](/lore/docs/guides-epics) and
-  [Releases](/lore/docs/guides-releases) - planning and tracking the work.
-- [The project dashboard](/lore/docs/guides-project-dashboard) - where a
-  project stands, at a glance.
-- [Folios](/lore/docs/guides-folios) and
-  [Attachments](/lore/docs/guides-attachments) - the project's memory.
-- [Feedback](/lore/docs/guides-feedback) and
-  [Notifications](/lore/docs/guides-notifications) - hearing from your users and
-  from Lore.
-- [Agent prompts](/lore/docs/guides-agent-prompts),
-  [Automations](/lore/docs/guides-automations) and
-  [MCP tools](/lore/docs/guides-mcp) - putting agents to work.
-- [The lore CLI](/lore/docs/guides-cli) - every command.
-- [Telemetry](/lore/docs/guides-telemetry),
-  [Healthchecks](/lore/docs/guides-healthchecks),
-  [Deploying an app](/lore/docs/guides-deploying),
-  [Artifacts](/lore/docs/guides-artifacts),
-  [Stacks](/lore/docs/guides-stacks) and
-  [Estates](/lore/docs/guides-estates) - running your apps.
-- [Self-Hosting](/lore/docs/guides-self-hosting) - your own instance.
+- [Quickstart](/lore/docs/start-quickstart): an account, a project, your team
+  and a first quest, in a few minutes.
+- [Capabilities](/lore/docs/project-capabilities): what each part of a project
+  does, and how to turn it on.
+- [Self-hosting](/lore/docs/start-self-hosting): your own instance, from one
+  command.

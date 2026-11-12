@@ -346,7 +346,7 @@ const ProjectReleases = () => {
                   resolves against Lore's own origin and 404s (feedback
                   #P2142). */}
               <OutboundLink
-                href={loreDocsUrl("guides-releases")}
+                href={loreDocsUrl("work-releases")}
                 className="text-muted-foreground text-sm underline underline-offset-4"
                 data-testid="releases-empty-docs"
               >

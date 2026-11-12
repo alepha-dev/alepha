@@ -12,7 +12,7 @@ import type { DocsSection } from "./docs/LoreDocsCorpusBuilder.ts";
  * the assistant as an `$action`. It has no reason to be an MCP tool: an
  * outside agent reads the docs site directly.
  *
- * The corpus is `lore/docs/1-guides`, by `##` section, generated into
+ * The corpus is the guides under `lore/docs`, by `##` section, generated into
  * `docs/docsCorpus.ts`. A section of a guide whose capability is off in the
  * project is never returned: filtered by capability, not by rank, since a
  * guide is not written per rank. Every URL points at the docs site, so the

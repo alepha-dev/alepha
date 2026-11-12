@@ -65,11 +65,11 @@ nothing until its next restart.
 The secret is a command-line argument, so `ps` shows it while `set` runs and the
 shell history keeps it: clear that entry.
 
-| Command                 | Effect                                                                  |
-| ----------------------- | ----------------------------------------------------------------------- |
-| `bay connector set URL SECRET` | enrol, or re-enrol with a rotated secret                         |
-| `bay connector show`    | the Lore URL, the estate name and whether the connection is up; never the secret |
-| `bay connector clear`   | forget both: the machine dials nobody                                    |
+| Command                        | Effect                                                                           |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| `bay connector set URL SECRET` | enrol, or re-enrol with a rotated secret                                         |
+| `bay connector show`           | the Lore URL, the estate name and whether the connection is up; never the secret |
+| `bay connector clear`          | forget both: the machine dials nobody                                            |
 
 `http://` is accepted for a loopback Lore only, so a secret never crosses a
 network in clear.
@@ -81,22 +81,22 @@ environment. `deploy` and `stack-deploy` create what they name, `remove` and
 `stack-remove` answer done for one that is already gone, and the others refuse
 an instance this Bay does not run:
 
-| Verb           | What it does                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------------ |
-| `restart`      | blue/green, as a deploy replaces a running app; a Compose service restarts in place. Refused for an app that is not running: use `start` |
-| `deploy`       | an artifact named by **digest**, which the machine pulls and verifies before anything touches disk |
-| `stop`         | out of service, durably: it stays down through a reboot and a Bay upgrade                        |
-| `start`        | back into service. A no-op on an app already running, never a restart                            |
-| `backup`       | the snapshot the schedule takes, now. Refused for an app with no database Bay owns               |
-| `logs`         | a tail, uploaded back to Lore. A read, so it answers during a deploy rather than queueing behind it |
-| `stack-deploy` | a stack bundle named by digest, pulled and verified, then applied as a revision                  |
-| `backups-list` | the instance's backups in the bucket, newest first, uploaded back to Lore                        |
-| `backup-verify` | downloads a backup (the newest by default) and checks it as a restore would, without touching the app |
-| `target-probe` | checks the S3 bucket now and reports whether it answers                                          |
-| `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's  |
-| `restore`      | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run |
-| `remove`       | unregisters an app and stops serving it, as `bay remove` without `--purge`: its database, uploads and `.env` stay on the machine. Refused for a stack member, which goes with its stack |
-| `stack-remove` | takes a stack environment down and forgets it, as `bay stack destroy` without `--purge`: its volumes, variables and registry credentials stay |
+| Verb            | What it does                                                                                                                                                                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `restart`       | blue/green, as a deploy replaces a running app; a Compose service restarts in place. Refused for an app that is not running: use `start`                                                |
+| `deploy`        | an artifact named by **digest**, which the machine pulls and verifies before anything touches disk                                                                                      |
+| `stop`          | out of service, durably: it stays down through a reboot and a Bay upgrade                                                                                                               |
+| `start`         | back into service. A no-op on an app already running, never a restart                                                                                                                   |
+| `backup`        | the snapshot the schedule takes, now. Refused for an app with no database Bay owns                                                                                                      |
+| `logs`          | a tail, uploaded back to Lore. A read, so it answers during a deploy rather than queueing behind it                                                                                     |
+| `stack-deploy`  | a stack bundle named by digest, pulled and verified, then applied as a revision                                                                                                         |
+| `backups-list`  | the instance's backups in the bucket, newest first, uploaded back to Lore                                                                                                               |
+| `backup-verify` | downloads a backup (the newest by default) and checks it as a restore would, without touching the app                                                                                   |
+| `target-probe`  | checks the S3 bucket now and reports whether it answers                                                                                                                                 |
+| `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's                                                                                          |
+| `restore`       | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run                                                                                 |
+| `remove`        | unregisters an app and stops serving it, as `bay remove` without `--purge`: its database, uploads and `.env` stay on the machine. Refused for a stack member, which goes with its stack |
+| `stack-remove`  | takes a stack environment down and forgets it, as `bay stack destroy` without `--purge`: its volumes, variables and registry credentials stay                                           |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
 whoever controls Lore, can ask of this machine. No verb takes a path, a shell
@@ -155,4 +155,4 @@ Rotating the secret in Lore refuses the machine on its next dial; run
 good. Neither touches what runs on the host.
 
 For the Lore side (creating estates, allowing deploys, `lore deploy`), see the
-[Lore documentation](/lore/docs/guides-introduction).
+[Lore documentation](/lore/docs/start-introduction).

@@ -1,6 +1,6 @@
 #!/usr/bin/env node --experimental-strip-types
 /**
- * Regenerates the assistant's docs corpus (#Q3212) from `lore/docs/1-guides`:
+ * Regenerates the assistant's docs corpus (#Q3212) from the guides under `lore/docs`:
  *
  *   yarn w lore docs:corpus
  *
@@ -15,10 +15,13 @@ import { fileURLToPath } from "node:url";
 import { LoreDocsCorpusBuilder } from "../src/assistant/docs/LoreDocsCorpusBuilder.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const guides = join(here, "../../../docs/1-guides");
+const guides = join(here, "../../../docs");
 const target = join(here, "../src/assistant/docs/docsCorpus.ts");
 
-const names = (await readdir(guides)).filter((name) => name.endsWith(".md"));
+// Every guide, named by its path under `lore/docs`: `3-work/1-quests.md`.
+const names = (await readdir(guides, { recursive: true }))
+  .filter((name) => name.endsWith(".md"))
+  .map((name) => name.split("\\").join("/"));
 const files = await Promise.all(
   names.map(async (name) => ({
     name,
@@ -33,7 +36,9 @@ await writeFile(target, builder.render(sections));
 execFileSync(
   "node",
   [join(here, "../../../../node_modules/oxfmt/bin/oxfmt"), target],
-  { stdio: "ignore" },
+  {
+    stdio: "ignore",
+  },
 );
 console.log(
   `docs corpus: ${sections.length} sections from ${names.length} guides`,

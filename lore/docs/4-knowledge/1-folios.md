@@ -1,64 +1,78 @@
 # Folios
 
 Folios are a project's memory: Markdown notes, filed in a tree, linked to each
-other and to the work, and shared by every member and every agent of the
-project. This page covers how to organise them, how links and revisions work,
-encrypted folios, and how agents read and write them.
+other and to the work. Quests record what was done. Folios record what you
+know: a decision and its reasons, how a subsystem fits together, a runbook, the
+conventions of the codebase. Anything the next person, or the next agent
+session, should not have to rediscover.
 
-Folios need the **Write and keep knowledge** capability.
-
-## Why folios
-
-Quests record work; folios record what you know. A decision and its reasons, how
-a subsystem fits together, a runbook, the conventions of the codebase: anything
-the next person, or the next agent session, should not have to rediscover.
-
-That second reader is the point. An agent starting a task on a Lore project
-reads the folio index first, opens the folios that look relevant, and writes
-down what it learned when it is done. Without that, every session starts from
-nothing.
-
-A few conventions keep folios useful:
-
-- **One topic per folio.** The title is the topic.
-- **Short and self-contained.** A folio that needs scrolling is two folios.
-- **Always a summary.** One or two sentences on what the folio is for. It is
-  the line the index shows, and what an agent reads to decide whether to open
-  the folio at all. Say what kind of note it is in the first clause ("Decision:
-  ...", "Runbook: ...").
+Folios need the **Write and keep knowledge** capability, switched in
+**Settings ▸ General ▸ Capabilities**. See
+[Capabilities](/lore/docs/project-capabilities).
 
 ## The workspace
 
-**Folios** (`/<project>/folios`) is a three-pane workspace:
+**Folios** in the sidebar opens a workspace of three panes:
 
-- the **tree** on the left, where you create, rename, move (by dragging) and
-  delete folios and directories;
-- the **document** in the middle: a folio with content opens rendered, an empty
-  one opens for editing, **View ▸ Toggle preview** (`⌘E`) switches between the
-  two, and edits save as you type;
-- the **inspector** on the right, with the folio's **Outline**, **History**,
-  **Links** and **Files**.
+- the **tree** on the left, with every directory and folio of the project;
+- the **document** in the middle, under a menu bar (**Folio**, **Edit**,
+  **Insert**, **View**, **History**);
+- the **inspector** on the right, with the open folio's **Outline**,
+  **History**, **Links** and **Files**.
 
-`⌘F` finds in the folio, and `⌘.` toggles focus mode.
+![The folio workspace, with the tree on the left and a folio open](/screenshots/lore/folios-light.png)
 
-The **Summary for agents** field is shown on a folio when the knowledge
-capability's **Summaries for agents** option is on. Agents read and write it
-over MCP either way.
+Either side pane can be collapsed, and **View ▸ Focus mode** (`⌘.`) hides both.
+**View ▸ Text size** sets the reading size. Shortcuts are shown with `⌘`; use
+`Ctrl` on Windows and Linux.
+
+## Writing a folio
+
+1. Click **New folio** at the top of the tree, or right-click a directory and
+   choose **New folio** to create it there.
+2. Give it a title and write. The body is Markdown, and the **Insert** menu
+   adds headings, lists, tables, code blocks and diagrams.
+3. There is nothing to submit: edits save as you type. **Folio ▸ Save** (`⌘S`)
+   saves at once.
+
+A folio with content opens rendered, and an empty one opens ready for editing.
+**View ▸ Toggle preview** (`⌘E`) switches between the two. **Edit ▸ Find in
+folio** (`⌘F`) searches the open folio.
+
+The **Folio** menu also holds **Duplicate**, **Move to…**, **Export as .md**
+(a folio with files exports as a `.zip`, the files beside the Markdown) and
+**Delete folio**.
+
+⚠️ **Deleting a folio cannot be undone.**
+
+A few habits keep folios useful:
+
+- **One topic per folio.** The title is the topic.
+- **Short and self-contained.** A folio that needs scrolling is two folios.
+- **Always a summary.** One or two sentences on what the folio is for, starting
+  with the kind of note it is ("Decision: ...", "Runbook: ..."). It is the line
+  an agent reads to decide whether to open the folio at all.
+
+The **Summary for agents** field appears on a folio when the **Summaries for
+agents** option is on, in **Settings ▸ Folios ▸ Features**. Agents read and
+write the summary either way.
 
 ## Directories
 
-Folios live in a tree of directories, at most 8 levels deep. A folio and a
-directory in the same parent cannot share a name; names are compared without
-regard to case.
+Folios live in a tree of directories, at most 8 levels deep. Create one with
+**New directory**, rename from the right-click menu, and move a folio or a
+directory by dragging it.
 
-⚠️ **Deleting a directory deletes everything in it, folios included.** Move
-what you want to keep out first. An agent's `directory_delete` refuses a
-directory that is not empty unless it passes `cascade: true`.
+A folio and a directory in the same parent cannot share a name, and names are
+compared without regard to case.
+
+⚠️ **Deleting a directory deletes everything in it, folios included, and
+cannot be undone.** Move what you want to keep out first.
 
 ## Links
 
-Link to another folio, or to anything else in the project, with the typed
-reference grammar:
+Link to another folio, or to anything else in the project, by writing its
+reference between double brackets:
 
 | You write   | It links to       |
 | ----------- | ----------------- |
@@ -70,90 +84,75 @@ reference grammar:
 
 The number is the per-project one shown beside each item. Nothing else between
 `[[` and `]]` is a reference: a title, a path or an anchor renders as a broken
-link.
+link. **Copy wiki-link** in a folio's right-click menu puts its reference on
+your clipboard.
 
 Links are recomputed on every save. The **Links** tab shows both directions:
-what this folio points to, and the folios, quests and epics that point to it.
-The second half is the useful one: it surfaces context you did not know was
-related.
+**Outgoing**, what this folio points to, and **Backlinks**, the folios, quests
+and epics that point to it. Backlinks are the useful half: they surface context
+you did not know was related.
 
-## Pinned folios
+## Files
 
-Pin a folio and it sorts to the top of the list, and its content is handed to
-every agent that orients itself on the project. Pinned folios are the project's
-equivalent of a `CLAUDE.md` or `AGENTS.md`: the instructions every session
-should read.
-
-Pin sparingly. All pinned folios together share a budget of about 8,000
-characters, spent every time an agent orients itself. The newest-updated come
-first: the first one past the budget is cut there, the ones after it are left
-out, and the agent is told so. Encrypted folios are never included.
-
-## Epics
-
-A design note that belongs to an [epic](/lore/docs/guides-epics) can be filed
-under it. It then shows on the epic's **Folios** tab, and filtering the folio
-list by that epic finds it.
-
-## Attachments
-
-A folio can carry files: images shown in its body, diagrams, PDFs. See
-[Attachments](/lore/docs/guides-attachments).
+A folio can carry files: images shown in its body, diagrams, PDFs. Paste or
+drop an image into the body while editing, or use **Add files** on the
+**Files** tab. See [Attachments](/lore/docs/knowledge-attachments).
 
 ## History
 
-Every change is kept as a **revision**: created, edited, renamed or reverted, by
-whom and when, with a snapshot of the title, summary and content.
+Every change is kept as a **revision**: created, edited, renamed or reverted,
+by whom and when, with a snapshot of the title, summary and content. The
+**History** tab (`⌘Y`) lists them.
 
 Because folios save as you type, one writing session by one person is one
-revision rather than one per keystroke: edits within an hour of the previous one
-by the same author update that revision. A project keeps the 10 most recent
-revisions of each folio by default; older ones drop off.
+revision, not one per keystroke: an edit within an hour of the previous one by
+the same author updates that revision. A project keeps the 10 most recent
+revisions of each folio by default, and older ones drop off. Choose **Keep** on
+a revision to pin it: a pinned revision survives that limit.
 
-**Pinned revisions** survive that cap: pin a revision in the History tab to keep
-exactly that snapshot.
+**Revert to this** never rewinds. It writes a new revision holding the old
+content, so the state you reverted from stays in history and the revert can
+itself be undone.
 
-Reverting never rewinds. It writes a new revision holding the old content, so
-the state you reverted from stays in history and the revert can itself be
-undone.
+## Pinned folios
+
+**Folio ▸ Pin to context** pins a folio. A pin marks it in the tree, and its
+content is handed to every agent that orients itself on the project. Pinned
+folios are the project's equivalent of a `CLAUDE.md` or `AGENTS.md`: the
+instructions every session should read.
+
+Pin sparingly. All pinned folios together share a budget of about 8,000
+characters, spent every time an agent orients itself, and the inspector of a
+pinned folio shows how much of it is used. The newest-updated come first: the
+first one past the budget is cut there, the ones after it are left out, and the
+agent is told so. Encrypted folios are never included.
+
+## Folios and epics
+
+A design note that belongs to an [epic](/lore/docs/work-epics) can be filed
+under it. On the epic's **Folios** tab, **Attach Folio** picks the folio and
+**Detach** takes it out again, without deleting it.
 
 ## Encrypted folios
 
-A folio can be **encrypted** with a passphrase (**Encrypt…** in the folio's
-menu). The content is encrypted in your browser: the server only ever stores
-ciphertext, never the passphrase or the plain text. Share the passphrase with
-whoever should read it some other way.
+**Folio ▸ Encrypt…** protects a folio with a passphrase of at least 8
+characters. The content is encrypted in your browser: the server only ever
+stores ciphertext, never the passphrase or the plain text. Share the passphrase
+some other way with whoever should read the folio. Opening it asks for the
+passphrase, and **Folio ▸ Remove protection** saves it as plain text again.
 
 What that costs:
 
-- ⚠️ **There is no recovery.** Forget the passphrase and the content is gone.
+- ⚠️ **There is no recovery.** Forget the passphrase and the content is gone:
+  all that is left to do is delete the folio.
 - The title and summary stay readable by every project member. Do not put the
   secret there.
-- An encrypted folio is not searchable, its links are not tracked, and image
-  uploads are disabled.
-- An agent reading it over MCP gets the ciphertext, not the text.
-- Turning encryption on, or off, **deletes the folio's revision history**,
+- An encrypted folio is not searchable, its links are not tracked, and it
+  cannot carry files.
+- An agent reading it gets the ciphertext, not the text.
+- ⚠️ Turning encryption on, or off, **deletes the folio's revision history**,
   pinned revisions included. Otherwise the plain-text snapshots written before
-  encryption would stay readable in History.
-
-## From an agent
-
-Agents reach folios through MCP:
-
-| Tool                                                                                                  | What it does                                                                                  |
-| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `project_context`                                                                                     | Orientation: the folio index (titles and summaries, no bodies) and the pinned folios, capped. |
-| `folio_list`, `folio_search`                                                                          | The index, or a free-text search over title, summary and content.                             |
-| `folio_get`                                                                                           | One folio's content, with its outbound and inbound links.                                     |
-| `folio_create`, `folio_update`                                                                        | Write. `summary` should always be set; `epic_number` files it under an epic (0 detaches).     |
-| `folio_history`, `folio_revert`                                                                       | Revisions, and rolling back to one.                                                           |
-| `folio_delete`                                                                                        | Permanent.                                                                                    |
-| `directory_list`, `directory_create`, `directory_rename`, `directory_move`, `directory_delete`        | The tree.                                                                                     |
-| `folio_attachment_add`, `folio_attachment_list`, `folio_attachment_rename`, `folio_attachment_delete` | A folio's files.                                                                              |
-
-A good habit to give your agent: orient with `project_context`, read what is
-relevant with `folio_get`, and when a session produced a decision that was not
-obvious, write a folio about it before finishing.
+  encryption would stay readable in **History**.
 
 ## From the command line
 
@@ -166,5 +165,34 @@ lore folio create --title "Decision: one database per tenant" \
   --content @decision.md
 ```
 
-`--content @file` reads the body from a file, `@-` from standard input. See
-[The lore CLI](/lore/docs/guides-cli#folios).
+`lore folio list` shows pinned folios first, then the newest-updated.
+`--content @file` reads the body from a file, `@-` from standard input.
+`lore directory delete` refuses a directory that is not empty unless it is
+given `--cascade`. The full list is in
+[The lore CLI](/lore/docs/reference-cli#folios).
+
+## From an agent
+
+An agent starting a task reads the folio index first, opens the folios that
+look relevant, and writes down what it learned when it is done. Without that,
+every session starts from nothing.
+
+| Tool                           | What it does                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| `project_context`              | Orientation: the folio index (titles and summaries, no bodies), and what is pinned. |
+| `folio_search`, `folio_get`    | Find a folio by its text, then read it with its outgoing and incoming links.        |
+| `folio_create`, `folio_update` | Write. Always set `summary`. `epic_number` files it under an epic, `0` detaches.    |
+
+A good habit to give your agent: orient with `project_context`, read what is
+relevant with `folio_get`, and when a session produced a decision that was not
+obvious, write a folio about it before finishing. `folio_delete` is permanent,
+and `directory_delete` refuses a directory that is not empty unless it passes
+`cascade: true`. The tools for history, directories and files are listed in
+[MCP tools](/lore/docs/reference-mcp-tools).
+
+## Next
+
+- [Attachments](/lore/docs/knowledge-attachments): files on a folio or a quest.
+- [Epics](/lore/docs/work-epics): the plans a design note is filed under.
+- [Connecting an agent](/lore/docs/agents-connecting): give an agent access to
+  the project's folios.

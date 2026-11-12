@@ -141,7 +141,7 @@ export class AppRouter {
     head: () => ({
       title: "Lore. Project management, for agents too.",
       description:
-        "An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, readable and writable over MCP.",
+        "An open-source project management app for teams and their AI agents. Quests, folios, feedback and app telemetry, readable and writable over MCP.",
       link: [llmsLink("lore")],
     }),
   });

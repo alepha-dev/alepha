@@ -223,7 +223,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                   // ⚠️ Absolute, through `loreDocsUrl`. Written
                   // root-relative it resolved against Lore's own origin and
                   // 404'd (feedback #P2142).
-                  href={loreDocsUrl("guides-cloudflare-token")}
+                  href={loreDocsUrl("apps-cloudflare-token")}
                   className="underline underline-offset-4"
                   data-testid="estate-create-guide"
                 >

@@ -83,19 +83,19 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
               icon={Bot}
               title={tr("home.feature.agents.title")}
               description={tr("home.feature.agents.description")}
-              href={`${HomeWelcome.docs}/docs/guides-mcp`}
+              href={`${HomeWelcome.docs}/docs/agents-connecting`}
             />
             <HomeWelcomeFeature
               icon={Workflow}
               title={tr("home.feature.automations.title")}
               description={tr("home.feature.automations.description")}
-              href={`${HomeWelcome.docs}/docs/guides-automations`}
+              href={`${HomeWelcome.docs}/docs/work-automations`}
             />
             <HomeWelcomeFeature
               icon={Server}
               title={tr("home.feature.selfHost.title")}
               description={tr("home.feature.selfHost.description")}
-              href={`${HomeWelcome.docs}/docs/guides-self-hosting`}
+              href={`${HomeWelcome.docs}/docs/start-self-hosting`}
             />
           </div>
         </div>

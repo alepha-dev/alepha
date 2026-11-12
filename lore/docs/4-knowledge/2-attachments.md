@@ -1,95 +1,139 @@
 # Attachments
 
-A quest or a folio can carry files: a screenshot, a probe log, a CSV of
-measurements, an HTML mockup someone will open. In the web app you drag one
-onto the quest or paste it into the folio. From a terminal, and from an agent
-working through MCP, the command is:
+A quest or a folio can carry files: a screenshot, a log, a CSV of measurements,
+an HTML mockup someone will open. In the browser you paste or drop the file.
+From a terminal, and for an agent, one command does it:
+`lore attachments push`.
 
-```bash
-lore attachments push ./chart.png --project alepha --quest 1208
+## On a quest
+
+Open the quest. Its **Attachments** section takes files three ways:
+
+- click **Attach** and pick one or several files;
+- drag files onto the section;
+- paste a screenshot with `Ctrl+V` or `⌘V`, anywhere on the page.
+
+Any type of file is accepted, up to 10 MB each. Each file shows as a chip on
+the quest: click it to preview an image or a text file, or to open anything
+else. There is nothing more to do: a file attached to a quest is listed on the
+quest.
+
+## On a folio
+
+A folio's files are managed on the **Files** tab of the inspector, on the
+right of the [folio workspace](/lore/docs/knowledge-folios). The folio has to
+be saved once before it can take a file.
+
+- **Add files** picks one or several files. Dropping files on the tab does the
+  same.
+- Pasting or dropping an image into the body while editing uploads it and
+  inserts it where the cursor is.
+
+An image wider than 1600 pixels is scaled down to that width before it is
+sent.
+
+**Uploading a file to a folio places it. It does not put it in the text.** A
+file added from the **Files** tab has to be referenced from the body, as an
+image or as a link:
+
+```markdown
+![Latency after the fix](assets/chart.png)
+[The raw measurements](assets/latency.csv)
 ```
 
-## The command
+Use `![...]` for an image and `[...]` for anything else. **Copy markdown
+reference** on a file's row puts the reference on your clipboard. A file
+nothing references is a file nobody finds.
+
+Renaming a file from the tab updates the references to it in that folio.
+Deleting one does not: a reference to a deleted file stops resolving.
+
+⚠️ **The name a file is stored under is not always the one you sent.** A folio
+adds a suffix to a name already taken on it, so a second `chart.png` lands as
+`chart (1).png`. Copy the reference from the tab instead of composing one from
+the filename.
+
+⚠️ **An encrypted folio refuses attachments.** Its content is encrypted in the
+browser, so Lore can neither see the reference nor update it on a rename, and
+a plain file must not sit beside encrypted content. The editor offers no upload
+there.
+
+## From the command line
 
 ```bash
-lore attachments push <file> --project <slug> --quest <shortId>
-lore attachments push <file> --project <slug> --folio <shortId>
+lore attachments push <file> --project <slug> --quest <number>
+lore attachments push <file> --project <slug> --folio <number>
 ```
 
-One file per invocation. A shell loop covers the rest:
+```bash
+lore attachments push ./chart.png --project acme --quest 1208
+```
+
+One file per call. A shell loop covers the rest:
 
 ```bash
 for f in ./out/*.png; do
-  lore attachments push "$f" --project alepha --folio 12
+  lore attachments push "$f" --project acme --folio 12
 done
 ```
 
 | Flag        | Meaning                                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------------------------- |
 | `--project` | The project's slug, as it appears in Lore's URLs. Falls back to `LORE_PROJECT`. A numeric project id works too. |
-| `--quest`   | The quest's **shortId** - the number in its URL and in `quest_get`, not the internal id.                        |
-| `--folio`   | The folio's shortId. Exactly one of `--quest` / `--folio` is required.                                          |
-| `--name`    | Store it under a different name. Defaults to the on-disk filename.                                              |
+| `--quest`   | The quest's number: the one in its URL and in `#Q1208`, written bare.                                           |
+| `--folio`   | The folio's number, written bare. Exactly one of `--quest` and `--folio` is required.                           |
+| `--name`    | Store the file under a different name. Defaults to its name on disk.                                            |
 | `--type`    | Override the media type. Defaults to a guess from the extension.                                                |
 
-The command needs a credential, the same one every `lore` command needs:
-`lore login` on a machine with a browser, or `LORE_API_KEY` from the account's
-API keys page, which is what CI has.
+The command needs a credential, like every `lore` command: `lore login` on a
+machine with a browser, or `LORE_API_KEY` in CI. See
+[Connecting an agent](/lore/docs/agents-connecting).
 
-## A folio attachment has to be referenced
+A quest takes files up to 10 MB. A folio sets no limit of its own.
 
-Uploading a file to a folio places it; it does not put it in the text. The
-push prints the reference to paste into the body:
+For a folio, the command prints the reference to paste into the body:
 
 ```txt
 reference: assets/chart.png
 ```
 
-```markdown
-![Latency after the fix](assets/chart.png)
+⚠️ **Read the reference the command prints.** It carries the name the file was
+stored under, which a folio may have suffixed, as above. An encrypted folio
+refuses the push.
+
+To read files back:
+
+```bash
+lore quest attachment get Q1208 --attachment <id> --out ./chart.png
+lore folio attachment list F12
 ```
 
-Use `![...]` for an image and `[...]` for anything else. A file nothing
-references is a file nobody finds.
+`lore quest get` lists a quest's attachments with their ids. A folio's files
+are renamed and deleted with `lore folio attachment rename` and
+`lore folio attachment delete`. The full list is in
+[The lore CLI](/lore/docs/reference-cli).
 
-⚠️ **The name that comes back is the name that was stored, and it is not
-always the one that was sent.** A folio auto-suffixes a name already taken on
-it, so `chart.png` may land as `chart (1).png`. Read the reference the command
-prints rather than composing one from the filename you passed.
+## From an agent
 
-A quest attachment needs no reference: it is listed on the quest.
+⚠️ **The MCP tools do not carry the file.** `quest_attachment_add` and
+`folio_attachment_add` upload nothing: each checks that the target exists and
+can take a file, then returns the filled-in `lore attachments push` line for
+the agent to run in a shell. MCP is a poor pipe for a file of any size, and the
+command streams it.
 
-⚠️ **A protected folio refuses an attachment.** Its content is encrypted in
-the browser, so the server can neither hold the reference nor repoint it on a
-rename. The editor hides its upload handler there for the same reason.
+⚠️ **The agent's MCP session does not sign the shell in.** The command needs
+its own credential, `lore login` or `LORE_API_KEY`. The tool says so in what it
+returns, because a command failing on a missing key one step after a tool that
+worked reads as a broken CLI.
 
-## Reading one back
+Reading is done over MCP. `quest_attachment_get` returns an image inline,
+decodes a text file (HTML, plain text, CSV, Markdown, JSON), and answers with a
+note naming the file for anything else. `folio_attachment_list`,
+`folio_attachment_rename` and `folio_attachment_delete` manage a folio's files.
+See [MCP tools](/lore/docs/reference-mcp-tools).
 
-`quest_attachment_get` over MCP returns an image inline, decodes a text-like
-payload (html, plain, csv, markdown, json), and answers with a note naming the
-file for anything else. `folio_attachment_list`, `folio_attachment_rename` and
-`folio_attachment_delete` manage a folio's own list. All four are unchanged and
-still live on MCP: bytes were the only thing that needed a different pipe.
+## Next
 
-## ⚠️ The MCP tools do not carry the file
-
-`quest_attachment_add` and `folio_attachment_add` still exist, and they upload
-nothing. Each confirms the target exists and returns the filled-in
-`lore attachments push` line to run.
-
-The reason is the transport. A file sent over MCP travels as base64 inside a
-JSON-RPC frame, which is what capped every attachment at 2 MB - a number
-nobody chose. The server has always been more generous: a quest's bucket
-allows 10 MB and a folio's sets no limit at all. The cap was pure transport
-tax, and it was paid on exactly the files a quest is worked from: a screenshot
-at retina width, an HTML mockup with an inlined font, a CSV of measurements.
-
-The CLI streams instead, at one chunk of peak memory, the same way
-`lore artifacts push` ships a build. The two tools kept their names because an
-agent looking for "attach a file to a quest" and finding nothing would paste
-the file into a comment as text.
-
-⚠️ **Your MCP session's credential does not reach a shell.** The tool says so
-in what it returns, because a `lore` command that fails on a missing key one
-step after a tool that worked reads as a broken CLI rather than as a missing
-credential.
+- [Folios](/lore/docs/knowledge-folios): the notes these files illustrate.
+- [Quests](/lore/docs/work-quests): where a screenshot explains the work.
+- [The lore CLI](/lore/docs/reference-cli): install it and sign in.

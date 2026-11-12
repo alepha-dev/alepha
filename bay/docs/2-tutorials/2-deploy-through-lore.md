@@ -1,7 +1,7 @@
 # Deploy through Lore
 
 The server from [Your first app on a VPS](/bay/docs/tutorials-first-app-on-a-vps),
-driven from [Lore](/lore/docs/guides-introduction) instead of over SSH: Lore
+driven from [Lore](/lore/docs/start-introduction) instead of over SSH: Lore
 holds the copy of your app, deploys it to the machine, and collects its page
 views, Web Vitals and errors.
 
@@ -116,7 +116,7 @@ curl https://myapp.apps.example.com/version
 
 Later deploys reuse the copy. `npx lore deploy -e production` does the same from
 the Lore CLI, and `--tag` deploys a stored build without building:
-[Deploying an app](/lore/docs/guides-deploying).
+[Deploying an app](/lore/docs/apps-deploying).
 
 ## 6. Watch it
 
@@ -131,7 +131,7 @@ npx lore blight list
 `insights read` gives page views, unique visitors, Web Vitals and the error
 budget; `blight list` gives the app's failures, one row per root cause. The
 same is on the project's **Apps** and **Blights** pages, with the server's CPU
-and memory on the estate's page. [Telemetry](/lore/docs/guides-telemetry)
+and memory on the estate's page. [Telemetry](/lore/docs/apps-telemetry)
 explains each number.
 
 The app's server sends what it collected when a new event arrives at least ten
@@ -170,6 +170,6 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
 
 - [Stacks](/bay/docs/guides-stacks): a database or a queue deployed beside the
   app, from Lore.
-- [Estates](/lore/docs/guides-estates): lending one machine to several projects.
+- [Estates](/lore/docs/apps-estates): lending one machine to several projects.
 - [A throwaway server, from a shell](/bay/docs/tutorials-a-throwaway-server): the
   same loop with no web page, for a server bought for an hour.

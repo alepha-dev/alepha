@@ -61,7 +61,7 @@ const AssistantPanel = () => {
           size="icon-sm"
           variant="minimal"
           aria-label={tr("assistant.help")}
-          href={loreDocsUrl("guides-assistant")}
+          href={loreDocsUrl("agents-assistant")}
           target="_blank"
           rel="noopener noreferrer"
         >

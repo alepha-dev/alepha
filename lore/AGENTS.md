@@ -79,6 +79,17 @@ Decisions, plans and bug reports live in the Lore project **Alepha** (`https://l
 - `apps/lore/test/mcp-cli-parity.spec.ts` resolves every tool to a command and every param to a flag, by name. A param with no flag says why in `NOT_A_FLAG`. `GAPS`, the debt this rule was written over, is empty since #Q3027 and stays that way.
 - A command calls existing actions over `$client` (#F1264). A tool's aggregates, made for a model's context, are not reproduced.
 
+## The guides
+
+Lore's user documentation is `docs/`, published at `alepha.dev/lore/docs/<slug>` by the docs site at the repository root. It is written for a person using Lore in a browser (#Q3492).
+
+- **One folder per thing the reader is doing**: `1-start`, `2-project`, `3-work`, `4-knowledge`, `5-support`, `6-agents`, `7-apps`, `8-reference`. A page's slug is its folder and file name without their order prefixes, joined by a dash: `3-work/1-quests.md` is `work-quests`. Pre-v1, a slug may change without a redirect; every link to it changes in the same commit.
+- **A page leads with the browser**: what the thing is for, then the screens in the order a person meets them, with labels as the UI spells them. The command line and agents come last, under `## From the command line` and `## From an agent`, and the full lists live in `8-reference`.
+- **Lore stands on its own.** Never write that Lore needs Alepha. Telemetry and app deploys need an app built with Alepha, and their pages say so once, as a fact about the feature.
+- **Lore's UI links a guide through `loreDocsUrl`** (`packages/@lore/core/src/web/app/services/docsUrl.ts`), whose slug list is the type: a moved page is a type error there.
+- **After editing a guide, run `yarn w lore docs:corpus`**: the assistant answers from a corpus generated from the guides, and `assistant-docs.spec.ts` refuses a stale one. A guide's capability, which decides which projects the assistant may quote it to, is its folder (`3-work` is Work).
+- ⚠️ **Screenshots never come from a real instance.** They are taken on a local Lore (`node dist` on its own port and data directory) seeded with a fictional project, `Acme`, at 1440x900, once per theme: `docs/public/screenshots/lore/<name>-light.png` and `<name>-dark.png`. A guide references the light one, `![alt](/screenshots/lore/<name>-light.png)`, and the site emits both and shows the one matching the theme.
+
 ## Testing
 
 Vitest with globals. Specs live in `__tests__/` or `test/`, or co-located as `*.spec.ts`. `*.browser.spec.ts(x)` runs under jsdom, everything else under node. Every workspace with specs owns a `vitest.config.ts` calling `workspaceProjects` from `scripts/vitest.projects.ts`, and the root `vitest.config.ts` spreads them.

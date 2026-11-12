@@ -57,7 +57,7 @@ describe("AssistantReplyLink", () => {
   it("opens a page of Lore's guides on the docs site, in a new tab", async ({
     expect,
   }) => {
-    const view = await mount("https://alepha.dev/lore/docs/guides-quests");
+    const view = await mount("https://alepha.dev/lore/docs/work-quests");
     const link = view.getByRole("link");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toContain("noopener");

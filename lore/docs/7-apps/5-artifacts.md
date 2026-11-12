@@ -1,29 +1,23 @@
-# Pushing artifacts
+# Artifacts
 
-An **artifact** is a build your CI hands to Lore and keeps. It is what the
-Artifacts page lists, what a release attaches, and what a deploy ships.
+An **artifact** is a build of your app that Lore keeps. It is what the
+**Artifacts** page lists, what a release shows as built, and what a deploy
+ships.
 
-Artifacts do not arrive from the running app. Everything else Lore knows about
-an app is telemetry the app itself reports; an artifact comes from your
-pipeline, which is a second system Lore cannot see. So an app with no CI
-integration has telemetry and no artifacts, forever, and that is a normal
-state rather than a fault.
-
-## The two commands
+A build comes from the machine that holds the source, your laptop or your CI,
+never from the running app. So the page stays empty until somebody pushes one,
+with two commands:
 
 ```bash
 alepha build
-lore artifacts push --project <project> --app <app> --tag 1.2.3
+lore artifacts push --tag 1.2.3
 ```
 
-`alepha build` writes `dist/`. `lore artifacts push` packs it and uploads it.
+`alepha build` writes `dist/`. `lore artifacts push` packs it and uploads it to
+your project. Like the [app deploys](/lore/docs/apps-deploying) that ship it,
+a pushed build is the build of an app made with Alepha.
 
-It packs for you on purpose. `alepha pack` still exists for anyone who wants
-the file, but requiring it as a separate step means the tarball on disk and
-the build in `dist/` can drift, and the push would ship the older one: a stale
-artifact that deploys cleanly and runs the wrong code.
-
-## The flags
+## Pushing a build
 
 | Flag        | Default                                       | What it is                                 |
 | ----------- | --------------------------------------------- | ------------------------------------------ |
@@ -33,37 +27,31 @@ artifact that deploys cleanly and runs the wrong code.
 | `--force`   | off                                           | Move a pinned tag that already holds bytes |
 
 `--project` and `--app` both have answers without you: the project from the
-environment, the app from your `package.json`. Pass them when the defaults are
-wrong, which is most often a monorepo publishing several apps from one
-pipeline.
+environment, the app from your `package.json` (or from `LORE_APP`). Pass them
+when the defaults are wrong, which is most often a monorepo publishing several
+apps from one pipeline.
 
-An artifact belongs to an **app**, not to a deployed copy of one. Every
-environment of `checkout` lists the same builds, and which one is running
-where is the Deploy tab's question.
+Three things are worth knowing:
 
-There is no `--runtime`. Lore reads it from the artifact's own
-`dist/manifest.json`, because that is the build's own claim about itself and a
-flag would eventually disagree with it.
+- **The push packs for you.** There is no separate packing step to forget, so
+  what is uploaded is always the build now in `dist/`. `alepha pack` still
+  exists for anyone who wants the file.
+- **An artifact belongs to an app, not to a deployed copy of one.** Every
+  environment of `checkout` lists the same builds. Which one runs where is the
+  **Deploy** tab's question.
+- **There is no `--runtime`.** Lore reads the runtime from the build itself,
+  so a flag can never disagree with it. A tag can hold one build per runtime:
+  `1.2.3` for Cloudflare and `1.2.3` for a Bay machine are two builds.
 
-## The asset list travels with the build
+Beside the archive, the push sends the list of the build's static assets:
+every file under `dist/public`, with its hash, size and content type. The
+first deploy of that build is faster for it, most of all for a site of
+thousands of files. Source maps, `.DS_Store` and `node_modules` are left out
+of both. Lore keeps each list for the project that pushed it, and checks every
+asset it uploads against it, so a wrong list cannot reach another project's
+deploys. A build pushed without a list deploys normally.
 
-Beside the archive, the push sends a list of the build's static assets: every
-file under `dist/public`, with its SHA-256, its size and its content type. The
-files are the ones the archive holds (the same excludes leave out source maps,
-`.DS_Store` and `node_modules`), and `_headers` and `_redirects` travel as
-their text.
-
-It is computed on your machine because it depends only on the build's bytes.
-Without it, Lore has to unpack and hash every asset again on the first deploy
-of each build, which is most of a deploy's work for a site of thousands of
-files. The push logs how long the list took.
-
-The list is optional both ways. A build pushed by an older CLI deploys
-normally, and its first deploy computes the list instead. Lore keeps each list
-for the project that pushed it, and checks the bytes of every asset it uploads
-against it, so a wrong list cannot reach another project's deploys.
-
-## The credential
+## From CI
 
 `lore artifacts push` authenticates with an API key in the environment that
 runs it:
@@ -71,18 +59,21 @@ runs it:
 ```yaml
 - run: |
     alepha build
-    lore artifacts push --project my-project --tag ${{ github.ref_name }}
+    lore artifacts push --project acme --tag ${{ github.ref_name }}
   env:
     LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 ```
 
-Mint the key from your account settings. `lore login` is the other way in and
-is not the one to reach for here: it needs a human to approve a code, and CI
-has none.
+Create the key from your account settings: see
+[Connecting an agent](/lore/docs/agents-connecting). `lore login` is the other
+way to sign in, and not the one for CI: it needs a person to approve a code.
 
 A push that cannot happen exits non-zero. Put the step behind
 `continue-on-error` if you would rather a failed push annotate the run than
-block the release: it gates no deploy either way.
+block the release.
+
+Pushing needs the `artifact:push` permission, which the default Member rank
+holds.
 
 ## `latest` is the one tag that may be replaced
 
@@ -94,27 +85,63 @@ attached to `1.2.3` names the same build tomorrow.
 and for nothing else. If you find yourself reaching for it in a pipeline, the
 tag you want is `latest`.
 
-## What Lore does with them
+## Container images
 
-- **Artifacts** on the project lists every build across every app, filterable
-  by app and by tag.
-- An app's own **Artifacts** tab lists that app's builds, one row per tag,
-  with a row per runtime underneath when a tag carries more than one.
-- A **release** shows the artifacts matching its tag. The match is on tag
-  equality with no join table, so retagging a release changes what it shows.
-- The **Deploy** tab is the same list with a ship button per row.
+When CI also pushes a container image to a registry, record it under the same
+tag:
+
+```bash
+lore artifacts push-image --tag 1.2.3 --image ghcr.io/acme/web:1.2.3
+```
+
+Nothing is uploaded: Lore checks the image at the registry and keeps its
+reference. The **Artifacts** page lists it with the format `image`, and the
+build's page offers its `docker pull` command to copy. The **Deploy** tab
+ships packed builds, not images. An image on `ghcr.io` is read anonymously.
+Any other registry needs the project's credential first: see
+[Container registries](/lore/docs/reference-cli#container-registries).
+
+## Where builds appear
+
+- The project's **Artifacts** page lists every build of every app. Search a
+  tag or a commit, and filter by app, runtime or format. A row's menu
+  downloads the archive.
+- Opening a build shows what it needs, where it runs, its manifest and its
+  deployments, with a **Deploy** menu when the project deploys through Lore.
+- An app instance's **Artifacts** tab lists that app's builds, one row per
+  tag.
+- A release shows, on its **Artifacts** tab, the builds whose tag equals the
+  release's tag. Nothing links the two, so changing the release's tag changes
+  what it shows.
+- An app instance's **Deploy** tab is the same list with a **Deploy** button
+  per build.
 
 ## Deleting a build
 
 A build pushed by mistake is removed from the project's **Artifacts** page:
 tick rows and use **Delete** in the bar that appears, or use **Delete** in a
-row's menu. It needs the `artifact:delete` permission, which the Admin rank
-carries and Contributor and Viewer do not. Pushing does not need it.
+row's menu. It needs the `artifact:delete` permission, which the owner holds
+and a [rank](/lore/docs/project-members) can be given. Pushing does not need
+it.
 
-The build leaves the registry with its stored bytes and source maps, and the
-deploy history keeps its records. Two deletes are allowed and named in the
-confirmation before they happen:
+⚠️ This cannot be undone. The build leaves Lore with its stored bytes and
+source maps. The deploy history keeps its records. Two deletes are allowed and
+named in the confirmation before they happen:
 
 - **A build a deployed copy runs.** A redeploy or a rollback that needs it has
   nothing to deploy afterwards.
 - **`latest`.** Deploys that name no tag fail until CI pushes it again.
+
+## From an agent
+
+An agent reads builds with `artifact_list` and `artifact_get`, and ships one
+with `deploy_start`. Pushing has no tool: it needs the build on disk, so it is
+the CLI's job. `lore artifacts list` and `lore artifacts get` read the same
+from a shell. See [MCP tools](/lore/docs/reference-mcp-tools) and
+[The lore CLI](/lore/docs/reference-cli).
+
+## Next
+
+- [Deploying an app](/lore/docs/apps-deploying)
+- [Releases](/lore/docs/work-releases)
+- [Apps and instances](/lore/docs/apps-instances)

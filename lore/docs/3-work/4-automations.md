@@ -1,70 +1,299 @@
 # Automations
 
-An automation is a saved, deterministic rule: when something happens, or a UTC
-schedule is due, Lore selects authorized data, tests a condition and performs an
-ordered list of actions. No AI runs inside it. An agent can help author a rule
-through MCP, but execution uses the saved program and ordinary application code.
+An automation is a saved rule: when something happens in the project, or on a
+schedule, Lore checks a condition and carries out a short list of actions, such
+as notifying a member, appending to a folio or creating a quest. A rule does
+exactly what it says, every time. No AI runs inside it.
 
-An owner first enables **Work > Automations** in project capabilities and assigns
-the appropriate rank permissions. The option starts off. Enabling it does not
-adopt existing reminder or release policies, and adoption never grants permissions
-or enables capabilities for you.
+Automations are the **Automations** option of the **Plan and track work**
+capability, and the option starts off: see
+[Capabilities](/lore/docs/project-capabilities). Turning it on grants nothing by
+itself. A rank also needs the **Automations** permissions, which only the owner
+holds by default (see [Members](/lore/docs/project-members)):
 
-## Start in the application
+| Permission                                                   | What it allows                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Read automations                                             | See the rules and their runs.                                      |
+| Create and edit your own automations                         | Write, test and enable rules of your own.                          |
+| Manage shared variables and disable or delete any automation | Manage shared variables, and stop or delete another author's rule. |
 
-Open **Automations > New automation**. The seven stock presets cover new
-feedback, a nightly tagged-quest digest, a weekly report, epic completion, coverage regression,
-open-blight crossings, release publication to a folio, and failed deployments.
-Only the presets this project's capabilities, your permissions and the configured
-channels allow are offered.
+## The automations page
 
-Pick a preset, then fill its few inputs. Members, folios and apps are chosen
-through pickers that search the project. Every input belongs to this rule alone
-unless you choose **Share with other automations**, which binds or creates a
-shared variable. **Create automation** saves the rule disabled and opens its
-page. There, **Run test** shows its timestamp, source, counts and rendered
-actions without writing anything; then **Enable** it from the page header. An
-event test needs a same-project record chosen in the subject picker. A schedule
-test reads its current selection.
+**Automations** in the sidebar lists the project's rules: their name, their
+author, what triggers them, their state and their last run.
 
-Click a rule's row to open it. **Edit** changes its four slots; its run history
-is listed below. Saving uses the revision you opened: a conflicting save keeps
-your draft, so you can compare it with the current rule before choosing
-**Discard draft and reload**. Disable or delete stops queued and following effects;
-effects that already committed remain.
+![The Automations page, listing the project's rules and their state](/screenshots/lore/automations-light.png)
 
-## The four slots
+A rule is in one of four states:
 
-| Slot    | Meaning                                                                                                |
-| ------- | ------------------------------------------------------------------------------------------------------ |
-| Trigger | One registered event, or a five-field UTC cron schedule.                                               |
-| Select  | `null` for an event; one registered selector or numeric metric for a schedule.                         |
-| Guard   | `null` to always match, or one typed comparison against an available source field.                     |
-| Actions | One to five ordered operations: notify, append a folio, create a quest, assign a release or add a tag. |
+| State        | Meaning                                                                             |
+| ------------ | ----------------------------------------------------------------------------------- |
+| **Disabled** | Saved, and not running. Every new rule starts here.                                 |
+| **Active**   | Enabled and healthy.                                                                |
+| **Paused**   | Stopped until its author reviews it. See [Who a rule runs as](#who-a-rule-runs-as). |
+| **Broken**   | Something it needs is missing, such as a capability or a channel.                   |
 
-There are three scheduled selection cardinalities:
+Click a row to open the rule. A row's menu enables, disables or deletes it. The
+page's buttons open **New automation**, **Shared variables** and **Built-in
+notifications**.
 
-| Selection    | Execution                                                                                                                  |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `rows`       | Test the guard and run the action list separately for each selected row.                                                   |
-| `scalar`     | Read one numeric result and run the action list once if it matches. A measured zero is a value.                            |
-| `collection` | Retain up to 50 rows and run the list once with the collection's deterministic summary. An empty collection sends nothing. |
+## Creating an automation
 
-An event supplies one context and requires `select: null`. A schedule requires a
-selection. Fields and operators come from the catalogue for that source; a
-progress object is not a numeric metric, and arbitrary queries or code are not
-accepted. Deploy-failure rules may filter one validated app across environments.
+1. On **Automations**, click **New automation**. Lore offers the presets this
+   project's capabilities, your permissions and its notification channels
+   allow.
+2. Pick a preset and fill its few inputs. Members, folios and apps are chosen
+   from pickers that search the project.
+3. Click **Create automation**. The rule is saved **disabled** and its page
+   opens.
+4. On the rule's page, click **Run test** to see what it would do, then
+   **Enable** it.
 
-## Example: record a release, then notify a member
+The presets:
 
-The **release-to-folio** preset appends the publication's frozen changelog and
-then enqueues an inbox or email message. It does not replace the existing release
-announcement policy. Pick the folio and recipient in the application, or call
-`automation_create` with a program like this:
+| Preset                               | What it does                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| **New feedback**                     | Notifies one member when feedback is created. The reporter's contact details are left out.                   |
+| **Nightly tagged quests**            | Sends one digest of the open quests carrying a chosen tag, at 00:00 UTC. An empty digest is skipped.         |
+| **Weekly report**                    | Sends the Reports summary of the last seven days to one member, every Monday at 08:00 UTC.                   |
+| **Epic completed**                   | Notifies one member when an epic in progress completes.                                                      |
+| **Coverage regression**              | Compares line coverage over the two last full UTC days, and alerts when it dropped by more than a threshold. |
+| **Open blights cross a threshold**   | Samples the number of open blights every five minutes, and alerts when it rises above a threshold.           |
+| **Publish release notes to a folio** | Appends a published release's changelog to a folio, then notifies one member. Each publication appends once. |
+| **Deployment failed**                | Notifies one member when a deployment of the chosen app fails, in any environment. Raw logs are left out.    |
+
+Every input belongs to this rule alone unless you choose **Share with other
+automations**, which uses or creates a [shared variable](#shared-variables).
+
+### Testing a rule
+
+**Run test** runs the rule against current data and shows what it would select,
+whether its condition matched and the exact messages it would send. Nothing is
+written, sent or remembered, even when the test is refused.
+
+A rule triggered by an event needs a **Source record** to test against: a
+feedback item, a release, an epic of this project. The record does not change.
+A scheduled rule reads its current selection.
+
+A successful test is not a delivery. After enabling the rule, look at its
+**Run history** once the real thing has happened.
+
+## Editing a rule
+
+On a rule's page, **Edit** opens its four parts:
+
+| Part           | What it holds                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| **1. When**    | One event (**When something happens**), or a schedule (**On a schedule (UTC)**).                          |
+| **2. Records** | Nothing for an event, which brings its own record. For a schedule, the list or the number the rule reads. |
+| **3. Only if** | **Always**, or one comparison on a field of what was read: equals, is above, drops by more than, ...      |
+| **4. Then**    | One to five actions, carried out in order.                                                                |
+
+The events are new feedback, a release published, an epic completed, a quest
+completed, and a deployment failed or succeeded. The actions are **Send a
+notification**, **Append to a folio**, **Create a quest**, **Assign the quest to
+a release** and **Tag the quest**.
+
+A schedule reads one of three things:
+
+- **A list, one run each**, such as the open quests: the condition is tested
+  and the actions run separately for each row, up to 50.
+- **A list as one digest**, such as the open quests with a tag: the actions run
+  once, with up to 50 rows. An empty list sends nothing.
+- **A number**, such as the count of open blights or a coverage percentage: the
+  actions run once if the condition matches. A measured zero is a value; a
+  missing sample is "no data", and the rule does nothing.
+
+Fields, comparisons and placeholders come from a fixed list for each source.
+There are no free queries and no code.
+
+Saving applies to the version you opened. If the rule changed in the meantime,
+the save is refused and your draft is kept, so you can compare before choosing
+**Discard draft and reload**.
+
+**Disable** or **Delete** stops the rule's queued work and everything after it.
+What it already did stays done.
+
+### Messages and placeholders
+
+A message can name fields of what triggered the rule, in double braces:
+`Release {{release_tag}} published`. The editor lists the names available.
+Only those names and your shared variables resolve: an unknown name is refused,
+and a value that itself contains `{{...}}` is never read a second time. There
+are no scripts or expressions, and HTML in a value is escaped. Stock messages
+are in English, and your own wording is sent as written.
+
+### Schedules
+
+A schedule is a five-field cron expression in **UTC**, whatever your browser's
+timezone, with no daylight-saving shift. A rule runs every five minutes at
+most, and its minutes have to fall on a multiple of five: `*/5 * * * *` and
+`0 0 * * *` are valid. Runs missed during an outage are not replayed one by
+one: the rule runs once, for the latest occurrence due. A rule never overlaps
+itself.
+
+### Thresholds and drops
+
+**Rises above** alerts on a crossing, not on a level. The first reading only
+records a baseline. The rule then alerts when the value goes from at or below
+the threshold to above it, stays quiet while it remains above, and is armed
+again once the value returns to the threshold or below. Changing the condition
+or what is measured starts a new baseline; changing only the message, the
+recipients or the schedule keeps it. A test never moves the baseline.
+
+**Coverage regression** compares the line-coverage samples of the two previous
+full UTC days on the chosen branch (`main` unless you say otherwise). It alerts
+only when the drop is strictly greater than the threshold, in percentage
+points. If either day has no sample, the run reports no comparison data: it
+does not read the day as zero, and does not borrow another branch's or an
+older day's sample.
+
+## Shared variables
+
+A value typed into a rule belongs to that rule. A **shared variable** is a named
+value several rules use, such as a recipient or a threshold, so that changing
+it once changes them all. **Shared variables** on the Automations page creates
+and edits them, and lists the rules using each one. A variable holds a project
+member, a channel, a folio, a release, a number or a text. Creating one while
+setting up a preset never replaces an existing variable.
+
+Changing a shared variable validates the rules you authored against the new
+value. Rules written by other authors **pause**: each author has to look at the
+change and enable their rule again. A variable still in use cannot be deleted.
+
+## Who a rule runs as
+
+A rule runs as its author, with the author's permissions at the moment it runs,
+and the author never changes. Before every run and every action, Lore checks
+again that the author still has their account, their membership, the rank
+permissions and the project capabilities the rule needs. A rule created
+through an API key or an agent's connection also stops when that key or
+connection is revoked, expires or loses the access the rule needs. Someone who
+manages automations can stop or delete another author's rule, and cannot edit
+it, enable it or lend it their own permissions.
+
+The people a rule notifies must still have access to what it is about, and
+their notification preferences are applied when the message is sent. Someone
+who may read automations but not the rule's source sees "Source access
+unavailable" in place of its details.
+
+When something a rule depends on goes away, its state says which case it is:
+
+- **Broken**: a capability or a channel is unavailable. Bringing it back
+  recovers a rule that is still enabled.
+- **Paused**: the author lost a permission, was removed from the project,
+  someone else changed a shared variable the rule uses, or an action ended
+  with an unknown outcome. Restoring access is not enough. The author reads the
+  reason, fixes it, tests again and enables the rule.
+
+The author gets one message in their inbox, linking to the rule, when it
+pauses or breaks, and not again while it stays that way. A check that could
+not be made, because Lore could not read its own data for a moment, changes
+nothing: the rule stays as it was and is checked again a few minutes later.
+
+What an automation does never triggers another automation, so rules cannot
+chain into a loop. Everything else still applies to its actions: the usual
+validation, history and notifications.
+
+## Runs
+
+A rule's page lists its **Run history**. A run ends as succeeded, skipped,
+refused, failed, partially completed or with an unknown outcome, and opening
+it shows each action's outcome.
+
+Actions are carried out in order, and each one stays done. If the folio was
+appended and the notification then failed, the folio stays appended and the
+run is **Partially completed**. A retry does not append the same publication
+twice, and nothing is rolled back to make a run look all-or-nothing.
+
+A notification shown as **Queued** means the message was handed to delivery,
+not that it arrived. The run shows the live receipts separately: an inbox
+message is **Delivered** once it is in the inbox, and an email is **Sent** once
+the mail service accepted it, which does not confirm it was received or
+opened. A queued message can still be skipped if the recipient's address or
+preferences change.
+
+An action whose result could not be confirmed is **Unknown**. It stops the
+actions after it and pauses the rule: check the destination yourself before
+enabling the rule again, since Lore does not resend blindly.
+
+### Limits
+
+| What                            | Limit                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Actions in a rule               | Five.                                                                                             |
+| Rows a schedule reads           | 50. Beyond that the run says the selection was capped; the rest is not fetched.                   |
+| One rendered message            | 16 KiB. A longer one is cut, and the run says so.                                                 |
+| What a run records as its input | 64 KiB. A run that cannot record it is refused before any action.                                 |
+| Deliveries in one run           | 100. A larger audience continues in further runs.                                                 |
+| Run details                     | Kept 30 days.                                                                                     |
+| Protection against repeats      | 90 days: an occurrence already handled is not handled again, even after its run details are gone. |
+
+A run whose details have expired can no longer be tested against: choose a
+current record instead. Edits to a rule are also written to the project's
+audit history, which has its own limited retention, separate from the two
+windows above.
+
+## Built-in notifications
+
+Two notifications work without any automation, and keep working whether
+Automations is on or off:
+
+- **Per-quest reminders**: the email nudges a quest's holder sets on the
+  quest, governed by the **Reminders** option.
+- **Release announcements**: when a release is published, every member but the
+  publisher is told in their inbox and by email.
+
+**Built-in notifications** on the Automations page lets you **adopt** one of
+them: it is replaced by an automation that you own and can edit. Nothing is
+adopted for you, and adopting grants no permission and enables no capability.
+
+1. Open **Built-in notifications** and read the preview: who would author the
+   rule, the permissions and channels it needs, who it would notify and, for
+   reminders, how many are configured. The release preview assumes you are the
+   publisher.
+2. Choose a new rule, or a compatible rule you already own.
+3. Click **Consent and adopt**. If it is interrupted, **Resume my adoption**
+   picks up the rule already prepared.
+
+⚠️ Adoption is permanent. The built-in notification stops at that moment and
+never comes back. Disabling or deleting the replacement rule is how you opt
+out of that notification altogether: adopting again does not turn it back on,
+and only the rule's original author can enable it again.
+
+An adopted reminder rule keeps what reminders did: it runs hourly, follows each
+quest's own interval and next date, emails the quest's holder, and writes the
+reminder in the quest's history. It is also the one rule not held to 50 rows:
+it works through every reminder due. An adopted announcement rule keeps the same
+audience and both channels, and needs no folio. It is not the **Publish
+release notes to a folio** preset, which notifies one member.
+
+Inbox and email are the channels. Another channel appears in the pickers only
+when the instance has it configured: naming one in a rule does not create it.
+
+While Automations is off, the owner can still read every rule and its health
+in `Settings ▸ Quests ▸ Automations`. That view cannot run or edit a rule.
+
+## From the command line
+
+```bash
+lore automation catalog
+lore automation list
+lore automation test <id>
+```
+
+See [The lore CLI](/lore/docs/reference-cli) for every command.
+
+## From an agent
+
+An agent can write a rule for you, and the saved rule then runs without it.
+It reads `automation_catalog` first (the events, selections, actions, channels
+and limits this project allows), then calls `automation_create` with the four
+parts:
 
 ```json
 {
-  "project_name": "Lore",
+  "project_name": "Acme",
   "title": "Record published releases",
   "rule": {
     "version": 1,
@@ -90,223 +319,18 @@ announcement policy. Pick the folio and recipient in the application, or call
 }
 ```
 
-The UUIDs are illustrative. Replace them with a real same-project folio and
-member, and choose your actual project. A member binding is a user UUID, not an
-email address. A folio is a UUID; a release binding is a positive numeric ID.
+The UUIDs stand for a folio and a member of the same project (a member is a
+user id, not an email address). The rule is created disabled. `automation_test`
+previews it, with `source: { "kind": "subject", "id": 12 }` naming a release of
+the project, and `automation_update` with the current `expectedRevision` and
+`enabled: true` turns it on.
 
-The response contains the new rule's `id` and `revision`. Test it with
-`automation_test`, supplying `source: { "kind": "subject", "id": 12 }` where 12
-is an actual release ID in the project. This is a prospective publication
-preview, not a publication or an enqueue. Then call `automation_update` with the
-rule ID, current `expectedRevision` and `enabled: true`. A later real publication
-runs the program. Republishing after an explicit reopen is a new publication.
+The full list is in [MCP tools](/lore/docs/reference-mcp-tools).
 
-Actions commit in order. If the append succeeds but enqueue fails, the folio
-stays appended and the run reports partial progress. A retry reconciles the
-native receipt instead of appending the same publication again. It cannot undo
-an earlier effect to make the run appear all-or-nothing.
+## Next
 
-## Literal, context and shared values
-
-A literal belongs to one rule. `{{release_tag}}` is a declared field from that
-rule's source. A shared value is an explicitly created project variable referred
-to by its key, such as `{{release_log}}`. Resource and numeric bindings keep their
-native types; prose may render them as text.
-
-Shared kinds are `member`, `channel`, `folio`, `release`, `number` and `text`.
-Choose **Shared variables** to create or edit one and inspect its used-by list.
-Preset setup can use an existing variable or explicitly create one. It never
-silently creates or overwrites a generic `recipient` variable. Setup retains the
-selected variable's UUID and version, and refuses a concurrent change or key
-replacement rather than silently binding a different value.
-
-A shared edit revalidates the editor's own rules under their original execution
-authority. Other authors' consumers pause for their review. Their original
-author must inspect the change and explicitly enable the rule again. Predicate
-or scope changes reset a crossing baseline; changing only prose, recipients or
-cadence preserves it. Delete is refused while a variable is used. Updates and
-deletes require both its immutable `id` and current `version`.
-
-Templates have no scripts, expressions or arbitrary object traversal. Only
-catalogue-declared fields and explicitly shared keys resolve. A resolved value
-is data: text containing another `{{placeholder}}` is never interpreted a second
-time. HTML output is escaped, custom prose is preserved and stock messages are
-English. Unknown fields, incompatible types and unavailable resources refuse.
-
-## Whose authority executes
-
-The author is immutable. Each run and each effect rechecks that person's current
-account, membership, rank permissions, project capabilities and original
-credential ceiling. API-key revocation, expiry or scope reduction stops the
-rule. OAuth execution also checks its retained revocable grant and current
-client/scope. A manager cannot lend their own authority to another author's rule.
-
-`automation:read` allows permitted inspection, `automation:write` authors and
-enables your own rules, and `automation:manage` manages shared variables and can
-stop or delete another author's rule. Source and target permissions still apply.
-Readers without current source access see redacted payload and receipt details.
-Recipients must also retain access to the relevant source. Notification
-preferences and suppression are checked at delivery time.
-
-Enable intent and health are separate. **Broken** means a dependency such as a
-capability or channel is unavailable; restoring it can recover a still-enabled
-rule after validation. **Paused** with required review follows authority loss,
-foreign shared changes or an unknown effect. Restoring access alone does not
-clear that review. Inspect the reason, fix it, Test again and explicitly enable
-as the original author. Revision conflicts require a fresh read, not a blind
-resend. Removing an author from the project pauses their rules.
-
-The author is told: a rule that pauses for review, or breaks, files one
-message in its author's inbox, linking to the rule. It is sent when the rule
-enters that state and not again while it stays there. A check that could not
-run (the database did not answer in time) is not a verdict on the rule: the
-rule stays as it was and is checked again a few minutes later.
-
-Automation-generated effects do not become new automation source events, so
-rules cannot chain into loops. Existing application validation, ordinary domain
-behavior, audits and notifications remain in force.
-
-## Scheduling and numeric conditions
-
-Schedules use five-field cron in **UTC**, independent of the browser's timezone
-or daylight-saving changes. Minutes must align with the fixed five-minute ticks;
-`*/5 * * * *` and `0 0 * * *` are valid examples. The minimum cadence is five
-minutes. Missed ticks coalesce to the latest due occurrence instead of replaying
-every missed interval. A rule cannot overlap its own claimed occurrence.
-
-A coverage regression compares exact line-coverage samples for the previous two
-closed UTC days in the chosen branch, defaulting to `main`. The threshold is a
-strict drop in percentage points. Missing either day is **no_data**, not zero,
-and does not borrow another branch's or an older day's sample. Equality does
-not alert.
-
-A crossing guard first records a baseline without alerting. It alerts when a
-value moves from at or below the threshold to above it, stays quiet while above,
-and rearms after returning to or below it. Predicate or scope edits start a new
-baseline. Test reads the decision without advancing that baseline.
-
-## Bounds, evidence and recovery
-
-| Boundary                     | Limit                                                                                                               |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Ordinary selection           | 50 retained rows. More rows are reported as capped or a lower bound, with `hasMore`; they are not silently fetched. |
-| Program                      | Five ordered actions.                                                                                               |
-| Delivery run                 | 100 recipient-channel attempts. Explicit compatibility rosters continue in further bounded runs.                    |
-| Worker step                  | At most five ordered steps, or five compatibility-roster recipient attempts, before rescheduling.                   |
-| Rendered action              | 16 KiB, including its final serialization/envelope. Truncation is visible.                                          |
-| Frozen snapshot              | 64 KiB. A snapshot that cannot retain critical execution evidence refuses before effects.                           |
-| Dispatcher                   | 50 claims shared across recovery, events and schedules per tick.                                                    |
-| Detailed run evidence        | 30 days.                                                                                                            |
-| Deduplication/replay horizon | 90 days. Expired source evidence refuses; it is not recreated from current data.                                    |
-
-Only the explicitly adopted compatibility reminder selector continues beyond
-its 50-row pages. Its original evaluation time and exact due-state identities
-remain fixed. The tagged nightly digest and ordinary selectors keep their
-ordinary bounds.
-
-A notification action marked **queued**, with `enqueued: true`, proves an outbox
-intent committed. It does not prove delivery. Run details show live receipts
-separately: queued retries, email **sent** (transport acceptance), inbox
-**delivered**, skipped, failed or unknown. Email acceptance is not confirmation
-that the recipient opened or received it. An address or preference change can
-cause a queued delivery to be skipped.
-
-Native database effects commit with their durable receipts. An external effect
-whose result is uncertain becomes **unknown**, stops later actions and requires
-review. Check the destination before authorizing future work; an uncertain
-external start is not blindly resent. A later failure preserves earlier effects
-as a partial run. Already completed occurrences remain deduplicated after their
-detailed run has expired. Test of retired evidence refuses; choose a new
-prospective subject for a fresh read-only preview.
-
-Configuration changes use sanitized audits under Lore's existing **finite**
-audit-retention policy, as approved by the owner. This does not promise permanent
-audit storage. It is separate from the 30-day detail and 90-day replay windows.
-
-## Adopt existing reminders or release announcements
-
-Per-quest reminders remain alongside the tagged nightly digest. They preserve
-hourly processing of each quest's `reminderNextAt` and `reminderInterval`, email
-to `acceptedBy`, `reminder_sent` history and the existing quest Settings controls.
-The live option is `work.reminder`. Frozen `projects.features.questReminder`
-storage remains readable; it is not the live switch.
-
-Release compatibility notifies the current roster **except the publisher**
-through inbox and email, under the releases category and existing preferences.
-It requires no folio. Both channels are required. Its explicit roster audience
-is distinct from the single-member release-to-folio preset above.
-
-Open **Automations > Built-in notifications**:
-
-1. The owner configures capabilities and rank grants separately.
-2. The consenting named member previews author, grants, channels, recipients and
-   preserved reminder state. Release preview assumes that member publishes;
-   live execution excludes the actual publisher.
-3. Choose a new compatibility rule or your own already configured compatible
-   rule. Confirm **Consent and adopt**. Existing-rule adoption checks its current
-   revision and does not create a duplicate.
-4. If interrupted while pending, **Resume my adoption** reuses the prepared rule.
-   A deleted pending draft can be replaced through renewed consent. The legacy
-   policy stays eligible until validation and atomic cutover succeed.
-5. After adoption, open the replacement to Test, inspect history or stop it.
-   Disable or delete is an intentional opt-out. The independent marker remains,
-   so legacy sending never returns. Repeating adoption does not reenable an
-   opted-out rule. Only the original author can explicitly enable a disabled
-   replacement again. A deleted replacement keeps the policy opted out.
-
-There is no silent migration, system author or bulk grant/capability backfill.
-Unadopted project policies retain their legacy implementation. Cutover atomically
-chooses the eligible enqueue path; queued legacy messages check the marker again
-at dispatch, including work queued before adoption. Full rosters and reminder
-backlogs resume through durable bounded continuation.
-
-Inbox and email are the required channels. Optional transports appear only when
-a server adapter, compatible registered templates and actual configuration are
-available. Naming `sms` or `discord` in a rule does not provision a destination.
-Optional sink setup is deferred; unavailable transports explain why they cannot
-be used. This guide does not require a Discord demo.
-
-## MCP operations
-
-Every operation takes `project` (numeric ID) or `project_name` (title or slug).
-The numeric ID wins when both are supplied. Paged operations use `offset`
-(default 0, at most 100000) and `limit` (default 20, from 1 to 50).
-
-| Tool                             | Parameters beyond project selection                                                                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `automation_catalog`             | None. Discover authorized sources, native slots, operators, presets, channels, variables and limits first.                                        |
-| `automation_create`              | `title`, complete `rule`, optional `enabled` (default false). Explicit true still creates disabled first, then validates enable.                  |
-| `automation_list`                | Pagination; optional `search`, `state`, `authorUserId`.                                                                                           |
-| `automation_get`                 | Automation `id`. Returns current revision, health and permitted controls.                                                                         |
-| `automation_update`              | `id`, `expectedRevision`, and either `title` plus the complete `rule`, or `enabled` alone. These are separate calls.                              |
-| `automation_delete`              | `id`, `expectedRevision`. Soft deletion retains permitted history.                                                                                |
-| `automation_test`                | `id`, optional `source`. Events require a subject or retained evidence.                                                                           |
-| `automation_runs`                | Automation `id`, pagination. Includes bounded immutable snapshots and separate live notification outcomes.                                        |
-| `automation_variable_set`        | `key`, `variable: { value: { kind, value } }` for creation; include `variable.id` and `variable.version` for an edit.                             |
-| `automation_variable_list`       | Pagination. Source-restricted values are redacted.                                                                                                |
-| `automation_variable_dependents` | `key`, pagination. Inspect consumers before changing a shared value.                                                                              |
-| `automation_variable_delete`     | `key`, variable `id`, `version`; only unused variables can be deleted.                                                                            |
-| `automation_adoption_preview`    | `policy`: `quest-reminders` or `release-notifications`. No writes.                                                                                |
-| `automation_adopt`               | `policy`, `confirm: true`; optionally your compatible `automationId` and `expectedRevision`. Resumes pending adoption and never reverses opt-out. |
-
-A Test source is exactly one of:
-
-```json
-{ "kind": "subject", "id": 12 }
-```
-
-```json
-{ "kind": "event", "id": "33333333-3333-4333-8333-333333333333" }
-```
-
-```json
-{ "kind": "run", "id": "44444444-4444-4444-8444-444444444444" }
-```
-
-Subject IDs have the native type of the declared event's project resource.
-Event/run UUIDs must identify retained, authorized evidence. These IDs are
-illustrative, not caller-supplied payloads. Test never writes domain data,
-audits, runs, queue rows, delivery receipts, health, cursors or baselines, even
-when it refuses. After inspection, enable with the revision from a fresh read;
-inspect `automation_runs` after a real source occurrence rather than treating a
-successful Test as delivery.
+- [Notifications](/lore/docs/project-notifications): where the messages land,
+  and how a member turns them off.
+- [Releases](/lore/docs/work-releases): what a published release holds.
+- [Folios](/lore/docs/knowledge-folios): where a rule can append.
+- [Members](/lore/docs/project-members): who may write and manage rules.

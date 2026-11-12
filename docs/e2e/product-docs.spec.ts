@@ -28,7 +28,7 @@ test.describe("Product doc sets", () => {
   });
 
   test("a Lore guide does the same", async ({ page }) => {
-    await page.goto("/lore/docs/guides-introduction");
+    await page.goto("/lore/docs/start-introduction");
     await expect(page.locator("h1").first()).toBeVisible({ timeout: 15_000 });
 
     const explorer = page.locator('nav[aria-label="Documentation explorer"]');
@@ -46,8 +46,8 @@ test.describe("Product doc sets", () => {
       timeout: 15_000,
     });
 
-    await page.goto("/docs/lore-guides-introduction");
-    await expect(page).toHaveURL(/\/lore\/docs\/guides-introduction$/, {
+    await page.goto("/docs/lore-start-introduction");
+    await expect(page).toHaveURL(/\/lore\/docs\/start-introduction$/, {
       timeout: 15_000,
     });
   });
@@ -101,7 +101,7 @@ test.describe("Product doc sets", () => {
     const cta = page.getByRole("link", { name: /get started/i }).first();
     await expect(cta).toBeVisible({ timeout: 15_000 });
     await cta.click();
-    await expect(page).toHaveURL(/\/lore\/docs\/guides-introduction$/, {
+    await expect(page).toHaveURL(/\/lore\/docs\/start-introduction$/, {
       timeout: 15_000,
     });
   });

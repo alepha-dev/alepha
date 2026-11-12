@@ -42,8 +42,8 @@ const AssistantReplyLink = (props: AssistantReplyLinkProps) => {
  * Where Lore's guides live, read off the one helper every docs link goes
  * through, so the two cannot disagree.
  */
-AssistantReplyLink.docsRoot = loreDocsUrl("guides-assistant").replace(
-  /guides-assistant$/,
+AssistantReplyLink.docsRoot = loreDocsUrl("agents-assistant").replace(
+  /agents-assistant$/,
   "",
 );
 

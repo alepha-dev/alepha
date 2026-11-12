@@ -87,7 +87,7 @@ const ProjectDashboardEmpty = (props: ProjectDashboardEmptyProps) => {
         // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it would
         // resolve against Lore's own origin and 404 - feedback #P2142, on the
         // one link that fails exactly when the reader is stuck.
-        href={loreDocsUrl("guides-project-dashboard")}
+        href={loreDocsUrl("project-dashboard")}
         data-testid="dashboard-empty-docs"
         className="text-primary mt-1 text-[12.5px] hover:underline"
       >

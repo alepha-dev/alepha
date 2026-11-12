@@ -53,7 +53,7 @@ hands: what `provision` does for you, one step at a time.
 
 ## The long way
 
-You need the [Lore CLI](/lore/docs/guides-cli) signed in (`lore login`), a
+You need the [Lore CLI](/lore/docs/reference-cli) signed in (`lore login`), a
 provider CLI (here Scaleway's `scw`, set up with an SSH key), `jq`, and a Lore
 project to work in:
 
