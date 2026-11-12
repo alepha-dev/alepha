@@ -46,7 +46,7 @@ export interface TransactionalOptions {
  * leaves harmless state. `allowNonAtomic: true` runs the block there anyway,
  * in place, and a throw rolls nothing back.
  *
- * On PGlite, and in a spec run with `DATABASE_TRANSACTIONS=false`, the block
+ * In a spec run with `DATABASE_TRANSACTIONS=false`, the block
  * runs in place and each primitive logs one warning the first time.
  *
  * ```typescript

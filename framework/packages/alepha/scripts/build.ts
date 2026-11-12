@@ -529,8 +529,6 @@ function stringify(value: unknown): string {
 const CONSUMER_INSTALLED_TYPES = new Set([
   // Types only, installed by an app that targets Cloudflare Workers.
   "@cloudflare/workers-types",
-  // Loaded with `createRequire` by the pglite driver, which says to install it.
-  "@electric-sql/pglite",
   // `alepha/testing/faker` and `alepha/testing/react`: the testing guides
   // have the user install them.
   "@faker-js/faker",

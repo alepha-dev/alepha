@@ -99,15 +99,15 @@ DROP TABLE `old_table`;
 
 The database driver is selected based on the `DATABASE_URL` environment variable:
 
-| URL Prefix        | Driver                                              | Module              |
-| ----------------- | --------------------------------------------------- | ------------------- |
-| `postgres://`     | PostgreSQL (Node.js or Bun, selected automatically) | `AlephaOrmPostgres` |
-| `pglite://`       | PGlite (embedded PostgreSQL)                        | `AlephaOrmPostgres` |
-| `hyperdrive://`   | Cloudflare Hyperdrive (Postgres from Workers)       | `AlephaOrmPostgres` |
-| `d1://`           | Cloudflare D1                                       | `AlephaOrm`         |
-| Other / no prefix | SQLite (Node.js or Bun, selected automatically)     | `AlephaOrm`         |
+| URL Prefix                             | Driver                                              | Module              |
+| -------------------------------------- | --------------------------------------------------- | ------------------- |
+| `postgres://`                          | PostgreSQL (Node.js or Bun, selected automatically) | `AlephaOrmPostgres` |
+| `postgresql://`                        | PostgreSQL, the same driver                         | `AlephaOrmPostgres` |
+| `hyperdrive://`                        | Cloudflare Hyperdrive (Postgres from Workers)       | `AlephaOrmPostgres` |
+| `d1://`                                | Cloudflare D1                                       | `AlephaOrm`         |
+| a path, `sqlite:`, `file:`, `:memory:` | SQLite (Node.js or Bun, selected automatically)     | `AlephaOrm`         |
 
-`AlephaOrm` is registered by any `$entity`, and only knows the SQLite drivers: a `postgres://` URL with it alone fails with "Postgres URL is not supported for SQLite provider". The PostgreSQL drivers come with `AlephaOrmPostgres`, which you register yourself:
+Any other scheme is refused at startup with an error naming the scheme. `AlephaOrm` is registered by any `$entity`, and only knows the SQLite drivers: a `postgres://` URL with it alone fails with "A postgres DATABASE_URL is not supported by the SQLite provider". The PostgreSQL drivers come with `AlephaOrmPostgres`, which you register yourself:
 
 ```typescript
 import { Alepha } from "alepha";

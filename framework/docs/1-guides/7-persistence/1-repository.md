@@ -706,7 +706,7 @@ A query given both `for` (a row lock) and `cache` throws: a cached result takes 
 
 **Cloudflare D1 has no interactive transactions, so `$transactional()` refuses to run there.** The block throws `DbTransactionUnsupportedError` on its first call, before its body runs, rather than pretending to protect something: a block that ran in place would roll nothing back, and two requests would interleave freely. D1's `batch()` is atomic, but it cannot read inside itself, so it cannot stand in for a transaction.
 
-To run a block on D1 anyway, without atomicity, declare it: `$transactional({ allowNonAtomic: true })`. It then runs in place and logs one warning. PGlite has no transactions either; there, as a development driver, the block runs in place with that warning.
+To run a block on D1 anyway, without atomicity, declare it: `$transactional({ allowNonAtomic: true })`. It then runs in place and logs one warning.
 
 Code that must be correct on D1 does not rely on a rollback:
 

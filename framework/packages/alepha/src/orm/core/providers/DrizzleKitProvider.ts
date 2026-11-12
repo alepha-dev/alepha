@@ -171,7 +171,7 @@ export class DrizzleKitProvider {
       result.dropped = await this.push(kit, models, provider);
     } catch (error) {
       // Fallback: generate migrations from scratch (no snapshots).
-      // Covers drivers that don't support introspection (e.g. PgLite, sqlite-proxy).
+      // Covers drivers that don't support introspection (e.g. sqlite-proxy).
       //
       // If push partially executed (e.g. interactive rename applied then errored),
       // the fallback would re-create tables that already exist. Guard against this

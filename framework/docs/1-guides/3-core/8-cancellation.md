@@ -76,7 +76,7 @@ Without anyone passing a signal:
 - **`$proxy`** stops the upstream call.
 - **The ORM** refuses a read whose signal already fired, and cancels a running
   one where the driver can (postgres.js: Node and Hyperdrive). `Bun.sql`,
-  PGlite, SQLite and D1 refuse before sending but let a started query finish.
+  SQLite and D1 refuse before sending but let a started query finish.
 - **SSR** stops rendering a page for a visitor who left.
 
 An explicit `signal` still wins, and composes with the ambient one: either can
@@ -300,7 +300,7 @@ What a timeout stops depends on the driver:
 | PostgreSQL (postgres.js) | is cancelled on the server                                |
 | Cloudflare D1            | is abandoned: D1 cannot abort, it finishes on its own     |
 | SQLite (Node, Bun)       | runs to completion if it started: SQLite is synchronous   |
-| PGlite, `Bun.sql`        | runs to completion if it started; refused if not yet sent |
+| `Bun.sql`                | runs to completion if it started; refused if not yet sent |
 
 Except under SQLite, whose running statement holds the whole process, the
 caller is released at the deadline. Postgres

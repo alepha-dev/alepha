@@ -25,8 +25,8 @@ export interface ClaimLockKey {
  *   checks and writes. The lock is held until the transaction's COMMIT (the
  *   caller's transaction, when there is one), so the next claim's check sees
  *   this one's row. `locked` is true: the check decides, exactly.
- * - **SQLite, D1 and PGlite** have a single writer and no such lock (D1 and
- *   PGlite have no interactive transaction to hold one in). `locked` is false:
+ * - **SQLite and D1** have a single writer and no such lock (D1 has no
+ *   interactive transaction to hold one in). `locked` is false:
  *   the claim writes first and replays second, reading every live claim back
  *   in `(createdAt, id)` order and keeping its own only if the ones before it
  *   leave room.

@@ -117,7 +117,7 @@ export abstract class DatabaseProvider {
   /**
    * Whether this driver supports SQL-level transactions (BEGIN/COMMIT/ROLLBACK).
    *
-   * Drivers that do not (e.g. PGlite, Cloudflare D1) should override to `false`.
+   * Drivers that do not (e.g. Cloudflare D1) should override to `false`.
    *
    * Also `false` in a test run with `DATABASE_TRANSACTIONS=false`, so a spec
    * on SQLite behaves like D1: `$transactional()` runs its body in place and
@@ -365,7 +365,7 @@ export abstract class DatabaseProvider {
    * for none.
    *
    * What it stops depends on the driver: postgres.js cancels the running
-   * statement; a driver that cannot cancel (SQLite, PGlite) refuses a
+   * statement; a driver that cannot cancel (SQLite) refuses a
    * statement whose deadline already passed and lets a started one finish.
    */
   protected statementTimeout(
@@ -681,7 +681,7 @@ export abstract class DatabaseProvider {
    *
    * `true` on a production driver with no transactions (Cloudflare D1), where
    * a block that silently protects nothing would be a lie. `false` everywhere
-   * else, PGlite and the test switch included: those run bare with a warning.
+   * else, the test switch included: it runs bare with a warning.
    * A block declared `allowNonAtomic` always runs.
    */
   protected get refusesNonAtomic(): boolean {
@@ -1235,7 +1235,7 @@ export abstract class DatabaseProvider {
    * caller.
    *
    * The base implementation throws; every runtime-migrator dialect
-   * (Postgres, local SQLite, PGlite, Bun) overrides it. Cloudflare D1 and
+   * (Postgres, local SQLite, Bun) overrides it. Cloudflare D1 and
    * Cloudflare Hyperdrive do not  -  they fully override
    * {@link executeMigrations} instead, so this default is only reachable
    * through {@link markBaselineApplied} for those two, which is why the

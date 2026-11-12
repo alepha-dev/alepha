@@ -883,7 +883,7 @@ export class OrderService {
    * Give back what a failed create or settlement took, on a database that has
    * no transaction to roll it back.
    *
-   * D1 and PGlite run `transactional()` in place, so when line 3's claim
+   * D1 runs `transactional()` in place, so when line 3's claim
    * throws, lines 1 and 2 keep their holds (and, for a counter sale, their
    * sales) until somebody notices: half an hour of a court nobody can book.
    * Where there IS a transaction nothing is written here: the rollback

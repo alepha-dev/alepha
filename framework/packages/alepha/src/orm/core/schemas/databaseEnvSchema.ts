@@ -7,11 +7,12 @@ import { type Infer, z } from "alepha";
  * to determine the database driver and connection target.
  *
  * Supported URL formats:
- * - `sqlite://:memory:` or `sqlite://./path/to/db` — SQLite (Node.js or Bun)
- * - `postgres://user:password@host:port/database` — PostgreSQL (Node.js or Bun)
- * - `pglite://:memory:` or `pglite://./path` — PGlite (embedded Postgres)
- * - `d1://BINDING_NAME` — Cloudflare D1
- * - `hyperdrive://BINDING_NAME` — Cloudflare Hyperdrive
+ * - a file path, `:memory:`, `sqlite://./path/to/db` or `file:` - SQLite (Node.js or Bun)
+ * - `postgres://user:password@host:port/database` or `postgresql://...` - PostgreSQL (Node.js or Bun)
+ * - `d1://BINDING_NAME` - Cloudflare D1
+ * - `hyperdrive://BINDING_NAME` - Cloudflare Hyperdrive
+ *
+ * Any other scheme is refused (`DbUrlError`).
  */
 export const databaseEnvSchema = z.object({
   DATABASE_URL: z.text().optional(),

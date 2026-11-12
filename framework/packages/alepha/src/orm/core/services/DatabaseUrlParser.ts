@@ -12,8 +12,7 @@ export type DatabaseUrl =
   | { kind: "sqlite"; url: string; path: string }
   | { kind: "d1"; url: string; name: string; id?: string }
   | { kind: "postgres"; url: string }
-  | { kind: "hyperdrive"; url: string; binding: string }
-  | { kind: "pglite"; url: string; path: string };
+  | { kind: "hyperdrive"; url: string; binding: string };
 
 export type DatabaseUrlKind = DatabaseUrl["kind"];
 
@@ -49,7 +48,6 @@ export class DatabaseUrlParser {
     "postgres:",
     "postgresql:",
     "hyperdrive:",
-    "pglite:",
   ];
 
   /**
@@ -94,8 +92,6 @@ export class DatabaseUrlParser {
           url: value,
           binding: this.stripSlashes(rest),
         };
-      case "pglite":
-        return { kind: "pglite", url: value, path: this.stripSlashes(rest) };
       default:
         throw new DbUrlError({
           scheme,

@@ -12,8 +12,8 @@ npm install alepha
 
 PostgreSQL drivers for the Alepha ORM.
 
-Selected automatically from the `DATABASE_URL` prefix: `postgres://`
-(Node/Bun), `pglite://` (embedded), `hyperdrive://` (Cloudflare Workers).
+Selected automatically from the `DATABASE_URL` prefix: `postgres://` or
+`postgresql://` (Node/Bun), `hyperdrive://` (Cloudflare Workers).
 
 ## API Reference
 

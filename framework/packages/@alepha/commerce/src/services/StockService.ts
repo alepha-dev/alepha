@@ -76,8 +76,8 @@ export interface StockFigures {
  *   checks and writes. The lock is released at COMMIT, so the next claim's
  *   check sees this one's row, including when the claim runs inside a caller's
  *   transaction, the way `OrderService.create` runs it.
- * - **SQLite, D1 and PGlite** have a single writer and no such lock (D1 and
- *   PGlite have no interactive transaction to hold one in). There the claim is
+ * - **SQLite and D1** have a single writer and no such lock (D1 has no
+ *   interactive transaction to hold one in). There the claim is
  *   written first and checked second: every racer reads the claims back in the
  *   order they were written and keeps its own only if it fits.
  *

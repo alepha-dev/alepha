@@ -1513,10 +1513,6 @@ if (typeof registerHooks === "function") {
       config.driver = "d1-http";
     }
 
-    if (options.providerDriver === "pglite") {
-      config.driver = "pglite";
-    }
-
     if (options.dialect === "sqlite") {
       if (options.providerDriver === "d1") {
         // For D1, we need to fill D1 bindings in a way that drizzle-kit can use it, since D1 doesn't use a traditional connection URL
