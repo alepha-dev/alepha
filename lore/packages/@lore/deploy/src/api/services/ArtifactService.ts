@@ -10,11 +10,13 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
+import { deployments } from "../entities/deployments.ts";
 import {
   type ArtifactAssetList,
   artifactAssetListSchema,
 } from "../schemas/artifactAssetListSchema.ts";
 import type { ArtifactManifest } from "../schemas/artifactManifestSchema.ts";
+import { ArtifactSchemaStore } from "./ArtifactSchemaStore.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
 import { ImageRegistryClient } from "./ImageRegistryClient.ts";
@@ -47,6 +49,8 @@ export class ArtifactService {
   protected readonly files = $inject(FileService);
   protected readonly registryCredentials = $inject(RegistryCredentialService);
   protected readonly assetCache = $inject(DeployAssetCache);
+  protected readonly schemas = $inject(ArtifactSchemaStore);
+  protected readonly runs = $repository(deployments);
 
   /**
    * Store a build, or recognise that it is already stored.
@@ -87,7 +91,43 @@ export class ArtifactService {
         assets,
       );
     }
+    // The schema the build expects (#Q3542), for a later rollback to compare
+    // with the live one. Same keying as the asset list, and never a refusal.
+    if (input.schema) {
+      await this.schemas.storePushed(
+        ArtifactService.BUCKET,
+        input.projectId,
+        result.artifact.sha256,
+        input.schema,
+      );
+    }
     return result;
+  }
+
+  /**
+   * Drop an archive's stored schema, unless a run deployed those bytes.
+   *
+   * ⚠️ **It outlives its archive on purpose.** Replacing `latest` reclaims the
+   * previous bytes, but a fast rollback to the run that deployed them needs no
+   * bytes, only Cloudflare's version and this schema (#Q3542). Dropping it
+   * with the archive would make the schema check vanish for exactly the
+   * `latest`-only projects that roll back the most. Bounded all the same: one
+   * small file per digest some run deployed.
+   */
+  protected async dropSchemaUnlessDeployed(artifact: Artifact): Promise<void> {
+    const deployed = await this.runs.findOne({
+      where: {
+        projectId: { eq: artifact.projectId },
+        sha256: { eq: artifact.sha256 },
+      },
+    });
+    if (!deployed) {
+      await this.schemas.remove(
+        ArtifactService.BUCKET,
+        artifact.projectId,
+        artifact.sha256,
+      );
+    }
   }
 
   /**
@@ -556,6 +596,9 @@ export class ArtifactService {
       existing.sha256,
       existing.projectId,
     );
+    if (existing.sha256 !== next.sha256) {
+      await this.dropSchemaUnlessDeployed(existing);
+    }
     return updated;
   }
 
@@ -775,6 +818,7 @@ export class ArtifactService {
       artifact.sha256,
       artifact.projectId,
     );
+    await this.dropSchemaUnlessDeployed(artifact);
     await this.files.deleteFiles(
       [artifact.fileId, artifact.mapsFileId].filter((id): id is string =>
         Boolean(id),
@@ -952,6 +996,12 @@ export interface ArtifactPushInput {
    * older CLI sends none, and the first deploy computes the list instead.
    */
   assets?: FileLike;
+  /**
+   * The newest Drizzle snapshot per dialect (#Q3542), JSON, as
+   * {@link ArtifactSchemaStore} reads it. Optional: an older CLI, or a build
+   * with no migrations, sends none.
+   */
+  schema?: FileLike;
 }
 
 export interface ArtifactImagePushInput {

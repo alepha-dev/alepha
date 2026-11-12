@@ -102,6 +102,30 @@ const AppDeployRun = (props: AppDeployRunProps) => {
         })) as Record<string, any>;
 
         const migrations = Number(plan.migrationsSince ?? 0);
+        // The schema check (#Q3542) answers the question the count can only
+        // raise; without it, the count is all there is.
+        const schema = plan.schema as
+          | { verdict: string; changes: Array<{ change: string }> }
+          | undefined;
+        const listed = schema?.changes.map((it) => it.change).join(", ") ?? "";
+        const risk = schema
+          ? schema.verdict === "safe"
+            ? migrations > 0
+              ? tr("app.deploy.rollback.schemaSafe")
+              : ""
+            : tr(
+                schema.verdict === "breaks"
+                  ? "app.deploy.rollback.schemaBreaks"
+                  : "app.deploy.rollback.schemaRisky",
+                { args: [listed] },
+              )
+          : migrations > 0
+            ? tr("app.deploy.rollback.migrations", {
+                args: [String(migrations)],
+              })
+            : "";
+        const acknowledge =
+          Boolean(plan.warning) || (!schema && migrations > 0);
         const confirmed = await dialog.confirm({
           title: tr("app.deploy.rollback.title", { args: [String(run.tag)] }),
           description: [
@@ -110,16 +134,12 @@ const AppDeployRun = (props: AppDeployRunProps) => {
               : (plan.reason ?? tr("app.deploy.rollback.slow")),
             // ⚠️ The warning the dialog exists for. Code goes back; the schema
             // does not.
-            migrations > 0
-              ? tr("app.deploy.rollback.migrations", {
-                  args: [String(migrations)],
-                })
-              : "",
+            risk,
           ]
             .filter(Boolean)
             .join(" "),
           confirmLabel: tr("app.deploy.rollback.confirm"),
-          destructive: migrations > 0,
+          destructive: acknowledge,
         });
         if (!confirmed) {
           return;
@@ -131,7 +151,7 @@ const AppDeployRun = (props: AppDeployRunProps) => {
               projectId: props.projectId,
               deploymentId: String(run.id),
             },
-            body: { acknowledgeMigrations: migrations > 0 },
+            body: { acknowledgeMigrations: acknowledge },
           });
         } else {
           // The fallback, and it is a plain deploy of the same tag: there is

@@ -216,19 +216,19 @@ See [Deploying an app](/lore/docs/apps-deploying),
 [Artifacts](/lore/docs/apps-artifacts), [Stacks](/lore/docs/apps-stacks) and
 [Estates](/lore/docs/apps-estates).
 
-| Tool              | What it does                                                                            |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `artifact_list`   | What a project has built, one entry per tag.                                            |
-| `artifact_get`    | One tag's builds, with their digests.                                                   |
-| `deploy_start`    | Deploy a stored build onto a copy. Nothing is built, and an omitted tag means `latest`. |
-| `deploy_status`   | Where a run got to, and the tail of its log.                                            |
-| `deploy_rollback` | Point a copy back at an earlier build. Refuses once if migrations have landed since.    |
-| `stack_list`      | Every stack with its environments.                                                      |
-| `stack_get`       | One stack: services and newest deploys.                                                 |
-| `stack_deploy`    | Deploy a revision, or one app service alone.                                            |
-| `stack_rollback`  | Deploy an earlier revision again.                                                       |
-| `stack_logs`      | Ask for a service's logs, then read them.                                               |
-| `estate_stats`    | An estate's CPU and memory: the current reading and one mean per day.                   |
+| Tool              | What it does                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| `artifact_list`   | What a project has built, one entry per tag.                                                |
+| `artifact_get`    | One tag's builds, with their digests.                                                       |
+| `deploy_start`    | Deploy a stored build onto a copy. Nothing is built, and an omitted tag means `latest`.     |
+| `deploy_status`   | Where a run got to, and the tail of its log.                                                |
+| `deploy_rollback` | Point a copy back at an earlier build. Refuses once if the build no longer fits the schema. |
+| `stack_list`      | Every stack with its environments.                                                          |
+| `stack_get`       | One stack: services and newest deploys.                                                     |
+| `stack_deploy`    | Deploy a revision, or one app service alone.                                                |
+| `stack_rollback`  | Deploy an earlier revision again.                                                           |
+| `stack_logs`      | Ask for a service's logs, then read them.                                                   |
+| `estate_stats`    | An estate's CPU and memory: the current reading and one mean per day.                       |
 
 On `estate_stats`, `project` or `project_name` narrows the slug to that
 project's estates, and `home` picks between two estates that share a slug.

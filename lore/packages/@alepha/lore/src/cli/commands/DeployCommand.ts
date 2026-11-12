@@ -147,10 +147,20 @@ export class DeployCommand {
         // ⚠️ Redeploying the build goes through `startDeploy`, which knows
         // nothing about rollback, so the migration check is made here or this
         // path would skip it. The fast path is checked by the server.
+        // `warning` is the server's sentence (#Q3542): from the schema check
+        // when Lore could make one, from the migration count otherwise. A
+        // Lore older than that sends only the count; a current one with a
+        // count and no warning has a schema check that found it safe.
         const migrations = Number(plan.migrationsSince ?? 0);
-        if (migrations > 0 && !acknowledged) {
+        const warning =
+          typeof plan.warning === "string"
+            ? plan.warning
+            : plan.schema || migrations === 0
+              ? undefined
+              : `${migrations} migration(s) have been applied since that build shipped. A rollback changes the code and not the database, so it would run against the current schema.`;
+        if (warning && !acknowledged) {
           throw new UsageError(
-            `${migrations} migration(s) have been applied since that build shipped. A rollback changes the code and not the database, so it would run against the current schema. Pass --acknowledge-migrations to proceed.`,
+            `${warning} Pass --acknowledge-migrations to proceed.`,
           );
         }
 

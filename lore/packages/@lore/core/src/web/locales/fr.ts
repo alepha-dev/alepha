@@ -2012,6 +2012,12 @@ export default {
     "Cette version n\u2019est plus disponible : le build stocké sera redéployé.",
   "app.deploy.rollback.migrations":
     "⚠️ $1 migration(s) ont été appliquées depuis. Un retour en arrière change le code et pas la base, donc cette version s\u2019exécuterait sur le schéma actuel.",
+  "app.deploy.rollback.schemaSafe":
+    "Le schéma actuel ne fait qu\u2019ajouter à ce que ce build attend : il s\u2019exécute dessus.",
+  "app.deploy.rollback.schemaBreaks":
+    "⚠️ Ce build cassera sur le schéma actuel : $1. Un retour en arrière change le code et pas la base.",
+  "app.deploy.rollback.schemaRisky":
+    "⚠️ Le schéma actuel peut refuser certaines écritures de ce build : $1. Un retour en arrière change le code et pas la base.",
   "app.deploy.rollback.confirm": "Revenir en arrière",
   "app.deploy.rollback.started": "Retour en arrière lancé",
   "app.deploy.noEstate.description":

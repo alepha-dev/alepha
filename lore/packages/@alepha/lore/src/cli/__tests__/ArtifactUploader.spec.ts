@@ -41,6 +41,7 @@ class Sink {
     filename: string;
     bytes: string;
     assets?: string;
+    schema?: string;
   };
 
   public push = $action({
@@ -56,6 +57,7 @@ class Sink {
         manifest: z.record(z.text(), z.any()).optional(),
         file: z.file(),
         assets: z.file().optional(),
+        schema: z.file().optional(),
       }),
       response: z.object({
         artifact: z.object({
@@ -84,6 +86,7 @@ class Sink {
         filename: body.file.name,
         bytes: await body.file.text(),
         assets: body.assets ? await body.assets.text() : undefined,
+        schema: body.schema ? await body.schema.text() : undefined,
       };
 
       return {
@@ -209,6 +212,20 @@ describe("ArtifactUploader", () => {
     const ctx = await upload();
 
     expect(ctx.sink.received?.assets).toBeUndefined();
+    expect(ctx.sink.received?.schema).toBeUndefined();
+  });
+
+  it("delivers the migrations' schema as its own JSON part, beside the asset list (#Q3542)", async () => {
+    const schema = JSON.stringify({
+      version: 1,
+      dialects: { sqlite: { version: "7", ddl: [] } },
+    });
+    const assets = JSON.stringify({ version: 1, assets: [], config: {} });
+    const ctx = await upload({ assets, schema });
+
+    expect(ctx.sink.received?.schema).toBe(schema);
+    expect(ctx.sink.received?.assets).toBe(assets);
+    expect(ctx.sink.received?.bytes).toBe("a packed artifact");
   });
 
   it("delivers bytes that span several chunks unchanged", async () => {

@@ -2025,6 +2025,12 @@ export default {
     "That version is no longer available, so this redeploys the stored build.",
   "app.deploy.rollback.migrations":
     "⚠️ $1 migration(s) have been applied since it shipped. A rollback changes the code and not the database, so it would run against the current schema.",
+  "app.deploy.rollback.schemaSafe":
+    "The current schema only adds to what that build expects, so it runs on it.",
+  "app.deploy.rollback.schemaBreaks":
+    "⚠️ That build will break on the current schema: $1. A rollback changes the code and not the database.",
+  "app.deploy.rollback.schemaRisky":
+    "⚠️ Some of that build's writes may be refused by the current schema: $1. A rollback changes the code and not the database.",
   "app.deploy.rollback.confirm": "Roll back",
   "app.deploy.rollback.started": "Rolling back",
   "app.deploy.noEstate.description":
