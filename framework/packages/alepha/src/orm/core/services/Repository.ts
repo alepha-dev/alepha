@@ -1134,16 +1134,27 @@ export abstract class Repository<T extends ZObject> {
    * `onConflictDoNothing` makes a row that collides with a unique key a
    * no-op: the statement then returns no row, and the event does not fire.
    *
+   * Any column may be SQL, a required one included: a child row can point
+   * at a parent inserted earlier in the same batch through {@link scalar}.
+   *
    * @example
    * ```ts
    * await database.atomicBatch([
    *   receipts.insertStatement({ id, status: "claimed" }, { onConflictDoNothing: true }),
    *   runs.updateStatement({ id: runId }, { status: "running" }, { touch: false }),
    * ]);
+   *
+   * await database.atomicBatch([
+   *   orders.insertStatement({ number }),
+   *   events.insertStatement({
+   *     orderId: orders.scalar({ number: { eq: number } }, "id"),
+   *     type: "created",
+   *   }),
+   * ]);
    * ```
    */
   public insertStatement(
-    data: Infer<TObjectInsert<T>>,
+    data: InsertWithSQL<Infer<TObjectInsert<T>>>,
     opts: InsertStatementOptions = {},
   ): SQL {
     const insert = this.rawInsert().values(this.cast(data ?? {}, true));
@@ -2950,7 +2961,18 @@ export abstract class Repository<T extends ZObject> {
       }
     }
 
-    const encoded = this.alepha.codec.encode(schema, scalarData) as Record<
+    // A key given as SQL is present: leave it out of what is validated, or
+    // an INSERT whose required column is a subquery (a child pointing at a
+    // parent written in the same `atomicBatch`) fails as missing (#Q3533).
+    const sqlKeys = Object.keys(sqlValues).filter((key) => key in schema.shape);
+    const validated =
+      sqlKeys.length > 0
+        ? (schema.omit(
+            Object.fromEntries(sqlKeys.map((key) => [key, true])),
+          ) as ZObject)
+        : schema;
+
+    const encoded = this.alepha.codec.encode(validated, scalarData) as Record<
       string,
       unknown
     >;
@@ -3361,6 +3383,14 @@ export interface StatementOptions {
 
 type WithSQL<T> = {
   [P in keyof T]?: T[P] | SQL;
+};
+
+/**
+ * An insert's data where any column may also be SQL. Unlike {@link WithSQL},
+ * required keys stay required.
+ */
+type InsertWithSQL<T> = {
+  [P in keyof T]: T[P] | SQL;
 };
 
 /**
