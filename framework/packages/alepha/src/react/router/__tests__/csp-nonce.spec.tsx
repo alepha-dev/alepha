@@ -177,10 +177,9 @@ describe("CSP nonce", () => {
       expect(
         scripts.find((it) => it.body === "window.__dynamic=1")?.nonce,
       ).toBe(nonce);
-      expect(html).toMatch(
-        new RegExp(
-          `<script id="__ssr_private" type="application/json" nonce="${nonce}">`,
-        ),
+      // A plain substring: a base64 nonce may hold `+` or `/`.
+      expect(html).toContain(
+        `<script id="__ssr_private" type="application/json" nonce="${nonce}">`,
       );
       expectAllAllowed(expect, response, html);
     } finally {
