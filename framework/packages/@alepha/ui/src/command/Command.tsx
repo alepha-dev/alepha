@@ -1,6 +1,13 @@
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import { CheckIcon, SearchIcon } from "lucide-react";
-import { type ComponentProps, type ReactNode, useMemo, useState } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Dialog,
@@ -155,6 +162,30 @@ export const CommandDialog = (props: CommandDialogProps) => {
     showCloseButton = false,
     ...dialogProps
   } = props;
+
+  /*
+   * Where the focus goes back on close. A palette is opened by state (a
+   * shortcut, a button elsewhere), never by a Base UI trigger, so the dialog
+   * had nothing to return to and Escape dropped the focus on the page
+   * (WCAG 2.4.3). The last element focused outside the popup is it.
+   */
+  const returnTo = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        !target.closest('[data-slot="dialog-content"]') &&
+        // Base UI's focus-trap guards sit just outside the popup.
+        !target.hasAttribute("data-base-ui-focus-guard")
+      ) {
+        returnTo.current = target;
+      }
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, []);
+
   return (
     <Dialog {...dialogProps}>
       <DialogHeader className="sr-only">
@@ -167,6 +198,9 @@ export const CommandDialog = (props: CommandDialogProps) => {
           className,
         )}
         showCloseButton={showCloseButton}
+        finalFocus={() =>
+          returnTo.current?.isConnected ? returnTo.current : true
+        }
       >
         {children}
       </DialogContent>

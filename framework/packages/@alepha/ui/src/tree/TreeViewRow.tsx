@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   type DragEvent,
+  type FocusEvent,
   type KeyboardEvent,
   memo,
   type MouseEvent,
@@ -36,6 +37,11 @@ export interface TreeViewFacade<T = undefined> {
   commitRename: (id: string, name: string) => void;
   cancelRename: () => void;
   renderMenu: (node: TreeNode<T>) => ReactNode;
+  /**
+   * Reports that a row took the focus, so the tree moves its one tab stop
+   * there.
+   */
+  focus: (id: string) => void;
 }
 
 export interface TreeViewRowProps<T = undefined> {
@@ -85,6 +91,11 @@ export interface TreeViewRowProps<T = undefined> {
    * the slot itself, so the memo still holds: the slot travels on the facade.
    */
   hasMenu: boolean;
+  /**
+   * Whether this row is the tree's one tab stop (`tabIndex` 0). Every other
+   * row is `-1` and is reached with the arrow keys, as `role="tree"` asks.
+   */
+  isTabStop: boolean;
 }
 
 /**
@@ -203,7 +214,10 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
     "aria-level": depth + 1,
     "aria-expanded": node.branch ? !isCollapsed : undefined,
     "aria-selected": isSelected || undefined,
-    tabIndex: 0,
+    tabIndex: props.isTabStop ? 0 : -1,
+    onFocus: (e: FocusEvent) => {
+      if (e.target === e.currentTarget) facade.focus(node.id);
+    },
     // Selection is otherwise only a background class, which is not
     // something a test (or a future stylesheet) can address.
     "data-selected": isSelected || undefined,

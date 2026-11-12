@@ -1,4 +1,11 @@
-import { type ReactElement, type ReactNode, useMemo, useRef } from "react";
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   type TreeDropPosition,
@@ -218,6 +225,85 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
    * failure is invisible (nothing goes red, the tree just re-renders every
    * row on every toggle).
    */
+  /**
+   * The row that last took the focus: the tree's one tab stop. Falls back to
+   * the selected row, then the first, when it is gone or was never set.
+   */
+  const [focusedId, setFocusedId] = useState<string>();
+  const tabStopId =
+    (focusedId !== undefined &&
+      props.rows.some((row) => row.node.id === focusedId) &&
+      focusedId) ||
+    (props.selectedId !== undefined &&
+      props.rows.some((row) => row.node.id === props.selectedId) &&
+      props.selectedId) ||
+    props.rows[0]?.node.id;
+
+  /**
+   * The keyboard contract `role="tree"` claims, on the flat list of rows:
+   * Up and Down move one row, Home and End to the ends, Right opens a closed
+   * branch or steps into an open one, Left closes an open branch or steps
+   * out to the parent. Enter and Space stay the row's own (select).
+   *
+   * Arrows are read as `dir="ltr"`: right-to-left is a later epic's.
+   */
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.getAttribute("role") !== "treeitem") return;
+    const elements = [
+      ...e.currentTarget.querySelectorAll<HTMLElement>(
+        '[data-slot="tree-view-row"]',
+      ),
+    ];
+    const index = elements.indexOf(target);
+    const row = props.rows[index];
+    if (!row) return;
+    const isOpenBranch =
+      row.node.branch === true && !props.collapsed.has(row.node.id);
+    let next: number | undefined;
+    switch (e.key) {
+      case "ArrowDown":
+        next = index + 1;
+        break;
+      case "ArrowUp":
+        next = index - 1;
+        break;
+      case "Home":
+        next = 0;
+        break;
+      case "End":
+        next = elements.length - 1;
+        break;
+      case "ArrowRight":
+        if (row.node.branch && !isOpenBranch) {
+          e.preventDefault();
+          facade.toggle(row.node.id);
+          return;
+        }
+        if (isOpenBranch && (props.rows[index + 1]?.depth ?? -1) > row.depth) {
+          next = index + 1;
+        }
+        break;
+      case "ArrowLeft":
+        if (isOpenBranch) {
+          e.preventDefault();
+          facade.toggle(row.node.id);
+          return;
+        }
+        for (let i = index - 1; i >= 0; i--) {
+          if (props.rows[i]!.depth < row.depth) {
+            next = i;
+            break;
+          }
+        }
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    if (next !== undefined) elements[next]?.focus();
+  };
+
   const facade = useMemo<TreeViewFacade<T>>(
     () => ({
       select: (node) => implRef.current.onSelect(node),
@@ -234,6 +320,7 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
       commitRename: (id, name) => implRef.current.onCommitRename?.(id, name),
       cancelRename: () => implRef.current.onCancelRename?.(),
       renderMenu: (node) => implRef.current.renderMenu?.(node),
+      focus: (id) => setFocusedId(id),
     }),
     [],
   );
@@ -275,7 +362,13 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
   }, [props.dragId, props.rows]);
 
   return (
-    <div role="tree" aria-label={props.label} className={props.className}>
+    // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- a roving tab stop: the rows take the focus, the tree only hears their arrow keys
+    <div
+      role="tree"
+      aria-label={props.label}
+      className={props.className}
+      onKeyDown={onKeyDown}
+    >
       {props.rows.map((row) => (
         <TreeViewRow
           key={row.node.id}
@@ -293,6 +386,7 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
             props.drop?.id === row.node.id ? props.drop.position : undefined
           }
           hasMenu={props.renderMenu !== undefined}
+          isTabStop={row.node.id === tabStopId}
         />
       ))}
     </div>

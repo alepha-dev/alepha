@@ -64,6 +64,45 @@ describe("DataTable (tabs)", () => {
     expect(tab.getAttribute("href")).toBe("/a");
   });
 
+  it("keeps one tab stop, on the active tab", async () => {
+    await mount([
+      { key: "a", label: "A" },
+      { key: "b", label: "B", active: true },
+      { key: "c", label: "C" },
+    ]);
+    const tabs = await screen.findAllByRole("tab");
+    expect(tabs.map((t) => t.getAttribute("tabindex"))).toEqual([
+      "-1",
+      "0",
+      "-1",
+    ]);
+  });
+
+  it("moves the focus with the arrow keys, Home and End, without activating", async () => {
+    const onSelect = vi.fn();
+    await mount([
+      { key: "a", label: "A", active: true, onSelect },
+      { key: "b", label: "B", onSelect },
+      { key: "c", label: "C", onSelect },
+    ]);
+    const tabs = await screen.findAllByRole("tab");
+    tabs[0]!.focus();
+    const press = (key: string) =>
+      fireEvent.keyDown(document.activeElement!, { key });
+
+    press("ArrowRight");
+    expect(document.activeElement).toBe(tabs[1]);
+    press("End");
+    expect(document.activeElement).toBe(tabs[2]);
+    press("ArrowRight");
+    expect(document.activeElement).toBe(tabs[0]);
+    press("ArrowLeft");
+    expect(document.activeElement).toBe(tabs[2]);
+    press("Home");
+    expect(document.activeElement).toBe(tabs[0]);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("draws no band without tabs", async () => {
     await mount([]);
     expect(await screen.findByText("Alpha")).toBeTruthy();

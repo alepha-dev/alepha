@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expectAccessible } from "alepha/testing/react";
 import { type ReactElement, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -259,5 +259,78 @@ describe("TreeView", () => {
     // beneath it disappear. "Other" is untouched by any of that.
     expect(renders).toContain("d-0");
     expect(renders).not.toContain("other");
+  });
+});
+
+describe("TreeView keyboard", () => {
+  const press = (key: string) =>
+    fireEvent.keyDown(document.activeElement!, { key });
+
+  it("has one tab stop, the selected row, and moves it to the row that takes the focus", () => {
+    render(<Harness selectedId="d-1" />);
+    const stops = [
+      ...document.querySelectorAll('[data-slot="tree-view-row"]'),
+    ].filter((row) => row.getAttribute("tabindex") === "0");
+    expect(stops).toEqual([rowOf("Level1")]);
+
+    act(() => {
+      rowOf("Other").focus();
+    });
+    expect(rowOf("Other").getAttribute("tabindex")).toBe("0");
+    expect(rowOf("Level1").getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("moves through the rows with Up, Down, Home and End", () => {
+    render(<Harness />);
+    act(() => {
+      rowOf("Level0").focus();
+    });
+    act(() => {
+      press("ArrowDown");
+    });
+    expect(document.activeElement).toBe(rowOf("Level1"));
+    act(() => {
+      press("End");
+    });
+    expect(document.activeElement).toBe(rowOf("Other"));
+    act(() => {
+      press("ArrowUp");
+    });
+    expect(document.activeElement).toBe(rowOf("Leaf"));
+    act(() => {
+      press("Home");
+    });
+    expect(document.activeElement).toBe(rowOf("Level0"));
+  });
+
+  it("closes an open branch with Left, then steps out to its parent", () => {
+    render(<Harness />);
+    act(() => {
+      rowOf("Level2").focus();
+    });
+    act(() => {
+      press("ArrowLeft");
+    });
+    expect(rowOf("Level2").getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Leaf")).toBeNull();
+    act(() => {
+      press("ArrowLeft");
+    });
+    expect(document.activeElement).toBe(rowOf("Level1"));
+  });
+
+  it("opens a closed branch with Right, then steps into its first child", () => {
+    render(<Harness initialCollapsed={["d-2"]} />);
+    act(() => {
+      rowOf("Level2").focus();
+    });
+    act(() => {
+      press("ArrowRight");
+    });
+    expect(rowOf("Level2").getAttribute("aria-expanded")).toBe("true");
+    act(() => {
+      press("ArrowRight");
+    });
+    expect(document.activeElement).toBe(rowOf("Leaf"));
   });
 });

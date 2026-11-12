@@ -411,6 +411,9 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       // opening the popup still starts with no preselection.
       autoHighlight
       onInputValueChange={(v) => {
+        // The keyboard-only input of a list with no search field: typing
+        // there is not a search.
+        if (!props.searchable) return;
         setQuery(v);
         props.onSearch?.(v);
       }}
@@ -512,8 +515,23 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
       )}
       <ComboboxContent className={props.popupClassName}>
         {props.popupHeader}
-        {props.searchable && (
+        {props.searchable ? (
           <ComboboxInput showTrigger={false} placeholder="Search…" />
+        ) : (
+          /*
+            Base UI's combobox moves through its list from its INPUT only:
+            the trigger opens the popup and hands the focus to the input, and
+            with no input the focus landed on the popup itself, where the
+            arrow keys did nothing. A keyboard user could open the list and
+            never pick from it. So a list with no search field still gets an
+            input, visually hidden, to carry the keyboard; what it types is
+            ignored above, so it never filters a list nobody can see filtered.
+          */
+          <ComboboxInput
+            showTrigger={false}
+            className="sr-only"
+            aria-label={props.label || undefined}
+          />
         )}
         {popupBody}
       </ComboboxContent>
