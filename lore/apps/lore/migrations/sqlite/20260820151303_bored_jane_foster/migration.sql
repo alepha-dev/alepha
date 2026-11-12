@@ -1,1 +1,0 @@
-ALTER TABLE `quests` DROP COLUMN `difficulty`;

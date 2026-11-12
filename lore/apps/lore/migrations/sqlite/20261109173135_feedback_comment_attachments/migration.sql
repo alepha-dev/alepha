@@ -1,1 +1,0 @@
-ALTER TABLE `feedback_comments` ADD `attachments` text DEFAULT '[]' NOT NULL;

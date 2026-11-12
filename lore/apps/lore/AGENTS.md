@@ -119,12 +119,14 @@ A table rebuild is how drizzle-kit changes what SQLite cannot alter in place (`C
 **What guards it** (#E74):
 
 1. **The framework marker.** `check:migrations` (and `alepha deploy`) refuses any `DROP TABLE` without a `-- alepha-allow-drop-table: <why>` comment on the line above it.
-2. **`test/migration-safety.spec.ts`.** Every dropped table needs a per-migration `SANCTIONED_DROPS` entry, and since `CASCADE_BASELINE` a table whose previous snapshot shows a `CASCADE` or `SET NULL` child is refused **whatever the entry says**. Only a leaf can be rebuilt or dropped (precedent: `folio_blobs` in `20261004225050_drop_dead_folio_columns`).
+2. **`test/migration-safety.spec.ts`.** Every dropped table needs a per-migration `SANCTIONED_DROPS` entry, and since `CASCADE_BASELINE` a table whose previous snapshot shows a `CASCADE` or `SET NULL` child is refused **whatever the entry says**. Only a leaf can be rebuilt or dropped (precedent: `folio_blobs` in `20261004225050_drop_dead_folio_columns`, now in git history).
 3. **The Time Travel bookmark.** `Deploy` prints `wrangler d1 time-travel info lore-production` before every deploy; the restore is the one command it prints.
 
 **A column stops being read before it is dropped,** and the drop ships alone, in its own push to `main`.
 
 **The migrate-before-deploy window is accepted.** `alepha deploy` migrates, then deploys, so for a few seconds the previous Worker still SELECTs a dropped column and its reads of that table fail. With one user, the owner accepted it (2026-10-04): a drop simply deploys, with no quiet hour and no post-deploy migration phase.
+
+**One baseline since 2026-11-12** (#Q3497). The 153 migrations before it were collapsed into `20261112161955_baseline`, generated from the entities, and production's `d1_migrations` was reset to that one row (`alepha infra db baseline mark --reset`, bookkeeping only). The migrations this file cites by name live in git history. Production keeps the drift its history left (nullable `sigils.name`, `NO ACTION` on four `quests` foreign keys, old column defaults, `NOT NULL` primary keys) while a fresh database follows the entities: never "fix" that drift with a rebuild.
 
 **Limits of local testing:** every database the suites build is empty or seeded by hand, so passing tests cannot prove that production data survives a migration. The manual migration rehearsal workflow was removed at the owner's request on 2026-10-10; CI no longer checks migrations against a copy of production. The `alepha rehearse` command remains available for an explicitly arranged run on an ephemeral CI runner, with cleanup even if the process is interrupted.
 
@@ -378,12 +380,11 @@ Before that, the two runners diverged twice, once in each direction: a path alia
 Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subject is one package is listed in that package's `AGENTS.md`:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
-- `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model across packages: the backfill, the gate, and the route guards
+- `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model across packages: the gate and the route guards
 - `sigil-self-report.spec.ts` — Lore's own in-process self-report path
 - `app-routes.spec.ts` — **regression guard**: boots every router and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `projectSettingsSections.ts`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw. Also asserts that **every static root segment in the route table is reserved** in `ProjectSlugService` — the invariant `/:projectSlug` creates
-- `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually _applies_ it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
 - `blight-tools.spec.ts` — the MCP triage surface
-- `migration-safety.spec.ts` — every dropped table needs a per-migration `SANCTIONED_DROPS` entry, a table with `CASCADE` or `SET NULL` children (read from the previous snapshot) cannot be dropped at all after `CASCADE_BASELINE`, historical replays keep their rows, and a fresh D1-shaped database boots with all migrations applied
+- `migration-safety.spec.ts` — every dropped table needs a per-migration `SANCTIONED_DROPS` entry, a table with `CASCADE` or `SET NULL` children (read from the previous snapshot) cannot be dropped at all after `CASCADE_BASELINE`, and a fresh D1-shaped database boots with all migrations applied
 - Shared fixtures live in `test/fixtures/`
 
 End-to-end testing has its own workspace, `apps/e2e`: read `apps/e2e/AGENTS.md` for the Playwright suite (one Lore instance per worker, ports, one file per feature) and the CLI suite.

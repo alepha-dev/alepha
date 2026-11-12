@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `size` integer DEFAULT 3 NOT NULL;

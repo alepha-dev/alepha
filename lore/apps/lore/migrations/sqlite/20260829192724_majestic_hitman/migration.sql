@@ -1,1 +1,0 @@
-ALTER TABLE `job_executions` ADD `redispatch_count` integer DEFAULT 0 NOT NULL;

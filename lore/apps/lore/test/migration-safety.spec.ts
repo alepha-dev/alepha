@@ -1,6 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 
 import { LoreCoreApi } from "@lore/core/api";
 import { projects, users } from "@lore/core/schemas";
@@ -96,133 +95,18 @@ const entityTables = async (): Promise<string[]> => {
 };
 
 /**
- * Physical table names the entity registry can no longer produce, because the
- * entity was renamed and the migrations on disk were not.
- *
- * `migrations/sqlite/` still creates and references tables literally named
- * `campaigns`, `petitions`, `chapters`, `archive_directories` and
- * `archive_blobs`: the 2026-08 great rename is an `ALTER TABLE … RENAME TO`
- * late in the chain, so every migration before it speaks the old name. Drop
- * these and the whole pre-rename history loses its guard.
- */
-const RENAMED_AWAY = [
-  "campaigns",
-  "petitions",
-  "chapters",
-  "archive_directories",
-  "archive_blobs",
-];
-
-/**
- * Tables this app dropped on purpose, which the entity walk no longer
- * produces because their entities went with them (#E74, #Q2604).
- *
- * The migrations before the drop still create and fill them, so they stay
- * guarded there, exactly like the renamed-away names above.
- */
-const DROPPED_AWAY = [
-  "members",
-  "invitations",
-  "rank_definitions",
-  "sigil_views_hourly",
-  "sigil_vitals_hourly",
-  "analytics_backfills",
-];
-
-/**
  * The rebuilds that are deliberate, keyed by the migration that performs them.
  *
  * An entry is a claim that this exact migration drops this exact table on
  * purpose. It is not a blanket exemption: the table stays guarded in every
- * other migration, before and after.
+ * other migration, before and after. A migration newer than
+ * `CASCADE_BASELINE` may still never drop a table with CASCADE or SET NULL
+ * children, whatever its entry says.
  *
- * That per-migration shape is what the old list could not express, and it is
- * why `sigils` had to sit outside it in a hand-written second test. `sigils`
- * is the CASCADE parent of the four aggregate tables (`sigil_views_hourly`,
- * `sigil_uniques_daily`, `sigil_vitals_hourly`, `sigil_error_groups`), so a
- * `DROP TABLE sigils` on D1 silently deletes every row in all four — but
- * `20260801154537_sigil_family_rebuild` legitimately drops it and recreates it
- * two statements later. Excluding the table wholesale left it unguarded in
- * every later migration, which is precisely where it matters:
- * `20260806093400_confused_dazzler` folded three columns into `name` with
- * additive `ALTER TABLE`s and no rebuild, because a rebuild there would have
- * been a wipe.
+ * Empty since the 2026-11-12 baseline (#Q3497): every sanctioned drop lived in
+ * a migration the baseline replaced, and git history keeps their reasons.
  */
-const SANCTIONED_DROPS: Record<string, string[]> = {
-  // The whole sigil family, recreated in the same migration. `blights`
-  // rides along because it hung off the old `sigils`.
-  "20260801154537_sigil_family_rebuild": ["sigils", "blights"],
-  // `folio_links` gained a polymorphic source side. Reviewed and rehearsed
-  // against a production export (611 rows in, 611 out) before merging: it is
-  // a LEAF — nothing in the schema references it — so the rebuild pattern
-  // carries no cascade here. The migration's own header carries the check
-  // that proves it: `grep -rn "folioLinks.cols" src/api/entities/` must be
-  // empty.
-  "20260819225121_cloudy_lila_cheney": ["folio_links"],
-  // ⚠️ NOT a rebuild, and not a table that existed when this guard was
-  // written. `artifacts` was the server half of the abandoned Bay control
-  // plane, shipped 2026-08-05 and dropped here with the rest of the outpost
-  // purge the day after. Epic #18 gave the NAME back to a new table with a
-  // different shape - `(projectId, app, tag, runtime)`, sha256-addressed, no
-  // `deployments` beside it - so the entity walk started producing "artifacts"
-  // and this historical drop became a violation retroactively.
-  //
-  // Sanctioned rather than renamed around: the old table has been gone from
-  // production for a month, `artifacts` is the honest name for what the new
-  // one holds, and the per-migration shape of this list is exactly what lets
-  // one dead drop be excused without unguarding the live table anywhere else.
-  // ⚠️ `deployments` is the SAME situation, one epic later. The 2026-08-05
-  // Bay control plane shipped an `artifacts` table with a `deployments` beside
-  // it, and this migration dropped both in the outpost purge the next day.
-  // Epic #1 gave that name back on 2026-09-07 to a table with a different
-  // shape - keyed on `app_instances`, carrying an `(app, tag, sha256)`
-  // snapshot and a Cloudflare `version_id` - so the entity walk started
-  // producing "deployments" and this historical drop became a violation
-  // retroactively, exactly as "artifacts" did.
-  //
-  // Safe for the same reason: the old table has been gone from production
-  // since 2026-08-06, the new one is created fresh by
-  // `20260907102140_bright_gorilla_man`, and no migration between the two
-  // touches either.
-  "20260805233951_striped_captain_flint": ["artifacts", "deployments"],
-  // ⚠️ The first entry here that sanctions a rebuild of a table holding LIVE
-  // production rows. The two above are historical drops of dead tables whose
-  // names were later reused; this one drops the `artifacts` everyone is using.
-  //
-  //
-  // ⚠️ Regenerated after merging main: the first cut of this migration was
-  // generated from a base that predated `20260908235005_release_default_since`,
-  // so its snapshot silently dropped `releases.default_since` and
-  // `check:migrations` wanted to re-add the column. Two migrations generated
-  // in parallel from one base are mutually blind, and the timestamp order does
-  // not save you - regenerate rather than renaming the directory.
-  //
-  // Epic #E47 gave `artifacts` a `format` dimension. `format` and `reference`
-  // are plain `ALTER TABLE ADD`s and rebuild nothing - the rebuild is forced
-  // by relaxing `size` and `file_id` to nullable, because an image row records
-  // a registry reference and has no bytes, and SQLite has no `ALTER COLUMN`.
-  // Sentinels were considered and rejected: four surfaces read those columns
-  // and a value meaning "ignore me" is worse than an absent one.
-  //
-  // Safe because `artifacts` has no CASCADE children. Checked, not assumed, on
-  // 2026-09-09: `grep -rn "artifacts.cols" src/api/entities/` is empty, no
-  // migration in this directory contains ``REFERENCES `artifacts` ``, and
-  // `deployments.artifactId` is a soft uuid with no foreign key. The same
-  // finding is written into the migration itself, on the line above its DROP.
-  //
-  // ⚠️ It expires. The day any entity takes a `db.ref` onto
-  // `artifacts.cols.id`, this reasoning is void and the NEXT rebuild of this
-  // table has to be re-derived rather than waved through by citing this entry.
-  "20260909124143_romantic_ben_urich": ["artifacts"],
-  // #E74 / #Q2604: six frozen leaf tables, none of which any foreign key
-  // points at (the cascade refusal above checks that against the previous
-  // snapshot). Each DROP carries its own `alepha-allow-drop-table` marker.
-  "20261004222909_drop_frozen_leaf_tables": DROPPED_AWAY,
-  // #E74 / #Q2605: drizzle's rebuild of `folio_blobs` to drop `directory_id`,
-  // a column with a foreign key that SQLite cannot drop in place. A leaf: no
-  // foreign key points at it, which the cascade refusal checks.
-  "20261004225050_drop_dead_folio_columns": ["folio_blobs"],
-};
+const SANCTIONED_DROPS: Record<string, string[]> = {};
 
 /**
  * Every applied migration, oldest first. `.archive/` (superseded
@@ -259,8 +143,9 @@ const unsanctionedDrops = (
   dir: string,
   sql: string,
   guarded: string[],
+  sanctionedDrops: Record<string, string[]> = SANCTIONED_DROPS,
 ): string[] => {
-  const sanctioned = SANCTIONED_DROPS[dir] ?? [];
+  const sanctioned = sanctionedDrops[dir] ?? [];
   return guarded.filter(
     (table) =>
       !sanctioned.includes(table) &&
@@ -269,14 +154,11 @@ const unsanctionedDrops = (
 };
 
 /**
- * The newest migration on disk when the cascade refusal below landed (#Q2602).
- *
- * Only migrations AFTER it are held to that refusal. Older ones shipped long
- * ago, and one of them (`20260801154537_sigil_family_rebuild`) sanctions a
- * `sigils` drop that has CASCADE children: refusing it now would change
- * nothing in production and only turn the suite red.
+ * The migration every later one is held to the cascade refusal against: the
+ * 2026-11-12 baseline (#Q3497), which creates the whole schema and drops
+ * nothing. The refusal itself dates from #Q2602.
  */
-const CASCADE_BASELINE = "20260929135124_folio_version";
+const CASCADE_BASELINE = "20261112161955_baseline";
 
 /**
  * The slice of a drizzle-kit snapshot.json this guard reads: its foreign keys.
@@ -369,11 +251,7 @@ const dropViolations = (
 
 describe("migration safety", () => {
   it("never drops a table this app owns, unsanctioned", async ({ expect }) => {
-    const guarded = [
-      ...(await entityTables()),
-      ...RENAMED_AWAY,
-      ...DROPPED_AWAY,
-    ];
+    const guarded = [...(await entityTables())];
     const dirs = migrationDirs();
 
     // A guard that silently scans nothing is worse than no guard. Both halves:
@@ -382,12 +260,11 @@ describe("migration safety", () => {
     expect(guarded.length).toBeGreaterThan(20);
 
     for (const table of [
-      // The six the 2026-05 wipe actually reached. The list is derived now,
+      // The tables the 2026-05 wipe reached that still exist. The list is derived now,
       // but these are the incident and must never fall out of it silently.
       "projects",
       "quests",
       "folios",
-      "members",
       "users",
       "feedback",
       // Arrived after the incident and were never added to the hand-written
@@ -396,9 +273,7 @@ describe("migration safety", () => {
       "epics",
       "areas",
       "sigils",
-      "sigil_views_hourly",
       "sigil_uniques_daily",
-      "sigil_vitals_hourly",
       "sigil_error_groups",
       "folio_revisions",
       "quest_comments",
@@ -418,11 +293,7 @@ describe("migration safety", () => {
   it("catches a synthetic migration that drops a guarded table", async ({
     expect,
   }) => {
-    const guarded = [
-      ...(await entityTables()),
-      ...RENAMED_AWAY,
-      ...DROPPED_AWAY,
-    ];
+    const guarded = [...(await entityTables())];
 
     // Exactly what drizzle-kit emits for a rebuild, and the shape that wiped
     // production: the DROP is the third statement, wrapped in the innocuous
@@ -438,11 +309,13 @@ describe("migration safety", () => {
     ).toEqual(["projects"]);
 
     // A sanctioned drop is sanctioned only in its own migration.
+    const sanctioned = { "20990101000000_sanctioned": ["sigils"] };
     expect(
       unsanctionedDrops(
-        "20260801154537_sigil_family_rebuild",
+        "20990101000000_sanctioned",
         "DROP TABLE `sigils`;",
         guarded,
+        sanctioned,
       ),
     ).toEqual([]);
     expect(
@@ -450,6 +323,7 @@ describe("migration safety", () => {
         "20990101000000_synthetic",
         "DROP TABLE `sigils`;",
         guarded,
+        sanctioned,
       ),
     ).toEqual(["sigils"]);
   });
@@ -569,262 +443,6 @@ describe("migration safety", () => {
         "folio_blobs is dropped without a SANCTIONED_DROPS entry",
       ]);
     });
-
-    it("still accepts the sigil family rebuild, which predates the baseline", ({
-      expect,
-    }) => {
-      const dirs = migrationDirs();
-      const rebuild = dirs.find((dir) =>
-        dir.endsWith("_sigil_family_rebuild"),
-      )!;
-      const previous = migrationSnapshot(dirs[dirs.indexOf(rebuild) - 1]);
-
-      // It does drop a parent: the refusal would bite if it applied.
-      expect(destructiveChildren("sigils", previous)).not.toEqual([]);
-      expect(dropViolations(rebuild, migrationSql(rebuild), previous)).toEqual(
-        [],
-      );
-    });
-  });
-
-  it("keeps every project row and its children when the sigil family is rebuilt", ({
-    expect,
-  }) => {
-    const db: any = new DatabaseSync(":memory:");
-
-    // D1 cannot be relied on to honour `PRAGMA foreign_keys=OFF` (#F1359),
-    // so constraints are taken as live
-    // there — including during `DROP TABLE`, whose implicit `DELETE FROM`
-    // is what cascaded 2434 rows away in May 2026. Enforcing them here is
-    // what makes this test reproduce D1 rather than the friendlier local
-    // SQLite the rest of the suite runs on.
-    db.exec("PRAGMA foreign_keys = ON");
-
-    const apply = (dir: string) => {
-      for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
-        const statement = raw.trim();
-        if (statement) db.exec(statement);
-      }
-    };
-
-    const dirs = migrationDirs();
-    const rebuild = dirs.find((dir) => dir.endsWith("_sigil_family_rebuild"));
-    expect(rebuild).toBeDefined();
-
-    // Everything up to, but not including, the rebuild.
-    for (const dir of dirs.slice(0, dirs.indexOf(rebuild!))) {
-      apply(dir);
-    }
-
-    // Seed the exact shape of the 2026-05 incident: a project with children
-    // hanging off it, and a sigil with children hanging off that.
-    //
-    // Still "campaigns" / "campaign_id" here on purpose — same reason as
-    // PROTECTED_TABLES above: this seeds and applies the real migration SQL
-    // on disk, which still creates a table literally named "campaigns" (and
-    // FK columns literally named "campaign_id") until Task 11.
-    const userId = "00000000-0000-4000-8000-000000000001";
-    db.exec(`INSERT INTO users (id) VALUES ('${userId}')`);
-    db.exec(
-      `INSERT INTO campaigns (id, title, created_by) VALUES (1, 'Lore', '${userId}')`,
-    );
-    db.exec(
-      // Still \`zone\`, not \`area\` — same reason as \`campaigns\` above. This
-      // seeds against the physical schema as it stood before the rebuild, and
-      // the Zone -> Area rename comes several migrations later.
-      `INSERT INTO quests (short_id, title, description, zone, priority, difficulty, campaign_id, created_by) VALUES (1, 'q', 'd', 'z', 'normal', 1, 1, '${userId}')`,
-    );
-    db.exec(
-      `INSERT INTO folios (short_id, campaign_id, title) VALUES (1, 1, 'f')`,
-    );
-    db.exec(
-      `INSERT INTO members (user_id, campaign_id) VALUES ('${userId}', 1)`,
-    );
-    // Still "petitions" here on purpose — same reason as PROTECTED_TABLES
-    // above: this seeds and applies the real migration SQL on disk, which
-    // still creates a table literally named "petitions" until Task 11.
-    db.exec(
-      `INSERT INTO petitions (short_id, campaign_id, title, description, status) VALUES (1, 1, 'p', 'd', 'pending')`,
-    );
-    db.exec(
-      `INSERT INTO sigils (id, ingest_key, campaign_id, label) VALUES ('s1', 'k', 1, 'l')`,
-    );
-    db.exec(
-      `INSERT INTO sigil_views (sigil_id, date, country, path) VALUES ('s1', '2026-01-01', 'FR', '/')`,
-    );
-
-    apply(rebuild!);
-
-    const count = (table: string): number =>
-      db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
-
-    // The whole point: the rebuild reaches its own family and stops there.
-    // "campaigns" (not "projects") and "petitions" (not "feedback") for the
-    // same reason as the INSERTs above — this is the physical table name.
-    for (const table of [
-      "campaigns",
-      "quests",
-      "folios",
-      "members",
-      "petitions",
-      "users",
-    ]) {
-      expect(count(table), `${table} lost rows to the rebuild`).toBe(1);
-    }
-
-    const tables: string[] = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-      )
-      .all()
-      .map((row: { name: string }) => row.name);
-
-    for (const table of [
-      "sigils",
-      "blights",
-      "sigil_views_hourly",
-      "sigil_vitals_hourly",
-      "sigil_uniques_daily",
-      "sigil_error_groups",
-    ]) {
-      expect(tables, `${table} missing after the rebuild`).toContain(table);
-    }
-
-    for (const table of [
-      // "campaign_sources", not "project_sources" — this is the physical
-      // (pre-rebuild) table name the sigil_family_rebuild migration drops on
-      // disk, unrelated to the entity-level Campaign → Project rename.
-      "campaign_sources",
-      "sigil_blight_rate",
-      "sigil_blights",
-      "sigil_unique_visitors",
-      "sigil_views",
-      "sigil_vitals",
-    ]) {
-      expect(tables, `${table} survived the rebuild`).not.toContain(table);
-    }
-
-    db.close();
-  });
-
-  /**
-   * The vitals histogram moved from a `bucket_counts` JSON column to seven
-   * integer columns. drizzle-kit generated the seven `ADD COLUMN`s and the
-   * `DROP COLUMN` and **nothing in between** — applied as generated it would
-   * have thrown away every histogram in production.
-   *
-   * The backfill was added by hand, which means nothing regenerates it: a
-   * future `db:generate` that rewrites this migration drops it silently. This
-   * runs the real SQL against a real SQLite database with a real row to make
-   * that a red test rather than a quiet data loss.
-   */
-  it("carries the vitals histogram across the JSON-to-columns migration", ({
-    expect,
-  }) => {
-    const db: any = new DatabaseSync(":memory:");
-    db.exec("PRAGMA foreign_keys = ON");
-
-    const apply = (dir: string) => {
-      for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
-        const statement = raw.trim();
-        if (statement) db.exec(statement);
-      }
-    };
-
-    const dirs = migrationDirs();
-    const bucketColumns = dirs.find((dir) =>
-      dir.endsWith("_vitals_bucket_columns"),
-    );
-    expect(
-      bucketColumns,
-      "the vitals bucket-columns migration is missing",
-    ).toBeDefined();
-
-    for (const dir of dirs.slice(0, dirs.indexOf(bucketColumns!))) {
-      apply(dir);
-    }
-
-    const userId = "00000000-0000-4000-8000-000000000002";
-    db.exec(`INSERT INTO users (id) VALUES ('${userId}')`);
-    db.exec(
-      `INSERT INTO projects (id, title, created_by) VALUES (1, 'Lore', '${userId}')`,
-    );
-    db.exec(
-      `INSERT INTO sigils (id, project_id, name, token_hash, token_prefix) VALUES ('s1', 1, 'app', 'h', 'pfx')`,
-    );
-    // Two shapes that both have to survive: a populated histogram, and an
-    // empty one (a row can exist with no samples in any bucket yet).
-    db.exec(
-      `INSERT INTO sigil_vitals_hourly (sigil_id, hour, metric, path, bucket_counts)
-       VALUES ('s1', '2026-01-01T10', 'lcp', '/', '{"0":2,"5":1}'),
-              ('s1', '2026-01-01T11', 'cls', '/', '{}')`,
-    );
-
-    apply(bucketColumns!);
-
-    const rows = db
-      .prepare(
-        "SELECT metric, b0, b1, b2, b3, b4, b5, b6 FROM sigil_vitals_hourly ORDER BY hour",
-      )
-      .all();
-
-    expect(rows).toEqual([
-      { metric: "lcp", b0: 2, b1: 0, b2: 0, b3: 0, b4: 0, b5: 1, b6: 0 },
-      { metric: "cls", b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, b5: 0, b6: 0 },
-    ]);
-
-    db.close();
-  });
-
-  /**
-   * The Zone → Area rename is a `RENAME COLUMN`, and it has to stay one.
-   * Without a `--hints` rename hint drizzle-kit emits CREATE + DROP for the
-   * same entity diff, which passes every schema check and silently discards
-   * every quest's area — exactly the data the rename exists to keep.
-   *
-   * Seeds real values before the migration and reads them back after, rather
-   * than pattern-matching the SQL: the failure mode is lost rows, so lost rows
-   * is what this asserts.
-   */
-  it("carries quest areas and project areas across the Zone to Area rename", ({
-    expect,
-  }) => {
-    const db: any = new DatabaseSync(":memory:");
-    db.exec("PRAGMA foreign_keys = ON");
-
-    const apply = (dir: string) => {
-      for (const raw of migrationSql(dir).split("--> statement-breakpoint")) {
-        const statement = raw.trim();
-        if (statement) db.exec(statement);
-      }
-    };
-
-    const dirs = migrationDirs();
-    const rename = dirs.find((dir) => dir.endsWith("_zone_to_area"));
-    expect(rename, "the zone_to_area migration is missing").toBeDefined();
-
-    for (const dir of dirs.slice(0, dirs.indexOf(rename!))) {
-      apply(dir);
-    }
-
-    const userId = "00000000-0000-4000-8000-000000000003";
-    db.exec(`INSERT INTO users (id) VALUES ('${userId}')`);
-    db.exec(
-      `INSERT INTO projects (id, title, created_by, zones) VALUES (1, 'Lore', '${userId}', '["Bugs","UX"]')`,
-    );
-    db.exec(
-      `INSERT INTO quests (short_id, title, description, zone, priority, difficulty, project_id, created_by)
-       VALUES (1, 'q', 'd', 'Bugs', 'medium', 1, 1, '${userId}')`,
-    );
-
-    apply(rename!);
-
-    const quest = db.prepare("SELECT area FROM quests").get();
-    const project = db.prepare("SELECT areas FROM projects").get();
-    expect(quest.area).toBe("Bugs");
-    expect(JSON.parse(project.areas)).toEqual(["Bugs", "UX"]);
-
-    db.close();
   });
 
   it("boots a fresh database with the sigil family present", async ({

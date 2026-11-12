@@ -1,1 +1,0 @@
-ALTER TABLE `quests` ADD `shelved_with_epic` integer;

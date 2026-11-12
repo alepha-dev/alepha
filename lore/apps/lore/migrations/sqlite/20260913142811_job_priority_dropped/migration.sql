@@ -1,1 +1,0 @@
-ALTER TABLE `job_executions` DROP COLUMN `priority`;

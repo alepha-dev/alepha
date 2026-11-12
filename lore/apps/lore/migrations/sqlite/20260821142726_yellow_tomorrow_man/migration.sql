@@ -1,1 +1,0 @@
-ALTER TABLE `quest_comments` ADD `source` text;

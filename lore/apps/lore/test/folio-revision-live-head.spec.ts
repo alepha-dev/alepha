@@ -1,7 +1,3 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-
 import { ProjectController } from "@lore/core/api";
 import { FolioController } from "@lore/knowledge/api";
 import { folioRevisions } from "@lore/knowledge/schemas";
@@ -174,82 +170,5 @@ describe("folio revisions store no copy of the live body", () => {
       { user: ctx.user },
     );
     expect(again.content).toBe("v2");
-  });
-});
-
-const MIGRATIONS_DIR = join(import.meta.dirname, "../migrations/sqlite");
-
-describe("folio revision live-head migration", () => {
-  const migrations = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .filter((name) => existsSync(join(MIGRATIONS_DIR, name, "migration.sql")))
-    .sort();
-  const sqlOf = (name: string) =>
-    readFileSync(join(MIGRATIONS_DIR, name, "migration.sql"), "utf8");
-  const target = migrations.find((name) =>
-    sqlOf(name).includes("ADD `snapshot_is_live`"),
-  );
-
-  it("adds a column and never drops a table", ({ expect }) => {
-    expect(target).toBeDefined();
-    const statements = sqlOf(target!)
-      .split("\n")
-      .filter((line) => !line.trimStart().startsWith("--"))
-      .join("\n");
-    expect(statements).not.toMatch(/DROP TABLE/i);
-  });
-
-  it("empties only a head that equals the live body", ({ expect }) => {
-    const db: any = new DatabaseSync(":memory:");
-    db.exec("PRAGMA foreign_keys = ON");
-    const apply = (dir: string) => {
-      for (const raw of sqlOf(dir).split("--> statement-breakpoint")) {
-        const statement = raw.trim();
-        if (statement) db.exec(statement);
-      }
-    };
-    for (const dir of migrations.slice(0, migrations.indexOf(target!))) {
-      apply(dir);
-    }
-
-    const owner = "00000000-0000-0000-0000-000000000001";
-    db.prepare("INSERT INTO users (id) VALUES (?)").run(owner);
-    db.prepare(
-      "INSERT INTO projects (id, title, created_by) VALUES (1, 'P', ?)",
-    ).run(owner);
-    const folio = db.prepare(
-      "INSERT INTO folios (id, project_id, short_id, title, content) VALUES (?, 1, ?, 'T', ?)",
-    );
-    const same = "00000000-0000-4000-8000-00000000000a";
-    const drifted = "00000000-0000-4000-8000-00000000000b";
-    folio.run(same, 1, "live body");
-    folio.run(drifted, 2, "edited elsewhere");
-
-    const revision = db.prepare(
-      "INSERT INTO folio_revisions (id, folio_id, at, action, content_snapshot, title_snapshot) VALUES (?, ?, ?, 'edit', ?, 'T')",
-    );
-    revision.run("r1", same, "2026-09-01T00:00:00.000Z", "old body");
-    revision.run("r2", same, "2026-09-02T00:00:00.000Z", "live body");
-    revision.run(
-      "r3",
-      drifted,
-      "2026-09-02T00:00:00.000Z",
-      "not the live body",
-    );
-
-    apply(target!);
-
-    const row = (id: string) =>
-      db
-        .prepare(
-          "SELECT content_snapshot AS content, snapshot_is_live AS live FROM folio_revisions WHERE id = ?",
-        )
-        .get(id);
-    expect(row("r2")).toEqual({ content: "", live: 1 });
-    expect(row("r1")).toEqual({ content: "old body", live: 0 });
-    // A head that differs from the live body keeps it: nothing is lost.
-    expect(row("r3")).toEqual({ content: "not the live body", live: 0 });
-    db.close();
   });
 });
