@@ -26,5 +26,9 @@ export default defineConfig({
     // machine's timezone.
     timezoneId: "UTC",
     locale: "en-US",
+    // The scan injects a style (motion off) and a canary with an inline
+    // style, which the showcase's strict CSP refuses. CSP is the main suite's
+    // to guard (`e2e/fixtures.ts`); this one measures colour and structure.
+    bypassCSP: true,
   },
 });
