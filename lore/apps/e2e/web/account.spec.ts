@@ -476,7 +476,9 @@ test.describe("Account dialog", () => {
     // Short enough that the card stack cannot fit, whatever it holds.
     await page.setViewportSize({ width: 1280, height: 320 });
     const dialog = await openAccount(page, "security");
-    await expect(dialog.getByText("Sign-in methods", { exact: true })).toBeVisible();
+    await expect(
+      dialog.getByText("Sign-in methods", { exact: true }),
+    ).toBeVisible();
 
     const overflow = await dialog.evaluate((root) => {
       const overflows = (e: Element) => e.scrollHeight > e.clientHeight + 4;
@@ -520,7 +522,9 @@ test.describe("Account dialog", () => {
     const dialog = page.locator('[data-slot="settings-dialog"]');
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Security", exact: true }).click();
-    await expect(dialog.getByText("Sign-in methods", { exact: true })).toBeVisible();
+    await expect(
+      dialog.getByText("Sign-in methods", { exact: true }),
+    ).toBeVisible();
     // Back to the list: state, not history.
     const url = page.url();
     await dialog.getByRole("button", { name: "Back", exact: true }).click();
