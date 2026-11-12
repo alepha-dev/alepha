@@ -1,5 +1,10 @@
 import { $module, type Alepha } from "alepha";
-import { AlephaOrm, DatabaseProvider, databaseEnvSchema } from "alepha/orm";
+import {
+  AlephaOrm,
+  DatabaseProvider,
+  DatabaseUrlParser,
+  databaseEnvSchema,
+} from "alepha/orm";
 
 import { BunPostgresProvider } from "./providers/BunPostgresProvider.ts";
 import { PglitePostgresProvider } from "./providers/PglitePostgresProvider.ts";
@@ -20,15 +25,15 @@ export const AlephaOrmPostgres = $module({
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(databaseEnvSchema);
 
-    const url = env.DATABASE_URL;
+    const kind = new DatabaseUrlParser().kind(env.DATABASE_URL);
 
-    if (url?.startsWith("pglite:")) {
+    if (kind === "pglite") {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
         use: PglitePostgresProvider,
       });
-    } else if (url?.startsWith("postgres:")) {
+    } else if (kind === "postgres") {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,

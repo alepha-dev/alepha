@@ -13,7 +13,7 @@ import {
   organizationConfigAtom,
   OrganizationPolicyProvider,
 } from "alepha/api/organizations";
-import { DatabaseProvider } from "alepha/orm";
+import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
@@ -348,7 +348,11 @@ export const LoreCoreApi = $module({
       provide: JobService,
       use: AutomationJobService,
     });
-    if (String(alepha.env.DATABASE_URL ?? "").startsWith("d1:"))
+    if (
+      new DatabaseUrlParser().kind(
+        alepha.env.DATABASE_URL as string | undefined,
+      ) === "d1"
+    )
       alepha.with({
         optional: true,
         provide: DatabaseProvider,

@@ -2,6 +2,7 @@ import { isAbsolute, join } from "node:path";
 
 import type { Alepha } from "alepha";
 import { AlephaError } from "alepha";
+import { DatabaseUrlParser } from "alepha/orm";
 
 /**
  * Where a desktop app's framework-managed data goes, decided once the app is
@@ -77,19 +78,11 @@ export class DesktopDataDefaults {
    * SQLite file (another driver, or memory).
    */
   public sqliteFile(url: string): string | undefined {
-    if (url === ":memory:") {
+    const parsed = new DatabaseUrlParser().parse(url);
+    if (parsed?.kind !== "sqlite" || parsed.path === ":memory:") {
       return undefined;
     }
-    if (url.startsWith("sqlite://")) {
-      return url.slice("sqlite://".length);
-    }
-    if (url.startsWith("sqlite:")) {
-      return url.slice("sqlite:".length);
-    }
-    if (url.includes("://") || /^[a-z0-9]+:/i.test(url)) {
-      return undefined;
-    }
-    return url;
+    return parsed.path;
   }
 
   protected assertAbsolute(

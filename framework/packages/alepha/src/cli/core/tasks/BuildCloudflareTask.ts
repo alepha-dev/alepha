@@ -271,7 +271,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceServices(ctx, wrangler);
     this.enhanceCron(ctx, wrangler);
     this.warnUnreachableTimeouts(ctx);
-    this.enhanceDatabase(ctx, wrangler);
+    await this.enhanceDatabase(ctx, wrangler);
     this.enhanceR2(ctx, wrangler);
     this.enhanceKV(ctx, wrangler);
     this.enhanceAnalyticsEngine(ctx, wrangler);
@@ -551,27 +551,35 @@ export class BuildCloudflareTask extends BuildTask {
     return [...new Set(crons.map((c) => c.expression))];
   }
 
-  protected enhanceDatabase(
+  protected async enhanceDatabase(
     ctx: BuildTaskContext,
     wrangler: WranglerConfig,
-  ): void {
+  ): Promise<void> {
     if (this.envOf(ctx, "HYPERDRIVE_ID")) {
       this.enhanceHyperdrive(ctx, wrangler);
       return;
     }
 
-    this.enhanceD1(ctx, wrangler);
+    await this.enhanceD1(ctx, wrangler);
   }
 
   protected static readonly D1_BINDING = "DB";
 
-  protected enhanceD1(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
-    const url = this.envOf(ctx, "DATABASE_URL");
-    if (!url?.startsWith("d1:")) {
+  protected async enhanceD1(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): Promise<void> {
+    // Loaded here, not at the top: the CLI never evaluates the ORM at boot.
+    const { DatabaseUrlParser } = await import("alepha/orm");
+    const parsed = new DatabaseUrlParser().parse(
+      this.envOf(ctx, "DATABASE_URL"),
+    );
+    if (parsed?.kind !== "d1") {
       return;
     }
 
-    const [dbName, id] = url.replace("d1://", "").replace("d1:", "").split(":");
+    const dbName = parsed.name;
+    const id = parsed.id;
     const binding = BuildCloudflareTask.D1_BINDING;
     // No `jurisdiction` here: unlike r2_buckets, the wrangler D1 binding schema
     // has no jurisdiction field (it warns on the unexpected key). D1 data

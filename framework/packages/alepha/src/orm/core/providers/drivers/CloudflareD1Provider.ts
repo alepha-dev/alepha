@@ -8,6 +8,7 @@ import type {
   D1Database,
   D1SessionBookmark,
 } from "../../interfaces/D1Database.ts";
+import { DatabaseUrlParser } from "../../services/DatabaseUrlParser.ts";
 import { DbErrorParser } from "../../services/DbErrorParser.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { D1TimeoutProvider } from "./D1TimeoutProvider.ts";
@@ -62,6 +63,8 @@ export class CloudflareD1Provider extends DatabaseProvider {
         ),
     }),
   );
+
+  protected readonly urls = $inject(DatabaseUrlParser);
 
   protected d1?: D1Database;
   /**
@@ -324,9 +327,13 @@ export class CloudflareD1Provider extends DatabaseProvider {
     on: "start",
     handler: async () => {
       try {
-        const [bindingName] = this.env.DATABASE_URL.replace("d1://", "").split(
-          ":",
-        );
+        const parsed = this.urls.parse(this.env.DATABASE_URL);
+        if (parsed?.kind !== "d1") {
+          throw new AlephaError(
+            `CloudflareD1Provider needs a d1:// DATABASE_URL, got a ${parsed?.kind ?? "missing"} one.`,
+          );
+        }
+        const bindingName = parsed.name;
         const cloudflareEnv = this.alepha.get("cloudflare.env") as
           | Record<string, unknown>
           | undefined;

@@ -85,7 +85,7 @@ export class InfraCommand {
       if (adapter.cloudflareResources) {
         if (hasDB) {
           const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
-          if (dbUrl?.startsWith("postgres:")) {
+          if (await this.isPostgresUrl(dbUrl)) {
             resources.push({
               label: "Hyperdrive",
               value: namingCtx.hyperdrive(),
@@ -480,7 +480,7 @@ export class InfraCommand {
       if (hasDB) {
         const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
         const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
-        const dbLabel = dbUrl?.startsWith("postgres:")
+        const dbLabel = (await this.isPostgresUrl(dbUrl))
           ? "Hyperdrive:"
           : "Database:";
         process.stdout.write(`\n   ${c.set("GREY_LIGHT", dbLabel)}\n`);
@@ -743,7 +743,7 @@ export class InfraCommand {
       // `alepha db baseline mark`, which then hard-refuses D1 with no
       // working path left.
       const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
-      if (envVars.DATABASE_URL?.startsWith("postgres:")) {
+      if (await this.isPostgresUrl(envVars.DATABASE_URL)) {
         throw new AlephaError(
           `'${env}' is backed by Postgres/Hyperdrive, not D1. Use 'alepha db baseline mark' instead.`,
         );
@@ -995,5 +995,15 @@ export class InfraCommand {
       hasCron,
       hasWebSocket,
     };
+  }
+
+  /**
+   * Whether a `DATABASE_URL` names a Postgres server (`postgres:` or
+   * `postgresql:`), through the ORM's parser. Loaded on use: the CLI never
+   * evaluates the ORM at boot.
+   */
+  protected async isPostgresUrl(url: string | undefined): Promise<boolean> {
+    const { DatabaseUrlParser } = await import("alepha/orm");
+    return new DatabaseUrlParser().isPostgres(url);
   }
 }

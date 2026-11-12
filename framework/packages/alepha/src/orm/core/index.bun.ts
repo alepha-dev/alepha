@@ -11,6 +11,7 @@ import { DrizzleKitProvider } from "./providers/DrizzleKitProvider.ts";
 import { RepositoryProvider } from "./providers/RepositoryProvider.ts";
 import { SequenceProvider } from "./providers/SequenceProvider.ts";
 import { databaseEnvSchema } from "./schemas/databaseEnvSchema.ts";
+import { DatabaseUrlParser } from "./services/DatabaseUrlParser.ts";
 import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
@@ -26,6 +27,7 @@ export const AlephaOrm = $module({
   primitives: [$sequence, $entity],
   imports: [AlephaDateTime],
   services: [
+    DatabaseUrlParser,
     SqliteModelBuilder,
     DrizzleKitProvider,
     RepositoryProvider,
@@ -46,9 +48,9 @@ export const AlephaOrm = $module({
   register: (alepha: Alepha) => {
     const env = alepha.parseEnv(databaseEnvSchema);
 
-    const url = env.DATABASE_URL;
+    const kind = new DatabaseUrlParser().kind(env.DATABASE_URL);
 
-    if (url?.startsWith("d1:")) {
+    if (kind === "d1") {
       alepha.with({
         optional: true,
         provide: DatabaseProvider,

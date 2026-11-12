@@ -86,7 +86,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
   ): Promise<boolean> {
     const envVars = await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`]);
     const dbUrl = envVars.DATABASE_URL ?? process.env.DATABASE_URL;
-    return !!dbUrl?.startsWith("postgres:");
+    // Loaded here, not at the top: the CLI never evaluates the ORM at boot.
+    const { DatabaseUrlParser } = await import("alepha/orm");
+    return new DatabaseUrlParser().isPostgres(dbUrl);
   }
 
   /**

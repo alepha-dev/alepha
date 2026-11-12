@@ -210,7 +210,7 @@ describe("BuildCloudflareTask", () => {
   });
 
   describe("enhanceD1", () => {
-    it("does not emit `jurisdiction` on the D1 binding (wrangler rejects it)", () => {
+    it("does not emit `jurisdiction` on the D1 binding (wrangler rejects it)", async () => {
       // D1 jurisdiction is applied at database-creation time, not on the
       // binding  -  wrangler warns on the unexpected field. See
       // CloudflareProvisionClient.ensureD1.
@@ -218,7 +218,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_JURISDICTION = "eu";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceD1(ambient(), wrangler);
+      await createTask().testEnhanceD1(ambient(), wrangler);
 
       expect(wrangler.d1_databases).toEqual([
         { binding: "DB", database_name: "my-db", database_id: "db-id-123" },
@@ -227,10 +227,10 @@ describe("BuildCloudflareTask", () => {
       expect(wrangler.vars.DATABASE_URL).toBe("d1://DB");
     });
 
-    it("ignores non-d1 DATABASE_URL", () => {
+    it("ignores non-d1 DATABASE_URL", async () => {
       process.env.DATABASE_URL = "postgres://localhost/db";
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceD1(ambient(), wrangler);
+      await createTask().testEnhanceD1(ambient(), wrangler);
       expect(wrangler.d1_databases).toBeUndefined();
     });
   });
@@ -1712,11 +1712,13 @@ describe("BuildCloudflareTask", () => {
    * Nothing about that failure looks like a race.
    */
   describe("the explicit environment", () => {
-    it("reads the context's bag instead of the ambient one", ({ expect }) => {
+    it("reads the context's bag instead of the ambient one", async ({
+      expect,
+    }) => {
       process.env.DATABASE_URL = "d1://ambient-db:ambient-id";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceD1(
+      await createTask().testEnhanceD1(
         { env: { DATABASE_URL: "d1://deploy-db:deploy-id" } } as never,
         wrangler,
       );
@@ -1726,7 +1728,9 @@ describe("BuildCloudflareTask", () => {
       ]);
     });
 
-    it("does NOT fall through to the ambient one, key by key", ({ expect }) => {
+    it("does NOT fall through to the ambient one, key by key", async ({
+      expect,
+    }) => {
       // The property that makes it explicit. A bag that merged over
       // `process.env` would let a deploy inherit the operator's own
       // `DATABASE_URL` for a database it never provisioned - and the worker
@@ -1736,7 +1740,10 @@ describe("BuildCloudflareTask", () => {
 
       const wrangler: Record<string, any> = {};
       const task = createTask();
-      task.testEnhanceD1({ env: { R2_BUCKET_NAME: "b" } } as never, wrangler);
+      await task.testEnhanceD1(
+        { env: { R2_BUCKET_NAME: "b" } } as never,
+        wrangler,
+      );
       task.testEnhanceR2({ env: {} } as never, wrangler);
 
       expect(wrangler.d1_databases).toBeUndefined();

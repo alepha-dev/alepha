@@ -18,6 +18,7 @@ import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { DbError } from "../../errors/DbError.ts";
 import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
+import { DatabaseUrlParser } from "../../services/DatabaseUrlParser.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
@@ -82,6 +83,7 @@ export class BunSqliteProvider extends DatabaseProvider {
    * @internal Driver plumbing, outside semver.
    */
   protected readonly builder = $inject(SqliteModelBuilder);
+  protected readonly urls = $inject(DatabaseUrlParser);
   protected readonly options = $store(bunSqliteOptions);
 
   protected sqlite?: Database;
@@ -99,9 +101,10 @@ export class BunSqliteProvider extends DatabaseProvider {
   public override get url(): string {
     const path = this.options.path ?? this.env.DATABASE_URL;
     if (path) {
-      if (path.startsWith("postgres://")) {
+      const parsed = this.urls.parse(path);
+      if (parsed && parsed.kind !== "sqlite") {
         throw new AlephaError(
-          "Postgres URL is not supported for SQLite provider.",
+          `A ${parsed.kind} DATABASE_URL is not supported by the SQLite provider.`,
         );
       }
       return path;
@@ -221,7 +224,8 @@ export class BunSqliteProvider extends DatabaseProvider {
     )) as typeof import("bun:sqlite");
     const { drizzle } = await import("drizzle-orm/bun-sqlite");
 
-    const filepath = this.url.replace("sqlite://", "").replace("sqlite:", "");
+    const parsed = this.urls.parse(this.url);
+    const filepath = parsed?.kind === "sqlite" ? parsed.path : this.url;
 
     if (filepath !== ":memory:" && filepath !== "") {
       const dir = dirname(filepath);

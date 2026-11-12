@@ -1521,15 +1521,14 @@ if (typeof registerHooks === "function") {
       if (options.providerDriver === "d1") {
         // For D1, we need to fill D1 bindings in a way that drizzle-kit can use it, since D1 doesn't use a traditional connection URL
       } else {
-        // Same normalisation as NodeSqliteProvider.connect(): strip every
-        // scheme it accepts (including the bare `sqlite:` one), keep
-        // `:memory:` as is, and never join an absolute path under the root.
-        // `path.join` concatenates even an absolute second segment, so
-        // `sqlite:///var/lib/app.db` used to push into `<root>/var/lib/...`.
-        let url = options.providerUrl
-          .replace("sqlite://", "")
-          .replace("sqlite:", "")
-          .replace("file://", "");
+        // Same normalisation as NodeSqliteProvider.connect(), through the
+        // one DATABASE_URL parser: keep `:memory:` as is, and never join an
+        // absolute path under the root. `path.join` concatenates even an
+        // absolute second segment, so `sqlite:///var/lib/app.db` used to
+        // push into `<root>/var/lib/...`.
+        const { DatabaseUrlParser } = await import("alepha/orm");
+        const parsed = new DatabaseUrlParser().parse(options.providerUrl);
+        let url = parsed?.kind === "sqlite" ? parsed.path : options.providerUrl;
         if (url !== ":memory:" && url !== "" && !isAbsolute(url)) {
           url = this.fs.join(options.rootDir, url);
         }

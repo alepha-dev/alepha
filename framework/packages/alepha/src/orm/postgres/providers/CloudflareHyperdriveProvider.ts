@@ -1,5 +1,5 @@
 import { $env, $hook, $inject, AlephaError, AlsProvider, z } from "alepha";
-import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import { DatabaseProvider, DatabaseUrlParser, type SQLLike } from "alepha/orm";
 import { sql } from "drizzle-orm";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
@@ -27,6 +27,7 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
    */
   protected readonly builder = $inject(PostgresModelBuilder);
   protected readonly als = $inject(AlsProvider);
+  protected readonly urls = $inject(DatabaseUrlParser);
   protected readonly env = $env(
     z.object({
       DATABASE_URL: z.string().describe("Expect to be 'hyperdrive://BINDING'"),
@@ -152,7 +153,13 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: async () => {
-      this.bindingName = this.env.DATABASE_URL.replace("hyperdrive://", "");
+      const parsed = this.urls.parse(this.env.DATABASE_URL);
+      if (parsed?.kind !== "hyperdrive") {
+        throw new AlephaError(
+          `CloudflareHyperdriveProvider needs a hyperdrive:// DATABASE_URL, got a ${parsed?.kind ?? "missing"} one.`,
+        );
+      }
+      this.bindingName = parsed.binding;
 
       // Pre-load modules so db getter is synchronous
       const pgModule = await import("postgres");
