@@ -227,8 +227,11 @@ const ProjectRail = () => {
             dropped.current = false;
           }}
           // `px` leaves room for the marker and the ring, which an
-          // `overflow` container would otherwise clip.
-          className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-y-auto px-3 py-1"
+          // `overflow` container would otherwise clip. Vertical only
+          // (#Q3481): the content runs a pixel wider than the rail's 63px
+          // (its 64px less the border), and `overflow-y-auto` alone makes
+          // the other axis `auto` too.
+          className="flex min-h-0 w-full flex-1 [scrollbar-width:none] flex-col items-center gap-2 overflow-x-hidden overflow-y-auto px-3 py-1"
         >
           {pinned.map((it) => (
             <ProjectRailItem
